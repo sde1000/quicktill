@@ -150,6 +150,7 @@ class page(ui.basicpage):
         self.buf=None # Input buffer
         self.qty=None # Quantity (integer)
         self.mod=None # Modifier (string)
+        self.keyguard=False # Require confirmation for 'Cash' or 'Cancel'
     def pagename(self):
         if self.trans is not None:
             ts=" - Transaction %d (%s)"%(self.trans,("open","closed")
@@ -476,7 +477,7 @@ class page(ui.basicpage):
                            ui.colour_changeline))
         self.update_balance()
         ui.updateheader(self)
-    def cashkey(self):
+    def cashkey(self,confirmed=False):
         # The CASH/ENTER key is also used to create a new "void" transaction
         # from lines selected from a previous, closed transaction.  If any
         # lines are selected, do that instead.
@@ -520,6 +521,21 @@ class page(ui.basicpage):
                           'If you meant "exact change" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
+            return
+        # If the transaction is an old one (i.e. the "recall
+        # transaction" function has been used on it) then require
+        # confirmation - one of the most common user errors is to
+        # recall a transaction that's being used as a tab, add some
+        # lines to it, and then automatically press 'cash'.
+        if self.keyguard and not confirmed:
+            ui.infopopup(["Are you sure you want to close this transaction "
+                          "with a cash payment?  If you are then press "
+                          "Cash/Enter again.  If you pressed Cash/Enter by "
+                          "mistake then press Clear now to go back."],
+                         title="Confirm transaction close",
+                         colour=ui.colour_confirm,keymap={
+                keyboard.K_CASH:(self.cashkey,(True,),True)})
+            self.drawline('buf')
             return
         self.buf=None
         # We have a non-zero amount and a transaction. Pay it!
@@ -800,6 +816,7 @@ class page(ui.basicpage):
             log.info("Register: recalltrans %d"%trans)
             registry.announce(self.name,trans)
             self.trans=trans
+            self.keyguard=True
             (lines,payments)=td.trans_getlines(trans)
             for i in lines:
                 self.dl.append(tline(i))

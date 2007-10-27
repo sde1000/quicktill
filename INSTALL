@@ -1,4 +1,5 @@
-Program can be run as soon as it is unpacked.
+Unpack the distribution (you have probably already done this if you're
+reading this file).
 
 To create a blank dataset, do:
 
@@ -9,7 +10,5 @@ psql dbname
 To delete the entire dataset (no questions asked!):
 dropdb dbname
 
-The till software expects dbname to be "till" by default.
-Update td.py if you use a different name.
-
 (createdb, psql and dropdb are PostgreSQL commands.)
+

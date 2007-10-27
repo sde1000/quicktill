@@ -7,6 +7,8 @@ most of the entries here.
 
 import keyboard
 
+configversion="tillconfig.py"
+
 pubname="Test Pub Name"
 pubnumber="07715 422132"
 pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")

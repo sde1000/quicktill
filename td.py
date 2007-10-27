@@ -696,6 +696,24 @@ def stock_annotations(stock,atype=None):
                 "WHERE sa.stockid=%%d%s ORDER BY sa.time"%ac,(stock,))
     return cur.fetchall()
 
+### Find out what's on the stillage by checking annotations
+
+def stillage_summary():
+    cur=cursor()
+    cur.execute(
+        "SELECT sa.text,sa.stockid,sa.time,st.shortname,sl.name "
+        "FROM stock_annotations sa "
+        "LEFT JOIN stock s ON s.stockid=sa.stockid "
+        "LEFT JOIN stocktypes st ON s.stocktype=st.stocktype "
+        "LEFT JOIN stockonsale sos ON sos.stockid=sa.stockid "
+        "LEFT JOIN stocklines sl ON sl.stocklineid=sos.stocklineid "
+        "WHERE (text,time) IN ("
+        "SELECT text,max(time) FROM stock_annotations "
+        "WHERE atype='location' GROUP BY text) "
+        "AND s.finished IS NULL AND st.dept=1"
+        "ORDER BY text")
+    return cur.fetchall()
+
 ### Functions related to stock lines
 
 def stockline_create(name,location,dept,capacity,pullthru):

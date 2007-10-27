@@ -138,7 +138,7 @@ def put_on_sale(line,sn):
         # department is number 1 (real ale) then pop up a window
         # asking for the location.  The window will pop up _on top_ of
         # the confirmation box.
-        if len(td.stock_annotations(sn,atype='location'))==0:
+        if len(td.stock_annotations(sn,atype='location'))==0 and dept==1:
             stock.annotate_location(sn)
     else:
         log.error("Use Stock: error putting item %d on line %s"%(sn,name))
