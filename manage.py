@@ -1,6 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 
 import ui,keyboard,td,time,printer,math,stock,sys,curses,os
+import register
 from version import version
 
 import logging
@@ -43,6 +44,7 @@ def confirmendsession():
         # Print out session count-up receipt and pop up a confirmation box
         tot=td.session_transtotal(r[0])
         if tot is None: tot=0.0
+        register.registry.announce(None,0)
         log.info("End of session %d confirmed. Amount taken %f"%(r[0],tot))
         ui.infopopup(["Session %d has ended.  Amount taken was £%0.2f.  "
                       "Please count the cash in the drawer and enter the "

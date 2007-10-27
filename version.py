@@ -1,1 +1,1 @@
-version="quicktill 0.5 (2004-11-07)"
+version="quicktill 0.5.1 (2004-11-10)"

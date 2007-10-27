@@ -93,8 +93,9 @@ CREATE TABLE suppliers (
 	email varchar(60)
 	);
 COPY suppliers FROM stdin;
-1	Milton Brewery	01223 226198	richard@miltonbrewery.co.uk
-2	Beer Seller	01733 230167	
+1	Initial supply		
+2	Milton Brewery	01223 226198	richard@miltonbrewery.co.uk
+3	Beer Seller	01733 230167	
 \.
 
 CREATE SEQUENCE deliveries_seq START WITH 1;

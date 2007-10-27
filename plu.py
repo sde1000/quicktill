@@ -45,18 +45,24 @@ class stockinfo(ui.basicwin):
             sd['saleunit']="half %(unitname)s"%sd
         else: sd['saleunit']="%f %s"%(qty,sd['unitname'])
         sd['deliverydate']=ui.formatdate(sd['deliverydate'])
+        sd['bestbefore']=ui.formatdate(sd['bestbefore'])
         sd['firstsale']=ui.formattime(sd['firstsale'])
         sd['lastsale']=ui.formattime(sd['lastsale'])
         self.win.addstr(y+0,x,"%(manufacturer)s %(name)s%(abvstr)s"%sd)
-        self.win.addstr(y+1,x,"Sells for £%(saleprice)0.2f/%(unitname)s"%sd)
-        self.win.addstr(y+2,x,"Delivered %(deliverydate)s by %(suppliername)s"%sd)
+        self.win.addstr(y+1,x,"Sells for £%(saleprice)0.2f/%(unitname)s.  "
+                        "%(used)0.1f %(unitname)ss used; "
+                        "%(remaining)0.1f %(unitname)ss remaining."%sd)
+        self.win.addstr(y+3,x,"Delivered %(deliverydate)s by %(suppliername)s"%sd)
+        self.win.addstr(y+4,x,"First sale: %(firstsale)s  Last sale: %(lastsale)s"%sd)
+        self.win.addstr(y+5,x,"Best Before %(bestbefore)s"%sd)
+        # We need a wastage breakdown here, and finishcode
 
 class popup(ui.basicpopup):
     def __init__(self):
         w=78
         h=20
         ui.basicpopup.__init__(self,h,w,title="Price Check",
-                               cleartext="Press Clear to go back",
+                               cleartext="Press Cash/Enter to continue",
                                colour=ui.colour_info)
         self.win=self.pan.window()
         self.info=stockinfo(self.win,4,2)
@@ -70,7 +76,7 @@ class popup(ui.basicpopup):
     def keypress(self,k):
         if k in keyboard.lines:
             ui.linemenu(keyboard.lines[k],self.checkline)
-        elif k==keyboard.K_CLEAR:
+        elif k==keyboard.K_CASH:
             self.dismiss()
         else:
             curses.beep()

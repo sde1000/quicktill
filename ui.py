@@ -442,6 +442,26 @@ def validate_lowercase(s,c):
     return s.lower()
 def validate_title(s,c):
     return s.title()
+def validate_date(s,c):
+    def checkdigit(i):
+        a=s[i:i+1]
+        if len(a)==0: return True
+        return a.isdigit()
+    def checkslash(i):
+        a=s[i:i+1]
+        if len(a)==0: return True
+        return a=='/'
+    if (checkdigit(0) and
+        checkdigit(1) and
+        checkdigit(2) and
+        checkdigit(3) and
+        checkslash(4) and
+        checkdigit(5) and
+        checkdigit(6) and
+        checkslash(7) and
+        checkdigit(8) and
+        checkdigit(9)): return s
+    return None
 
 class field(basicwin):
     def __init__(self,keymap={}):
@@ -591,7 +611,7 @@ class datefield(editfield):
         if f is not None:
             f=formatdate(f)
         editfield.__init__(self,win,y,x,10,keymap=keymap,f=f,flen=10,
-                           readonly=readonly)
+                           readonly=readonly,validate=validate_date)
     def set(self,v):
         if isinstance(v,str):
             editfield.set(self,v)
@@ -608,6 +628,11 @@ class datefield(editfield):
         self.win.addstr(self.y,self.x,'YYYY/MM/DD',curses.A_REVERSE)
         self.win.addstr(self.y,self.x,self.f,curses.A_REVERSE)
         self.win.move(self.y,self.x+self.c)
+    def insert(self,s):
+        editfield.insert(self,s)
+        if len(self.f)==4 or len(self.f)==7:
+            self.set(self.f+'/')
+
 
 class popupfield(field):
     def __init__(self,win,y,x,w,popupfunc,valuefunc,f=None,keymap={},readonly=False):

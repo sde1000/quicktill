@@ -33,10 +33,9 @@ def start(stdwin):
     event.rdlist.append(ui.reader(stdwin))
 
     # Create pages for various functions
-    reg=register.transnotify()
-    a=ui.addpage(register.page,hotkey=keyboard.K_ALICE,args=("Alice",reg))
-    ui.addpage(register.page,hotkey=keyboard.K_BOB,args=("Bob",reg))
-    ui.addpage(register.page,hotkey=keyboard.K_CHARLIE,args=("Charlie",reg))
+    a=ui.addpage(register.page,hotkey=keyboard.K_ALICE,args=("Alice",))
+    ui.addpage(register.page,hotkey=keyboard.K_BOB,args=("Bob",))
+    ui.addpage(register.page,hotkey=keyboard.K_CHARLIE,args=("Charlie",))
     ui.selectpage(a)
 
     # Enter main event loop

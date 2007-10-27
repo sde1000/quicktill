@@ -14,6 +14,10 @@ class transnotify:
     def register(self,page):
         self.nl.append(page)
     def announce(self,pagename,transid):
+        """Announce a page has taken control of a particular transaction
+        number. If the number is 0 (special case) then all pages should
+        clear themselves; this is used for global operations like
+        ending a session."""
         for i in self.nl: i.tnotify(pagename,transid)
 
 # Also used for voids...
@@ -75,10 +79,10 @@ def payline(p):
     return rline("%s £%0.2f"%(paytype,amount),ui.colour_cashline)
 
 class page(ui.basicpage):
-    def __init__(self,panel,name,registry):
+    def __init__(self,panel,name):
+        global registry
         ui.basicpage.__init__(self,panel)
         self.name=name
-        self.registry=registry
         registry.register(self)
         self.clear()
         self.redraw()
@@ -101,7 +105,7 @@ class page(ui.basicpage):
         return "%s%s"%(self.name,ts)
     def tnotify(self,name,trans):
         "Receive notification that another page has claimed this transaction"
-        if self.name!=name and self.trans==trans:
+        if trans==0 or (self.name!=name and self.trans==trans):
             self.clear()
             self.redraw()
     def drawline(self,li):
@@ -225,6 +229,7 @@ class page(ui.basicpage):
             items=int(self.buf)
         else:
             items=1
+        if items<1: items=1
         self.buf=None
         self.qty=None
         trans=self.gettrans()
@@ -352,6 +357,11 @@ class page(ui.basicpage):
         log.info("Register: notekey %d"%amount)
         return self.cashkey()
     def numkey(self,n):
+        if (self.buf==None and self.qty==None and self.trans is not None and
+            td.trans_closed(self.trans)):
+            log.info("Register: numkey on closed transaction; clearing display")
+            self.clear()
+            self.redraw()
         self.cursor_off()
         if self.buf is None: self.buf=""
         if len(self.buf)>=10:
@@ -543,7 +553,7 @@ class page(ui.basicpage):
         self.clear()
         if trans is not None:
             log.info("Register: recalltrans %d"%trans)
-            self.registry.announce(self.name,trans)
+            registry.announce(self.name,trans)
             self.trans=trans
             (lines,payments)=td.trans_getlines(trans)
             for i in lines:
@@ -605,3 +615,5 @@ class page(ui.basicpage):
                           ui.codes[k][1]],title="Error")
         else:
             curses.beep()
+
+registry=transnotify()

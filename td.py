@@ -390,10 +390,12 @@ def stock_extrainfo(stockid):
         "       d.docnumber AS deliverynote,"
         "       min(so.time) as firstsale, "
         "       max(so.time) as lastsale "
-        "FROM stock s INNER JOIN deliveries d ON s.deliveryid=d.deliveryid "
-        "INNER JOIN suppliers sup ON d.supplierid=sup.supplierid "
-        "INNER JOIN stockout so ON so.stockid=s.stockid "
-        "WHERE s.stockid=%d GROUP BY sup.name,d.date,d.docnumber",(stockid,))
+        "FROM stock s LEFT JOIN deliveries d ON s.deliveryid=d.deliveryid "
+        "LEFT JOIN suppliers sup ON d.supplierid=sup.supplierid "
+        "LEFT JOIN stockout so ON so.stockid=s.stockid "
+        "WHERE s.stockid=%d AND (so.removecode='sold' OR "
+        "so.removecode is null) "
+        "GROUP BY sup.name,d.date,d.docnumber",(stockid,))
     r=cur.fetchone()
     if r is None: return None
     cn=[x[0] for x in cur.description]
