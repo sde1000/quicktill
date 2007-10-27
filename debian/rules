@@ -39,7 +39,7 @@ binary-indep: build install
 	dh_installchangelogs
 	dh_installdocs
 	dh_installexamples examples/*
-	dh_installman
+	dh_installman debian/runtill.1
 	: # Replace all '#!' calls to python with $(PYTHON)
 	: # and make them executable
 	for i in `find debian -mindepth 3 -type f`; do \
@@ -54,7 +54,6 @@ binary-indep: build install
 	  fi; \
 	done
 	dh_pycentral
-	dh_python
 	dh_compress -X.py
 	dh_fixperms
 	dh_installdeb

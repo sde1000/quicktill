@@ -1,7 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 
 from quicktill.keyboard import *
-from quicktill.pdrivers import Epson_TM_U220,pdf
+from quicktill.pdrivers import Epson_TM_U220,pdf,pdflabel,A4
 from quicktill import register,ui,kbdrivers,stockterminal
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
@@ -115,7 +115,13 @@ localprinter={
     'printer': (Epson_TM_U220,("/dev/lp0",57)),
     }
 pdfprinter={
-    'printer': (pdf,("lpr",)),
+    'printer': (pdf,("xpdf %s",)),
+    }
+# across, down, width, height, horizgap, vertgap, pagesize
+staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
+staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
+labelprinter={
+    'labelprinter': (pdflabel,["lpr %s"]+staples_3by6),
     }
 
 kb1={
@@ -304,17 +310,20 @@ config0=dict()
 config0.update(std)
 config0.update(stockcontrol)
 config0.update(pdfprinter)
+config0.update(labelprinter)
 
 config1=dict()
 config1.update(std)
 config1.update(kb1)
 config1.update(localprinter)
+config1.update(labelprinter)
 config1.update(kitchen)
 
 # Things to define:
 #  kbdriver - keyboard driver
 #  kbtype - keyboard type
 #  printer - (driver,args)
+#  labelprinter - (driver,args)
 #  pages - available pages
 #  pubname
 #  pubnumber

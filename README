@@ -1,0 +1,39 @@
+What configuration goes where?
+
+Default printer: printer.driver (includes connection details)
+Kickout procedure: printer.kickout
+Defined pages: tillconfig.pages (includes hotkeys etc.)
+Database connection string: td.database
+Keyboard driver: ui.kb (includes keyboard layout)
+Kitchen printer: foodorder.kitchenprinter
+Menu URL: foodorder.menuurl
+
+Pub name: tillconfig.pubname
+Pub phone number: tillconfig.pubnumber
+Pub address: tillconfig.pubaddr
+
+VAT rate (to be obsoleted): tillconfig.vatrate
+VAT number (to be obsoleted): tillconfig.vatno
+Business address (to be obsoleted): tillconfig.companyaddr
+
+Currency symbol: tillconfig.currency
+Keyboard layout number: tillconfig.kbtype
+Cashback limit: tillconfig.cashback_limit
+
+Price policy function (optional): tillconfig.pricepolicy(sd,qty)
+Quantity string function (optional): tillconfig.qtystring(qty,unitname)
+Currency format function (optional): tillconfig.fc(amount)
+Price guess function (optional): tillconfig.priceguess(dept,cost,abv)
+
+Things that shouldn't be set in a global config module:
+  how to connect to the local receipt printer / kickout
+  ...er, that's about it!
+
+Keyboard layouts and associated pages can be global because they may
+be shared.
+
+So what we really want is a "runner" script that fetches the global
+config file (location defined in an /etc file), picks out a particular
+configuration by keyboard layout number, and optionally takes
+arguments to override the default printer type.  This could be till.py
+with __name__=='__main__'...
