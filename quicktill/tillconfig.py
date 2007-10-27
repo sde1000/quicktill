@@ -23,10 +23,6 @@ currency="MPL"
 
 kbtype=1
 
-cancelkey=keyboard.K_CANCEL
-clearkey=keyboard.K_CLEAR
-
-has_media_slot=False
 cashback_limit=50.0
 
 def pricepolicy(sd,qty):

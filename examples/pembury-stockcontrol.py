@@ -8,12 +8,13 @@
 import sys,os,sets,time,math,logging,urllib
 #sys.path.append('../quicktill')
 
-from keyboard import *
-import keyboard,kbdrivers
-from pdrivers import nullprinter,Epson_TM_U220,pdf
-from extras import bbcheck,departurelist
-import tillconfig,till,stockterminal
-import ui
+from quicktill.keyboard import *
+from quicktill import *
+import quicktill.keyboard,quicktill.kbdrivers
+from quicktill.pdrivers import nullprinter,Epson_TM_U220,pdf
+from quicktill.extras import bbcheck,departurelist
+import quicktill.tillconfig,quicktill.till,quicktill.stockterminal
+import quicktill.ui
 
 dbname="dbname=pembury"
 

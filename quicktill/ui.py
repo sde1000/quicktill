@@ -790,7 +790,7 @@ def popup(page,h=0,w=0,y=0,x=0):
     pan.set_userptr(page)
     return pan
 
-def init(w,kbd):
+def init(w):
     global stdwin,kb
     stdwin=w
     (my,mx)=stdwin.getmaxyx()
@@ -804,7 +804,6 @@ def init(w,kbd):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     stdwin.addstr(0,0," "*mx,curses.color_pair(1))
     event.eventlist.append(clock(stdwin))
-    kb=kbd
-    kbd.initUI(handle_keyboard_input,stdwin)
+    kb.initUI(handle_keyboard_input,stdwin)
 
 beep=curses.beep

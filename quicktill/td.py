@@ -8,6 +8,8 @@
 import time,stock
 import psycopg as db
 
+database=None
+
 con=None
 def cursor():
     con.commit()
@@ -1028,8 +1030,10 @@ def db_version():
     cur=cursor()
     return execone(cur,"SELECT version()")
 
-def init(database):
-    global con
+def init():
+    global con,database
+    if database is None:
+        raise "No database defined"
     if database[0]==":":
         database="dbname=%s"%database[1:]
     con=db.connect(database)

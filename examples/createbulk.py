@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import td
+from quicktill import td
 
-td.init("dbname=oakdale")
+td.database="dbname=oakdale"
+td.init()
 
 kbl=2
 # Line, halfkey, pintkey
