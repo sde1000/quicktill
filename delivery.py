@@ -167,8 +167,12 @@ class delivery(ui.basicpopup):
         else:
             sd=td.stock_info([self.dl[line]])[0]
             typestr=stock.format_stock(sd,maxw=37)
-            s="%7d %-37s %-8s %-6.2f %-5.2f %-10s"%(
-                self.dl[line],typestr,sd['stockunit'],sd['costprice'],
+            try:
+                coststr="%-6.2f"%sd['costprice']
+            except:
+                coststr="????? "
+            s="%7d %-37s %-8s %s %-5.2f %-10s"%(
+                self.dl[line],typestr,sd['stockunit'],coststr,
                 sd['saleprice'],ui.formatdate(sd['bestbefore']))
         attr=(0,curses.A_REVERSE)[line==self.cursor]
         self.win.addstr(y,1,s,attr)
@@ -288,22 +292,29 @@ class stockline(ui.basicpopup):
         sd=td.stock_info([sn])[0]
         self.typefield.set(sd['stocktype'])
         self.updateunitfield(default=sd['stockunit'])
-        self.costfield.set("%0.2f"%sd['costprice'])
+        if sd['costprice'] is None:
+            self.costfield.set("")
+        else:
+            self.costfield.set("%0.2f"%sd['costprice'])
         self.salefield.set("%0.2f"%sd['saleprice'])
         self.bestbeforefield.set(sd['bestbefore'])
     def pack_fields(self):
         if self.typefield.f is None: return None
         if self.unitfield.f is None: return None
-        if len(self.costfield.f)==0: return None
+        if len(self.costfield.f)==0:
+            cost=None
+        else:
+            cost=float(self.costfield.f)
         if len(self.salefield.f)==0: return None
         return (self.typefield.f,self.units[self.unitfield.f],
-                float(self.costfield.f),float(self.salefield.f),
+                cost,float(self.salefield.f),
                 self.bestbeforefield.read())
     def accept(self):
         pf=self.pack_fields()
         if pf is None:
             ui.infopopup(["You have not filled in all the fields.  "
-                          "The only optional field is 'Best Before'."],
+                          "The only optional fields are 'Best Before' "
+                          "and 'Cost Price'."],
                          title="Error")
             return
         self.dismiss()

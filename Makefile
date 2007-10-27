@@ -4,15 +4,15 @@
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.7.3
-DATE:=2005-04-07
+VERSION:=0.7.4
+DATE:=2005-04-08
 
 SHELL:=/bin/sh
 RM:=/bin/rm
 
 TARGETS:=version.py caps.pdf
 
-DISTFILES:=Makefile INSTALL createdb \
+DISTFILES:=Makefile INSTALL FIXME createdb \
 	magcard.py managetill.py plu.py recordwaste.py \
 	stock.py till.py version.py delivery.py keyboard.py \
 	managekeyboard.py printer.py register.py td.py ui.py \
