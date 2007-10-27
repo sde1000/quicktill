@@ -8,7 +8,7 @@ fixed_keycodes=(
     # Till management keys
     "USESTOCK","MANAGESTOCK","WASTE","MANAGETILL","CANCEL",
     "CLEAR","PRICECHECK","PRINT","RECALLTRANS","MANAGETRANS","QUANTITY",
-    "HALF","DOUBLE","4JUG",
+    "HALF","DOUBLE","4JUG","FOODORDER","CANCELFOOD",
 
     # Numeric keypad
     "ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN",

@@ -4,8 +4,8 @@
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.7.1
-DATE:=2005-11-02
+VERSION:=0.7.2
+DATE:=2005-02-13
 
 SHELL:=/bin/sh
 RM:=/bin/rm
@@ -18,7 +18,7 @@ DISTFILES:=Makefile INSTALL createdb \
 	managekeyboard.py printer.py register.py td.py ui.py \
 	event.py keycaps.py managestock.py pdrivers.py \
 	stocklines.py tillconfig.py usestock.py department.py \
-	stockterminal.py kbdrivers.py
+	stockterminal.py kbdrivers.py foodorder.py
 
 all:	$(TARGETS)
 

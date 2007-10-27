@@ -13,7 +13,7 @@ def print_receipt(trans):
     for i in tillconfig.pubaddr:
         driver.printline("\t%s"%i,colour=1)
     driver.printline("\tTel. %s"%tillconfig.pubnumber)
-    driver.printline("")
+    driver.printline()
     for i in lines:
         (trans,items,amount,dept,deptstr,stockref,
          transcode)=td.trans_getline(i)
@@ -215,6 +215,51 @@ def print_restock_list(rl):
                     -move,sd['stockid'],stockqty_after_move),colour=1)
     driver.printline()
     driver.printline("\tEnd of list")
+    driver.end()
+
+def print_food_order(driver,number,ol,verbose=True):
+    """This function prints a food order to the _specified_ printer.
+
+    """
+    driver.start()
+    driver.setdefattr(font=1)
+    if verbose:
+        driver.printline("\t%s"%tillconfig.pubname,emph=1)
+        for i in tillconfig.pubaddr:
+            driver.printline("\t%s"%i,colour=1)
+        driver.printline("\tTel. %s"%tillconfig.pubnumber)
+        driver.printline()
+    driver.printline("\tFood order %d"%number,colour=1,emph=1)
+    driver.printline()
+    driver.printline("\t%s"%ui.formattime(ui.now()))
+    driver.printline()
+    tot=0.0
+    for i in ol:
+        driver.printline("%s%s\t\t%s"%(
+            '  '*i.indent,i.name,
+            ('',tillconfig.fc(i.price))[i.price is not None]))
+        if i.price is not None: tot+=i.price
+    driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
+    driver.printline()
+    driver.printline("\tFood order %d"%number,colour=1,emph=1)
+    if verbose:
+        driver.printline()
+        driver.printline("\tPlease keep this ticket")
+        driver.printline("\tand exchange it for your food")
+        driver.printline("\twhen the number is called.")
+    else:
+        driver.printline()
+        driver.printline()
+    driver.end()
+
+def print_order_cancel(driver,number):
+    driver.start()
+    driver.setdefattr(font=1)
+    driver.printline("\tCANCEL order %d"%number,colour=1,emph=1)
+    driver.printline()
+    driver.printline("\t%s"%ui.formattime(ui.now()))
+    driver.printline()
+    driver.printline()
     driver.end()
 
 driver=None

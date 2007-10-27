@@ -714,6 +714,20 @@ def stillage_summary():
         "ORDER BY text")
     return cur.fetchall()
 
+### Functions related to food order numbers
+
+def foodorder_reset():
+    cur=cursor()
+    cur.execute("DROP SEQUENCE foodorder_seq")
+    cur.execute("CREATE SEQUENCE foodorder_seq")
+    commit()
+
+def foodorder_ticket():
+    cur=cursor()
+    n=ticket(cur,"foodorder_seq")
+    commit()
+    return n
+
 ### Functions related to stock lines
 
 def stockline_create(name,location,dept,capacity,pullthru):

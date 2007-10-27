@@ -1,4 +1,4 @@
-import string
+import string,socket
 
 # Methods a printer class should implement:
 # start - set up for printing; might do nothing
@@ -57,9 +57,18 @@ class escpos:
     ep_right=l2s([27,97,2])
     ep_ff=l2s([27,100,7])
     def __init__(self,devicefile,cpl):
-        self.f=file(devicefile,'w')
+        if isinstance(devicefile,str):
+            self.f=file(devicefile,'w')
+            self.ci=None
+        else:
+            self.f=None
+            self.ci=devicefile
         self.fontcpl=cpl
     def start(self):
+        if self.f is None:
+            self.s=socket.socket(socket.AF_INET)
+            self.s.connect(self.ci)
+            self.f=self.s.makefile('w')
         self.colour=0
         self.font=0
         self.emph=0
@@ -67,6 +76,14 @@ class escpos:
         self.cpl=self.fontcpl[0]
         self.f.write(escpos.ep_reset)
         self.f.write(escpos.ep_font[0])
+    def end(self):
+        self.f.write(escpos.ep_ff)
+        self.f.flush()
+        if self.ci is not None:
+            self.f.close()
+            self.s.close()
+            self.f=None
+            self.s=None
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         if colour is not None:
             if colour!=self.colour:
@@ -127,9 +144,6 @@ class escpos:
         if underline is not None:
             self.f.write(escpos.ep_underline[self.underline])
         return fits
-    def end(self):
-        self.f.write(escpos.ep_ff)
-        self.f.flush()
     def cancut(self):
         return False
     def width(self,font=None):

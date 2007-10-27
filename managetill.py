@@ -34,6 +34,7 @@ class ssdialog(ui.dismisspopup):
         self.dismiss()
         sc=td.session_start(date)
         td.trans_restore()
+        td.foodorder_reset()
         log.info("Started session number %d"%sc[0])
         ui.infopopup(["Started session number %d."%sc[0]],
                      title="Session started",colour=ui.colour_info,

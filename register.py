@@ -13,6 +13,7 @@ from plu import popup as plu
 from usestock import popup as usestock
 from recordwaste import popup as recordwaste
 log=logging.getLogger()
+import foodorder
 
 class transnotify:
     def __init__(self):
@@ -427,6 +428,13 @@ class page(ui.basicpage):
         self.repeat=(dept,lid)
         self.addline(tline(lid))
         self.update_balance()
+    def foodline(self,amount):
+        """This is a nasty hack and should be removed in the future!
+
+        """
+        self.buf=str(amount)
+        self.qty=None
+        self.deptkey(10)
     def gettrans(self):
         if self.trans:
             if not td.trans_closed(self.trans):
@@ -952,6 +960,10 @@ class page(ui.basicpage):
         if k in keys: return keys[k]()
         if k in [keyboard.K_4JUG,keyboard.K_DOUBLE,keyboard.K_HALF]:
             return self.modkey(k)
+        if k==keyboard.K_FOODORDER:
+            return foodorder.popup(self.foodline)
+        if k==keyboard.K_CANCELFOOD:
+            return foodorder.cancel()
         curses.beep()
 
 registry=transnotify()
