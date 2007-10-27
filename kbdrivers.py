@@ -31,6 +31,7 @@ class curseskeyboard:
         ord('.'): keyboard.K_POINT,
         curses.KEY_ENTER: keyboard.K_CASH,
         10: keyboard.K_CASH,
+        15: keyboard.K_QUANTITY,
         16: keyboard.K_PRINT,
         25: keyboard.K_CANCEL,
         24: keyboard.K_CLEAR,
