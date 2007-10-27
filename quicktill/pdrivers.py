@@ -1,6 +1,7 @@
-import string,socket,os
+import string,socket,os,tempfile
 from reportlab.pdfgen import canvas
-import tempfile
+from reportlab.lib.units import toLength
+from reportlab.lib.pagesizes import A4
 
 # Methods a printer class should implement:
 # start - set up for printing; might do nothing
@@ -168,7 +169,7 @@ class Epson_TM_U220(escpos):
         escpos.__init__(self,devicefile,cpl)
 
 class pdf:
-    def __init__(self,printcmd,width=150,pagewidth=595,pageheight=842,
+    def __init__(self,printcmd,width=140,pagesize=A4,
                  fontsizes=[8,10],pitches=[10,12]):
         """
         printcmd is the name of the shell command that will be invoked
@@ -180,15 +181,16 @@ class pdf:
         
         self.printcmd=printcmd
         self.width=width
-        self.pagewidth=pagewidth
-        self.pageheight=pageheight
+        self.pagesize=pagesize
+        self.pagewidth=pagesize[0]
+        self.pageheight=pagesize[1]
         self.fontsizes=fontsizes
         self.pitches=pitches
-        self.leftmargin=50
+        self.leftmargin=40
     def start(self):
         self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
         self.tmpfilename=self.tmpfile.name
-        self.c=canvas.Canvas(self.tmpfilename)
+        self.c=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
         self.colour=0
         self.font=0
         self.emph=0
@@ -196,14 +198,24 @@ class pdf:
         self.fontsize=self.fontsizes[self.font]
         self.pitch=self.pitches[self.font]
         self.y=self.pageheight-self.pitch*4
+        self.x=self.leftmargin
+        self.column=0
     def end(self):
         self.c.showPage()
         self.c.save()
         del self.c
-        os.system("%s %s"%(self.printcmd,self.tmpfilename))
+        os.system(self.printcmd%self.tmpfilename)
         self.tmpfile.close()
         del self.tmpfilename
         del self.tmpfile
+    def newcol(self):
+        self.y=self.pageheight-self.pitch*4
+        self.column=self.column+1
+        self.x=self.leftmargin+(self.width+self.leftmargin)*self.column
+        if (self.x+self.width+self.leftmargin)>self.pagewidth:
+            self.c.showPage()
+            self.column=0
+            self.x=self.leftmargin
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         if colour is not None:
             if colour!=self.colour:
@@ -241,13 +253,12 @@ class pdf:
         else: center=""
         if len(s)>2: right=s[2]
         else: right=""
-        self.c.drawString(self.leftmargin,self.y,left)
-        self.c.drawCentredString((self.leftmargin+self.width/2),self.y,center)
-        self.c.drawRightString(self.leftmargin+self.width,self.y,right)
+        self.c.drawString(self.x,self.y,left)
+        self.c.drawCentredString((self.x+self.width/2),self.y,center)
+        self.c.drawRightString(self.x+self.width,self.y,right)
         self.y=self.y-pitch
         if self.y<50:
-            self.y=self.pageheight-self.pitch*4
-            self.c.showPage()
+            self.newcol()
         return fits
     def cancut(self):
         return False
@@ -255,3 +266,63 @@ class pdf:
         return self.printline(line,justcheckfit=True)
     def kickout(self):
         pass
+
+class pdflabel:
+    def __init__(self,printcmd,labelsacross,labelsdown,
+                 labelwidth,labelheight,
+                 sidemargin,endmargin,
+                 horizlabelgap,vertlabelgap,
+                 pagesize):
+        self.printcmd=printcmd
+        self.pagesize=pagesize
+        self.width=toLength(labelwidth)
+        self.height=toLength(labelheight)
+        sidemargin=toLength(sidemargin)
+        endmargin=toLength(endmargin)
+        horizlabelgap=toLength(horizlabelgap)
+        vertlabelgap=toLength(vertlabelgap)
+        pagewidth=pagesize[0]
+        pageheight=pagesize[1]
+        self.labels=labelsacross*labelsdown
+        self.label=0
+        self.ll=[]
+        for y in range(0,labelsdown):
+            for x in range(0,labelsacross):
+                # We assume that labels are centered top-to-bottom
+                # and left-to-right, and that the gaps between them
+                # are consistent.  The page origin is in the bottom-left.
+                # We record the bottom-left-hand corner of each label.
+                xpos=sidemargin+((self.width+horizlabelgap)*x)
+                ypos=(pageheight-endmargin-((self.height+vertlabelgap)*y)
+                      -self.height)
+                self.ll.append((xpos,ypos))
+    def labels_per_page(self):
+        return len(self.ll)
+    def start(self):
+        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
+        self.tmpfilename=self.tmpfile.name
+        self.f=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
+        self.f.setAuthor("quicktill")
+        self.f.setTitle("Labels")
+        self.label=0
+    def newpage(self):
+        self.f.showPage()
+        self.label=0
+    def addlabel(self,function,data):
+        # Save the graphics state, move the origin to the bottom-left-hand
+        # corner of the label, call the function, then restore.
+        if self.label>=len(self.ll): self.newpage()
+        pos=self.ll[self.label]
+        self.f.saveState()
+        self.f.translate(pos[0],pos[1])
+        function(self.f,self.width,self.height,data)
+        self.f.restoreState()
+        self.label=self.label+1
+    def end(self):
+        self.f.showPage()
+        self.f.save()
+        del self.f
+        os.system(self.printcmd%self.tmpfilename)
+        self.tmpfile.close()
+        del self.tmpfilename
+        del self.tmpfile

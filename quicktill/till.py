@@ -104,6 +104,9 @@ def main():
     else:
         printer.driver=pdrivers.nullprinter()
     printer.kickout=printer.driver.kickout
+    if 'labelprinter' in config:
+        printer.labeldriver=config['labelprinter'][0](
+            *config['labelprinter'][1])
     tillconfig.pages=config['pages']
     td.database=config.get('database')
     ui.kb=config['kbdriver']

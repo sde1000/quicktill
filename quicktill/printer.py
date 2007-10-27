@@ -1,6 +1,7 @@
 import string,td,time,ui,stock,tillconfig,sets
 
 driver=None
+labeldriver=None
 
 def print_receipt(trans):
     transopen=False
@@ -151,6 +152,39 @@ def print_sessiontotals(session):
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.end()
 
+def label_print_delivery(delivery):
+    (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=delivery)[0]
+    (name,tel,email)=td.supplier_fetch(supplier)
+    items=td.delivery_items(delivery)
+    items_sdl=td.stock_info(items)
+    labeldriver.start()
+    def stock_label(f,width,height,d):
+        #        Item name
+        # Supplier     Delivery date
+        #        Stock unit
+        #       Stock number
+        fontsize=14
+        margin=20
+        pitch=fontsize+2
+        fontname="Times-Roman"
+        f.setFont(fontname,fontsize)
+        def fits(s):
+            sw=f.stringWidth(s,fontname,fontsize)
+            return sw<(width-(2*margin))
+        y=height-margin-fontsize
+        f.drawCentredString(width/2,y,stock.format_stock(d,fits))
+        y=y-pitch
+        f.drawString(margin,y,name)
+        f.drawRightString(width-margin,y,ui.formatdate(date))
+        y=y-pitch
+        f.drawCentredString(width/2,y,d['sunitname'])
+        y=y-pitch
+        f.setFont(fontname,y-margin)
+        f.drawCentredString(width/2,margin,str(d['stockid']))
+    for sd in items_sdl:
+        labeldriver.addlabel(stock_label,sd)
+    labeldriver.end()
+
 def print_delivery(delivery):
     (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=delivery)[0]
     (name,tel,email)=td.supplier_fetch(supplier)
@@ -263,8 +297,6 @@ def print_order_cancel(driver,number):
     driver.printline()
     driver.printline()
     driver.end()
-
-driver=None
 
 def kickout():
     pass

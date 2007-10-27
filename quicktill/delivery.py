@@ -122,12 +122,20 @@ class delivery(ui.basicpopup):
             return None
         return (self.supfield.f,self.datefield.read(),self.docnumfield.f)
     def finish(self):
+        if self.readonly: return self.dismiss()
         pf=self.pack_fields()
         if pf is not None:
             td.delivery_update(self.dn,*pf)
             self.dismiss()
     def printout(self):
-        printer.print_delivery(self.dn)
+        if not self.readonly:
+            pf=self.pack_fields()
+            if pf is not None:
+                td.delivery_update(self.dn,*pf)
+        if printer.labeldriver is not None:
+            printer.label_print_delivery(self.dn)
+        else:
+            printer.print_delivery(self.dn)
     def footernavup(self):
         # Called when "up" is pressed on the first button in the
         # footer.  If dl is not empty, moves cursor to last entry in
