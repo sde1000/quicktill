@@ -1,11 +1,11 @@
 # Makefile for quicktill
-# Copyright (C) 2004-2005 Stephen Early <steve@greenend.org.uk>
+# Copyright (C) 2004-2006 Stephen Early <steve@greenend.org.uk>
 
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.7.8-pre
-DATE:=unreleased
+VERSION:=0.7.8
+DATE:=2006-06-24
 
 SHELL:=/bin/sh
 RM:=/bin/rm

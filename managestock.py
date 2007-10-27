@@ -49,6 +49,8 @@ def format_stockmenuline(sd):
             "%.0f %ss"%(sd['remaining'],sd['unitname']))
 
 def stockdetail(sinfo):
+    if len(sinfo)==1:
+        return stock.stockinfo_popup(sinfo[0]['stockid'])
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
@@ -91,9 +93,11 @@ def stockcheck(dept=None):
         details.append(i)
     lines=ui.table(lines).format(' l l l ')
     sl=[(x,stockdetail,(y,)) for x,y in zip(lines,details)]
+    print_title="Stock Check"
+    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
     ui.menu(sl,title="Stock Check",blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
-            dismiss_on_select=False)
+            dismiss_on_select=False,keymap=km)
 
 def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
