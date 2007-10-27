@@ -734,21 +734,21 @@ def foodorder_ticket():
 
 def stockline_create(name,location,dept,capacity,pullthru):
     cur=cursor()
-    id=ticket(cur,"stocklines_seq")
+    slid=ticket(cur,"stocklines_seq")
     try:
         cur.execute("INSERT INTO stocklines (stocklineid,name,location,"
                     "dept) VALUES (%d,%s,%s,%d)",
-                    (id,name,location,dept))
+                    (slid,name,location,dept))
     except:
-        return False
+        return None
     if capacity is not None:
         cur.execute("UPDATE stocklines SET capacity=%d WHERE stocklineid=%d",
-                    (capacity,id))
+                    (capacity,slid))
     if pullthru is not None:
         cur.execute("UPDATE stocklines SET pullthru=%f WHERE stocklineid=%d",
-                    (pullthru,id))
+                    (pullthru,slid))
     commit()
-    return True
+    return slid
 
 def stockline_update(stocklineid,name,location,capacity,pullthru):
     cur=cursor()
@@ -761,6 +761,17 @@ def stockline_update(stocklineid,name,location,capacity,pullthru):
                 (name,location,stocklineid))
     commit()
     return True
+
+def stockline_delete(stocklineid):
+    """Delete a stock line.  Stock allocated to the line becomes
+    unallocated.  Keyboard bindings to the line are removed.
+
+    """
+    cur=cursor()
+    cur.execute("DELETE FROM stockonsale WHERE stocklineid=%d",(stocklineid,))
+    cur.execute("DELETE FROM keyboard WHERE stocklineid=%d",(stocklineid,))
+    cur.execute("DELETE FROM stocklines WHERE stocklineid=%d",(stocklineid,))
+    commit()
 
 def stockline_info(stocklineid):
     cur=cursor()
@@ -788,6 +799,16 @@ def stockline_list(caponly=False,exccap=False):
                 "FROM stocklines%s ORDER BY dept,location,name"%wc)
     return cur.fetchall()
 
+def stockline_listunbound():
+    """Return a list of stock lines that have no keyboard bindings.
+
+    """
+    cur=cursor()
+    cur.execute("SELECT sl.name,sl.location FROM stocklines sl "
+                "LEFT JOIN keyboard kb ON sl.stocklineid=kb.stocklineid "
+                "WHERE kb.stocklineid IS NULL")
+    return cur.fetchall()
+
 def stockline_summary():
     cur=cursor()
     cur.execute("SELECT sl.name,sl.dept,sos.stockid "
@@ -800,9 +821,11 @@ def stockline_summary():
 
 def keyboard_checklines(layout,keycode):
     """keycode is a string.  Returns a list of (linename,qty,dept,
-    pullthru,menukey,stocklineid,location,capacity) tuples (possibly empty).  The
-    list may be in any order; it's up to the caller to sort it (eg. by
-    menukey numeric keycode)."""
+    pullthru,menukey,stocklineid,location,capacity) tuples (possibly
+    empty).  The list may be in any order; it's up to the caller to
+    sort it (eg. by menukey numeric keycode).
+
+    """
     cur=cursor()
     cur.execute("SELECT sl.name,k.qty,sl.dept,sl.pullthru,"
                 "k.menukey,k.stocklineid,sl.location,sl.capacity "

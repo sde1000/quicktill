@@ -1,6 +1,8 @@
 # -*- coding: iso-8859-1 -*-
 
-"""Useful routines for dealing with stock"""
+"""Useful routines for dealing with stock.
+
+"""
 
 import ui,td,keyboard,tillconfig,stocklines,department
 
@@ -205,42 +207,6 @@ class stocktype(ui.basicpopup):
         else:
             self.dismiss()
             td.stocktype_update(self.st,*pf)
-
-# What do we want to show about a stock item?
-# Number
-# Manufacturer, name, abv
-# Short name
-# How much it cost
-# How much it sells for
-# Delivery information (supplier, date, docid)
-# Date first sold
-# Date most recently sold
-# Date taken off
-# Quantity remaining/unaccounted
-# Waste, by type
-# Finish reason
-
-class stockinfo(ui.basicwin):
-    """This is a widget that displays information on a stock item.  It
-    is 15 lines by 70 characters.
-    """
-    def __init__(self,win,y,x,sn=None):
-        self.y=y
-        self.x=x
-        ui.basicwin.__init__(self,takefocus=False)
-        self.win=win
-        self.set(sn)
-    def set(self,sn,qty=1):
-        # Erase the display first...
-        y=self.y
-        x=self.x
-        for i in range(y,y+15):
-            self.win.addstr(i,self.x,' '*70)
-        if sn is None: return
-        l=stockinfo_linelist(sn)
-        for i in l:
-            self.win.addstr(y,x,i)
-            y=y+1
 
 def stockinfo_linelist(sn,qty=1):
     l=[]
