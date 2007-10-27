@@ -4,8 +4,8 @@
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.5.6
-DATE:=2004-11-15
+VERSION:=0.5.7
+DATE:=2004-11-16
 
 SHELL:=/bin/sh
 RM:=/bin/rm
