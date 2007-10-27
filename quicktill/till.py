@@ -9,7 +9,7 @@ invoke till.run().
 
 """
 
-import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig,event,foodorder
+import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig,event,foodorder,locale
 from version import version
 
 def start(stdwin):
@@ -129,4 +129,6 @@ def main():
         tillconfig.fc=config['format_currency']
     if 'priceguess' in config:
         tillconfig.priceguess=config['priceguess']
+
+    locale.setlocale(locale.LC_ALL,'')
     return run()
