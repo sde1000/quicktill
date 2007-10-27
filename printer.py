@@ -169,7 +169,7 @@ def print_delivery(delivery):
     items_sdl=td.stock_info(items)
     for sd in items_sdl:
         driver.printline("Stock number %d"%sd['stockid'],colour=1)
-        driver.printline(stock.format_stock(sd,maxw=driver.width()))
+        driver.printline(stock.format_stock(sd,maxw=driver.checkwidth))
         driver.printline("%s cost %s"%(
             sd['stockunit'],tillconfig.fc(sd['costprice'])))
         driver.printline("sale %s BB %s"%(
@@ -187,7 +187,7 @@ def print_stocklist(sl,title="Stock List"):
     driver.printline()
     for sd in sl:
         driver.printline("Stock number %d"%sd['stockid'],colour=1)
-        driver.printline(stock.format_stock(sd,maxw=driver.width()))
+        driver.printline(stock.format_stock(sd,maxw=driver.checkwidth))
         driver.printline("%s cost %s"%(
             sd['stockunit'],tillconfig.fc(sd['costprice'])))
         driver.printline("sale %s BB %s"%(

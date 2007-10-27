@@ -1,5 +1,24 @@
 /* Create tables and reference data for the till software */
 
+CREATE TABLE businesses (
+	business int NOT NULL PRIMARY KEY,
+	name varchar(80),
+	address varchar(200),
+	vatno varchar(30)
+	);
+COPY businesses FROM stdin;
+1	Individual Pubs Limited	Unit 111, Norman Industrial Estate\\nCambridge Road\\nMilton\\nCambridge CB4 6AT	783 9983 50
+\.
+
+CREATE TABLE vat (
+	band char(1) NOT NULL PRIMARY KEY,
+	rate numeric(5,2) NOT NULL,
+	business int NOT NULL REFERENCES businesses(business)
+	);
+COPY vat FROM stdin;
+A	17.5	1
+\.
+
 CREATE TABLE paytypes (
 	paytype varchar(8) NOT NULL PRIMARY KEY,
 	description varchar(10) NOT NULL
@@ -49,22 +68,24 @@ CREATE TABLE payments (
 	ref varchar(16),
 	time timestamp NOT NULL DEFAULT now()
 	);
+
 CREATE TABLE departments (
 	dept int NOT NULL PRIMARY KEY,
-	description varchar(20) NOT NULL
+	description varchar(20) NOT NULL,
+	vatband char(1) NOT NULL REFERENCES vat(band)
 	);
 COPY departments FROM stdin;
-1	Real Ale
-2	Keg
-3	Real Cider
-4	Spirits
-5	Snacks
-6	Bottles
-7	Soft Drinks
-8	Misc
-9	Wine
-10	Food
-11	Hot Drinks
+1	Real Ale	A
+2	Keg	A
+3	Real Cider	A
+4	Spirits	A
+5	Snacks	A
+6	Bottles	A
+7	Soft Drinks	A
+8	Misc	A
+9	Wine	A
+10	Food	A
+11	Hot Drinks	A
 \.
 
 CREATE TABLE transcodes (
@@ -393,6 +414,10 @@ CREATE INDEX stock_annotations_stockid_key ON stock_annotations (stockid);
 selecting on stock ID.  This could probably be speeded using an index. */
 
 CREATE INDEX stockout_stockid_key ON stockout (stockid);
+
+/* The "stock_sellmore" function in td.py updates the stockout table
+by selecting on translineid.  This could probably be speeded using an index. */
+CREATE INDEX stockout_translineid_key ON stockout (translineid);
 
 /* The tillweb software finds this index helpful when calculating how
 much was taken in the last two weeks; it lets the query exclude a large

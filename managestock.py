@@ -33,9 +33,9 @@ def finish_item(sn):
     ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
             sn,title="Finish Stock",w=60)
 
-def finishstock():
+def finishstock(dept=None):
     log.info("Finish stock")
-    sl=td.stock_search()
+    sl=td.stock_search(dept=dept)
     sinfo=td.stock_info(sl)
     lines=ui.table([("%d"%x['stockid'],stock.format_stock(x))
                     for x in sinfo]).format(' r l ')
@@ -48,22 +48,52 @@ def format_stockmenuline(sd):
             stock.format_stock(sd,maxw=40),
             "%.0f %ss"%(sd['remaining'],sd['unitname']))
 
-def stockcheck(dept=None):
-    # Build a list of all not-finished stock items.  Things we want to show:
-    log.info("Stock check")
-    sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
-    sinfo=td.stock_info(sl)
+def stockdetail(sinfo):
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
-    if dept is not None:
-        print_title="Stock Check dept %d"%dept
-    else:
-        print_title="Stock Check"
+    print_title="Stock Check"
     km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
-    ui.menu(sl,title="Stock Check",blurb="Select a stock item and press "
-            "Cash/Enter for more information.  The number of units remaining "
-            "is shown.",dismiss_on_select=False,keymap=km)
+    ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
+            "Cash/Enter for more information.",
+            dismiss_on_select=False,keymap=km,
+            colour=ui.colour_confirm)
+
+def stockcheck(dept=None):
+    # Build a list of all not-finished stock items.
+    log.info("Stock check")
+    sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
+    sinfo=td.stock_info(sl)
+    # Split into groups by stocktype
+    st={}
+    for i in sinfo:
+        st.setdefault(i['stocktype'],[]).append(i)
+    # Convert to a list
+    st=[x for x in st.values()]
+    # We might want to sort the list at this point... sorting by ascending
+    # amount remaining will put the things that are closest to running out
+    # near the start - handy!
+    remfunc=lambda a:reduce(lambda x,y:x+y,[x['remaining'] for x in a])
+    cmpfunc=lambda a,b:(0,-1)[remfunc(a)<remfunc(b)]
+    st.sort(cmpfunc)
+    # We want to show name, remaining, items in each line
+    # and when a line is selected we want to pop up the list of individual
+    # items.
+    lines=[]
+    details=[]
+    for i in st:
+        name=stock.format_stock(i[0],maxw=40)
+        remaining=reduce(lambda x,y:x+y,[x['remaining'] for x in i])
+        items=len(i)
+        unit=i[0]['unitname']
+        lines.append((name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
+            items,("s","")[items==1])))
+        details.append(i)
+    lines=ui.table(lines).format(' l l l ')
+    sl=[(x,stockdetail,(y,)) for x,y in zip(lines,details)]
+    ui.menu(sl,title="Stock Check",blurb="Select a stock type and press "
+            "Cash/Enter for details on individual items.",
+            dismiss_on_select=False)
 
 def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
@@ -89,7 +119,6 @@ def updatesupplier():
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
-
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
@@ -100,7 +129,7 @@ def popup():
         (keyboard.K_THREE,"Display an old (confirmed) delivery",
          displaydelivery,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
-         finishstock,None),
+         department.menu,(finishstock,"Finish Stock",False)),
         (keyboard.K_FIVE,"Stock check (unfinished stock)",
          department.menu,(stockcheck,"Stock Check",True)),
         (keyboard.K_SIX,"Stock history (finished stock)",

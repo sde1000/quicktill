@@ -802,6 +802,10 @@ class page(ui.basicpage):
                     self.cursor=None
                     self.update_balance()
                     self.redraw()
+                    if len(self.dl)==0:
+                        # The last transaction line was deleted, so also
+                        # delete the transaction.
+                        self.canceltrans()
                 else:
                     log.info("Register: cancelline: confirm cancel")
                     ui.infopopup(["Are you sure you want to cancel this line? "

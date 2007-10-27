@@ -53,24 +53,57 @@ class LDBParser(HTMLParser.HTMLParser):
         if self.state==4:
             self.currentdata=self.currentdata+data
 
-def departurelist(name,code):
-    # Retrieve the departure boards page
-    try:
-        f=urllib.urlopen("http://www.livedepartureboards.co.uk/ldb/sumdep.aspx?T=%s&A=1"%code)
-        l=f.read()
-        f.close()
-    except:
-        ui.infopopup(["Departure information could not be retrieved."],
-                     title="Error")
-        return
-    # Parse it
-    p=LDBParser()
-    p.feed(l)
-    p.close()
-    # Now p.tablelines contains the data!  Format and display it.
-    t=ui.table(p.tablelines)
-    ll=t.format('l l l')
-    ui.linepopup(ll,name,colour=ui.colour_info)
+class departurelist:
+    def __init__(self,name,code):
+        # Retrieve the departure boards page
+        try:
+            f=urllib.urlopen("http://www.livedepartureboards.co.uk/ldb/sumdep.aspx?T=%s&A=1"%code)
+            l=f.read()
+            f.close()
+        except:
+            ui.infopopup(["Departure information could not be retrieved."],
+                         title="Error")
+            return
+        # Parse it
+        p=LDBParser()
+        p.feed(l)
+        p.close()
+        # Now p.tablelines contains the data!  Format and display it.
+        self.tablelines=p.tablelines
+        self.station=name
+        t=ui.table(p.tablelines)
+        ll=t.format('l l l')
+        km={keyboard.K_PRINT:(self.printout,None,False)}
+        ui.linepopup(ll,name,colour=ui.colour_info,keymap=km,
+                     dismiss=keyboard.K_CASH)
+    def printout(self):
+        p=printer.driver
+        destinations={}
+        for i in self.tablelines:
+            if i[0] not in destinations:
+                destinations[i[0]]=[]
+            destinations[i[0]].append((i[1],i[2]))
+        p.start()
+        p.setdefattr(font=1)
+        p.printline("\t%s"%tillconfig.pubname,emph=1)
+        for i in tillconfig.pubaddr:
+            p.printline("\t%s"%i,colour=1)
+        p.printline("\tTel. %s"%tillconfig.pubnumber)
+        p.printline()
+        if not p.printline("Departures from %s"%self.station,
+                           colour=1,emph=1,allowwrap=False):
+            p.printline("Departures from",colour=1,emph=1)
+            p.printline("  %s"%self.station,colour=1,emph=1)
+        p.printline("Printed %s"%ui.formattime(ui.now()))
+        p.printline()
+        d=destinations.keys()
+        d.sort()
+        for i in d:
+            p.printline(i,colour=1)
+            for j in destinations[i]:
+                p.printline("  %s %s"%j)
+        p.end()
+    
 
 ### Bar Billiards checker
 

@@ -1,4 +1,6 @@
-import string,socket
+import string,socket,os
+from reportlab.pdfgen import canvas
+import tempfile
 
 # Methods a printer class should implement:
 # start - set up for printing; might do nothing
@@ -12,9 +14,10 @@ import string,socket
 #  emph 0/1
 #  font 0/1
 #  underline 0/1/2
-# Furthermore, printline takes an argument "checkfit" which suppresses printing
-# and just returns True or False depending on whether the supplied text fits
-# without wrapping
+# Furthermore, printline takes an argument "justcheckfit" which suppresses
+# printing and just returns True or False depending on whether the supplied
+# text fits without wrapping
+# The method 'checkwidth()' invokes printline with justcheckfit=True
 
 # Might implement kickout() if kickout goes through printer
 
@@ -35,13 +38,13 @@ class nullprinter:
         pass
     def printline(self,l="",justcheckfit=False,allowwrap=True,
                   colour=None,font=None,emph=None,underline=None):
-        pass
+        return True
     def end(self):
         pass
     def cancut(self):
         return False
-    def width(self,font=None):
-        return 30
+    def checkwidth(self,line):
+        return self.printline(l,justcheckfit=True)
     def kickout(self):
         pass
 
@@ -146,9 +149,8 @@ class escpos:
         return fits
     def cancut(self):
         return False
-    def width(self,font=None):
-        if font==None: font=self.font
-        return self.fontcpl[font]
+    def checkwidth(self,line):
+        return self.printline(line,justcheckfit=True)
     def kickout(self):
         self.f.write(escpos.ep_pulse)
         self.f.flush()
@@ -164,3 +166,92 @@ class Epson_TM_U220(escpos):
         else:
             raise "Unknown paper width"
         escpos.__init__(self,devicefile,cpl)
+
+class pdf:
+    def __init__(self,printcmd,width=150,pagewidth=595,pageheight=842,
+                 fontsizes=[8,10],pitches=[10,12]):
+        """
+        printcmd is the name of the shell command that will be invoked
+        with the filename of the PDF
+
+        width is the width of the output in points
+
+        """
+        
+        self.printcmd=printcmd
+        self.width=width
+        self.pagewidth=pagewidth
+        self.pageheight=pageheight
+        self.fontsizes=fontsizes
+        self.pitches=pitches
+        self.leftmargin=50
+    def start(self):
+        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
+        self.tmpfilename=self.tmpfile.name
+        self.c=canvas.Canvas(self.tmpfilename)
+        self.colour=0
+        self.font=0
+        self.emph=0
+        self.underline=0
+        self.fontsize=self.fontsizes[self.font]
+        self.pitch=self.pitches[self.font]
+        self.y=self.pageheight-self.pitch*4
+    def end(self):
+        self.c.showPage()
+        self.c.save()
+        del self.c
+        os.system("%s %s"%(self.printcmd,self.tmpfilename))
+        self.tmpfile.close()
+        del self.tmpfilename
+        del self.tmpfile
+    def setdefattr(self,colour=None,font=None,emph=None,underline=None):
+        if colour is not None:
+            if colour!=self.colour:
+                self.colour=colour
+        if font is not None:
+            if font!=self.font:
+                self.font=font
+        if emph is not None:
+            if emph!=self.emph:
+                self.emph=emph
+        if underline is not None:
+            if underline!=self.underline:
+                self.underline=underline
+    def printline(self,l="",justcheckfit=False,allowwrap=True,
+                  colour=None,font=None,emph=None,underline=None):
+        if font is not None:
+            fontsize=self.fontsizes[font]
+            pitch=self.pitches[font]
+        else:
+            fontsize=self.fontsize
+            pitch=self.pitch
+        if colour is None: colour=self.colour
+        if emph is None: emph=self.emph
+        if underline is None: underline=self.underline
+        fontname="Courier"
+        if emph or colour: fontname="Courier-Bold"
+        fits=(self.c.stringWidth(l,fontname,fontsize)<self.width)
+        if justcheckfit: return fits
+        if not allowwrap and not fits: return False
+        self.c.setFont(fontname,fontsize)
+        s=l.split("\t")
+        if len(s)>0: left=s[0]
+        else: left=""
+        if len(s)>1: center=s[1]
+        else: center=""
+        if len(s)>2: right=s[2]
+        else: right=""
+        self.c.drawString(self.leftmargin,self.y,left)
+        self.c.drawCentredString((self.leftmargin+self.width/2),self.y,center)
+        self.c.drawRightString(self.leftmargin+self.width,self.y,right)
+        self.y=self.y-pitch
+        if self.y<50:
+            self.y=self.pageheight-self.pitch*4
+            self.c.showPage()
+        return fits
+    def cancut(self):
+        return False
+    def checkwidth(self,line):
+        return self.printline(line,justcheckfit=True)
+    def kickout(self):
+        pass
