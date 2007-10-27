@@ -286,6 +286,13 @@ CREATE TABLE keyboard (
 	PRIMARY KEY (layout,keycode,menukey)
 	);
 
+CREATE TABLE keycaps (
+	layout int NOT NULL,
+	keycode varchar(20) NOT NULL,
+	keycap varchar(30),
+	PRIMARY KEY (layout,keycode)
+	);
+
 /* Useful views for queries */
 CREATE VIEW stockinfo AS
 	SELECT s.stockid,st.stocktype,s.deliveryid,

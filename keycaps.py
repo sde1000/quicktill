@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import sping.PDF.pdfgen as pdflib
+from reportlab.pdfgen import canvas
 
 pw=595
 ph=842
@@ -188,6 +188,36 @@ kl=(
     sd("Half","Cellar D"),
     sd("Half","Cellar E"),
     sd("Half","Cellar F"),
+    sd("Half","1A"),
+    sd("Half","1B"),
+    sd("Half","1C"),
+    sd("Half","2A"),
+    sd("Half","2B"),
+    sd("Half","2C"),
+    sd("Half","3A"),
+    sd("Half","3B"),
+    sd("Half","3C"),
+    sd("Half","4A"),
+    sd("Half","4B"),
+    sd("Half","4C"),
+    sd("Half","5A"),
+    sd("Half","5B"),
+    sd("Half","5C"),
+    sd("Half","6A"),
+    sd("Half","6B"),
+    sd("Half","6C"),
+    sd("Half","7A"),
+    sd("Half","7B"),
+    sd("Half","7C"),
+    sd("Half","8A"),
+    sd("Half","8B"),
+    sd("Half","8C"),
+    sd("Half","Cider 1"),
+    sd("Half","Cider 2"),
+    sd("Half","Cider 3"),
+    sd("Half","Cider 4"),
+    sd("Half","Cider 5"),
+    sd("Half","Cider 6"),
     # Pints
     sd("Pint","1"),
     sd("Pint","2"),
@@ -219,6 +249,36 @@ kl=(
     sd("Pint","Cellar D"),
     sd("Pint","Cellar E"),
     sd("Pint","Cellar F"),
+    sd("Pint","1A"),
+    sd("Pint","1B"),
+    sd("Pint","1C"),
+    sd("Pint","2A"),
+    sd("Pint","2B"),
+    sd("Pint","2C"),
+    sd("Pint","3A"),
+    sd("Pint","3B"),
+    sd("Pint","3C"),
+    sd("Pint","4A"),
+    sd("Pint","4B"),
+    sd("Pint","4C"),
+    sd("Pint","5A"),
+    sd("Pint","5B"),
+    sd("Pint","5C"),
+    sd("Pint","6A"),
+    sd("Pint","6B"),
+    sd("Pint","6C"),
+    sd("Pint","7A"),
+    sd("Pint","7B"),
+    sd("Pint","7C"),
+    sd("Pint","8A"),
+    sd("Pint","8B"),
+    sd("Pint","8C"),
+    sd("Pint","Cider 1"),
+    sd("Pint","Cider 2"),
+    sd("Pint","Cider 3"),
+    sd("Pint","Cider 4"),
+    sd("Pint","Cider 5"),
+    sd("Pint","Cider 6"),
     # Optics, not dedicated to particular brands
     sd("Optic","1"),
     sd("Optic","2"),
@@ -329,8 +389,8 @@ kl=(
     sd("Mixer","40p"),
     sd("Mixer","20p"),
     ss("Cordial"),
-    ss(""),
-    ss(""),
+    sd("Order","Food"),
+    sd("Cancel","Food"),
     ss(""),
     # Payment types / large keys / misc
     ss("4pt jug"),
@@ -344,7 +404,7 @@ kl=(
     ds("Void Line"),
     )
 
-f=pdflib.Canvas("caps.pdf")
+f=canvas.Canvas("caps.pdf")
 ix=13
 maxx=550
 x=ix
@@ -362,5 +422,6 @@ for i in kl:
         y=y+lh
         lh=0
         
+f.showPage()
 f.save()
 del f

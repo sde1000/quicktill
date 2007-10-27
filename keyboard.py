@@ -3,7 +3,8 @@
 # Keycodes
 fixed_keycodes=(
     # Pages
-    "ALICE","BOB","CHARLIE","DORIS","EDDIE","FRANK","GILES",
+    "ALICE","BOB","CHARLIE","DORIS","EDDIE","FRANK","GILES","HELEN",
+    "IAN","JANE","KATE","LIZ","MALLORY","NIGEL","OEDIPUS",
     
     # Till management keys
     "USESTOCK","MANAGESTOCK","WASTE","MANAGETILL","CANCEL",

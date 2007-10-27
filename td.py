@@ -668,7 +668,9 @@ def stock_onsale(line):
         "SELECT sos.stockid,sos.displayqty "
         "FROM stockonsale sos "
         "LEFT JOIN stock s ON s.stockid=sos.stockid "
-        "WHERE sos.stocklineid=%d ORDER BY s.bestbefore,sos.stockid",(line,))
+        "WHERE sos.stocklineid=%d "
+        "ORDER BY coalesce(sos.displayqty,0) DESC,"
+        "s.bestbefore,sos.stockid",(line,))
     return cur.fetchall()
 
 def stock_annotate(stock,atype,text):

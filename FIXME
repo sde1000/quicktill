@@ -1,0 +1,14 @@
+This file records the various ipltd-specific kludges that have been
+put in the software, which will need to be fixed if the software is to
+be used by other companies.
+
+* Modifier handling in register.py/linekey
+
+ipltd-specific values for 'checkdept' are hard-coded
+
+Modifiers, their key bindings and departments should be listed in the
+till configuration file.
+
+* Food order handling in register.py/foodline
+
+Department 10 has been hard-coded.
