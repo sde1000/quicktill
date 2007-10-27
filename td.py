@@ -799,8 +799,8 @@ def stockline_summary():
 ### Functions relating to till keyboards
 
 def keyboard_checklines(layout,keycode):
-    """keycode is a string.  Returns a list of (menukey,stocklineid,qty,
-    linename,lineloc,capacity,dept,pullthru) tuples (possibly empty).  The
+    """keycode is a string.  Returns a list of (linename,qty,dept,
+    pullthru,menukey,stocklineid,location,capacity) tuples (possibly empty).  The
     list may be in any order; it's up to the caller to sort it (eg. by
     menukey numeric keycode)."""
     cur=cursor()
@@ -810,6 +810,28 @@ def keyboard_checklines(layout,keycode):
                 "LEFT JOIN stocklines sl ON sl.stocklineid=k.stocklineid "
                 "WHERE k.layout=%d AND k.keycode=%s",(layout,keycode))
     return cur.fetchall()
+
+def keyboard_checkstockline(layout,stocklineid):
+    """Return all the key bindings in this keyboard layout for the
+    specified stock line.
+
+    """
+    cur=cursor()
+    cur.execute("SELECT keycode,menukey,qty FROM keyboard "
+                "WHERE stocklineid=%d",(stocklineid,))
+    return cur.fetchall()
+
+def keyboard_addbinding(layout,keycode,menukey,stocklineid,qty):
+    cur=cursor()
+    cur.execute("INSERT INTO keyboard (layout,keycode,menukey,stocklineid,qty) "
+                "VALUES (%d,%s,%s,%d,%f)",(layout,keycode,menukey,stocklineid,qty))
+    commit()
+
+def keyboard_delbinding(layout,keycode,menukey):
+    cur=cursor()
+    cur.execute("DELETE FROM keyboard WHERE layout=%d AND keycode=%s AND menukey=%s",
+                (layout,keycode,menukey))
+    commit()
 
 def keyboard_setcap(layout,keycode,cap):
     """keycode is a string.  Stores a new keycap for the specified keyboard layout."""
