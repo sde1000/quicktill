@@ -782,10 +782,9 @@ def stockline_info(stocklineid):
 def stockline_restock(stocklineid,changes):
     cur=cursor()
     for sd,move,newdisplayqty,stockqty_after_move in changes:
-        cur.execute("UPDATE stockonsale SET "
-                    "displayqty=coalesce(displayqty,0)+%d WHERE "
+        cur.execute("UPDATE stockonsale SET displayqty=%d WHERE "
                     "stocklineid=%d AND stockid=%d",(
-            move,stocklineid,sd['stockid']))
+            newdisplayqty,stocklineid,sd['stockid']))
     commit()
 
 def stockline_list(caponly=False,exccap=False):
