@@ -8,9 +8,9 @@ def guess(dept,cost,abv):
     if dept==1:
         return guessbeer(cost,abv)
     if dept==2:
-        return 2.40
+        return 2.50
     if dept==3:
-        return 2.20
+        return 2.40
     if dept==5:
         return guesssnack(cost)
     return None

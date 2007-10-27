@@ -17,7 +17,7 @@
 # There's a further layer on top of the normal ncurses input processing,
 # to enable us to recognise keys [xx] on the special keyboard.
 
-import curses,ui,keyboard,manage,event,register,logging
+import curses,ui,keyboard,managetill,event,register,logging
 from version import version
 
 def start(stdwin):

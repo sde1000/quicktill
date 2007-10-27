@@ -1,6 +1,6 @@
 """Implements the "use stock" menu"""
 
-import ui,td,keyboard
+import ui,td,keyboard,stock
 
 import logging
 log=logging.getLogger()
@@ -57,17 +57,11 @@ def finish_reason(l,sn,reason):
     log.info("Use Stock: finished item %d reason %s"%(sn,reason))
     pick_new_stock(l,"Stock item %d is finished.  "%(sn))
 
-def stock_description(sn):
-    sd=td.stock_info(sn)
-    if sd['abv'] is None: abvstr=""
-    else: abvstr=" (%(abv)0.1f%% ABV)"%sd
-    return "%s %s%s"%(sd['manufacturer'],sd['name'],abvstr)
-
 def pick_new_stock(line,blurb=""):
     def fs(sn):
         sd=td.stock_info(sn)
-        return "%7d %s"%(sn,stock_description(sn))
-    sl=td.stock_availableforsale(line[2])
+        return "%7d %s"%(sn,stock.stock_description(sn))
+    sl=td.stock_search(line[2])
     sl=[(fs(x),put_on_sale,(line[0],x)) for x in sl]
     ui.menu(sl,title="Select Stock Item",
             blurb=blurb+"Select a new stock item to put on sale as '%s', "
@@ -75,7 +69,7 @@ def pick_new_stock(line,blurb=""):
 
 def put_on_sale(line,sn):
     ok=td.stock_putonsale(sn,line)
-    sd=stock_description(sn)
+    sd=stock.stock_description(sn)
     if ok:
         log.info("Use Stock: item %d (%s) put on sale as %s"%(sn,sd,line))
         ui.infopopup(["Stock item %d (%s) has been put on sale "

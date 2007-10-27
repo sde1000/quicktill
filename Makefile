@@ -4,8 +4,8 @@
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.5.4
-DATE:=2004-11-12
+VERSION:=0.5.5
+DATE:=2004-11-14
 
 SHELL:=/bin/sh
 RM:=/bin/rm
@@ -14,8 +14,9 @@ TARGETS:=version.py caps.pdf
 
 DISTFILES:=Makefile INSTALL createdb \
 	quicktill.py event.py keyboard.py keycaps.py \
-	manage.py plu.py priceguess.py printer.py recordwaste.py \
-	register.py stock.py td.py ui.py usestock.py version.py
+	managetill.py plu.py priceguess.py printer.py recordwaste.py \
+	register.py stock.py managestock.py td.py ui.py usestock.py \
+	version.py delivery.py
 
 all:	$(TARGETS)
 

@@ -3,8 +3,8 @@ Also supports function keys to go to various popups: price lookup, management,
 etc."""
 
 import sets,curses
-import td,ui,keyboard,plu,manage,printer,stock,usestock,recordwaste
-
+import td,ui,keyboard,plu,managetill,printer,managestock,usestock,recordwaste
+import stock
 import logging
 log=logging.getLogger()
 
@@ -36,9 +36,7 @@ class tline:
         if stockref is not None:
             (qty,removecode,stockid,manufacturer,name,shortname,abv,
              unitname)=td.stock_fetchline(stockref)
-            if abv is not None:
-                abvs=' (%.1f%% ABV)'%abv
-            else: abvs=''
+            abvs=stock.abvstr(abv)
             qty=qty/items
             if qty==1.0:
                 qtys=unitname
@@ -103,6 +101,10 @@ class page(ui.basicpage):
                                          [td.trans_closed(self.trans)])
         else: ts=""
         return "%s%s"%(self.name,ts)
+    def pagesummary(self):
+        if self.trans is None: return ""
+        elif td.trans_closed(self.trans): return ""
+        else: return "%s:%d"%(self.name[0],self.trans)
     def tnotify(self,name,trans):
         "Receive notification that another page has claimed this transaction"
         if trans==0 or (self.name!=name and self.trans==trans):
@@ -216,21 +218,17 @@ class page(ui.basicpage):
                 self.update_balance()
                 return
         self.repeat=None
-        if self.qty is not None:
-            items=self.qty
-        elif self.buf is not None:
-            if self.buf.find('.')>=0:
-                log.info("Register: linekey: found decimal point in buffer")
-                ui.infopopup(["You may only enter a whole number of items "
-                              "before pressing a line key."],title="Error")
-                self.buf=None
-                self.drawline('buf')
-                return
-            items=int(self.buf)
-        else:
-            items=1
-        if items<1: items=1
-        self.buf=None
+        if self.buf is not None:
+            log.info("Register: linekey: buffer not empty")
+            ui.infopopup(["You can't enter a number before pressing a line "
+                          "key.  If you want to sell multiple items you "
+                          "must enter the number and then press 'Quantity' "
+                          "before pressing the line key."],title="Error")
+            self.buf=None
+            self.drawline('buf')
+            return
+        if self.qty is not None: items=self.qty
+        else: items=1
         self.qty=None
         trans=self.gettrans()
         if trans is None: return
@@ -604,8 +602,8 @@ class page(ui.basicpage):
             keyboard.K_UP: self.cursor_up,
             keyboard.K_DOWN: self.cursor_down,
             keyboard.K_PRICECHECK: plu.popup,
-            keyboard.K_MANAGETILL: manage.popup,
-            keyboard.K_MANAGESTOCK: stock.popup,
+            keyboard.K_MANAGETILL: managetill.popup,
+            keyboard.K_MANAGESTOCK: managestock.popup,
             keyboard.K_USESTOCK: usestock.popup,
             keyboard.K_WASTE: recordwaste.popup,
             }

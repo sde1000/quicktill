@@ -56,6 +56,9 @@ basepage=None
 # Hotkeys for switching between pages.
 hotkeys={}
 
+# List of pages, in order
+pagelist=[]
+
 class clock:
     def __init__(self,win):
         self.stdwin=win
@@ -90,9 +93,17 @@ def savefocus():
     return l
 
 def updateheader(page):
-    if page==basepage:
-        stdwin.addstr(0,0,50*" ",curses.color_pair(colour_header))
-        stdwin.addstr(0,0,page.pagename(),curses.color_pair(colour_header))
+    m=""
+    s=""
+    for i in pagelist:
+        if i==basepage: m=i.pagename()
+        else:
+            ps=i.pagesummary()
+            if ps!="": s=s+i.pagesummary()+' '
+    if len(s)>0: s=s[:-1]
+    stdwin.addstr(0,0,50*" ",curses.color_pair(colour_header))
+    stdwin.addstr(0,50-len(s),s,curses.color_pair(colour_header))
+    stdwin.addstr(0,0,m,curses.color_pair(colour_header))
 
 # Switch to a VC
 def selectpage(page):
@@ -160,6 +171,8 @@ class basicpage:
         (self.h,self.w)=self.win.getmaxyx()
     def pagename(self):
         return "Basic page"
+    def pagesummary(self):
+        return ""
     def deselected(self,focus,stack):
         # When we're deselected this function is called to let us save
         # our stack of panels, if we want to.  Then when selected we
@@ -277,7 +290,7 @@ class menu(basicpopup):
     def __init__(self,itemlist,default=0,
                  blurb="Select a line and press Cash/Enter",
                  title=None,clear=True,
-                 colour=colour_input,w=None):
+                 colour=colour_input,w=None,dismiss_on_select=True):
         self.itemlist=itemlist
         if w is None:
             w=0
@@ -295,7 +308,7 @@ class menu(basicpopup):
                 keyboard.K_UP: (self.cursor_up,(1,),False),
                 keyboard.K_RIGHT: (self.cursor_down,(5,),False),
                 keyboard.K_LEFT: (self.cursor_up,(5,),False),
-                keyboard.K_CASH: (self.select,None,True)}
+                keyboard.K_CASH: (self.select,None,dismiss_on_select)}
         else:
             km={}
         if clear:
@@ -766,6 +779,7 @@ def addpage(page,hotkey,args=()):
     p=page(pan,*args)
     pan.set_userptr(p)
     hotkeys[hotkey]=p
+    pagelist.append(p)
     return p
 
 def popup(page,h=0,w=0,y=0,x=0):

@@ -55,7 +55,7 @@ class popup(ui.basicpopup):
             ui.infopopup(["Stock number %d does not exist."%sn],
                          title="Error")
         else:
-            self.stockdescfield.set("%(manufacturer)s %(name)s"%sd)
+            self.stockdescfield.set(stock.format_stock(sd,maxw=40))
             self.unitfield.set(sd['unitname']+'s')
             self.wastedescfield.set(0)
             self.wastedescfield.focus()

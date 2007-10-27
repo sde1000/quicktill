@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 
-import ui,keyboard,td,time,printer,math,stock,sys,curses,os
+import ui,keyboard,td,time,printer,math,sys,curses,os
 import register
 from version import version
 

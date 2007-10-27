@@ -181,12 +181,8 @@ def print_delivery(delivery):
     f.write("\n")
     for i in items:
         sd=td.stock_info(i)
-        if sd['abv'] is None: abvstr=""
-        else: abvstr=" (%(abv)0.1f%% ABV)"%sd
-        typestr="%(manufacturer)s %(name)s"%sd
-        if len(typestr)>cpl[1]: typestr=sd['shortname']
         f.write(colour[1]+("Stock number %d\n"%i)+colour[0])
-        f.write("%s\n"%typestr)
+        f.write("%s\n"%stock.format_stock(sd,maxw=cpl[1]))
         f.write("%s cost £%0.2f sale £%0.2f\nBest Before %s\n"%(
             sd['stockunit'],sd['costprice'],sd['saleprice'],
             ui.formatdate(sd['bestbefore'])))

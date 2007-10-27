@@ -28,8 +28,6 @@ CREATE TABLE sessiontotals (
 	UNIQUE(sessionid,paytype)
 	);
 
-/* Can I add a check that only allows the "closed" flag to be set if the
-   transaction is balanced, and then prohibits further additions? */
 CREATE SEQUENCE transactions_seq;
 CREATE TABLE transactions (
 	transid int NOT NULL PRIMARY KEY,
@@ -42,12 +40,15 @@ CREATE RULE may_not_reopen AS ON UPDATE TO transactions
 	DO INSTEAD NOTHING;
 CREATE RULE close_only_if_balanced AS ON UPDATE TO transactions
 	WHERE NEW.closed=true AND
-		((SELECT (
-			SELECT sum(amount*items) FROM translines
-				WHERE transid=NEW.transid)
-			-(
-			SELECT sum(amount) FROM payments
-				WHERE transid=NEW.transid))!=0.0)
+		(SELECT sum(amount*items) FROM translines
+			WHERE transid=NEW.transid)!=
+		(SELECT sum(amount) FROM payments
+			WHERE transid=NEW.transid)
+	DO INSTEAD NOTHING;
+CREATE RULE close_only_if_nonzero AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		((SELECT count(*) FROM translines WHERE transid=NEW.transid)=0
+		OR (SELECT count(*) FROM payments WHERE transid=NEW.transid)=0)
 	DO INSTEAD NOTHING;
 
 /* Negative cash payments represents cashback/change */
@@ -244,7 +245,7 @@ CREATE TABLE stockonsale (
 
 /* Useful views for queries */
 CREATE VIEW stockinfo AS
-	SELECT s.stockid,st.stocktype,
+	SELECT s.stockid,st.stocktype,st.deliveryid,
 		st.dept,dep.description AS deptname,
 		st.manufacturer,st.name,st.shortname,st.abv,st.unit,
 		ut.name AS unitname,
@@ -262,3 +263,19 @@ CREATE VIEW stockinfo AS
 	INNER JOIN deliveries d ON s.deliveryid=d.deliveryid
 	INNER JOIN suppliers sup ON d.supplierid=sup.supplierid
 	LEFT JOIN stockfinish sf ON s.finishcode=sf.finishcode;
+
+/* Stock id, qty in container, unitname, amount used, amount sold, amount
+   pulled through */
+CREATE VIEW stockqty AS
+	SELECT s.stockid,su.size,ut.name AS unitname,
+		sum(so.qty) AS qtyused,
+		sum(CASE WHEN so.removecode='sold' THEN so.qty ELSE 0.0 END)
+			AS qtysold,
+		sum(CASE WHEN so.removecode='pullthru' THEN so.qty ELSE 0.0 END)
+			AS qtypullthru
+	FROM stock s
+	INNER JOIN stocktypes st ON s.stocktype=st.stocktype
+	INNER JOIN stockunits su ON s.stockunit=su.stockunit
+	INNER JOIN unittypes ut ON su.unit=ut.unit
+	LEFT JOIN stockout so ON s.stockid=so.stockid
+	GROUP BY s.stockid,su.size,unitname;
