@@ -387,25 +387,26 @@ def stock_extrainfo(stockid):
     cur.execute(
         "SELECT sup.name AS suppliername,"
         "       d.date AS deliverydate,"
-        "       d.docnumber AS deliverynote,"
-        "       min(so.time) as firstsale, "
-        "       max(so.time) as lastsale "
+        "       d.docnumber AS deliverynote "
         "FROM stock s LEFT JOIN deliveries d ON s.deliveryid=d.deliveryid "
         "LEFT JOIN suppliers sup ON d.supplierid=sup.supplierid "
-        "LEFT JOIN stockout so ON so.stockid=s.stockid "
-        "WHERE s.stockid=%d AND (so.removecode='sold' OR "
-        "so.removecode is null) "
-        "GROUP BY sup.name,d.date,d.docnumber",(stockid,))
+        "WHERE s.stockid=%d",(stockid,))
     r=cur.fetchone()
-    if r is None: return None
     cn=[x[0] for x in cur.description]
     d={}
     for i in cn:
         d[i]=r[0]
         r=r[1:]
     d['deliverydate']=mkstructtime(d['deliverydate'])
-    d['firstsale']=mkstructtime(d['firstsale'])
-    d['lastsale']=mkstructtime(d['lastsale'])
+    cur.execute(
+        "SELECT min(so.time) as firstsale, "
+        "       max(so.time) as lastsale "
+        "FROM stock s LEFT JOIN stockout so ON so.stockid=s.stockid "
+        "WHERE s.stockid=%d AND so.removecode='sold' ",(stockid,))
+    r=cur.fetchone()
+    if r is None: r=[None,None]
+    d['firstsale']=mkstructtime(r[0])
+    d['lastsale']=mkstructtime(r[1])
     cur.execute(
         "SELECT so.removecode,sr.reason,sum(qty) "
         "FROM stockout so INNER JOIN stockremove sr "

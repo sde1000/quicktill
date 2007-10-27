@@ -56,6 +56,10 @@ class stockinfo(ui.basicwin):
         self.win.addstr(y+4,x,"First sale: %(firstsale)s  Last sale: %(lastsale)s"%sd)
         self.win.addstr(y+5,x,"Best Before %(bestbefore)s"%sd)
         # We need a wastage breakdown here, and finishcode
+        y=y+7
+        for i in sd['stockout']:
+            self.win.addstr(y,x,"%s: %0.1f"%(i[1],i[2]))
+            y=y+1
 
 class popup(ui.basicpopup):
     def __init__(self):
