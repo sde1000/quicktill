@@ -250,8 +250,9 @@ def stockinfo_linelist(sn,qty=1):
         l.append("%s: %s: %s"%(time,desc,text))
     return l
 
-def stockinfo_popup(sn):
-    keymap={ord('l'):(annotate_location,(sn,),False)}
+def stockinfo_popup(sn,keymap={}):
+    keymap=keymap.copy()
+    keymap[ord('l')]=(annotate_location,(sn,),False)
     ui.linepopup(stockinfo_linelist(sn),
                  title="Stock Item %d"%sn,
                  dismiss=keyboard.K_CASH,
