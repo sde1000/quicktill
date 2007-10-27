@@ -1,4 +1,4 @@
-import ui,td,keyboard
+import ui,td,keyboard,stock
 
 class popup(ui.basicpopup):
     def __init__(self):
