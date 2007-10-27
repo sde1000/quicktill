@@ -355,16 +355,7 @@ def stockfinish_list():
 def stock_info(stockid):
     "Return lots of information on a particular stock item."
     cur=con.cursor()
-    cur.execute("SELECT st.stocktype,st.dept,st.manufacturer,"
-                "st.name,st.shortname,st.abv,"
-                "st.unit,ut.name AS unitname,su.stockunit,"
-                "su.name AS sunitname,su.size,s.costprice,"
-                "s.saleprice,s.onsale,s.finished,"
-                "s.finishcode,s.bestbefore FROM stock s INNER JOIN "
-                "stocktypes st ON s.stocktype=st.stocktype INNER "
-                "JOIN stockunits su ON s.stockunit=su.stockunit "
-                "INNER JOIN unittypes ut ON su.unit=ut.unit "
-                "WHERE s.stockid=%d",(stockid,))
+    cur.execute("SELECT * FROM stockinfo WHERE stockid=%d",(stockid,))
     r=cur.fetchone()
     if r is None: return None
     # Q: This is a real candidate for returning a dict! Does pgdb support it?
@@ -375,6 +366,7 @@ def stock_info(stockid):
         d[i]=r[0]
         r=r[1:]
     d['bestbefore']=mkstructtime(d['bestbefore'])
+    d['deliverydate']=mkstructtime(d['deliverydate'])
     d['used']=execone(cur,"SELECT sum(qty) FROM stockout WHERE stockid=%d",
                       (stockid,))
     if d['used'] is None: d['used']=0.0
@@ -385,26 +377,13 @@ def stock_extrainfo(stockid):
     "Return even more information on a particular stock item."
     cur=con.cursor()
     cur.execute(
-        "SELECT sup.name AS suppliername,"
-        "       d.date AS deliverydate,"
-        "       d.docnumber AS deliverynote "
-        "FROM stock s LEFT JOIN deliveries d ON s.deliveryid=d.deliveryid "
-        "LEFT JOIN suppliers sup ON d.supplierid=sup.supplierid "
-        "WHERE s.stockid=%d",(stockid,))
-    r=cur.fetchone()
-    cn=[x[0] for x in cur.description]
-    d={}
-    for i in cn:
-        d[i]=r[0]
-        r=r[1:]
-    d['deliverydate']=mkstructtime(d['deliverydate'])
-    cur.execute(
         "SELECT min(so.time) as firstsale, "
         "       max(so.time) as lastsale "
         "FROM stock s LEFT JOIN stockout so ON so.stockid=s.stockid "
         "WHERE s.stockid=%d AND so.removecode='sold' ",(stockid,))
     r=cur.fetchone()
     if r is None: r=[None,None]
+    d={}
     d['firstsale']=mkstructtime(r[0])
     d['lastsale']=mkstructtime(r[1])
     cur.execute(
@@ -494,15 +473,18 @@ def stock_fetchline(stocklineref):
                 "WHERE so.stockoutid=%d",(stocklineref,))
     return cur.fetchone()
 
-def stock_availableforsale(dept):
+def stock_availableforsale(dept=None):
     """Return a list of stock numbers available to be put on sale."""
     cur=con.cursor()
+    if dept is None:
+        deptq=""
+    else:
+        deptq="AND st.dept=%d"%dept
     cur.execute("SELECT s.stockid FROM stock s INNER JOIN deliveries d ON "
                 "s.deliveryid=d.deliveryid INNER JOIN stocktypes st ON "
                 "st.stocktype=s.stocktype WHERE finishcode is null AND "
                 "d.checked=true AND s.stockid NOT IN (SELECT stockid "
-                "FROM stockonsale) AND st.dept=%d ORDER BY s.stockid",
-                (dept,))
+                "FROM stockonsale) %s ORDER BY s.stockid"%deptq)
     return [x[0] for x in cur.fetchall()]
 
 def stock_putonsale(stock,line):

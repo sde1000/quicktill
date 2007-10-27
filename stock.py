@@ -4,6 +4,9 @@
 
 import ui,td,keyboard,curses,curses.ascii,time,priceguess,printer
 
+import logging
+log=logging.getLogger()
+
 class editsupplier(ui.basicpopup):
     def __init__(self,func,sn=None):
         self.func=func
@@ -260,12 +263,14 @@ class delivery(ui.basicpopup):
         return name
 
 # Select/modify a stock type.  Has two modes:
-# 1) Select a stock type. Auto-completes fields as they are typed at, hopefully to
-# find a match with an existing stock type.  (After selecting manufacturer/name,
-# other fields are filled in if possible, but can still be edited.)  If, when form
-# is completed, there is no match with an existing stock type, a new stock type
-# is created.  (This is the only way to create stock types.)
-# 2) Modify a stock type.  Allows all details of an existing stock type to be changed.
+# 1) Select a stock type. Auto-completes fields as they are typed at,
+# hopefully to find a match with an existing stock type.  (After
+# selecting manufacturer/name, other fields are filled in if possible,
+# but can still be edited.)  If, when form is completed, there is no
+# match with an existing stock type, a new stock type is created.
+# (This is the only way to create stock types.)
+# 2) Modify a stock type.  Allows all details of an existing stock
+# type to be changed.
 # Has major warnings - should only be used for correcting minor typos!
 class selectstocktype(ui.basicpopup):
     def __init__(self,func,default=None,mode=1):
@@ -554,13 +559,44 @@ def newdelivery_supplier(sup):
 
 def newdelivery():
     # New deliveries need a supplier to be chosen before they can be edited.
+    log.info("New delivery")
     selectsupplier(newdelivery_supplier,allow_new=True)
 
 def editdelivery():
+    log.info("Edit delivery")
     deliverylist(delivery,unchecked_only=True)
 
 def displaydelivery():
+    log.info("Display delivery")
     deliverylist(delivery,checked_only=True)
+
+def stock_description(sn):
+    sd=td.stock_info(sn)
+    if sd['abv'] is None: abvstr=""
+    else: abvstr=" (%(abv)0.1f%% ABV)"%sd
+    return "%s %s%s"%(sd['manufacturer'],sd['name'],abvstr)
+
+def finish_reason(sn,reason):
+    td.stock_finish(sn,reason)
+    log.info("Stock: finished item %d reason %s"%(sn,reason))
+    ui.infopopup(["Stock item %d is now finished."%sn],dismiss=keyboard.K_CASH,
+                  title="Stock Finished",colour=ui.colour_info)
+
+def finish_item(sn):
+    sd=td.stock_info(sn)
+    fl=[(x[1],finish_reason,(sn,x[0])) for x in td.stockfinish_list()]
+    ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
+            sn,title="Finish Stock",w=60)
+
+def finishstock():
+    log.info("Finish stock")
+    def fs(sn):
+        sd=td.stock_info(sn)
+        return "%7d %s"%(sn,stock_description(sn))
+    sl=td.stock_availableforsale()
+    sl=[(fs(x),finish_item,(x,)) for x in sl]
+    ui.menu(sl,title="Finish stock not currently on sale",
+            blurb="Choose a stock item to finish.")
 
 def stockcheck():
     # Build a list of all not-finished stock items.  Things we want to show:
@@ -568,6 +604,7 @@ def stockcheck():
     # name
     # delivery date
     # amount remaining
+    log.info("Stock check")
     ui.infopopup(["This feature is not implemented yet.  To nag Steve about it, "
                   "dial 202 on the batphone and leave a message."],
                  title="Unimplemented")
@@ -579,22 +616,29 @@ def stockhistory():
     # amount sold
     # amount wasted
     # amount un-accounted
+    log.info("Stock history")
     ui.infopopup(["This feature is not implemented yet.  To nag Steve about it, "
                   "dial 202 on the batphone and leave a message."],
                  title="Unimplemented")
 
 def updatesupplier():
+    log.info("Update supplier")
     selectsupplier(lambda x:editsupplier(lambda a:None,x),allow_new=False)
 
 def popup():
     "Pop up the stock management menu."
+    log.info("Stock management popup")
     menu=[
         (keyboard.K_ONE,"Record a new delivery",newdelivery,None),
-        (keyboard.K_TWO,"Edit an existing (unconfirmed) delivery",editdelivery,None),
-        (keyboard.K_THREE,"Display an old (confirmed) delivery",displaydelivery,None),
-        (keyboard.K_FOUR,"Stock check",stockcheck,None),
-        (keyboard.K_FIVE,"Stock history",stockhistory,None),
-        (keyboard.K_SIX,"Update supplier details",updatesupplier,None),
+        (keyboard.K_TWO,"Edit an existing (unconfirmed) delivery",
+         editdelivery,None),
+        (keyboard.K_THREE,"Display an old (confirmed) delivery",
+         displaydelivery,None),
+        (keyboard.K_FOUR,"Finish stock not currently on sale",
+         finishstock,None),
+        (keyboard.K_FIVE,"Stock check",stockcheck,None),
+        (keyboard.K_SIX,"Stock history",stockhistory,None),
+        (keyboard.K_SEVEN,"Update supplier details",updatesupplier,None),
 #        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
 #         (lambda x:selectstocktype(lambda:None,default=x,mode=2),)),
         ]

@@ -4,8 +4,8 @@
 .PHONY:	all clean realclean distclean dist install
 
 PACKAGE:=quicktill
-VERSION:=0.5.2
-DATE:=2004-11-11
+VERSION:=0.5.3
+DATE:=2004-11-12
 
 SHELL:=/bin/sh
 RM:=/bin/rm
@@ -20,7 +20,7 @@ DISTFILES:=Makefile INSTALL createdb \
 all:	$(TARGETS)
 
 version.py: Makefile
-	echo "version=\"$(PACKAGE) $(VERSION) ($(DATE))\"" >version.py
+	echo "version=\"$(VERSION) ($(DATE))\"" >version.py
 
 caps.pdf: keycaps.py
 	python keycaps.py

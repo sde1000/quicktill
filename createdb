@@ -8,13 +8,18 @@ COPY paytypes FROM stdin;
 CASH	Cash
 \.
 
-/* XXX We want a constraint that there can be at most one row with null endtime */
 CREATE SEQUENCE sessions_seq START WITH 1;
 CREATE TABLE sessions (
 	sessionid int NOT NULL DEFAULT nextval('sessions_seq') PRIMARY KEY,
 	starttime timestamp NOT NULL DEFAULT now(),
 	endtime timestamp
 	);
+CREATE RULE max_one_open AS ON INSERT TO sessions
+	WHERE (SELECT COUNT(*) FROM sessions WHERE endtime IS NULL)>0
+	DO INSTEAD NOTHING;
+CREATE RULE may_not_change AS ON UPDATE TO sessions
+	WHERE OLD.endtime IS NOT NULL
+	DO INSTEAD NOTHING;
 
 CREATE TABLE sessiontotals (
 	sessionid int NOT NULL REFERENCES sessions(sessionid),
@@ -32,16 +37,30 @@ CREATE TABLE transactions (
 	notes varchar(60), /* Could be used to note names on tabs, etc. */
 	closed boolean NOT NULL DEFAULT false
 	);
+CREATE RULE may_not_reopen AS ON UPDATE TO transactions
+	WHERE OLD.closed=true
+	DO INSTEAD NOTHING;
+CREATE RULE close_only_if_balanced AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		((SELECT (
+			SELECT sum(amount*items) FROM translines
+				WHERE transid=NEW.transid)
+			-(
+			SELECT sum(amount) FROM payments
+				WHERE transid=NEW.transid))!=0.0)
+	DO INSTEAD NOTHING;
 
 /* Negative cash payments represents cashback/change */
-/* Need a constraint to permit adding/changing/removing payments on
-   closed transactions */
 CREATE TABLE payments (
 	transid int NOT NULL REFERENCES transactions(transid),
 	amount numeric(10,2) NOT NULL,
 	paytype varchar(8) NOT NULL REFERENCES paytypes(paytype),
 	time timestamp NOT NULL DEFAULT now()
 	);
+CREATE RULE no_add_to_closed AS ON INSERT TO payments
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING;
 
 CREATE TABLE departments (
 	dept int NOT NULL PRIMARY KEY,
@@ -82,6 +101,10 @@ CREATE TABLE translines (
 	transcode char(1) NOT NULL REFERENCES transcodes(transcode),
 	time timestamp NOT NULL DEFAULT now()
 	);
+CREATE RULE no_add_to_closed AS ON INSERT TO translines
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING;
 
 /* Below here is stock control information */
 
@@ -218,3 +241,24 @@ CREATE TABLE stockonsale (
 	line varchar(30) NOT NULL PRIMARY KEY,
 	stockid int REFERENCES stock(stockid)
 	);
+
+/* Useful views for queries */
+CREATE VIEW stockinfo AS
+	SELECT s.stockid,st.stocktype,
+		st.dept,dep.description AS deptname,
+		st.manufacturer,st.name,st.shortname,st.abv,st.unit,
+		ut.name AS unitname,
+		su.stockunit,su.name AS sunitname,su.size,s.costprice,
+		s.saleprice,s.onsale,s.finished,
+		s.finishcode,sf.description AS finishdescription,
+		s.bestbefore,
+		sup.name AS suppliername, d.date AS deliverydate,
+		d.docnumber AS deliverynote
+	FROM stock s
+	INNER JOIN stocktypes st ON s.stocktype=st.stocktype
+	INNER JOIN departments dep ON st.dept=dep.dept
+	INNER JOIN stockunits su ON s.stockunit=su.stockunit
+	INNER JOIN unittypes ut ON su.unit=ut.unit
+	INNER JOIN deliveries d ON s.deliveryid=d.deliveryid
+	INNER JOIN suppliers sup ON d.supplierid=sup.supplierid
+	LEFT JOIN stockfinish sf ON s.finishcode=sf.finishcode;

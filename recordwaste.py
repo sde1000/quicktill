@@ -10,9 +10,10 @@ class popup(ui.basicpopup):
         win.addstr(3,2,"       Stock item:")
         win.addstr(5,2,"Waste description:")
         win.addstr(6,2,"    Amount wasted:")
-        wastelist=['pullthru','cellar','taste','damaged','ood']
+        wastelist=['pullthru','cellar','taster','taste','damaged','ood']
         wastedict={'pullthru':'Pulled through',
                    'cellar':'Cellar work',
+                   'taster':'Free taster',
                    'taste':'Bad taste',
                    'damaged':'Damaged',
                    'ood':'Out of date'}
