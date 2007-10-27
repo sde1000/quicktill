@@ -270,20 +270,20 @@ class pdf:
 class pdflabel:
     def __init__(self,printcmd,labelsacross,labelsdown,
                  labelwidth,labelheight,
-                 sidemargin,endmargin,
                  horizlabelgap,vertlabelgap,
                  pagesize):
         self.printcmd=printcmd
         self.pagesize=pagesize
         self.width=toLength(labelwidth)
         self.height=toLength(labelheight)
-        sidemargin=toLength(sidemargin)
-        endmargin=toLength(endmargin)
         horizlabelgap=toLength(horizlabelgap)
         vertlabelgap=toLength(vertlabelgap)
         pagewidth=pagesize[0]
         pageheight=pagesize[1]
-        self.labels=labelsacross*labelsdown
+        sidemargin=(pagewidth-(self.width*labelsacross)-
+                    (horizlabelgap*(labelsacross-1)))/2
+        endmargin=(pageheight-(self.height*labelsdown)-
+                   (vertlabelgap*(labelsdown-1)))/2
         self.label=0
         self.ll=[]
         for y in range(0,labelsdown):

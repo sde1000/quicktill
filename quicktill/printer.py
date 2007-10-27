@@ -159,12 +159,13 @@ def label_print_delivery(delivery):
     items_sdl=td.stock_info(items)
     labeldriver.start()
     def stock_label(f,width,height,d):
-        #        Item name
-        # Supplier     Delivery date
-        #        Stock unit
-        #       Stock number
-        fontsize=14
-        margin=20
+        # Item name
+        # Supplier
+        # Delivery date
+        # Stock unit
+        # Stock number
+        fontsize=12
+        margin=12
         pitch=fontsize+2
         fontname="Times-Roman"
         f.setFont(fontname,fontsize)
@@ -174,11 +175,11 @@ def label_print_delivery(delivery):
         y=height-margin-fontsize
         f.drawCentredString(width/2,y,stock.format_stock(d,fits))
         y=y-pitch
-        f.drawString(margin,y,name)
-        f.drawRightString(width-margin,y,ui.formatdate(date))
+        f.drawCentredString(width/2,y,name)
+        y=y-pitch
+        f.drawCentredString(width/2,y,ui.formatdate(date))
         y=y-pitch
         f.drawCentredString(width/2,y,d['sunitname'])
-        y=y-pitch
         f.setFont(fontname,y-margin)
         f.drawCentredString(width/2,margin,str(d['stockid']))
     for sd in items_sdl:
