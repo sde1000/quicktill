@@ -2,7 +2,7 @@
 
 """Useful routines for dealing with stock"""
 
-import ui,td,keyboard,priceguess
+import ui,td,keyboard,tillconfig
 
 import logging
 log=logging.getLogger()
@@ -23,10 +23,6 @@ def format_stock(sd,maxw=None):
         if len(d)>maxw:
             d=d[:maxw]
     return d
-
-def stock_description(sn,maxw=None):
-    sd=td.stock_info(sn)
-    return format_stock(sd,maxw)
 
 def format_stocktype(stn,maxw=None):
     (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(stn)
@@ -240,7 +236,7 @@ class stockinfo(ui.basicwin):
 
 def stockinfo_linelist(sn,qty=1):
     l=[]
-    sd=td.stock_info(sn)
+    sd=td.stock_info([sn])[0]
     sd['stockid']=sn
     sx=td.stock_extrainfo(sn)
     sd.update(sx)
@@ -255,8 +251,9 @@ def stockinfo_linelist(sn,qty=1):
     sd['lastsale']=ui.formattime(sd['lastsale'])
     sd['onsale']=ui.formattime(sd['onsale'])
     sd['finished']=ui.formattime(sd['finished'])
-    l.append(format_stock(sd))
-    l.append("Sells for £%(saleprice)0.2f/%(unitname)s.  "
+    sd['currency']=tillconfig.currency
+    l.append(format_stock(sd)+" - %(stockid)d"%sd)
+    l.append("Sells for %(currency)s%(saleprice)0.2f/%(unitname)s.  "
              "%(used)0.1f %(unitname)ss used; "
              "%(remaining)0.1f %(unitname)ss remaining."%sd)
     l.append("")

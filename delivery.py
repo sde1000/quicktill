@@ -1,4 +1,4 @@
-import ui,stock,td,priceguess,curses.ascii,keyboard
+import ui,stock,td,curses.ascii,keyboard,printer,tillconfig
 
 def create_and_edit_delivery(supplier):
     dn=td.delivery_new(supplier)
@@ -6,7 +6,7 @@ def create_and_edit_delivery(supplier):
 
 def deliverylist(func,unchecked_only=False,checked_only=False):
     def d(x):
-        return "%s%s%s"%(x[5],' '*(30-len(x[5])-len(x[3])),ui.formatdate(x[3]))
+        return "%s%s%s"%(x[5],' '*(40-len(x[5])-len(x[3])),ui.formatdate(x[3]))
     dl=td.delivery_get(unchecked_only=unchecked_only,checked_only=checked_only)
     m=[(d(x),func,(x[0],)) for x in dl]
     ui.menu(m,title="Delivery List",blurb="Select a delivery and press Cash/Enter.")
@@ -39,10 +39,11 @@ class delivery(ui.basicpopup):
             keyboard.K_UP: (self.cursor_move,(-1,),False),
             keyboard.K_RIGHT: (self.cursor_move,(5,),False),
             keyboard.K_LEFT: (self.cursor_move,(-5,),False),
+            keyboard.K_CASH: (self.edit_line,None,False),
             }
         if not self.readonly:
             km[keyboard.K_CANCEL]=(self.deleteline,None,False)
-            km[keyboard.K_CASH]=(self.edit_line,None,False)
+            km[keyboard.K_QUANTITY]=(self.duplicate_item,None,False)
         ui.basicpopup.__init__(self,23,80,title=title,
                                colour=ui.colour_input,keymap=km)
         km={keyboard.K_PRINT: (self.printout,None,False)}
@@ -162,7 +163,7 @@ class delivery(ui.basicpopup):
         if self.dl[line] is None:
             s=" New item "
         else:
-            sd=td.stock_info(self.dl[line])
+            sd=td.stock_info([self.dl[line]])[0]
             typestr=stock.format_stock(sd,maxw=37)
             s="%7d %-37s %-8s %-6.2f %-5.2f %-10s"%(
                 self.dl[line],typestr,sd['stockunit'],sd['costprice'],
@@ -179,7 +180,7 @@ class delivery(ui.basicpopup):
         self.cursor=None
         if oc is not None:
             self.drawline(oc)
-        self.win.addstr(20,2,' '*40)
+        self.win.addstr(20,2,' '*42)
         if line>len(self.dl): line=len(self.dl)-1
         if line<0:
             self.docnumfield.focus()
@@ -196,8 +197,14 @@ class delivery(ui.basicpopup):
                 if self.top<0: self.top=0
                 self.drawdl()
         if self.cursor is not None:
-            if not self.readonly and self.dl[self.cursor] is not None:
-                self.win.addstr(20,2,"Press Cancel to delete this stock item.")
+            if not self.readonly:
+                if self.dl[self.cursor] is not None:
+                    self.win.addstr(20,2,
+                                    "Press Cancel to delete this stock item.")
+                elif len(self.dl)>1:
+                    self.win.addstr(20,2,
+                                    "Press Quantity to duplicate the last "
+                                    "item.")
             self.drawline(self.cursor)
     def cursor_move(self,n):
         if self.cursor is not None:
@@ -207,7 +214,16 @@ class delivery(ui.basicpopup):
         self.drawdl()
         self.setcursor(self.cursor+1)
     def edit_line(self):
-        stockline(self.line_edited,self.dn,self.dl[self.cursor])
+        if self.readonly:
+            stock.stockinfo_popup(self.dl[self.cursor])
+        else:
+            stockline(self.line_edited,self.dn,self.dl[self.cursor])
+    def duplicate_item(self):
+        ln=self.dl[self.cursor]
+        if ln is None and len(self.dl)>1: ln=self.dl[-2]
+        if ln is None: return
+        sn=td.stock_duplicate(ln)
+        self.line_edited(sn)
     def reallydelete(self):
         td.delivery_delete(self.dn)
         self.dismiss()
@@ -265,7 +281,7 @@ class stockline(ui.basicpopup):
         else:
             self.typefield.focus()
     def fill_fields(self,sn):
-        sd=td.stock_info(sn)
+        sd=td.stock_info([sn])[0]
         self.typefield.set(sd['stocktype'])
         self.updateunitfield(default=sd['stockunit'])
         self.costfield.set("%0.2f"%sd['costprice'])
@@ -318,11 +334,12 @@ class stockline(ui.basicpopup):
     def guesssaleprice(self):
         # Called when the Cost field has been filled in
         if self.typefield.f is None or self.unitfield.f is None: return
-        (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(self.typefield.f)
+        (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(
+            self.typefield.f)
         (uname,size)=td.stockunits_info(self.units[self.unitfield.f])
         if len(self.costfield.f)>0:
             wholeprice=float(self.costfield.f)
-            g=priceguess.guess(dept,(wholeprice/size),abv)
+            g=tillconfig.priceguess(dept,(wholeprice/size),abv)
             if g is not None and self.salefield.f=="":
                 self.salefield.set("%0.2f"%g)
 

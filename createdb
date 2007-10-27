@@ -6,20 +6,20 @@ CREATE TABLE paytypes (
 	);
 COPY paytypes FROM stdin;
 CASH	Cash
+CARD	Card
 \.
 
+/* As well as a start and end time, sessions have an accounting date.  This
+   is to cope with sessions being closed late (eg. subsequent date) or
+   started early.  In the accounts, the session takings will be recorded
+   against the session date. */
 CREATE SEQUENCE sessions_seq START WITH 1;
 CREATE TABLE sessions (
 	sessionid int NOT NULL DEFAULT nextval('sessions_seq') PRIMARY KEY,
 	starttime timestamp NOT NULL DEFAULT now(),
-	endtime timestamp
+	endtime timestamp,
+	sessiondate date NOT NULL
 	);
-CREATE RULE max_one_open AS ON INSERT TO sessions
-	WHERE (SELECT COUNT(*) FROM sessions WHERE endtime IS NULL)>0
-	DO INSTEAD NOTHING;
-CREATE RULE may_not_change AS ON UPDATE TO sessions
-	WHERE OLD.endtime IS NOT NULL
-	DO INSTEAD NOTHING;
 
 CREATE TABLE sessiontotals (
 	sessionid int NOT NULL REFERENCES sessions(sessionid),
@@ -28,41 +28,27 @@ CREATE TABLE sessiontotals (
 	UNIQUE(sessionid,paytype)
 	);
 
+/* transactions.ref is used where one transaction refers to another, eg.
+   for closing a tab in a later session (someone forgets to take their
+   card, session can't be closed until all transactions are closed) */
 CREATE SEQUENCE transactions_seq;
 CREATE TABLE transactions (
 	transid int NOT NULL PRIMARY KEY,
-	sessionid int NOT NULL REFERENCES sessions(sessionid),
-	notes varchar(60), /* Could be used to note names on tabs, etc. */
+	sessionid int REFERENCES sessions(sessionid), /* Null sessionid is
+		used when transactions are held over from one session to
+		the next - eg. when credit card has been left behind */
+	notes varchar(60), /* Used to note names on tabs, etc. */
 	closed boolean NOT NULL DEFAULT false
 	);
-CREATE RULE may_not_reopen AS ON UPDATE TO transactions
-	WHERE OLD.closed=true
-	DO INSTEAD NOTHING;
-CREATE RULE close_only_if_balanced AS ON UPDATE TO transactions
-	WHERE NEW.closed=true AND
-		(SELECT sum(amount*items) FROM translines
-			WHERE transid=NEW.transid)!=
-		(SELECT sum(amount) FROM payments
-			WHERE transid=NEW.transid)
-	DO INSTEAD NOTHING;
-CREATE RULE close_only_if_nonzero AS ON UPDATE TO transactions
-	WHERE NEW.closed=true AND
-		((SELECT count(*) FROM translines WHERE transid=NEW.transid)=0
-		OR (SELECT count(*) FROM payments WHERE transid=NEW.transid)=0)
-	DO INSTEAD NOTHING;
 
-/* Negative cash payments represents cashback/change */
+/* Negative cash payments represent cashback/change */
 CREATE TABLE payments (
 	transid int NOT NULL REFERENCES transactions(transid),
 	amount numeric(10,2) NOT NULL,
 	paytype varchar(8) NOT NULL REFERENCES paytypes(paytype),
+	ref varchar(16),
 	time timestamp NOT NULL DEFAULT now()
 	);
-CREATE RULE no_add_to_closed AS ON INSERT TO payments
-	WHERE (SELECT closed FROM transactions
-		WHERE transid=NEW.transid)=true
-	DO INSTEAD NOTHING;
-
 CREATE TABLE departments (
 	dept int NOT NULL PRIMARY KEY,
 	description varchar(20) NOT NULL
@@ -78,6 +64,7 @@ COPY departments FROM stdin;
 8	Misc
 9	Wine
 10	Food
+11	Hot Drinks
 \.
 
 CREATE TABLE transcodes (
@@ -102,14 +89,10 @@ CREATE TABLE translines (
 	transcode char(1) NOT NULL REFERENCES transcodes(transcode),
 	time timestamp NOT NULL DEFAULT now()
 	);
-CREATE RULE no_add_to_closed AS ON INSERT TO translines
-	WHERE (SELECT closed FROM transactions
-		WHERE transid=NEW.transid)=true
-	DO INSTEAD NOTHING;
 
 /* Below here is stock control information */
 
-CREATE SEQUENCE suppliers_seq START WITH 3;
+CREATE SEQUENCE suppliers_seq START WITH 5;
 CREATE TABLE suppliers (
 	supplierid int NOT NULL PRIMARY KEY,
 	name varchar(60) NOT NULL,
@@ -117,9 +100,10 @@ CREATE TABLE suppliers (
 	email varchar(60)
 	);
 COPY suppliers FROM stdin;
-1	Initial supply		
-2	Milton Brewery	01223 226198	richard@miltonbrewery.co.uk
-3	Beer Seller	01733 230167	
+1	Initial part supply	\N	\N
+2	Initial supply	\N	\N
+3	Milton Brewery	01223 226198	richard@miltonbrewery.co.uk
+4	Beer Seller	01733 230167	
 \.
 
 CREATE SEQUENCE deliveries_seq START WITH 1;
@@ -133,42 +117,56 @@ CREATE TABLE deliveries (
 
 /* Types of unit, eg. pint (liquid), ml (liquid), bag, packet, etc. */
 CREATE TABLE unittypes (
-	unit varchar(4) NOT NULL PRIMARY KEY,
+	unit varchar(10) NOT NULL PRIMARY KEY,
 	name varchar(30) NOT NULL
 	);
 COPY unittypes FROM stdin;
 pt	pint
-25ml	25 millilitre measure
-50ml	50 millilitre measure
-bag	bag
+25ml	25ml
+50ml	50ml
 pkt	packet
-item	item
+bottle	bottle
 \.
 
 /* Containers that stock comes in.  Firkin, kil, 24-pack card, box, etc. */
 CREATE TABLE stockunits (
 	stockunit varchar(8) NOT NULL PRIMARY KEY,
 	name varchar(30) NOT NULL,
-	unit varchar(4) NOT NULL REFERENCES unittypes(unit),
+	unit varchar(10) NOT NULL REFERENCES unittypes(unit),
 	size numeric(5,1) NOT NULL /* how many pints, packs, etc. */
 	);
 COPY stockunits FROM stdin;
 pin	Pin	pt	36
 tub	5 gal tub	pt	40
+keg30l	30l keg	pt	52.8
 firkin	Firkin	pt	72
 plfirkin	Plastic Firkin	pt	75
+ten	Ten gal cask	pt	80
 eleven	Eleven gal cask	pt	88
 kil	Kilderkin	pt	144
 barrel	Barrel	pt	288
-card24b	24 bag card	bag	24
-box50b	50 bag box	bag	50
+card12	12 pack card	pkt	12
+card18	18 pack card	pkt	18
+card20	20 pack card	pkt	20
+card24	24 pack card	pkt	24
+box12	12 pack box	pkt	12
+box20	20 pack box	pkt	20
+box30	30 pack box	pkt	30
+box32	32 pack box	pkt	32
+box36	36 pack box	pkt	36
+box44	44 pack box	pkt	44
+box48	48 pack box	pkt	48
+box50	50 pack box	pkt	50
+70clsm	70cl bottle, 25ml measures	25ml	28
 75clsm	75cl bottle, 25ml measures	25ml	30
 1lsm	1l bottle, 25ml measures	25ml	40
 1.5lsm	1.5l bottle, 25ml measures	25ml	60
 75cldm	75cl bottle, 50ml measures	50ml	15
 1ldm	1l bottle, 50ml measures	50ml	20
 1.5ldm	1.5l bottle, 50ml measures	50ml	30
-pjar	Pickle jar	item	30
+crate12	12 bottle crate	bottle	12
+crate20	20 bottle crate	bottle	20
+crate24	24 bottle crate	bottle	24
 \.
 
 CREATE TABLE stocktypes (
@@ -178,7 +176,7 @@ CREATE TABLE stocktypes (
 	name varchar(30) NOT NULL, /* Beer name for beers */
 	shortname varchar(25) NOT NULL, /* Printed on receipts */
 	abv numeric(3,1), /* For alcoholic products */
-	unit varchar(4) NOT NULL REFERENCES unittypes(unit)
+	unit varchar(10) NOT NULL REFERENCES unittypes(unit)
 	);
 CREATE SEQUENCE stocktypes_seq;
 
@@ -198,7 +196,7 @@ CREATE TABLE stock (
 	deliveryid int NOT NULL REFERENCES deliveries(deliveryid),
 	stocktype int NOT NULL REFERENCES stocktypes(stocktype),
 	stockunit varchar(8) NOT NULL REFERENCES stockunits(stockunit),
-	costprice numeric(7,2) NOT NULL, /* ex VAT */
+	costprice numeric(7,2), /* ex VAT */
 	saleprice numeric(5,2) NOT NULL, /* inc VAT */
 	onsale timestamp,
 	finished timestamp,
@@ -217,10 +215,11 @@ sold	Sold
 pullthru	Pulled through
 ood	Out of date
 taste	Bad taste
+taster	Free taster
 cellar	Cellar work
 damaged	Damaged
-credit	Returned for credit
-gone	All gone
+freebie	Free drink
+missing	Gone missing
 \.
 
 /* One entry is made here every time stock is removed.  This table is
@@ -235,17 +234,40 @@ CREATE TABLE stockout (
 	);
 CREATE SEQUENCE stockout_seq START WITH 1;
 
-/* What's being sold at the moment? Example lines: Pump1, Cider, Salt
-and Vinegar, Salted Nuts */
+CREATE TABLE stocklines (
+	stocklineid int NOT NULL PRIMARY KEY,
+	name varchar(30) NOT NULL UNIQUE,
+	location varchar(20) NOT NULL,
+	capacity int,
+	dept int NOT NULL REFERENCES departments(dept),
+	pullthru numeric(5,2)
+	);
+CREATE SEQUENCE stocklines_seq START WITH 100;
+
+/* All stock currently on sale. */
 /* Check that stock->delivery.checked is true! */
 CREATE TABLE stockonsale (
-	line varchar(30) NOT NULL PRIMARY KEY,
-	stockid int REFERENCES stock(stockid)
+	stocklineid int NOT NULL REFERENCES stocklines(stocklineid),
+	stockid int REFERENCES stock(stockid) UNIQUE,
+	displayqty int
+	);
+
+/* This table stores details of the mapping from keycodes/keyboard layout
+(the database may be supporting multiple terminals with different layouts)
+to lines.  If multiple entries are present for a key then a menu is displayed
+offering further keypresses to select the line. */
+CREATE TABLE keyboard (
+	layout int NOT NULL,
+	keycode varchar(20) NOT NULL,
+	menukey varchar(20) NOT NULL,
+	stocklineid int NOT NULL,
+	qty numeric(5,2) NOT NULL,
+	PRIMARY KEY (layout,keycode,menukey)
 	);
 
 /* Useful views for queries */
 CREATE VIEW stockinfo AS
-	SELECT s.stockid,st.stocktype,st.deliveryid,
+	SELECT s.stockid,st.stocktype,s.deliveryid,
 		st.dept,dep.description AS deptname,
 		st.manufacturer,st.name,st.shortname,st.abv,st.unit,
 		ut.name AS unitname,
@@ -254,14 +276,16 @@ CREATE VIEW stockinfo AS
 		s.finishcode,sf.description AS finishdescription,
 		s.bestbefore,
 		sup.name AS suppliername, d.date AS deliverydate,
-		d.docnumber AS deliverynote
+		d.docnumber AS deliverynote,d.checked AS deliverychecked,
+		(SELECT sum(so.qty) FROM stockout so
+			WHERE so.stockid=s.stockid) AS used
 	FROM stock s
-	INNER JOIN stocktypes st ON s.stocktype=st.stocktype
-	INNER JOIN departments dep ON st.dept=dep.dept
-	INNER JOIN stockunits su ON s.stockunit=su.stockunit
-	INNER JOIN unittypes ut ON su.unit=ut.unit
-	INNER JOIN deliveries d ON s.deliveryid=d.deliveryid
-	INNER JOIN suppliers sup ON d.supplierid=sup.supplierid
+	LEFT JOIN stocktypes st ON s.stocktype=st.stocktype
+	LEFT JOIN departments dep ON st.dept=dep.dept
+	LEFT JOIN stockunits su ON s.stockunit=su.stockunit
+	LEFT JOIN unittypes ut ON su.unit=ut.unit
+	LEFT JOIN deliveries d ON s.deliveryid=d.deliveryid
+	LEFT JOIN suppliers sup ON d.supplierid=sup.supplierid
 	LEFT JOIN stockfinish sf ON s.finishcode=sf.finishcode;
 
 /* Stock id, qty in container, unitname, amount used, amount sold, amount
@@ -279,3 +303,60 @@ CREATE VIEW stockqty AS
 	INNER JOIN unittypes ut ON su.unit=ut.unit
 	LEFT JOIN stockout so ON s.stockid=so.stockid
 	GROUP BY s.stockid,su.size,unitname;
+
+/* Create the circular reference between translines and stockout here?
+translines.stockref references stockout.stockoutid
+stockout.translineid references translines.translineid
+
+Set so that references are only checked at end of transaction.
+*/
+
+
+CREATE RULE max_one_open AS ON INSERT TO sessions
+	WHERE (SELECT COUNT(*) FROM sessions WHERE endtime IS NULL)>0
+	DO INSTEAD NOTHING;
+CREATE RULE may_not_change AS ON UPDATE TO sessions
+	WHERE OLD.endtime IS NOT NULL
+	DO INSTEAD NOTHING;
+
+CREATE RULE may_not_reopen AS ON UPDATE TO transactions
+	WHERE OLD.closed=true
+	DO INSTEAD NOTHING;
+CREATE RULE close_only_if_balanced AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		(SELECT sum(amount*items) FROM translines
+			WHERE transid=NEW.transid)!=
+		(SELECT sum(amount) FROM payments
+			WHERE transid=NEW.transid)
+	DO INSTEAD NOTHING;
+CREATE RULE close_only_if_nonzero AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		((SELECT count(*) FROM translines WHERE transid=NEW.transid)=0
+		OR (SELECT count(*) FROM payments WHERE transid=NEW.transid)=0)
+	DO INSTEAD NOTHING;
+CREATE RULE create_only_if_session_open AS ON INSERT TO transactions
+	WHERE (SELECT endtime FROM sessions WHERE sessionid=NEW.sessionid)
+		IS NOT NULL
+	DO INSTEAD NOTHING;
+
+CREATE RULE no_add_to_closed AS ON INSERT TO payments
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING;
+
+CREATE RULE no_add_to_closed AS ON INSERT TO translines
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING;
+
+/* The translines and payments tables are routinely scanned based on
+transaction ID, so we'd better index them on those. */
+
+CREATE INDEX translines_transid_key ON translines (transid);
+CREATE INDEX payments_transid_key ON payments (transid);
+
+/* The "stock_extrainfo" function in td.py reads the stockout table
+selecting on stock ID.  This could probably be speeded using an index. */
+
+CREATE INDEX stockout_stockid_key ON stockout (stockid);
+

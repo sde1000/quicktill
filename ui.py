@@ -1,32 +1,25 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-# What colour pairs are used for:
-# Pair 1 - header bar
-# Pair 2 - informational messages
-# Pair 3 - manager's menus
-# Pair 4 - item selection menus
-
 import curses,curses.ascii,time,math,keyboard,sys,string,textwrap
+import event
 
 import logging
 log=logging.getLogger()
 
 colour_header=1
-colour_error=1
-colour_info=2
-colour_input=3
+colour_error=1 # white on red
+colour_info=2  # black on green
+colour_input=3 # white on blue
 colour_line=4
 colour_cashline=5
 colour_changeline=6
 colour_cancelline=7
+colour_confirm=8 # black on cyan
 
 # Hashes of keycodes and locations
 inputs={}
 codes={}
-for i in keyboard.layout:
-    inputs[i[0]]=i
-    codes[i[2]]=i
 # curses codes and their till keycode equivalents
 kbcodes={
     curses.KEY_LEFT: keyboard.K_LEFT,
@@ -117,16 +110,60 @@ def selectpage(page):
     updateheader(page)
     page.selected()
 
+card=None
 def handle_keyboard_input(k):
-    global focus
+    global focus,card
+    # Magstripe handling goes here
+    if k==keyboard.K_M1H:
+        log.debug("Magstripe start")
+        card=magstripe()
+        card.start_track(1)
+        return
+    if card:
+        if k==keyboard.K_M1T:
+            card.end_track(1)
+        elif k==keyboard.K_M2H:
+            card.start_track(2)
+        elif k==keyboard.K_M2T:
+            card.end_track(2)
+        elif k==keyboard.K_M3H:
+            card.start_track(3)
+        elif k==keyboard.K_M3T:
+            card.end_track(3)
+            log.debug("Magstripe end")
+            focus.keypress(card)
+            card=None
+        else:
+            card.handle_input(k)
+        return
     if k in kbcodes: k=kbcodes[k]
     if k in codes:
         log.debug("Keypress %s"%codes[k][1])
+    else:
+        if k<256:
+            log.debug("Keypress %s"%chr(k))
+        else:
+            log.debug("Keypress code %d"%k)
     if k in hotkeys:
         selectpage(hotkeys[k])
     else:
         focus.keypress(k)
 
+class magstripe:
+    def __init__(self):
+        self.t=[[],[],[]]
+        self.i=None
+    def start_track(self,track):
+        self.i=self.t[track-1]
+    def end_track(self,track):
+        self.i=None
+    def handle_input(self,c):
+        if self.i is None: return
+        self.i.append(c)
+    def track(self,t):
+        if t<1 or t>3: raise "Bad track"
+        return string.join([chr(x) for x in self.t[t-1]],"")
+        
 class reader:
     def __init__(self,stdwin):
         self.stdwin=stdwin
@@ -290,14 +327,17 @@ class menu(basicpopup):
     def __init__(self,itemlist,default=0,
                  blurb="Select a line and press Cash/Enter",
                  title=None,clear=True,
-                 colour=colour_input,w=None,dismiss_on_select=True):
+                 colour=colour_input,w=None,dismiss_on_select=True,
+                 keymap={}):
         self.itemlist=itemlist
         if w is None:
             w=0
             for i in itemlist:
                 w=max(w,len(i[0]))
             w=w+2
-        if w<25: w=25
+        w=max(25,w)
+        if title is not None:
+            w=max(len(title)+3,w)
         if blurb:
             blurbl=textwrap.wrap(blurb,w-4)
         else:
@@ -311,6 +351,7 @@ class menu(basicpopup):
                 keyboard.K_CASH: (self.select,None,dismiss_on_select)}
         else:
             km={}
+        km.update(keymap)
         if clear:
             cleartext="Press Clear to go back"
             km[keyboard.K_CLEAR]=(None,None,True)
@@ -444,6 +485,7 @@ def validate_int(s,c):
         return None
     return s
 def validate_float(s,c):
+    if s=='-': return s
     try:
         float(s)
     except:
@@ -539,7 +581,8 @@ class editfield(field):
             self.i=self.c-self.w
         if self.c<self.i: self.i=self.c
         self.win.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
-        self.win.addstr(self.y,self.x,self.f[self.i:self.i+self.w],curses.A_REVERSE)
+        self.win.addstr(self.y,self.x,self.f[self.i:self.i+self.w],
+                        curses.A_REVERSE)
         self.win.move(self.y,self.x+self.c-self.i)
     def insert(self,s):
         if self.readonly:
@@ -757,20 +800,44 @@ def map_fieldlist(fl):
         fl[i].nextfield=next
         fl[i].prevfield=prev
 
-def linemenu(linelist,func):
-    """Pop up a menu to select a line from a list.  Call func with the
-    line as an argument when a selection is made.  No call is made if
-    Clear is pressed.  If there's only one line in the list, or it's
-    not a list, shortcut to the function."""
-    if type(linelist) is list:
-        if len(linelist)==1:
-            func(linelist[0])
-            return
-        il=[(keyboard.numberkeys[i],linelist[i][0],func,(linelist[i],))
-            for i in range(0,len(linelist))]
-        keymenu(il,title="Choose an item",colour=colour_line)
-    else:
-        func(linelist)
+class table:
+    """A 2d table.  Can be turned into a list of strings of identical
+    length, with the columns lined up and justified.
+
+    """
+    def __init__(self,rows=[]):
+        self.rows=rows
+    def append(self,row):
+        self.rows.append(row)
+    def format(self,cols):
+        """cols is a format string; all characters are passed through except
+        'l','c','r' which left-, center- or right-align a column.  This
+        function returns a list of strings.
+
+        """
+        if len(self.rows)==0: return []
+        numcols=len(self.rows[0])
+        colw=[0]*numcols
+        for i in self.rows:
+            colw=[max(a,len(b)) for a,b in zip(colw,i)]
+        def formatline(c):
+            r=[]
+            n=0
+            for i in cols:
+                if i=='l':
+                    r.append(c[n].ljust(colw[n]))
+                    n=n+1
+                elif i=='c':
+                    r.append(c[n].center(colw[n]))
+                    n=n+1
+                elif i=='r':
+                    r.append(c[n].rjust(colw[n]))
+                    n=n+1
+                else:
+                    r.append(i)
+            return ''.join(r)
+        return [ formatline(x) for x in self.rows ]
+                
 
 def addpage(page,hotkey,args=()):
     (my,mx)=stdwin.getmaxyx()
@@ -805,4 +872,13 @@ def init(w):
     curses.init_pair(5,curses.COLOR_GREEN,curses.COLOR_BLACK)
     curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
+    curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     stdwin.addstr(0,0," "*mx,curses.color_pair(1))
+    event.eventlist.append(clock(stdwin))
+    event.rdlist.append(reader(stdwin))
+
+def initkb(kblayout):
+    global inputs,codes
+    for i in kblayout:
+        inputs[i[0]]=i
+        codes[i[2]]=i

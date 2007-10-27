@@ -2,7 +2,7 @@
 
 """Implements the 'Manage Stock' menu."""
 
-import ui,td,keyboard,curses,curses.ascii,time,priceguess,printer
+import ui,td,keyboard,curses,curses.ascii,time,printer
 import stock,delivery
 
 import logging
@@ -28,30 +28,34 @@ def finish_reason(sn,reason):
                   title="Stock Finished",colour=ui.colour_info)
 
 def finish_item(sn):
-    sd=td.stock_info(sn)
+    sd=td.stock_info([sn])[0]
     fl=[(x[1],finish_reason,(sn,x[0])) for x in td.stockfinish_list()]
     ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
             sn,title="Finish Stock",w=60)
 
 def finishstock():
     log.info("Finish stock")
-    def fs(sn):
-        sd=td.stock_info(sn)
-        return "%7d %s"%(sn,stock.stock_description(sn))
     sl=td.stock_search()
-    sl=[(fs(x),finish_item,(x,)) for x in sl]
+    sinfo=td.stock_info(sl)
+    lines=ui.table([("%d"%x['stockid'],stock.format_stock(x))
+                    for x in sinfo]).format(' r l ')
+    sl=[(x,finish_item,(y['stockid'],)) for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Finish stock not currently on sale",
             blurb="Choose a stock item to finish.")
+
+def format_stockmenuline(sd):
+    return ("%d"%sd['stockid'],
+            stock.format_stock(sd,maxw=40),
+            "%.0f %ss"%(sd['remaining'],sd['unitname']))
 
 def stockcheck():
     # Build a list of all not-finished stock items.  Things we want to show:
     log.info("Stock check")
     sl=td.stock_search(exclude_stock_on_sale=False)
-    def fs(sn):
-        sd=td.stock_info(sn)
-        return "%7d %-40s %.0f %ss"%(sn,stock.format_stock(sd,maxw=40),
-                                 sd['remaining'],sd['unitname'])
-    sl=[(fs(x),stock.stockinfo_popup,(x,)) for x in sl]
+    sinfo=td.stock_info(sl)
+    lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
+    sl=[(x,stock.stockinfo_popup,(y['stockid'],))
+        for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Stock Check",blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
             "is shown.",dismiss_on_select=False)
@@ -61,11 +65,10 @@ def stockhistory():
     log.info("Stock history")
     sl=td.stock_search(finished_stock_only=True)
     sl.reverse()
-    def fs(sn):
-        sd=td.stock_info(sn)
-        return "%7d %-40s %.0f %ss"%(sn,stock.format_stock(sd,maxw=40),
-                                 sd['remaining'],sd['unitname'])
-    sl=[(fs(x),stock.stockinfo_popup,(x,)) for x in sl]
+    sinfo=td.stock_info(sl)
+    lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
+    sl=[(x,stock.stockinfo_popup,(y['stockid'],))
+        for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Stock History",blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
             "when the stock was finished is shown.",dismiss_on_select=False)
