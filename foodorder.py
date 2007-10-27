@@ -27,7 +27,7 @@ class fooditem:
         price=self.getprice()
         w=textwrap.wrap(name,width)
         if len(w)==0: w=[""]
-        pf="%0.2f"%price
+        pf=" %0.2f"%price
         if price==0.0: pf=""
         if len(w[-1])+len(pf)>width:
             w.append("")
@@ -201,8 +201,19 @@ class subopts_dialog(ui.dismisspopup):
         self.win.move(2,2)
     def newsubopt(self,so):
         if len(self.ol)<self.atmost or self.atmost is None:
-            self.ol.append(so)
-            self.redraw()
+            if isinstance(so[1],float):
+                self.ol.append(so)
+                self.redraw()
+            else:
+                possible_keys=[
+                    keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
+                    keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
+                    keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
+                    keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+                zz=zip(possible_keys,so[1])
+                il=[(key,opt[0],self.newsubopt,(opt,))
+                    for key,opt in zz]
+                ui.keymenu(il,colour=ui.colour_input,title=so[0])
     def finish(self):
         if len(self.ol)<self.atleast: return
         self.func(self.itemfunc,self.ol)
