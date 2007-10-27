@@ -1,0 +1,14 @@
+Source: quicktill
+Section: python
+XS-Python-Version: all
+Priority: optional
+Maintainer: Stephen Early <steve@greenend.org.uk>
+Build-Depends-Indep: debhelper (>= 4.2.28), python-central (>= 0.4.7)
+Standards-Version: 3.6.2
+
+Package: quicktill
+Architecture: all
+Depends: ${python:Depends}
+XB-Python-Version: ${python:Versions}
+Description: Simple stock-control and cash register software
+ Developed for Individual Pubs Limited in the UK.
