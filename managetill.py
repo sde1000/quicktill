@@ -1,8 +1,6 @@
 import ui,keyboard,td,printer,math,sys,curses,os,sets
-import register,tillconfig
+import register,tillconfig,managekeyboard,stocklines
 from version import version
-from managekeyboard import popup as tillkeyboard
-import stocklines
 
 import logging
 log=logging.getLogger()
@@ -250,6 +248,14 @@ def sessionsummary():
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
 
+def currentsessionsummary():
+    sc=td.session_current()
+    if sc is None:
+        ui.infopopup(["There is no session in progress."],title="Error")
+    else:
+        sn,starttime,sessiondate=sc
+        totalpopup(sn)
+
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
@@ -263,16 +269,24 @@ def versioninfo():
                  title="Software Version Information",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
 
-def popup():
-    log.info("Till management popup")
+def sessionmenu():
+    log.info("Session management menu")
     menu=[
         (keyboard.K_ONE,"Start a session",startsession,None),
         (keyboard.K_TWO,"End the current session",endsession,None),
         (keyboard.K_THREE,"Record session takings",sessiontakings,None),
         (keyboard.K_FOUR,"Display session summary",sessionsummary,None),
-        (keyboard.K_FIVE,"Restore deferred transactions",transrestore,None),
-        (keyboard.K_SEVEN,"Manage stock lines",stocklines.popup,None),
-        (keyboard.K_EIGHT,"Manage till keyboard",tillkeyboard,None),
-        (keyboard.K_NINE,"Display till software version",versioninfo,None),
+        ]
+    ui.keymenu(menu,"Session management options")
+
+def popup():
+    log.info("Till management menu")
+    menu=[
+        (keyboard.K_ONE,"Sessions",sessionmenu,None),
+        (keyboard.K_TWO,"Current session summary",currentsessionsummary,None),
+        (keyboard.K_THREE,"Restore deferred transactions",transrestore,None),
+        (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
+        (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
+        (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]
     ui.keymenu(menu,"Management options")

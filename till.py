@@ -9,7 +9,7 @@ invoke till.run() with appropriate parameters.
 
 """
 
-import sys,curses,ui,keyboard,event,logging,td,printer
+import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig
 from version import version
 
 log=logging.getLogger()
@@ -42,6 +42,13 @@ def run(database,kbdrv,pdriver,kickout,pages):
     log.info("Starting version %s"%version)
     try:
         td.init(database)
+        # Copy keycaps from database to keyboard driver
+        caps=td.keyboard_getcaps(tillconfig.kbtype)
+        for keycode,keycap in caps:
+            if kbdrv.setkeycap(keyboard.keycodes[keycode],keycap)==False:
+                log.info("Deleting stale keycap for layout %d keycode %s"%(
+                    tillconfig.kbtype,keycode))
+                td.keyboard_delcap(tillconfig.kbtype,keycap)
         printer.driver=pdriver
         printer.kickout=kickout
         curses.wrapper(start,kbdrv,pages)

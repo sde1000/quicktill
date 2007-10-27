@@ -102,13 +102,24 @@ class prehkeyboard(curseskeyboard):
         self.card=None
         self.inputs={}
         self.codes={}
-        for i in kblayout:
-            self.inputs[i[0]]=i
-            self.codes[i[2]]=i
+        for loc,cap,code in kblayout:
+            x=[loc,cap,code]
+            self.inputs[loc]=x
+            self.codes[code]=x
+    def setkeycap(self,code,cap):
+        """Tries to update the keycap for the specified key.  Returns
+        True if successful, or False if the key does not exist.
+
+        """
+        try:
+            self.codes[code][1]=cap
+            return True
+        except:
+            return False
     def keycap(self,k):
         if isinstance(k,magcard.magstripe): return str(k)
         if k in self.codes: return self.codes[k][1]
-        return "code %d"%k
+        return curseskeyboard.keycap(self,k)
     def doread(self):
         def pass_on_buffer():
             self.handle_input(ord('['))

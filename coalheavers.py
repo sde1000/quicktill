@@ -6,7 +6,8 @@
 """
 
 import sys,os,math,logging
-#sys.path.append('../quicktill-0.6.0')
+# Local test version for new keycaps scheme
+#sys.path.append('../quicktill-0.7.1')
 
 # Were we invoked automatically, i.e. are we the real till instance,
 # or just a test copy?
@@ -27,10 +28,9 @@ if autorun:
 
 from keyboard import *
 from pdrivers import Epson_TM_U220,nullprinter
-import kbdrivers
-import tillconfig,till,register,stockterminal,foodorder
+import tillconfig,till,register,kbdrivers
 
-tillconfig.configversion="$Id: oakdale.py,v 1.8 2005/02/11 19:32:07 till Exp $"
+tillconfig.configversion="$Id: coalheavers.py,v 1.5 2005/03/21 12:59:25 till Exp $"
 tillconfig.pubname="The Coalheavers Arms"
 tillconfig.pubnumber="01733 565664"
 tillconfig.pubaddr=("5 Park Street","Peterborough","PE2 9BH")
@@ -134,15 +134,13 @@ kbdrv=kbdrivers.prehkeyboard([
     ("A10","Pint Cider",K_LINE42),
     ("A13","Card",K_CARD),
     ("A14","Manage Trans",K_MANAGETRANS),
-    ("A15","Food Order",K_FOODORDER),
-    ("A16","Cancel Food",K_CANCELFOOD),
     ("M1H","Magstripe 1 Header",K_M1H),
     ("M1T","Magstripe 1 Trailer",K_M1T),
     ("M2H","Magstripe 2 Header",K_M2H),
     ("M2T","Magstripe 2 Trailer",K_M2T),
     ("M3H","Magstripe 3 Header",K_M3H),
     ("M3T","Magstripe 3 Trailer",K_M3T),
-    ])
+])
 
 tillconfig.kbtype=1
 
@@ -154,6 +152,7 @@ else:
 tillconfig.has_media_slot=True
 tillconfig.cashback_limit=50.0
 
+# Define log output here?
 log=logging.getLogger()
 formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 handler=logging.StreamHandler()
@@ -184,7 +183,7 @@ def priceguess(dept,cost,abv):
     if dept==1:
         return guessbeer(cost,abv)
     if dept==2:
-        return 2.50
+        return 2.60
     if dept==3:
         return 2.40
     if dept==5:
@@ -195,14 +194,14 @@ tillconfig.priceguess=priceguess
 # Unit is a pint
 def guessbeer(cost,abv):
     if abv is None: return None
-    if abv<3.2: r=1.70
-    elif abv<3.6: r=1.80
-    elif abv<4.0: r=1.90
-    elif abv<4.4: r=2.00
-    elif abv<4.9: r=2.10
-    elif abv<5.3: r=2.20
-    elif abv<5.7: r=2.30
-    elif abv<6.0: r=2.40
+    if abv<3.2: r=1.80
+    elif abv<3.6: r=1.90
+    elif abv<4.0: r=2.00
+    elif abv<4.4: r=2.10
+    elif abv<4.9: r=2.20
+    elif abv<5.3: r=2.30
+    elif abv<5.7: r=2.40
+    elif abv<6.0: r=2.50
     else: return None
     # If the cost per pint is greater than that of Milton plus fiddle-factor,
     # add on the excess and round up to nearest 10p
@@ -215,41 +214,13 @@ def guessbeer(cost,abv):
 def guesssnack(cost):
     return math.ceil(cost*2.0*(tillconfig.vatrate+1.0)*10.0)/10.0
 
-# Experimental food ordering code: here's the menu.  Each node is a
-# tuple of (Name, Price (possibly None), multiple sub-options allowed,
-# list of sub-options), or alternatively just a string (equivalent to
-# string,None,False,None)
-foodorder.setmenu([
-    ("Baked Potato",1.50,True,
-     [("with Cheese",0.30,False,["melted","not melted"]),
-      ("with Beans",0.30,False,None),
-      ("with Tuna Mayo",0.30,False,["on the side","on top"]),
-      ("with Salsa",0.30,False,["on the side","on top"]),
-      ("with Coleslaw",0.30,False,["on the side","on top"]),
-      "without butter"]),
-    ("Toasted Sandwich",1.20,True,
-     [("with Cheese",0.30,False,None),
-      ("with Ham",0.30,False,None),
-      ("with Bacon & Brie",0.80,False,None),
-      "without salad"]),
-    ("Quarter-pound burger",2.00,True,
-     [("with Cheese",0.10,False,None)]),
-    ("Half-pound burger",3.50,True,
-     [("with Cheese",0.10,False,None)]),
-    ])
-
 if training:
     pages=[(register.page,K_ALICE,("Training A",)),
            (register.page,K_BOB,("Training B",)),
            (register.page,K_CHARLIE,("Training C",))]
 else:
-    #kbdrv=kbdrivers.curseskeyboard()
-    #pages=[(stockterminal.page,K_ALICE,())]
     pages=[(register.page,K_ALICE,("Alice",)),
            (register.page,K_BOB,("Bob",)),
            (register.page,K_CHARLIE,("Charlie",))]
-
-foodorder.kitchenprinter=Epson_TM_U220(
-    ('printserver1.sinister.greenend.org.uk',4020),57)
 
 till.run(dbname,kbdrv,pdriver,pdriver.kickout,pages)

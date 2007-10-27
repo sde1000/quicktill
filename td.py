@@ -771,9 +771,9 @@ def stockline_info(stocklineid):
 def stockline_restock(stocklineid,changes):
     cur=cursor()
     for sd,move,newdisplayqty,stockqty_after_move in changes:
-        cur.execute("UPDATE stockonsale SET displayqty=%d WHERE "
+        cur.execute("UPDATE stockonsale SET displayqty=displayqty+%d WHERE "
                     "stocklineid=%d AND stockid=%d",(
-            newdisplayqty,stocklineid,sd['stockid']))
+            move,stocklineid,sd['stockid']))
     commit()
 
 def stockline_list(caponly=False,exccap=False):
@@ -809,6 +809,25 @@ def keyboard_checklines(layout,keycode):
                 "FROM keyboard k "
                 "LEFT JOIN stocklines sl ON sl.stocklineid=k.stocklineid "
                 "WHERE k.layout=%d AND k.keycode=%s",(layout,keycode))
+    return cur.fetchall()
+
+def keyboard_setcap(layout,keycode,cap):
+    """keycode is a string.  Stores a new keycap for the specified keyboard layout."""
+    cur=cursor()
+    cur.execute("DELETE FROM keycaps WHERE layout=%d AND keycode=%s",(layout,keycode))
+    cur.execute("INSERT INTO keycaps (layout,keycode,keycap) VALUES (%d,%s,%s)",
+                (layout,keycode,cap))
+    commit()
+
+def keyboard_delcap(layout,keycode):
+    cur=cursor()
+    cur.execute("DELETE FROM keycaps WHERE layout=%d AND keycode=%s",(layout,keycode))
+    commit()
+
+def keyboard_getcaps(layout):
+    """Returns all the keycaps for a particular layout."""
+    cur=cursor()
+    cur.execute("SELECT keycode,keycap FROM keycaps WHERE layout=%d",(layout,))
     return cur.fetchall()
 
 ### Functions relating to the sessions,sessiontotals tables

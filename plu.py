@@ -8,8 +8,8 @@ import td,ui,keyboard,stock,stocklines,tillconfig
 
 class popup(ui.basicpopup):
     def __init__(self):
-        w=78
-        h=20
+        w=80
+        h=24
         ui.basicpopup.__init__(self,h,w,title="Price Check",
                                cleartext="Press Cash/Enter to continue",
                                colour=ui.colour_info)

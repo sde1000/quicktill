@@ -155,7 +155,7 @@ def auto_allocate():
                  title="Auto-allocate confirmation",colour=ui.colour_confirm,
                  dismiss=keyboard.K_CASH)
 
-def remove_stock(stockline):
+def return_stock(stockline):
     sl=calculate_restock(stockline,target=0)
     if sl is None:
         ui.infopopup(["The till has no record of stock on display for "
@@ -171,7 +171,6 @@ def remove_stock(stockline):
                  title="Confirm stock movement",
                  keymap={keyboard.K_CASH:(finish_restock,([sl],),True)},
                  colour=ui.colour_confirm)
-    
 
 class create(ui.dismisspopup):
     def __init__(self):
@@ -304,7 +303,11 @@ class modify(ui.dismisspopup):
                          title="Error")
         
 def delete(stocklineid):
-    pass
+    """Delete a stock line.  Deleting a line is only permitted if there is no
+    stock in use on the line.  Key bindings to the line are deleted at the same time.
+
+    """
+    ui.infopopup(["Please see Steve about deleting stock lines."],title="Unimplemented")
 
 def purge():
     """Stock items that have been completely used up through the display
@@ -343,22 +346,18 @@ def selectlocation(func,title="Stock Locations",blurb=None,caponly=False):
 def popup():
     log.info("Stock line management popup")
     menu=[
-        (keyboard.K_ONE,"Re-stock all lines",restock_all,None),
-        (keyboard.K_TWO,"Re-stock a location",restock_location,None),
-        #(keyboard.K_THREE,"Check stock lines",selectline,(None,)),
-        (keyboard.K_FOUR,"Automatically allocate stock to lines",
-         auto_allocate,None),
-        (keyboard.K_FIVE,"Create a new stock line",create,None),
-        (keyboard.K_SIX,"Modify a stock line",selectline,
+        (keyboard.K_ONE,"Create a new stock line",create,None),
+        (keyboard.K_TWO,"Modify a stock line",selectline,
          (modify,"Modify Stock Line",
           "Select a line to modify and press Cash/Enter")),
-        (keyboard.K_SEVEN,"Delete a stock line",selectline,
+        (keyboard.K_THREE,"Delete a stock line",selectline,
          (delete,"Delete Stock Line",
           "Select a line to delete and press Cash/Enter")),
-        (keyboard.K_EIGHT,"Remove stock from display",selectline,
-         (remove_stock,"Remove Stock","Select the stock line to remove "
+        #(keyboard.K_FOUR,"List stock lines with no key bindings",listunbound,None),
+        (keyboard.K_FIVE,"Return stock from display",selectline,
+         (return_stock,"Return Stock","Select the stock line to remove "
           "from display",True)),
-        (keyboard.K_NINE,"TEMP: purge lines",purge,None),
+        (keyboard.K_NINE,"Purge finished stock items",purge,None),
         ]
     ui.keymenu(menu,"Stock line options")
 
