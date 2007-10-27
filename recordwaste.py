@@ -131,9 +131,10 @@ class popup(ui.basicpopup):
             ui.infopopup(["You must enter an amount!"],title="Error")
             return
         amount=float(self.amountfield.f)
-        if amount<=0.0:
+        if amount<=0.0 and False:
+            # Actually this can be useful - allow it for now!
             ui.infopopup(["You must enter an amount greater than zero!"],
-                         title=Error)
+                         title='Error')
             self.amountfield.set("")
             return
         if self.isline:

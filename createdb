@@ -415,6 +415,11 @@ selecting on stock ID.  This could probably be speeded using an index. */
 
 CREATE INDEX stockout_stockid_key ON stockout (stockid);
 
+/* The web "find free drinks on this day" function is speeded up
+considerably by an index on stockout.time::date
+
+CREATE INDEX stockout_date_key ON stockout ( (time::date) );
+
 /* The "stock_sellmore" function in td.py updates the stockout table
 by selecting on translineid.  This could probably be speeded using an index. */
 CREATE INDEX stockout_translineid_key ON stockout (translineid);
