@@ -57,8 +57,8 @@ def line_chosen(line):
         # a blurb that says:
         sinfo=td.stock_info([x[0] for x in sl])
         for a,b in zip(sl,sinfo):
-            if a[1] is None: a[1]=0
-            b['displayqty']=a[1]
+            if a[1] is None: b['displayqty']=0.0
+            else: b['displayqty']=a[1]
         lines=ui.table([("%d"%x['stockid'],
                          stock.format_stock(x).ljust(40),
                          "%d"%max(x['displayqty']-x['used'],0),

@@ -1,4 +1,4 @@
-import ui,keyboard,td,time,printer,math,sys,curses,os,sets
+import ui,keyboard,td,printer,math,sys,curses,os,sets
 import register,tillconfig
 from version import version
 from managekeyboard import popup as tillkeyboard
@@ -19,7 +19,7 @@ class ssdialog(ui.dismisspopup):
                    "if necessary.")
         win.addstr(3,2,"Press Cash/Enter to continue and start the session.")
         win.addstr(5,2,"Session date:")
-        date=time.localtime()
+        date=ui.now()
         self.datefield=ui.datefield(win,5,16,f=date,keymap=km)
         self.datefield.focus()
     def key_enter(self):
@@ -42,10 +42,11 @@ class ssdialog(ui.dismisspopup):
 def startsession():
     sc=td.session_current()
     if sc:
-        log.info("Start session: session %s still in progress"%sc[0])
+        sn,starttime,sessiondate=sc
+        log.info("Start session: session %d still in progress"%sn)
         ui.infopopup(["There is already a session in progress (number %d, "
                       "started %s)."%
-                      (sc[0],time.strftime("%H:%M on %A",sc[1]))],
+                      (sc[0],starttime.strftime("%H:%M on %A"))],
                      title="Error")
     else:
         ssdialog()

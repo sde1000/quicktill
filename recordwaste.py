@@ -72,11 +72,12 @@ class popup(ui.basicpopup):
             department.menu(self.stock_dept_selected,"Select Department")
             return
         sn=int(self.stockfield.f)
-        sd=td.stock_info([sn])[0]
-        if sd is None:
+        sd=td.stock_info([sn])
+        if sd==[]:
             ui.infopopup(["Stock number %d does not exist."%sn],
                          title="Error")
             return
+        sd=sd[0]
         if sd['deliverychecked'] is False:
             ui.infopopup(["Stock number %d is part of a delivery that has "
                           "not yet been confirmed.  You can't record waste "

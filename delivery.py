@@ -6,9 +6,11 @@ def create_and_edit_delivery(supplier):
 
 def deliverylist(func,unchecked_only=False,checked_only=False):
     def d(x):
-        return "%s%s%s"%(x[5],' '*(40-len(x[5])-len(x[3])),ui.formatdate(x[3]))
+        did,supid,docnum,date,checked,name=x
+        return ("%d"%did,name,ui.formatdate(date))
     dl=td.delivery_get(unchecked_only=unchecked_only,checked_only=checked_only)
-    m=[(d(x),func,(x[0],)) for x in dl]
+    lines=ui.table([d(x) for x in dl]).format(' r l l ')
+    m=[(x,func,(y[0],)) for x,y in zip(lines,dl)]
     ui.menu(m,title="Delivery List",blurb="Select a delivery and press Cash/Enter.")
 
 class delivery(ui.basicpopup):

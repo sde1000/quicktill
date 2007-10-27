@@ -2,9 +2,6 @@ import string,td,time,ui,stock,tillconfig,sets
 
 driver=None
 
-dateformat="%Y/%m/%d"
-timeformat="%Y/%m/%d %H:%M:%S"
-
 def print_receipt(trans):
     transopen=False
     (lines,payments)=td.trans_getlines(trans)
@@ -59,7 +56,7 @@ def print_receipt(trans):
         driver.printline("\t\tReceipt total: %s"%tillconfig.fc(linestotal))
         driver.printline("")
         driver.printline("\tReceipt number %d"%trans)
-    driver.printline("\t%s"%time.strftime(dateformat,td.trans_date(trans)))
+    driver.printline("\t%s"%ui.formatdate(td.trans_date(trans)))
     driver.printline("")
     for i in tillconfig.companyaddr:
         driver.printline("\t%s"%i)
@@ -73,9 +70,9 @@ def print_sessioncountup(session):
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%session,colour=1)
-    driver.printline("\t%s"%time.strftime(dateformat,accdate),colour=1)
-    driver.printline("Started %s"%time.strftime(timeformat,start))
-    driver.printline("  Ended %s"%time.strftime(timeformat,end))
+    driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
+    driver.printline("Started %s"%ui.formattime(start))
+    driver.printline("  Ended %s"%ui.formattime(end))
     driver.printline()
     tots=td.session_paytotals(session)
     driver.printline("Amounts registered:")
@@ -112,14 +109,13 @@ def print_sessiontotals(session):
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%session,colour=1)
-    driver.printline("\t%s"%time.strftime(dateformat,accdate),colour=1)
-    driver.printline("Started %s"%time.strftime(timeformat,start))
+    driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
+    driver.printline("Started %s"%ui.formattime(start))
     if end is None:
         driver.printline("Session still in progress")
-        driver.printline("Printed %s"%
-                         time.strftime(timeformat))
+        driver.printline("Printed %s"%ui.formattime(ui.now()))
     else:
-        driver.printline("  Ended %s"%time.strftime(timeformat,end))
+        driver.printline("  Ended %s"%ui.formattime(end))
     driver.printline("Till total:\t\tActual total:")
     ttt=0.0
     att=0.0
@@ -152,7 +148,7 @@ def print_sessiontotals(session):
         dt=dt+i[2]
     driver.printline("\t\tTotal: %s"%tillconfig.fc(dt),colour=1,emph=1)
     driver.printline()
-    driver.printline("\tPrinted %s"%time.strftime(timeformat))
+    driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.end()
 
 def print_delivery(delivery):
@@ -187,7 +183,7 @@ def print_stocklist(sl,title="Stock List"):
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\t%s"%title,colour=1)
-    driver.printline("\t Printed %s"%time.strftime(timeformat))
+    driver.printline("\t Printed %s"%ui.formattime(ui.now()))
     driver.printline()
     for sd in sl:
         driver.printline("Stock number %d"%sd['stockid'],colour=1)
@@ -205,7 +201,7 @@ def print_restock_list(rl):
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tRe-stock list")
-    driver.printline("\tPrinted %s"%time.strftime(timeformat))
+    driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.printline()
     for stockline,name,ondisplay,capacity,sl in rl:
         driver.printline("%s:"%name)

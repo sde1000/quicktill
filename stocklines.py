@@ -17,8 +17,8 @@ def calculate_sale(stocklineid,items):
     sinfo=td.stock_info([x[0] for x in sl])
     snd={}
     for a,b in zip(sl,sinfo):
-        if a[1] is None: a[1]=0
-        b['displayqty']=a[1]
+        if a[1] is None: b['displayqty']=0
+        else: b['displayqty']=a[1]
         snd[b['stockid']]=b
     # Iterate over the stock items attached to the line and produce a
     # list of (stockid,items) pairs if possible; otherwise produce an
@@ -62,8 +62,9 @@ def calculate_restock(stockline,target=None):
     # on display
     ondisplay=0
     for a,b in zip(sl,sinfo):
-        if a[1] is None: a[1]=0
-        b['displayqty']=max(a[1],b['used'])
+        if a[1] is None: dq=0
+        else: dq=a[1]
+        b['displayqty']=max(dq,b['used'])
         b['ondisplay']=b['displayqty']-b['used']
         ondisplay=ondisplay+b['ondisplay']
     del sl # Make sure we don't refer to it later
@@ -312,7 +313,7 @@ def purge():
     of a session because stock items may be put back on display through
     the voiding mechanism during a session.  This function should be called
     at the end of every session."""
-    pass
+    td.stock_purge()
 
 def selectline(func,title="Stock Lines",blurb=None,caponly=False):
     """A pop-up menu of stocklines, sorted by location.  Optionally can

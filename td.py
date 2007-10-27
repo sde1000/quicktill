@@ -5,7 +5,8 @@
 # never broken here, but that's not really a substitute for
 # implementing them in the database itself.
 
-import pgdb,time,stock
+import time,stock
+import psycopg as db
 
 con=None
 def cursor():
@@ -17,18 +18,34 @@ def commit():
 ### Convenience functions
 
 def mkstructtime(d):
-    "Take a date returned from the database and convert to a time.struct_time"
-    if d is not None:
-        if len(d)==10:
-            return time.strptime(d,"%Y-%m-%d")
-        return time.strptime(d[0:19],"%Y-%m-%d %H:%M:%S")
-    return None
+    """This function does nothing, and is only being kept in case we decide
+    to go back to pgdb for PostgreSQL connection.
 
-def mkdate(st):
-    "Take a time.struct_time and return a date"
-    if st is not None:
-        return time.strftime("%Y-%m-%d",st)
-    return None
+    """
+    return d
+
+#def mkstructtime(d):
+#    "Take a date returned from the database and convert to a time.struct_time"
+#    if d is not None:
+#        if len(d)==10:
+#            return time.strptime(d,"%Y-%m-%d")
+#        return time.strptime(d[0:19],"%Y-%m-%d %H:%M:%S")
+#    return None
+
+def mkdate(d):
+    """This function originally took a time.struct_time and returned a
+    string suitable for passing to postgresql, but now uses the proper
+    DateFromMx() function from the psycopg module instead.
+    
+    """
+    if d is None: return None
+    return db.DateFromMx(d)
+
+#def mkdate(st):
+#    "Take a time.struct_time and return a date"
+#    if st is not None:
+#        return time.strftime("%Y-%m-%d",st)
+#    return None
 
 def execone(cur,c,*args):
     "Execute c and return the single result. Does not commit."
@@ -110,9 +127,11 @@ def trans_balance(trans):
                 "WHERE translines.transid=%d),(SELECT sum(amount) "
                 "FROM payments WHERE payments.transid=%d)",(trans,trans));
     r=cur.fetchone()
-    if not r[0]: r[0]=0.0
-    if not r[1]: r[1]=0.0
-    return (r[0],r[1])
+    if not r[0]: linestotal=0.0
+    else: linestotal=r[0]
+    if not r[1]: paymentstotal=0.0
+    else: paymentstotal=r[1]
+    return (linestotal,paymentstotal)
 
 def trans_date(trans):
     "Return the accounting date of the transaction"
@@ -228,14 +247,15 @@ def supplier_new(name,tel,email):
 def supplier_fetch(sid):
     "Return supplier details"
     cur=cursor()
-    cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%d",(sid,))
+    cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%d",
+                (sid,))
     return cur.fetchone()
 
 def supplier_update(sid,name,tel,email):
     "Update supplier details"
     cur=cursor()
-    cur.execute("UPDATE suppliers SET name=%s,tel=%s,email=%s WHERE supplierid=%d",
-                (name,tel,email,sid))
+    cur.execute("UPDATE suppliers SET name=%s,tel=%s,email=%s "
+                "WHERE supplierid=%d",(name,tel,email,sid))
     commit()
 
 ### Delivery-related functions
@@ -251,9 +271,10 @@ def delivery_get(unchecked_only=False,checked_only=False,number=None):
         w="d.checked=true"
     else:
         w="true"
-    cur.execute("SELECT d.deliveryid,d.supplierid,d.docnumber,d.date,d.checked,"
-                "s.name FROM deliveries d INNER JOIN suppliers s ON "
-                "d.supplierid=s.supplierid WHERE %s ORDER BY d.date DESC"%w)
+    cur.execute("SELECT d.deliveryid,d.supplierid,d.docnumber,d.date,"
+                "d.checked,s.name FROM deliveries d "
+                "LEFT JOIN suppliers s ON d.supplierid=s.supplierid "
+                "WHERE %s ORDER BY d.date DESC,d.deliveryid DESC"%w)
     return [(r[0],r[1],r[2],mkstructtime(r[3]),r[4],r[5]) for r in cur.fetchall()]
 
 def delivery_new(supplier):
@@ -266,8 +287,8 @@ def delivery_new(supplier):
 
 def delivery_items(delivery):
     cur=cursor()
-    cur.execute("SELECT stockid FROM stock WHERE deliveryid=%d ORDER BY stockid",
-                (delivery,))
+    cur.execute("SELECT stockid FROM stock "
+                "WHERE deliveryid=%d ORDER BY stockid",(delivery,))
     return [x[0] for x in cur.fetchall()]
 
 def delivery_update(delivery,supplier,date,docnumber):
@@ -293,8 +314,8 @@ def delivery_delete(delivery):
 
 def stocktype_info(stn):
     cur=cursor()
-    cur.execute("SELECT dept,manufacturer,name,shortname,abv,unit FROM stocktypes "
-                "WHERE stocktype=%d",(stn,))
+    cur.execute("SELECT dept,manufacturer,name,shortname,abv,unit "
+                "FROM stocktypes WHERE stocktype=%d",(stn,))
     return cur.fetchone()
 
 def stocktype_completemanufacturer(m):
@@ -413,12 +434,13 @@ def stock_info(stockid_list):
         d['remaining']=d['size']-d['used']
         return d
     # At this point we have a list of results, but that list is not
-    # necessarily in the order of the input list.  We must sort it into
-    # the appropriate order.
+    # necessarily in the order of the input list.  We must sort it
+    # into the appropriate order.  Note that we may have been passed
+    # stockids that do not exist!
     sid={}
     for i in r:
         sid[i[0]]=mkdict(i)
-    return [sid[x] for x in stockid_list]
+    return [sid[x] for x in stockid_list if x in sid]
 
 def stock_extrainfo(stockid):
     "Return even more information on a particular stock item."
@@ -457,9 +479,9 @@ def stock_receive(delivery,stocktype,stockunit,costprice,saleprice,
     "Receive stock, allocate a stock number and return it."
     cur=cursor()
     i=ticket(cur,"stock_seq")
-    cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,stockunit,costprice,"
-                "saleprice,bestbefore) VALUES "
-                "(%d,%d,%d,%s,%f,%f,%s)",
+    cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,"
+                "stockunit,costprice,saleprice,bestbefore) "
+                "VALUES (%d,%d,%d,%s,%f,%f,%s)",
                 (i,delivery,stocktype,stockunit,costprice,saleprice,
                  mkdate(bestbefore)))
     commit()
@@ -592,16 +614,32 @@ def stock_autoallocate():
     cur.execute(
         "INSERT INTO stockonsale (stocklineid,stockid,displayqty) "
         "SELECT sl.stocklineid,si.stockid,si.used AS displayqty "
-	"FROM stocklines sl "
-	"CROSS JOIN stockinfo si "
-	"WHERE sl.capacity IS NOT NULL "
-	"AND si.deliverychecked "
-	"AND si.stocktype IN "
-	"(SELECT isi.stocktype FROM stockonsale sos "
-	"LEFT JOIN stockinfo isi ON isi.stockid=sos.stockid "
-	"WHERE sos.stocklineid=sl.stocklineid) "
-	"AND si.stockid NOT IN "
-	"(SELECT sos.stockid FROM stockonsale sos)")
+        "FROM (SELECT * FROM stocklines WHERE capacity IS NOT NULL) AS sl "
+        "CROSS JOIN (SELECT * FROM stockinfo WHERE deliverychecked "
+        "AND finished IS NULL AND stockid NOT IN ( "
+        "SELECT stockid FROM stockonsale)) AS si "
+        "WHERE si.stocktype IN "
+        "(SELECT stock.stocktype FROM stockonsale sos "
+        "LEFT JOIN stock ON stock.stockid=sos.stockid "
+        "WHERE sos.stocklineid=sl.stocklineid)")
+    commit()
+
+def stock_purge():
+    cur=cursor()
+    cur.execute(
+        "SELECT sos.stockid INTO TEMPORARY TABLE t_stockpurge "
+        "FROM stocklines sl "
+        "LEFT JOIN stockonsale sos ON sos.stocklineid=sl.stocklineid "
+        "LEFT JOIN stockinfo si ON si.stockid=sos.stockid "
+        "WHERE sl.capacity IS NOT NULL "
+        "AND si.used=si.size")
+    cur.execute(
+        "UPDATE stock SET finished=now(),finishcode='empty' "
+        "WHERE stockid IN (SELECT stockid FROM t_stockpurge)")
+    cur.execute(
+        "DELETE FROM stockonsale WHERE stockid IN "
+        "(SELECT stockid FROM t_stockpurge)")
+    cur.execute("DROP TABLE t_stockpurge")
     commit()
 
 def stock_recordwaste(stock,reason,amount,update_displayqty):
@@ -741,8 +779,8 @@ def session_start(date):
     if session_current(): return None
     # Create a new session
     cur=cursor()
-    cur.execute("INSERT INTO sessions (sessiondate) VALUES ('%s')"%
-                mkdate(date))
+    cur.execute("INSERT INTO sessions (sessiondate) VALUES (%s)",
+                (mkdate(date),))
     commit()
     return session_current()
 
@@ -757,7 +795,8 @@ def session_end():
     if len(i)>0: return i
     # Mark the sesion ended
     cur=cursor()
-    cur.execute("UPDATE sessions SET endtime=now() WHERE sessionid=%d",(cs[0],))
+    cur.execute("UPDATE sessions SET endtime=now() "
+                "WHERE sessionid=%d",(cs[0],))
     commit()
     return None
 
@@ -880,4 +919,6 @@ def db_version():
 
 def init(database):
     global con
-    con=pgdb.connect(database)
+    if database[0]==":":
+        database="dbname=%s"%database[1:]
+    con=db.connect(database)

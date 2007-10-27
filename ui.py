@@ -4,6 +4,8 @@
 import curses,curses.ascii,time,math,keyboard,sys,string,textwrap
 import event
 
+from mx.DateTime import now,strptime
+
 import logging
 log=logging.getLogger()
 
@@ -66,12 +68,12 @@ class clock:
 def formattime(ts):
     "Returns ts formatted as %Y/%m/%d %H:%M:%S"
     if ts is None: return ""
-    return time.strftime("%Y/%m/%d %H:%M:%S",ts)
+    return ts.strftime("%Y/%m/%d %H:%M:%S")
 
 def formatdate(ts):
     "Returns ts formatted as %Y/%m/%d"
     if ts is None: return ""
-    return time.strftime("%Y/%m/%d",ts)
+    return ts.strftime("%Y/%m/%d")
 
 def savefocus():
     "Save the current panel stack down to the base panel"
@@ -675,7 +677,7 @@ class datefield(editfield):
             editfield.set(self,formatdate(v))
     def read(self):
         try:
-            d=time.strptime(self.f,"%Y/%m/%d")
+            d=strptime(self.f,"%Y/%m/%d")
         except:
             d=None
         if d is None: editfield.set(self,"")
