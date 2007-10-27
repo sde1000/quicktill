@@ -321,7 +321,56 @@ class menu(basicpopup):
         self.check_scroll()
         self.redraw()
 
-class infopopup(dismisspopup):
+class linepopup(dismisspopup):
+    def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
+                 cleartext=None,colour=colour_error,keymap={}):
+        (mh,mw)=stdwin.getmaxyx()
+        w=0
+        for i in lines:
+            w=max(len(i),w)
+        w=min(w+4,mw)
+        h=min(len(lines)+2,mh)
+        dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
+                              keymap)
+        self.win=self.pan.window()
+        self.scrolly=0
+        self.scrollpage=((h-2)*2)/3
+        self.lines=lines
+        self.redraw()
+    def redraw(self):
+        (h,w)=self.win.getmaxyx()
+        end=self.scrolly+h-2
+        if end>len(self.lines):
+            self.scrolly=self.scrolly-(end-len(self.lines))
+        if self.scrolly<0: self.scrolly=0
+        end=self.scrolly+h-2
+        scrolltop=(self.scrolly>0)
+        scrollbot=(end<len(self.lines))
+        y=1
+        for i in self.lines[self.scrolly:self.scrolly+h-2]:
+            self.win.addstr(y,2,' '*(w-4))
+            if (y==1 and scrolltop) or (y==(h-1) and scrollbot):
+                self.win.addstr(y,2,'...')
+            else:
+                self.win.addstr(y,2,i)
+            y=y+1
+        self.win.move(h-1,w-1)
+    def keypress(self,k):
+        if k==keyboard.K_DOWN:
+            self.scrolly=self.scrolly+1
+            self.redraw()
+        elif k==keyboard.K_UP:
+            self.scrolly=self.scrolly-1
+            self.redraw()
+        elif k==keyboard.K_RIGHT:
+            self.scrolly=self.scrolly+self.scrollpage
+            self.redraw()
+        elif k==keyboard.K_LEFT:
+            self.scrolly=self.scrolly-self.scrollpage
+        else:
+            dismisspopup.keypress(self,k)
+
+class infopopup(linepopup):
     """A pop-up box that formats and displays text.  The text parameter is
     a list of paragraphs."""
     def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
@@ -347,37 +396,11 @@ class infopopup(dismisspopup):
         while len(t)>maxh and w<maxw:
             w=w+1
             t=formatat(w)
-        h=len(t)
-        h=min(h,maxh)
-        dismisspopup.__init__(self,h+4,w+4,title,cleartext,colour,
-                              dismiss,keymap)
-        win=self.pan.window()
-        (h,w)=win.getmaxyx()
-        y=2
-        for i in t:
-            if y<h: win.addstr(y,2,i)
-            y=y+1
-        win.move(h-1,w-1)
-
-class linepopup(dismisspopup):
-    def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
-                 cleartext=None,colour=colour_error,keymap={}):
-        (mh,mw)=stdwin.getmaxyx()
-        w=0
-        for i in lines:
-            w=max(len(i),w)
-        w=w+4
-        w=min(w,mw)
-        h=min(len(lines)+2,mh)
-        dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
-                              keymap)
-        win=self.pan.window()
-        (h,w)=win.getmaxyx()
-        y=1
-        for i in lines:
-            if y<h: win.addstr(y,2,i)
-            y=y+1
-        win.move(h-1,w-1)
+        # The first line of spaces is necessary because linepopup shrinks
+        # the window to fit the longest line of text
+        padding=" "*w
+        t=[padding]+t+[""]
+        linepopup.__init__(self,t,title,dismiss,cleartext,colour,keymap)
 
 def validate_int(s,c):
     try:
