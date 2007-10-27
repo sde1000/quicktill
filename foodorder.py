@@ -1,4 +1,7 @@
-import ui,keyboard,td,printer
+import ui,keyboard,td,printer,urllib
+
+kitchenprinter=None
+menuurl=None
 
 def nv(node):
     if isinstance(node,tuple): return node
@@ -28,12 +31,22 @@ class node:
     def __str__(self):
         return ' '*self.indent+self.name
 
-def setmenu(menu):
-    global root
-    root=node(None,("root",None,True,menu),indent=-1)
-
 class popup(ui.dismisspopup):
     def __init__(self,func):
+        if menuurl is None:
+            ui.infopopup(["No menu has been set!"],title="Error")
+            return
+        f=urllib.urlopen(menuurl)
+        g=f.read()
+        f.close()
+        try:
+            exec(g)
+            self.root=node(None,("root",None,True,menu),indent=-1)
+        except:
+            ui.infopopup(["There is a problem with the menu.",
+                          "Ordering food is not possible until "
+                          "the problem is corrected."],title="Error")
+            return
         self.func=func
         self.h=20
         self.w=64
@@ -44,7 +57,7 @@ class popup(ui.dismisspopup):
         self.win.addstr(2,2,"Enter food order and press Print to finish.")
         self.buildfield()
     def buildfield(self,default=None):
-        if len(self.ml)==0: parentnode=root
+        if len(self.ml)==0: parentnode=self.root
         else: parentnode=self.ml[-1]
         choices=parentnode.getchoices()
         d=dict([(x,str(x)) for x in choices])
