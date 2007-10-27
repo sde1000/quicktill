@@ -252,18 +252,20 @@ class stockline(ui.basicpopup):
             win.addstr(2,2,"        Stock number: %d"%sn)
         win.addstr(3,2,"          Stock type:")
         win.addstr(4,2,"                Unit:")
-        win.addstr(5,2," Cost price (ex VAT): £")
-        win.addstr(6,2,"Sale price (inc VAT): £")
+        win.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
+        win.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
         win.addstr(7,2,"         Best before:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True)}
         self.typefield=ui.popupfield(win,3,24,52,stock.stocktype,
                                      stock.format_stocktype,keymap=km)
         self.typefield.sethook=self.updateunitfield
         self.unitfield=ui.listfield(win,4,24,20,None,keymap=km)
-        self.costfield=ui.editfield(win,5,25,6,keymap=km,
+        self.costfield=ui.editfield(win,5,24+len(tillconfig.currency),6,
+                                    keymap=km,
                                     validate=ui.validate_float)
         self.costfield.sethook=self.guesssaleprice
-        self.salefield=ui.editfield(win,6,25,6,keymap=km,
+        self.salefield=ui.editfield(win,6,24+len(tillconfig.currency),6,
+                                    keymap=km,
                                     validate=ui.validate_float)
         self.bestbeforefield=ui.datefield(win,7,24,keymap=km)
         self.acceptbutton=ui.buttonfield(win,9,28,21,"Accept values",

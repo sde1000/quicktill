@@ -816,12 +816,10 @@ class page(ui.basicpage):
         log.info("Register: recalltrans")
         tl=td.session_translist(sc[0])
         def transsummary(t):
-            closed=td.trans_closed(t)
-            (lines,payments)=td.trans_balance(t)
-            lt="%s"%tillconfig.fc(lines)
-            return "%6d %s%s%s"%(t,('open  ','closed')[closed],
-                                  ' '*(11-len(lt)),lt)
-        sl=[(transsummary(t),self.recalltrans,(t,)) for t in tl]
+            num,closed,amount=t
+            return ("%d"%num,('open','closed')[closed],tillconfig.fc(amount))
+        lines=ui.table([transsummary(x) for x in tl]).format(' r l r ')
+        sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
@@ -864,11 +862,11 @@ class page(ui.basicpage):
         log.info("Register: mergetrans")
         tl=td.session_translist(sc[0],onlyopen=True)
         def transsummary(t):
-            (lines,payments)=td.trans_balance(t)
-            lt="%s"%tillconfig.fc(lines)
-            return "%6d %s%s"%(t,' '*(11-len(lt)),lt)
-        sl=[(transsummary(t),self.mergetrans,(transid,t)) for t in tl
-            if t!=transid]
+            num,closed,amount=t
+            return ("%d"%num,tillconfig.fc(amount))
+        lines=ui.table([transsummary(x) for x in tl]).format(' r r ')
+        sl=[(x,self.mergetrans,(transid,t[0])) for x,t in zip(lines,tl)
+            if t[0]!=transid]
         ui.menu(sl,
                 title="Merge with transaction",
                 blurb="Select a transaction to merge this one into, "

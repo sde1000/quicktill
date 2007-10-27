@@ -846,16 +846,21 @@ def session_list():
             for x in cur.fetchall()]
 
 def session_translist(session,onlyopen=False):
-    """Returns the list of transactions in a session.
+    """Returns the list of transactions in a session; transaction number,
+    closed status, total charge.
 
     """
     cur=cursor()
     oos=""
     if onlyopen:
-        oos="AND closed=FALSE "
-    cur.execute("SELECT transid FROM transactions WHERE sessionid=%d %s"
-                "ORDER BY closed,transid DESC"%(session,oos))
-    return [x[0] for x in cur.fetchall()]
+        oos="AND t.closed=FALSE "
+    cur.execute("SELECT t.transid,t.closed,sum(tl.items*tl.amount) "
+                "FROM transactions t LEFT JOIN translines tl "
+                "ON t.transid=tl.transid "
+                "WHERE t.sessionid=%d %s"
+                "GROUP BY t.transid,t.closed "
+                "ORDER BY t.closed,t.transid DESC"%(session,oos))
+    return cur.fetchall()
 
 ### List of payment types
 
