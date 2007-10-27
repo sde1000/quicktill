@@ -8,6 +8,11 @@
 import pgdb,time
 
 con=pgdb.connect("localhost:till")
+def cursor():
+    con.commit()
+    return con.cursor()
+def commit():
+    con.commit()
 
 ### Convenience functions
 
@@ -43,40 +48,40 @@ def trans_new(note=None):
     # Check that there's a current session
     s=session_current()
     if not s: return None
-    cur=con.cursor()
+    cur=cursor()
     t=ticket(cur,"transactions_seq")
     cur.execute("INSERT INTO transactions (transid,sessionid,notes) "
                 "VALUES (%d,%d,%s)",(t,s[0],note))
-    con.commit()
+    commit()
     return t
 
 def trans_closed(trans):
-    cur=con.cursor()
+    cur=cursor()
     return execone(cur,"SELECT closed FROM transactions WHERE transid=%d",(trans,))
 
 # See also stock_sell()
 
 def trans_addline(trans,dept,items,amountper,source,transcode):
     "Insert a line into a transaction that has no associated stock record"
-    cur=con.cursor()
+    cur=cursor()
     lid=ticket(cur,"translines_seq")
     cur.execute("INSERT INTO translines (translineid,transid,items,amount,"
                 "dept,source,transcode) VALUES (%d,%d,%d,%f,%d,%s,%s)",
                 (lid,trans,items,amountper,dept,source,transcode))
-    con.commit()
+    commit()
     return lid
 
 def trans_additems(lid,items):
     "Update an existing line with additional items"
-    cur=con.cursor()
+    cur=cursor()
     # XXX check the transaction is not closed
     cur.execute("UPDATE translines SET items=items+%d "
                 "WHERE translines.translineid=%d",(items,lid))
-    con.commit()
+    commit()
 
 def trans_getline(lid):
     "Retrieve information about a transaction line"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT translines.transid,translines.items,"
                 "translines.amount,translines.dept,departments.description,"
                 "translines.stockref,translines.transcode FROM translines "
@@ -86,7 +91,7 @@ def trans_getline(lid):
 
 def trans_getlines(trans):
     "Retrieve lines and payments for a transaction"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT translineid FROM translines WHERE transid=%d "
                 "ORDER BY translineid",(trans,))
     lines=[x[0] for x in cur.fetchall()]
@@ -97,7 +102,7 @@ def trans_getlines(trans):
 
 def trans_balance(trans):
     "Return (linestotal,paymentstotal) on a transaction"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT (SELECT sum(amount*items) FROM translines "
                 "WHERE translines.transid=%d),(SELECT sum(amount) "
                 "FROM payments WHERE payments.transid=%d)",(trans,trans));
@@ -108,14 +113,14 @@ def trans_balance(trans):
 
 def trans_date(trans):
     "Return the date of the last line of the transaction"
-    cur=con.cursor()
+    cur=cursor()
     d=execone(cur,"SELECT max(time) FROM translines WHERE transid=%d",(trans,))
     return mkstructtime(d)
 
 def trans_addpayment(trans,type,amount):
     """Add a payment to a transaction, and return the remaining balance.
     If the remaining balance is zero, mark the transaction closed."""
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("INSERT INTO payments (transid,amount,paytype) VALUES "
                 "(%d,%f,%s)",(trans,amount,type))
     (lines,payments)=trans_balance(trans)
@@ -123,12 +128,12 @@ def trans_addpayment(trans,type,amount):
     if remain==0.0:
         cur.execute("UPDATE transactions SET closed=true WHERE transid=%d",
                     (trans,))
-    con.commit()
+    commit()
     return remain
 
 def trans_cancel(trans):
     """Delete a transaction and everything that depends on it."""
-    cur=con.cursor()
+    cur=cursor()
     closed=execone(cur,"SELECT closed FROM transactions WHERE transid=%d",
                    (trans,))
     if closed: return "Transaction closed"
@@ -137,23 +142,23 @@ def trans_cancel(trans):
     cur.execute("DELETE FROM payments WHERE transid=%d",(trans,))
     cur.execute("DELETE FROM translines WHERE transid=%d",(trans,))
     cur.execute("DELETE FROM transactions WHERE transid=%d",(trans,))
-    con.commit()
+    commit()
 
 def trans_deleteline(transline):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("DELETE FROM stockout WHERE translineid=%d",(transline,))
     cur.execute("DELETE FROM translines WHERE translineid=%d",(transline,))
-    con.commit()
+    commit()
 
 def trans_incompletes():
     "Returns the list of incomplete transactions"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT transid FROM transactions WHERE closed=false")
     return [x[0] for x in cur.fetchall()]
 
 def trans_sessionlist(session):
     "Returns the list of transactions in a session"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT transid FROM transactions WHERE sessionid=%d "
                 "ORDER BY closed,transid DESC",(session,))
     return [x[0] for x in cur.fetchall()]
@@ -161,50 +166,50 @@ def trans_sessionlist(session):
 ### Functions related to the stocktypes table
 
 def stocktype_add(manufacturer,name,shortname,dept,unit,defsize,abv=None):
-    cur=con.cursor()
+    cur=cursor()
     t=ticket(cur,'stocktypes_seq')
     cur.execute("INSERT INTO stocktypes (stocktype,dept,manufacturer,name,"
                 "shortname,abv,unit,defsize) VALUES "
                 "(%d,%d,%s,%s,%s,%f,%s,%s)",
                 (t,dept,manufacturer,name,shortname,
                  abv,unit,defsize))
-    con.commit()
+    commit()
     return t
 
 ### Suppliers of stock
 
 def supplier_list():
     "Return the list of suppliers"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT supplierid,name,tel,email FROM suppliers ORDER BY supplierid")
     return cur.fetchall()
 
 def supplier_new(name,tel,email):
     "Create a new supplier and return the id"
-    cur=con.cursor()
+    cur=cursor()
     sid=ticket(cur,"suppliers_seq")
     cur.execute("INSERT INTO suppliers (supplierid,name,tel,email) "
                 "VALUES (%d,%s,%s,%s)",(sid,name,tel,email))
-    con.commit()
+    commit()
     return sid
 
 def supplier_fetch(sid):
     "Return supplier details"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%d",(sid,))
     return cur.fetchone()
 
 def supplier_update(sid,name,tel,email):
     "Update supplier details"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("UPDATE suppliers SET name=%s,tel=%s,email=%s WHERE supplierid=%d",
                 (name,tel,email,sid))
-    con.commit()
+    commit()
 
 ### Delivery-related functions
 
 def delivery_get(unchecked_only=False,checked_only=False,number=None):
-    cur=con.cursor()
+    cur=cursor()
     if number is not None:
         w="d.deliveryid=%d"%number
     elif unchecked_only and checked_only: return None
@@ -220,68 +225,68 @@ def delivery_get(unchecked_only=False,checked_only=False,number=None):
     return [(r[0],r[1],r[2],mkstructtime(r[3]),r[4],r[5]) for r in cur.fetchall()]
 
 def delivery_new(supplier):
-    cur=con.cursor()
+    cur=cursor()
     dn=ticket(cur,"deliveries_seq")
     cur.execute("INSERT INTO deliveries (deliveryid,supplierid) VALUES "
                 "(%d,%d)",(dn,supplier))
-    con.commit()
+    commit()
     return dn
 
 def delivery_items(delivery):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT stockid FROM stock WHERE deliveryid=%d ORDER BY stockid",
                 (delivery,))
     return [x[0] for x in cur.fetchall()]
 
 def delivery_update(delivery,supplier,date,docnumber):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("UPDATE deliveries SET supplierid=%d,date=%s,docnumber=%s "
                 "WHERE deliveryid=%d",
                 (supplier,mkdate(date),docnumber,delivery))
-    con.commit()
+    commit()
 
 def delivery_check(delivery):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("UPDATE deliveries SET checked=true WHERE deliveryid=%d",
                 (delivery,))
-    con.commit()
+    commit()
 
 def delivery_delete(delivery):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("DELETE FROM stock WHERE deliveryid=%d",(delivery,))
     cur.execute("DELETE FROM deliveries WHERE deliveryid=%d",(delivery,))
-    con.commit()
+    commit()
 
 ### Functions related to the stocktypes table
 
 def stocktype_info(stn):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT dept,manufacturer,name,shortname,abv,unit FROM stocktypes "
                 "WHERE stocktype=%d",(stn,))
     return cur.fetchone()
 
 def stocktype_completemanufacturer(m):
-    cur=con.cursor()
+    cur=cursor()
     m=m+'%'
     cur.execute("SELECT DISTINCT manufacturer FROM stocktypes WHERE "
                 "manufacturer ILIKE %s",(m,))
     return [x[0] for x in cur.fetchall()]
 
 def stocktype_completename(m,n):
-    cur=con.cursor()
+    cur=cursor()
     n=n+"%"
     cur.execute("SELECT DISTINCT name FROM stocktypes WHERE "
                 "manufacturer=%s AND name ILIKE %s",(m,n))
     return [x[0] for x in cur.fetchall()]
 
 def stocktype_fromnames(m,n):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT stocktype FROM stocktypes WHERE "
                 "manufacturer=%s AND name=%s",(m,n))
     return [x[0] for x in cur.fetchall()]
 
 def stocktype_fromall(dept,manufacturer,name,shortname,abv,unit):
-    cur=con.cursor()
+    cur=cursor()
     if abv is None:
         abvs=" is null"
     else:
@@ -292,7 +297,7 @@ def stocktype_fromall(dept,manufacturer,name,shortname,abv,unit):
                    (dept,manufacturer,name,shortname,unit))
 
 def stocktype_new(dept,manufacturer,name,shortname,abv,unit):
-    cur=con.cursor()
+    cur=cursor()
     if abv is None:
         abvs="null"
     else:
@@ -302,11 +307,11 @@ def stocktype_new(dept,manufacturer,name,shortname,abv,unit):
                 "name,shortname,abv,unit) VALUES "
                 "(%%d,%%d,%%s,%%s,%%s,%s,%%s)"%abvs,
                 (sn,dept,manufacturer,name,shortname,unit))
-    con.commit()
+    commit()
     return sn
 
 def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
-    cur=con.cursor()
+    cur=cursor()
     if abv is None:
         abvs="null"
     else:
@@ -314,39 +319,39 @@ def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
     cur.execute("UPDATE stocktypes SET dept=%%d,manufacturer=%%s,name=%%s,"
                 "shortname=%%s,abv=%s,unit=%%s WHERE stocktype=%%d"%abvs,
                 (dept,manufacturer,name,shortname,unit,sn))
-    con.commit()
+    commit()
 
 ### Functions related to the department table
 
 def department_list():
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT dept,description FROM departments ORDER BY dept")
     return cur.fetchall()
 
 ### Functions related to the unittypes table
 
 def unittype_list():
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT unit,name FROM unittypes")
     return cur.fetchall()
 
 ### Functions related to the stockunits table
 
 def stockunits_list(unit):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT stockunit,name,size FROM stockunits WHERE "
                 "unit=%s",(unit,))
     return cur.fetchall()
 
 def stockunits_info(su):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT name,size FROM stockunits WHERE stockunit=%s",(su,))
     return cur.fetchone()
 
 ### Functions related to finishing stock
 
 def stockfinish_list():
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT finishcode,description FROM stockfinish")
     return cur.fetchall()
 
@@ -354,7 +359,7 @@ def stockfinish_list():
 
 def stock_info(stockid):
     "Return lots of information on a particular stock item."
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT * FROM stockinfo WHERE stockid=%d",(stockid,))
     r=cur.fetchone()
     if r is None: return None
@@ -375,7 +380,7 @@ def stock_info(stockid):
 
 def stock_extrainfo(stockid):
     "Return even more information on a particular stock item."
-    cur=con.cursor()
+    cur=cursor()
     cur.execute(
         "SELECT min(so.time) as firstsale, "
         "       max(so.time) as lastsale "
@@ -399,33 +404,33 @@ def stock_extrainfo(stockid):
 def stock_receive(delivery,stocktype,stockunit,costprice,saleprice,
                   bestbefore=None):
     "Receive stock, allocate a stock number and return it."
-    cur=con.cursor()
+    cur=cursor()
     i=ticket(cur,"stock_seq")
     cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,stockunit,costprice,"
                 "saleprice,bestbefore) VALUES "
                 "(%d,%d,%d,%s,%f,%f,%s)",
                 (i,delivery,stocktype,stockunit,costprice,saleprice,
                  mkdate(bestbefore)))
-    con.commit()
+    commit()
     return i
 
 def stock_update(sn,stocktype,stockunit,costprice,saleprice,bestbefore=None):
-    cur=con.cursor()
+    cur=cursor()
     # XXX check that delivery is not marked "checked"
     cur.execute("UPDATE stock SET stocktype=%s,stockunit=%s,"
                 "costprice=%f,saleprice=%f,bestbefore=%s WHERE "
                 "stockid=%d",(stocktype,stockunit,costprice,saleprice,
                               mkdate(bestbefore),sn))
-    con.commit()
+    commit()
 
 def stock_delete(sn):
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("DELETE FROM stock WHERE stockid=%d",(sn,))
-    con.commit()
+    commit()
 
 def stock_sell(trans,stockitem,items,qty,source,transcode):
     "Insert a line into a transaction and create an associated stock record"
-    cur=con.cursor()
+    cur=cursor()
     # Look up the price of the item and its department
     cur.execute("SELECT stock.saleprice,stocktypes.dept FROM stock,stocktypes "
                 "WHERE stock.stocktype=stocktypes.stocktype AND "
@@ -444,12 +449,12 @@ def stock_sell(trans,stockitem,items,qty,source,transcode):
                 "dept,source,stockref,transcode) VALUES "
                 "(%d,%d,%d,%f,%d,%s,%d,%s)",
                 (lid,trans,items,p,item[1],source,son,transcode))
-    con.commit()
+    commit()
     return lid
 
 def stock_sellmore(lid,items):
     "Update a transaction line and stock record with extra items"
-    cur=con.cursor()
+    cur=cursor()
     # Fetch old number of items
     oi=execone(cur,"SELECT items FROM translines WHERE translineid=%d",(lid,))
     ni=oi+items
@@ -458,12 +463,12 @@ def stock_sellmore(lid,items):
                 (oi,ni,lid))
     # Update transaction line
     cur.execute("UPDATE translines SET items=%d WHERE translineid=%d",(ni,lid))
-    con.commit()
+    commit()
     return ni
 
 def stock_fetchline(stocklineref):
     "Fetch stockout details given a line reference"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT so.qty,so.removecode,"
                 "so.stockid,st.manufacturer,st.name,st.shortname,"
                 "st.abv,ut.name FROM stockout so "
@@ -475,7 +480,7 @@ def stock_fetchline(stocklineref):
 
 def stock_availableforsale(dept=None):
     """Return a list of stock numbers available to be put on sale."""
-    cur=con.cursor()
+    cur=cursor()
     if dept is None:
         deptq=""
     else:
@@ -489,49 +494,49 @@ def stock_availableforsale(dept=None):
 
 def stock_putonsale(stock,line):
     "Connect a stock item to a particular line"
-    cur=con.cursor()
+    cur=cursor()
     if stock_onsale(line): return False
     cur.execute("UPDATE stock SET onsale=now() WHERE stockid=%d",(stock,))
     cur.execute("INSERT INTO stockonsale (line,stockid) VALUES "
                 "(%s,%d)",(line,stock))
-    con.commit()
+    commit()
     return True
 
 def stock_recordwaste(stock,reason,amount):
     "Record wastage of a stock item"
-    cur=con.cursor()
+    cur=cursor()
     t=ticket(cur,'stockout_seq')
     cur.execute("INSERT INTO stockout (stockoutid,stockid,qty,removecode) "
                 "VALUES (%d,%d,%f,%s)",(t,stock,amount,reason))
-    con.commit()
+    commit()
     return t
 
 def stock_finish(stock,reason):
     "Finish with a stock item; anything left is unaccounted waste"
-    cur=con.cursor()
+    cur=cursor()
     # Disconnect it from its line, if it has one
     cur.execute("DELETE FROM stockonsale WHERE stockid=%d",(stock,))
     # Record the finish time and reason
     cur.execute("UPDATE stock SET finished=now(),finishcode=%s "
                 "WHERE stockid=%d",(reason,stock))
-    con.commit()
+    commit()
 
 def stock_disconnect(stock):
     "Temporarily disconnect a stock item."
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("DELETE FROM stockonsale WHERE stockid=%d",(stock,))
-    con.commit()
+    commit()
 
 def stock_onsale(line):
     "Find out what's on sale on a particular [beer] line"
-    cur=con.cursor()
+    cur=cursor()
     return execone(cur,"SELECT stockid FROM stockonsale WHERE line=%s",(line,))
 
 ### Functions relating to the sessions,sessiontotals tables
 
 def session_current():
     "Return the current session number and the time it started."
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT sessionid,starttime FROM sessions WHERE "
                 "endtime IS NULL");
     r=cur.fetchall()
@@ -544,9 +549,9 @@ def session_start():
     # Check that there's no session currently active
     if session_current(): return None
     # Create a new session
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("INSERT INTO sessions DEFAULT VALUES")
-    con.commit()
+    commit()
     return session_current()
 
 def session_end():
@@ -559,16 +564,16 @@ def session_end():
     i=trans_incompletes()
     if len(i)>0: return i
     # Mark the sesion ended
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("UPDATE sessions SET endtime=now() WHERE sessionid=%d",(cs[0],))
-    con.commit()
+    commit()
     return None
 
 def session_recordtotals(number,amounts):
     """Record actual takings for a session; amounts is a list of
     (paytype,amount) tuples."""
     # Check that the session has ended, but is otherwise incomplete
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT endtime FROM sessions WHERE sessionid=%d",(number,))
     s=cur.fetchall()
     if len(s)!=1: raise "Session does not exist"
@@ -581,12 +586,12 @@ def session_recordtotals(number,amounts):
     for i in amounts:
         cur.execute("INSERT INTO sessiontotals VALUES (%d,%s,%f)",
                     (number,i[0],i[1]))
-    con.commit()
+    commit()
     return
 
 def session_actualtotals(number):
     "Return a list of actual payments received for the session"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT pt.description,st.amount FROM sessiontotals st "
                 "INNER JOIN paytypes pt ON pt.paytype=st.paytype "
                 "WHERE st.sessionid=%d",
@@ -595,7 +600,7 @@ def session_actualtotals(number):
 
 def session_depttotals(number):
     "Return a list of departments and the amounts taken in each department"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT d.dept,d.description,sum(l.items*l.amount) FROM "
                 "sessions s INNER JOIN transactions t ON "
                 "t.sessionid=s.sessionid INNER JOIN translines l ON "
@@ -606,14 +611,14 @@ def session_depttotals(number):
 
 def session_transtotal(number):
     "Return the total of all payments in this session"
-    cur=con.cursor()
+    cur=cursor()
     return execone(cur,"SELECT sum(amount) FROM payments WHERE transid in "
                    "(SELECT transid FROM transactions WHERE sessionid=%d)",
                    (number,))
 
 def session_startend(number):
     "Return the start and end times of the session"
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT starttime,endtime FROM sessions WHERE "
                 "sessionid=%d",(number,))
     (start,end)=cur.fetchone()
@@ -622,7 +627,7 @@ def session_startend(number):
 def session_list():
     """Return a list of sessions with summary details in descending order
     of session number."""
-    cur=con.cursor()
+    cur=cursor()
     cur.execute("SELECT s.sessionid,s.starttime,s.endtime,sum(st.amount) "
                 "FROM sessions s LEFT OUTER JOIN sessiontotals st ON "
                 "s.sessionid=st.sessionid GROUP BY s.sessionid,"
@@ -632,5 +637,5 @@ def session_list():
              for x in cur.fetchall()]
 
 def db_version():
-    cur=con.cursor()
+    cur=cursor()
     return execone(cur,"SELECT version()")
