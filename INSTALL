@@ -1,0 +1,15 @@
+Program can be run as soon as it is unpacked.
+
+To create a blank dataset, do:
+
+createdb dbname
+psql dbname
+\i createdb
+
+To delete the entire dataset (no questions asked!):
+dropdb dbname
+
+The till software expects dbname to be "till" by default.
+Update td.py if you use a different name.
+
+(createdb, psql and dropdb are PostgreSQL commands.)

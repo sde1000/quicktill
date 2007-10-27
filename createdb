@@ -1,0 +1,219 @@
+/* Create tables and reference data for the till software */
+
+CREATE TABLE paytypes (
+	paytype varchar(8) NOT NULL PRIMARY KEY,
+	description varchar(10) NOT NULL
+	);
+COPY paytypes FROM stdin;
+CASH	Cash
+\.
+
+/* XXX We want a constraint that there can be at most one row with null endtime */
+CREATE SEQUENCE sessions_seq START WITH 1;
+CREATE TABLE sessions (
+	sessionid int NOT NULL DEFAULT nextval('sessions_seq') PRIMARY KEY,
+	starttime timestamp NOT NULL DEFAULT now(),
+	endtime timestamp
+	);
+
+CREATE TABLE sessiontotals (
+	sessionid int NOT NULL REFERENCES sessions(sessionid),
+	paytype varchar(8) NOT NULL REFERENCES paytypes(paytype),
+	amount numeric(10,2) NOT NULL,
+	UNIQUE(sessionid,paytype)
+	);
+
+/* Can I add a check that only allows the "closed" flag to be set if the
+   transaction is balanced, and then prohibits further additions? */
+CREATE SEQUENCE transactions_seq;
+CREATE TABLE transactions (
+	transid int NOT NULL PRIMARY KEY,
+	sessionid int NOT NULL REFERENCES sessions(sessionid),
+	notes varchar(60), /* Could be used to note names on tabs, etc. */
+	closed boolean NOT NULL DEFAULT false
+	);
+
+/* Negative cash payments represents cashback/change */
+/* Need a constraint to permit adding/changing/removing payments on
+   closed transactions */
+CREATE TABLE payments (
+	transid int NOT NULL REFERENCES transactions(transid),
+	amount numeric(10,2) NOT NULL,
+	paytype varchar(8) NOT NULL REFERENCES paytypes(paytype),
+	time timestamp NOT NULL DEFAULT now()
+	);
+
+CREATE TABLE departments (
+	dept int NOT NULL PRIMARY KEY,
+	description varchar(20) NOT NULL
+	);
+COPY departments FROM stdin;
+1	Real Ale
+2	Keg
+3	Real Cider
+4	Spirits
+5	Snacks
+6	Bottles
+7	Soft Drinks
+8	Misc
+9	Wine
+10	Food
+\.
+
+CREATE TABLE transcodes (
+	transcode char(1) NOT NULL PRIMARY KEY,
+	description varchar(20) NOT NULL
+	);
+COPY transcodes FROM stdin;
+S	Sale
+V	Void
+C	Cancelled
+\.
+
+CREATE SEQUENCE translines_seq;
+CREATE TABLE translines (
+	translineid int NOT NULL PRIMARY KEY,
+	transid int NOT NULL REFERENCES transactions(transid),
+	items int NOT NULL, /* Number of items sold in line, for receipts */
+	amount numeric(10,2) NOT NULL,
+	dept int NOT NULL REFERENCES departments(dept),
+	source varchar(10), /* for till use, eg. vc number */
+	stockref int, /* advisory link to stock sale link */
+	transcode char(1) NOT NULL REFERENCES transcodes(transcode),
+	time timestamp NOT NULL DEFAULT now()
+	);
+
+/* Below here is stock control information */
+
+CREATE SEQUENCE suppliers_seq START WITH 3;
+CREATE TABLE suppliers (
+	supplierid int NOT NULL PRIMARY KEY,
+	name varchar(60) NOT NULL,
+	tel varchar(20),
+	email varchar(60)
+	);
+COPY suppliers FROM stdin;
+1	Milton Brewery	01223 226198	richard@miltonbrewery.co.uk
+2	Beer Seller	01733 230167	
+\.
+
+CREATE SEQUENCE deliveries_seq START WITH 1;
+CREATE TABLE deliveries (
+	deliveryid int NOT NULL PRIMARY KEY,
+	supplierid int NOT NULL REFERENCES suppliers(supplierid),
+	docnumber varchar(40),
+	date date NOT NULL DEFAULT now(),
+	checked boolean NOT NULL DEFAULT false
+	);
+
+/* Types of unit, eg. pint (liquid), ml (liquid), bag, packet, etc. */
+CREATE TABLE unittypes (
+	unit varchar(4) NOT NULL PRIMARY KEY,
+	name varchar(30) NOT NULL
+	);
+COPY unittypes FROM stdin;
+pt	pint
+25ml	25 millilitre measure
+50ml	50 millilitre measure
+bag	bag
+pkt	packet
+item	item
+\.
+
+/* Containers that stock comes in.  Firkin, kil, 24-pack card, box, etc. */
+CREATE TABLE stockunits (
+	stockunit varchar(8) NOT NULL PRIMARY KEY,
+	name varchar(30) NOT NULL,
+	unit varchar(4) NOT NULL REFERENCES unittypes(unit),
+	size numeric(5,1) NOT NULL /* how many pints, packs, etc. */
+	);
+COPY stockunits FROM stdin;
+pin	Pin	pt	36
+tub	5 gal tub	pt	40
+firkin	Firkin	pt	72
+plfirkin	Plastic Firkin	pt	75
+eleven	Eleven gal cask	pt	88
+kil	Kilderkin	pt	144
+barrel	Barrel	pt	288
+card24b	24 bag card	bag	24
+box50b	50 bag box	bag	50
+75clsm	75cl bottle, 25ml measures	25ml	30
+1lsm	1l bottle, 25ml measures	25ml	40
+1.5lsm	1.5l bottle, 25ml measures	25ml	60
+75cldm	75cl bottle, 50ml measures	50ml	15
+1ldm	1l bottle, 50ml measures	50ml	20
+1.5ldm	1.5l bottle, 50ml measures	50ml	30
+pjar	Pickle jar	item	30
+\.
+
+CREATE TABLE stocktypes (
+	stocktype int NOT NULL PRIMARY KEY,
+	dept int NOT NULL REFERENCES departments(dept),
+	manufacturer varchar(30) NOT NULL, /* Brewery name for beers */
+	name varchar(30) NOT NULL, /* Beer name for beers */
+	shortname varchar(25) NOT NULL, /* Printed on receipts */
+	abv numeric(3,1), /* For alcoholic products */
+	unit varchar(4) NOT NULL REFERENCES unittypes(unit)
+	);
+CREATE SEQUENCE stocktypes_seq;
+
+CREATE TABLE stockfinish (
+	finishcode varchar(8) NOT NULL PRIMARY KEY,
+	description varchar(50) NOT NULL
+	);
+COPY stockfinish FROM stdin;
+empty	All gone
+credit	Returned for credit
+turned	Turned sour / off taste
+ood	Out of date
+\.
+
+CREATE TABLE stock (
+	stockid int NOT NULL PRIMARY KEY, /* Gets written on the stock item */
+	deliveryid int NOT NULL REFERENCES deliveries(deliveryid),
+	stocktype int NOT NULL REFERENCES stocktypes(stocktype),
+	stockunit varchar(8) NOT NULL REFERENCES stockunits(stockunit),
+	costprice numeric(7,2) NOT NULL, /* ex VAT */
+	saleprice numeric(5,2) NOT NULL, /* inc VAT */
+	onsale timestamp,
+	finished timestamp,
+	finishcode varchar(8) REFERENCES stockfinish(finishcode),
+	bestbefore date
+	);
+CREATE SEQUENCE stock_seq;
+
+/* Reasons for stock removal, eg. sale, out-of-date, waste, etc. */
+CREATE TABLE stockremove (
+	removecode varchar(8) NOT NULL PRIMARY KEY,
+	reason varchar(80)
+	);
+COPY stockremove FROM stdin;
+sold	Sold
+pullthru	Pulled through
+ood	Out of date
+taste	Bad taste
+cellar	Cellar work
+damaged	Damaged
+credit	Returned for credit
+gone	All gone
+\.
+
+/* One entry is made here every time stock is removed.  This table is
+   referred to by translines(stockref). */
+CREATE TABLE stockout (
+	stockoutid int NOT NULL PRIMARY KEY,
+	stockid int NOT NULL REFERENCES stock(stockid),
+	qty numeric(5,1) NOT NULL,
+	removecode varchar(8) NOT NULL REFERENCES stockremove(removecode),
+	translineid int, /* translines(translineid) but would be circular ref */
+	time timestamp NOT NULL DEFAULT now()
+	);
+CREATE SEQUENCE stockout_seq START WITH 1;
+
+/* What's being sold at the moment? Example lines: Pump1, Cider, Salt
+and Vinegar, Salted Nuts */
+/* Check that stock->delivery.checked is true! */
+CREATE TABLE stockonsale (
+	line varchar(30) NOT NULL PRIMARY KEY,
+	stockid int REFERENCES stock(stockid)
+	);
