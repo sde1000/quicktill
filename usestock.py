@@ -41,6 +41,9 @@ class popup(ui.infopopup):
             ui.infopopup.keypress(self,k)
 
 def line_chosen(line):
+    if isinstance(line,int):
+        (name,location,capacity,dept,pullthru)=td.stockline_info(line)
+        line=(name,1.0,dept,pullthru,None,line,location,capacity)
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
     sl=td.stock_onsale(stocklineid)
     if capacity is None:
@@ -131,6 +134,12 @@ def put_on_sale(line,sn):
         ui.infopopup(["Stock item %d (%s) has been put on sale "
                       "as '%s'."%(sn,sd,name)],title="Confirmation",
                      dismiss=keyboard.K_CASH,colour=ui.colour_info)
+        # If no location is recorded for the stock item, and the
+        # department is number 1 (real ale) then pop up a window
+        # asking for the location.  The window will pop up _on top_ of
+        # the confirmation box.
+        if len(td.stock_annotations(sn,atype='location'))==0:
+            stock.annotate_location(sn)
     else:
         log.error("Use Stock: error putting item %d on line %s"%(sn,name))
         ui.infopopup(["There was an error putting stock item %d (%s) "

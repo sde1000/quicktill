@@ -315,12 +315,12 @@ def purge():
     at the end of every session."""
     td.stock_purge()
 
-def selectline(func,title="Stock Lines",blurb=None,caponly=False):
+def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
     """A pop-up menu of stocklines, sorted by location.  Optionally can
     remove stocklines that have no capacities.
 
     """
-    stocklines=td.stockline_list(caponly=caponly)
+    stocklines=td.stockline_list(caponly=caponly,exccap=exccap)
     mlines=ui.table([(name,location,"%d"%dept)
                      for stocklineid,name,location,capacity,dept,pullthru
                      in stocklines]).format(' l l l ')
@@ -345,7 +345,7 @@ def popup():
     menu=[
         (keyboard.K_ONE,"Re-stock all lines",restock_all,None),
         (keyboard.K_TWO,"Re-stock a location",restock_location,None),
-        (keyboard.K_THREE,"Check stock lines",selectline,(None,)),
+        #(keyboard.K_THREE,"Check stock lines",selectline,(None,)),
         (keyboard.K_FOUR,"Automatically allocate stock to lines",
          auto_allocate,None),
         (keyboard.K_FIVE,"Create a new stock line",create,None),

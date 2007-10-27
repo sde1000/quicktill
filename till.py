@@ -9,29 +9,29 @@ invoke till.run() with appropriate parameters.
 
 """
 
-import sys,curses,ui,keyboard,event,register,logging,td,printer
+import sys,curses,ui,keyboard,event,logging,td,printer
 from version import version
 
 log=logging.getLogger()
 
-def start(stdwin,pages):
+def start(stdwin,kbdrv,pages):
     # The display is initialised at this point
     stdwin.nodelay(1) # Make getch() non-blocking
 
     # Initialise screen
-    ui.init(stdwin)
+    ui.init(stdwin,kbdrv)
 
     # Create pages for various functions
     fp=None
-    for hotkey,args in pages:
-        p=ui.addpage(register.page,hotkey,args)
+    for pagedef,hotkey,args in pages:
+        p=ui.addpage(pagedef,hotkey,args)
         if fp is None: fp=p
     ui.selectpage(fp)
 
     # Enter main event loop
     event.eventloop()
 
-def run(database,kblayout,pdriver,kickout,pages):
+def run(database,kbdrv,pdriver,kickout,pages):
     """Start up the till software.  Called from the local configuration
     module.
 
@@ -42,10 +42,9 @@ def run(database,kblayout,pdriver,kickout,pages):
     log.info("Starting version %s"%version)
     try:
         td.init(database)
-        ui.initkb(kblayout)
         printer.driver=pdriver
         printer.kickout=kickout
-        curses.wrapper(start,pages)
+        curses.wrapper(start,kbdrv,pages)
     except:
         log.exception("Exception caught at top level")
 

@@ -19,30 +19,6 @@ colour_changeline=6
 colour_cancelline=7
 colour_confirm=8 # black on cyan
 
-# Hashes of keycodes and locations
-inputs={}
-codes={}
-# curses codes and their till keycode equivalents
-kbcodes={
-    curses.KEY_LEFT: keyboard.K_LEFT,
-    curses.KEY_RIGHT: keyboard.K_RIGHT,
-    curses.KEY_UP: keyboard.K_UP,
-    curses.KEY_DOWN: keyboard.K_DOWN,
-    ord('1'): keyboard.K_ONE,
-    ord('2'): keyboard.K_TWO,
-    ord('3'): keyboard.K_THREE,
-    ord('4'): keyboard.K_FOUR,
-    ord('5'): keyboard.K_FIVE,
-    ord('6'): keyboard.K_SIX,
-    ord('7'): keyboard.K_SEVEN,
-    ord('8'): keyboard.K_EIGHT,
-    ord('9'): keyboard.K_NINE,
-    ord('0'): keyboard.K_ZERO,
-    ord('.'): keyboard.K_POINT,
-    curses.KEY_ENTER: keyboard.K_CASH,
-    10: keyboard.K_CASH,
-    }
-
 # The page having the input focus - at top of stack
 focus=None
 # The page at the bottom of the stack
@@ -112,94 +88,13 @@ def selectpage(page):
     updateheader(page)
     page.selected()
 
-card=None
 def handle_keyboard_input(k):
-    global focus,card
-    # Magstripe handling goes here
-    if k==keyboard.K_M1H:
-        log.debug("Magstripe start")
-        card=magstripe()
-        card.start_track(1)
-        return
-    if card:
-        if k==keyboard.K_M1T:
-            card.end_track(1)
-        elif k==keyboard.K_M2H:
-            card.start_track(2)
-        elif k==keyboard.K_M2T:
-            card.end_track(2)
-        elif k==keyboard.K_M3H:
-            card.start_track(3)
-        elif k==keyboard.K_M3T:
-            card.end_track(3)
-            log.debug("Magstripe end")
-            focus.keypress(card)
-            card=None
-        else:
-            card.handle_input(k)
-        return
-    if k in kbcodes: k=kbcodes[k]
-    if k in codes:
-        log.debug("Keypress %s"%codes[k][1])
-    else:
-        if k<256:
-            log.debug("Keypress %s"%chr(k))
-        else:
-            log.debug("Keypress code %d"%k)
+    global focus
+    log.debug("Keypress %s"%kb.keycap(k))
     if k in hotkeys:
         selectpage(hotkeys[k])
     else:
         focus.keypress(k)
-
-class magstripe:
-    def __init__(self):
-        self.t=[[],[],[]]
-        self.i=None
-    def start_track(self,track):
-        self.i=self.t[track-1]
-    def end_track(self,track):
-        self.i=None
-    def handle_input(self,c):
-        if self.i is None: return
-        self.i.append(c)
-    def track(self,t):
-        if t<1 or t>3: raise "Bad track"
-        return string.join([chr(x) for x in self.t[t-1]],"")
-        
-class reader:
-    def __init__(self,stdwin):
-        self.stdwin=stdwin
-        self.ibuf=[]
-        self.decode=False
-    def fileno(self):
-        return sys.stdin.fileno()
-    def doread(self):
-        def pass_on_buffer():
-            handle_keyboard_input(ord('['))
-            for i in self.ibuf:
-                handle_keyboard_input(i)
-            self.decode=False
-            self.ibuf=[]
-        i=self.stdwin.getch()
-        if i==-1: return
-        if self.decode:
-            if i==ord(']'):
-                s=string.join([chr(x) for x in self.ibuf],'')
-                if s in inputs:
-                    handle_keyboard_input(inputs[s][2])
-                    self.decode=False
-                    self.ibuf=[]
-                else:
-                    pass_on_buffer()
-                    handle_keyboard_input(ord(']'))
-            else:
-                self.ibuf.append(i)
-                if len(self.ibuf)>3:
-                    pass_on_buffer()
-        elif i==ord('['):
-            self.decode=True
-        else:
-            handle_keyboard_input(i)
 
 class basicpage:
     def __init__(self,pan):
@@ -227,6 +122,8 @@ class basicpage:
                 i.show()
         self.focus=self
         self.stack=None
+    def keypress(self,k):
+        pass
 
 class basicwin:
     def __init__(self,keymap={},takefocus=True):
@@ -288,7 +185,7 @@ class dismisspopup(basicpopup):
             elif dismiss==keyboard.K_CASH:
                 return "Press Cash/Enter to continue"
             else:
-                return "Press %s to dismiss"%codes[dismiss][1]
+                return "Press %s to dismiss"%kb.keycap(dismiss)
         return cleartext
 
 # itemlist entries are (keycode,desc,func,args)
@@ -298,12 +195,12 @@ class keymenu(basicpopup):
         h=len(itemlist)+4
         pw=0 ; tw=0
         km={}
-        for i in itemlist:
-            promptwidth=len(codes[i[0]][1])
-            textwidth=len(i[1])
+        for keycode,desc,func,args in itemlist:
+            promptwidth=len(kb.keycap(keycode))
+            textwidth=len(desc)
             if promptwidth>pw: pw=promptwidth
             if textwidth>tw: tw=textwidth
-            km[i[0]]=(i[2],i[3],True)
+            km[keycode]=(func,args,True)
         if clear:
             cleartext="Press Clear to go back"
             km[keyboard.K_CLEAR]=(None,None,True)
@@ -315,9 +212,9 @@ class keymenu(basicpopup):
         win=self.pan.window()
         (h,w)=win.getmaxyx()
         y=2
-        for i in itemlist:
-            win.addstr(y,2,"%s."%codes[i[0]][1])
-            win.addstr(y,pw+4,i[1])
+        for keycode,desc,func,args in itemlist:
+            win.addstr(y,2,"%s."%kb.keycap(keycode))
+            win.addstr(y,pw+4,desc)
             y=y+1
         win.move(h-1,w-1)
 
@@ -350,6 +247,8 @@ class menu(basicpopup):
                 keyboard.K_UP: (self.cursor_up,(1,),False),
                 keyboard.K_RIGHT: (self.cursor_down,(5,),False),
                 keyboard.K_LEFT: (self.cursor_up,(5,),False),
+                curses.KEY_NPAGE: (self.cursor_down,(10,),False),
+                curses.KEY_PPAGE: (self.cursor_up,(10,),False),
                 keyboard.K_CASH: (self.select,None,dismiss_on_select)}
         else:
             km={}
@@ -642,7 +541,7 @@ class editfield(field):
         # Valid keys are numbers, point, any letter or number from the
         # normal keypad
         if k in keyboard.numberkeys:
-            self.insert(codes[k][1])
+            self.insert(kb.keycap(k))
         elif curses.ascii.isprint(k):
             self.insert(chr(k))
         elif k==curses.KEY_BACKSPACE:
@@ -863,8 +762,8 @@ def popup(page,h=0,w=0,y=0,x=0):
     pan.set_userptr(page)
     return pan
 
-def init(w):
-    global stdwin
+def init(w,kbd):
+    global stdwin,kb
     stdwin=w
     (my,mx)=stdwin.getmaxyx()
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
@@ -877,10 +776,7 @@ def init(w):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     stdwin.addstr(0,0," "*mx,curses.color_pair(1))
     event.eventlist.append(clock(stdwin))
-    event.rdlist.append(reader(stdwin))
+    kb=kbd
+    kbd.initUI(handle_keyboard_input,stdwin)
 
-def initkb(kblayout):
-    global inputs,codes
-    for i in kblayout:
-        inputs[i[0]]=i
-        codes[i[2]]=i
+beep=curses.beep

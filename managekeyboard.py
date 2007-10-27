@@ -13,6 +13,6 @@ class popup(ui.basicpopup):
     def keypress(self,k):
         self.win.addstr(4,11,"%d"%k)
         self.win.addstr(5,11," "*20)
-        self.win.addstr(5,11,ui.codes[k][1])
+        self.win.addstr(5,11,ui.kb.keycap(k))
         if k==keyboard.K_CASH:
             self.dismiss()

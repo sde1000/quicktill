@@ -5,6 +5,8 @@ most of the entries here.
 
 """
 
+import keyboard
+
 pubname="Test Pub Name"
 pubnumber="07715 422132"
 pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")
@@ -18,6 +20,9 @@ companyaddr=(
 currency="MPL"
 
 kbtype=1
+
+cancelkey=keyboard.K_CANCEL
+clearkey=keyboard.K_CLEAR
 
 has_media_slot=False
 cashback_limit=50.0

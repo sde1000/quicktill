@@ -282,6 +282,9 @@ class page(ui.basicpage):
         self.qty=None
         repeatcandidate=False
         checkdept=None
+        if self.mod=='Half':
+            qty=0.5
+            checkdept=[1,2,3] # must be ale, keg or cider
         if self.mod=='Double':
             qty=2.0
             checkdept=[4] # must be spirits
@@ -645,7 +648,7 @@ class page(ui.basicpage):
                          title="Error")
         self.drawline('buf')
     def modkey(self,k):
-        self.mod=ui.codes[k][1]
+        self.mod=ui.kb.keycap(k)
         self.drawline('buf')
     def clearkey(self):
         if (self.buf==None and self.qty==None and self.trans is not None and
@@ -900,7 +903,7 @@ class page(ui.basicpage):
                      "open transaction",self.mergetransmenu,(self.trans,))],
                    title="Transaction %d"%self.trans,clear=True)
     def keypress(self,k):
-        if isinstance(k,ui.magstripe):
+        if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
         if k in keyboard.lines:
             return stocklines.linemenu(k,self.linekey)
@@ -910,7 +913,7 @@ class page(ui.basicpage):
         if k in keyboard.notes:
             return self.notekey(keyboard.notes[k])
         if k in keyboard.numberkeys or k==keyboard.K_ZEROZERO:
-            return self.numkey(ui.codes[k][1])
+            return self.numkey(ui.kb.keycap(k))
         keys={
             keyboard.K_CASH: self.cashkey,
             keyboard.K_CARD: self.cardkey,
@@ -930,12 +933,8 @@ class page(ui.basicpage):
             keyboard.K_WASTE: recordwaste,
             }
         if k in keys: return keys[k]()
-        if k in [keyboard.K_4JUG,keyboard.K_DOUBLE]:
+        if k in [keyboard.K_4JUG,keyboard.K_DOUBLE,keyboard.K_HALF]:
             return self.modkey(k)
-        if k in ui.codes:
-            ui.infopopup(["%s is not a valid key at this time."%
-                          ui.codes[k][1]],title="Error")
-        else:
-            curses.beep()
+        curses.beep()
 
 registry=transnotify()

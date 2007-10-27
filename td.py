@@ -17,21 +17,6 @@ def commit():
 
 ### Convenience functions
 
-def mkstructtime(d):
-    """This function does nothing, and is only being kept in case we decide
-    to go back to pgdb for PostgreSQL connection.
-
-    """
-    return d
-
-#def mkstructtime(d):
-#    "Take a date returned from the database and convert to a time.struct_time"
-#    if d is not None:
-#        if len(d)==10:
-#            return time.strptime(d,"%Y-%m-%d")
-#        return time.strptime(d[0:19],"%Y-%m-%d %H:%M:%S")
-#    return None
-
 def mkdate(d):
     """This function originally took a time.struct_time and returned a
     string suitable for passing to postgresql, but now uses the proper
@@ -40,12 +25,6 @@ def mkdate(d):
     """
     if d is None: return None
     return db.DateFromMx(d)
-
-#def mkdate(st):
-#    "Take a time.struct_time and return a date"
-#    if st is not None:
-#        return time.strftime("%Y-%m-%d",st)
-#    return None
 
 def execone(cur,c,*args):
     "Execute c and return the single result. Does not commit."
@@ -139,7 +118,7 @@ def trans_date(trans):
     d=execone(cur,"SELECT s.sessiondate FROM transactions t "
               "LEFT JOIN sessions s ON t.sessionid=s.sessionid "
               "WHERE t.transid=%d",(trans,))
-    return mkstructtime(d)
+    return d
 
 def trans_addpayment(trans,type,amount,ref):
     """Add a payment to a transaction, and return the remaining balance.
@@ -275,7 +254,7 @@ def delivery_get(unchecked_only=False,checked_only=False,number=None):
                 "d.checked,s.name FROM deliveries d "
                 "LEFT JOIN suppliers s ON d.supplierid=s.supplierid "
                 "WHERE %s ORDER BY d.date DESC,d.deliveryid DESC"%w)
-    return [(r[0],r[1],r[2],mkstructtime(r[3]),r[4],r[5]) for r in cur.fetchall()]
+    return cur.fetchall()
 
 def delivery_new(supplier):
     cur=cursor()
@@ -426,10 +405,6 @@ def stock_info(stockid_list):
             d[i]=r[0]
             r=r[1:]
         d['abvstr']=stock.abvstr(d['abv'])
-        d['bestbefore']=mkstructtime(d['bestbefore'])
-        d['deliverydate']=mkstructtime(d['deliverydate'])
-        d['onsale']=mkstructtime(d['onsale'])
-        d['finished']=mkstructtime(d['finished'])
         if d['used'] is None: d['used']=0.0
         d['remaining']=d['size']-d['used']
         return d
@@ -453,8 +428,8 @@ def stock_extrainfo(stockid):
     r=cur.fetchone()
     if r is None: r=[None,None]
     d={}
-    d['firstsale']=mkstructtime(r[0])
-    d['lastsale']=mkstructtime(r[1])
+    d['firstsale']=r[0]
+    d['lastsale']=r[1]
     cur.execute(
         "SELECT so.removecode,sr.reason,sum(qty) "
         "FROM stockout so INNER JOIN stockremove sr "
@@ -601,11 +576,17 @@ def stock_search(dept=None,exclude_stock_on_sale=True,
     return [x[0] for x in cur.fetchall()]
 
 def stock_putonsale(stockid,stocklineid):
-    "Connect a stock item to a particular line"
+    """Connect a stock item to a particular line.  Additionally, create
+    an annotation that records the line name.
+
+    """
     cur=cursor()
     cur.execute("UPDATE stock SET onsale=now() WHERE stockid=%d",(stockid,))
     cur.execute("INSERT INTO stockonsale (stocklineid,stockid) VALUES "
                 "(%d,%d)",(stocklineid,stockid))
+    cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
+                "SELECT %d,'start',(SELECT name FROM stocklines "
+                "WHERE stocklineid=%d)",(stockid,stocklineid))
     commit()
     return True
 
@@ -690,6 +671,31 @@ def stock_onsale(line):
         "WHERE sos.stocklineid=%d ORDER BY s.bestbefore,sos.stockid",(line,))
     return cur.fetchall()
 
+def stock_annotate(stock,atype,text):
+    """Create an annotation for a stock item.  This routine performs
+    no checks; it is assumed the caller has already ensured the
+    annotation is sensible.
+
+    """
+    cur=cursor()
+    cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
+                "VALUES (%d,%s,%s)",(stock,atype,text))
+    commit()
+
+def stock_annotations(stock,atype=None):
+    """Return annotations for a stock item, restricted to atype if
+    specified.
+
+    """
+    if atype is not None: ac=" AND sa.atype='%s'"%atype
+    else: ac=""
+    cur=cursor()
+    cur.execute("SELECT at.description,sa.time,sa.text "
+                "FROM stock_annotations sa "
+                "LEFT JOIN annotation_types at ON at.atype=sa.atype "
+                "WHERE sa.stockid=%%d%s ORDER BY sa.time"%ac,(stock,))
+    return cur.fetchall()
+
 ### Functions related to stock lines
 
 def stockline_create(name,location,dept,capacity,pullthru):
@@ -736,14 +742,24 @@ def stockline_restock(stocklineid,changes):
             newdisplayqty,stocklineid,sd['stockid']))
     commit()
 
-def stockline_list(caponly=False):
+def stockline_list(caponly=False,exccap=False):
     cur=cursor()
     if caponly:
         wc=" WHERE capacity IS NOT NULL"
+    elif exccap:
+        wc=" WHERE capacity IS NULL"
     else:
         wc=""
     cur.execute("SELECT stocklineid,name,location,capacity,dept,pullthru "
-                "FROM stocklines%s ORDER BY location,name"%wc)
+                "FROM stocklines%s ORDER BY dept,location,name"%wc)
+    return cur.fetchall()
+
+def stockline_summary():
+    cur=cursor()
+    cur.execute("SELECT sl.name,sl.dept,sos.stockid "
+                "FROM stocklines sl "
+                "LEFT JOIN stockonsale sos ON sos.stocklineid=sl.stocklineid "
+                "WHERE sl.capacity IS NULL ORDER BY sl.name")
     return cur.fetchall()
 
 ### Functions relating to till keyboards
@@ -770,7 +786,7 @@ def session_current():
                 "endtime IS NULL");
     r=cur.fetchall()
     if len(r)==1:
-        return (r[0][0],mkstructtime(r[0][1]),mkstructtime(r[0][2]))
+        return r[0]
     return None
 
 def session_start(date):
@@ -867,8 +883,7 @@ def session_dates(number):
     cur=cursor()
     cur.execute("SELECT starttime,endtime,sessiondate FROM sessions WHERE "
                 "sessionid=%d",(number,))
-    (start,end,date)=cur.fetchone()
-    return (mkstructtime(start),mkstructtime(end),mkstructtime(date))
+    return cur.fetchone()
 
 def session_list():
     """Return a list of sessions with summary details in descending order
@@ -880,9 +895,7 @@ def session_list():
                 "s.sessionid=st.sessionid GROUP BY s.sessionid,"
                 "s.starttime,s.endtime,s.sessiondate "
                 "ORDER BY s.sessionid DESC")
-    return [(x[0],mkstructtime(x[1]),mkstructtime(x[2]),mkstructtime(x[3]),
-             x[4])
-            for x in cur.fetchall()]
+    return cur.fetchall()
 
 def session_translist(session,onlyopen=False):
     """Returns the list of transactions in a session; transaction number,

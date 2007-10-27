@@ -205,6 +205,27 @@ CREATE TABLE stock (
 	);
 CREATE SEQUENCE stock_seq;
 
+/* Annotations are made against stock items for various events (depending
+   on the stock type).  These are not necessary for the operation of
+   the till, but can be useful when analysing stock usage. */
+CREATE TABLE annotation_types (
+	atype varchar(8) NOT NULL PRIMARY KEY,
+	description varchar(20) NOT NULL
+	);
+COPY annotation_types FROM stdin;
+location	Location
+start	Put on sale
+stop	Removed from sale
+vent	Vented
+memo	Memo
+\.
+CREATE TABLE stock_annotations (
+	stockid int NOT NULL REFERENCES stock(stockid),
+	atype varchar(8) NOT NULL REFERENCES annotation_types(atype),
+	time timestamp NOT NULL DEFAULT now(),
+	text varchar(60) NOT NULL
+	);
+
 /* Reasons for stock removal, eg. sale, out-of-date, waste, etc. */
 CREATE TABLE stockremove (
 	removecode varchar(8) NOT NULL PRIMARY KEY,
@@ -278,7 +299,11 @@ CREATE VIEW stockinfo AS
 		sup.name AS suppliername, d.date AS deliverydate,
 		d.docnumber AS deliverynote,d.checked AS deliverychecked,
 		(SELECT sum(so.qty) FROM stockout so
-			WHERE so.stockid=s.stockid) AS used
+			WHERE so.stockid=s.stockid) AS used,
+		(SELECT sum(so.qty) FROM stockout so
+			WHERE so.stockid=s.stockid AND so.removecode 
+				IN ('sold','freebie'))
+			AS sold
 	FROM stock s
 	LEFT JOIN stocktypes st ON s.stocktype=st.stocktype
 	LEFT JOIN departments dep ON st.dept=dep.dept
@@ -354,6 +379,8 @@ transaction ID, so we'd better index them on those. */
 
 CREATE INDEX translines_transid_key ON translines (transid);
 CREATE INDEX payments_transid_key ON payments (transid);
+CREATE INDEX transactions_sessionid_key ON transactions (sessionid);
+CREATE INDEX stock_annotations_stockid_key ON stock_annotations (stockid);
 
 /* The "stock_extrainfo" function in td.py reads the stockout table
 selecting on stock ID.  This could probably be speeded using an index. */

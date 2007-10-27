@@ -4,7 +4,7 @@
 
 """
 
-import td,ui,keyboard,curses,stock,stocklines,tillconfig
+import td,ui,keyboard,stock,stocklines,tillconfig
 
 class popup(ui.basicpopup):
     def __init__(self):
@@ -62,4 +62,4 @@ class popup(ui.basicpopup):
         elif k==keyboard.K_CASH:
             self.dismiss()
         else:
-            curses.beep()
+            ui.beep()

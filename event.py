@@ -18,7 +18,7 @@ def eventloop():
         for i in eventlist:
             nt=i.nexttime()
             i.mainloopnexttime=nt
-            if (nt-t)>timeout:
+            if (nt-t)<timeout or timeout==0:
                 timeout=nt-t
         curses.panel.update_panels()
         curses.doupdate()

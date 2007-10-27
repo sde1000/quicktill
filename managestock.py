@@ -89,6 +89,7 @@ def updatesupplier():
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
+
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
@@ -105,6 +106,7 @@ def popup():
         (keyboard.K_SIX,"Stock history (finished stock)",
          department.menu,(stockhistory,"Stock History",True)),
         (keyboard.K_SEVEN,"Update supplier details",updatesupplier,None),
+        (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
 #        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
 #         (lambda x:selectstocktype(lambda:None,default=x,mode=2),)),
         ]

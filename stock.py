@@ -2,7 +2,7 @@
 
 """Useful routines for dealing with stock"""
 
-import ui,td,keyboard,tillconfig
+import ui,td,keyboard,tillconfig,stocklines,department
 
 import logging
 log=logging.getLogger()
@@ -277,10 +277,149 @@ def stockinfo_linelist(sn,qty=1):
     l.append("")
     for i in sd['stockout']:
         l.append("%s: %0.1f"%(i[1],i[2]))
+    sa=td.stock_annotations(sn)
+    if len(sa)>0:
+        l.append("Annotations:")
+    for desc,time,text in sa:
+        l.append("%s: %s: %s"%(time,desc,text))
     return l
 
 def stockinfo_popup(sn):
+    keymap={ord('l'):(annotate_location,(sn,),False)}
     ui.linepopup(stockinfo_linelist(sn),
                  title="Stock Item %d"%sn,
                  dismiss=keyboard.K_CASH,
-                 colour=ui.colour_info)
+                 colour=ui.colour_info,keymap=keymap)
+
+class annotate(ui.basicpopup):
+    """This class permits annotations to be made to stock items.  If
+    it is called with a stockid then the stockid field is pre-filled;
+    otherwise a numeric entry may be made, or a pop-up list may be
+    used to select the stockid.
+
+    """
+    def __init__(self,stockid=None):
+        ui.basicpopup.__init__(self,11,64,"Annotate Stock",
+                               "Press Clear to go back",ui.colour_input)
+        self.win=self.pan.window()
+        self.win.addstr(2,2,"Press stock line key or enter stock number.")
+        self.win.addstr(3,2,"       Stock item:")
+        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None,False),
+                       keyboard.K_CASH: (self.stock_enter_key,None,False)}
+        for i in keyboard.lines:
+            stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line),False)
+        self.stockfield=ui.editfield(self.win,3,21,30,
+                                     validate=ui.validate_int,
+                                     keymap=stockfield_km)
+        self.stockfield.focus()
+        if stockid is not None:
+            self.stockfield.set(str(stockid))
+            self.stock_enter_key()
+    def stock_line(self,line):
+        name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
+        if capacity is None:
+            # Look up the stock number, put it in the field, and invoke
+            # stock_enter_key
+            sl=td.stock_onsale(stocklineid)
+            if sl==[]:
+                ui.infopopup(["There is nothing on sale on %s."%name],
+                             title="Error")
+            else:
+                self.stockfield.set(str(sl[0][0]))
+                self.stock_enter_key()
+    def stock_dept_selected(self,dept):
+        sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
+        sinfo=td.stock_info(sl)
+        lines=ui.table([("%(stockid)d"%x,format_stock(x,maxw=40))
+                        for x in sinfo]).format(' r l ')
+        sl=[(x,self.stock_item_selected,(y['stockid'],))
+            for x,y in zip(lines,sinfo)]
+        ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
+                "Cash/Enter.")
+    def stock_item_selected(self,stockid):
+        self.stockfield.set(str(stockid))
+        self.stock_enter_key()
+    def stock_enter_key(self):
+        if self.stockfield.f=='':
+            department.menu(self.stock_dept_selected,"Select Department")
+            return
+        sn=int(self.stockfield.f)
+        sd=td.stock_info([sn])
+        if sd==[]:
+            ui.infopopup(["Stock number %d does not exist."%sn],
+                         title="Error")
+            return
+        sd=sd[0]
+        if sd['deliverychecked'] is False:
+            ui.infopopup(["Stock number %d is part of a delivery that has "
+                          "not yet been confirmed.  You can't annotate "
+                          "it until the whole delivery is confirmed."%(
+                sd['stockid'])],
+                         title="Error")
+            return
+        self.sd=sd
+        self.win.addstr(4,21,format_stock(sd,maxw=40))
+        self.create_extra_fields()
+    def create_extra_fields(self):
+        self.win.addstr(5,2,"Annotation type:")
+        self.win.addstr(7,2,"Annotation:")
+        annlist=['location','memo','vent']
+        anndict={'location':'Location',
+                 'memo':'Memo',
+                 'vent':'Vented'}
+        anntypefield_km={keyboard.K_CLEAR:(self.dismiss,None,True)}
+        self.anntypefield=ui.listfield(self.win,5,21,30,annlist,anndict,
+                                       keymap=anntypefield_km)
+        annfield_km={keyboard.K_CLEAR:(self.anntypefield.focus,None,True),
+                     keyboard.K_UP:(self.anntypefield.focus,None,True),
+                     keyboard.K_CASH: (self.finish,None,False)}
+        self.annfield=ui.editfield(self.win,8,2,60,keymap=annfield_km)
+        self.anntypefield.nextfield=self.annfield
+        self.anntypefield.set(0)
+        self.anntypefield.focus()
+    def finish(self):
+        anntype=self.anntypefield.read()
+        if anntype is None or anntype=="":
+            ui.infopopup(["You must choose an annotation type!"],title="Error")
+            return
+        annotation=self.annfield.f
+        td.stock_annotate(self.sd['stockid'],anntype,annotation)
+        self.dismiss()
+        ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
+            self.sd['stockid'],format_stock(self.sd))],
+                     title="Annotation Recorded",dismiss=keyboard.K_CASH,
+                     colour=ui.colour_info)
+
+class annotate_location(ui.basicpopup):
+    """A special, simplified version of the stock annotation popup, that
+    only allows the location to be set.  Must be called with a stock ID;
+    doesn't permit stock ID entry.
+
+    """
+    def __init__(self,stockid):
+        sd=td.stock_info([stockid])
+        if sd==[]:
+            ui.infopopup(["Stock number %d does not exist."%sn],
+                         title="Error")
+            return
+        sd=sd[0]
+        if sd['deliverychecked'] is False:
+            ui.infopopup(["Stock number %d is part of a delivery that has "
+                          "not yet been confirmed.  You can't record waste "
+                          "against it until the whole delivery is confirmed."%(
+                sd['stockid'])],
+                         title="Error")
+            return
+        ui.basicpopup.__init__(self,7,64,"Stock Location",
+                               "Press Clear to go back",ui.colour_input)
+        self.win=self.pan.window()
+        self.stockid=stockid
+        self.win.addstr(2,2,format_stock(sd,maxw=60))
+        self.win.addstr(4,2,"Enter location:")
+        self.locfield=ui.editfield(self.win,4,18,40,keymap={
+            keyboard.K_CASH: (self.finish,None,False)})
+        self.locfield.focus()
+    def finish(self):
+        annotation=self.locfield.f
+        td.stock_annotate(self.stockid,'location',annotation)
+        self.dismiss()
