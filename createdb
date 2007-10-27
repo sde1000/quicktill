@@ -394,3 +394,8 @@ selecting on stock ID.  This could probably be speeded using an index. */
 
 CREATE INDEX stockout_stockid_key ON stockout (stockid);
 
+/* The tillweb software finds this index helpful when calculating how
+much was taken in the last two weeks; it lets the query exclude a large
+percentage of the translines table from consideration. */
+
+CREATE INDEX translines_time_key ON translines (time);

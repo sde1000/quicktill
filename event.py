@@ -1,5 +1,7 @@
 import select,time,curses,curses.panel
 
+shutdowncode=None
+
 # List of future events; objects must support nexttime() and alarm()
 # methods. nexttime() should return the time at which the object next
 # wants to be called.
@@ -11,7 +13,7 @@ eventlist=[]
 rdlist=[]
 
 def eventloop():
-    while True:
+    while shutdowncode is None:
         # Work out what the earliest timeout is
         timeout=0
         t=time.time()

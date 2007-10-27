@@ -1,5 +1,9 @@
+"""Till management functions.
+
+"""
+
 import ui,keyboard,td,printer,math,sys,curses,os,sets
-import register,tillconfig,managekeyboard,stocklines
+import register,tillconfig,managekeyboard,stocklines,event
 from version import version
 
 import logging
@@ -269,6 +273,18 @@ def versioninfo():
                  title="Software Version Information",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
 
+def exitoption(code):
+    event.shutdowncode=code
+
+def restartmenu():
+    log.info("Restart menu")
+    menu=[
+        (keyboard.K_ONE,"Exit / restart till software",exitoption,(0,)),
+#        (keyboard.K_TWO,"Turn off till",exitoption,(2,)),
+#        (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
+        ]
+    ui.keymenu(menu,"Exit / restart options")
+
 def sessionmenu():
     log.info("Session management menu")
     menu=[
@@ -287,6 +303,7 @@ def popup():
         (keyboard.K_THREE,"Restore deferred transactions",transrestore,None),
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
+        (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]
     ui.keymenu(menu,"Management options")

@@ -96,7 +96,7 @@ def print_sessioncountup(session):
         driver.printline()
         driver.printline(underline=1)
     driver.printline("Enter totals into till using")
-    driver.printline("management menu option 3.")
+    driver.printline("management menu option 1,3.")
     driver.end()
 
 def print_sessiontotals(session):

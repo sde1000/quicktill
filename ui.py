@@ -231,6 +231,8 @@ class menu(basicpopup):
         self.itemlist=itemlist
         if w is None:
             w=0
+            # This can be replaced with a generator expression in python2.4:
+            # w=max(w,max(len(x[0]) for x in itemlist))
             for i in itemlist:
                 w=max(w,len(i[0]))
             w=w+2
@@ -326,6 +328,8 @@ class linepopup(dismisspopup):
                  cleartext=None,colour=colour_error,keymap={}):
         (mh,mw)=stdwin.getmaxyx()
         w=0
+        # This can be replaced by a generator expression in python2.4:
+        # w=max(len(i) for i in lines)
         for i in lines:
             w=max(len(i),w)
         w=min(w+4,mw)

@@ -7,11 +7,6 @@ import sets,curses
 import td,ui,keyboard,printer
 import stock,stocklines
 import logging
-from managetill import popup as managetill
-from managestock import popup as managestock
-from plu import popup as plu
-from usestock import popup as usestock
-from recordwaste import popup as recordwaste
 log=logging.getLogger()
 import foodorder
 
@@ -132,13 +127,31 @@ class cardpopup(ui.dismisspopup):
         self.func(total,receiptno)
 
 class page(ui.basicpage):
-    def __init__(self,panel,name):
+    def __init__(self,panel,name,hotkeys=None):
         global registry
         ui.basicpage.__init__(self,panel)
         self.name=name
         registry.register(self)
         self.clear()
         self.redraw()
+        if hotkeys is None:
+            # This default list of hotkeys is here to retain compatibility
+            # with configuration files from release 0.7.5 and earlier.
+            # New configuration files should specify this list explicitly.
+            from managetill import popup as managetill
+            from managestock import popup as managestock
+            from plu import popup as plu
+            from usestock import popup as usestock
+            from recordwaste import popup as recordwaste
+            self.hotkeys={
+                keyboard.K_PRICECHECK: plu,
+                keyboard.K_MANAGETILL: managetill,
+                keyboard.K_MANAGESTOCK: managestock,
+                keyboard.K_USESTOCK: usestock,
+                keyboard.K_WASTE: recordwaste,
+            }
+        else:
+            self.hotkeys=hotkeys
     def clear(self):
         self.dl=[] # Display list
         self.ml=sets.Set() # Marked transactions set
@@ -951,13 +964,9 @@ class page(ui.basicpage):
             keyboard.K_MANAGETRANS: self.managetranskey,
             keyboard.K_UP: self.cursor_up,
             keyboard.K_DOWN: self.cursor_down,
-            keyboard.K_PRICECHECK: plu,
-            keyboard.K_MANAGETILL: managetill,
-            keyboard.K_MANAGESTOCK: managestock,
-            keyboard.K_USESTOCK: usestock,
-            keyboard.K_WASTE: recordwaste,
             }
         if k in keys: return keys[k]()
+        if k in self.hotkeys: return self.hotkeys[k]()
         if k in [keyboard.K_4JUG,keyboard.K_DOUBLE,keyboard.K_HALF]:
             return self.modkey(k)
         if k==keyboard.K_FOODORDER:

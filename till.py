@@ -9,7 +9,7 @@ invoke till.run() with appropriate parameters.
 
 """
 
-import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig
+import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig,event
 from version import version
 
 log=logging.getLogger()
@@ -57,3 +57,5 @@ def run(database,kbdrv,pdriver,kickout,pages):
 
     log.info("Shutting down")
     logging.shutdown()
+
+    return event.shutdowncode
