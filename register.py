@@ -732,16 +732,24 @@ class page(ui.basicpage):
                          title="Help on Cancel")
         else:
             if self.cursor is None:
-                log.info("Register: cancelkey confirm kill "
-                         "transaction %d"%self.trans)
-                ui.infopopup(["Are you sure you want to %s all of "
-                              "transaction number %d?  Press Cash/Enter "
-                              "to confirm, or Clear to go back."%(
-                              ("cancel","void")[td.trans_closed(self.trans)],
-                              self.trans)],
-                             title="Confirm Transaction Cancel",
-                             keymap={
-                    keyboard.K_CASH: (self.canceltrans,None,True)})
+                closed=td.trans_closed(self.trans)
+                if not closed and self.keyguard:
+                    log.info("Register: cancelkey kill transaction denied")
+                    ui.infopopup(["This transaction has been stored and "
+                                  "recalled; you can't cancel it all in "
+                                  "one go.  Cancel each line separately "
+                                  "instead."],
+                                 title="Cancel Transaction")
+                else:
+                    log.info("Register: cancelkey confirm kill "
+                             "transaction %d"%self.trans)
+                    ui.infopopup(["Are you sure you want to %s all of "
+                                  "transaction number %d?  Press Cash/Enter "
+                                  "to confirm, or Clear to go back."%(
+                        ("cancel","void")[closed],self.trans)],
+                                 title="Confirm Transaction Cancel",
+                                 keymap={
+                        keyboard.K_CASH: (self.canceltrans,None,True)})
             else:
                 self.cancelline()
     def canceltrans(self):

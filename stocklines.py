@@ -455,9 +455,18 @@ def purge():
     """
     td.stock_purge()
 
+class translate_keyline_to_stockline:
+    def __init__(self,func):
+        self.func=func
+    def linekey(self,kl):
+        (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=kl
+        self.func(stocklineid)
+
 def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
-    """A pop-up menu of stocklines, sorted by location.  Optionally can
-    remove stocklines that have no capacities.
+    """A pop-up menu of stocklines, sorted by department, location and
+    name.  Optionally can remove stocklines that have no capacities.
+    Stocklines with key bindings to the current keyboard can be
+    selected through that binding.
 
     """
     stocklines=td.stockline_list(caponly=caponly,exccap=exccap)
@@ -465,7 +474,10 @@ def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
                      for stocklineid,name,location,capacity,dept,pullthru
                      in stocklines]).format(' l l l ')
     ml=[(x,func,(y[0],)) for x,y in zip(mlines,stocklines)]
-    ui.menu(ml,title=title,blurb=blurb)
+    km={}
+    for i in keyboard.lines:
+        km[i]=(linemenu,(i,translate_keyline_to_stockline(func).linekey),True)
+    ui.menu(ml,title=title,blurb=blurb,keymap=km)
 
 def selectlocation(func,title="Stock Locations",blurb=None,caponly=False):
     """A pop-up menu of stock locations.  Calls func with a list of
