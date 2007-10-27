@@ -217,7 +217,7 @@ def print_restock_list(rl):
     driver.printline("\tEnd of list")
     driver.end()
 
-def print_food_order(driver,number,ol,verbose=True):
+def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     """This function prints a food order to the _specified_ printer.
 
     """
@@ -229,16 +229,18 @@ def print_food_order(driver,number,ol,verbose=True):
             driver.printline("\t%s"%i,colour=1)
         driver.printline("\tTel. %s"%tillconfig.pubnumber)
         driver.printline()
+    if tablenumber is not None:
+        driver.printline("\tTable number %s"%tablenumber,colour=1,emph=1)
+        driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     driver.printline()
     driver.printline("\t%s"%ui.formattime(ui.now()))
     driver.printline()
     tot=0.0
-    for i in ol:
-        driver.printline("%s%s\t\t%s"%(
-            '  '*i.indent,i.name,
-            ('',tillconfig.fc(i.price))[i.price is not None]))
-        if i.price is not None: tot+=i.price
+    for item in ol:
+        for i in item.display(30):
+            driver.printline(i)
+        tot+=item.getprice()
     driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
     driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
