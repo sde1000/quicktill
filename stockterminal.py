@@ -1,12 +1,28 @@
-import ui,event,time,td,managestock,stock,keyboard,usestock,stocklines
-import recordwaste
+import ui,event,time,td,stock,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
-    def __init__(self,panel):
+    def __init__(self,panel,hotkeys=None):
         ui.basicpage.__init__(self,panel)
         self.display=0
         self.alarm()
         self.redraw()
+        if hotkeys is None:
+            # This default list of hotkeys is here to retain compatibility
+            # with configuration files from release 0.7.6 and earlier.
+            # New configuration files should specify this list explicitly.
+            from managestock import popup as managestock
+            from recordwaste import popup as recordwaste
+            from stock import annotate
+            self.hotkeys={
+                ord('s'): managestock,
+                ord('S'): managestock,
+                ord('a'): annotate,
+                ord('A'): annotate,
+                ord('r'): recordwaste,
+                ord('R'): recordwaste,
+                }
+        else:
+            self.hotkeys=hotkeys
         event.eventlist.append(self)
     def pagename(self):
         return "Stock Control"
@@ -63,17 +79,12 @@ class page(ui.basicpage):
         if self.display>1: self.display=0
         self.redraw()
     def keypress(self,k):
-        if k==keyboard.K_CASH:
+        if k in self.hotkeys: return self.hotkeys[k]()
+        elif k==keyboard.K_CASH:
             self.alarm()
-        elif k==ord('s') or k==ord('S'):
-            managestock.popup()
-        elif k==ord('a') or k==ord('A'):
-            stock.annotate()
         elif k==ord('u') or k==ord('U'):
             stocklines.selectline(usestock.line_chosen,
                                   title="Use Stock",
                                   blurb="Select a stock line",exccap=True)
-        elif k==ord('r') or k==ord('R'):
-            recordwaste.popup()
         else:
             ui.beep()

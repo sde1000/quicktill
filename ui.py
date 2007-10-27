@@ -353,7 +353,7 @@ class linepopup(dismisspopup):
         y=1
         for i in self.lines[self.scrolly:self.scrolly+h-2]:
             self.win.addstr(y,2,' '*(w-4))
-            if (y==1 and scrolltop) or (y==(h-1) and scrollbot):
+            if (y==1 and scrolltop) or (y==(h-2) and scrollbot):
                 self.win.addstr(y,2,'...')
             else:
                 self.win.addstr(y,2,i)
@@ -371,6 +371,7 @@ class linepopup(dismisspopup):
             self.redraw()
         elif k==keyboard.K_LEFT:
             self.scrolly=self.scrolly-self.scrollpage
+            self.redraw()
         else:
             dismisspopup.keypress(self,k)
 

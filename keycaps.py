@@ -376,6 +376,7 @@ kl=(
     dd("CASH","/ ENTER"),
     ds("HELP"),
     ds("Void Line"),
+    ss("Extras"),
     )
 
 #kl=[ss("")]*315
