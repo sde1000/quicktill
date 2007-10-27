@@ -61,7 +61,8 @@ def checkendsession(endfunc):
         log.info("End session: there are incomplete transactions")
         ui.infopopup(["There are incomplete transactions.  After dismissing "
                       "this message, use the 'Recall Trans' button to find "
-                      "them, and either complete them or cancel them."],
+                      "them, and either complete them, cancel them "
+                      "or defer them."],
                      title="Error")
         return None
     return sc
@@ -250,13 +251,14 @@ def sessionsummary():
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
-                  "(C) Copyright 2004 Stephen Early",
+                  "(C) Copyright 2004-2005 Stephen Early",
                   "Operating system: %s %s %s"%(os.uname()[0],
                                                 os.uname()[2],
                                                 os.uname()[3]),
                   "Python version: %s %s"%tuple(sys.version.split('\n')),
                   td.db_version()],
-                 title="Software Version Information")
+                 title="Software Version Information",
+                 colour=ui.colour_info,dismiss=keyboard.K_CASH)
 
 def popup():
     log.info("Till management popup")

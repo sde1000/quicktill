@@ -165,6 +165,16 @@ def trans_defer(trans):
                 (trans,))
     commit()
 
+def trans_merge(t1,t2):
+    """Merge t1 into t2, and delete t1.
+
+    """
+    cur=cursor()
+    cur.execute("UPDATE translines SET transid=%d WHERE transid=%d",
+                (t2,t1))
+    cur.execute("DELETE FROM transactions WHERE transid=%d",(t1,))
+    commit()
+
 def trans_restore():
     """Restores all deferred transactions.
 
@@ -177,18 +187,25 @@ def trans_restore():
                 (sessionid,))
     commit()
 
+def trans_makefree(transid,removecode):
+    """Converts all stock sold in this transaction to 'removecode', and
+    deletes the transaction.  Usually used when converting an open transaction
+    to 'free drinks'.
+
+    """
+    cur=cursor()
+    cur.execute("UPDATE stockout SET removecode=%s,translineid=NULL "
+                "WHERE translineid IN (SELECT translineid FROM translines "
+                "WHERE transid=%d)",(removecode,transid))
+    cur.execute("DELETE FROM translines WHERE transid=%d",(transid,))
+    cur.execute("DELETE FROM transactions WHERE transid=%d",(transid,))
+    commit()
+
 def trans_incompletes():
     "Returns the list of incomplete transactions"
     cur=cursor()
     cur.execute("SELECT transid FROM transactions WHERE closed=false "
                 "AND sessionid IS NOT NULL")
-    return [x[0] for x in cur.fetchall()]
-
-def trans_sessionlist(session):
-    "Returns the list of transactions in a session"
-    cur=cursor()
-    cur.execute("SELECT transid FROM transactions WHERE sessionid=%d "
-                "ORDER BY closed,transid DESC",(session,))
     return [x[0] for x in cur.fetchall()]
 
 ### Suppliers of stock
@@ -604,7 +621,6 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
     commit()
     return t
 
-# XXX this may need to change
 def stock_finish(stock,reason):
     "Finish with a stock item; anything left is unaccounted waste"
     cur=cursor()
@@ -615,7 +631,6 @@ def stock_finish(stock,reason):
                 "WHERE stockid=%d",(reason,stock))
     commit()
 
-# XXX this might need to change
 def stock_disconnect(stock):
     "Temporarily disconnect a stock item."
     cur=cursor()
@@ -829,6 +844,18 @@ def session_list():
     return [(x[0],mkstructtime(x[1]),mkstructtime(x[2]),mkstructtime(x[3]),
              x[4])
             for x in cur.fetchall()]
+
+def session_translist(session,onlyopen=False):
+    """Returns the list of transactions in a session.
+
+    """
+    cur=cursor()
+    oos=""
+    if onlyopen:
+        oos="AND closed=FALSE "
+    cur.execute("SELECT transid FROM transactions WHERE sessionid=%d %s"
+                "ORDER BY closed,transid DESC"%(session,oos))
+    return [x[0] for x in cur.fetchall()]
 
 ### List of payment types
 

@@ -357,6 +357,15 @@ class page(ui.basicpage):
             sd=snd[stockid]
             self.prompt="%s: %0.1f %ss remaining"%(
                 name,sd['remaining']-(qty*items),sd['unitname'])
+            if sd['remaining']-(qty*items)<0.0 and not pullthru_required:
+                ui.infopopup([
+                    "There appears to be %0.1f %ss of %s left!  Please "
+                    "check that you're still using stock item %d; if you've "
+                    "started using a new item, tell the till about it "
+                    "using the 'Use Stock' button after dismissing this "
+                    "message."%(sd['remaining']-(qty*items),sd['unitname'],
+                                stock.format_stock(sd,maxw=40),sd['stockid'])],
+                             title="Warning")
         else:
             self.prompt="%s: %d left on display; %d in stock"%(
                 name,stockremain[0],stockremain[1])
@@ -659,13 +668,6 @@ class page(ui.basicpage):
                           "print.  You can recall old transactions using "
                           "the 'Recall Trans' key."],title="Error")
             return
-        if not td.trans_closed(self.trans):
-            log.info("Register: printkey on open transaction")
-            ui.infopopup(["The current transaction is still open.  "
-                          "You can't print a receipt for it until it "
-                          "is paid in full."],
-                         title="Error")
-            return
         log.info("Register: printing transaction %d"%self.trans)
         printer.print_receipt(self.trans)
         ui.infopopup(["The receipt is being printed."],title="Printing",
@@ -812,7 +814,7 @@ class page(ui.basicpage):
                           "current session."],title="Error")
             return
         log.info("Register: recalltrans")
-        tl=td.trans_sessionlist(sc[0])
+        tl=td.session_translist(sc[0])
         def transsummary(t):
             closed=td.trans_closed(t)
             (lines,payments)=td.trans_balance(t)
@@ -838,13 +840,66 @@ class page(ui.basicpage):
                       "responsible for paying it!"%transid],
                      title="Transaction defer confirmed",
                      colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
+    def freedrinktrans(self,transid):
+        if td.trans_closed(transid):
+            ui.infopopup(["Transaction %d has been closed, and cannot now "
+                          "be converted to free drinks."%transid],
+                         title="Error")
+            return
+        lines,payments=td.trans_getlines(transid)
+        if len(payments)>0:
+            ui.infopopup(["Some payments have already been entered against "
+                          "transaction %d, so it can't be converted to "
+                          "free drinks."%transid],
+                         title="Error")
+            return
+        td.trans_makefree(transid,'freebie')
+        self.clear()
+        self.redraw()
+        ui.infopopup(["Transaction %d has been converted to free drinks."%
+                      transid],title="Free Drinks",colour=ui.colour_confirm,
+                     dismiss=keyboard.K_CASH)
+    def mergetransmenu(self,transid):
+        sc=td.session_current()
+        log.info("Register: mergetrans")
+        tl=td.session_translist(sc[0],onlyopen=True)
+        def transsummary(t):
+            (lines,payments)=td.trans_balance(t)
+            lt="%s"%tillconfig.fc(lines)
+            return "%6d %s%s"%(t,' '*(11-len(lt)),lt)
+        sl=[(transsummary(t),self.mergetrans,(transid,t)) for t in tl
+            if t!=transid]
+        ui.menu(sl,
+                title="Merge with transaction",
+                blurb="Select a transaction to merge this one into, "
+                "and press Cash/Enter.",
+                colour=ui.colour_input)
+    def mergetrans(self,transid,othertransid):
+        if td.trans_closed(transid):
+            ui.infopopup(["Transaction %d has been closed, and cannot now "
+                          "be merged with another transaction."%transid],
+                         title="Error")
+            return
+        lines,payments=td.trans_getlines(transid)
+        if len(payments)>0:
+            ui.infopopup(["Some payments have already been entered against "
+                          "transaction %d, so it can't be merged with another "
+                          "transaction."%transid],
+                         title="Error")
+            return
+        td.trans_merge(transid,othertransid)
+        self.recalltrans(othertransid)
     def managetranskey(self):
         if self.trans is None or td.trans_closed(self.trans):
             ui.infopopup(["You can only modify an open transaction."],
                          title="Error")
             return
         ui.keymenu([(keyboard.K_ONE,"Defer transaction to next session",
-                     self.defertrans,(self.trans,))],
+                     self.defertrans,(self.trans,)),
+                    (keyboard.K_TWO,"Convert transaction to free drinks",
+                     self.freedrinktrans,(self.trans,)),
+                    (keyboard.K_THREE,"Merge this transaction with another "
+                     "open transaction",self.mergetransmenu,(self.trans,))],
                    title="Transaction %d"%self.trans,clear=True)
     def keypress(self,k):
         if isinstance(k,ui.magstripe):

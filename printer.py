@@ -6,8 +6,10 @@ dateformat="%Y/%m/%d"
 timeformat="%Y/%m/%d %H:%M:%S"
 
 def print_receipt(trans):
+    transopen=False
     (lines,payments)=td.trans_getlines(trans)
     (linestotal,paymentstotal)=td.trans_balance(trans)
+    if linestotal!=paymentstotal: transopen=True
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
@@ -45,14 +47,18 @@ def print_receipt(trans):
                 driver.printline("\t\t%s %s %s"%(
                     description,ref,tillconfig.fc(amount)))
     driver.printline("")
-    net=linestotal/(tillconfig.vatrate+1.0)
-    vat=linestotal-net
-    driver.printline("\t\tNet total: %s"%tillconfig.fc(net))
-    driver.printline("\t\tVAT @ %0.1f%%: %s"%(tillconfig.vatrate*100.0,
-                                              tillconfig.fc(vat)))
-    driver.printline("\t\tReceipt total: %s"%tillconfig.fc(linestotal))
-    driver.printline("")
-    driver.printline("\tReceipt number %d"%trans)
+    if transopen:
+        driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)
+        driver.printline("\tTransaction number %d"%trans)
+    else:
+        net=linestotal/(tillconfig.vatrate+1.0)
+        vat=linestotal-net
+        driver.printline("\t\tNet total: %s"%tillconfig.fc(net))
+        driver.printline("\t\tVAT @ %0.1f%%: %s"%(tillconfig.vatrate*100.0,
+                                                  tillconfig.fc(vat)))
+        driver.printline("\t\tReceipt total: %s"%tillconfig.fc(linestotal))
+        driver.printline("")
+        driver.printline("\tReceipt number %d"%trans)
     driver.printline("\t%s"%time.strftime(dateformat,td.trans_date(trans)))
     driver.printline("")
     for i in tillconfig.companyaddr:
@@ -166,6 +172,24 @@ def print_delivery(delivery):
     driver.printline()
     items_sdl=td.stock_info(items)
     for sd in items_sdl:
+        driver.printline("Stock number %d"%sd['stockid'],colour=1)
+        driver.printline(stock.format_stock(sd,maxw=driver.width()))
+        driver.printline("%s cost %s"%(
+            sd['stockunit'],tillconfig.fc(sd['costprice'])))
+        driver.printline("sale %s BB %s"%(
+            tillconfig.fc(sd['saleprice']),ui.formatdate(sd['bestbefore'])))
+        driver.printline()
+    driver.printline("\tEnd of list")
+    driver.end()
+
+def print_stocklist(sl,title="Stock List"):
+    driver.start()
+    driver.setdefattr(font=1)
+    driver.printline("\t%s"%tillconfig.pubname,emph=1)
+    driver.printline("\t%s"%title,colour=1)
+    driver.printline("\t Printed %s"%time.strftime(timeformat))
+    driver.printline()
+    for sd in sl:
         driver.printline("Stock number %d"%sd['stockid'],colour=1)
         driver.printline(stock.format_stock(sd,maxw=driver.width()))
         driver.printline("%s cost %s"%(

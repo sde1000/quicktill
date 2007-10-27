@@ -73,7 +73,7 @@ class stocktype(ui.basicpopup):
         win.addstr(8,38,"ABV:")
         win.addstr(9,2,"        Unit:")
         win.addstr(13,2,"Note: 'Short Name' is printed on receipts.")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True)}
+        km={keyboard.K_CLEAR: (self.dismiss,None,False)}
         self.manufield=ui.editfield(win,5,16,30,
                                     validate=self.validate_manufacturer,
                                     keymap=km)
@@ -102,9 +102,11 @@ class stocktype(ui.basicpopup):
             self.fill_fields(default)
         if mode==1:
             # Some overrides; we want to be called when Enter is
-            # pressed on the name field so we can pre-fill the other
-            # fields if possible.  Only in mode 1; in mode 2 we're
-            # just editing
+            # pressed on the manufacturer field so we can pre-fill the
+            # name field if possible, and on the name field so we can
+            # pre-fill the other fields if possible.  Only in mode 1;
+            # in mode 2 we're just editing
+            self.manufield.keymap[keyboard.K_CASH]=(self.defaultname,None,True)
             self.namefield.keymap[keyboard.K_CASH]=(self.lookupname,None,True)
         self.manufield.focus()
     def fill_fields(self,st):
@@ -152,6 +154,12 @@ class stocktype(ui.basicpopup):
         if len(td.stocktype_completename(self.manufield.f,t[:-1]))>0:
             return t
         return s
+    def defaultname(self):
+        if self.mode==2: return
+        l=td.stocktype_completename(self.manufield.f,"")
+        if len(l)==1:
+            self.namefield.set(l[0])
+        self.namefield.focus()
     def lookupname(self):
         # Called when Enter is pressed on the Name field.  Fills in
         # other fields if there's a match with an existing item.

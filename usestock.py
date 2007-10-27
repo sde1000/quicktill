@@ -113,12 +113,11 @@ def pick_new_stock(line,blurb=""):
 
     """
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    def fs(sd):
-        return "%7d %s"%(sd['stockid'],stock.format_stock(sd))
     sl=td.stock_search(dept=dept)
     sinfo=td.stock_info(sl)
-    lines=ui.table([("%d"%x['stockid'],stock.format_stock(x))
-                    for x in sinfo]).format(' r l ')
+    lines=ui.table([("%d"%x['stockid'],stock.format_stock(x),
+                     ui.formatdate(x['bestbefore']))
+                    for x in sinfo]).format(' r l l ')
     sl=[(x,put_on_sale,(line,y['stockid'])) for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Select Stock Item",blurb=blurb)
 

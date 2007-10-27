@@ -3,7 +3,7 @@
 """Implements the 'Manage Stock' menu."""
 
 import ui,td,keyboard,curses,curses.ascii,time,printer
-import stock,delivery
+import stock,delivery,department
 
 import logging
 log=logging.getLogger()
@@ -48,30 +48,41 @@ def format_stockmenuline(sd):
             stock.format_stock(sd,maxw=40),
             "%.0f %ss"%(sd['remaining'],sd['unitname']))
 
-def stockcheck():
+def stockcheck(dept=None):
     # Build a list of all not-finished stock items.  Things we want to show:
     log.info("Stock check")
-    sl=td.stock_search(exclude_stock_on_sale=False)
+    sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
     sinfo=td.stock_info(sl)
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
+    if dept is not None:
+        print_title="Stock Check dept %d"%dept
+    else:
+        print_title="Stock Check"
+    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
     ui.menu(sl,title="Stock Check",blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
-            "is shown.",dismiss_on_select=False)
+            "is shown.",dismiss_on_select=False,keymap=km)
 
-def stockhistory():
+def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
     log.info("Stock history")
-    sl=td.stock_search(finished_stock_only=True)
+    sl=td.stock_search(finished_stock_only=True,dept=dept)
     sl.reverse()
     sinfo=td.stock_info(sl)
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
+    if dept is not None:
+        print_title="Stock History dept %d"%dept
+    else:
+        print_title="Stock History"
+    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
     ui.menu(sl,title="Stock History",blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
-            "when the stock was finished is shown.",dismiss_on_select=False)
+            "when the stock was finished is shown.",dismiss_on_select=False,
+            keymap=km)
 
 def updatesupplier():
     log.info("Update supplier")
@@ -89,8 +100,10 @@ def popup():
          displaydelivery,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
          finishstock,None),
-        (keyboard.K_FIVE,"Stock check (unfinished stock)",stockcheck,None),
-        (keyboard.K_SIX,"Stock history (finished stock)",stockhistory,None),
+        (keyboard.K_FIVE,"Stock check (unfinished stock)",
+         department.menu,(stockcheck,"Stock Check",True)),
+        (keyboard.K_SIX,"Stock history (finished stock)",
+         department.menu,(stockhistory,"Stock History",True)),
         (keyboard.K_SEVEN,"Update supplier details",updatesupplier,None),
 #        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
 #         (lambda x:selectstocktype(lambda:None,default=x,mode=2),)),

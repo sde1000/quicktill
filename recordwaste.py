@@ -1,4 +1,4 @@
-import ui,td,keyboard,stock,stocklines
+import ui,td,keyboard,stock,stocklines,department
 
 class popup(ui.basicpopup):
     """This popup talks the user through the process of recording
@@ -55,7 +55,22 @@ class popup(ui.basicpopup):
         self.stockfield.set(name)
         self.win.addstr(4,21,"%d items on display"%self.ondisplay)
         self.create_extra_fields()
+    def stock_dept_selected(self,dept):
+        sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
+        sinfo=td.stock_info(sl)
+        lines=ui.table([("%(stockid)d"%x,stock.format_stock(x,maxw=40))
+                        for x in sinfo]).format(' r l ')
+        sl=[(x,self.stock_item_selected,(y['stockid'],))
+            for x,y in zip(lines,sinfo)]
+        ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
+                "Cash/Enter.")
+    def stock_item_selected(self,stockid):
+        self.stockfield.set(str(stockid))
+        self.stock_enter_key()
     def stock_enter_key(self):
+        if self.stockfield.f=='':
+            department.menu(self.stock_dept_selected,"Select Department")
+            return
         sn=int(self.stockfield.f)
         sd=td.stock_info([sn])[0]
         if sd is None:
@@ -80,7 +95,7 @@ class popup(ui.basicpopup):
             wastelist=['missing','taste','damaged','ood','freebie']
         else:
             wastelist=['cellar','pullthru','taster','taste','damaged',
-                       'ood','freebie','missing']
+                       'ood','freebie','missing','driptray']
         wastedict={'pullthru':'Pulled through',
                    'cellar':'Cellar work',
                    'taster':'Free taster',
@@ -88,11 +103,13 @@ class popup(ui.basicpopup):
                    'damaged':'Damaged',
                    'ood':'Out of date',
                    'freebie':'Free drink',
-                   'missing':'Gone missing'}
+                   'missing':'Gone missing',
+                   'driptray':'Drip tray'}
         wastedescfield_km={keyboard.K_CLEAR:(self.dismiss,None,True)}
         self.wastedescfield=ui.listfield(self.win,5,21,30,wastelist,wastedict,
                                          keymap=wastedescfield_km)
         amountfield_km={keyboard.K_CLEAR:(self.wastedescfield.focus,None,True),
+                        keyboard.K_UP:(self.wastedescfield.focus,None,True),
                         keyboard.K_CASH: (self.finish,None,False)}
         self.amountfield=ui.editfield(self.win,6,21,4,
                                       validate=ui.validate_float,
