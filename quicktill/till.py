@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 
-"""Main module for quick till application.  This module is imported by
-the configuration file for the till.
-
-It is expected that the configuration module will set up logging,
-etc.; write appropriate values into the tillconfig module; and then
-invoke till.run().
+"""Entry point for the till application.  In normal use the application
+will be started by calling main() from this module.
 
 """
 
-import sys,curses,ui,keyboard,event,logging,td,printer,tillconfig,event,foodorder,locale
+import sys,curses,ui,keyboard,event,logging,td
+import printer,tillconfig,event,foodorder,locale
 from version import version
 
 def start(stdwin):
@@ -132,3 +129,6 @@ def main():
 
     locale.setlocale(locale.LC_ALL,'')
     return run()
+
+if __name__=='__main__':
+    main()
