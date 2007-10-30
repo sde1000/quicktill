@@ -1,3 +1,13 @@
+quicktill (0.8.1) stable; urgency=low
+
+  * New release 0.8.1
+
+  * Enable till module to be invoked directly
+
+  * New release script generates Debian packages from git tree
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 30 Oct 2007 19:57:36 +0000
+
 quicktill (0.8.0) stable; urgency=low
 
   * Initial release.
