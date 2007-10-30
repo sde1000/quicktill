@@ -2,7 +2,7 @@ Source: quicktill
 Section: python
 XS-Python-Version: all
 Priority: optional
-Maintainer: Stephen Early <steve@greenend.org.uk>
+Maintainer: Stephen Early <sde@individualpubs.co.uk>
 Build-Depends: debhelper (>= 5), python-dev
 Build-Depends-Indep: python-central (>= 0.4.7)
 Standards-Version: 3.7.2

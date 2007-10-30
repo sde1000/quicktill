@@ -1,0 +1,89 @@
+#!/bin/bash
+
+set -e
+
+# Defaults
+packagename=quicktill
+distribution=stable
+urgency=low
+
+usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency]"
+
+while getopts "p:d:u:h" options; do
+  case $options in
+    p ) packagename=$OPTARG;;
+    d ) distribution=$OPTARG;;
+    u ) urgency=$OPTARG;;
+    h ) echo $usage;;
+    \? ) echo $usage
+         exit 1;;
+    * ) echo $usage
+          exit 1;;
+
+  esac
+done
+
+# Find the new version number.
+
+tmpdir=release-tmp
+
+rm -rf ${tmpdir}
+mkdir ${tmpdir}
+git-checkout-index --prefix=${tmpdir}/ setup.py
+
+newversion=$(${tmpdir}/setup.py -V)
+rm ${tmpdir}/setup.py
+echo "New version: ${newversion}"
+
+# Find the previous version number
+
+pkgdir=${tmpdir}/${packagename}-${newversion}
+git-checkout-index -a --prefix=${pkgdir}/
+
+oldversion=$(dpkg-parsechangelog -l${pkgdir}/debian/changelog | grep Version: | sed 's/Version: //')
+echo "Previous version: ${oldversion}"
+
+if [ "${oldversion}" = "${newversion}" ]; then
+  echo Versions are the same!  Have you forgotten to update setup.py and
+  echo run git-add on it?
+  exit 1
+fi
+
+# Construct a changelog entry with the new version number
+
+mv ${pkgdir}/debian/changelog ${pkgdir}/debian/changelog.old
+
+echo -e "${packagename} (${newversion}) ${distribution}; urgency=${urgency}\n" >${pkgdir}/debian/changelog
+echo -e "  * New release ${newversion}\n" >>${pkgdir}/debian/changelog
+git-log '--pretty=format:  * %s%n' v${oldversion}.. -- >>${pkgdir}/debian/changelog
+echo -e "\n -- $(git-config --get user.name) <$(git-config --get user.email)>  $(date -R)\n">>${pkgdir}/debian/changelog
+cat ${pkgdir}/debian/changelog.old >>${pkgdir}/debian/changelog
+rm ${pkgdir}/debian/changelog.old
+
+# Put the version number in the version.py file
+
+echo "version=\"${newversion}\"" >${pkgdir}/quicktill/version.py
+
+# Build the Debian package files
+
+(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot)
+
+# If we reach this point, we should have Debian packages built in ${tmpdir}
+
+# Copy the changelog back to the working tree and add it to the index
+
+cp ${pkgdir}/debian/changelog debian/changelog
+
+echo "debian/changelog updated, but not yet added to the index."
+dpkg-parsechangelog
+
+cat <<EOF
+
+You can commit this release by pasting the following commands:
+
+git add debian/changelog
+git commit -m "${packagename} ${newversion}"
+git tag -a -m "Version ${newversion}" v${newversion}
+mv ${tmpdir}/${packagename}_* ../releases/
+
+EOF
