@@ -133,7 +133,13 @@ class delivery(ui.basicpopup):
             if pf is not None:
                 td.delivery_update(self.dn,*pf)
         if printer.labeldriver is not None:
-            printer.label_print_delivery(self.dn)
+            menu=[
+                (keyboard.K_ONE,"Print list",
+                 printer.print_delivery,(self.dn,)),
+                (keyboard.K_TWO,"Print sticky labels",
+                 printer.label_print_delivery,(self.dn,)),
+                ]
+            ui.keymenu(menu,"Delivery print options",colour=ui.colour_confirm)
         else:
             printer.print_delivery(self.dn)
     def footernavup(self):

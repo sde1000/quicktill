@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 
 import quicktill.keyboard as keyboard
 import quicktill.extras as extras
@@ -100,7 +100,7 @@ std={
     'vatno':"783 9983 50",
     'companyaddr':("Individual Pubs Limited","Unit 111, Norman Ind. Estate",
                    "Cambridge Road, Milton","Cambridge CB24 6AT"),
-    'currency':"£",
+    'currency':"Â£",
     'cashback_limit':50.0,
     'pricepolicy':pricepolicy,
     'priceguess':priceguess,

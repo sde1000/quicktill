@@ -196,7 +196,7 @@ def print_delivery(delivery):
     driver.printline("\tDelivery %d"%delivery,colour=1)
     driver.printline("Supplier: %s"%name)
     driver.printline("Date: %s"%ui.formatdate(date))
-    driver.printline("Delivery note: %s\n"%docnumber)
+    driver.printline("Delivery note: %s"%docnumber)
     if not checked:
         driver.printline("Details not yet confirmed -")
         driver.printline("may still be edited.")
