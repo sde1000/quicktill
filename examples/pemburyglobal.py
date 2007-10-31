@@ -1,5 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 
+import quicktill.keyboard as keyboard
+import quicktill.extras as extras
 from quicktill.keyboard import *
 from quicktill.pdrivers import Epson_TM_U220,pdf,pdflabel,A4
 from quicktill import register,ui,kbdrivers,stockterminal

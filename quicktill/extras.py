@@ -66,8 +66,11 @@ class departurelist:
             return
         # Parse it
         p=LDBParser()
-        p.feed(l)
-        p.close()
+        try:
+            p.feed(l)
+            p.close()
+        except:
+            pass # Ignore HTML errors - the page contains a dodgy HTML ad
         # Now p.tablelines contains the data!  Format and display it.
         self.tablelines=p.tablelines
         self.station=name
