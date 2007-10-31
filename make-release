@@ -6,14 +6,16 @@ set -e
 packagename=quicktill
 distribution=stable
 urgency=low
+tmpdir=release-tmp
 
 usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency]"
 
-while getopts "p:d:u:h" options; do
+while getopts "p:d:u:t:h" options; do
   case $options in
     p ) packagename=$OPTARG;;
     d ) distribution=$OPTARG;;
     u ) urgency=$OPTARG;;
+    t ) tmpdir=$OPTARG;;
     h ) echo $usage;;
     \? ) echo $usage
          exit 1;;
@@ -23,20 +25,16 @@ while getopts "p:d:u:h" options; do
   esac
 done
 
+
 # Find the new version number.
 
-tmpdir=release-tmp
-
-rm -rf ${tmpdir}
-mkdir ${tmpdir}
-git-checkout-index --prefix=${tmpdir}/ setup.py
-
-newversion=$(${tmpdir}/setup.py -V)
-rm ${tmpdir}/setup.py
+newversion=$(./setup.py -V)
 echo "New version: ${newversion}"
 
 # Find the previous version number
 
+rm -rf ${tmpdir}
+mkdir ${tmpdir}
 pkgdir=${tmpdir}/${packagename}-${newversion}
 git-checkout-index -a --prefix=${pkgdir}/
 
@@ -60,6 +58,11 @@ echo -e "\n -- $(git-config --get user.name) <$(git-config --get user.email)>  $
 cat ${pkgdir}/debian/changelog.old >>${pkgdir}/debian/changelog
 rm ${pkgdir}/debian/changelog.old
 
+# Copy the working tree setup.py into the temporary tree - it has
+# the version number that we want to use for the generated package.
+
+cp setup.py ${pkgdir}/setup.py
+
 # Put the version number in the version.py file
 
 echo "version=\"${newversion}\"" >${pkgdir}/quicktill/version.py
@@ -81,7 +84,7 @@ cat <<EOF
 
 You can commit this release by pasting the following commands:
 
-git add debian/changelog
+git add setup.py debian/changelog
 git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
 mv ${tmpdir}/${packagename}_* ../releases/
