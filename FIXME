@@ -12,3 +12,7 @@ till configuration file.
 * Food order handling in register.py/foodline
 
 Department 10 has been hard-coded.
+
+* Location prompt in usestock.py/put_on_sale
+
+Department 1 has been hard-coded.

@@ -116,7 +116,7 @@ def pick_new_stock(line,blurb=""):
 
     """
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    sl=td.stock_search(dept=dept)
+    sl=td.stock_search(dept=dept,stockline=stocklineid)
     sinfo=td.stock_info(sl)
     lines=ui.table([("%d"%x['stockid'],stock.format_stock(x),
                      "%.0f %ss"%(x['remaining'],x['unitname']),

@@ -556,9 +556,16 @@ def stock_fetchline(stocklineref):
     return cur.fetchone()
 
 def stock_search(dept=None,exclude_stock_on_sale=True,
-                 finished_stock_only=False):
+                 finished_stock_only=False,stockline=None):
     """Return a list of stock numbers that fit the criteria."""
     cur=cursor()
+    if stockline is None:
+        slj=""
+        order="s.stockid"
+    else:
+        slj=("LEFT JOIN stockline_stocktype_log stl ON "
+             "stl.stocktype=s.stocktype ")
+        order="(stl.stocklineid is not null and stl.stocklineid=%d) DESC,s.stockid"%stockline
     if dept is None:
         deptq=""
     else:
@@ -573,8 +580,9 @@ def stock_search(dept=None,exclude_stock_on_sale=True,
         finq="null"
     cur.execute("SELECT s.stockid FROM stock s INNER JOIN deliveries d ON "
                 "s.deliveryid=d.deliveryid INNER JOIN stocktypes st ON "
-                "st.stocktype=s.stocktype WHERE finishcode is %s AND "
-                "d.checked=true %s %s ORDER BY s.stockid"%(finq,sosq,deptq))
+                "st.stocktype=s.stocktype %s"
+                "WHERE finishcode is %s AND "
+                "d.checked=true %s %s ORDER BY %s"%(slj,finq,sosq,deptq,order))
     return [x[0] for x in cur.fetchall()]
 
 def stock_putonsale(stockid,stocklineid):

@@ -314,6 +314,26 @@ CREATE TABLE keycaps (
 	PRIMARY KEY (layout,keycode)
 	);
 
+/* Record which stock types have been put on sale on which lines, to assist
+   with sorting the 'Use Stock' menu */
+CREATE TABLE stockline_stocktype_log (
+       stocklineid int NOT NULL REFERENCES stocklines(stocklineid) ON DELETE CASCADE,
+       stocktype int NOT NULL REFERENCES stocktypes(stocktype) ON DELETE CASCADE,
+       PRIMARY KEY (stocklineid,stocktype)
+       );
+
+CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
+       ON INSERT TO stockline_stocktype_log
+       WHERE (NEW.stocklineid,NEW.stocktype)
+       IN (SELECT stocklineid,stocktype FROM stockline_stocktype_log)
+       DO INSTEAD NOTHING;
+
+CREATE OR REPLACE RULE log_stocktype AS ON INSERT TO stockonsale
+       DO ALSO
+       INSERT INTO stockline_stocktype_log VALUES
+       (NEW.stocklineid,(SELECT stocktype FROM stockinfo
+       	WHERE stockinfo.stockid=NEW.stockid));
+
 /* Useful views for queries */
 CREATE VIEW stockinfo AS
 	SELECT s.stockid,st.stocktype,s.deliveryid,
