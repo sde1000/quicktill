@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# How to use this script:
+# 1) Make sure that the git HEAD is what you want to release
+# 2) Edit setup.py in the working copy to set the new version number
+# 3) Run this script
+# 4) If the generated package is ok, copy and paste the commands output
+#    by this script in order to commit the new setup.py and changelog
+#    and build the source distribution archive
+
 set -e
 
 # Defaults
@@ -82,11 +90,13 @@ dpkg-parsechangelog
 
 cat <<EOF
 
-You can commit this release by pasting the following commands:
+You can commit this release and build the source distribution
+by pasting the following commands:
 
 git add setup.py debian/changelog
 git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
 mv ${tmpdir}/${packagename}_* ../releases/
+python setup.py sdist -d ../releases/
 
 EOF
