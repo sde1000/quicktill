@@ -1,3 +1,19 @@
+quicktill (0.8.2) stable; urgency=low
+
+  * New release 0.8.2
+
+  * Rearrange 'Use Stock' menu to put most likely stocktypes first
+
+  * Document how to make a release, build source distribution
+
+  * Minor release script improvement
+
+  * Delivery printing - menu option for labels
+
+  * Fix train departure board in extras to ignore dodgy HTML
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 07 Dec 2007 18:16:09 +0000
+
 quicktill (0.8.1) stable; urgency=low
 
   * New release 0.8.1
