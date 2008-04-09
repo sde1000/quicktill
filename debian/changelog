@@ -1,3 +1,11 @@
+quicktill (0.8.5) stable; urgency=low
+
+  * New release 0.8.5
+
+  * First cut of proper charset handling - cope with UTF-8 consoles
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 09 Apr 2008 23:10:06 +0100
+
 quicktill (0.8.4) stable; urgency=low
 
   * New release 0.8.4
