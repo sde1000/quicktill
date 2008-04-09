@@ -16,13 +16,12 @@ class ssdialog(ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR)
         km={keyboard.K_CLEAR: (self.dismiss,None,True),
             keyboard.K_CASH: (self.key_enter,None,False)}
-        win=self.pan.window()
-        win.addstr(2,2,"Please check the session date, and correct it "
+        self.addstr(2,2,"Please check the session date, and correct it "
                    "if necessary.")
-        win.addstr(3,2,"Press Cash/Enter to continue and start the session.")
-        win.addstr(5,2,"Session date:")
+        self.addstr(3,2,"Press Cash/Enter to continue and start the session.")
+        self.addstr(5,2,"Session date:")
         date=ui.now()
-        self.datefield=ui.datefield(win,5,16,f=date,keymap=km)
+        self.datefield=ui.datefield(self.win,5,16,f=date,keymap=km)
         self.datefield.focus()
     def key_enter(self):
         date=self.datefield.read()
@@ -122,17 +121,16 @@ class recordsession(ui.basicpopup):
                                title="Session %d"%session,
                                cleartext="Press Clear to go back",
                                colour=ui.colour_input)
-        self.win=self.pan.window()
-        self.win.addstr(2,2,"Please enter the actual takings for session %d."%
+        self.addstr(2,2,"Please enter the actual takings for session %d."%
                         session)
-        self.win.addstr(4,10,"Till total:     Actual total:")
+        self.addstr(4,10,"Till total:     Actual total:")
         # Build a list of fields to be filled in
         self.fl=[]
         y=5
         for i in paytypes:
-            self.win.addstr(y,2,"%s:"%paytypes[i])
+            self.addstr(y,2,"%s:"%paytypes[i])
             if i in paytotals:
-                self.win.addstr(y,12,tillconfig.fc(paytotals[i][1]))
+                self.addstr(y,12,tillconfig.fc(paytotals[i][1]))
                 pt=paytotals[i][1]
             else:
                 pt=0.0

@@ -3,7 +3,7 @@
 import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 from quicktill.keyboard import *
-from quicktill.pdrivers import Epson_TM_U220,pdf,pdflabel,A4
+from quicktill.pdrivers import nullprinter,Epson_TM_U220,pdf,pdflabel,A4
 from quicktill import register,ui,kbdrivers,stockterminal
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
@@ -11,59 +11,68 @@ from quicktill.plu import popup as plu
 from quicktill.usestock import popup as usestock
 from quicktill.recordwaste import popup as recordwaste
 from quicktill.stock import annotate
+import math
 
-def pricepolicy(sd,qty):
+vatrate=0.175
+
+# Price policy function
+def pembury_pricepolicy(sd,qty):
     # Start with the standard price
     price=sd['saleprice']*qty
-    # House doubles are 2.60
-    if sd['dept']==4 and qty==2.0 and sd['saleprice']==1.50:
-        price=2.60
-    # Double single malts are 3.50
-    if sd['dept']==4 and qty==2.0 and sd['saleprice']==2.00:
-        price=3.50
+    if sd['dept']==4 and qty==2.0: price=price-0.50
     return price
 
 # Price guess algorithm goes here
-def priceguess(dept,cost,abv):
+def pembury_priceguess(dept,cost,abv):
     if dept==1:
         return guessbeer(cost,abv)
     if dept==2:
         return guesskeg(cost,abv)
     if dept==3:
         return guesscider(cost,abv)
+    if dept==4:
+        return guessspirit(cost,abv)
     if dept==5:
         return guesssnack(cost)
+    if dept==6:
+        return guessbottle(cost)
     return None
 
 # Unit is a pint
 def guessbeer(cost,abv):
     if abv is None: return None
-    if abv<3.1: r=2.10
-    elif abv<3.3: r=2.20
-    elif abv<3.8: r=2.30
-    elif abv<4.2: r=2.40
-    elif abv<4.7: r=2.50
-    elif abv<5.2: r=2.60
-    elif abv<5.7: r=2.70
-    elif abv<6.2: r=2.80
+    if abv<3.1: r=2.40
+    elif abv<3.3: r=2.50
+    elif abv<3.8: r=2.60
+    elif abv<4.2: r=2.70
+    elif abv<4.7: r=2.80
+    elif abv<5.2: r=2.90
+    elif abv<5.7: r=3.00
+    elif abv<6.2: r=3.10
     else: return None
     # If the cost per pint is greater than that of Milton plus fiddle-factor,
     # add on the excess and round up to nearest 10p
-    idealcost=((abv*10.0)+13.0)/72.0
+    idealcost=((abv*10.0)+18.0)/72.0
     if cost>idealcost:
-        r=r+((cost-idealcost)*(tillconfig.vatrate+1.0))
+        r=r+((cost-idealcost)*(vatrate+1.0))
         r=math.ceil(r*10.0)/10.0
     return r
 
 def guesskeg(cost,abv):
-    if abv==5.0: return 2.70 # Budvar
+    if abv==5.0: return 3.10 # Budvar
     return None
 
 def guesssnack(cost):
-    return math.ceil(cost*2.0*(tillconfig.vatrate+1.0)*10.0)/10.0
+    return math.ceil(cost*2.0*(vatrate+1.0)*10.0)/10.0
+
+def guessbottle(cost):
+    return math.ceil(cost*2.1*(vatrate+1.0)*10.0)/10.0
+
+def guessspirit(cost,abv):
+    return max(2.00,math.ceil(cost*2.5*(vatrate+1.0)*10.0)/10.0)
 
 def guesscider(cost,abv):
-    return math.ceil(cost*2.1*(tillconfig.vatrate+1.0)*10.0)/10.0
+    return math.ceil(cost*2.1*(vatrate+1.0)*10.0)/10.0
 
 def departures():
     menu=[
@@ -83,6 +92,11 @@ def extrasmenu():
         ]
     ui.keymenu(menu,"Extras")
 
+def panickey():
+    ui.infopopup(["Don't panic, Captain Mainwaring!"],
+                 title="Jones",colour=ui.colour_confirm,
+                 dismiss=K_CASH)
+
 register_hotkeys={
     K_PRICECHECK: plu,
     K_MANAGETILL: managetill,
@@ -90,21 +104,33 @@ register_hotkeys={
     K_USESTOCK: usestock,
     K_WASTE: recordwaste,
     K_EXTRAS: extrasmenu,
+    999: panickey,
+    ord('s'): managestock,
+    ord('S'): managestock,
+    ord('a'): annotate,
+    ord('A'): annotate,
+    ord('r'): recordwaste,
+    ord('R'): recordwaste,
+    ord('t'): extrasmenu,
+    ord('T'): extrasmenu,
+    ord('m'): managetill,
+    ord('M'): managetill,
     }
 
 std={
     'pubname':"The Pembury Tavern",
     'pubnumber':"020 8986 8597",
     'pubaddr':("90 Amhurst Road","London E8 1JH"),
-    'vatrate':0.175,
+    'vatrate':vatrate,
     'vatno':"783 9983 50",
     'companyaddr':("Individual Pubs Limited","Unit 111, Norman Ind. Estate",
                    "Cambridge Road, Milton","Cambridge CB24 6AT"),
-    'currency':"£",
+    'currency':u"£",
     'cashback_limit':50.0,
-    'pricepolicy':pricepolicy,
-    'priceguess':priceguess,
-    'database':'dbname=pembury',
+    'pricepolicy':pembury_pricepolicy,
+    'priceguess':pembury_priceguess,
+    'database':'dbname=pembury', # XXX needs changing before deployment,
+    # because this file may be used by remote terminals too
 }
 
 kitchen={
@@ -113,10 +139,16 @@ kitchen={
     'menuurl':'http://till5.pembury.i.individualpubs.co.uk:8080/foodmenu.py',
     }
 
+nullprinter={
+    'printer': (nullprinter,()),
+    }
 localprinter={
     'printer': (Epson_TM_U220,("/dev/lp0",57)),
     }
 pdfprinter={
+    'printer': (pdf,("lpr %s",)),
+    }
+xpdfprinter={
     'printer': (pdf,("xpdf %s",)),
     }
 # across, down, width, height, horizgap, vertgap, pagesize
@@ -289,6 +321,148 @@ kb1={
     (register.page,K_DORIS,("Doris",register_hotkeys))],
     }
 
+kb2={
+    # (location, legend, keycode)
+    'kbdriver':kbdrivers.prehkeyboard([
+    # Left-hand two columns - control keys
+    ("G01","Eddie",K_EDDIE),
+    ("F01","Frank",K_FRANK),
+    ("E01","Giles",K_GILES),
+    ("D01","Helen",K_HELEN),
+    ("C01","Recall Trans",K_RECALLTRANS),
+    ("B01","Manage Trans",K_MANAGETRANS),
+    ("A01","Clear",K_CLEAR),
+    ("G02","Manage Till",K_MANAGETILL),
+    ("F02","Manage Stock",K_MANAGESTOCK),
+    ("E02","Use Stock",K_USESTOCK),
+    ("D02","Record Waste",K_WASTE),
+    ("C02","Print",K_PRINT),
+    ("B02","Cancel",K_CANCEL),
+    ("A02","Price Check",K_PRICECHECK),
+    # Cursor keys, numeric keypad, cash/card keys, Quantity keys
+    ("C11","Left",K_LEFT),
+    ("D12","Up",K_UP),
+    ("C12","Down",K_DOWN),
+    ("C13","Right",K_RIGHT),
+    ("D14",".",K_POINT),
+    ("D15","0",K_ZERO),
+    ("D16","00",K_ZEROZERO),
+    ("E14","1",K_ONE),
+    ("E15","2",K_TWO),
+    ("E16","3",K_THREE),
+    ("F14","4",K_FOUR),
+    ("F15","5",K_FIVE),
+    ("F16","6",K_SIX),
+    ("G14","7",K_SEVEN),
+    ("G15","8",K_EIGHT),
+    ("G16","9",K_NINE),
+    ("B15","Cash/Enter",K_CASH),
+    ("C15","Card",K_CARD),
+    ("C14","20",K_TWENTY),
+    ("B14","10",K_TENNER),
+    ("A14","5",K_FIVER),
+    ("D13","Quantity",K_QUANTITY),
+    ("E13","Double",K_DOUBLE),
+    ("E12","4pt Jug",K_4JUG),
+    ("H11","Order Food",K_FOODORDER),
+    ("H12","Cancel Food",K_CANCELFOOD),
+    # Eventually all these keys will be managed by entries in the database
+    # For now they are hard-coded here
+    # Departments
+    ("G11","Wine",K_DEPT9),
+    ("G12","Misc",K_DEPT8),
+    ("G13","Hot Drinks",K_DEPT11),
+    ("F11","Drink 'In'",K_DRINKIN),
+    ("F12","Soft",K_DEPT7),
+    ("F13","Food",K_DEPT10),
+    # All line keys
+    ("H03","Half Cider 1",K_LINE1),
+    ("H04","Half Cider 2",K_LINE2),
+    ("H05","Half Cider 3",K_LINE3),
+    ("H06","Half Cider 4",K_LINE4),
+    ("H07","Half Cider 5",K_LINE5),
+    ("H08","Half Cider 6",K_LINE6),
+    ("H09","Half Cider 7",K_LINE7),
+    ("H10","Half Cider 8",K_LINE8),
+    ("G03","Pint Cider 1",K_LINE11),
+    ("G04","Pint Cider 2",K_LINE12),
+    ("G05","Pint Cider 3",K_LINE13),
+    ("G06","Pint Cider 4",K_LINE14),
+    ("G07","Pint Cider 5",K_LINE15),
+    ("G08","Pint Cider 6",K_LINE16),
+    ("G09","Pint Cider 7",K_LINE17),
+    ("G10","Pint Cider 8",K_LINE18),
+    ("F03","Half A1",K_LINE21),
+    ("F04","Half A2",K_LINE22),
+    ("F05","Half A3",K_LINE23),
+    ("F06","Half A4",K_LINE24),
+    ("F07","Half A5",K_LINE25),
+    ("F08","Half A6",K_LINE26),
+    ("F09","Half A7",K_LINE27),
+    ("F10","Half A8",K_LINE28),
+    ("E03","Pint A1",K_LINE31),
+    ("E04","Pint A2",K_LINE32),
+    ("E05","Pint A3",K_LINE33),
+    ("E06","Pint A4",K_LINE34),
+    ("E07","Pint A5",K_LINE35),
+    ("E08","Pint A6",K_LINE36),
+    ("E09","Pint A7",K_LINE37),
+    ("E10","Pint A8",K_LINE38),
+    ("D03","Half B1",K_LINE41),
+    ("D04","Half B2",K_LINE42),
+    ("D05","Half B3",K_LINE43),
+    ("D06","Half B4",K_LINE44),
+    ("D07","Half B5",K_LINE45),
+    ("D08","Half B6",K_LINE46),
+    ("D09","Half B7",K_LINE47),
+    ("D10","Half B8",K_LINE48),
+    ("C03","Pint B1",K_LINE51),
+    ("C04","Pint B2",K_LINE52),
+    ("C05","Pint B3",K_LINE53),
+    ("C06","Pint B4",K_LINE54),
+    ("C07","Pint B5",K_LINE55),
+    ("C08","Pint B6",K_LINE56),
+    ("C09","Pint B7",K_LINE57),
+    ("C10","Pint B8",K_LINE58),
+    ("B03","Half C1",K_LINE61),
+    ("B04","Half C2",K_LINE62),
+    ("B05","Half C3",K_LINE63),
+    ("B06","Half C4",K_LINE64),
+    ("B07","Half C5",K_LINE65),
+    ("B08","Half C6",K_LINE66),
+    ("B09","Half C7",K_LINE67),
+    ("B10","Half C8",K_LINE68),
+    ("A03","Pint C1",K_LINE71),
+    ("A04","Pint C2",K_LINE72),
+    ("A05","Pint C3",K_LINE73),
+    ("A06","Pint C4",K_LINE74),
+    ("A07","Pint C5",K_LINE75),
+    ("A08","Pint C6",K_LINE76),
+    ("A09","Pint C7",K_LINE77),
+    ("A10","Pint C8",K_LINE78),
+    ("H01","Unlabelled",K_LINE81),
+    ("H02","Unlabelled",K_LINE82),
+    ("E11","Unlabelled",K_LINE83),
+    ("D11","Unlabelled",K_LINE84),
+    ("B11","Unlabelled",K_LINE85),
+    ("B12","Unlabelled",K_LINE86),
+    ("B13","Unlabelled",K_LINE87),
+    ("A11","Unlabelled",K_LINE88),
+    ("A12","Unlabelled",K_LINE89),
+    ("A13","Unlabelled",K_LINE90),
+    ("H13","Panic",999), # Heh
+    ("H14","Unlabelled",K_LINE91),
+    ("H15","Unlabelled",K_LINE92),
+    ("H16","Extras",K_EXTRAS),
+    ]),
+    'kbtype':2,
+    'pages':[
+    (register.page,K_EDDIE,("Eddie",register_hotkeys)),
+    (register.page,K_FRANK,("Frank",register_hotkeys)),
+    (register.page,K_GILES,("Giles",register_hotkeys)),
+    (register.page,K_HELEN,("Helen",register_hotkeys))],
+    }
+
 stock_hotkeys={
     ord('s'): managestock,
     ord('S'): managestock,
@@ -308,18 +482,28 @@ stockcontrol={
     'pages':[(stockterminal.page,K_ALICE,(stock_hotkeys,))],
 }    
 
+# Config0 is a QWERTY-keyboard stock-control terminal
 config0=dict()
 config0.update(std)
 config0.update(stockcontrol)
 config0.update(pdfprinter)
 config0.update(labelprinter)
 
+# Config1 is the main bar terminal
 config1=dict()
 config1.update(std)
 config1.update(kb1)
-config1.update(localprinter)
+config1.update(xpdfprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
+
+# Config2 is the festival terminal
+config2=dict()
+config2.update(std)
+config2.update(kb2)
+config2.update(xpdfprinter)
+config2.update(labelprinter)
+config2.update(kitchen)
 
 # Things to define:
 #  kbdriver - keyboard driver
@@ -346,4 +530,5 @@ config1.update(kitchen)
 configurations={
     0: config0,
     1: config1,
+    2: config2,
     }

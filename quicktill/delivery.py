@@ -49,14 +49,13 @@ class delivery(ui.basicpopup):
         ui.basicpopup.__init__(self,23,80,title=title,
                                colour=ui.colour_input,keymap=km)
         km={keyboard.K_PRINT: (self.printout,None,False)}
-        self.win=self.pan.window()
-        self.win.addstr(2,2,"       Supplier:")
-        self.win.addstr(3,2,"           Date:")
-        self.win.addstr(4,2,"Document number:")
-        self.win.addstr(self.ltop-1,1,
+        self.addstr(2,2,"       Supplier:")
+        self.addstr(3,2,"           Date:")
+        self.addstr(4,2,"Document number:")
+        self.addstr(self.ltop-1,1,
                         "StockNo Stock Type........................... "
                         "Unit.... Cost.. Sale  BestBefore")
-        self.win.addstr(20,50,"Press Print for a hard copy.")
+        self.addstr(20,50,"Press Print for a hard copy.")
         self.supfield=ui.popupfield(self.win,2,19,59,selectsupplier,
                                     self.supplier_value,keymap=km,
                                     f=supplier,readonly=self.readonly)
@@ -189,10 +188,10 @@ class delivery(ui.basicpopup):
                 self.dl[line],typestr,sd['stockunit'],coststr,
                 sd['saleprice'],ui.formatdate(sd['bestbefore']))
         attr=(0,curses.A_REVERSE)[line==self.cursor]
-        self.win.addstr(y,1,s,attr)
+        self.addstr(y,1,s,attr)
     def drawdl(self):
         for i in range(self.ltop,self.ltop+self.h+1):
-            self.win.addstr(i,1,' '*78)
+            self.addstr(i,1,' '*78)
         for i in range(0,len(self.dl)):
             self.drawline(i)
     def setcursor(self,line):
@@ -200,7 +199,7 @@ class delivery(ui.basicpopup):
         self.cursor=None
         if oc is not None:
             self.drawline(oc)
-        self.win.addstr(20,2,' '*42)
+        self.addstr(20,2,' '*42)
         if line>len(self.dl): line=len(self.dl)-1
         if line<0:
             self.docnumfield.focus()
@@ -219,10 +218,10 @@ class delivery(ui.basicpopup):
         if self.cursor is not None:
             if not self.readonly:
                 if self.dl[self.cursor] is not None:
-                    self.win.addstr(20,2,
+                    self.addstr(20,2,
                                     "Press Cancel to delete this stock item.")
                 elif len(self.dl)>1:
-                    self.win.addstr(20,2,
+                    self.addstr(20,2,
                                     "Press Quantity to duplicate the last "
                                     "item.")
             self.drawline(self.cursor)
@@ -264,31 +263,30 @@ class stockline(ui.basicpopup):
         ui.basicpopup.__init__(self,12,78,title="Stock Item",
                                cleartext="Press Clear to exit, forgetting "
                                "all changes",colour=ui.colour_line)
-        win=self.pan.window()
         self.units=[]
         if sn is None:
-            win.addstr(2,2,"Stock number not yet assigned")
+            self.addstr(2,2,"Stock number not yet assigned")
         else:
-            win.addstr(2,2,"        Stock number: %d"%sn)
-        win.addstr(3,2,"          Stock type:")
-        win.addstr(4,2,"                Unit:")
-        win.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
-        win.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
-        win.addstr(7,2,"         Best before:")
+            self.addstr(2,2,"        Stock number: %d"%sn)
+        self.addstr(3,2,"          Stock type:")
+        self.addstr(4,2,"                Unit:")
+        self.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
+        self.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
+        self.addstr(7,2,"         Best before:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.typefield=ui.popupfield(win,3,24,52,stock.stocktype,
+        self.typefield=ui.popupfield(self.win,3,24,52,stock.stocktype,
                                      stock.format_stocktype,keymap=km)
         self.typefield.sethook=self.updateunitfield
-        self.unitfield=ui.listfield(win,4,24,20,None,keymap=km)
-        self.costfield=ui.editfield(win,5,24+len(tillconfig.currency),6,
+        self.unitfield=ui.listfield(self.win,4,24,20,None,keymap=km)
+        self.costfield=ui.editfield(self.win,5,24+len(tillconfig.currency),6,
                                     keymap=km,
                                     validate=ui.validate_float)
         self.costfield.sethook=self.guesssaleprice
-        self.salefield=ui.editfield(win,6,24+len(tillconfig.currency),6,
+        self.salefield=ui.editfield(self.win,6,24+len(tillconfig.currency),6,
                                     keymap=km,
                                     validate=ui.validate_float)
-        self.bestbeforefield=ui.datefield(win,7,24,keymap=km)
-        self.acceptbutton=ui.buttonfield(win,9,28,21,"Accept values",
+        self.bestbeforefield=ui.datefield(self.win,7,24,keymap=km)
+        self.acceptbutton=ui.buttonfield(self.win,9,28,21,"Accept values",
                                          keymap=km)
         self.acceptbutton.keymap[keyboard.K_CASH]=(self.accept,None,False)
         fl=[self.typefield,self.unitfield,self.costfield,self.salefield,
@@ -389,16 +387,15 @@ class editsupplier(ui.basicpopup):
         ui.basicpopup.__init__(self,10,70,title="Supplier Details",
                                colour=ui.colour_input,cleartext=
                                "Press Clear to go back")
-        win=self.pan.window()
-        win.addstr(2,2,"Please enter the supplier's details. You may ")
-        win.addstr(3,2,"leave the telephone and email fields blank if you wish.")
-        win.addstr(5,2,"     Name:")
-        win.addstr(6,2,"Telephone:")
-        win.addstr(7,2,"    Email:")
+        self.addstr(2,2,"Please enter the supplier's details. You may ")
+        self.addstr(3,2,"leave the telephone and email fields blank if you wish.")
+        self.addstr(5,2,"     Name:")
+        self.addstr(6,2,"Telephone:")
+        self.addstr(7,2,"    Email:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.namefield=ui.editfield(win,5,13,55,flen=60,keymap=km,f=name)
-        self.telfield=ui.editfield(win,6,13,20,keymap=km,f=tel)
-        self.emailfield=ui.editfield(win,7,13,55,flen=60,keymap=km,f=email)
+        self.namefield=ui.editfield(self.win,5,13,55,flen=60,keymap=km,f=name)
+        self.telfield=ui.editfield(self.win,6,13,20,keymap=km,f=tel)
+        self.emailfield=ui.editfield(self.win,7,13,55,flen=60,keymap=km,f=email)
         fl=[self.namefield,self.telfield,self.emailfield]
         ui.map_fieldlist(fl)
         self.emailfield.keymap[keyboard.K_CASH]=(

@@ -14,9 +14,8 @@ class popup(ui.basicpopup):
         ui.basicpopup.__init__(self,10,70,title="Record Waste",
                                cleartext="Press Clear to go back",
                                colour=ui.colour_input)
-        self.win=self.pan.window()
-        self.win.addstr(2,2,"Press stock line key or enter stock number.")
-        self.win.addstr(3,2,"       Stock item:")
+        self.addstr(2,2,"Press stock line key or enter stock number.")
+        self.addstr(3,2,"       Stock item:")
         stockfield_km={keyboard.K_CLEAR: (self.dismiss,None,False),
                        keyboard.K_CASH: (self.stock_enter_key,None,False)}
         for i in keyboard.lines:
@@ -53,7 +52,7 @@ class popup(ui.basicpopup):
                  "key."%name],title="No stock on display")
             return
         self.stockfield.set(name)
-        self.win.addstr(4,21,"%d items on display"%self.ondisplay)
+        self.addstr(4,21,"%d items on display"%self.ondisplay)
         self.create_extra_fields()
     def stock_dept_selected(self,dept):
         sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
@@ -87,11 +86,11 @@ class popup(ui.basicpopup):
             return
         self.isline=False
         self.sd=sd
-        self.win.addstr(4,21,stock.format_stock(sd,maxw=40))
+        self.addstr(4,21,stock.format_stock(sd,maxw=40))
         self.create_extra_fields()
     def create_extra_fields(self):
-        self.win.addstr(5,2,"Waste description:")
-        self.win.addstr(6,2,"    Amount wasted:")
+        self.addstr(5,2,"Waste description:")
+        self.addstr(6,2,"    Amount wasted:")
         if self.isline:
             wastelist=['missing','taste','damaged','ood','freebie']
         else:
@@ -117,9 +116,9 @@ class popup(ui.basicpopup):
                                       keymap=amountfield_km)
         self.wastedescfield.nextfield=self.amountfield
         if self.isline:
-            self.win.addstr(6,26,'items')
+            self.addstr(6,26,'items')
         else:
-            self.win.addstr(6,26,self.sd['unitname']+'s')
+            self.addstr(6,26,self.sd['unitname']+'s')
         self.wastedescfield.set(0)
         self.wastedescfield.focus()
     def finish(self):

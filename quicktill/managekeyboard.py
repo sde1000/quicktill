@@ -11,10 +11,9 @@ class popup(ui.basicpopup):
         ui.basicpopup.__init__(self,8,60,title="Edit Keycaps",
                                cleartext="Press Clear to dismiss",
                                colour=ui.colour_input)
-        self.win=self.pan.window()
-        self.win.addstr(2,2,"Press a line key; alter the legend and press Cash/Enter.")
-        self.win.addstr(4,2,"Keycode:")
-        self.win.addstr(5,2," Legend:")
+        self.addstr(2,2,"Press a line key; alter the legend and press Cash/Enter.")
+        self.addstr(4,2,"Keycode:")
+        self.addstr(5,2," Legend:")
         self.keycode=None
         km={}
         for i in keyboard.lines:
@@ -24,8 +23,8 @@ class popup(ui.basicpopup):
         self.kcfield=ui.editfield(self.win,5,11,46,keymap=km)
         self.kcfield.focus()
     def selectline(self,line):
-        self.win.addstr(4,11," "*20)
-        self.win.addstr(4,11,"%s"%keyboard.kcnames[line])
+        self.addstr(4,11," "*20)
+        self.addstr(4,11,"%s"%keyboard.kcnames[line])
         self.kcfield.set(ui.kb.keycap(line))
         self.keycode=line
     def setcap(self):

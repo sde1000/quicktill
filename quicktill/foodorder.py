@@ -161,10 +161,9 @@ class subopts_dialog(ui.dismisspopup):
            km[k[0]]=(self.newsubopt,(so,),False)
         ui.dismisspopup.__init__(self,h,self.w,name+" options",
                                  colour=ui.colour_line,keymap=km)
-        self.win=self.pan.window()
         y=9
         for k,so in opts:
-           self.win.addstr(y,2,"%s: %s"%(k[1],so[0]))
+           self.addstr(y,2,"%s: %s"%(k[1],so[0]))
            y=y+1
         self.ol=[]
         self.name=name
@@ -188,16 +187,16 @@ class subopts_dialog(ui.dismisspopup):
         y=2
         attr=curses.color_pair(ui.colour_line)|curses.A_REVERSE
         for i in w:
-            self.win.addstr(y,2,i,attr)
+            self.addstr(y,2,i,attr)
             y=y+1
-        self.win.addstr(7,2,' '*(self.w-4))
+        self.addstr(7,2,' '*(self.w-4))
         if len(self.ol)<self.atleast:
-            self.win.addstr(7,2,"Choose options from the list below.")
+            self.addstr(7,2,"Choose options from the list below.")
         elif len(self.ol)<self.atmost or self.atmost is None:
-            self.win.addstr(7,2,
+            self.addstr(7,2,
                             "Choose options, and press Cash/Enter to confirm.")
         else:
-            self.win.addstr(7,2,"Press Cash/Enter to confirm.")
+            self.addstr(7,2,"Press Cash/Enter to confirm.")
         self.win.move(2,2)
     def newsubopt(self,so):
         if len(self.ol)<self.atmost or self.atmost is None:
@@ -228,11 +227,10 @@ class tablenumber(ui.dismisspopup):
         ui.dismisspopup.__init__(self,5,20,title="Table number",
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_line)
-        win=self.pan.window()
-        win.addstr(2,2,"Table number:")
+        self.addstr(2,2,"Table number:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True),
             keyboard.K_CASH: (self.enter,None,False)}
-        self.numberfield=ui.editfield(win,2,16,5,validate=ui.validate_int,
+        self.numberfield=ui.editfield(self.win,2,16,5,validate=ui.validate_int,
                                      keymap=km)
         self.func=func
         self.numberfield.focus()
@@ -271,9 +269,8 @@ class popup(ui.basicpopup):
         self.w=64
         ui.basicpopup.__init__(self,self.h,self.w,title="Food Order",
                           colour=ui.colour_input)
-        self.win=self.pan.window()
-        self.win.addstr(self.h-1,3,"Clear: abandon order   Print: finish   "
-                        "Cancel:  delete item")
+        self.addstr(self.h-1,3,"Clear: abandon order   Print: finish   "
+                    "Cancel:  delete item")
         # Split the top level menu into lines for display
         tlm=[""]
         labels=["1","2","3","4","5","6","7","8","9","0","00","."]
@@ -288,7 +285,7 @@ class popup(ui.basicpopup):
         maxy=self.h-len(tlm)-2
         y=maxy+1
         for i in tlm:
-            self.win.addstr(y,2,i)
+            self.addstr(y,2,i)
             y=y+1
         self.maxy=maxy
         self.toplevel=menuchoice(self.foodmenu.menu)
@@ -340,12 +337,12 @@ class popup(ui.basicpopup):
         """
         # First clear the drawing space
         for y in range(1,self.maxy):
-            self.win.addstr(y,1,' '*(self.w-2))
+            self.addstr(y,1,' '*(self.w-2))
         y=2
         i=self.top
         lastcomplete=i
-        if i>0: self.win.addstr(1,1,'...')
-        else: self.win.addstr(1,1,'   ')
+        if i>0: self.addstr(1,1,'...')
+        else: self.addstr(1,1,'   ')
         cursor_y=None
         while i<=len(self.ml):
             if i>=len(self.ml):
@@ -359,7 +356,7 @@ class popup(ui.basicpopup):
                 cursor_y=y
             for j in l:
                 if y<self.maxy:
-                    self.win.addstr(y,2,j,colour)
+                    self.addstr(y,2,j,colour)
                     y=y+1
             if y<self.maxy:
                 lastcomplete=i
@@ -367,9 +364,9 @@ class popup(ui.basicpopup):
                 break
             i=i+1
         if len(self.ml)>i:
-            self.win.addstr(self.maxy,1,'...')
+            self.addstr(self.maxy,1,'...')
         else:
-            self.win.addstr(self.maxy,1,'   ')
+            self.addstr(self.maxy,1,'   ')
         if cursor_y is not None:
             self.win.move(cursor_y,2)
         return lastcomplete
@@ -413,9 +410,8 @@ class cancel(ui.dismisspopup):
     def __init__(self):
         ui.dismisspopup.__init__(self,5,20,title="Cancel food order",
                                  colour=ui.colour_input)
-        win=self.pan.window()
-        win.addstr(2,2,"Order number:")
-        self.field=ui.editfield(win,2,16,5,validate=ui.validate_int,
+        self.addstr(2,2,"Order number:")
+        self.field=ui.editfield(self.win,2,16,5,validate=ui.validate_int,
                                 keymap={
             keyboard.K_CASH: (self.finish,None,False),
             keyboard.K_CLEAR: (self.dismiss,None,False)})

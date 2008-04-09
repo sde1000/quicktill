@@ -179,18 +179,20 @@ class create(ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR)
         depts=td.department_list()
         self.deptlist=[x[0] for x in depts]
-        win=self.pan.window()
-        win.addstr(2,2,"    Stock line name:")
-        win.addstr(3,2,"           Location:")
-        win.addstr(4,2,"         Department:")
-        win.addstr(5,2,"   Display capacity:")
-        win.addstr(6,2,"Pull-through amount:")
-        self.namefield=ui.editfield(win,2,23,30,keymap={
+        self.addstr(2,2,"    Stock line name:")
+        self.addstr(3,2,"           Location:")
+        self.addstr(4,2,"         Department:")
+        self.addstr(5,2,"   Display capacity:")
+        self.addstr(6,2,"Pull-through amount:")
+        self.namefield=ui.editfield(self.win,2,23,30,keymap={
             keyboard.K_CLEAR: (self.dismiss,None,True)})
-        self.locfield=ui.editfield(win,3,23,20)
-        self.deptfield=ui.listfield(win,4,23,20,self.deptlist,d=dict(depts))
-        self.capacityfield=ui.editfield(win,5,23,5,validate=ui.validate_int)
-        self.pullthrufield=ui.editfield(win,6,23,5,validate=ui.validate_float,
+        self.locfield=ui.editfield(self.win,3,23,20)
+        self.deptfield=ui.listfield(self.win,4,23,20,self.deptlist,
+                                    d=dict(depts))
+        self.capacityfield=ui.editfield(self.win,5,23,5,
+                                        validate=ui.validate_int)
+        self.pullthrufield=ui.editfield(self.win,6,23,5,
+                                        validate=ui.validate_float,
                                         keymap={
             keyboard.K_CASH: (self.enter,None,False)})
         ui.map_fieldlist([self.namefield,self.locfield,self.deptfield,
@@ -235,20 +237,19 @@ class modify(ui.dismisspopup):
         # Can change name, location, capacity or pullthru,
         # but not any other property.  Also, capacity cannot be set from
         # non-null to null or null to non-null.
-        win=self.pan.window()
-        win.addstr(2,2,"    Stock line name:")
-        win.addstr(3,2,"           Location:")
-        win.addstr(4,2,"         Department: %s"%depts[dept])
-        win.addstr(5,2,"   Display capacity:")
-        win.addstr(6,2,"Pull-through amount:")
+        self.addstr(2,2,"    Stock line name:")
+        self.addstr(3,2,"           Location:")
+        self.addstr(4,2,"         Department: %s"%depts[dept])
+        self.addstr(5,2,"   Display capacity:")
+        self.addstr(6,2,"Pull-through amount:")
         if capacity is not None: capacity=str(capacity)
         if pullthru is not None: pullthru="%0.2f"%pullthru
-        self.namefield=ui.editfield(win,2,23,30,f=name,keymap={
+        self.namefield=ui.editfield(self.win,2,23,30,f=name,keymap={
             keyboard.K_CLEAR: (self.dismiss,None,True)})
-        self.locfield=ui.editfield(win,3,23,20,f=location)
-        self.capacityfield=ui.editfield(win,5,23,5,f=capacity,
+        self.locfield=ui.editfield(self.win,3,23,20,f=location)
+        self.capacityfield=ui.editfield(self.win,5,23,5,f=capacity,
                                         validate=ui.validate_int)
-        self.pullthrufield=ui.editfield(win,6,23,5,f=pullthru,
+        self.pullthrufield=ui.editfield(self.win,6,23,5,f=pullthru,
                                         validate=ui.validate_float,
                                         keymap={
             keyboard.K_CASH: (self.enter,None,False)})
@@ -383,13 +384,12 @@ class changebinding(ui.dismisspopup):
     def __init__(self,stocklineid,keycode,menukey,qty):
         ui.dismisspopup.__init__(self,7,50,title="Change keyboard binding",
                                  colour=ui.colour_input)
-        self.win=self.pan.window()
         self.stocklineid=stocklineid
         self.keycode=keycode
         self.menukey=menukey
-        self.win.addstr(2,2,"Check the quantity and press Cash/Enter,")
-        self.win.addstr(3,2,"or press Cancel to delete the binding.")
-        self.win.addstr(5,2,"Quantity:")
+        self.addstr(2,2,"Check the quantity and press Cash/Enter,")
+        self.addstr(3,2,"or press Cancel to delete the binding.")
+        self.addstr(5,2,"Quantity:")
         km={keyboard.K_CANCEL: (self.deletebinding,None,False),
             keyboard.K_CASH: (self.setqty,None,False),
             keyboard.K_CLEAR: (self.dismiss,None,False)}

@@ -120,14 +120,13 @@ class bbcheck(ui.dismisspopup):
         ui.dismisspopup.__init__(self,6,20,title="Bar Billiards check",
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
-        win=self.pan.window()
-        win.addstr(2,2,"   Total gross:")
-        win.addstr(3,2,"Supplier share:")
+        self.addstr(2,2,"   Total gross:")
+        self.addstr(3,2,"Supplier share:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.grossfield=ui.editfield(win,2,18,5,validate=ui.validate_float,
+        self.grossfield=ui.editfield(self.win,2,18,5,validate=ui.validate_float,
                                      keymap=km)
         km={keyboard.K_CASH: (self.enter,None,False)}
-        self.sharefield=ui.editfield(win,3,18,5,validate=ui.validate_float,
+        self.sharefield=ui.editfield(self.win,3,18,5,validate=ui.validate_float,
                                      keymap=km)
         self.sharefield.set(str(share))
         ui.map_fieldlist([self.grossfield,self.sharefield])

@@ -2,12 +2,16 @@
 # windows, and so on.
 
 import curses,curses.ascii,time,math,keyboard,sys,string,textwrap
-import event
+import event,locale
 
 from mx.DateTime import now,strptime
 
 import logging
 log=logging.getLogger()
+
+# curses requires unicode strings to be encoded before being passed
+# to functions like addstr() and addch().  Very tedious!
+c=locale.getpreferredencoding()
 
 colour_header=1
 colour_error=1 # white on red
@@ -30,6 +34,12 @@ hotkeys={}
 # List of pages, in order
 pagelist=[]
 
+def wrap_addstr(win,y,x,str,attr=None):
+    if attr is None:
+        win.addstr(y,x,str.encode(c))
+    else:
+        win.addstr(y,x,str.encode(c),attr)
+
 class clock:
     def __init__(self,win):
         self.stdwin=win
@@ -39,7 +49,8 @@ class clock:
     def alarm(self):
         ts=time.strftime("%a %d %b %Y %H:%M:%S %Z")
         (my,mx)=stdwin.getmaxyx()
-        self.stdwin.addstr(0,mx-len(ts),ts,curses.color_pair(colour_header))
+        self.stdwin.addstr(0,mx-len(ts),ts.encode(c),
+                           curses.color_pair(colour_header))
 
 def formattime(ts):
     "Returns ts formatted as %Y/%m/%d %H:%M:%S"
@@ -73,8 +84,8 @@ def updateheader(page):
             if ps!="": s=s+i.pagesummary()+' '
     if len(s)>0: s=s[:-1]
     stdwin.addstr(0,0,50*" ",curses.color_pair(colour_header))
-    stdwin.addstr(0,50-len(s),s,curses.color_pair(colour_header))
-    stdwin.addstr(0,0,m,curses.color_pair(colour_header))
+    stdwin.addstr(0,50-len(s),s.encode(c),curses.color_pair(colour_header))
+    stdwin.addstr(0,0,m.encode(c),curses.color_pair(colour_header))
 
 # Switch to a VC
 def selectpage(page):
@@ -103,6 +114,8 @@ class basicpage:
         self.focus=self
         self.stack=[]
         (self.h,self.w)=self.win.getmaxyx()
+    def addstr(self,y,x,s,attr=None):
+        wrap_addstr(self.win,y,x,s,attr)
     def pagename(self):
         return "Basic page"
     def pagesummary(self):
@@ -129,6 +142,8 @@ class basicwin:
     def __init__(self,keymap={},takefocus=True):
         self.keymap=keymap.copy()
         if takefocus: self.focus()
+    def addstr(self,y,x,s,attr=None):
+        wrap_addstr(self.win,y,x,s,attr)
     def focus(self):
         global focus
         self.parent=focus
@@ -156,12 +171,12 @@ class basicpopup(basicwin):
         w=min(w,mw)
         h=min(h,mh)
         self.pan=popup(self,h,w)
-        win=self.pan.window()
-        win.bkgdset(ord(' '),curses.color_pair(colour))
-        win.clear()
-        win.border()
-        if title: win.addstr(0,1,title)
-        if cleartext: win.addstr(h-1,w-1-len(cleartext),cleartext)
+        self.win=self.pan.window()
+        self.win.bkgdset(ord(' '),curses.color_pair(colour))
+        self.win.clear()
+        self.win.border()
+        if title: self.addstr(0,1,title)
+        if cleartext: self.addstr(h-1,w-1-len(cleartext),cleartext)
         self.pan.show()
     def dismiss(self):
         self.pan.hide()
@@ -209,14 +224,13 @@ class keymenu(basicpopup):
         w=pw+tw+6
         basicpopup.__init__(self,h,w,title=title,colour=colour,
                             cleartext=cleartext,keymap=km)
-        win=self.pan.window()
-        (h,w)=win.getmaxyx()
+        (h,w)=self.win.getmaxyx()
         y=2
         for keycode,desc,func,args in itemlist:
-            win.addstr(y,2,"%s."%kb.keycap(keycode))
-            win.addstr(y,pw+4,desc)
+            self.addstr(y,2,"%s."%kb.keycap(keycode))
+            self.addstr(y,pw+4,desc)
             y=y+1
-        win.move(h-1,w-1)
+        self.win.move(h-1,w-1)
 
 # itemlist entries are (desc,func,args)
 # A popup menu with a list of selections. Selection can be made by
@@ -262,7 +276,6 @@ class menu(basicpopup):
             cleartext=None
         basicpopup.__init__(self,h,w,title=title,cleartext=cleartext,
                             colour=colour,keymap=km)
-        self.win=self.pan.window()
         (h,w)=self.win.getmaxyx()
         self.ytop=len(blurbl)+1
         self.top=0
@@ -272,7 +285,7 @@ class menu(basicpopup):
         self.w=w-2
         y=1
         for i in blurbl:
-            self.win.addstr(y,2,i)
+            self.addstr(y,2,i)
             y=y+1
         self.check_scroll()
         self.redraw()
@@ -288,12 +301,12 @@ class menu(basicpopup):
         if y>=self.h: return
         if lineno==self.cursor: attr=curses.A_REVERSE
         else: attr=0
-        self.win.addstr(y+self.ytop,1,' '*self.w,attr)
+        self.addstr(y+self.ytop,1,' '*self.w,attr)
         if ((y==0 and self.top>0) or
             (y==self.h-1 and lineno!=len(self.itemlist)-1)):
-            self.win.addstr(y+self.ytop,1,'...',attr)
+            self.addstr(y+self.ytop,1,'...',attr)
         else:
-            self.win.addstr(y+self.ytop,1,self.itemlist[lineno][0],attr)
+            self.addstr(y+self.ytop,1,self.itemlist[lineno][0],attr)
     def redraw(self):
         for i in range(0,len(self.itemlist)):
             self.drawline(i)
@@ -336,7 +349,6 @@ class linepopup(dismisspopup):
         h=min(len(lines)+2,mh)
         dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
                               keymap)
-        self.win=self.pan.window()
         self.scrolly=0
         self.scrollpage=((h-2)*2)/3
         self.lines=lines
@@ -352,11 +364,11 @@ class linepopup(dismisspopup):
         scrollbot=(end<len(self.lines))
         y=1
         for i in self.lines[self.scrolly:self.scrolly+h-2]:
-            self.win.addstr(y,2,' '*(w-4))
+            self.addstr(y,2,' '*(w-4))
             if (y==1 and scrolltop) or (y==(h-2) and scrollbot):
-                self.win.addstr(y,2,'...')
+                self.addstr(y,2,'...')
             else:
-                self.win.addstr(y,2,i)
+                self.addstr(y,2,i)
             y=y+1
         self.win.move(h-1,w-1)
     def keypress(self,k):
@@ -509,8 +521,8 @@ class editfield(field):
         if self.c-self.i>self.w:
             self.i=self.c-self.w
         if self.c<self.i: self.i=self.c
-        self.win.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
-        self.win.addstr(self.y,self.x,self.f[self.i:self.i+self.w],
+        self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
+        self.addstr(self.y,self.x,self.f[self.i:self.i+self.w],
                         curses.A_REVERSE)
         self.win.move(self.y,self.x+self.c-self.i)
     def insert(self,s):
@@ -610,8 +622,8 @@ class datefield(editfield):
         if d is None: editfield.set(self,"")
         return d
     def draw(self):
-        self.win.addstr(self.y,self.x,'YYYY/MM/DD',curses.A_REVERSE)
-        self.win.addstr(self.y,self.x,self.f,curses.A_REVERSE)
+        self.addstr(self.y,self.x,'YYYY/MM/DD',curses.A_REVERSE)
+        self.addstr(self.y,self.x,self.f,curses.A_REVERSE)
         self.win.move(self.y,self.x+self.c)
     def insert(self,s):
         editfield.insert(self,s)
@@ -646,8 +658,8 @@ class popupfield(field):
         if self.f is not None: s=self.valuefunc(self.f)
         else: s=""
         if len(s)>self.w: s=s[:self.w]
-        self.win.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
-        self.win.addstr(self.y,self.x,s,curses.A_REVERSE)
+        self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
+        self.addstr(self.y,self.x,s,curses.A_REVERSE)
         self.win.move(self.y,self.x)
     def keypress(self,k):
         if k==keyboard.K_CLEAR and self.f is not None and not self.readonly:
@@ -712,7 +724,7 @@ class buttonfield(field):
         if focus==self: s="[%s]"%self.t
         else: s=" %s "%self.t
         pos=self.win.getyx()
-        self.win.addstr(self.y,self.x,s,curses.A_REVERSE)
+        self.addstr(self.y,self.x,s,curses.A_REVERSE)
         if focus==self: self.win.move(self.y,self.x)
         else: self.win.move(*pos)
 

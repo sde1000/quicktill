@@ -11,15 +11,13 @@ class page(ui.basicpage):
     def pagename(self):
         return "Menu Check"
     def redraw(self):
-        win=self.win
-        win.erase()
-        win.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")
-        win.addstr(self.h-2,0,"Press O to check the menu.  Press C to "
-                   "commit the menu.  Press Q to quit.")
+        self.win.erase()
+        self.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")
+        self.addstr(self.h-2,0,"Press O to check the menu.  Press C to "
+                    "commit the menu.  Press Q to quit.")
     def reporttotal(self,total):
-        win=self.win
-        win.addstr(2,0,(self.w-1)*' ')
-        win.addstr(2,0,"Total of order was %0.2f"%total)
+        self.addstr(2,0,(self.w-1)*' ')
+        self.addstr(2,0,"Total of order was %0.2f"%total)
     def ordernumber(self):
         return 1234
     def keypress(self,k):

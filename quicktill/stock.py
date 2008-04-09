@@ -80,30 +80,32 @@ class stocktype(ui.basicpopup):
         ui.basicpopup.__init__(self,15,48,title=title,
                                colour=ui.colour_input,
                                cleartext="Press Clear to go back")
-        win=self.pan.window()
-        win.addstr(2,2,blurb1)
-        win.addstr(3,2,blurb2)
-        win.addstr(5,2,"Manufacturer:")
-        win.addstr(6,2,"        Name:")
-        win.addstr(7,2,"  Short name:")
-        win.addstr(8,2,"  Department:")
-        win.addstr(8,38,"ABV:")
-        win.addstr(9,2,"        Unit:")
-        win.addstr(13,2,"Note: 'Short Name' is printed on receipts.")
+        self.addstr(2,2,blurb1)
+        self.addstr(3,2,blurb2)
+        self.addstr(5,2,"Manufacturer:")
+        self.addstr(6,2,"        Name:")
+        self.addstr(7,2,"  Short name:")
+        self.addstr(8,2,"  Department:")
+        self.addstr(8,38,"ABV:")
+        self.addstr(9,2,"        Unit:")
+        self.addstr(13,2,"Note: 'Short Name' is printed on receipts.")
         km={keyboard.K_CLEAR: (self.dismiss,None,False)}
-        self.manufield=ui.editfield(win,5,16,30,
+        self.manufield=ui.editfield(self.win,5,16,30,
                                     validate=self.validate_manufacturer,
                                     keymap=km)
-        self.namefield=ui.editfield(win,6,16,30,validate=self.validate_name,
+        self.namefield=ui.editfield(self.win,6,16,30,
+                                    validate=self.validate_name,
                                     keymap=km)
-        self.snamefield=ui.editfield(win,7,16,25,keymap=km)
-        self.deptfield=ui.listfield(win,8,16,20,self.deptlist,d=dict(depts),
+        self.snamefield=ui.editfield(self.win,7,16,25,keymap=km)
+        self.deptfield=ui.listfield(self.win,8,16,20,
+                                    self.deptlist,d=dict(depts),
                                     keymap=km,readonly=(mode==2))
-        self.abvfield=ui.editfield(win,8,42,4,validate=ui.validate_float,
+        self.abvfield=ui.editfield(self.win,8,42,4,validate=ui.validate_float,
                                    keymap=km)
-        self.unitfield=ui.listfield(win,9,16,30,self.unitlist,d=dict(units),
+        self.unitfield=ui.listfield(self.win,9,16,30,self.unitlist,
+                                    d=dict(units),
                                     keymap=km,readonly=(mode==2))
-        self.confirmbutton=ui.buttonfield(win,11,15,20,prompt,keymap=km)
+        self.confirmbutton=ui.buttonfield(self.win,11,15,20,prompt,keymap=km)
         # set not to dismiss so that if the input is not valid we
         # can go back to editing
         if mode==1:
@@ -283,9 +285,8 @@ class annotate(ui.basicpopup):
     def __init__(self,stockid=None):
         ui.basicpopup.__init__(self,11,64,"Annotate Stock",
                                "Press Clear to go back",ui.colour_input)
-        self.win=self.pan.window()
-        self.win.addstr(2,2,"Press stock line key or enter stock number.")
-        self.win.addstr(3,2,"       Stock item:")
+        self.addstr(2,2,"Press stock line key or enter stock number.")
+        self.addstr(3,2,"       Stock item:")
         stockfield_km={keyboard.K_CLEAR: (self.dismiss,None,False),
                        keyboard.K_CASH: (self.stock_enter_key,None,False)}
         for i in keyboard.lines:
@@ -340,11 +341,11 @@ class annotate(ui.basicpopup):
                          title="Error")
             return
         self.sd=sd
-        self.win.addstr(4,21,format_stock(sd,maxw=40))
+        self.addstr(4,21,format_stock(sd,maxw=40))
         self.create_extra_fields()
     def create_extra_fields(self):
-        self.win.addstr(5,2,"Annotation type:")
-        self.win.addstr(7,2,"Annotation:")
+        self.addstr(5,2,"Annotation type:")
+        self.addstr(7,2,"Annotation:")
         annlist=['location','memo','vent']
         anndict={'location':'Location',
                  'memo':'Memo',
@@ -394,10 +395,9 @@ class annotate_location(ui.basicpopup):
             return
         ui.basicpopup.__init__(self,7,64,"Stock Location",
                                "Press Clear to go back",ui.colour_input)
-        self.win=self.pan.window()
         self.stockid=stockid
-        self.win.addstr(2,2,format_stock(sd,maxw=60))
-        self.win.addstr(4,2,"Enter location:")
+        self.addstr(2,2,format_stock(sd,maxw=60))
+        self.addstr(4,2,"Enter location:")
         self.locfield=ui.editfield(self.win,4,18,40,keymap={
             keyboard.K_CASH: (self.finish,None,False)})
         self.locfield.focus()

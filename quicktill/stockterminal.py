@@ -29,43 +29,43 @@ class page(ui.basicpage):
     def drawlines(self):
         sl=td.stockline_summary()
         y=1
-        self.win.addstr(0,0,"Line")
-        self.win.addstr(0,10,"StockID")
-        self.win.addstr(0,18,"Stock")
-        self.win.addstr(0,64,"Used")
-        self.win.addstr(0,70,"Remaining")
+        self.addstr(0,0,"Line")
+        self.addstr(0,10,"StockID")
+        self.addstr(0,18,"Stock")
+        self.addstr(0,64,"Used")
+        self.addstr(0,70,"Remaining")
         for name,dept,stockid in sl:
             if dept>3: continue
-            self.win.addstr(y,0,name)
+            self.addstr(y,0,name)
             if stockid is not None:
                 sd=td.stock_info([stockid])[0]
-                self.win.addstr(y,10,"%d"%stockid)
-                self.win.addstr(y,18,stock.format_stock(sd,maxw=45))
-                self.win.addstr(y,64,"%0.1f"%sd['used'])
-                self.win.addstr(y,73,"%0.1f"%sd['remaining'])
+                self.addstr(y,10,"%d"%stockid)
+                self.addstr(y,18,stock.format_stock(sd,maxw=45))
+                self.addstr(y,64,"%0.1f"%sd['used'])
+                self.addstr(y,73,"%0.1f"%sd['remaining'])
             y=y+1
             if y>=(self.h-3): break
     def drawstillage(self):
         sl=td.stillage_summary()
         y=1
-        self.win.addstr(0,0,"Loc")
-        self.win.addstr(0,5,"StockID")
-        self.win.addstr(0,13,"Name")
-        self.win.addstr(0,70,"Line")
+        self.addstr(0,0,"Loc")
+        self.addstr(0,5,"StockID")
+        self.addstr(0,13,"Name")
+        self.addstr(0,70,"Line")
         for loc,stockid,time,name,line in sl:
-            self.win.addstr(y,0,loc[:5])
-            self.win.addstr(y,5,"%d"%stockid)
-            self.win.addstr(y,13,name)
-            if line: self.win.addstr(y,70,line[:9])
+            self.addstr(y,0,loc[:5])
+            self.addstr(y,5,"%d"%stockid)
+            self.addstr(y,13,name)
+            if line: self.addstr(y,70,line[:9])
             y=y+1
             if y>=(self.h-3): break
     def redraw(self):
         win=self.win
         win.erase()
-        win.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")
-        win.addstr(self.h-2,0,"Press S for stock management.  "
+        self.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")
+        self.addstr(self.h-2,0,"Press S for stock management.  "
                    "Press U to use stock.  Press R to record waste.")
-        win.addstr(self.h-3,0,"Press Enter to refresh display.  "
+        self.addstr(self.h-3,0,"Press Enter to refresh display.  "
                    "Press A to add a stock annotation.")
         if self.display==0:
             self.drawlines()

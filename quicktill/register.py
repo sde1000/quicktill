@@ -48,11 +48,17 @@ class tline:
                     ss=ss[:w]
         else:
             ss=deptstr
-        win.insstr(y,0,' '*w,attr)
-        win.insstr(y,0,ss,attr)
+        # We used to do it this way for bizarre reasons involving being
+        # able to write to the character in the bottom right-hand corner
+        # of the screen.  Now I've decided I just don't care, and it
+        # doesn't play nicely with the UTF-8 locale.
+        #win.insstr(y,0,' '*w,attr)
+        #win.insstr(y,0,ss,attr)
         astr="%d @ %s = %s"%(items,tillconfig.fc(amount),
                              tillconfig.fc(items*amount))
-        win.insstr(y,w-len(astr),astr,attr)
+        #win.insstr(y,w-len(astr),astr,attr)
+        xx="%s%s%s"%(ss,' '*(w-len(ss)-len(astr)),astr)
+        win.addstr(y,0,xx.encode(ui.c),attr)
 
 # Used for payments etc.
 class rline:
@@ -62,8 +68,8 @@ class rline:
     def display(self,win,y,ml,hl=False):
         (h,w)=win.getmaxyx()
         attr=(self.attr,self.attr|curses.A_REVERSE)[hl]
-        win.insstr(y,0,' '*w,attr)
-        win.insstr(y,w-len(self.text),self.text,attr)
+        win.addstr(y,0,' '*w,attr)
+        win.addstr(y,w-len(self.text),self.text.encode(ui.c),attr)
 
 def payline(p):
     (amount,paytype,desc,ref)=p
@@ -86,24 +92,23 @@ class cardpopup(ui.dismisspopup):
         ui.dismisspopup.__init__(self,16,44,title="Card payment",
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
-        win=self.pan.window()
-        win.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
-        win.addstr(4,2,"Please enter the receipt number from the")
-        win.addstr(5,2,"credit card receipt.")
-        win.addstr(7,2," Receipt number:")
+        self.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
+        self.addstr(4,2,"Please enter the receipt number from the")
+        self.addstr(5,2,"credit card receipt.")
+        self.addstr(7,2," Receipt number:")
         km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.rnfield=ui.editfield(win,7,19,16,keymap=km)
-        win.addstr(9,2,"Is there any cashback?  Enter amount and")
-        win.addstr(10,2,"press Cash/Enter.  Leave blank and press")
-        win.addstr(11,2,"Cash/Enter if there is none.")
-        win.addstr(13,2,"Cashback amount: %s"%tillconfig.currency)
+        self.rnfield=ui.editfield(self.win,7,19,16,keymap=km)
+        self.addstr(9,2,"Is there any cashback?  Enter amount and")
+        self.addstr(10,2,"press Cash/Enter.  Leave blank and press")
+        self.addstr(11,2,"Cash/Enter if there is none.")
+        self.addstr(13,2,"Cashback amount: %s"%tillconfig.currency)
         km={keyboard.K_CASH: (self.enter,None,False),
             keyboard.K_CARD: (self.enter,None,False),
             keyboard.K_TWENTY: (self.note,(20.0,),False),
             keyboard.K_TENNER: (self.note,(10.0,),False),
             keyboard.K_FIVER: (self.note,(5.0,),False),
             keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.cbfield=ui.editfield(win,13,19+len(tillconfig.currency),6,
+        self.cbfield=ui.editfield(self.win,13,19+len(tillconfig.currency),6,
                                 validate=ui.validate_float,
                                 keymap=km)
         ui.map_fieldlist([self.rnfield,self.cbfield])
@@ -130,6 +135,7 @@ class page(ui.basicpage):
     def __init__(self,panel,name,hotkeys=None):
         global registry
         ui.basicpage.__init__(self,panel)
+        self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.name=name
         registry.register(self)
         self.clear()
@@ -188,21 +194,21 @@ class page(ui.basicpage):
         if self.mod is not None: m="%s%s "%(m,self.mod)
         if self.buf is not None: m="%s%s"%(m,self.buf)
         if y>=0 and y<self.h:
-            self.win.insstr(y,0,' '*self.w)
+            self.addstr(y,0,' '*self.w)
             if y==0 and self.top>0:
-                self.win.addstr(y,0,'...')
+                self.addstr(y,0,'...')
             elif li<len(self.dl):
                 self.dl[li].display(self.win,y,self.ml,self.cursor==li)
             elif li==len(self.dl)+1:
                 if len(m)>0:
-                    self.win.addstr(y,0,m)
+                    self.addstr(y,0,m)
                 else:
-                    self.win.addstr(y,0,self.prompt)
+                    self.addstr(y,0,self.prompt)
                 if self.balance:
                     bstr="%s %s"%(("Change","Amount to pay")
                                   [self.balance>=0.0],
                                   tillconfig.fc(self.balance))
-                    self.win.insstr(y,self.w-len(bstr),bstr)
+                    self.addstr(y,self.w-len(bstr),bstr)
         # Position cursor?
         if self.cursor is None:
             cy=len(self.dl)+1-self.top

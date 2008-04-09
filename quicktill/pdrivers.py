@@ -132,13 +132,16 @@ class escpos:
         # Special case: if there's only centered text, send the control code
         # for centering.  Otherwise line up with spaces.
         if left=="" and center!="" and right=="":
-            self.f.write(escpos.ep_center+center+"\n"+escpos.ep_left)
+            self.f.write(escpos.ep_center)
+            self.f.write(center.encode('iso-8859-1'))
+            self.g.write("\n"+escpos.ep_left)
         else:
             pad=cpl-len(left)-len(center)-len(right)
             padl=pad/2
             padr=pad-padl
-            self.f.write("%s%s%s%s%s\n"%(
-                left,' '*padl,center,' '*padr,right))
+            self.f.write(("%s%s%s%s%s\n"%(
+                        left,' '*padl,center,' '*padr,right)).
+                         encode('iso-8859-1'))
         if colour is not None:
             self.f.write(escpos.ep_colour[self.colour])
         if font is not None:
