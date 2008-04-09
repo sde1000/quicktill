@@ -1,0 +1,12 @@
+Resources available to view on the till web server:
+
+/ (overall) - a summary of recent events, index page
+session/<number> - session totals
+session/<number>/dept<number> - list of translines in a department
+transaction/<number> - details of a transaction
+stock - a list of all stock
+stock/<number> - full details of a particular stock item
+
+General rule - if a summary is displayed on a page, you can click on
+it for a breakdown.
+
