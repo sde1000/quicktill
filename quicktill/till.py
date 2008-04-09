@@ -35,7 +35,7 @@ def run():
         # Copy keycaps from database to keyboard driver
         caps=td.keyboard_getcaps(tillconfig.kbtype)
         for keycode,keycap in caps:
-            if kbdrv.setkeycap(keyboard.keycodes[keycode],keycap)==False:
+            if ui.kb.setkeycap(keyboard.keycodes[keycode],keycap)==False:
                 log.info("Deleting stale keycap for layout %d keycode %s"%(
                     tillconfig.kbtype,keycode))
                 td.keyboard_delcap(tillconfig.kbtype,keycap)
