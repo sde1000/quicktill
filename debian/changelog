@@ -1,3 +1,11 @@
+quicktill (0.8.3) stable; urgency=low
+
+  * New release 0.8.3
+
+  * Add tillweb code to examples
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 09 Apr 2008 17:59:55 +0100
+
 quicktill (0.8.2) stable; urgency=low
 
   * New release 0.8.2
