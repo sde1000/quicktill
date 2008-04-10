@@ -1,3 +1,17 @@
+quicktill (0.8.7) stable; urgency=low
+
+  * New release 0.8.7
+
+  * Update example till web server for latest version of Cheetah
+
+  * Store config file URL in tillconfig.configversion for display in "About" box
+
+  * Add startup scripts for autologin to examples
+
+  * Sort stillage display on stock terminal by length of time on stillage
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 10 Apr 2008 15:30:15 +0100
+
 quicktill (0.8.6) stable; urgency=low
 
   * New release 0.8.6
