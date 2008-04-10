@@ -79,6 +79,7 @@ def main():
     if options.configurl==None:
         parser.error("No configuration URL provided in "
                      "/etc/quicktill/configurl or on command line")
+    tillconfig.configversion=options.configurl
     f=urllib.urlopen(options.configurl)
     globalconfig=f.read()
     f.close()
