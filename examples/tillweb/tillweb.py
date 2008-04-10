@@ -281,6 +281,7 @@ class Summary(DBPage):
         #end for
         </table>
         <h1><a href="$root/sheet.csv">Data as spreadsheet (CSV)</a></h1>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)
 
 class SessionIndex(DBPage):
@@ -335,6 +336,7 @@ class SessionIndex(DBPage):
         </tr>
         #end for
         </table>
+        #end filter
         """), searchList=searchList,filtersLib=Filters)
 
 class Session(DBPage):
@@ -422,6 +424,7 @@ class Session(DBPage):
         <td class="money">$amount</td></tr>
         #end for
         </table>
+        #end filter
         """), searchList=searchList,filtersLib=Filters)
 
 class StockIndex(DBPage):
@@ -509,6 +512,7 @@ class StockIndex(DBPage):
         </tr>
         #end for
         </table>
+        #end filter
         """), searchList=searchList,filtersLib=Filters)
     def csv(self,w,r):
         w.writerow(["StockID","Manufacturer","Name","ABV","Size","Used","Sold",
@@ -599,6 +603,7 @@ class Stock(DBPage):
         </td><td class="qty">$qty</td><td class="date">$time</td></tr>
         #end for
         </table>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)
 
 class SummarySheet(Resource):
@@ -709,6 +714,7 @@ class DeliveryIndex(DBPage):
         #end if
         #end for
         </table>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)
 
 class StockLines(DBPage):
@@ -744,6 +750,7 @@ class StockLines(DBPage):
         </tr>
         #end for
         </table>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)
 
 class TransLines(DBPage):
@@ -802,6 +809,7 @@ class TransLines(DBPage):
         </tr>
         #end for
         </table>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)
 
 class Statistics(DBPage):
@@ -827,4 +835,5 @@ class Statistics(DBPage):
         </tr>
         #end for
         </table>
+        #end filter
         """),searchList=searchList,filtersLib=Filters)

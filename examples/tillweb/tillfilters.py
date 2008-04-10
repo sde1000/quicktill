@@ -1,4 +1,4 @@
-from Cheetah.Filters import WebSafe,EncodeUnicode
+from Cheetah.Filters import WebSafe,EncodeUnicode,RawOrEncodedUnicode
 
 class webSafeFilter(WebSafe):
     def filter(self, val, **kw):
