@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# This file should be installed in /usr/local/bin
+
+echo Till login...
+setterm -msg off -blank 10 -powerdown 1
+stty -ixon -ixoff
+exec /bin/login -f till AUTORUN=yes

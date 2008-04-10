@@ -1,0 +1,18 @@
+# tty1 - login-till
+#
+# This file is intended to replace /etc/event.d/tty1 on Ubuntu
+# systms.  It maintains the till software on tty1 from the point the system is
+# started until it is shut down again; runlevel 3 can be used to
+# disable the till software temporarily for maintenance.
+
+start on stopped rc2
+start on stopped rc4
+start on stopped rc5
+
+stop on runlevel 0
+stop on runlevel 1
+stop on runlevel 3
+stop on runlevel 6
+
+respawn
+exec /sbin/getty -n -l /usr/local/bin/login-till 38400 tty1

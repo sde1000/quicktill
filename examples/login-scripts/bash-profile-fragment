@@ -1,0 +1,6 @@
+# Append this to /home/till/.profile or .bash_profile as appropriate
+# You may need to change the configuration number
+
+if [ "$AUTORUN" = "yes" ]; then
+    exec runtill -c 1
+fi

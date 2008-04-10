@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# This file should be installed in /usr/local/bin
+
+setterm -clear
+cat <<EOF
+The till is off-line for servicing.
+EOF
