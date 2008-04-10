@@ -134,7 +134,7 @@ class escpos:
         if left=="" and center!="" and right=="":
             self.f.write(escpos.ep_center)
             self.f.write(center.encode('iso-8859-1'))
-            self.g.write("\n"+escpos.ep_left)
+            self.f.write("\n"+escpos.ep_left)
         else:
             pad=cpl-len(left)-len(center)-len(right)
             padl=pad/2

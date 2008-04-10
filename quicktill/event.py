@@ -15,12 +15,12 @@ rdlist=[]
 def eventloop():
     while shutdowncode is None:
         # Work out what the earliest timeout is
-        timeout=0
+        timeout=None
         t=time.time()
         for i in eventlist:
             nt=i.nexttime()
             i.mainloopnexttime=nt
-            if (nt-t)<timeout or timeout==0:
+            if timeout is None or (nt-t)<timeout:
                 timeout=nt-t
         curses.panel.update_panels()
         curses.doupdate()
@@ -31,5 +31,5 @@ def eventloop():
         # Process any events whose time has come
         t=time.time()
         for i in eventlist:
-            if t>i.mainloopnexttime:
+            if t>=i.mainloopnexttime:
                 i.alarm()

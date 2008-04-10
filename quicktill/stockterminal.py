@@ -1,28 +1,12 @@
 import ui,event,time,td,stock,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
-    def __init__(self,panel,hotkeys=None):
+    def __init__(self,panel,hotkeys):
         ui.basicpage.__init__(self,panel)
         self.display=0
         self.alarm()
         self.redraw()
-        if hotkeys is None:
-            # This default list of hotkeys is here to retain compatibility
-            # with configuration files from release 0.7.6 and earlier.
-            # New configuration files should specify this list explicitly.
-            from managestock import popup as managestock
-            from recordwaste import popup as recordwaste
-            from stock import annotate
-            self.hotkeys={
-                ord('s'): managestock,
-                ord('S'): managestock,
-                ord('a'): annotate,
-                ord('A'): annotate,
-                ord('r'): recordwaste,
-                ord('R'): recordwaste,
-                }
-        else:
-            self.hotkeys=hotkeys
+        self.hotkeys=hotkeys
         event.eventlist.append(self)
     def pagename(self):
         return "Stock Control"
