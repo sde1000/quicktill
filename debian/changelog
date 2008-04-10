@@ -1,3 +1,11 @@
+quicktill (0.8.6) stable; urgency=low
+
+  * New release 0.8.6
+
+  * Fix typo in printer driver
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 10 Apr 2008 12:32:28 +0100
+
 quicktill (0.8.5) stable; urgency=low
 
   * New release 0.8.5
