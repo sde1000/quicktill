@@ -723,7 +723,7 @@ def stillage_summary():
         "SELECT text,max(time) FROM stock_annotations "
         "WHERE atype='location' GROUP BY text) "
         "AND s.finished IS NULL AND st.dept=1"
-        "ORDER BY text")
+        "ORDER BY (sl.name is not null),sa.time")
     return cur.fetchall()
 
 ### Functions related to food order numbers
