@@ -22,51 +22,9 @@ class page(ui.basicpage):
         return 1234
     def keypress(self,k):
         if k in self.hotkeys: return self.hotkeys[k]()
+        elif k==ord('c') or k==ord('C'): event.shutdowncode=0
+        elif k==ord('q') or k==ord('Q'): event.shutdowncode=1
         elif k==ord('o') or k==ord('O') or k==keyboard.K_CASH:
             foodorder.popup(self.reporttotal,self.ordernumber)
         else:
             ui.beep()
-
-def commit():
-    event.shutdowncode=0
-
-def quit():
-    event.shutdowncode=1
-
-if __name__=='__main__':
-    import sys,kbdrivers,tillconfig,logging,till,curses,printer
-    from pdrivers import pdf,nullprinter
-
-    if len(sys.argv)!=2:
-        print "Usage: foodcheck.py menuurl"
-        sys.exit(1)
-
-    foodorder.menuurl=sys.argv[1]
-
-    kbdrv=kbdrivers.curseskeyboard()
-    tillconfig.kbtype=0
-
-    foodorder.kitchenprinter=nullprinter()
-    printer.driver=pdf("xpdf")
-
-    log=logging.getLogger()
-    formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    handler=logging.StreamHandler()
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.ERROR)
-    log.addHandler(handler)
-
-    hotkeys={
-        ord('c'): commit,
-        ord('C'): commit,
-        ord('q'): quit,
-        ord('Q'): quit,
-        }
-
-    pages=[(page,keyboard.K_ALICE,(hotkeys,))]
-
-    try:
-        curses.wrapper(till.start,kbdrv,pages)
-    except:
-        log.exception("Exception caught at top level")
-    sys.exit(event.shutdowncode)

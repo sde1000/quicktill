@@ -69,10 +69,10 @@ def main():
     parser.add_option("-u", "--config-url", action="store",
                       type="string", dest="configurl",
                       help="URL of global till configuration file")
-    parser.add_option("-c", "--config-number", action="store",
-                      type="int", dest="confignum",
+    parser.add_option("-c", "--config-name", action="store",
+                      type="string", dest="configname",
                       help="Till type to use from configuration file")
-    parser.set_defaults(configurl=configurl,confignum=0)
+    parser.set_defaults(configurl=configurl,configname="default")
     (options,args)=parser.parse_args()
     if len(args)>0:
         parser.error("this program takes no arguments")
@@ -88,7 +88,13 @@ def main():
     g=imp.new_module("globalconfig")
     exec globalconfig in g.__dict__
 
-    config=g.configurations[options.confignum]
+    config=g.configurations.get(options.configname)
+    if config is None:
+        print ("Configuration \"%s\" does not exist.  "
+               "Available configurations:"%options.configname)
+        for i in g.configurations.keys():
+            print "%s: %s"%(i,g.configurations[i]['description'])
+        sys.exit(1)
 
     log=logging.getLogger()
     formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s')

@@ -2,6 +2,7 @@
 
 import quicktill.keyboard as keyboard
 import quicktill.extras as extras
+import quicktill.foodcheck as foodcheck
 from quicktill.keyboard import *
 from quicktill.pdrivers import nullprinter,Epson_TM_U220,pdf,pdflabel,A4
 from quicktill import register,ui,kbdrivers,stockterminal
@@ -483,14 +484,14 @@ stockcontrol={
 }    
 
 # Config0 is a QWERTY-keyboard stock-control terminal
-config0=dict()
+config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
 config0.update(pdfprinter)
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal
-config1=dict()
+config1={'description':"Pembury Tavern main bar"}
 config1.update(std)
 config1.update(kb1)
 config1.update(xpdfprinter)
@@ -498,14 +499,25 @@ config1.update(labelprinter)
 config1.update(kitchen)
 
 # Config2 is the festival terminal
-config2=dict()
+config2={'description':"Pembury Tavern festival bar"}
 config2.update(std)
 config2.update(kb2)
 config2.update(xpdfprinter)
 config2.update(labelprinter)
 config2.update(kitchen)
 
+config3={'description':"Test menu file 'testmenu.py' in current directory",
+         'kbdriver':kbdrivers.curseskeyboard(),
+         'kbtype':0,
+         'menuurl':"file:testmenu.py",
+         'kitchenprinter':(nullprinter,()),
+         'pages':[(foodcheck.page,keyboard.K_ALICE,([],))],
+         }
+config3.update(std)
+config3.update(pdfprinter)
+
 # Things to define:
+#  description - summary of the configuration
 #  kbdriver - keyboard driver
 #  kbtype - keyboard type
 #  printer - (driver,args)
@@ -528,7 +540,8 @@ config2.update(kitchen)
 
 
 configurations={
-    0: config0,
-    1: config1,
-    2: config2,
+    'default': config0,
+    'mainbar': config1,
+    'festivalbar': config2,
+    'testmenu': config3,
     }
