@@ -1,0 +1,12 @@
+#!/bin/bash
+
+runtill -c testmenu
+
+if [ "$?" == "0" ]; then
+  echo "Installing new menu file..."
+  cp testmenu.py live/livemenu.py
+  echo "Done."
+else
+  echo "NOT installing new menu file."
+fi
+
