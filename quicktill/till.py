@@ -135,7 +135,7 @@ def main():
         tillconfig.priceguess=config['priceguess']
 
     locale.setlocale(locale.LC_ALL,'')
-    return run()
+    sys.exit(run())
 
 if __name__=='__main__':
     main()

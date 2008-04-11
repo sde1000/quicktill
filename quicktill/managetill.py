@@ -278,8 +278,8 @@ def restartmenu():
     log.info("Restart menu")
     menu=[
         (keyboard.K_ONE,"Exit / restart till software",exitoption,(0,)),
-#        (keyboard.K_TWO,"Turn off till",exitoption,(2,)),
-#        (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
+        (keyboard.K_TWO,"Turn off till",exitoption,(2,)),
+        (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
         ]
     ui.keymenu(menu,"Exit / restart options")
 

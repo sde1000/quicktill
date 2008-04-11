@@ -2,5 +2,11 @@
 # You may need to change the configuration number
 
 if [ "$AUTORUN" = "yes" ]; then
-    exec runtill -c 1
+    runtill -c 1
+    case "$?" in
+    0) exit ;;
+    2) userv root poweroff ;;
+    3) userv root reboot ;;
+    esac
+    sleep 1
 fi
