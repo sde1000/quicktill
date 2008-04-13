@@ -1,3 +1,11 @@
+quicktill (0.8.9) stable; urgency=low
+
+  * New release 0.8.9
+
+  * Command line option to override database connection string
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 13 Apr 2008 19:02:11 +0100
+
 quicktill (0.8.8) stable; urgency=low
 
   * New release 0.8.8
