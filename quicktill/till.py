@@ -72,7 +72,12 @@ def main():
     parser.add_option("-c", "--config-name", action="store",
                       type="string", dest="configname",
                       help="Till type to use from configuration file")
-    parser.set_defaults(configurl=configurl,configname="default")
+    parser.add_option("-d", "--database", action="store",
+                      type="string", dest="database",
+                      help="Database connection string; overrides "
+                      "configuration file")
+    parser.set_defaults(configurl=configurl,configname="default",
+                        database=None)
     (options,args)=parser.parse_args()
     if len(args)>0:
         parser.error("this program takes no arguments")
@@ -113,6 +118,7 @@ def main():
             *config['labelprinter'][1])
     tillconfig.pages=config['pages']
     td.database=config.get('database')
+    if options.database is not None: td.database=options.database
     ui.kb=config['kbdriver']
     tillconfig.kbtype=config['kbtype']
     foodorder.kitchenprinter=config.get('kitchenprinter')
