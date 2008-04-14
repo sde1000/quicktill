@@ -24,10 +24,11 @@ def eventloop():
                 timeout=nt-t
         curses.panel.update_panels()
         curses.doupdate()
-        (rd,wr,ex)=select.select(rdlist,[],[],timeout)
-        for i in rd: i.doread()
-        for i in wr: i.dowrite()
-        for i in ex: i.doexcept()
+        if timeout>0:
+            (rd,wr,ex)=select.select(rdlist,[],[],timeout)
+            for i in rd: i.doread()
+            for i in wr: i.dowrite()
+            for i in ex: i.doexcept()
         # Process any events whose time has come
         t=time.time()
         for i in eventlist:
