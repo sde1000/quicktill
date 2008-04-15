@@ -33,6 +33,7 @@ class curseskeyboard:
         10: keyboard.K_CASH,
         15: keyboard.K_QUANTITY,
         16: keyboard.K_PRINT,
+        20: keyboard.K_MANAGETRANS,
         25: keyboard.K_CANCEL,
         24: keyboard.K_CLEAR,
         }
