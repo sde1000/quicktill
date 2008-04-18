@@ -1,3 +1,13 @@
+quicktill (0.8.12) stable; urgency=low
+
+  * New release 0.8.12
+
+  * Configuration of department restrictions moved to global config file
+
+  * Example auto-login script should now turn off vesafb monitors when idle
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 19 Apr 2008 00:09:18 +0100
+
 quicktill (0.8.11) stable; urgency=low
 
   * New release 0.8.11
