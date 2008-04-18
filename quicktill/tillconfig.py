@@ -57,3 +57,15 @@ def priceguess(dept,cost,abv):
 
     """
     return None
+
+def deptkeycheck(dept,price):
+    """Check that the price entered when a department key is pressed is
+    appropriate for that department.  Returns either None (no problem
+    found), a string or a list of strings to display to the user.
+
+    """
+    return None
+
+# modkeyinfo is a dictionary of modifiers (eg. Half, Double, Jug), which
+# containes tuples of (quantity, [list of acceptable departments])
+modkeyinfo={}

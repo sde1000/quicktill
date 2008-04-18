@@ -139,6 +139,10 @@ def main():
         tillconfig.fc=config['format_currency']
     if 'priceguess' in config:
         tillconfig.priceguess=config['priceguess']
+    if 'deptkeycheck' in config:
+        tillconfig.deptkeycheck=config['deptkeycheck']
+    if 'modkeyinfo' in config:
+        tillconfig.modkeyinfo=config['modkeyinfo']
 
     locale.setlocale(locale.LC_ALL,'')
     sys.exit(run())

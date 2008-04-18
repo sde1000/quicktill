@@ -118,6 +118,12 @@ register_hotkeys={
     ord('M'): managetill,
     }
 
+modkeyinfo={
+    'Half': (0.5, [1,2,3]), # Half pint must be ale, keg or cider
+    'Double': (2.0, [4]), # Double must be spirits
+    '4pt Jug': (4.0, [1,2,3]), # 4pt Jug must be ale, keg or cider
+}
+
 std={
     'pubname':"The Pembury Tavern",
     'pubnumber':"020 8986 8597",
@@ -130,6 +136,7 @@ std={
     'cashback_limit':50.0,
     'pricepolicy':pembury_pricepolicy,
     'priceguess':pembury_priceguess,
+    'modkeyinfo':modkeyinfo,
     'database':'dbname=pembury', # XXX needs changing before deployment,
     # because this file may be used by remote terminals too
 }

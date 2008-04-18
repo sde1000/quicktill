@@ -303,15 +303,8 @@ class page(ui.basicpage):
         self.qty=None
         repeatcandidate=False
         checkdept=None
-        if self.mod=='Half':
-            qty=0.5
-            checkdept=[1,2,3] # must be ale, keg or cider
-        if self.mod=='Double':
-            qty=2.0
-            checkdept=[4] # must be spirits
-        elif self.mod=='4pt Jug':
-            qty=4.0
-            checkdept=[1,2,3] # must be ale, keg, cider
+        if self.mod is not None:
+            (qty,checkdept)=tillconfig.modkeyinfo.get(self.mod,(None,None))
         else:
             repeatcandidate=True
         # Now we know how many we are trying to sell.
@@ -439,6 +432,13 @@ class page(ui.basicpage):
             price=float(self.buf)/100.0
         self.buf=None
         self.qty=None
+        priceproblem=tillconfig.deptkeycheck(dept,price)
+        if priceproblem is not None:
+            self.update_balance()
+            if not isinstance(priceproblem,list):
+                priceproblem=[priceproblem]
+            ui.infopopup(priceproblem,title="Error")
+            return
         trans=self.gettrans()
         if trans is None: return
         lid=td.trans_addline(trans,dept,items,price,self.name,'S')
