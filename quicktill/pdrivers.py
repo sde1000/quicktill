@@ -60,7 +60,7 @@ class escpos:
     ep_center=l2s([27,97,1])
     ep_right=l2s([27,97,2])
     ep_ff=l2s([27,100,7])
-    def __init__(self,devicefile,cpl):
+    def __init__(self,devicefile,cpl,coding):
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -68,6 +68,7 @@ class escpos:
             self.f=None
             self.ci=devicefile
         self.fontcpl=cpl
+        self.coding=coding
     def start(self):
         if self.f is None:
             self.s=socket.socket(socket.AF_INET)
@@ -133,7 +134,7 @@ class escpos:
         # for centering.  Otherwise line up with spaces.
         if left=="" and center!="" and right=="":
             self.f.write(escpos.ep_center)
-            self.f.write(center.encode('iso-8859-1'))
+            self.f.write(center.encode(self.coding))
             self.f.write("\n"+escpos.ep_left)
         else:
             pad=cpl-len(left)-len(center)-len(right)
@@ -141,7 +142,7 @@ class escpos:
             padr=pad-padl
             self.f.write(("%s%s%s%s%s\n"%(
                         left,' '*padl,center,' '*padr,right)).
-                         encode('iso-8859-1'))
+                         encode(self.coding))
         if colour is not None:
             self.f.write(escpos.ep_colour[self.colour])
         if font is not None:
@@ -161,7 +162,7 @@ class escpos:
 
 
 class Epson_TM_U220(escpos):
-    def __init__(self,devicefile,paperwidth):
+    def __init__(self,devicefile,paperwidth,coding='iso-8859-1'):
         # Characters per line with fonts 0 and 1
         if paperwidth==57:
             cpl=(25,30)
@@ -169,7 +170,7 @@ class Epson_TM_U220(escpos):
             cpl=(33,40)
         else:
             raise "Unknown paper width"
-        escpos.__init__(self,devicefile,cpl)
+        escpos.__init__(self,devicefile,cpl,coding)
 
 class pdf:
     def __init__(self,printcmd,width=140,pagesize=A4,
