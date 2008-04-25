@@ -1,3 +1,13 @@
+quicktill (0.8.13) stable; urgency=low
+
+  * New release 0.8.13
+
+  * Add configuration option to disable the 'No Sale' function
+
+  * Printer character encoding is now configurable
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 25 Apr 2008 09:29:28 +0100
+
 quicktill (0.8.12) stable; urgency=low
 
   * New release 0.8.12
