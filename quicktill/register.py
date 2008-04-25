@@ -521,9 +521,13 @@ class page(ui.basicpage):
         if self.trans is None or td.trans_closed(self.trans):
             if self.buf is None:
                 log.info("Register: cashkey: NO SALE")
-                ui.infopopup(["No Sale has been recorded."],
-                             title="No Sale",colour=2)
-                printer.kickout()
+                if tillconfig.nosale:
+                    ui.infopopup(["No Sale has been recorded."],
+                                 title="No Sale",colour=2)
+                    printer.kickout()
+                else:
+                    ui.infopopup(["The No Sale function is not "
+                                  "in use."],title="No Sale")
                 return
             log.info("Register: cashkey: current transaction is closed")
             ui.infopopup(["There is no transaction in progress.  If you "

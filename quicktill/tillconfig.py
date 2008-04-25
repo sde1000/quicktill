@@ -69,3 +69,6 @@ def deptkeycheck(dept,price):
 # modkeyinfo is a dictionary of modifiers (eg. Half, Double, Jug), which
 # containes tuples of (quantity, [list of acceptable departments])
 modkeyinfo={}
+
+# Is the "No Sale" function enabled?
+nosale=True

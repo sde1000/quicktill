@@ -143,6 +143,8 @@ def main():
         tillconfig.deptkeycheck=config['deptkeycheck']
     if 'modkeyinfo' in config:
         tillconfig.modkeyinfo=config['modkeyinfo']
+    if 'nosale' in config:
+        tillconfig.nosale=config['nosale']
 
     locale.setlocale(locale.LC_ALL,'')
     sys.exit(run())
