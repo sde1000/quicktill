@@ -4,7 +4,7 @@ etc."""
 
 import magcard,tillconfig
 import sets,curses
-import td,ui,keyboard,printer
+import td,ui,keyboard,printer,textwrap
 import stock,stocklines
 import logging
 log=logging.getLogger()
@@ -22,17 +22,87 @@ class transnotify:
         ending a session."""
         for i in self.nl: i.tnotify(pagename,transid)
 
-# Also used for voids...
-class tline:
+class line:
+    """
+    A line on the register display.  Has a natural colour, an optional
+    "selected" colour, some left-aligned text (which will be wrapped
+    if it is too long) and optionally some right-aligned text.
+
+    """
+    def __init__(self,ltext="",rtext="",colour=None,
+                 selected_colour=None):
+        self.ltext=ltext
+        self.rtext=rtext
+        if colour is None: colour=curses.color_pair(0)
+        self.colour=colour
+        self.selected_colour=(
+            selected_colour if selected_colour is not None else colour)
+    def update(self):
+        pass
+    def display(self,width):
+        """
+        Returns a list of lines, formatted and padded with spaces to
+        the specified maximum width.  If there is right-aligned text
+        it is included along with the text on the last line if there
+        is space; otherwise a new line is added with the text at the
+        right.
+
+        """
+        # After display has been called, the caller can read 'cursor' to
+        # find our preferred location for the cursor if we are selected.
+        # It's a (x,y) tuple where y is 0 for the first line.
+        self.cursor=(0,0)
+        w=textwrap.wrap(self.ltext,width)
+        if len(w)==0: w=[""]
+        if len(w[-1])+len(self.rtext)>width:
+            w.append("")
+        w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
+        w=["%s%s"%(x,' '*(width-len(x))) for x in w]
+        return w
+
+class bufferline(line):
+    """
+    Used as the very last line on the register display - a special
+    case.  Always consists of two lines; a blank line, and then a line
+    showing the prompt or the contents of the input buffer at the
+    left, and if appropriate the balance of the transaction on the
+    right.
+
+    """
+    def __init__(self):
+        self.ltext=""
+        self.rtext=""
+        self.colour=curses.color_pair(0)
+        self.cursorx=0
+    def update_buffer(self,prompt,qty,mod,buf,balance):
+        if qty is not None: m="%d of "%qty
+        else: m=""
+        if mod is not None: m="%s%s "%(m,mod)
+        if buf is not None: m="%s%s"%(m,buf)
+        if len(m)>0:
+            self.ltext=m
+            self.cursorx=len(m)
+        else:
+            self.ltext=prompt
+            self.cursorx=0
+        self.rtext="%s %s"%("Amount to pay" if balance>=0.0 else "Change",
+                            tillconfig.fc(balance)) if balance else ""
+    def display(self,width):
+        # Add the expected blank line
+        l=[' '*width]+line.display(self,width)
+        self.cursor=(self.cursorx,len(l)-1)
+        return l
+
+class tline(line):
+    """
+    A transaction line; corresponds to a transaction line in the database.
+
+    """
     def __init__(self,transline):
+        line.__init__(self)
         self.transline=transline
-    def display(self,win,y,ml,hl=False):
-        (h,w)=win.getmaxyx()
-        if self.transline in ml:
-            colour=curses.color_pair(ui.colour_cancelline)
-        else: colour=curses.color_pair(0)
-        attr=(colour,colour|curses.A_REVERSE)[hl]
-        # Fetch details of this transaction line and format them...
+        self.update()
+    def update(self):
         (trans,items,amount,dept,deptstr,stockref,
          transcode)=td.trans_getline(self.transline)
         if stockref is not None:
@@ -42,36 +112,32 @@ class tline:
             qty=qty/items
             qtys=tillconfig.qtystring(qty,unitname)
             ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)
-            if len(ss)>w:
-                ss="%s %s %s"%(shortname,qtys,unitname)
-                if len(ss)>w:
-                    ss=ss[:w]
         else:
             ss=deptstr
-        # We used to do it this way for bizarre reasons involving being
-        # able to write to the character in the bottom right-hand corner
-        # of the screen.  Now I've decided I just don't care, and it
-        # doesn't play nicely with the UTF-8 locale.
-        #win.insstr(y,0,' '*w,attr)
-        #win.insstr(y,0,ss,attr)
-        astr="%d @ %s = %s"%(items,tillconfig.fc(amount),
-                             tillconfig.fc(items*amount))
-        #win.insstr(y,w-len(astr),astr,attr)
-        xx="%s%s%s"%(ss,' '*(w-len(ss)-len(astr)),astr)
-        win.addstr(y,0,xx.encode(ui.c),attr)
+        self.ltext=ss
+        self.rtext="%d @ %s = %s"%(items,tillconfig.fc(amount),
+                                   tillconfig.fc(items*amount))
+    def update_mark(self,ml):
+        if self.transline in ml:
+            self.colour=curses.color_pair(ui.colour_cancelline)
+        else:
+            self.colour=curses.color_pair(0)
 
 # Used for payments etc.
-class rline:
+class rline(line):
     def __init__(self,text,attr):
-        self.text=text
-        self.attr=curses.color_pair(attr)
-    def display(self,win,y,ml,hl=False):
-        (h,w)=win.getmaxyx()
-        attr=(self.attr,self.attr|curses.A_REVERSE)[hl]
-        win.addstr(y,0,' '*w,attr)
-        win.addstr(y,w-len(self.text),self.text.encode(ui.c),attr)
+        line.__init__(self,"",text,curses.color_pair(attr))
+        # It would be very useful if the payments table had a unique ID
+        # per payment so that we could store a reference to it here.
+        # Unfortunately it doesn't - this makes cancelling payments
+        # rather difficult.
 
 def payline(p):
+    """
+    Convenience function for creating a payment line; chooses colour
+    and fills in description.
+
+    """
     (amount,paytype,desc,ref)=p
     if amount==None: amount=0.0
     colour=ui.colour_cashline
@@ -132,37 +198,22 @@ class cardpopup(ui.dismisspopup):
         self.func(total,receiptno)
 
 class page(ui.basicpage):
-    def __init__(self,panel,name,hotkeys=None):
+    def __init__(self,panel,name,hotkeys):
         global registry
         ui.basicpage.__init__(self,panel)
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.name=name
         registry.register(self)
+        self.bufferline=bufferline()
         self.clear()
         self.redraw()
-        if hotkeys is None:
-            # This default list of hotkeys is here to retain compatibility
-            # with configuration files from release 0.7.5 and earlier.
-            # New configuration files should specify this list explicitly.
-            from managetill import popup as managetill
-            from managestock import popup as managestock
-            from plu import popup as plu
-            from usestock import popup as usestock
-            from recordwaste import popup as recordwaste
-            self.hotkeys={
-                keyboard.K_PRICECHECK: plu,
-                keyboard.K_MANAGETILL: managetill,
-                keyboard.K_MANAGESTOCK: managestock,
-                keyboard.K_USESTOCK: usestock,
-                keyboard.K_WASTE: recordwaste,
-            }
-        else:
-            self.hotkeys=hotkeys
+        self.hotkeys=hotkeys
     def clear(self):
         self.dl=[] # Display list
         self.ml=sets.Set() # Marked transactions set
         self.top=0 # Top line of display
-        self.cursor=None # Cursor position
+        self.cursor=0 # Cursor position in display list; if this is greater
+        # than the length of the list then there is no selection.
         self.trans=None # Current transaction
         self.repeat=None # If dept/line button pressed, update this transline
         self.balance=None # Balance of current transaction
@@ -171,6 +222,10 @@ class page(ui.basicpage):
         self.qty=None # Quantity (integer)
         self.mod=None # Modifier (string)
         self.keyguard=False # Require confirmation for 'Cash' or 'Cancel'
+        self.update_bufferline()
+    def update_bufferline(self):
+        self.bufferline.update_buffer(self.prompt,self.qty,self.mod,self.buf,
+                                      self.balance)
     def pagename(self):
         if self.trans is not None:
             ts=" - Transaction %d (%s)"%(self.trans,("open","closed")
@@ -186,93 +241,89 @@ class page(ui.basicpage):
         if trans==0 or (self.name!=name and self.trans==trans):
             self.clear()
             self.redraw()
-    def drawline(self,li):
-        if li=='buf': li=len(self.dl)+1
-        y=li-self.top
-        if self.qty is not None: m="%d of "%self.qty
-        else: m=""
-        if self.mod is not None: m="%s%s "%(m,self.mod)
-        if self.buf is not None: m="%s%s"%(m,self.buf)
-        if y>=0 and y<self.h:
+    def drawdl(self):
+        """
+        Redraw the register menu with the current scroll and cursor
+        locations.  Returns the index of the last complete item that
+        fits on the screen.  (This is useful to compare against the
+        cursor position to ensure the cursor is displayed.)
+
+        """
+        # First clear the drawing space
+        for y in range(0,self.h):
             self.addstr(y,0,' '*self.w)
-            if y==0 and self.top>0:
-                self.addstr(y,0,'...')
-            elif li<len(self.dl):
-                self.dl[li].display(self.win,y,self.ml,self.cursor==li)
-            elif li==len(self.dl)+1:
-                if len(m)>0:
-                    self.addstr(y,0,m)
-                else:
-                    self.addstr(y,0,self.prompt)
-                if self.balance:
-                    bstr="%s %s"%(("Change","Amount to pay")
-                                  [self.balance>=0.0],
-                                  tillconfig.fc(self.balance))
-                    self.addstr(y,self.w-len(bstr),bstr)
-        # Position cursor?
-        if self.cursor is None:
-            cy=len(self.dl)+1-self.top
-            if cy>=self.h: cy=0
-            cx=len(m)
+        y=0
+        i=self.top
+        lastcomplete=i
+        # Deal with putting in the 'scroll up available' indicator
+        # sort it out later...
+        if i>0:
+            self.addstr(y,0,'...')
+            y=y+1
+        cursor_y=None
+        while i<=len(self.dl):
+            if i>=len(self.dl):
+                item=self.bufferline
+            else:
+                item=self.dl[i]
+            l=item.display(self.w)
+            colour=item.colour
+            if i==self.cursor:
+                if item!=self.bufferline:
+                    colour=colour|curses.A_REVERSE
+                cursor_y=y+item.cursor[1]
+                cursor_x=item.cursor[0]
+            for j in l:
+                if y<self.h:
+                    self.addstr(y,0,j,colour)
+                    y=y+1
+            if y<self.h:
+                lastcomplete=i
+            else:
+                break
+            i=i+1
+        if len(self.dl)>i:
+            self.addstr(self.h,0,'...')
         else:
-            cy=self.cursor-self.top
-            cx=0
-        if cy>=self.h: cy=self.h-1
-        self.win.move(cy,cx)
+            self.addstr(self.h,0,'   ')
+        if cursor_y is not None:
+            self.win.move(cursor_y,cursor_x)
+        return lastcomplete
     def redraw(self):
-        self.win.clear()
-        for i in range(0,len(self.dl)+2):
-            self.drawline(i)
+        """
+        As well as updating the screen, this function also forces an update
+        on all the lines in the display list.  XXX We might want to consider
+        changing this, because it can be expensive.
+
+        """
+        for i in self.dl:
+            i.update()
+        self.drawdl()
         ui.updateheader(self)
     def cursor_up(self):
-        if self.cursor is None:
-            if len(self.dl)>0:
-                self.cursor=len(self.dl)-1
-        elif self.cursor>0:
-            self.cursor=self.cursor-1
-        if self.cursor<self.top+1:
-            self.top=self.top-(self.h/3)
-            if self.top<0: self.top=0
-            self.redraw()
-        else:
-            self.drawline(self.cursor)
-            self.drawline(self.cursor+1)
+        if self.cursor>0: self.cursor=self.cursor-1
+        if self.cursor<self.top: self.top=self.cursor
+        self.drawdl()
     def cursor_down(self):
-        if self.cursor is None: return
-        if self.cursor<len(self.dl)-1:
-            self.cursor=self.cursor+1
-            if (self.cursor-self.top)>=self.h-2:
-                self.top=self.top+(self.h/3)
-                self.redraw()
-            else:
-                self.drawline(self.cursor-1)
-                self.drawline(self.cursor)
+        if self.cursor<len(self.dl): self.cursor=self.cursor+1
+        lastitem=self.drawdl()
+        while self.cursor>lastitem:
+            self.top=self.top+1
+            lastitem=self.drawdl()
     def cursor_off(self):
         # Scroll so that buffer/balance line is visible
-        oldtop=self.top
-        self.top=len(self.dl)-self.h+3
-        if self.top<0: self.top=0
-        if self.cursor is not None:
-            c=self.cursor
-            self.cursor=None
-            self.drawline(c)
-        if self.top!=oldtop: self.redraw()
+        self.cursor=len(self.dl)
+        self.cursor_down()
     def addline(self,litem):
         self.dl.append(litem)
         self.cursor_off()
-        if (len(self.dl)-self.top)>self.h-2:
-            self.top=len(self.dl)-(self.h*2/3)
-            self.redraw()
-        else:
-            self.drawline(len(self.dl)-1)
-            self.drawline(len(self.dl))
-            self.drawline(len(self.dl)+1)
     def update_balance(self):
         if self.trans:
             (lines,payments)=td.trans_balance(self.trans)
             self.balance=lines-payments
         else: self.balance=None
-        self.drawline('buf')
+        self.update_bufferline()
+        self.drawdl()
     def linekey(self,line):
         name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
         repeat_lid=None
@@ -358,7 +409,8 @@ class page(ui.basicpage):
                 log.info("Register: linekey: added %d to lid=%d"%
                          (items,lid))
                 td.stock_sellmore(lid,items)
-                self.drawline(len(self.dl)-1)
+                self.dl[-1].update()
+                self.drawdl()
                 repeat_stockid=None
                 repeat_lid=None
             else:
@@ -407,8 +459,8 @@ class page(ui.basicpage):
             # Increase the quantity of the most recent entry
             log.info("Register: deptkey: adding to lid=%d"%self.repeat[1])
             td.trans_additems(self.repeat[1],1)
-            self.drawline(len(self.dl)-1)
-            self.update_balance()
+            self.dl[-1].update()
+            self.update_balance() # Also redraws screen
             return
         if self.buf is None:
             log.info("Register: deptkey: no amount entered")
@@ -445,6 +497,8 @@ class page(ui.basicpage):
         log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
                  "price=%f"%(trans,lid,dept,items,price))
         self.repeat=(dept,lid)
+        # The next two lines redraw the screen twice.  We really ought to
+        # refactor the "update display" functions to avoid that.
         self.addline(tline(lid))
         self.update_balance()
     def foodline(self,amount):
@@ -535,7 +589,8 @@ class page(ui.basicpage):
                           "try again without entering an amount."],
                          title="Error")
             self.buf=None
-            self.drawline('buf')
+            self.update_bufferline()
+            self.drawdl()
             return
         if self.buf is None:
             # Exact change, then, is it?
@@ -566,7 +621,8 @@ class page(ui.basicpage):
                          title="Confirm transaction close",
                          colour=ui.colour_confirm,keymap={
                 keyboard.K_CASH:(self.cashkey,(True,),True)})
-            self.drawline('buf')
+            self.update_bufferline()
+            self.drawdl()
             return
         self.buf=None
         # We have a non-zero amount and a transaction. Pay it!
@@ -606,7 +662,8 @@ class page(ui.basicpage):
             ui.infopopup(["There is no transaction in progress."],
                          title="Error")
             self.buf=None
-            self.drawline('buf')
+            self.update_bufferline()
+            self.drawdl()
             return
         if amount is None:
             if self.buf is None:
@@ -672,7 +729,8 @@ class page(ui.basicpage):
                               "a number!  Please try again."],
                              title="Error")
                 self.buf=None
-            self.drawline('buf')
+            self.update_bufferline()
+            self.drawdl()
     def quantkey(self):
         if self.qty is not None:
             log.info("Register: quantkey: already entered")
@@ -693,10 +751,12 @@ class page(ui.basicpage):
             ui.infopopup(["You must enter a whole number greater than "
                           "zero before pressing Quantity."],
                          title="Error")
-        self.drawline('buf')
+        self.update_bufferline()
+        self.drawdl()
     def modkey(self,k):
         self.mod=ui.kb.keycap(k)
-        self.drawline('buf')
+        self.update_bufferline()
+        self.drawdl()
     def clearkey(self):
         if (self.buf==None and self.qty==None and self.trans is not None and
             td.trans_closed(self.trans)):
@@ -710,7 +770,8 @@ class page(ui.basicpage):
             self.qty=None
             self.buf=None
             self.mod=None
-            self.drawline('buf')
+            self.update_bufferline()
+            self.drawdl()
     def printkey(self):
         if self.trans is None:
             log.info("Register: printkey without transaction")
@@ -741,7 +802,7 @@ class page(ui.basicpage):
                 "interested in and then press Cash/Enter to void them."],
                          title="Help on Cancel")
         else:
-            if self.cursor is None:
+            if self.cursor>=len(self.dl):
                 closed=td.trans_closed(self.trans)
                 if not closed and self.keyguard:
                     log.info("Register: cancelkey kill transaction denied")
@@ -792,9 +853,15 @@ class page(ui.basicpage):
         if isinstance(l,tline):
             transline=l.transline
             self.ml.add(transline)
-            self.drawline(line)
+            l.update_mark(self.ml)
+            self.drawdl()
     def cancelline(self,force=False):
         if td.trans_closed(self.trans):
+            l=self.dl[self.cursor]
+            if isinstance(l,rline):
+                ui.infopopup(["You can't void payments from closed "
+                              "transactions."],title="Error")
+                return
             if self.ml==sets.Set():
                 ui.infopopup(
                     ["Use the Up and Down keys and the Cancel key "
@@ -805,9 +872,9 @@ class page(ui.basicpage):
                      "this transaction, press Clear after dismissing "
                      "this message."],
                     title="Help on voiding lines from closed transactions")
-            self.markline(self.cursor)
             self.prompt="Press Cash/Enter to void the blue lines"
-            self.drawline('buf')
+            self.update_bufferline()
+            self.markline(self.cursor)
         else:
             l=self.dl[self.cursor]
             if isinstance(l,tline):
@@ -817,7 +884,7 @@ class page(ui.basicpage):
                              "transline %d"%transline)
                     td.trans_deleteline(transline)
                     del self.dl[self.cursor]
-                    self.cursor=None
+                    self.cursor=len(self.dl)
                     self.update_balance()
                     self.redraw()
                     if len(self.dl)==0:
@@ -867,7 +934,7 @@ class page(ui.basicpage):
                 self.dl.append(payline(i))
         self.cursor_off() # will scroll to balance if necessary
         self.update_balance()
-        self.redraw()
+        self.drawdl()
     def recalltranskey(self):
         sc=td.session_current()
         if sc is None:
