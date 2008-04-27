@@ -2,6 +2,34 @@
 Also supports function keys to go to various popups: price lookup, management,
 etc."""
 
+# A brief word about how redrawing the screen works:
+#
+# There are three main areas to worry about: the screen header, the
+# "buffer" line, and the display list.
+#
+# The screen header shows the page header, a summary of the other
+# pages, and the clock.  It needs updating whenever the current
+# transaction changes: from none to present, from present to none, or
+# from open to closed.  It is updated by calling ui.updateheader()
+#
+# The "buffer" line shows either a prompt or the input buffer at the
+# left, and the balance of the current transaction at the right.  It
+# is implemented as a notional "last entry" in the display list, and
+# will only be redrawn when the display list is redrawn.  Whenever the
+# transaction balance, prompt, or buffer contents change, the buffer
+# line must be updated by calling self.update_bufferline().  This will
+# not update the line on the screen; that won't happen until you call
+# redraw().
+#
+# The display list is a list of line() objects, that correspond to
+# lines in a transaction.  When a transaction line is modified you
+# must call the update() method of the corresponding line object.  The
+# display list is redrawn in one of two ways: 1) Call redraw().  This
+# scrolls to the current cursor position.  2) Call drawdl().  No
+# scrolling is performed.  When you append an item to the display
+# list, you should call cursor_off() before calling redraw() to make
+# sure that we scroll to the end of the list.
+
 import magcard,tillconfig
 import sets,curses
 import td,ui,keyboard,printer,textwrap
@@ -203,12 +231,25 @@ class page(ui.basicpage):
         ui.basicpage.__init__(self,panel)
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.name=name
+        self.defaultprompt="Ready"
         registry.register(self)
         self.bufferline=bufferline()
         self.clear()
         self.redraw()
         self.hotkeys=hotkeys
+    def clearbuffer(self):
+        self.buf=None # Input buffer
+        self.qty=None # Quantity (integer)
+        self.mod=None # Modifier (string)
+        self.update_bufferline()
     def clear(self):
+        """
+        Reset this page to having no current transaction and nothing
+        in the input buffer.  Note that this does not cause a redraw;
+        various functions may want to fiddle with the state (for example
+        loading a previous transaction) before requesting a redraw.
+
+        """
         self.dl=[] # Display list
         self.ml=sets.Set() # Marked transactions set
         self.top=0 # Top line of display
@@ -217,11 +258,9 @@ class page(ui.basicpage):
         self.trans=None # Current transaction
         self.repeat=None # If dept/line button pressed, update this transline
         self.balance=None # Balance of current transaction
-        self.prompt="Ready"
-        self.buf=None # Input buffer
-        self.qty=None # Quantity (integer)
-        self.mod=None # Modifier (string)
+        self.prompt=self.defaultprompt
         self.keyguard=False # Require confirmation for 'Cash' or 'Cancel'
+        self.clearbuffer()
         self.update_bufferline()
     def update_bufferline(self):
         self.bufferline.update_buffer(self.prompt,self.qty,self.mod,self.buf,
@@ -291,39 +330,40 @@ class page(ui.basicpage):
         return lastcomplete
     def redraw(self):
         """
-        As well as updating the screen, this function also forces an update
-        on all the lines in the display list.  XXX We might want to consider
-        changing this, because it can be expensive.
+        Updates the screen, scrolling until the cursor is visible.
 
         """
-        for i in self.dl:
-            i.update()
-        self.drawdl()
-        ui.updateheader()
-    def cursor_up(self):
-        if self.cursor>0: self.cursor=self.cursor-1
         if self.cursor<self.top: self.top=self.cursor
-        self.drawdl()
-    def cursor_down(self):
-        if self.cursor<len(self.dl): self.cursor=self.cursor+1
         lastitem=self.drawdl()
         while self.cursor>lastitem:
             self.top=self.top+1
             lastitem=self.drawdl()
+        ui.updateheader()
+    def cursor_up(self):
+        if self.cursor>0: self.cursor=self.cursor-1
+        self.redraw()
+    def cursor_pageup(self):
+        self.cursor=self.cursor-5
+        if self.cursor<0: self.cursor=0
+        self.redraw()
+    def cursor_down(self):
+        if self.cursor<len(self.dl): self.cursor=self.cursor+1
+        self.redraw()
+    def cursor_pagedown(self):
+        self.cursor=self.cursor+5
+        if self.cursor>len(self.dl): self.cursor=len(self.dl)
+        self.redraw()
     def cursor_off(self):
-        # Scroll so that buffer/balance line is visible
+        # Returns the cursor to the buffer line.  Does not redraw (because
+        # the caller is almost certainly going to do other things first).
         self.cursor=len(self.dl)
-        self.cursor_down()
-    def addline(self,litem):
-        self.dl.append(litem)
-        self.cursor_off()
     def update_balance(self):
         if self.trans:
             (lines,payments)=td.trans_balance(self.trans)
             self.balance=lines-payments
         else: self.balance=None
         self.update_bufferline()
-        self.drawdl()
+        self.redraw()
     def linekey(self,line):
         name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
         repeat_lid=None
@@ -346,18 +386,21 @@ class page(ui.basicpage):
                 unitprice=float(self.buf)/100.0
             log.info("Register: linekey: manual price override to %0.2f"%(
                 unitprice))
-            self.buf=None
         else:
             unitprice=None
         if self.qty is not None: items=self.qty
         else: items=1
-        self.qty=None
         repeatcandidate=False
         checkdept=None
-        if self.mod is not None:
-            (qty,checkdept)=tillconfig.modkeyinfo.get(self.mod,(None,None))
+        mod=self.mod
+        self.mod=None
+        if mod is not None:
+            (qty,checkdept)=tillconfig.modkeyinfo.get(mod,(None,None))
         else:
             repeatcandidate=True
+        # We redraw because we might bail if there is an error.
+        self.clearbuffer()
+        self.redraw()
         # Now we know how many we are trying to sell.
         (sell,unallocated,snd,stockremain)=(
             stocklines.calculate_sale(stocklineid,items))
@@ -383,16 +426,14 @@ class page(ui.basicpage):
                 dept=snd[stockid]['dept']
                 if dept not in checkdept:
                     ui.infopopup(["You can't use the '%s' modifier with "
-                                  "stock in department %d."%(self.mod,dept)],
+                                  "stock in department %d."%(mod,dept)],
                                  title="Error")
                     return
-        self.mod=None # we wait until now to clear it so it's usable
-                      # in the error message
         # At this point we have a list of (stockid,amount) that corresponds
         # to the quantity requested.  We can go ahead and add them to the
         # transaction.
         trans=self.gettrans()
-        if trans is None: return
+        if trans is None: return # Will already be displaying an error.
         # By this point we're committed to trying to sell the items.
         for stockid,items in sell:
             sd=snd[stockid]
@@ -410,14 +451,13 @@ class page(ui.basicpage):
                          (items,lid))
                 td.stock_sellmore(lid,items)
                 self.dl[-1].update()
-                self.drawdl()
                 repeat_stockid=None
                 repeat_lid=None
             else:
                 if unitprice is None: unitprice=tillconfig.pricepolicy(sd,qty)
                 lid=td.stock_sell(self.trans,sd['dept'],stockid,items,qty,
                                   unitprice,self.name,'S')
-                self.addline(tline(lid))
+                self.dl.append(tline(lid))
                 log.info(
                     "Register: linekey: trans=%d,lid=%d,sn=%d,items=%d,qty=%f"
                     %(self.trans,lid,stockid,items,qty))
@@ -438,7 +478,8 @@ class page(ui.basicpage):
         else:
             self.prompt="%s: %d left on display; %d in stock"%(
                 name,stockremain[0],stockremain[1])
-        self.update_balance()
+        self.cursor_off()
+        self.update_balance() # Also updates prompt and scrolls
         if pullthru_required:
             sd=snd[stockid]
             sd['pullthruqty']=pullthru
@@ -471,7 +512,6 @@ class page(ui.basicpage):
                           "price of a single item before pressing the "
                           "department button."],title="Error")
             return
-        self.prompt="Ready"
         if self.mod is not None:
             ui.infopopup(["You can't use the '%s' modifier with a "
                           "department key."%self.mod],title="Error")
@@ -482,11 +522,12 @@ class page(ui.basicpage):
             price=float(self.buf)
         else:
             price=float(self.buf)/100.0
-        self.buf=None
-        self.qty=None
+        self.prompt=self.defaultprompt
+        self.clearbuffer()
         priceproblem=tillconfig.deptkeycheck(dept,price)
         if priceproblem is not None:
-            self.update_balance()
+            self.cursor_off()
+            self.redraw()
             if not isinstance(priceproblem,list):
                 priceproblem=[priceproblem]
             ui.infopopup(priceproblem,title="Error")
@@ -497,10 +538,9 @@ class page(ui.basicpage):
         log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
                  "price=%f"%(trans,lid,dept,items,price))
         self.repeat=(dept,lid)
-        # The next two lines redraw the screen twice.  We really ought to
-        # refactor the "update display" functions to avoid that.
-        self.addline(tline(lid))
-        self.update_balance()
+        self.dl.append(tline(lid))
+        self.cursor_off()
+        self.update_balance() # Also redraws
     def foodline(self,amount):
         """This is a nasty hack and should be removed in the future!
 
@@ -522,6 +562,7 @@ class page(ui.basicpage):
                           "can sell anything."],
                          title="Error")
         self.redraw()
+        ui.updateheader()
         return self.trans
     def drinkinkey(self):
         """The 'Drink In' key creates a negative entry in the
@@ -545,26 +586,26 @@ class page(ui.basicpage):
             amount=float(self.buf)
         else:
             amount=float(self.buf)/100.0
-        self.buf=None
         if self.trans is None or td.trans_closed(self.trans):
             ui.infopopup(["A Drink 'In' can't be the only item in a "
                           "transaction; it must be added to a transaction "
                           "that is already open."],title="Error")
             return
+        self.clearbuffer()
         trans=self.gettrans()
-        if trans is None: return
+        if trans is None: return # Will already have redrawn and displayed error
         td.trans_addpayment(trans,'CASH',-amount,"Drink 'In'")
-        self.addline(rline("Drink 'In' %s"%tillconfig.fc(-amount),
-                           ui.colour_changeline))
-        self.update_balance()
-        ui.updateheader()
+        self.dl.append(rline("Drink 'In' %s"%tillconfig.fc(-amount),
+                             ui.colour_changeline))
+        self.cursor_off()
+        self.update_balance() # Also redraws
     def cashkey(self,confirmed=False):
         # The CASH/ENTER key is also used to create a new "void" transaction
         # from lines selected from a previous, closed transaction.  If any
         # lines are selected, do that instead.
         if self.ml!=sets.Set():
             return self.cancelmarked()
-        self.prompt="Ready"
+        self.prompt=self.defaultprompt
         if self.qty is not None:
             log.info("Register: cashkey: payment with quantity not allowed")
             ui.infopopup(["You can't enter a quantity before telling "
@@ -588,9 +629,8 @@ class page(ui.basicpage):
                           "want to perform a 'No Sale' transaction then "
                           "try again without entering an amount."],
                          title="Error")
-            self.buf=None
-            self.update_bufferline()
-            self.drawdl()
+            self.clearbuffer()
+            self.redraw()
             return
         if self.buf is None:
             # Exact change, then, is it?
@@ -601,6 +641,8 @@ class page(ui.basicpage):
                 amount=float(self.buf)
             else:
                 amount=float(self.buf)/100.0
+        self.clearbuffer()
+        self.redraw()
         if amount==0.0:
             log.info("Register: cashkey: payment of zero")
             ui.infopopup(["You can't pay %s in cash!"%tillconfig.fc(0.0),
@@ -621,19 +663,18 @@ class page(ui.basicpage):
                          title="Confirm transaction close",
                          colour=ui.colour_confirm,keymap={
                 keyboard.K_CASH:(self.cashkey,(True,),True)})
-            self.update_bufferline()
-            self.drawdl()
             return
-        self.buf=None
         # We have a non-zero amount and a transaction. Pay it!
         remain=td.trans_addpayment(self.trans,'CASH',amount,'Cash')
-        self.addline(rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
+        self.dl.append(
+            rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
         if remain<0.0:
             # There's some change!
             log.info("Register: cashkey: calculated change")
             td.trans_addpayment(self.trans,'CASH',remain,'Change')
-            self.addline(rline('Change %s'%tillconfig.fc(remain),
-                               ui.colour_changeline))
+            self.dl.append(rline('Change %s'%tillconfig.fc(remain),
+                                 ui.colour_changeline))
+        self.cursor_off()
         self.update_balance()
         ui.updateheader()
         printer.kickout()
@@ -649,7 +690,6 @@ class page(ui.basicpage):
         log.info("Register: notekey %d"%amount)
         return self.cashkey()
     def cardkey(self,amount=None,receiptno=None):
-        self.prompt="Ready"
         if self.qty is not None:
             log.info("Register: cardkey: payment with quantity not allowed")
             ui.infopopup(["You can't enter a quantity before telling "
@@ -661,10 +701,10 @@ class page(ui.basicpage):
             log.info("Register: cardkey: closed or no transaction")
             ui.infopopup(["There is no transaction in progress."],
                          title="Error")
-            self.buf=None
-            self.update_bufferline()
-            self.drawdl()
+            self.clearbuffer()
+            self.redraw()
             return
+        self.prompt=self.defaultprompt
         if amount is None:
             if self.buf is None:
                 # Exact change, then, is it?
@@ -685,21 +725,21 @@ class page(ui.basicpage):
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
-        self.buf=None
+        self.clearbuffer()
         # We have a non-zero amount and a transaction. Pay it!
         remain=td.trans_addpayment(self.trans,'CARD',amount,receiptno)
-        self.addline(rline('Card %s %s'%(receiptno,tillconfig.fc(amount)),
-                           ui.colour_cashline))
+        self.dl.append(rline('Card %s %s'%(receiptno,tillconfig.fc(amount)),
+                             ui.colour_cashline))
         if remain<0.0:
-            # There's some change!
+            # There's some cashback!
             log.info("Register: cardkey: calculated cashback")
             td.trans_addpayment(self.trans,'CASH',remain,'Cashback')
-            self.addline(rline('Cashback %s'%tillconfig.fc(remain),
-                               ui.colour_changeline))
+            self.dl.append(rline('Cashback %s'%tillconfig.fc(remain),
+                                 ui.colour_changeline))
+        self.cursor_off()
         self.update_balance()
         ui.updateheader()
         printer.kickout()
-        
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
             td.trans_closed(self.trans)):
@@ -730,7 +770,7 @@ class page(ui.basicpage):
                              title="Error")
                 self.buf=None
             self.update_bufferline()
-            self.drawdl()
+            self.redraw()
     def quantkey(self):
         if self.qty is not None:
             log.info("Register: quantkey: already entered")
@@ -751,12 +791,14 @@ class page(ui.basicpage):
             ui.infopopup(["You must enter a whole number greater than "
                           "zero before pressing Quantity."],
                          title="Error")
+        self.cursor_off()
         self.update_bufferline()
-        self.drawdl()
+        self.redraw()
     def modkey(self,k):
         self.mod=ui.kb.keycap(k)
+        self.cursor_off()
         self.update_bufferline()
-        self.drawdl()
+        self.redraw()
     def clearkey(self):
         if (self.buf==None and self.qty==None and self.trans is not None and
             td.trans_closed(self.trans)):
@@ -767,11 +809,8 @@ class page(ui.basicpage):
         else:
             log.info("Register: clearkey on open transaction; clearing buffer")
             self.cursor_off()
-            self.qty=None
-            self.buf=None
-            self.mod=None
-            self.update_bufferline()
-            self.drawdl()
+            self.clearbuffer()
+            self.redraw()
     def printkey(self):
         if self.trans is None:
             log.info("Register: printkey without transaction")
@@ -884,9 +923,8 @@ class page(ui.basicpage):
                              "transline %d"%transline)
                     td.trans_deleteline(transline)
                     del self.dl[self.cursor]
-                    self.cursor=len(self.dl)
+                    self.cursor_off()
                     self.update_balance()
-                    self.redraw()
                     if len(self.dl)==0:
                         # The last transaction line was deleted, so also
                         # delete the transaction.
@@ -917,7 +955,8 @@ class page(ui.basicpage):
                                   amount,self.name,'V')
             else:
                 lid=td.trans_addline(trans,dept,-items,amount,self.name,'V')
-            self.addline(tline(lid))
+            self.dl.append(tline(lid))
+        self.cursor_off()
         self.update_balance()
         self.cashkey()
     def recalltrans(self,trans):
@@ -932,9 +971,8 @@ class page(ui.basicpage):
                 self.dl.append(tline(i))
             for i in payments:
                 self.dl.append(payline(i))
-        self.cursor_off() # will scroll to balance if necessary
+        self.cursor_off()
         self.update_balance()
-        self.drawdl()
     def recalltranskey(self):
         sc=td.session_current()
         if sc is None:
@@ -1053,6 +1091,8 @@ class page(ui.basicpage):
             keyboard.K_MANAGETRANS: self.managetranskey,
             keyboard.K_UP: self.cursor_up,
             keyboard.K_DOWN: self.cursor_down,
+            keyboard.K_LEFT: self.cursor_pageup,
+            keyboard.K_RIGHT: self.cursor_pagedown,
             }
         if k in keys: return keys[k]()
         if k in self.hotkeys: return self.hotkeys[k]()
