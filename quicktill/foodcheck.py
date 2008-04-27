@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import ui,foodorder,keyboard,event,sys
 
 class page(ui.basicpage):
