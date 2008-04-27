@@ -281,9 +281,10 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     if verbose:
         driver.printline()
-        driver.printline("\tPlease keep this ticket")
-        driver.printline("\tand exchange it for your food")
-        driver.printline("\twhen the number is called.")
+        driver.printline("\tPlease make sure your table")
+        driver.printline("\tnumber is displayed on your")
+        driver.printline("\ttable.  Your food will be")
+        driver.printline("\tbrought to you.")
     else:
         driver.printline()
         driver.printline()
