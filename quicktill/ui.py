@@ -40,6 +40,9 @@ def wrap_addstr(win,y,x,str,attr=None):
     else:
         win.addstr(y,x,str.encode(c),attr)
 
+def gettime():
+    return time.strftime("%a %d %b %Y %H:%M:%S %Z")
+
 class clock:
     def __init__(self,win):
         self.stdwin=win
@@ -47,10 +50,7 @@ class clock:
         now=time.time()
         return math.ceil(now)
     def alarm(self):
-        ts=time.strftime("%a %d %b %Y %H:%M:%S %Z")
-        (my,mx)=stdwin.getmaxyx()
-        self.stdwin.addstr(0,mx-len(ts),ts.encode(c),
-                           curses.color_pair(colour_header))
+        drawheader()
 
 def formattime(ts):
     "Returns ts formatted as %Y/%m/%d %H:%M:%S"
@@ -74,18 +74,47 @@ def savefocus():
     l.reverse()
     return l
 
-def updateheader(page):
+header_pagename=""
+header_summary=""
+def drawheader():
+    """
+    The header line consists of the name of the page at the left, a
+    number of "summary" sections from all the other pages separated by
+    spaces in the center, and the clock at the right.  If we do not
+    have enough space, we truncate the summary section until we do.
+    If we still don't, we truncate the page name.
+
+    """
+    m=header_pagename
+    s=header_summary
+    t=gettime()
+    (my,mx)=stdwin.getmaxyx()
+    def cat(m,s,t):
+        w=len(m)+len(s)+len(t)
+        pad1=(mx-w)/2
+        pad2=pad1
+        if w+pad1+pad2!=mx: pad1=pad1+1
+        return "%s%s%s%s%s"%(m,' '*pad1,s,' '*pad2,t)
+    x=cat(m,s,t)
+    while len(x)>mx:
+        if len(s)>0: s=s[:-1]
+        elif len(m)>0: m=m[:-1]
+        else: t=t[1:]
+        x=cat(m,s,t)
+    stdwin.addstr(0,0,x.encode(c),curses.color_pair(colour_header))
+
+def updateheader():
+    global header_pagename,header_summary
     m=""
     s=""
     for i in pagelist:
-        if i==basepage: m=i.pagename()
+        if i==basepage: m=i.pagename()+' '
         else:
             ps=i.pagesummary()
             if ps!="": s=s+i.pagesummary()+' '
-    if len(s)>0: s=s[:-1]
-    stdwin.addstr(0,0,50*" ",curses.color_pair(colour_header))
-    stdwin.addstr(0,50-len(s),s.encode(c),curses.color_pair(colour_header))
-    stdwin.addstr(0,0,m.encode(c),curses.color_pair(colour_header))
+    header_pagename=m
+    header_summary=s
+    drawheader()
 
 # Switch to a VC
 def selectpage(page):
@@ -96,7 +125,7 @@ def selectpage(page):
         basepage.deselected(focus,savefocus())
     focus=page
     basepage=page
-    updateheader(page)
+    updateheader()
     page.selected()
 
 def handle_keyboard_input(k):

@@ -299,7 +299,7 @@ class page(ui.basicpage):
         for i in self.dl:
             i.update()
         self.drawdl()
-        ui.updateheader(self)
+        ui.updateheader()
     def cursor_up(self):
         if self.cursor>0: self.cursor=self.cursor-1
         if self.cursor<self.top: self.top=self.cursor
@@ -557,7 +557,7 @@ class page(ui.basicpage):
         self.addline(rline("Drink 'In' %s"%tillconfig.fc(-amount),
                            ui.colour_changeline))
         self.update_balance()
-        ui.updateheader(self)
+        ui.updateheader()
     def cashkey(self,confirmed=False):
         # The CASH/ENTER key is also used to create a new "void" transaction
         # from lines selected from a previous, closed transaction.  If any
@@ -635,7 +635,7 @@ class page(ui.basicpage):
             self.addline(rline('Change %s'%tillconfig.fc(remain),
                                ui.colour_changeline))
         self.update_balance()
-        ui.updateheader(self)
+        ui.updateheader()
         printer.kickout()
     def notekey(self,amount):
         if self.qty is not None or self.buf is not None:
@@ -697,7 +697,7 @@ class page(ui.basicpage):
             self.addline(rline('Cashback %s'%tillconfig.fc(remain),
                                ui.colour_changeline))
         self.update_balance()
-        ui.updateheader(self)
+        ui.updateheader()
         printer.kickout()
         
     def numkey(self,n):
