@@ -1,3 +1,19 @@
+quicktill (0.8.14) stable; urgency=low
+
+  * New release 0.8.14
+
+  * foodcheck.py is no longer an executable
+
+  * Change footer of printed food orders.
+
+  * More register display cleanups
+
+  * Remove arbitrary minimum screen width
+
+  * Register page can now display multi-line transaction lines
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 27 Apr 2008 18:04:43 +0100
+
 quicktill (0.8.13) stable; urgency=low
 
   * New release 0.8.13
