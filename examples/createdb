@@ -7,7 +7,7 @@ CREATE TABLE businesses (
 	vatno varchar(30)
 	);
 COPY businesses FROM stdin;
-1	Individual Pubs Limited	Unit 111, Norman Industrial Estate\\nCambridge Road\\nMilton\\nCambridge CB4 6AT	783 9983 50
+1	Individual Pubs Limited	Unit 111, Norman Industrial Estate\\nCambridge Road\\nMilton\\nCambridge CB24 6AT	783 9983 50
 \.
 
 CREATE TABLE vat (
@@ -61,7 +61,9 @@ CREATE TABLE transactions (
 	);
 
 /* Negative cash payments represent cashback/change */
+CREATE SEQUENCE payments_seq START WITH 1;
 CREATE TABLE payments (
+        paymentid int NOT NULL PRIMARY KEY DEFAULT nextval('payments_seq'),
 	transid int NOT NULL REFERENCES transactions(transid),
 	amount numeric(10,2) NOT NULL,
 	paytype varchar(8) NOT NULL REFERENCES paytypes(paytype),
@@ -328,12 +330,6 @@ CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
        IN (SELECT stocklineid,stocktype FROM stockline_stocktype_log)
        DO INSTEAD NOTHING;
 
-CREATE OR REPLACE RULE log_stocktype AS ON INSERT TO stockonsale
-       DO ALSO
-       INSERT INTO stockline_stocktype_log VALUES
-       (NEW.stocklineid,(SELECT stocktype FROM stockinfo
-       	WHERE stockinfo.stockid=NEW.stockid));
-
 /* Useful views for queries */
 CREATE VIEW stockinfo AS
 	SELECT s.stockid,st.stocktype,s.deliveryid,
@@ -360,6 +356,13 @@ CREATE VIEW stockinfo AS
 	LEFT JOIN deliveries d ON s.deliveryid=d.deliveryid
 	LEFT JOIN suppliers sup ON d.supplierid=sup.supplierid
 	LEFT JOIN stockfinish sf ON s.finishcode=sf.finishcode;
+
+/* This rule refers to the stockinfo view, so must be created after it. */
+CREATE OR REPLACE RULE log_stocktype AS ON INSERT TO stockonsale
+       DO ALSO
+       INSERT INTO stockline_stocktype_log VALUES
+       (NEW.stocklineid,(SELECT stocktype FROM stockinfo
+       	WHERE stockinfo.stockid=NEW.stockid));
 
 /* Stock id, qty in container, unitname, amount used, amount sold, amount
    pulled through */
@@ -436,7 +439,7 @@ selecting on stock ID.  This could probably be speeded using an index. */
 CREATE INDEX stockout_stockid_key ON stockout (stockid);
 
 /* The web "find free drinks on this day" function is speeded up
-considerably by an index on stockout.time::date
+considerably by an index on stockout.time::date */
 
 CREATE INDEX stockout_date_key ON stockout ( (time::date) );
 

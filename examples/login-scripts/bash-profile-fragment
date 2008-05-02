@@ -2,7 +2,7 @@
 # You may need to change the configuration number
 
 if [ "$AUTORUN" = "yes" ]; then
-    runtill -c 1
+    runtill -c mainbar
     case "$?" in
     0) exit ;;
     2) userv root poweroff ;;
