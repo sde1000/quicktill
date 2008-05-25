@@ -605,7 +605,6 @@ class page(ui.basicpage):
         # lines are selected, do that instead.
         if self.ml!=sets.Set():
             return self.cancelmarked()
-        self.prompt=self.defaultprompt
         if self.qty is not None:
             log.info("Register: cashkey: payment with quantity not allowed")
             ui.infopopup(["You can't enter a quantity before telling "
@@ -632,6 +631,21 @@ class page(ui.basicpage):
             self.clearbuffer()
             self.redraw()
             return
+        # If the transaction is an old one (i.e. the "recall
+        # transaction" function has been used on it) then require
+        # confirmation - one of the most common user errors is to
+        # recall a transaction that's being used as a tab, add some
+        # lines to it, and then automatically press 'cash'.
+        if self.keyguard and not confirmed:
+            ui.infopopup(["Are you sure you want to close this transaction "
+                          "with a cash payment?  If you are then press "
+                          "Cash/Enter again.  If you pressed Cash/Enter by "
+                          "mistake then press Clear now to go back."],
+                         title="Confirm transaction close",
+                         colour=ui.colour_confirm,keymap={
+                keyboard.K_CASH:(self.cashkey,(True,),True)})
+            return
+        self.prompt=self.defaultprompt
         if self.buf is None:
             # Exact change, then, is it?
             log.info("Register: cashkey: exact change")
@@ -649,20 +663,6 @@ class page(ui.basicpage):
                           'If you meant "exact change" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
-            return
-        # If the transaction is an old one (i.e. the "recall
-        # transaction" function has been used on it) then require
-        # confirmation - one of the most common user errors is to
-        # recall a transaction that's being used as a tab, add some
-        # lines to it, and then automatically press 'cash'.
-        if self.keyguard and not confirmed:
-            ui.infopopup(["Are you sure you want to close this transaction "
-                          "with a cash payment?  If you are then press "
-                          "Cash/Enter again.  If you pressed Cash/Enter by "
-                          "mistake then press Clear now to go back."],
-                         title="Confirm transaction close",
-                         colour=ui.colour_confirm,keymap={
-                keyboard.K_CASH:(self.cashkey,(True,),True)})
             return
         # We have a non-zero amount and a transaction. Pay it!
         remain=td.trans_addpayment(self.trans,'CASH',amount,'Cash')
