@@ -82,7 +82,7 @@ class line:
         self.cursor=(0,0)
         w=textwrap.wrap(self.ltext,width)
         if len(w)==0: w=[""]
-        if len(w[-1])+len(self.rtext)>width:
+        if len(w[-1])+len(self.rtext)>=width:
             w.append("")
         w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
         w=["%s%s"%(x,' '*(width-len(x))) for x in w]
