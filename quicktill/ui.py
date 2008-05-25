@@ -261,25 +261,24 @@ class keymenu(basicpopup):
             y=y+1
         self.win.move(h-1,w-1)
 
-# itemlist entries are (desc,func,args)
-# A popup menu with a list of selections. Selection can be made by
-# using cursor keys to move up and down, and pressing Cash/Enter to
-# confirm.
 class menu(basicpopup):
+    """
+    A popup menu with a list of selections. Selection can be made by
+    using cursor keys to move up and down, and pressing Cash/Enter to
+    confirm.
+
+    itemlist entries are (desc,func,args)
+
+    """
     def __init__(self,itemlist,default=0,
                  blurb="Select a line and press Cash/Enter",
                  title=None,clear=True,
                  colour=colour_input,w=None,dismiss_on_select=True,
                  keymap={}):
         self.itemlist=itemlist
+        self.dismiss_on_select=dismiss_on_select
         if w is None:
-            w=0
-            # This can be replaced with a generator expression in python2.4:
-            # w=max(w,max(len(x[0]) for x in itemlist))
-            for i in itemlist:
-                w=max(w,len(i[0]))
-            w=w+2
-        w=max(25,w)
+            w=max(23,max(len(x[0]) for x in itemlist))+2
         if title is not None:
             w=max(len(title)+3,w)
         if blurb:
@@ -288,137 +287,58 @@ class menu(basicpopup):
             blurbl=[]
         h=len(itemlist)+len(blurbl)+2
         if len(itemlist)>0:
-            km={keyboard.K_DOWN: (self.cursor_down,(1,),False),
-                keyboard.K_UP: (self.cursor_up,(1,),False),
-                keyboard.K_RIGHT: (self.cursor_down,(5,),False),
-                keyboard.K_LEFT: (self.cursor_up,(5,),False),
-                curses.KEY_NPAGE: (self.cursor_down,(10,),False),
-                curses.KEY_PPAGE: (self.cursor_up,(10,),False),
-                keyboard.K_CASH: (self.select,None,dismiss_on_select)}
+            km={keyboard.K_CASH: (self.select,None,False)}
         else:
             km={}
         km.update(keymap)
         if clear:
             cleartext="Press Clear to go back"
-            km[keyboard.K_CLEAR]=(None,None,True)
+            km[keyboard.K_CLEAR]=(self.dismiss,None,False)
         else:
             cleartext=None
         basicpopup.__init__(self,h,w,title=title,cleartext=cleartext,
                             colour=colour,keymap=km)
         (h,w)=self.win.getmaxyx()
-        self.ytop=len(blurbl)+1
-        self.top=0
-        self.cursor=default
-        if self.cursor is None: self.cursor=0
-        self.h=h-self.ytop-1
-        self.w=w-2
         y=1
         for i in blurbl:
             self.addstr(y,2,i)
             y=y+1
-        self.check_scroll()
-        self.redraw()
+        dl=[line(x[0]) for x in itemlist]
+        self.s=scrollable(self.win,y,1,w-2,h-y-1,dl,keymap=km)
+        self.s.focus()
     def select(self):
-        i=self.itemlist[self.cursor]
+        i=self.itemlist[self.s.cursor]
+        if self.dismiss_on_select: self.dismiss()
         if i[2] is None:
             i[1]()
         else:
             i[1](*i[2])
-    def drawline(self,lineno):
-        y=lineno-self.top
-        if y<0: return
-        if y>=self.h: return
-        if lineno==self.cursor: attr=curses.A_REVERSE
-        else: attr=0
-        self.addstr(y+self.ytop,1,' '*self.w,attr)
-        if ((y==0 and self.top>0) or
-            (y==self.h-1 and lineno!=len(self.itemlist)-1)):
-            self.addstr(y+self.ytop,1,'...',attr)
-        else:
-            self.addstr(y+self.ytop,1,self.itemlist[lineno][0],attr)
-    def redraw(self):
-        for i in range(0,len(self.itemlist)):
-            self.drawline(i)
-        self.win.move(self.cursor-self.top+self.ytop,1)
-    def check_scroll(self):
-        oldtop=self.top
-        # Check for scrolling up
-        if self.cursor-self.top<1 and self.top>0:
-            self.top=self.cursor-(self.h/3)
-            if self.top<0: self.top=0
-        # Check for scrolling down
-        if (self.cursor-self.top>=self.h-1 and
-               self.cursor!=len(self.itemlist)):
-            self.top=self.cursor-(self.h*2/3)
-        # Check for scrolling beyond end of list
-        if self.top+self.h>len(self.itemlist):
-            self.top=len(self.itemlist)-self.h
-        return self.top!=oldtop # Redraw necessary
-    def cursor_down(self,lines):
-        self.cursor=self.cursor+lines
-        if self.cursor>=len(self.itemlist): self.cursor=len(self.itemlist)-1
-        self.check_scroll()
-        self.redraw()
-    def cursor_up(self,lines):
-        self.cursor=self.cursor-lines
-        if self.cursor<0: self.cursor=0
-        self.check_scroll()
-        self.redraw()
 
 class linepopup(dismisspopup):
     def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={}):
         (mh,mw)=stdwin.getmaxyx()
-        w=0
-        # This can be replaced by a generator expression in python2.4:
-        # w=max(len(i) for i in lines)
-        for i in lines:
-            w=max(len(i),w)
+        w=max(len(i) for i in lines)
         w=min(w+4,mw)
         h=min(len(lines)+2,mh)
         dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
                               keymap)
-        self.scrolly=0
-        self.scrollpage=((h-2)*2)/3
-        self.lines=lines
-        self.redraw()
-    def redraw(self):
-        (h,w)=self.win.getmaxyx()
-        end=self.scrolly+h-2
-        if end>len(self.lines):
-            self.scrolly=self.scrolly-(end-len(self.lines))
-        if self.scrolly<0: self.scrolly=0
-        end=self.scrolly+h-2
-        scrolltop=(self.scrolly>0)
-        scrollbot=(end<len(self.lines))
-        y=1
-        for i in self.lines[self.scrolly:self.scrolly+h-2]:
-            self.addstr(y,2,' '*(w-4))
-            if (y==1 and scrolltop) or (y==(h-2) and scrollbot):
-                self.addstr(y,2,'...')
-            else:
-                self.addstr(y,2,i)
-            y=y+1
-        self.win.move(h-1,w-1)
-    def keypress(self,k):
-        if k==keyboard.K_DOWN:
-            self.scrolly=self.scrolly+1
-            self.redraw()
-        elif k==keyboard.K_UP:
-            self.scrolly=self.scrolly-1
-            self.redraw()
-        elif k==keyboard.K_RIGHT:
-            self.scrolly=self.scrolly+self.scrollpage
-            self.redraw()
-        elif k==keyboard.K_LEFT:
-            self.scrolly=self.scrolly-self.scrollpage
-            self.redraw()
-        else:
-            dismisspopup.keypress(self,k)
+        dl=[line(i) for i in lines]
+        # The scrollable is going to have the focus all the time XXX
+        # This is a nasty hack and I really need to revisit how the
+        # keymap is handled.
+        keymap.update({dismiss: (self.dismiss,None,False)})
+        self.s=scrollable(self.win,1,2,w-4,h-2,dl,keymap=keymap,
+                          show_cursor=False)
+        self.s.focus()
 
 class infopopup(linepopup):
     """A pop-up box that formats and displays text.  The text parameter is
     a list of paragraphs."""
+    # Implementation note: we _could_ use a scrollable with a list of
+    # lrlines; however, we have to work out how big to make the window
+    # anyway, and once we've done that we already have a list of lines
+    # suitable to pass to linepopup.__init__()
     def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={}):
         cleartext=self.get_cleartext(cleartext,dismiss)
@@ -497,19 +417,256 @@ class field(basicwin):
         # Default keyboard actions, overridden if in supplied keymap
         next=(lambda:self.nextfield.focus(),None,True)
         prev=(lambda:self.prevfield.focus(),None,True)
-        km={
-            keyboard.K_DOWN: next,
-            keyboard.K_CASH: next,
-            curses.ascii.TAB: next,
-            keyboard.K_UP: prev,
-            keyboard.K_CLEAR: prev}
-        km.update(keymap)
-        basicwin.__init__(self,keymap=km,takefocus=False)
+        basicwin.__init__(self,keymap,takefocus=False)
+        self.keymap.update({
+                keyboard.K_DOWN: next,
+                keyboard.K_CASH: next,
+                curses.ascii.TAB: next,
+                keyboard.K_UP: prev,
+                keyboard.K_CLEAR: prev})
+        self.keymap.update(keymap)
     def set(self):
         if self.sethook is not None: self.sethook()
     def focus(self):
         basicwin.focus(self)
         if self.focushook is not None: self.focushook()
+
+class scrollable(field):
+    """A rectangular field of a page or popup that contains a list of
+    items that can be scrolled up and down.
+
+    lastline is a special item that, if present, is drawn at the end of
+    the list.  In the register this is the prompt/input buffer/total.
+    Where the scrollable is being used for entry of a list of items,
+    the last line may be blank/inverse as a prompt.
+
+    """
+    def __init__(self,win,y,x,width,height,dl,show_cursor=True,
+                 lastline=None,default=0,keymap={}):
+        field.__init__(self,keymap)
+        self.win=win
+        self.y=y
+        self.x=x
+        self.w=width
+        self.h=height
+        self.dl=dl
+        self.show_cursor=show_cursor
+        self.lastline=lastline
+        self.cursor=default
+        self.top=0
+        self.keymap.update(
+            {keyboard.K_DOWN: (self.cursor_down,(1,),False),
+             keyboard.K_UP: (self.cursor_up,(1,),False),
+             keyboard.K_RIGHT: (self.cursor_down,(5,),False),
+             keyboard.K_LEFT: (self.cursor_up,(5,),False),
+             curses.KEY_NPAGE: (self.cursor_down,(10,),False),
+             curses.KEY_PPAGE: (self.cursor_up,(10,),False),
+             })
+        self.keymap.update(keymap)
+    def set(self,dl):
+        self.dl=dl
+        # XXX Frob cursor and scroll position if necessary
+        self.redraw()
+        field.set(self)
+    def focus(self):
+        # If we are obtaining the focus from the previous field, we should
+        # move the cursor to the top.  If we are obtaining it from the next
+        # field, we should move the cursor to the bottom.  Otherwise we
+        # leave the cursor untouched.
+        global focus
+        if focus==self.prevfield: cursor=0
+        elif focus==self.nextfield:
+            if self.lastline: cursor=len(self.dl)
+            else: cursor=len(self.dl)-1
+        field.focus(self)
+        self.redraw()
+    def drawdl(self):
+        """
+        Redraw the area with the current scroll and cursor locations.
+        Returns the index of the last complete item that fits on the
+        screen.  (This is useful to compare against the cursor
+        position to ensure the cursor is displayed.)
+
+        """
+        global focus
+        # First clear the drawing space
+        for y in range(self.y,self.y+self.h):
+            self.addstr(y,self.x,' '*self.w)
+        # Special case: if top is 1 and cursor is 1 and the first item
+        # in the list is exactly one line high, we can set top to zero
+        # so that the first line is displayed.  Only worthwhile if we
+        # are actually displaying a cursor.
+        if self.top==1 and self.cursor==1 and self.show_cursor:
+            if len(self.dl[0].display(self.w))==1: self.top=0
+        y=self.y
+        i=self.top
+        lastcomplete=i
+        if i>0:
+            self.addstr(y,self.x,'...')
+            y=y+1
+        cursor_y=None
+        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
+        while i<end_of_displaylist:
+            if i>=len(self.dl):
+                item=self.lastline
+            else:
+                item=self.dl[i]
+            if item is None: break
+            l=item.display(self.w)
+            colour=item.colour
+            ccolour=item.cursor_colour
+            if focus==self and i==self.cursor and self.show_cursor:
+                colour=ccolour
+                cursor_y=y+item.cursor[1]
+                cursor_x=self.x+item.cursor[0]
+            for j in l:
+                if y<(self.y+self.h):
+                    self.addstr(y,self.x,"%s%s"%(j,' '*(self.w-len(j))),colour)
+                y=y+1
+            if y<=(self.y+self.h):
+                lastcomplete=i
+            else:
+                break
+            i=i+1
+        if end_of_displaylist>i:
+            # Check whether we are overwriting any of the last item
+            if y==self.y+self.h+1: lastcomplete=lastcomplete-1
+            self.addstr(self.y+self.h-1,self.x,'...'+' '*(self.w-3))
+        if cursor_y is not None:
+            self.win.move(cursor_y,cursor_x)
+        return lastcomplete
+    def redraw(self):
+        """
+        Updates the field, scrolling until the cursor is visible.  If we
+        are not showing the cursor, the top line of the field is always
+        the cursor line.
+
+        """
+        if self.cursor<self.top or self.show_cursor==False:
+            self.top=self.cursor
+        lastitem=self.drawdl()
+        while self.cursor>lastitem:
+            self.top=self.top+1
+            lastitem=self.drawdl()
+        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
+        self.display_complete=(lastitem==end_of_displaylist-1)
+    def cursor_up(self,n):
+        if self.cursor==0:
+            self.prevfield.focus()
+        else:
+            self.cursor=self.cursor-n
+            if self.cursor<0: self.cursor=0
+        self.redraw()
+    def cursor_at_end(self):
+        if self.show_cursor:
+            if self.lastline:
+                return self.cursor>len(self.dl)
+            else:
+                return self.cursor>=len(self.dl)
+        else:
+            return self.display_complete
+    def cursor_down(self,n):
+        if self.cursor_at_end():
+            self.nextfield.focus()
+        else:
+            self.cursor=self.cursor+n
+            if self.lastline:
+                if self.cursor>len(self.dl): self.cursor=len(self.dl)
+            else:
+                if self.cursor>=len(self.dl): self.cursor=len(self.dl)-1
+        self.redraw()
+
+class emptyline:
+    """
+    A line for use in a scrollable.  Has a natural colour, a "cursor
+    is here" colour, and an optional "selected" colour.  This line has
+    no text.
+
+    """
+    def __init__(self,colour=None,selected_colour=None):
+        if colour is None: colour=curses.color_pair(0)
+        self.colour=colour
+        self.selected_colour=(
+            selected_colour if selected_colour is not None else colour)
+        self.cursor_colour=self.colour|curses.A_REVERSE
+    def display(self,width):
+        """
+        Returns a list of lines (of length 1), with one empty line.
+
+        """
+        # After display has been called, the caller can read 'cursor' to
+        # find our preferred location for the cursor if we are selected.
+        # It's a (x,y) tuple where y is 0 for the first line.
+        self.cursor=(0,0)
+        return [""]
+
+class emptylines(emptyline):
+    def __init__(self,colour=None,selected_colour=None,lines=1):
+        emptyline.__init__(self,colour,selected_colour)
+        self.lines=lines
+    def display(self,width):
+        self.cursor=(0,0)
+        return [""]*self.lines
+
+class line(emptyline):
+    """
+    A line for use in a scrollable.  Has a natural colour, a "cursor
+    is here" colour, an optional "selected" colour, and some text.  If
+    the text is too long it will be truncated; this line will never
+    wrap.
+
+    """
+    def __init__(self,text="",colour=None,selected_colour=None):
+        emptyline.__init__(self,colour,selected_colour)
+        self.text=text
+    def display(self,width):
+        """
+        Returns a list of lines (of length 1), truncated to the
+        specified maximum width.
+
+        """
+        # After display has been called, the caller can read 'cursor' to
+        # find our preferred location for the cursor if we are selected.
+        # It's a (x,y) tuple where y is 0 for the first line.
+        self.cursor=(0,0)
+        return [self.text[:width]]
+
+class lrline(line):
+    """
+    A line for use in a scrollable.  Has a natural colour, a "cursor
+    is here" colour, an optional "selected" colour, some left-aligned
+    text (which will be wrapped if it is too long) and optionally some
+    right-aligned text.
+
+    """
+    def __init__(self,ltext="",rtext="",colour=None,
+                 selected_colour=None):
+        self.ltext=ltext
+        self.rtext=rtext
+        if colour is None: colour=curses.color_pair(0)
+        self.colour=colour
+        self.selected_colour=(
+            selected_colour if selected_colour is not None else colour)
+    def update(self):
+        pass
+    def display(self,width):
+        """
+        Returns a list of lines, formatted to the specified maximum
+        width.  If there is right-aligned text it is included along
+        with the text on the last line if there is space; otherwise a
+        new line is added with the text at the right.
+
+        """
+        # After display has been called, the caller can read 'cursor' to
+        # find our preferred location for the cursor if we are selected.
+        # It's a (x,y) tuple where y is 0 for the first line.
+        self.cursor=(0,0)
+        w=textwrap.wrap(self.ltext,width)
+        if len(w)==0: w=[""]
+        if len(w[-1])+len(self.rtext)>=width:
+            w.append("")
+        w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
+        return w
 
 class editfield(field):
     """Accept input in a field.  Processes an implicit set of keycodes; when an
