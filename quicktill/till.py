@@ -5,7 +5,7 @@ will be started by calling main() from this module.
 
 """
 
-import sys,curses,ui,keyboard,event,logging,td
+import sys,os,curses,ui,keyboard,event,logging,td
 import printer,tillconfig,event,foodorder,locale
 from version import version
 
@@ -146,6 +146,9 @@ def main():
     if 'nosale' in config:
         tillconfig.nosale=config['nosale']
 
+    if os.uname()[0]=='Linux':
+        if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
+        
     locale.setlocale(locale.LC_ALL,'')
     sys.exit(run())
 
