@@ -1,5 +1,3 @@
-# -*- coding: iso-8859-1 -*-
-
 """Implements the 'Manage Stock' menu."""
 
 import ui,td,keyboard,curses,curses.ascii,time,printer

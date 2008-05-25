@@ -1,5 +1,3 @@
-# -*- coding: iso-8859-1 -*-
-
 """Useful routines for dealing with stock.
 
 """
