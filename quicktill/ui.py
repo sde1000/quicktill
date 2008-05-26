@@ -53,14 +53,14 @@ class clock:
         drawheader()
 
 def formattime(ts):
-    "Returns ts formatted as %Y/%m/%d %H:%M:%S"
+    "Returns ts formatted as %Y-%m-%d %H:%M:%S"
     if ts is None: return ""
-    return ts.strftime("%Y/%m/%d %H:%M:%S")
+    return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 def formatdate(ts):
-    "Returns ts formatted as %Y/%m/%d"
+    "Returns ts formatted as %Y-%m-%d"
     if ts is None: return ""
-    return ts.strftime("%Y/%m/%d")
+    return ts.strftime("%Y-%m-%d")
 
 def savefocus():
     "Save the current panel stack down to the base panel"
@@ -136,15 +136,52 @@ def handle_keyboard_input(k):
     else:
         focus.keypress(k)
 
-class basicpage:
+class basicwin:
+    """Container for all pages, popup windows and fields.
+
+    It is required that the parent holds the input focus whenever a
+    basicwin instance is created.  This should usually be true!
+    
+    """
+    def __init__(self):
+        global focus
+        self.parent=focus
+        log.debug("New %s with parent %s"%(self,self.parent))
+    def addstr(self,y,x,s,attr=None):
+        wrap_addstr(self.win,y,x,s,attr)
+    def focus(self):
+        """Called when we are being told to take the focus.
+
+        """
+        global focus
+        if focus!=self:
+            oldfocus=focus
+            focus=self
+            oldfocus.defocus()
+            log.debug("Focus %s -> %s"%(oldfocus,self))
+    def defocus(self):
+        """Called when we are being informed that we have (already) lost the
+        focus.
+
+        """
+        pass
+    def keypress(self,k):
+        pass
+
+class basicpage(basicwin):
     def __init__(self,pan):
         self.pan=pan
         self.win=pan.window()
-        self.focus=self
-        self.stack=[]
+        self.savedfocus=self
+        self.stack=None
         (self.h,self.w)=self.win.getmaxyx()
-    def addstr(self,y,x,s,attr=None):
-        wrap_addstr(self.win,y,x,s,attr)
+        # Pages are only ever initialised during startup, when there
+        # is no focus.  The page must hold the focus so that UI
+        # elements can determine their parent correctly, for keypress
+        # handling.
+        global focus
+        focus=self
+        basicwin.__init__(self) # Sets self.parent to self - ok!
     def pagename(self):
         return "Basic page"
     def pagesummary(self):
@@ -153,47 +190,26 @@ class basicpage:
         # When we're deselected this function is called to let us save
         # our stack of panels, if we want to.  Then when selected we
         # can just restore the focus and panel stack.
-        self.focus=focus
+        self.savedfocus=focus
         self.stack=stack
     def selected(self):
         global focus
         self.pan.show()
-        focus=self.focus
+        focus=self.savedfocus
         if self.stack:
             for i in self.stack:
                 i.show()
-        self.focus=self
+        self.savedfocus=self
         self.stack=None
-    def keypress(self,k):
-        pass
-
-class basicwin:
-    def __init__(self,keymap={},takefocus=True):
-        self.keymap=keymap.copy()
-        if takefocus: self.focus()
-    def addstr(self,y,x,s,attr=None):
-        wrap_addstr(self.win,y,x,s,attr)
-    def focus(self):
-        global focus
-        self.parent=focus
-        focus=self
-    def dismiss(self):
-        global focus
-        focus=self.parent
-    def keypress(self,k):
-        if k in self.keymap:
-            i=self.keymap[k]
-            if i[2]: self.dismiss()
-            if i[0] is not None:
-                if i[1] is None: i[0]()
-                else: i[0](*i[1])
-        else:
-            curses.beep()
 
 class basicpopup(basicwin):
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
                  keymap={}):
-        basicwin.__init__(self,keymap)
+        basicwin.__init__(self)
+        # Grab the focus so that we hold it while we create any necessary
+        # child UI elements
+        self.focus()
+        self.keymap=keymap
         (mh,mw)=stdwin.getmaxyx()
         if title: w=max(w,len(title)+3)
         if cleartext: w=max(w,len(cleartext)+3)
@@ -210,18 +226,28 @@ class basicpopup(basicwin):
     def dismiss(self):
         self.pan.hide()
         del self.pan
-        basicwin.dismiss(self)
+        self.parent.focus()
+    def keypress(self,k):
+        # We never want to pass unhandled keypresses back to the parent
+        # of the popup.
+        if k in self.keymap:
+            i=self.keymap[k]
+            if i[2]: self.dismiss()
+            if i[0] is not None:
+                if i[1] is None: i[0]()
+                else: i[0](*i[1])
+        else:
+            curses.beep()
 
 class dismisspopup(basicpopup):
     """Adds processing of an implicit 'Dismiss' key and generation of
     the cleartext prompt"""
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
                  dismiss=keyboard.K_CLEAR,keymap={}):
-        km=keymap.copy()
-        km[dismiss]=(None,None,True)
+        self.dismisskey=dismiss
         basicpopup.__init__(self,h,w,title=title,
                             cleartext=self.get_cleartext(cleartext,dismiss),
-                            colour=colour,keymap=km)
+                            colour=colour,keymap=keymap)
     def get_cleartext(self,cleartext,dismiss):
         if cleartext is None:
             if dismiss==keyboard.K_CLEAR:
@@ -231,11 +257,14 @@ class dismisspopup(basicpopup):
             else:
                 return "Press %s to dismiss"%kb.keycap(dismiss)
         return cleartext
+    def keypress(self,k):
+        if k==self.dismisskey:
+            return self.dismiss()
+        basicpopup.keypress(self,k)
 
 # itemlist entries are (keycode,desc,func,args)
-class keymenu(basicpopup):
-    def __init__(self,itemlist,title="Press a key",clear=True,
-                 colour=colour_input):
+class keymenu(dismisspopup):
+    def __init__(self,itemlist,title="Press a key",colour=colour_input):
         h=len(itemlist)+4
         pw=0 ; tw=0
         km={}
@@ -244,15 +273,10 @@ class keymenu(basicpopup):
             textwidth=len(desc)
             if promptwidth>pw: pw=promptwidth
             if textwidth>tw: tw=textwidth
-            km[keycode]=(func,args,True)
-        if clear:
-            cleartext="Press Clear to go back"
-            km[keyboard.K_CLEAR]=(None,None,True)
-        else:
-            cleartext=None
+            km[keycode]=(func,args)
+        self.menukeys=km
         w=pw+tw+6
-        basicpopup.__init__(self,h,w,title=title,colour=colour,
-                            cleartext=cleartext,keymap=km)
+        dismisspopup.__init__(self,h,w,title=title,colour=colour)
         (h,w)=self.win.getmaxyx()
         y=2
         for keycode,desc,func,args in itemlist:
@@ -260,8 +284,17 @@ class keymenu(basicpopup):
             self.addstr(y,pw+4,desc)
             y=y+1
         self.win.move(h-1,w-1)
+    def keypress(self,k):
+        if k in self.menukeys:
+            self.dismiss()
+            if self.menukeys[k][1]:
+                self.menukeys[k][0](*self.menukeys[k][1])
+            else:
+                self.menukeys[k][0]()
+        else:
+            dismisspopup.keypress(self,k)
 
-class menu(basicpopup):
+class menu(dismisspopup):
     """
     A popup menu with a list of selections. Selection can be made by
     using cursor keys to move up and down, and pressing Cash/Enter to
@@ -272,13 +305,14 @@ class menu(basicpopup):
     """
     def __init__(self,itemlist,default=0,
                  blurb="Select a line and press Cash/Enter",
-                 title=None,clear=True,
+                 title=None,
                  colour=colour_input,w=None,dismiss_on_select=True,
                  keymap={}):
         self.itemlist=itemlist
         self.dismiss_on_select=dismiss_on_select
         if w is None:
-            w=max(23,max(len(x[0]) for x in itemlist))+2
+            w=max((len(x[0]) for x in itemlist))+2 if len(itemlist)>0 else 0
+            w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
         if blurb:
@@ -286,26 +320,23 @@ class menu(basicpopup):
         else:
             blurbl=[]
         h=len(itemlist)+len(blurbl)+2
-        if len(itemlist)>0:
-            km={keyboard.K_CASH: (self.select,None,False)}
-        else:
-            km={}
-        km.update(keymap)
-        if clear:
-            cleartext="Press Clear to go back"
-            km[keyboard.K_CLEAR]=(self.dismiss,None,False)
-        else:
-            cleartext=None
-        basicpopup.__init__(self,h,w,title=title,cleartext=cleartext,
-                            colour=colour,keymap=km)
+        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap)
         (h,w)=self.win.getmaxyx()
         y=1
         for i in blurbl:
             self.addstr(y,2,i)
             y=y+1
         dl=[line(x[0]) for x in itemlist]
-        self.s=scrollable(self.win,y,1,w-2,h-y-1,dl,keymap=km)
-        self.s.focus()
+        # Note about keyboard handling: the scrollable will always have
+        # the focus.  It will deal with cursor keys itself.  All other
+        # keys will be passed through to our keypress() method.  We don't
+        # want that: we want to control what the "Cash/Enter" key does
+        # ourselves, so we get the scrollable to call us whenever it's
+        # pressed.
+        if len(itemlist)>0:
+            self.s=scrollable(y,1,w-2,h-y-1,dl,keymap={
+                    keyboard.K_CASH: (self.select,None)})
+            self.s.focus()
     def select(self):
         i=self.itemlist[self.s.cursor]
         if self.dismiss_on_select: self.dismiss()
@@ -324,12 +355,7 @@ class linepopup(dismisspopup):
         dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
                               keymap)
         dl=[line(i) for i in lines]
-        # The scrollable is going to have the focus all the time XXX
-        # This is a nasty hack and I really need to revisit how the
-        # keymap is handled.
-        keymap.update({dismiss: (self.dismiss,None,False)})
-        self.s=scrollable(self.win,1,2,w-4,h-2,dl,keymap=keymap,
-                          show_cursor=False)
+        self.s=scrollable(1,2,w-4,h-2,dl,show_cursor=False)
         self.s.focus()
 
 class infopopup(linepopup):
@@ -392,44 +418,52 @@ def validate_date(s,c):
         a=s[i:i+1]
         if len(a)==0: return True
         return a.isdigit()
-    def checkslash(i):
+    def checkdash(i):
         a=s[i:i+1]
         if len(a)==0: return True
-        return a=='/'
+        return a=='-'
     if (checkdigit(0) and
         checkdigit(1) and
         checkdigit(2) and
         checkdigit(3) and
-        checkslash(4) and
+        checkdash(4) and
         checkdigit(5) and
         checkdigit(6) and
-        checkslash(7) and
+        checkdash(7) and
         checkdigit(8) and
         checkdigit(9)): return s
     return None
 
 class field(basicwin):
     def __init__(self,keymap={}):
-        self.nextfield=self
-        self.prevfield=self
-        self.focushook=None
+        self.nextfield=None
+        self.prevfield=None
         self.sethook=None
-        # Default keyboard actions, overridden if in supplied keymap
-        next=(lambda:self.nextfield.focus(),None,True)
-        prev=(lambda:self.prevfield.focus(),None,True)
-        basicwin.__init__(self,keymap,takefocus=False)
-        self.keymap.update({
-                keyboard.K_DOWN: next,
-                keyboard.K_CASH: next,
-                curses.ascii.TAB: next,
-                keyboard.K_UP: prev,
-                keyboard.K_CLEAR: prev})
-        self.keymap.update(keymap)
+        # We _must_ copy the provided keymap; it is permissible for our
+        # keymap to be modified after initialisation, and it would be
+        # a Very Bad Thing (TM) for the default empty keymap to be
+        # changed!
+        self.keymap=keymap.copy()
+        basicwin.__init__(self)
+        self.win=self.parent.win
     def set(self):
         if self.sethook is not None: self.sethook()
-    def focus(self):
-        basicwin.focus(self)
-        if self.focushook is not None: self.focushook()
+    def keypress(self,k):
+        # All keypresses handled here are defaults; if they are present
+        # in the keymap, we should not handle them ourselves.
+        if k in self.keymap:
+            i=self.keymap[k]
+            if i[0] is not None:
+                if i[1] is None: i[0]()
+                else: i[0](*i[1])
+        elif (k in (keyboard.K_DOWN,keyboard.K_CASH,curses.ascii.TAB)
+              and self.nextfield):
+            self.nextfield.focus()
+        elif (k in (keyboard.K_UP,keyboard.K_CLEAR)
+              and self.prevfield):
+            self.prevfield.focus()
+        else:
+            self.parent.keypress(k)
 
 class scrollable(field):
     """A rectangular field of a page or popup that contains a list of
@@ -441,10 +475,9 @@ class scrollable(field):
     the last line may be blank/inverse as a prompt.
 
     """
-    def __init__(self,win,y,x,width,height,dl,show_cursor=True,
+    def __init__(self,y,x,width,height,dl,show_cursor=True,
                  lastline=None,default=0,keymap={}):
         field.__init__(self,keymap)
-        self.win=win
         self.y=y
         self.x=x
         self.w=width
@@ -454,18 +487,12 @@ class scrollable(field):
         self.lastline=lastline
         self.cursor=default
         self.top=0
-        self.keymap.update(
-            {keyboard.K_DOWN: (self.cursor_down,(1,),False),
-             keyboard.K_UP: (self.cursor_up,(1,),False),
-             keyboard.K_RIGHT: (self.cursor_down,(5,),False),
-             keyboard.K_LEFT: (self.cursor_up,(5,),False),
-             curses.KEY_NPAGE: (self.cursor_down,(10,),False),
-             curses.KEY_PPAGE: (self.cursor_up,(10,),False),
-             })
-        self.keymap.update(keymap)
+        self.drawdl()
     def set(self,dl):
         self.dl=dl
         # XXX Frob cursor and scroll position if necessary
+        self.cursor=0
+        self.top=0
         self.redraw()
         field.set(self)
     def focus(self):
@@ -474,12 +501,14 @@ class scrollable(field):
         # field, we should move the cursor to the bottom.  Otherwise we
         # leave the cursor untouched.
         global focus
-        if focus==self.prevfield: cursor=0
+        if focus==self.prevfield: self.cursor=0
         elif focus==self.nextfield:
-            if self.lastline: cursor=len(self.dl)
-            else: cursor=len(self.dl)-1
+            self.cursor=len(self.dl) if self.lastline else len(self.dl)-1
         field.focus(self)
         self.redraw()
+    def defocus(self):
+        field.defocus(self)
+        self.drawdl() # We don't want to scroll
     def drawdl(self):
         """
         Redraw the area with the current scroll and cursor locations.
@@ -529,10 +558,10 @@ class scrollable(field):
                 break
             i=i+1
         if end_of_displaylist>i:
-            # Check whether we are overwriting any of the last item
-            if y==self.y+self.h+1: lastcomplete=lastcomplete-1
+            # Check whether we are about to overwrite any of the last item
+            if y>=self.y+self.h+1: lastcomplete=lastcomplete-1
             self.addstr(self.y+self.h-1,self.x,'...'+' '*(self.w-3))
-        if cursor_y is not None:
+        if cursor_y is not None and cursor_y<(self.y+self.h):
             self.win.move(cursor_y,cursor_x)
         return lastcomplete
     def redraw(self):
@@ -550,9 +579,9 @@ class scrollable(field):
             lastitem=self.drawdl()
         end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
         self.display_complete=(lastitem==end_of_displaylist-1)
-    def cursor_up(self,n):
+    def cursor_up(self,n=1):
         if self.cursor==0:
-            self.prevfield.focus()
+            if self.prevfield is not None: return self.prevfield.focus()
         else:
             self.cursor=self.cursor-n
             if self.cursor<0: self.cursor=0
@@ -560,14 +589,16 @@ class scrollable(field):
     def cursor_at_end(self):
         if self.show_cursor:
             if self.lastline:
-                return self.cursor>len(self.dl)
-            else:
                 return self.cursor>=len(self.dl)
+            else:
+                return self.cursor==len(self.dl)-1
         else:
             return self.display_complete
-    def cursor_down(self,n):
+    def cursor_on_lastline(self):
+        return self.cursor==len(self.dl)
+    def cursor_down(self,n=1):
         if self.cursor_at_end():
-            self.nextfield.focus()
+            if self.nextfield is not None: return self.nextfield.focus()
         else:
             self.cursor=self.cursor+n
             if self.lastline:
@@ -575,6 +606,14 @@ class scrollable(field):
             else:
                 if self.cursor>=len(self.dl): self.cursor=len(self.dl)-1
         self.redraw()
+    def keypress(self,k):
+        if k==keyboard.K_DOWN: self.cursor_down(1)
+        elif k==keyboard.K_UP: self.cursor_up(1)
+        elif k==keyboard.K_RIGHT: self.cursor_down(5)
+        elif k==keyboard.K_LEFT: self.cursor_up(5)
+        elif k==curses.KEY_NPAGE: self.cursor_down(10)
+        elif k==curses.KEY_PPAGE: self.cursor_up(10)
+        else: field.keypress(self,k)
 
 class emptyline:
     """
@@ -583,12 +622,12 @@ class emptyline:
     no text.
 
     """
-    def __init__(self,colour=None,selected_colour=None):
+    def __init__(self,colour=None):
         if colour is None: colour=curses.color_pair(0)
         self.colour=colour
-        self.selected_colour=(
-            selected_colour if selected_colour is not None else colour)
         self.cursor_colour=self.colour|curses.A_REVERSE
+    def update(self):
+        pass
     def display(self,width):
         """
         Returns a list of lines (of length 1), with one empty line.
@@ -601,8 +640,8 @@ class emptyline:
         return [""]
 
 class emptylines(emptyline):
-    def __init__(self,colour=None,selected_colour=None,lines=1):
-        emptyline.__init__(self,colour,selected_colour)
+    def __init__(self,colour=None,lines=1):
+        emptyline.__init__(self,colour)
         self.lines=lines
     def display(self,width):
         self.cursor=(0,0)
@@ -611,13 +650,12 @@ class emptylines(emptyline):
 class line(emptyline):
     """
     A line for use in a scrollable.  Has a natural colour, a "cursor
-    is here" colour, an optional "selected" colour, and some text.  If
-    the text is too long it will be truncated; this line will never
-    wrap.
+    is here" colour, and some text.  If the text is too long it will
+    be truncated; this line will never wrap.
 
     """
-    def __init__(self,text="",colour=None,selected_colour=None):
-        emptyline.__init__(self,colour,selected_colour)
+    def __init__(self,text="",colour=None):
+        emptyline.__init__(self,colour)
         self.text=text
     def display(self,width):
         """
@@ -631,7 +669,7 @@ class line(emptyline):
         self.cursor=(0,0)
         return [self.text[:width]]
 
-class lrline(line):
+class lrline(emptyline):
     """
     A line for use in a scrollable.  Has a natural colour, a "cursor
     is here" colour, an optional "selected" colour, some left-aligned
@@ -639,16 +677,10 @@ class lrline(line):
     right-aligned text.
 
     """
-    def __init__(self,ltext="",rtext="",colour=None,
-                 selected_colour=None):
+    def __init__(self,ltext="",rtext="",colour=None):
+        emptyline.__init__(self,colour)
         self.ltext=ltext
         self.rtext=rtext
-        if colour is None: colour=curses.color_pair(0)
-        self.colour=colour
-        self.selected_colour=(
-            selected_colour if selected_colour is not None else colour)
-    def update(self):
-        pass
     def display(self,width):
         """
         Returns a list of lines, formatted to the specified maximum
@@ -671,14 +703,16 @@ class lrline(line):
 class editfield(field):
     """Accept input in a field.  Processes an implicit set of keycodes; when an
     unrecognised code is found processing moves to the standard keymap."""
-    def __init__(self,win,y,x,w,keymap={},f=None,flen=None,validate=None,
+    def __init__(self,y,x,w,keymap={},f=None,flen=None,validate=None,
                  readonly=False):
-        """flen, if not None, is the maximum length of input allowed in the field.
-        If this is greater than w then the field will scroll if necessary.  If
-        validate is not none it will be called on every insertion into the field;
-        it should return either a (potentially updated) string or None if the
-        input is not allowed."""
-        self.win=win
+        """flen, if not None, is the maximum length of input allowed in the
+        field.  If this is greater than w then the field will scroll
+        if necessary.  If validate is not none it will be called on
+        every insertion into the field; it should return either a
+        (potentially updated) string or None if the input is not
+        allowed.
+
+        """
         self.y=y
         self.x=x
         self.w=w
@@ -689,9 +723,9 @@ class editfield(field):
         field.__init__(self,keymap)
         self.set(f)
     def focus(self):
+        field.focus(self)
         if self.c>len(self.f): self.c=len(self.f)
         self.draw()
-        field.focus(self)
     def set(self,l):
         if l is None: l=""
         if len(l)>self.flen: l=l[:self.flen]
@@ -699,9 +733,6 @@ class editfield(field):
         self.c=len(self.f)
         self.i=0 # will be updated by draw() if necessary
         self.draw()
-        field.set(self)
-    def dismiss(self):
-        field.dismiss(self)
         field.set(self)
     def draw(self):
         if self.c-self.i>self.w:
@@ -787,13 +818,17 @@ class editfield(field):
         elif k==keyboard.K_CLEAR and self.f!="" and not self.readonly:
             self.clear()
         else:
+            if k==keyboard.K_CASH:
+                # Invoke the 'set' hook, and then do whatever Cash would
+                # have done anyway
+                field.set(self)
             field.keypress(self,k)
 
 class datefield(editfield):
-    def __init__(self,win,y,x,keymap={},f=None,flen=None,readonly=False):
+    def __init__(self,y,x,keymap={},f=None,flen=None,readonly=False):
         if f is not None:
             f=formatdate(f)
-        editfield.__init__(self,win,y,x,10,keymap=keymap,f=f,flen=10,
+        editfield.__init__(self,y,x,10,keymap=keymap,f=f,flen=10,
                            readonly=readonly,validate=validate_date)
     def set(self,v):
         if isinstance(v,str):
@@ -802,24 +837,23 @@ class datefield(editfield):
             editfield.set(self,formatdate(v))
     def read(self):
         try:
-            d=strptime(self.f,"%Y/%m/%d")
+            d=strptime(self.f,"%Y-%m-%d")
         except:
             d=None
         if d is None: editfield.set(self,"")
         return d
     def draw(self):
-        self.addstr(self.y,self.x,'YYYY/MM/DD',curses.A_REVERSE)
+        self.addstr(self.y,self.x,'YYYY-MM-DD',curses.A_REVERSE)
         self.addstr(self.y,self.x,self.f,curses.A_REVERSE)
         self.win.move(self.y,self.x+self.c)
     def insert(self,s):
         editfield.insert(self,s)
         if len(self.f)==4 or len(self.f)==7:
-            self.set(self.f+'/')
-
+            self.set(self.f+'-')
 
 class popupfield(field):
-    def __init__(self,win,y,x,w,popupfunc,valuefunc,f=None,keymap={},readonly=False):
-        self.win=win
+    def __init__(self,y,x,w,popupfunc,valuefunc,f=None,keymap={},
+                 readonly=False):
         self.y=y
         self.x=x
         self.w=w
@@ -827,7 +861,7 @@ class popupfield(field):
         self.valuefunc=valuefunc
         self.readonly=readonly
         field.__init__(self,keymap)
-        self.set(f)
+        self.f=f
         self.draw()
     def focus(self):
         field.focus(self)
@@ -838,8 +872,7 @@ class popupfield(field):
         field.set(self)
     def setf(self,value):
         self.set(value)
-        self.dismiss()
-        self.nextfield.focus()
+        if self.nextfield: self.nextfield.focus()
     def draw(self):
         if self.f is not None: s=self.valuefunc(self.f)
         else: s=""
@@ -847,27 +880,25 @@ class popupfield(field):
         self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
         self.addstr(self.y,self.x,s,curses.A_REVERSE)
         self.win.move(self.y,self.x)
+    def popup(self):
+        if not self.readonly: self.popupfunc(self.setf,self.f)
     def keypress(self,k):
         if k==keyboard.K_CLEAR and self.f is not None and not self.readonly:
             self.f=None
             self.draw()
         elif k==keyboard.K_CASH and not self.readonly:
-            self.popupfunc(self.setf,self.f)
+            self.popup()
         else:
             field.keypress(self,k)
 
 # If d is provided then values in l are looked up in d before being
 # displayed.
 class listfield(popupfield):
-    def __init__(self,win,y,x,w,l,d=None,f=None,keymap={},readonly=False):
+    def __init__(self,y,x,w,l,d=None,f=None,keymap={},readonly=False):
         self.l=l
         self.d=d
-        km=keymap.copy()
-        if not readonly:
-            km[keyboard.K_RIGHT]=(self.next,None,False)
-            km[keyboard.K_LEFT]=(self.prev,None,False)
-        popupfield.__init__(self,win,y,x,w,self.popuplist,
-                            self.listval,f=f,keymap=km,readonly=readonly)
+        popupfield.__init__(self,y,x,w,self.popuplist,
+                            self.listval,f=f,keymap=keymap,readonly=readonly)
     def read(self):
         if self.f is None: return None
         return self.l[self.f]
@@ -890,10 +921,14 @@ class listfield(popupfield):
         else: self.f=self.f-1
         if self.f<0: self.f=len(self.l)-1
         self.draw()
+    def keypress(self,k):
+        if not self.readonly:
+            if k==keyboard.K_RIGHT: return self.next()
+            elif k==keyboard.K_LEFT: return self.prev()
+        popupfield.keypress(self,k)
 
 class buttonfield(field):
-    def __init__(self,win,y,x,w,text,keymap={}):
-        self.win=win
+    def __init__(self,y,x,w,text,keymap={}):
         self.y=y
         self.x=x
         self.t=text.center(w-2)
@@ -902,8 +937,8 @@ class buttonfield(field):
     def focus(self):
         field.focus(self)
         self.draw()
-    def dismiss(self):
-        field.dismiss(self)
+    def defocus(self):
+        field.defocus(self)
         self.draw()
     def draw(self):
         global focus

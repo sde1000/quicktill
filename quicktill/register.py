@@ -25,8 +25,8 @@ etc."""
 # lines in a transaction.  When a transaction line is modified you
 # must call the update() method of the corresponding line object.  The
 # display list is redrawn in one of two ways: 1) Call redraw().  This
-# scrolls to the current cursor position.  2) Call drawdl().  No
-# scrolling is performed.  When you append an item to the display
+# scrolls to the current cursor position.  2) Call self.s.drawdl().  No
+# scrolling is performed.  After you append an item to the display
 # list, you should call cursor_off() before calling redraw() to make
 # sure that we scroll to the end of the list.
 
@@ -50,45 +50,7 @@ class transnotify:
         ending a session."""
         for i in self.nl: i.tnotify(pagename,transid)
 
-class line:
-    """
-    A line on the register display.  Has a natural colour, an optional
-    "selected" colour, some left-aligned text (which will be wrapped
-    if it is too long) and optionally some right-aligned text.
-
-    """
-    def __init__(self,ltext="",rtext="",colour=None,
-                 selected_colour=None):
-        self.ltext=ltext
-        self.rtext=rtext
-        if colour is None: colour=curses.color_pair(0)
-        self.colour=colour
-        self.selected_colour=(
-            selected_colour if selected_colour is not None else colour)
-    def update(self):
-        pass
-    def display(self,width):
-        """
-        Returns a list of lines, formatted and padded with spaces to
-        the specified maximum width.  If there is right-aligned text
-        it is included along with the text on the last line if there
-        is space; otherwise a new line is added with the text at the
-        right.
-
-        """
-        # After display has been called, the caller can read 'cursor' to
-        # find our preferred location for the cursor if we are selected.
-        # It's a (x,y) tuple where y is 0 for the first line.
-        self.cursor=(0,0)
-        w=textwrap.wrap(self.ltext,width)
-        if len(w)==0: w=[""]
-        if len(w[-1])+len(self.rtext)>=width:
-            w.append("")
-        w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
-        w=["%s%s"%(x,' '*(width-len(x))) for x in w]
-        return w
-
-class bufferline(line):
+class bufferline(ui.lrline):
     """
     Used as the very last line on the register display - a special
     case.  Always consists of two lines; a blank line, and then a line
@@ -98,9 +60,8 @@ class bufferline(line):
 
     """
     def __init__(self):
-        self.ltext=""
-        self.rtext=""
-        self.colour=curses.color_pair(0)
+        ui.lrline.__init__(self)
+        self.cursor_colour=self.colour
         self.cursorx=0
     def update_buffer(self,prompt,qty,mod,buf,balance):
         if qty is not None: m="%d of "%qty
@@ -117,17 +78,17 @@ class bufferline(line):
                             tillconfig.fc(balance)) if balance else ""
     def display(self,width):
         # Add the expected blank line
-        l=[' '*width]+line.display(self,width)
+        l=['']+ui.lrline.display(self,width)
         self.cursor=(self.cursorx,len(l)-1)
         return l
 
-class tline(line):
+class tline(ui.lrline):
     """
     A transaction line; corresponds to a transaction line in the database.
 
     """
     def __init__(self,transline):
-        line.__init__(self)
+        ui.lrline.__init__(self)
         self.transline=transline
         self.update()
     def update(self):
@@ -150,11 +111,12 @@ class tline(line):
             self.colour=curses.color_pair(ui.colour_cancelline)
         else:
             self.colour=curses.color_pair(0)
+        self.cursor_colour=self.colour|curses.A_REVERSE
 
 # Used for payments etc.
-class rline(line):
+class rline(ui.lrline):
     def __init__(self,text,attr):
-        line.__init__(self,"",text,curses.color_pair(attr))
+        ui.lrline.__init__(self,"",text,curses.color_pair(attr))
         # It would be very useful if the payments table had a unique ID
         # per payment so that we could store a reference to it here.
         # Unfortunately it doesn't - this makes cancelling payments
@@ -184,25 +146,22 @@ class cardpopup(ui.dismisspopup):
         self.amount=amount
         self.func=func
         ui.dismisspopup.__init__(self,16,44,title="Card payment",
-                                 dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         self.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
         self.addstr(4,2,"Please enter the receipt number from the")
         self.addstr(5,2,"credit card receipt.")
         self.addstr(7,2," Receipt number:")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.rnfield=ui.editfield(self.win,7,19,16,keymap=km)
+        self.rnfield=ui.editfield(7,19,16,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
         self.addstr(9,2,"Is there any cashback?  Enter amount and")
         self.addstr(10,2,"press Cash/Enter.  Leave blank and press")
         self.addstr(11,2,"Cash/Enter if there is none.")
         self.addstr(13,2,"Cashback amount: %s"%tillconfig.currency)
-        km={keyboard.K_CASH: (self.enter,None,False),
-            keyboard.K_CARD: (self.enter,None,False),
-            keyboard.K_TWENTY: (self.note,(20.0,),False),
-            keyboard.K_TENNER: (self.note,(10.0,),False),
-            keyboard.K_FIVER: (self.note,(5.0,),False),
-            keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.cbfield=ui.editfield(self.win,13,19+len(tillconfig.currency),6,
+        km={keyboard.K_CASH: (self.enter,None),
+            keyboard.K_TWENTY: (self.note,(20.0,)),
+            keyboard.K_TENNER: (self.note,(10.0,)),
+            keyboard.K_FIVER: (self.note,(5.0,))}
+        self.cbfield=ui.editfield(13,19+len(tillconfig.currency),6,
                                 validate=ui.validate_float,
                                 keymap=km)
         ui.map_fieldlist([self.rnfield,self.cbfield])
@@ -222,6 +181,9 @@ class cardpopup(ui.dismisspopup):
                 tillconfig.cashback_limit)],title="Error")
         total=self.amount+cba
         receiptno=self.rnfield.f
+        if receiptno=="":
+            return ui.infopopup(["You must enter a receipt number."],
+                                title="Error")
         self.dismiss()
         self.func(total,receiptno)
 
@@ -234,9 +196,14 @@ class page(ui.basicpage):
         self.defaultprompt="Ready"
         registry.register(self)
         self.bufferline=bufferline()
+        self.s=ui.scrollable(0,0,self.w,self.h,[],
+                             lastline=self.bufferline)
+        self.s.focus()
         self.clear()
         self.redraw()
         self.hotkeys=hotkeys
+        self.savedfocus=ui.focus # Save this, so that it can be
+                                 # restored when we are selected.
     def clearbuffer(self):
         self.buf=None # Input buffer
         self.qty=None # Quantity (integer)
@@ -251,9 +218,8 @@ class page(ui.basicpage):
 
         """
         self.dl=[] # Display list
+        self.s.set(self.dl) # Tell the scrollable about the new display list
         self.ml=sets.Set() # Marked transactions set
-        self.top=0 # Top line of display
-        self.cursor=0 # Cursor position in display list; if this is greater
         # than the length of the list then there is no selection.
         self.trans=None # Current transaction
         self.repeat=None # If dept/line button pressed, update this transline
@@ -280,83 +246,17 @@ class page(ui.basicpage):
         if trans==0 or (self.name!=name and self.trans==trans):
             self.clear()
             self.redraw()
-    def drawdl(self):
-        """
-        Redraw the register menu with the current scroll and cursor
-        locations.  Returns the index of the last complete item that
-        fits on the screen.  (This is useful to compare against the
-        cursor position to ensure the cursor is displayed.)
-
-        """
-        # First clear the drawing space
-        for y in range(0,self.h):
-            self.addstr(y,0,' '*self.w)
-        y=0
-        i=self.top
-        lastcomplete=i
-        # Deal with putting in the 'scroll up available' indicator
-        # sort it out later...
-        if i>0:
-            self.addstr(y,0,'...')
-            y=y+1
-        cursor_y=None
-        while i<=len(self.dl):
-            if i>=len(self.dl):
-                item=self.bufferline
-            else:
-                item=self.dl[i]
-            l=item.display(self.w)
-            colour=item.colour
-            if i==self.cursor:
-                if item!=self.bufferline:
-                    colour=colour|curses.A_REVERSE
-                cursor_y=y+item.cursor[1]
-                cursor_x=item.cursor[0]
-            for j in l:
-                if y<self.h:
-                    self.addstr(y,0,j,colour)
-                    y=y+1
-            if y<self.h:
-                lastcomplete=i
-            else:
-                break
-            i=i+1
-        if len(self.dl)>i:
-            self.addstr(self.h,0,'...')
-        else:
-            self.addstr(self.h,0,'   ')
-        if cursor_y is not None:
-            self.win.move(cursor_y,cursor_x)
-        return lastcomplete
     def redraw(self):
         """
         Updates the screen, scrolling until the cursor is visible.
 
         """
-        if self.cursor<self.top: self.top=self.cursor
-        lastitem=self.drawdl()
-        while self.cursor>lastitem:
-            self.top=self.top+1
-            lastitem=self.drawdl()
+        self.s.redraw()
         ui.updateheader()
-    def cursor_up(self):
-        if self.cursor>0: self.cursor=self.cursor-1
-        self.redraw()
-    def cursor_pageup(self):
-        self.cursor=self.cursor-5
-        if self.cursor<0: self.cursor=0
-        self.redraw()
-    def cursor_down(self):
-        if self.cursor<len(self.dl): self.cursor=self.cursor+1
-        self.redraw()
-    def cursor_pagedown(self):
-        self.cursor=self.cursor+5
-        if self.cursor>len(self.dl): self.cursor=len(self.dl)
-        self.redraw()
     def cursor_off(self):
         # Returns the cursor to the buffer line.  Does not redraw (because
         # the caller is almost certainly going to do other things first).
-        self.cursor=len(self.dl)
+        self.s.cursor=len(self.dl)
     def update_balance(self):
         if self.trans:
             (lines,payments)=td.trans_balance(self.trans)
@@ -841,7 +741,7 @@ class page(ui.basicpage):
                 "interested in and then press Cash/Enter to void them."],
                          title="Help on Cancel")
         else:
-            if self.cursor>=len(self.dl):
+            if self.s.cursor>=len(self.dl):
                 closed=td.trans_closed(self.trans)
                 if not closed and self.keyguard:
                     log.info("Register: cancelkey kill transaction denied")
@@ -893,10 +793,10 @@ class page(ui.basicpage):
             transline=l.transline
             self.ml.add(transline)
             l.update_mark(self.ml)
-            self.drawdl()
+            self.s.drawdl()
     def cancelline(self,force=False):
         if td.trans_closed(self.trans):
-            l=self.dl[self.cursor]
+            l=self.dl[self.s.cursor]
             if isinstance(l,rline):
                 ui.infopopup(["You can't void payments from closed "
                               "transactions."],title="Error")
@@ -913,16 +813,16 @@ class page(ui.basicpage):
                     title="Help on voiding lines from closed transactions")
             self.prompt="Press Cash/Enter to void the blue lines"
             self.update_bufferline()
-            self.markline(self.cursor)
+            self.markline(self.s.cursor)
         else:
-            l=self.dl[self.cursor]
+            l=self.dl[self.s.cursor]
             if isinstance(l,tline):
                 transline=l.transline
                 if force:
                     log.info("Register: cancelline: delete "
                              "transline %d"%transline)
                     td.trans_deleteline(transline)
-                    del self.dl[self.cursor]
+                    del self.dl[self.s.cursor]
                     self.cursor_off()
                     self.update_balance()
                     if len(self.dl)==0:
@@ -1089,10 +989,6 @@ class page(ui.basicpage):
             keyboard.K_PRINT: self.printkey,
             keyboard.K_RECALLTRANS: self.recalltranskey,
             keyboard.K_MANAGETRANS: self.managetranskey,
-            keyboard.K_UP: self.cursor_up,
-            keyboard.K_DOWN: self.cursor_down,
-            keyboard.K_LEFT: self.cursor_pageup,
-            keyboard.K_RIGHT: self.cursor_pagedown,
             }
         if k in keys: return keys[k]()
         if k in self.hotkeys: return self.hotkeys[k]()

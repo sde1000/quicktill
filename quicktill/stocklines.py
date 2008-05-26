@@ -174,7 +174,7 @@ def return_stock(stockline):
 
 class create(ui.dismisspopup):
     def __init__(self):
-        ui.dismisspopup.__init__(self,9,63,title="Create Stock Line",
+        ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
         depts=td.department_list()
@@ -184,17 +184,16 @@ class create(ui.dismisspopup):
         self.addstr(4,2,"         Department:")
         self.addstr(5,2,"   Display capacity:")
         self.addstr(6,2,"Pull-through amount:")
-        self.namefield=ui.editfield(self.win,2,23,30,keymap={
-            keyboard.K_CLEAR: (self.dismiss,None,True)})
-        self.locfield=ui.editfield(self.win,3,23,20)
-        self.deptfield=ui.listfield(self.win,4,23,20,self.deptlist,
-                                    d=dict(depts))
-        self.capacityfield=ui.editfield(self.win,5,23,5,
-                                        validate=ui.validate_int)
-        self.pullthrufield=ui.editfield(self.win,6,23,5,
-                                        validate=ui.validate_float,
-                                        keymap={
-            keyboard.K_CASH: (self.enter,None,False)})
+        self.addstr(8,2,"Leave \"Display capacity\" blank unless you are")
+        self.addstr(9,2,"creating a stockline for the fridge.")
+        self.namefield=ui.editfield(2,23,30,keymap={
+            keyboard.K_CLEAR: (self.dismiss,None)})
+        self.locfield=ui.editfield(3,23,20)
+        self.deptfield=ui.listfield(4,23,20,self.deptlist,d=dict(depts))
+        self.capacityfield=ui.editfield(5,23,5,validate=ui.validate_int)
+        self.pullthrufield=ui.editfield(
+            6,23,5,validate=ui.validate_float,keymap={
+                keyboard.K_CASH: (self.enter,None)})
         ui.map_fieldlist([self.namefield,self.locfield,self.deptfield,
                           self.capacityfield,self.pullthrufield])
         self.namefield.focus()
@@ -231,7 +230,7 @@ class modify(ui.dismisspopup):
         name,location,capacity,dept,pullthru=td.stockline_info(stocklineid)
         self.oldcapacity=capacity
         depts=dict(td.department_list())
-        ui.dismisspopup.__init__(self,9,63,title="Modify Stock Line",
+        ui.dismisspopup.__init__(self,8,63,title="Modify Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
         # Can change name, location, capacity or pullthru,
@@ -240,21 +239,27 @@ class modify(ui.dismisspopup):
         self.addstr(2,2,"    Stock line name:")
         self.addstr(3,2,"           Location:")
         self.addstr(4,2,"         Department: %s"%depts[dept])
-        self.addstr(5,2,"   Display capacity:")
-        self.addstr(6,2,"Pull-through amount:")
+        if capacity is None:
+            self.addstr(5,2,"Pull-through amount:")
+        else:
+            self.addstr(5,2,"   Display capacity:")
         if capacity is not None: capacity=str(capacity)
         if pullthru is not None: pullthru="%0.2f"%pullthru
-        self.namefield=ui.editfield(self.win,2,23,30,f=name,keymap={
-            keyboard.K_CLEAR: (self.dismiss,None,True)})
-        self.locfield=ui.editfield(self.win,3,23,20,f=location)
-        self.capacityfield=ui.editfield(self.win,5,23,5,f=capacity,
-                                        validate=ui.validate_int)
-        self.pullthrufield=ui.editfield(self.win,6,23,5,f=pullthru,
-                                        validate=ui.validate_float,
-                                        keymap={
-            keyboard.K_CASH: (self.enter,None,False)})
-        ui.map_fieldlist([self.namefield,self.locfield,
-                          self.capacityfield,self.pullthrufield])
+        self.namefield=ui.editfield(2,23,30,f=name,keymap={
+            keyboard.K_CLEAR: (self.dismiss,None)})
+        self.locfield=ui.editfield(3,23,20,f=location)
+        fl=[self.namefield,self.locfield]
+        if capacity is None:
+            self.pullthrufield=ui.editfield(
+                5,23,5,f=pullthru,validate=ui.validate_float,
+                keymap={keyboard.K_CASH: (self.enter,None)})
+            fl.append(self.pullthrufield)
+        else:
+            self.capacityfield=ui.editfield(
+                5,23,5,f=capacity,validate=ui.validate_int,
+                keymap={keyboard.K_CASH: (self.enter,None)})
+            fl.append(self.capacityfield)
+        ui.map_fieldlist(fl)
         self.namefield.focus()
     def enter(self):
         if (self.namefield.f=='' or self.locfield.f==''):
@@ -264,34 +269,26 @@ class modify(ui.dismisspopup):
             return
         name=self.namefield.f
         loc=self.locfield.f
-        if self.capacityfield.f!='': cap=int(self.capacityfield.f)
-        else: cap=None
-        if self.pullthrufield.f!='': pullthru=float(self.pullthrufield.f)
-        else: pullthru=None
-        if self.oldcapacity is None and cap is not None:
-            ui.infopopup(["You may not change a line from one with no "
-                          "display space to one that has display space.  "
-                          "You should delete it and re-create it instead."],
-                         title="Error")
-            return
+        if self.oldcapacity is None:
+            cap=None
+            pullthru=(float(self.pullthrufield.f) if self.pullthrufield.f!=''
+                      else None)
+        else:
+            cap=(int(self.capacityfield.f) if self.capacityfield.f!=''
+                 else None)
+            pullthru=None
         if self.oldcapacity is not None and cap is None:
             ui.infopopup(["You may not change a line from one with "
                           "display space to one that does not have display "
                           "space.  You should delete and re-create it "
                           "instead."],title="Error")
             return
-        if pullthru is not None and cap is not None:
-            ui.infopopup(["You may specify display capacity or quantity "
-                          "to pull through, but not both."],title="Error")
-            return
         ok=td.stockline_update(self.stocklineid,name,loc,cap,pullthru)
-        if cap!=self.oldcapacity:
-            capmsg=("  The change in display capacity will take effect next "
-                    "time the line is re-stocked.")
-        else:
-            capmsg=""
         if ok:
             self.dismiss()
+            capmsg=("  The change in display capacity will take effect next "
+                    "time the line is re-stocked." if cap!=self.oldcapacity
+                    else "")
             ui.infopopup(["Updated stock line '%s'.%s"%(name,capmsg)],
                          colour=ui.colour_info,dismiss=keyboard.K_CASH,
                          title="Confirmation")
@@ -322,7 +319,7 @@ def editbindings(stocklineid):
     blurb=("To add a keyboard binding for '%s', press the appropriate line "
            "key now."%name)
     if len(bindings)>0:
-        blurb=blurb+("  Existing bindings, for '%s' are listed "
+        blurb=blurb+("  Existing bindings for '%s' are listed "
                      "below; if you would like to modify or delete one "
                      "then select it and press Cash/Enter."%name)
     menu=[("%s (%s) -> %s (%s), qty %0.1f"%(
@@ -390,11 +387,10 @@ class changebinding(ui.dismisspopup):
         self.addstr(2,2,"Check the quantity and press Cash/Enter,")
         self.addstr(3,2,"or press Cancel to delete the binding.")
         self.addstr(5,2,"Quantity:")
-        km={keyboard.K_CANCEL: (self.deletebinding,None,False),
-            keyboard.K_CASH: (self.setqty,None,False),
-            keyboard.K_CLEAR: (self.dismiss,None,False)}
-        self.qtyfield=ui.editfield(self.win,5,12,5,f=str(qty),
-                                   validate=ui.validate_float,
+        km={keyboard.K_CANCEL: (self.deletebinding,None),
+            keyboard.K_CASH: (self.setqty,None),
+            keyboard.K_CLEAR: (self.dismiss,None)}
+        self.qtyfield=ui.editfield(5,12,5,f=str(qty),validate=ui.validate_float,
                                    keymap=km)
         self.qtyfield.focus()
     def deletebinding(self):
@@ -528,6 +524,5 @@ def linemenu(keycode,func):
         else:
             il=[(keyboard.keycodes[x[4]],x[0],func,(x,))
                 for x in linelist]
-            # XXX sort the list here?
             il.sort()
             ui.keymenu(il,title="Choose an item",colour=ui.colour_line)

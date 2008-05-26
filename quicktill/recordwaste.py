@@ -1,6 +1,6 @@
 import ui,td,keyboard,stock,stocklines,department
 
-class popup(ui.basicpopup):
+class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording
     waste against a stock item or a stock line.  If a stock item is
     chosen then waste is recorded against the amount still in stock in
@@ -11,17 +11,15 @@ class popup(ui.basicpopup):
 
     """
     def __init__(self):
-        ui.basicpopup.__init__(self,10,70,title="Record Waste",
-                               cleartext="Press Clear to go back",
-                               colour=ui.colour_input)
+        ui.dismisspopup.__init__(self,10,70,title="Record Waste",
+                                 colour=ui.colour_input)
         self.addstr(2,2,"Press stock line key or enter stock number.")
         self.addstr(3,2,"       Stock item:")
-        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None,False),
-                       keyboard.K_CASH: (self.stock_enter_key,None,False)}
+        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),
+                       keyboard.K_CASH: (self.stock_enter_key,None)}
         for i in keyboard.lines:
             stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line),False)
-        self.stockfield=ui.editfield(self.win,3,21,30,
-                                     validate=ui.validate_int,
+        self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int,
                                      keymap=stockfield_km)
         self.stockfield.focus()
     def stock_line(self,line):
@@ -105,16 +103,13 @@ class popup(ui.basicpopup):
                    'freebie':'Free drink',
                    'missing':'Gone missing',
                    'driptray':'Drip tray'}
-        wastedescfield_km={keyboard.K_CLEAR:(self.dismiss,None,True)}
-        self.wastedescfield=ui.listfield(self.win,5,21,30,wastelist,wastedict,
-                                         keymap=wastedescfield_km)
-        amountfield_km={keyboard.K_CLEAR:(self.wastedescfield.focus,None,True),
-                        keyboard.K_UP:(self.wastedescfield.focus,None,True),
-                        keyboard.K_CASH: (self.finish,None,False)}
-        self.amountfield=ui.editfield(self.win,6,21,4,
-                                      validate=ui.validate_float,
-                                      keymap=amountfield_km)
-        self.wastedescfield.nextfield=self.amountfield
+        self.wastedescfield=ui.listfield(
+            5,21,30,wastelist,wastedict,
+            keymap={keyboard.K_CLEAR:(self.dismiss,None)})
+        self.amountfield=ui.editfield(
+            6,21,4,validate=ui.validate_float,
+            keymap={keyboard.K_CASH: (self.finish,None)})
+        ui.map_fieldlist([self.wastedescfield,self.amountfield])
         if self.isline:
             self.addstr(6,26,'items')
         else:

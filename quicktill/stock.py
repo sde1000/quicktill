@@ -44,21 +44,27 @@ def format_stocktype(stn,maxw=None):
     return format_stock({'manufacturer':manufacturer,'name':name,
                          'shortname':shortname,'abvstr':abvstr(abv)},maxw)
 
-# Select/modify a stock type.  Has two modes:
-# 1) Select a stock type. Auto-completes fields as they are typed at,
-# hopefully to find a match with an existing stock type.  (After
-# selecting manufacturer/name, other fields are filled in if possible,
-# but can still be edited.)  If, when form is completed, there is no
-# match with an existing stock type, a new stock type is created.
-# (This is the only way to create stock types.)
-# 2) Modify a stock type.  Allows all details of an existing stock
-# type to be changed.
-# Has major warnings - should only be used for correcting minor typos!
-class stocktype(ui.basicpopup):
-    def __init__(self,func,default=None,mode=1):
+class stocktype(ui.dismisspopup):
+    """Select/modify a stock type.  Has two modes:
+
+    1) Select a stock type. Auto-completes fields as they are typed
+       at, hopefully to find a match with an existing stock type.
+       (After selecting manufacturer/name, other fields are filled in
+       if possible, but can still be edited.)  If, when form is
+       completed, there is no match with an existing stock type, a new
+       stock type will be created, provided "allownew" is set.  (This
+       is the only way to create stock types.)
+
+    2) Modify a stock type.  Allows all details of an existing stock
+       type to be changed.  Has major warnings - should only be used
+       for correcting minor typos!
+
+    """
+    def __init__(self,func,default=None,mode=1,allownew=True):
         self.func=func
         self.st=default
         self.mode=mode
+        self.allownew=allownew
         if mode==1:
             prompt="Select"
             title="Select Stock Type"
@@ -75,9 +81,7 @@ class stocktype(ui.basicpopup):
         units=td.unittype_list()
         self.deptlist=[x[0] for x in depts]
         self.unitlist=[x[0] for x in units]
-        ui.basicpopup.__init__(self,15,48,title=title,
-                               colour=ui.colour_input,
-                               cleartext="Press Clear to go back")
+        ui.dismisspopup.__init__(self,15,48,title=title,colour=ui.colour_input)
         self.addstr(2,2,blurb1)
         self.addstr(3,2,blurb2)
         self.addstr(5,2,"Manufacturer:")
@@ -87,34 +91,23 @@ class stocktype(ui.basicpopup):
         self.addstr(8,38,"ABV:")
         self.addstr(9,2,"        Unit:")
         self.addstr(13,2,"Note: 'Short Name' is printed on receipts.")
-        km={keyboard.K_CLEAR: (self.dismiss,None,False)}
-        self.manufield=ui.editfield(self.win,5,16,30,
-                                    validate=self.validate_manufacturer,
-                                    keymap=km)
-        self.namefield=ui.editfield(self.win,6,16,30,
-                                    validate=self.validate_name,
-                                    keymap=km)
-        self.snamefield=ui.editfield(self.win,7,16,25,keymap=km)
-        self.deptfield=ui.listfield(self.win,8,16,20,
-                                    self.deptlist,d=dict(depts),
-                                    keymap=km,readonly=(mode==2))
-        self.abvfield=ui.editfield(self.win,8,42,4,validate=ui.validate_float,
-                                   keymap=km)
-        self.unitfield=ui.listfield(self.win,9,16,30,self.unitlist,
-                                    d=dict(units),
-                                    keymap=km,readonly=(mode==2))
-        self.confirmbutton=ui.buttonfield(self.win,11,15,20,prompt,keymap=km)
-        # set not to dismiss so that if the input is not valid we
-        # can go back to editing
-        if mode==1:
-            self.confirmbutton.keymap[keyboard.K_CASH]=(
-                self.finish_mode1,None,False)
-        else:
-            self.confirmbutton.keymap[keyboard.K_CASH]=(
-                self.finish_mode2,None,False)
-        fl=[self.manufield,self.namefield,self.snamefield,self.deptfield,
-            self.abvfield,self.unitfield,self.confirmbutton]
-        ui.map_fieldlist(fl)
+        self.manufield=ui.editfield(
+            5,16,30,validate=self.validate_manufacturer,
+            keymap={keyboard.K_CLEAR: (self.dismiss,None)})
+        self.namefield=ui.editfield(
+            6,16,30,validate=self.validate_name)
+        self.snamefield=ui.editfield(7,16,25)
+        self.deptfield=ui.listfield(8,16,20,self.deptlist,
+                                    d=dict(depts),readonly=(mode==2))
+        self.abvfield=ui.editfield(8,42,4,validate=ui.validate_float)
+        self.unitfield=ui.listfield(9,16,30,self.unitlist,
+                                    d=dict(units),readonly=(mode==2))
+        self.confirmbutton=ui.buttonfield(11,15,20,prompt,keymap={
+                keyboard.K_CASH: (self.finish_mode1 if mode==1
+                                  else self.finish_mode2, None)})
+        ui.map_fieldlist(
+            [self.manufield,self.namefield,self.snamefield,self.deptfield,
+             self.abvfield,self.unitfield,self.confirmbutton])
         if default is not None:
             self.fill_fields(default)
         if mode==1:
@@ -123,8 +116,8 @@ class stocktype(ui.basicpopup):
             # name field if possible, and on the name field so we can
             # pre-fill the other fields if possible.  Only in mode 1;
             # in mode 2 we're just editing
-            self.manufield.keymap[keyboard.K_CASH]=(self.defaultname,None,True)
-            self.namefield.keymap[keyboard.K_CASH]=(self.lookupname,None,True)
+            self.manufield.keymap[keyboard.K_CASH]=(self.defaultname,None)
+            self.namefield.keymap[keyboard.K_CASH]=(self.lookupname,None)
         self.manufield.focus()
     def fill_fields(self,st):
         "Fill all fields from the specified stock type"
@@ -206,11 +199,17 @@ class stocktype(ui.basicpopup):
         st=td.stocktype_fromall(*pf)
         # Confirmation box time...
         if st is None:
-            ui.infopopup(["There's no existing stock type that matches the "
-                          "details you've entered.  Press Cash/Enter to "
-                          "create a new stock type, or Clear to go back."],
-                         title="New Stock Type?",keymap={
-                keyboard.K_CASH: (self.finish_save,None,True)})
+            if self.allownew:
+                ui.infopopup(["There's no existing stock type that matches the "
+                              "details you've entered.  Press Cash/Enter to "
+                              "create a new stock type, or Clear to go back."],
+                             title="New Stock Type?",keymap={
+                        keyboard.K_CASH: (self.finish_save,None,True)})
+            else:
+                ui.infopopup(["There is no stock type that matches the "
+                              "details you have entered."],
+                              title="No Match")
+                return
         else:
             self.dismiss()
             self.func(st)
@@ -267,13 +266,14 @@ def stockinfo_linelist(sn,qty=1):
 
 def stockinfo_popup(sn,keymap={}):
     keymap=keymap.copy()
+    # Not sure what this is doing here!  Was it for testing?
     keymap[ord('l')]=(annotate_location,(sn,),False)
     ui.linepopup(stockinfo_linelist(sn),
                  title="Stock Item %d"%sn,
                  dismiss=keyboard.K_CASH,
                  colour=ui.colour_info,keymap=keymap)
 
-class annotate(ui.basicpopup):
+class annotate(ui.dismisspopup):
     """This class permits annotations to be made to stock items.  If
     it is called with a stockid then the stockid field is pre-filled;
     otherwise a numeric entry may be made, or a pop-up list may be
@@ -281,16 +281,15 @@ class annotate(ui.basicpopup):
 
     """
     def __init__(self,stockid=None):
-        ui.basicpopup.__init__(self,11,64,"Annotate Stock",
-                               "Press Clear to go back",ui.colour_input)
+        ui.dismisspopup.__init__(self,11,64,"Annotate Stock",
+                                 colour=ui.colour_input)
         self.addstr(2,2,"Press stock line key or enter stock number.")
         self.addstr(3,2,"       Stock item:")
-        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None,False),
-                       keyboard.K_CASH: (self.stock_enter_key,None,False)}
+        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),
+                       keyboard.K_CASH: (self.stock_enter_key,None)}
         for i in keyboard.lines:
-            stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line),False)
-        self.stockfield=ui.editfield(self.win,3,21,30,
-                                     validate=ui.validate_int,
+            stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line))
+        self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int,
                                      keymap=stockfield_km)
         self.stockfield.focus()
         if stockid is not None:
@@ -348,14 +347,11 @@ class annotate(ui.basicpopup):
         anndict={'location':'Location',
                  'memo':'Memo',
                  'vent':'Vented'}
-        anntypefield_km={keyboard.K_CLEAR:(self.dismiss,None,True)}
-        self.anntypefield=ui.listfield(self.win,5,21,30,annlist,anndict,
-                                       keymap=anntypefield_km)
-        annfield_km={keyboard.K_CLEAR:(self.anntypefield.focus,None,True),
-                     keyboard.K_UP:(self.anntypefield.focus,None,True),
-                     keyboard.K_CASH: (self.finish,None,False)}
-        self.annfield=ui.editfield(self.win,8,2,60,keymap=annfield_km)
-        self.anntypefield.nextfield=self.annfield
+        self.anntypefield=ui.listfield(5,21,30,annlist,anndict,keymap={
+                keyboard.K_CLEAR:(self.dismiss,None)})
+        self.annfield=ui.editfield(8,2,60,keymap={
+                keyboard.K_CASH: (self.finish,None)})
+        ui.map_fieldlist([self.anntypefield,self.annfield])
         self.anntypefield.set(0)
         self.anntypefield.focus()
     def finish(self):
@@ -371,7 +367,7 @@ class annotate(ui.basicpopup):
                      title="Annotation Recorded",dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
 
-class annotate_location(ui.basicpopup):
+class annotate_location(ui.dismisspopup):
     """A special, simplified version of the stock annotation popup, that
     only allows the location to be set.  Must be called with a stock ID;
     doesn't permit stock ID entry.
@@ -386,18 +382,19 @@ class annotate_location(ui.basicpopup):
         sd=sd[0]
         if sd['deliverychecked'] is False:
             ui.infopopup(["Stock number %d is part of a delivery that has "
-                          "not yet been confirmed.  You can't record waste "
-                          "against it until the whole delivery is confirmed."%(
+                          "not yet been confirmed.  You can't annotate "
+                          "it until the whole delivery is confirmed."%(
                 sd['stockid'])],
                          title="Error")
             return
-        ui.basicpopup.__init__(self,7,64,"Stock Location",
-                               "Press Clear to go back",ui.colour_input)
+        ui.dismisspopup.__init__(self,7,64,"Stock Location",
+                                 colour=ui.colour_input)
         self.stockid=stockid
         self.addstr(2,2,format_stock(sd,maxw=60))
         self.addstr(4,2,"Enter location:")
-        self.locfield=ui.editfield(self.win,4,18,40,keymap={
-            keyboard.K_CASH: (self.finish,None,False)})
+        self.locfield=ui.editfield(4,18,40,keymap={
+            keyboard.K_CASH: (self.finish,None),
+            keyboard.K_CLEAR: (self.dismiss,None)})
         self.locfield.focus()
     def finish(self):
         annotation=self.locfield.f

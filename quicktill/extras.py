@@ -76,9 +76,8 @@ class departurelist:
         self.station=name
         t=ui.table(p.tablelines)
         ll=t.format('l l l')
-        km={keyboard.K_PRINT:(self.printout,None,False)}
-        ui.linepopup(ll,name,colour=ui.colour_info,keymap=km,
-                     dismiss=keyboard.K_CASH)
+        ui.linepopup(ll,name,colour=ui.colour_info,dismiss=keyboard.K_CASH,
+                     keymap={keyboard.K_PRINT:(self.printout,None)})
     def printout(self):
         p=printer.driver
         destinations={}
@@ -122,12 +121,12 @@ class bbcheck(ui.dismisspopup):
                                  colour=ui.colour_input)
         self.addstr(2,2,"   Total gross:")
         self.addstr(3,2,"Supplier share:")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.grossfield=ui.editfield(self.win,2,18,5,validate=ui.validate_float,
-                                     keymap=km)
-        km={keyboard.K_CASH: (self.enter,None,False)}
-        self.sharefield=ui.editfield(self.win,3,18,5,validate=ui.validate_float,
-                                     keymap=km)
+        self.grossfield=ui.editfield(
+            2,18,5,validate=ui.validate_float,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
+        self.sharefield=ui.editfield(
+            3,18,5,validate=ui.validate_float,keymap={
+                keyboard.K_CASH: (self.enter,None,False)})
         self.sharefield.set(str(share))
         ui.map_fieldlist([self.grossfield,self.sharefield])
         self.grossfield.focus()

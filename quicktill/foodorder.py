@@ -228,10 +228,9 @@ class tablenumber(ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_line)
         self.addstr(2,2,"Table number:")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True),
-            keyboard.K_CASH: (self.enter,None,False)}
-        self.numberfield=ui.editfield(self.win,2,16,5,validate=ui.validate_int,
-                                     keymap=km)
+        self.numberfield=ui.editfield(
+            2,16,5,validate=ui.validate_int,
+            keymap={keyboard.K_CASH: (self.enter,None)})
         self.func=func
         self.numberfield.focus()
     def enter(self):
@@ -411,10 +410,9 @@ class cancel(ui.dismisspopup):
         ui.dismisspopup.__init__(self,5,20,title="Cancel food order",
                                  colour=ui.colour_input)
         self.addstr(2,2,"Order number:")
-        self.field=ui.editfield(self.win,2,16,5,validate=ui.validate_int,
-                                keymap={
-            keyboard.K_CASH: (self.finish,None,False),
-            keyboard.K_CLEAR: (self.dismiss,None,False)})
+        self.field=ui.editfield(
+            2,16,5,validate=ui.validate_int,
+            keymap={keyboard.K_CASH: (self.finish,None)})
         self.field.focus()
     def finish(self):
         if self.field.f is None or self.field.f=='': return

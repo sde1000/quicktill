@@ -11,7 +11,25 @@ def deliverylist(func,unchecked_only=False,checked_only=False):
     dl=td.delivery_get(unchecked_only=unchecked_only,checked_only=checked_only)
     lines=ui.table([d(x) for x in dl]).format(' r l l ')
     m=[(x,func,(y[0],)) for x,y in zip(lines,dl)]
-    ui.menu(m,title="Delivery List",blurb="Select a delivery and press Cash/Enter.")
+    ui.menu(m,title="Delivery List",
+            blurb="Select a delivery and press Cash/Enter.")
+
+class deliveryline(ui.line):
+    def __init__(self,stockid):
+        ui.line.__init__(self)
+        self.stockid=stockid
+        self.update()
+    def update(self):
+        sd=td.stock_info([self.stockid])[0]
+        typestr=stock.format_stock(sd,maxw=37)
+        try:
+            coststr="%-6.2f"%sd['costprice']
+        except:
+            coststr="????? "
+        s="%7d %-37s %-8s %s %-5.2f %-10s"%(
+            self.stockid,typestr,sd['stockunit'],coststr,
+            sd['saleprice'],ui.formatdate(sd['bestbefore']))
+        self.text=s
 
 class delivery(ui.basicpopup):
     """The delivery window allows a delivery to be edited, printed or
@@ -22,115 +40,109 @@ class delivery(ui.basicpopup):
     items.  If the window is not read-only, there is always a blank line
     at the bottom of the list to enable new entries to be made."""
     def __init__(self,dn):
+        (mh,mw)=ui.stdwin.getmaxyx()
+        if mw<80 or mh<14:
+            ui.infopopup(["Error: the screen is too small to display "
+                          "the delivery dialog box.  It must be at least "
+                          "80x14 characters."],
+                         title="Screen width problem")
+            return
         self.dn=dn
-        self.ltop=7
-        self.top=0
-        self.cursor=None
-        self.h=12
-        (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=dn)[0]
-        self.dl=td.delivery_items(dn)
+        (id,supplier,docnumber,date,checked,supname)=td.delivery_get(
+            number=dn)[0]
+        self.dl=[deliveryline(x) for x in td.delivery_items(dn)]
         if checked:
             self.readonly=True
-            title="Delivery Details - read only"
+            title="Delivery Details - read only (already confirmed)"
+            cleartext="Press Clear to go back"
         else:
             self.readonly=False 
             title="Delivery Details"
-            self.dl.append(None) # marks the "new item" entry
-        km={keyboard.K_PRINT: (self.printout,None,False),
-            keyboard.K_DOWN: (self.cursor_move,(1,),False),
-            keyboard.K_UP: (self.cursor_move,(-1,),False),
-            keyboard.K_RIGHT: (self.cursor_move,(5,),False),
-            keyboard.K_LEFT: (self.cursor_move,(-5,),False),
-            keyboard.K_CASH: (self.edit_line,None,False),
-            }
-        if not self.readonly:
-            km[keyboard.K_CANCEL]=(self.deleteline,None,False)
-            km[keyboard.K_QUANTITY]=(self.duplicate_item,None,False)
-        ui.basicpopup.__init__(self,23,80,title=title,
-                               colour=ui.colour_input,keymap=km)
-        km={keyboard.K_PRINT: (self.printout,None,False)}
+            cleartext=None
+        # Keymap for the scrollable field
+        if self.readonly:
+            skm={keyboard.K_CASH: (self.view_line,None)}
+        else:
+            skm={keyboard.K_CASH: (self.edit_line,None),
+                 keyboard.K_CANCEL: (self.deleteline,None),
+                 keyboard.K_QUANTITY: (self.duplicate_item,None)}
+        # The window can be as tall as the screen; we expand the scrollable
+        # field to fit.  The scrollable field must be at least three lines
+        # high!
+        ui.basicpopup.__init__(self,mh-1,80,title=title,cleartext=cleartext,
+                               colour=ui.colour_input)
         self.addstr(2,2,"       Supplier:")
         self.addstr(3,2,"           Date:")
         self.addstr(4,2,"Document number:")
-        self.addstr(self.ltop-1,1,
-                        "StockNo Stock Type........................... "
+        self.addstr(6,1,"StockNo Stock Type........................... "
                         "Unit.... Cost.. Sale  BestBefore")
-        self.addstr(20,50,"Press Print for a hard copy.")
-        self.supfield=ui.popupfield(self.win,2,19,59,selectsupplier,
-                                    self.supplier_value,keymap=km,
+        self.supfield=ui.popupfield(2,19,59,selectsupplier,self.supplier_value,
                                     f=supplier,readonly=self.readonly)
-        self.datefield=ui.datefield(self.win,3,19,keymap=km,
-                                    f=date,readonly=self.readonly)
-        self.docnumfield=ui.editfield(self.win,4,19,40,keymap=km,
-                                      f=docnumber,readonly=self.readonly)
-        fl=[self.supfield,self.datefield,self.docnumfield]
-        if not self.readonly:
-            self.deletefield=ui.buttonfield(self.win,21,2,24,
-                                            "Delete this delivery",
-                                            keymap=km)
-            self.deletefield.keymap[keyboard.K_CASH]=(self.confirmdelete,None,False)
-            fl.append(self.deletefield)
-            self.field_after_list=self.deletefield
-            self.confirmfield=ui.buttonfield(self.win,21,28,31,
-                                             "Confirm details are correct",
-                                             keymap=km)
-            self.confirmfield.keymap[keyboard.K_CASH]=(self.confirmcheck,None,False)
-            fl.append(self.confirmfield)
-        self.savefield=ui.buttonfield(self.win,21,61,17,
-                                      ("Save and exit","Exit")[self.readonly],
-                                      keymap=km)
-        self.savefield.keymap[keyboard.K_CASH]=(self.finish,None,False)
+        self.datefield=ui.datefield(3,19,f=date,readonly=self.readonly)
+        self.docnumfield=ui.editfield(4,19,40,f=docnumber,
+                                      readonly=self.readonly)
+        self.entryprompt=None if self.readonly else ui.line(
+            " [ New item ]")
+        self.s=ui.scrollable(
+            7,1,78,mh-9 if self.readonly else mh-11,self.dl,
+            lastline=self.entryprompt,keymap=skm)
         if self.readonly:
-            self.field_after_list=self.savefield
-        fl.append(self.savefield)
-        ui.map_fieldlist(fl)
-        # Modify the key bindings for the "docnum" field
-        self.docnumfield.keymap[keyboard.K_DOWN]=(self.docnumnavdown,None,True)
-        self.docnumfield.keymap[keyboard.K_CASH]=(self.docnumnavdown,None,True)
-        self.docnumfield.keymap[curses.ascii.TAB]=(self.docnumnavdown,None,True)
-        # Modify the key binding for the first field in the footer section
-        if self.readonly:
-            self.savefield.keymap[keyboard.K_UP]=(self.footernavup,None,True)
+            self.s.focus()
         else:
-            self.deletefield.keymap[keyboard.K_UP]=(self.footernavup,None,True)
-        self.drawdl()
-        self.datefield.focus()
+            self.deletefield=ui.buttonfield(
+                mh-3,2,24,"Delete this delivery",keymap={
+                    keyboard.K_CASH: (self.confirmdelete,None)})
+            self.confirmfield=ui.buttonfield(
+                mh-3,28,31,"Confirm details are correct",keymap={
+                    keyboard.K_CASH: (self.confirmcheck,None)})
+            self.savefield=ui.buttonfield(
+                mh-3,61,17,"Save and exit",keymap={
+                    keyboard.K_CASH: (self.finish,None)})
+            ui.map_fieldlist(
+                [self.supfield,self.datefield,self.docnumfield,self.s,
+                 self.deletefield,self.confirmfield,self.savefield])
+            self.datefield.focus()
     def reallydeleteline(self):
-        td.stock_delete(self.dl[self.cursor])
-        self.dl=td.delivery_items(self.dn)+[None]
-        if len(self.dl)==0 or self.cursor>=len(self.dl):
-            self.cursor=0
-        self.drawdl()
+        td.stock_delete(self.dl[self.s.cursor].stockid)
+        del self.dl[self.s.cursor]
+        self.s.drawdl()
     def deleteline(self):
-        if self.cursor is not None and self.dl[self.cursor] is not None:
-            ui.infopopup(["Press Cash/Enter to confirm deletion of stock number %d. "
-                          "Note that once it's deleted you can't create a new stock "
-                          "item with the same number; new stock items always get "
-                          "fresh numbers."%self.dl[self.cursor]],title="Confirm Delete",
-                         keymap={keyboard.K_CASH:(self.reallydeleteline,None,True)})
+        if not self.s.cursor_on_lastline():
+            ui.infopopup(
+                ["Press Cash/Enter to confirm deletion of stock "
+                 "number %d.  Note that once it's deleted you can't "
+                 "create a new stock item with the same number; new "
+                 "stock items always get fresh numbers."%(
+                        self.dl[self.s.cursor].stockid)],
+                title="Confirm Delete",
+                keymap={keyboard.K_CASH:(self.reallydeleteline,None,True)})
     def pack_fields(self):
         # Check that there's still a supplier selected
         if self.supfield.f is None:
             ui.infopopup(["Select a supplier before continuing!"],title="Error")
-            return None
+            return
         # Check that the date field is valid
         d=self.datefield.read()
         if d is None:
             ui.infopopup(["Check that the delivery date is correct before "
                           "continuing!"],title="Error")
-            return None
+            return
+        # Check that there's a document number
+        if self.docnumfield.f=="":
+            ui.infopopup(["Enter a document number before continuing!"],
+                         title="Error")
+            return
         return (self.supfield.f,self.datefield.read(),self.docnumfield.f)
     def finish(self):
-        if self.readonly: return self.dismiss()
         pf=self.pack_fields()
         if pf is not None:
             td.delivery_update(self.dn,*pf)
             self.dismiss()
     def printout(self):
+        pf=self.pack_fields()
+        if pf is None: return
         if not self.readonly:
-            pf=self.pack_fields()
-            if pf is not None:
-                td.delivery_update(self.dn,*pf)
+            td.delivery_update(self.dn,*pf)
         if printer.labeldriver is not None:
             menu=[
                 (keyboard.K_ONE,"Print list",
@@ -141,22 +153,6 @@ class delivery(ui.basicpopup):
             ui.keymenu(menu,"Delivery print options",colour=ui.colour_confirm)
         else:
             printer.print_delivery(self.dn)
-    def footernavup(self):
-        # Called when "up" is pressed on the first button in the
-        # footer.  If dl is not empty, moves cursor to last entry in
-        # dl; otherwise moves to document number field
-        if len(self.dl)==0:
-            self.docnum.focus()
-        else:
-            self.setcursor(len(self.dl)-1)
-    def docnumnavdown(self):
-        # Called when "down" or "Enter" is pressed on the docnum field; if dl is
-        # not empty, moves cursor to first entry in dl; otherwise moves to "new"
-        # field.
-        if len(self.dl)>0: self.setcursor(0)
-        else:
-            # Must be readonly...
-            self.savefield.focus()
     def reallyconfirm(self):
         # Set the Confirm flag
         self.finish()
@@ -171,98 +167,57 @@ class delivery(ui.basicpopup):
                       "Cash/Enter to confirm this delivery now, or Clear to "
                       "continue editing it."],title="Confirm Details",
                      keymap={keyboard.K_CASH:(self.reallyconfirm,None,True)})
-    def drawline(self,line):
-        if line<self.top or line>=len(self.dl): return
-        y=line-self.top+self.ltop
-        if y>(self.h+self.ltop): return
-        if self.dl[line] is None:
-            s=" New item "
-        else:
-            sd=td.stock_info([self.dl[line]])[0]
-            typestr=stock.format_stock(sd,maxw=37)
-            try:
-                coststr="%-6.2f"%sd['costprice']
-            except:
-                coststr="????? "
-            s="%7d %-37s %-8s %s %-5.2f %-10s"%(
-                self.dl[line],typestr,sd['stockunit'],coststr,
-                sd['saleprice'],ui.formatdate(sd['bestbefore']))
-        attr=(0,curses.A_REVERSE)[line==self.cursor]
-        self.addstr(y,1,s,attr)
-    def drawdl(self):
-        for i in range(self.ltop,self.ltop+self.h+1):
-            self.addstr(i,1,' '*78)
-        for i in range(0,len(self.dl)):
-            self.drawline(i)
-    def setcursor(self,line):
-        oc=self.cursor
-        self.cursor=None
-        if oc is not None:
-            self.drawline(oc)
-        self.addstr(20,2,' '*42)
-        if line>len(self.dl): line=len(self.dl)-1
-        if line<0:
-            self.docnumfield.focus()
-        elif line>=len(self.dl):
-            self.field_after_list.focus()
-        else:
-            self.cursor=line
-            if self.cursor<self.top:
-                self.top=self.cursor-(self.h/2*3)
-                if self.top<0: self.top=0
-                self.drawdl()
-            if (self.cursor-self.top)>self.h:
-                self.top=self.cursor-(self.h/3)
-                if self.top<0: self.top=0
-                self.drawdl()
-        if self.cursor is not None:
-            if not self.readonly:
-                if self.dl[self.cursor] is not None:
-                    self.addstr(20,2,
-                                    "Press Cancel to delete this stock item.")
-                elif len(self.dl)>1:
-                    self.addstr(20,2,
-                                    "Press Quantity to duplicate the last "
-                                    "item.")
-            self.drawline(self.cursor)
-    def cursor_move(self,n):
-        if self.cursor is not None:
-            self.setcursor(self.cursor+n)
     def line_edited(self,sn):
-        self.dl=td.delivery_items(self.dn)+[None]
-        self.drawdl()
-        self.setcursor(self.cursor+1)
+        # Only called when a line has been edited; not called for new
+        # lines or deletions
+        if self.dl[self.s.cursor].stockid==sn:
+            self.dl[self.s.cursor].update()
+            self.s.cursor_down()
+    def newline(self,sn):
+        self.dl.append(deliveryline(sn))
+        self.s.cursor_down()
     def edit_line(self):
-        if self.readonly:
-            stock.stockinfo_popup(self.dl[self.cursor])
+        # If it's the "lastline" then we create a new stock item
+        if self.s.cursor_on_lastline():
+            stockline(self.newline,self.dn)
         else:
-            stockline(self.line_edited,self.dn,self.dl[self.cursor])
+            stockline(self.line_edited,self.dn,self.dl[self.s.cursor].stockid)
+    def view_line(self):
+        # In read-only mode there is no "lastline"
+        stock.stockinfo_popup(self.dl[self.s.cursor].stockid)
     def duplicate_item(self):
-        ln=self.dl[self.cursor]
-        if ln is None and len(self.dl)>1: ln=self.dl[-2]
-        if ln is None: return
+        ln=self.dl[len(self.dl)-1 if self.s.cursor_on_lastline()
+                   else self.s.cursor].stockid
         sn=td.stock_duplicate(ln)
-        self.line_edited(sn)
+        self.newline(sn)
     def reallydelete(self):
         td.delivery_delete(self.dn)
         self.dismiss()
     def confirmdelete(self):
-        ui.infopopup(["Do you want to delete the entire delivery and all the stock "
-                      "items that have been entered for it?  Press Cancel to delete "
-                      "or Clear to go back."],title="Confirm Delete",
+        ui.infopopup(["Do you want to delete the entire delivery and all "
+                      "the stock items that have been entered for it?  "
+                      "Press Cancel to delete or Clear to go back."],
+                     title="Confirm Delete",
                      keymap={keyboard.K_CANCEL:(self.reallydelete,None,True)})
     def supplier_value(self,sup):
         (name,tel,email)=td.supplier_fetch(sup)
         return name
+    def keypress(self,k):
+        if k==keyboard.K_PRINT:
+            self.printout()
+        elif k==keyboard.K_CLEAR:
+            self.dismiss()
 
 class stockline(ui.basicpopup):
     def __init__(self,func,dn,sn=None):
         self.func=func
         self.sn=sn
         self.dn=dn
+        cleartext=(
+            "Press Clear to exit, forgetting all changes" if sn else
+            "Press Clear to exit without creating a new stock item")
         ui.basicpopup.__init__(self,12,78,title="Stock Item",
-                               cleartext="Press Clear to exit, forgetting "
-                               "all changes",colour=ui.colour_line)
+                               cleartext=cleartext,colour=ui.colour_line)
         self.units=[]
         if sn is None:
             self.addstr(2,2,"Stock number not yet assigned")
@@ -273,25 +228,22 @@ class stockline(ui.basicpopup):
         self.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
         self.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
         self.addstr(7,2,"         Best before:")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.typefield=ui.popupfield(self.win,3,24,52,stock.stocktype,
-                                     stock.format_stocktype,keymap=km)
+        self.typefield=ui.popupfield(3,24,52,stock.stocktype,
+                                     stock.format_stocktype,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
         self.typefield.sethook=self.updateunitfield
-        self.unitfield=ui.listfield(self.win,4,24,20,None,keymap=km)
-        self.costfield=ui.editfield(self.win,5,24+len(tillconfig.currency),6,
-                                    keymap=km,
+        self.unitfield=ui.listfield(4,24,20,None)
+        self.costfield=ui.editfield(5,24+len(tillconfig.currency),6,
                                     validate=ui.validate_float)
         self.costfield.sethook=self.guesssaleprice
-        self.salefield=ui.editfield(self.win,6,24+len(tillconfig.currency),6,
-                                    keymap=km,
+        self.salefield=ui.editfield(6,24+len(tillconfig.currency),6,
                                     validate=ui.validate_float)
-        self.bestbeforefield=ui.datefield(self.win,7,24,keymap=km)
-        self.acceptbutton=ui.buttonfield(self.win,9,28,21,"Accept values",
-                                         keymap=km)
-        self.acceptbutton.keymap[keyboard.K_CASH]=(self.accept,None,False)
-        fl=[self.typefield,self.unitfield,self.costfield,self.salefield,
-            self.bestbeforefield,self.acceptbutton]
-        ui.map_fieldlist(fl)
+        self.bestbeforefield=ui.datefield(7,24)
+        self.acceptbutton=ui.buttonfield(9,28,21,"Accept values",keymap={
+                keyboard.K_CASH: (self.accept,None)})
+        ui.map_fieldlist(
+            [self.typefield,self.unitfield,self.costfield,self.salefield,
+             self.bestbeforefield,self.acceptbutton])
         if sn is not None:
             self.fill_fields(sn)
             if self.bestbeforefield.f=="":
@@ -369,6 +321,17 @@ class stockline(ui.basicpopup):
             g=tillconfig.priceguess(dept,(wholeprice/size),abv)
             if g is not None and self.salefield.f=="":
                 self.salefield.set("%0.2f"%g)
+    def keypress(self,k):
+        # If the user starts typing into the stocktype field, be nice
+        # to them and pop up the stock type entry dialog.  Then
+        # synthesise the keypress again to enter it into the
+        # manufacturer field.
+        if (ui.focus==self.typefield and self.typefield.f is None
+            and curses.ascii.isprint(k)):
+            self.typefield.popup() # Grabs the focus
+            ui.handle_keyboard_input(k)
+        else:
+            ui.basicpopup.keypress(self,k)
 
 def selectsupplier(func,default=0,allow_new=True):
     sl=td.supplier_list()
@@ -392,30 +355,31 @@ class editsupplier(ui.basicpopup):
         self.addstr(5,2,"     Name:")
         self.addstr(6,2,"Telephone:")
         self.addstr(7,2,"    Email:")
-        km={keyboard.K_CLEAR: (self.dismiss,None,True)}
-        self.namefield=ui.editfield(self.win,5,13,55,flen=60,keymap=km,f=name)
-        self.telfield=ui.editfield(self.win,6,13,20,keymap=km,f=tel)
-        self.emailfield=ui.editfield(self.win,7,13,55,flen=60,keymap=km,f=email)
-        fl=[self.namefield,self.telfield,self.emailfield]
-        ui.map_fieldlist(fl)
-        self.emailfield.keymap[keyboard.K_CASH]=(
-            (self.confirmed,self.confirmwin)[sn is None],None,True)
+        self.namefield=ui.editfield(5,13,55,flen=60,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)},f=name)
+        self.telfield=ui.editfield(6,13,20,f=tel)
+        self.emailfield=ui.editfield(7,13,55,flen=60,f=email,keymap={
+                keyboard.K_CASH:(
+                    self.confirmwin if sn is None else self.confirmed,None)})
+        ui.map_fieldlist([self.namefield,self.telfield,self.emailfield])
         self.namefield.focus()
     def confirmwin(self):
-        # Called when Cash/Enter is pressed on the last field, for new suppliers only
+        # Called when Cash/Enter is pressed on the last field, for new
+        # suppliers only
         self.dismiss()
-        # popup stuff
         ui.infopopup(["Press Cash/Enter to confirm new supplier details:",
                       "Name: %s"%self.namefield.f,
                       "Telephone: %s"%self.telfield.f,
-                      "Email: %s"%self.emailfield.f],title="Confirm New Supplier Details",
+                      "Email: %s"%self.emailfield.f],
+                     title="Confirm New Supplier Details",
                      colour=ui.colour_input,keymap={
-            keyboard.K_CASH: (self.confirmed,None,True)})
+            keyboard.K_CASH: (self.confirmed,None)})
     def confirmed(self):
         if self.sn is None:
-            self.sn=td.supplier_new(self.namefield.f,self.telfield.f,self.emailfield.f)
+            self.sn=td.supplier_new(self.namefield.f,self.telfield.f,
+                                    self.emailfield.f)
         else:
             self.dismiss()
-            td.supplier_update(self.sn,self.namefield.f,self.telfield.f,self.emailfield.f)
+            td.supplier_update(self.sn,self.namefield.f,self.telfield.f,
+                               self.emailfield.f)
         self.func(self.sn)
-

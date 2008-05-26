@@ -14,14 +14,13 @@ class ssdialog(ui.dismisspopup):
         ui.dismisspopup.__init__(self,8,63,title="Session date",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
-        km={keyboard.K_CLEAR: (self.dismiss,None,True),
-            keyboard.K_CASH: (self.key_enter,None,False)}
         self.addstr(2,2,"Please check the session date, and correct it "
                    "if necessary.")
         self.addstr(3,2,"Press Cash/Enter to continue and start the session.")
         self.addstr(5,2,"Session date:")
         date=ui.now()
-        self.datefield=ui.datefield(self.win,5,16,f=date,keymap=km)
+        self.datefield=ui.datefield(5,16,f=date,keymap={
+                keyboard.K_CASH: (self.key_enter,None)})
         self.datefield.focus()
     def key_enter(self):
         date=self.datefield.read()
@@ -109,20 +108,17 @@ def sessionlist(func,unpaidonly=False,closedonly=False):
     sl=td.session_list()
     return [(ss(x),func,(x[0],)) for x in sl if ss(x) is not None]
 
-class recordsession(ui.basicpopup):
+class recordsession(ui.dismisspopup):
     def __init__(self,session):
         log.info("Record session takings popup: session %d"%session)
         self.session=session
         paytotals=td.session_paytotals(session)
         paytypes=td.paytypes_list()
-        # We don't supply a keymap because the focus always belongs to
-        # our child windows
-        ui.basicpopup.__init__(self,7+len(paytypes),60,
-                               title="Session %d"%session,
-                               cleartext="Press Clear to go back",
-                               colour=ui.colour_input)
+        ui.dismisspopup.__init__(self,7+len(paytypes),60,
+                                 title="Session %d"%session,
+                                 colour=ui.colour_input)
         self.addstr(2,2,"Please enter the actual takings for session %d."%
-                        session)
+                    session)
         self.addstr(4,10,"Till total:     Actual total:")
         # Build a list of fields to be filled in
         self.fl=[]
@@ -134,14 +130,13 @@ class recordsession(ui.basicpopup):
                 pt=paytotals[i][1]
             else:
                 pt=0.0
-            field=ui.editfield(self.win,y,26,10,
-                               validate=ui.validate_float)
+            field=ui.editfield(y,26,10,validate=ui.validate_float)
             y=y+1
             self.fl.append([i,paytypes[i],field,pt])
         ui.map_fieldlist([x[2] for x in self.fl])
         # Override key bindings for first/last fields
-        self.fl[0][2].keymap[keyboard.K_CLEAR]=(self.dismiss,None,True)
-        self.fl[-1][2].keymap[keyboard.K_CASH]=(self.field_return,None,False)
+        self.fl[0][2].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
+        self.fl[-1][2].keymap[keyboard.K_CASH]=(self.field_return,None)
         self.fl[0][2].focus()
     def field_return(self):
         self.amounts={}
