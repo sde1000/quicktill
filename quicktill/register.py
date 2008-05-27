@@ -966,7 +966,7 @@ class page(ui.basicpage):
                      self.freedrinktrans,(self.trans,)),
                     (keyboard.K_THREE,"Merge this transaction with another "
                      "open transaction",self.mergetransmenu,(self.trans,))],
-                   title="Transaction %d"%self.trans,clear=True)
+                   title="Transaction %d"%self.trans)
     def keypress(self,k):
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
