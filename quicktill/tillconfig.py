@@ -72,3 +72,8 @@ modkeyinfo={}
 
 # Is the "No Sale" function enabled?
 nosale=True
+
+# Do we print check digits on stock labels?
+checkdigit_print=False
+# Do we ask the user to input check digits when using stock?
+checkdigit_on_usestock=False

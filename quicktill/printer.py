@@ -180,6 +180,10 @@ def label_print_delivery(delivery):
         f.drawCentredString(width/2,y,ui.formatdate(date))
         y=y-pitch
         f.drawCentredString(width/2,y,d['sunitname'])
+        if tillconfig.checkdigit_print:
+            y=y-pitch
+            f.drawCentredString(width/2,y,"Check digits: %s"%(
+                    stock.checkdigits(d['stockid'])))
         f.setFont(fontname,y-margin)
         f.drawCentredString(width/2,margin,str(d['stockid']))
     for sd in items_sdl:

@@ -1,6 +1,6 @@
 """Implements the "use stock" menu"""
 
-import ui,td,keyboard,stock,stocklines
+import ui,td,keyboard,stock,stocklines,tillconfig
 
 import logging
 log=logging.getLogger()
@@ -122,8 +122,36 @@ def pick_new_stock(line,blurb=""):
                      "%.0f %ss"%(x['remaining'],x['unitname']),
                      ui.formatdate(x['bestbefore']))
                     for x in sinfo]).format(' r l l l ')
-    sl=[(x,put_on_sale,(line,y['stockid'])) for x,y in zip(lines,sinfo)]
+    nextfunc=(
+        check_checkdigits if tillconfig.checkdigit_on_usestock
+        and capacity is None
+        else put_on_sale)
+    sl=[(x,nextfunc,(line,y['stockid'])) for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Select Stock Item",blurb=blurb)
+
+class check_checkdigits(ui.dismisspopup):
+    def __init__(self,line,sn):
+        self.line=line
+        self.sn=sn
+        ui.dismisspopup.__init__(self,7,40,title="Check stock",
+                                 colour=ui.colour_input)
+        self.addstr(2,2,'Please enter the check digits from')
+        self.addstr(3,2,'the label on stock item %d.'%sn)
+        self.addstr(5,2,'Check digits:')
+        self.cdfield=ui.editfield(5,16,3,validate=ui.validate_int,keymap={
+                keyboard.K_CASH:(self.check,None)})
+        self.cdfield.focus()
+    def check(self):
+        if self.cdfield.f==stock.checkdigits(self.sn):
+            self.dismiss()
+            put_on_sale(self.line,self.sn)
+        else:
+            self.cdfield.set('')
+            ui.infopopup(["The digits you entered are incorrect.  If the "
+                          "item of stock you are trying to put on sale "
+                          "does not have a label, you must consult your "
+                          "manager before continuing.  Do not sell from "
+                          "any item that has no label."],title="Error")
 
 def put_on_sale(line,sn):
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
