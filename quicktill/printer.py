@@ -153,10 +153,14 @@ def print_sessiontotals(session):
     driver.end()
 
 def label_print_delivery(delivery):
-    (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=delivery)[0]
-    (name,tel,email)=td.supplier_fetch(supplier)
     items=td.delivery_items(delivery)
-    items_sdl=td.stock_info(items)
+    stocklabel_print(items)
+
+def stocklabel_print(sl):
+    """Print stock labels for a list of stock numbers.
+
+    """
+    items_sdl=td.stock_info(sl)
     labeldriver.start()
     def stock_label(f,width,height,d):
         # Item name
@@ -175,9 +179,9 @@ def label_print_delivery(delivery):
         y=height-margin-fontsize
         f.drawCentredString(width/2,y,stock.format_stock(d,fits))
         y=y-pitch
-        f.drawCentredString(width/2,y,name)
+        f.drawCentredString(width/2,y,d['suppliername'])
         y=y-pitch
-        f.drawCentredString(width/2,y,ui.formatdate(date))
+        f.drawCentredString(width/2,y,ui.formatdate(d['deliverydate']))
         y=y-pitch
         f.drawCentredString(width/2,y,d['sunitname'])
         if tillconfig.checkdigit_print:

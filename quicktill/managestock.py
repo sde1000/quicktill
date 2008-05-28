@@ -46,6 +46,18 @@ def format_stockmenuline(sd):
             stock.format_stock(sd,maxw=40),
             "%.0f %ss"%(sd['remaining'],sd['unitname']))
 
+def print_stocklist_menu(sinfo,title):
+    if printer.labeldriver is not None:
+        menu=[
+            (keyboard.K_ONE,"Print list",
+             printer.print_stocklist,(sinfo,title)),
+            (keyboard.K_TWO,"Print sticky labels",
+             printer.stocklabel_print,([x['stockid'] for x in sinfo],)),
+            ]
+        ui.keymenu(menu,"Stock print options",colour=ui.colour_confirm)
+    else:
+        printer.print_stocklist(sinfo,title)
+
 def stockdetail(sinfo):
     if len(sinfo)==1:
         return stock.stockinfo_popup(sinfo[0]['stockid'])
@@ -53,10 +65,10 @@ def stockdetail(sinfo):
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
     print_title="Stock Check"
-    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
     ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
             "Cash/Enter for more information.",
-            dismiss_on_select=False,keymap=km,
+            dismiss_on_select=False,keymap={
+            keyboard.K_PRINT: (print_stocklist_menu,(sinfo,print_title),False)},
             colour=ui.colour_confirm)
 
 def stockcheck(dept=None):
@@ -91,11 +103,11 @@ def stockcheck(dept=None):
         details.append(i)
     lines=ui.table(lines).format(' l l l ')
     sl=[(x,stockdetail,(y,)) for x,y in zip(lines,details)]
-    print_title="Stock Check"
-    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
-    ui.menu(sl,title="Stock Check",blurb="Select a stock type and press "
+    title="Stock Check" if dept is None else "Stock Check department %d"%dept
+    ui.menu(sl,title=title,blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
-            dismiss_on_select=False,keymap=km)
+            dismiss_on_select=False,keymap={
+            keyboard.K_PRINT: (print_stocklist_menu,(sinfo,title),False)})
 
 def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
@@ -106,15 +118,13 @@ def stockhistory(dept=None):
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
     sl=[(x,stock.stockinfo_popup,(y['stockid'],))
         for x,y in zip(lines,sinfo)]
-    if dept is not None:
-        print_title="Stock History dept %d"%dept
-    else:
-        print_title="Stock History"
-    km={keyboard.K_PRINT: (printer.print_stocklist,(sinfo,print_title),False)}
-    ui.menu(sl,title="Stock History",blurb="Select a stock item and press "
+    title=("Stock History" if dept is None
+           else "Stock History department %d"%dept)
+    ui.menu(sl,title=title,blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
             "when the stock was finished is shown.",dismiss_on_select=False,
-            keymap=km)
+            keymap={
+            keyboard.K_PRINT: (printer.print_stocklist,(sinfo,title),False)})
 
 def updatesupplier():
     log.info("Update supplier")
