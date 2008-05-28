@@ -76,8 +76,13 @@ def main():
                       type="string", dest="database",
                       help="Database connection string; overrides "
                       "configuration file")
+    parser.add_option("-l", "--logfile", action="store",
+                      type="string", dest="logfile",
+                      help="Log filename")
+    parser.add_option("--debug", action="store_true", dest="debug",
+                      help="Include debug output in logfile")
     parser.set_defaults(configurl=configurl,configname="default",
-                        database=None)
+                        database=None,logfile=None,debug=False)
     (options,args)=parser.parse_args()
     if len(args)>0:
         parser.error("this program takes no arguments")
@@ -101,13 +106,24 @@ def main():
             print "%s: %s"%(i,g.configurations[i]['description'])
         sys.exit(1)
 
+    if options.debug and options.logfile is None:
+        print "You must specify a log file to enable debugging output."
+        sys.exit(1)
+
     log=logging.getLogger()
     formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     handler=logging.StreamHandler()
     handler.setFormatter(formatter)
     handler.setLevel(logging.ERROR)
     log.addHandler(handler)
-    
+    if options.logfile:
+        loglevel=logging.DEBUG if options.debug else logging.INFO
+        loghandler=logging.FileHandler(options.logfile)
+        loghandler.setFormatter(formatter)
+        loghandler.setLevel(logging.DEBUG if options.debug else logging.INFO)
+        log.addHandler(loghandler)
+        log.setLevel(loglevel)
+
     if 'printer' in config:
         printer.driver=config['printer'][0](*config['printer'][1])
     else:
@@ -148,7 +164,7 @@ def main():
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
-        
+
     locale.setlocale(locale.LC_ALL,'')
     sys.exit(run())
 

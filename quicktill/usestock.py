@@ -142,7 +142,7 @@ def put_on_sale(line,sn):
         if len(td.stock_annotations(sn,atype='location'))==0 and dept==1:
             stock.annotate_location(sn)
     else:
-        log.error("Use Stock: error putting item %d on line %s"%(sn,name))
+        log.warning("Use Stock: problem putting item %d on line %s"%(sn,name))
         ui.infopopup(["There was an error putting stock item %d (%s) "
                       "on sale as '%s'.  Perhaps you already allocated "
                       "a stock item to this line on another page?"%
