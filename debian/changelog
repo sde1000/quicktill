@@ -1,3 +1,25 @@
+quicktill (0.8.15) stable; urgency=low
+
+  * New release 0.8.15
+
+  * Fix thinko in register.py/manage transaction menu
+
+  * Clean up handling of input focus; make more use of ui.scrollable
+
+  * New "scrollable" field type; update linepopup and menu to use it
+
+  * Fix line drawing characters when running in an xterm
+
+  * Remove spurious coding declarations
+
+  * Fix text wrapping on register page
+
+  * Fix part-payment when keyguard is active
+
+  * Update createdb script to include unique IDs for payments
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 28 May 2008 00:32:05 +0100
+
 quicktill (0.8.14) stable; urgency=low
 
   * New release 0.8.14
