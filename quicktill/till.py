@@ -164,7 +164,7 @@ def main():
     if 'checkdigit_print' in config:
         tillconfig.checkdigit_print=config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
-        tillconfig.checkdigit_on_usestock=config['checkdigit_print']
+        tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
