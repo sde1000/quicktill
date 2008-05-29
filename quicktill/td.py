@@ -723,6 +723,26 @@ def stillage_summary():
         "ORDER BY (sl.name is not null),sa.time")
     return cur.fetchall()
 
+### Check stock levels
+
+def stocklevel_check(dept=None,period='3 weeks'):
+    cur=cursor()
+    deptstr="" if dept==None else "AND dept=%d"%dept
+    cur.execute(
+        "SELECT st.stocktype,st.shortname,sum(qty) as sold,"
+        "sum(qty)-coalesce((select sum(size-coalesce(used,0)) "
+        "FROM stockinfo WHERE stocktype=st.stocktype "
+        "AND finished is null),0) as understock "
+        "FROM stocktypes st "
+        "LEFT JOIN stock s ON st.stocktype=s.stocktype "
+        "LEFT JOIN stockout so ON so.stockid=s.stockid "
+        "WHERE (removecode='sold' or removecode is null) "
+        "%s "
+        "AND now()-so.time<'%s' "
+        "GROUP BY st.stocktype,st.shortname "
+        "ORDER BY understock DESC"%(deptstr,period))
+    return cur.fetchall()
+
 ### Functions related to food order numbers
 
 def foodorder_reset():

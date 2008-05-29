@@ -131,6 +131,43 @@ def updatesupplier():
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
+class stocklevelcheck(ui.dismisspopup):
+    def __init__(self):
+        depts=td.department_list()
+        self.deptlist=[x[0] for x in depts]
+        ui.dismisspopup.__init__(self,10,50,title="Stock level check",
+                                 colour=ui.colour_input)
+        self.addstr(2,2,'Department:')
+        self.deptfield=ui.listfield(2,14,20,self.deptlist,d=dict(depts),
+                                    keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
+        self.addstr(3,2,'    Period:')
+        self.pfield=ui.editfield(3,14,3,validate=ui.validate_int,keymap={
+                keyboard.K_CASH: (self.enter,None)})
+        self.addstr(3,18,'weeks')
+        self.addstr(5,2,'The period should usually be one-and-a-half')
+        self.addstr(6,2,'times the usual time between deliveries.  For')
+        self.addstr(7,2,'weekly deliveries use 2; for fortnightly')
+        self.addstr(8,2,'deliveries use 3.')
+        ui.map_fieldlist([self.deptfield,self.pfield])
+        self.deptfield.focus()
+    def enter(self):
+        if self.pfield=='':
+            ui.infopopup(["You must enter a period."],title="Error")
+            return
+        weeks=int(self.pfield.f)
+        dept=(None if self.deptfield.f is None
+              else self.deptlist[self.deptfield.f])
+        self.dismiss()
+        r=td.stocklevel_check(dept,'%d weeks'%weeks)
+        r=[(name,str(sold),str(understock)) for (st,name,sold,understock) in r]
+        r=[('Name','Sold','Buy')]+r
+        lines=ui.table(r).format(' l r  r ')
+        header=["Do not order any stock if the 'Buy' amount",
+               "is negative!",""]
+        ui.linepopup(header+lines,title="Stock level check - %d weeks"%weeks,
+                     colour=ui.colour_info,headerlines=len(header)+1)
+
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
@@ -148,6 +185,7 @@ def popup():
          department.menu,(stockhistory,"Stock History",True)),
         (keyboard.K_SEVEN,"Update supplier details",updatesupplier,None),
         (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
+        (keyboard.K_NINE,"Check stock levels",stocklevelcheck,None),
 #        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
 #         (lambda x:selectstocktype(lambda:None,default=x,mode=2),)),
         ]

@@ -347,15 +347,23 @@ class menu(dismisspopup):
 
 class linepopup(dismisspopup):
     def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
-                 cleartext=None,colour=colour_error,keymap={}):
+                 cleartext=None,colour=colour_error,keymap={},
+                 headerlines=0):
         (mh,mw)=stdwin.getmaxyx()
         w=max(len(i) for i in lines)
         w=min(w+4,mw)
         h=min(len(lines)+2,mh)
         dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
                               keymap)
+        y=1
+        while headerlines>0 and len(lines)>0:
+            self.addstr(y,2,lines[0][:w-4])
+            del lines[0]
+            y=y+1
+            h=h-1
+            headerlines=headerlines-1
         dl=[line(i) for i in lines]
-        self.s=scrollable(1,2,w-4,h-2,dl,show_cursor=False)
+        self.s=scrollable(y,2,w-4,h-2,dl,show_cursor=False)
         self.s.focus()
 
 class infopopup(linepopup):
