@@ -166,7 +166,8 @@ class stocklevelcheck(ui.dismisspopup):
         header=["Do not order any stock if the 'Buy' amount",
                "is negative!",""]
         ui.linepopup(header+lines,title="Stock level check - %d weeks"%weeks,
-                     colour=ui.colour_info,headerlines=len(header)+1)
+                     colour=ui.colour_info,headerlines=len(header)+1,
+                     dismiss=keyboard.K_CASH)
 
 def popup():
     "Pop up the stock management menu."
