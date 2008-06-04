@@ -1,3 +1,17 @@
+quicktill (0.8.18) stable; urgency=low
+
+  * New release 0.8.18
+
+  * Add the signing key ID to the release script
+
+  * Fix keymap for new supplier confirm dialog
+
+  * Change to using Cash/Enter to dismiss the stock level check popup
+
+  * Fix typo that made check digits always be checked if printing is on
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 04 Jun 2008 15:33:12 +0100
+
 quicktill (0.8.17) stable; urgency=low
 
   * New release 0.8.17
