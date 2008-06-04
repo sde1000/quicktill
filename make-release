@@ -77,7 +77,7 @@ echo "version=\"${newversion}\"" >${pkgdir}/quicktill/version.py
 
 # Build the Debian package files
 
-(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot)
+(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -k34B34908)
 
 # If we reach this point, we should have Debian packages built in ${tmpdir}
 
