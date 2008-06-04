@@ -77,7 +77,7 @@ class departurelist:
         t=ui.table(p.tablelines)
         ll=t.format('l l l')
         ui.linepopup(ll,name,colour=ui.colour_info,dismiss=keyboard.K_CASH,
-                     keymap={keyboard.K_PRINT:(self.printout,None)})
+                     keymap={keyboard.K_PRINT:(self.printout,None,False)})
     def printout(self):
         p=printer.driver
         destinations={}
