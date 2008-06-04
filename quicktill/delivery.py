@@ -373,7 +373,7 @@ class editsupplier(ui.basicpopup):
                       "Email: %s"%self.emailfield.f],
                      title="Confirm New Supplier Details",
                      colour=ui.colour_input,keymap={
-            keyboard.K_CASH: (self.confirmed,None)})
+            keyboard.K_CASH: (self.confirmed,None,True)})
     def confirmed(self):
         if self.sn is None:
             self.sn=td.supplier_new(self.namefield.f,self.telfield.f,
