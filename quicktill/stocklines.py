@@ -107,19 +107,18 @@ def restock_list(stockline_list):
         return
     printer.print_restock_list(sl)
     ui.infopopup([
-        "The list of stock to be put on display has been printed.  "
-        "For each line that needs re-stocking it shows the number "
-        "of units that need to be fetched from each "
-        "container, and the number of units of stock that should "
-        "be left in the container afterwards.","Please note any "
-        "discrepancies on the printout and enter them later using "
-        "the 'Record Waste' button.","","Press Cash/Enter to "
-        "confirm that you've fetched all the items on the list and "
-        "allow the till to update its records.  Pressing Clear "
-        "at this point will completely cancel the re-stock."],
+        "The list of stock to be put on display has been printed.","",
+        "Please choose one of the following options:","",
+        "1. I have finished moving the stock on the printed list.",
+        "2. I have not moved any stock and I have thrown the list away."],
                  title="Confirm stock movement",
-                 keymap={keyboard.K_CASH:(finish_restock,(sl,),True)},
-                 colour=ui.colour_confirm)
+                 keymap={keyboard.K_ONE:(finish_restock,(sl,),True),
+                         keyboard.K_TWO:(abandon_restock,(sl,),True)},
+                 colour=ui.colour_confirm,dismiss=None)
+
+def abandon_restock(sl):
+    ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
+                 title="Stock movement abandoned")
 
 def finish_restock(sl):
     for stockline,name,ondisplay,capacity,stockmovements in sl:

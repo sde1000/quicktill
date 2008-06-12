@@ -240,8 +240,8 @@ class basicpopup(basicwin):
             curses.beep()
 
 class dismisspopup(basicpopup):
-    """Adds processing of an implicit 'Dismiss' key and generation of
-    the cleartext prompt"""
+    """Adds optional processing of an implicit 'Dismiss' key and
+    generation of the cleartext prompt"""
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
                  dismiss=keyboard.K_CLEAR,keymap={}):
         self.dismisskey=dismiss
@@ -254,11 +254,13 @@ class dismisspopup(basicpopup):
                 return "Press Clear to go back"
             elif dismiss==keyboard.K_CASH:
                 return "Press Cash/Enter to continue"
+            elif dismiss is None:
+                return None
             else:
                 return "Press %s to dismiss"%kb.keycap(dismiss)
         return cleartext
     def keypress(self,k):
-        if k==self.dismisskey:
+        if self.dismisskey is not None and k==self.dismisskey:
             return self.dismiss()
         basicpopup.keypress(self,k)
 
@@ -383,7 +385,7 @@ class infopopup(linepopup):
         # as possible.  Try that first, and only let it go wider if the
         # maximum height is exceeded.
         w=(maxw*2)/3
-        w=max(w,len(cleartext)-1)
+        if cleartext: w=max(w,len(cleartext)-1)
         def formatat(width):
             r=[]
             for i in text:
