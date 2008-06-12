@@ -1,3 +1,13 @@
+quicktill (0.8.19) stable; urgency=low
+
+  * New release 0.8.19
+
+  * Change Use Stock/Re-fill stock lines prompt
+
+  * Fix printing of train timetable
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 12 Jun 2008 17:51:53 +0100
+
 quicktill (0.8.18) stable; urgency=low
 
   * New release 0.8.18
