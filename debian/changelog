@@ -1,3 +1,11 @@
+quicktill (0.8.21) stable; urgency=low
+
+  * New release 0.8.21
+
+  * Optimise the query for inconsistent prices
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 15 Jun 2008 17:30:38 +0100
+
 quicktill (0.8.20) stable; urgency=low
 
   * New release 0.8.20
