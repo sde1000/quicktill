@@ -1,3 +1,17 @@
+quicktill (0.8.20) stable; urgency=low
+
+  * New release 0.8.20
+
+  * Stock re-price popup
+
+  * Remove spurious line of code from table number popup
+
+  * New popup to view and manage stockline/stocktype associations
+
+  * New 'tableline' for scrollable; split ui.menu into two classes
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 15 Jun 2008 17:10:53 +0100
+
 quicktill (0.8.19) stable; urgency=low
 
   * New release 0.8.19
