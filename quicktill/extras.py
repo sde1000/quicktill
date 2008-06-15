@@ -1,6 +1,7 @@
 import ui,keyboard,printer,tillconfig
 import HTMLParser
 import urllib
+import traceback,sys
 
 ### Train departures
 
@@ -70,12 +71,15 @@ class departurelist:
             p.feed(l)
             p.close()
         except:
-            pass # Ignore HTML errors - the page contains a dodgy HTML ad
+            e=traceback.format_exception(sys.exc_type,sys.exc_value,
+                                         sys.exc_traceback)
+            ui.infopopup(e,title="There is a problem with the web page")
         # Now p.tablelines contains the data!  Format and display it.
         self.tablelines=p.tablelines
         self.station=name
         t=ui.table(p.tablelines)
         ll=t.format('l l l')
+        if ll==[]: ll=["No train information available."]
         ui.linepopup(ll,name,colour=ui.colour_info,dismiss=keyboard.K_CASH,
                      keymap={keyboard.K_PRINT:(self.printout,None,False)})
     def printout(self):
