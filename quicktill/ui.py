@@ -298,30 +298,32 @@ class keymenu(dismisspopup):
 
 class listpopup(dismisspopup):
     """
-    A popup window with an initial non-scrolling blurb, and then a
-    scrollable list of selections.  Items in the list can be strings,
-    or any subclass of emptyline().
+    A popup window with an initial non-scrolling header, and then a
+    scrollable list of selections.  Items in the list and header can
+    be strings, or any subclass of emptyline().  The header is not
+    used when deciding how wide the window will be.
 
     """
-    def __init__(self,linelist,default=0,blurb=None,title=None,
+    def __init__(self,linelist,default=0,header=None,title=None,
                  colour=colour_input,w=None,keymap={}):
         dl=[x if isinstance(x,emptyline) else line(x) for x in linelist]
+        hl=[x if isinstance(x,emptyline) else marginline(lrline(x),margin=1)
+            for x in header] if header else []
         if w is None:
             w=max((x.idealwidth() for x in dl))+2 if len(linelist)>0 else 0
             w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
-        if blurb:
-            blurbl=textwrap.wrap(blurb,w-4)
-        else:
-            blurbl=[]
-        h=len(linelist)+len(blurbl)+2
+        hh=sum([len(x.display(w-2)) for x in hl],0)
+        h=len(linelist)+hh+2
         dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap)
         (h,w)=self.win.getmaxyx()
         y=1
-        for i in blurbl:
-            self.addstr(y,2,i)
-            y=y+1
+        for hd in hl:
+            l=hd.display(w-2)
+            for i in l:
+                self.addstr(y,1,i)
+                y=y+1
         # Note about keyboard handling: the scrollable will always have
         # the focus.  It will deal with cursor keys itself.  All other
         # keys will be passed through to our keypress() method, which
@@ -329,6 +331,7 @@ class listpopup(dismisspopup):
         # implement keypress() themselves, and access the methods of the
         # scrollable directly.  If there's no scrollable this will fail!
         if len(linelist)>0:
+            log.debug("listpopup scrollable %d %d %d %d",y,1,w-2,h-y-1)
             self.s=scrollable(y,1,w-2,h-y-1,dl)
             self.s.cursor=default
             self.s.focus()
@@ -354,7 +357,7 @@ class menu(listpopup):
         self.itemlist=itemlist
         self.dismiss_on_select=dismiss_on_select
         dl=[x[0] for x in itemlist]
-        listpopup.__init__(self,dl,default=default,blurb=blurb,title=title,
+        listpopup.__init__(self,dl,default=default,header=[blurb],title=title,
                            colour=colour,w=w,keymap=keymap)
     def keypress(self,k):
         if k==keyboard.K_CASH:
@@ -521,9 +524,7 @@ class scrollable(field):
         self.drawdl()
     def set(self,dl):
         self.dl=dl
-        # XXX Frob cursor and scroll position if necessary
-        self.cursor=0
-        self.top=0
+        if self.cursor>=len(self.dl): self.cursor=max(0,len(self.dl)-1)
         self.redraw()
         field.set(self)
     def focus(self):
@@ -704,6 +705,23 @@ class line(emptyline):
         # It's a (x,y) tuple where y is 0 for the first line.
         self.cursor=(0,0)
         return [self.text[:width]]
+
+class marginline(emptyline):
+    """
+    Indent another line with a margin at the left and right.
+
+    """
+    def __init__(self,l,margin=0,colour=None,userdata=None):
+        emptyline.__init__(self,colour,userdata)
+        self.l=l
+        self.margin=margin
+    def idealwidth(self):
+        return self.l.idealwidth()+(2*self.margin)
+    def display(self,width):
+        m=' '*self.margin
+        ll=[m+x+m for x in self.l.display(width-(2*self.margin))]
+        cursor=(self.l.cursor[0]+self.margin,self.l.cursor[1])
+        return ll
 
 class lrline(emptyline):
     """

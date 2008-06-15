@@ -140,13 +140,14 @@ class stockline_associations(ui.listpopup):
     def __init__(self):
         salist=td.stockline_stocktype_log()
         f=ui.tableformatter(' l l ')
+        headerline=ui.tableline(f,["Stock line","Stock type"])
         lines=[ui.tableline(f,(linename,stname),userdata=(linenum,stocktype))
                for (linenum,stocktype,linename,stname) in salist]
         ui.listpopup.__init__(
             self,lines,title="Stockline / Stock type associations",
-            blurb="Press Cancel to delete an association.  "
+            header=["Press Cancel to delete an association.  "
             "To create a new association, use the 'Use Stock' "
-            "button to assign stock to a line.")
+            "button to assign stock to a line.",headerline])
     def keypress(self,k):
         if k==keyboard.K_CANCEL and self.s:
             line=self.s.dl.pop(self.s.cursor)
@@ -204,6 +205,10 @@ def maintenance():
         (keyboard.K_FOUR,"Manage stock line associations",
          stockline_associations,None),
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
+        (keyboard.K_SIX,"Re-price a particular stock type",
+         stock.stocktype,(stock.reprice_stocktype,None,1,False)),
+        (keyboard.K_SEVEN,"Re-price stock types with inconsistent prices",
+         stock.inconsistent_prices_menu,None),
         ]
     ui.keymenu(menu,"Stock Maintenance options")
 

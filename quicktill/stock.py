@@ -411,3 +411,109 @@ class annotate_location(ui.dismisspopup):
         annotation=self.locfield.f
         td.stock_annotate(self.stockid,'location',annotation)
         self.dismiss()
+
+class reprice_stockitem(ui.dismisspopup):
+    """Re-price a particular stock item.  Call func when done.
+
+    """
+    def __init__(self,stockid,func):
+        self.stockid=stockid
+        self.func=func
+        ui.dismisspopup.__init__(
+            self,5,30,title="Re-price stock item %d"%stockid,
+            colour=ui.colour_line)
+        self.addstr(2,2,"New price:")
+        self.field=ui.editfield(
+            2,13,5,validate=ui.validate_float,
+            keymap={keyboard.K_CASH: (self.finish,None)})
+        self.field.focus()
+    def finish(self):
+        if self.field.f is None or self.field.f=='': return
+        number=float(self.field.f)
+        self.dismiss()
+        td.stock_reprice(self.stockid,number)
+        self.func()
+
+class reprice_stocktype(ui.listpopup):
+    """Allow all items of stock of a particular type to be re-priced.
+
+    Options include:
+    1. Set all items to the highest price
+    2. Set all items to the lowest price
+    3. Set all items to the guide price
+
+    """
+    def __init__(self,stn):
+        name=format_stocktype(stn)
+        self.sl=td.stock_search(stocktype=stn,exclude_stock_on_sale=False)
+        if len(self.sl)==0:
+            ui.infopopup(["There are no items of %s in stock "
+                          "at the moment."%name],title="Error")
+            return
+        self.updatedl()
+        ui.listpopup.__init__(self,self.dl,title=name,w=45,header=[
+                "Please choose from the following options:",
+                "1. Set prices to match the highest price",
+                "2. Set prices to match the guide price",
+                "3. Set prices to match the lowest price","",
+                "Alternatively, press Cash/Enter to re-price "
+                "individual stock items.","",self.header])
+    def updatedl(self):
+        si=td.stock_info(self.sl)
+        # For each item of stock, we want:
+        # Stock ID
+        # Cost price
+        # Guide price
+        # Current price
+        self.minprice=None
+        self.maxprice=None
+        for i in si:
+            i['guideprice']=(None if i['costprice'] is None
+                             else tillconfig.priceguess(
+                    i['dept'],i['costprice']/i['size'],i['abv']))
+            self.minprice=(i['saleprice'] if self.minprice is None
+                           else min(self.minprice,i['saleprice']))
+            self.maxprice=(i['saleprice'] if self.maxprice is None
+                           else max(self.maxprice,i['saleprice']))
+        log.debug("maxprice=%s minprice=%s",self.maxprice,self.minprice)
+        f=ui.tableformatter(' r  r  r  r ')
+        self.header=ui.tableline(f,["StockID","Cost","Guide","Sale"])
+        self.dl=[ui.tableline(f,[str(x['stockid']),
+                                 tillconfig.fc(x['costprice']),
+                                 tillconfig.fc(x['guideprice']),
+                                 tillconfig.fc(x['saleprice'])],
+                              userdata=x)
+                 for x in si]
+    def update(self):
+        self.updatedl()
+        self.s.set(self.dl)
+        self.s.redraw()
+    def setall(self,price):
+        for i in self.dl:
+            log.debug("Reprice %d to %s",i.userdata['stockid'],price)
+            td.stock_reprice(i.userdata['stockid'],price)
+        self.update()
+    def setguide(self):
+        for i in self.dl:
+            if i.userdata['guideprice']:
+                td.stock_reprice(i.userdata['stockid'],i.userdata['guideprice'])
+        self.update()
+    def keypress(self,k):
+        if k==keyboard.K_ONE:
+            self.setall(self.maxprice)
+        elif k==keyboard.K_TWO:
+            self.setguide()
+        elif k==keyboard.K_THREE:
+            self.setall(self.minprice)
+        elif k==keyboard.K_CASH:
+            reprice_stockitem(self.dl[self.s.cursor].userdata['stockid'],
+                              self.update)
+        else:
+            ui.listpopup.keypress(self,k)
+
+def inconsistent_prices_menu():
+    stl=td.stocktype_search_inconsistent_prices()
+    ml=[(format_stocktype(x),reprice_stocktype,(x,)) for x in stl]
+    ui.menu(ml,blurb="The following stock types have inconsistent pricing.  "
+            "Choose a stock type to edit its pricing.",title="Stock types "
+            "with inconsistent prices")

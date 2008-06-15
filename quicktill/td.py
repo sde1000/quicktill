@@ -355,6 +355,13 @@ def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
                 (dept,manufacturer,name,shortname,unit,sn))
     commit()
 
+def stocktype_search_inconsistent_prices():
+    cur=cursor()
+    cur.execute("SELECT st.stocktype FROM stocktypes st WHERE "
+                "(SELECT COUNT(DISTINCT saleprice) FROM stock s"
+                " WHERE s.stocktype=st.stocktype AND s.finished IS NULL)>1")
+    return [x[0] for x in cur.fetchall()]
+
 ### Functions related to the department table
 
 def department_list():
@@ -488,6 +495,11 @@ def stock_update(sn,stocktype,stockunit,costprice,saleprice,bestbefore=None):
                               mkdate(bestbefore),sn))
     commit()
 
+def stock_reprice(sn,saleprice):
+    cur=cursor()
+    cur.execute("UPDATE stock SET saleprice=%f WHERE stockid=%d",(saleprice,sn))
+    commit()
+
 def stock_delete(sn):
     cur=cursor()
     cur.execute("DELETE FROM stock WHERE stockid=%d",(sn,))
@@ -556,7 +568,7 @@ def stock_fetchline(stocklineref):
     return cur.fetchone()
 
 def stock_search(dept=None,exclude_stock_on_sale=True,
-                 finished_stock_only=False,stockline=None):
+                 finished_stock_only=False,stockline=None,stocktype=None):
     """Return a list of stock numbers that fit the criteria."""
     cur=cursor()
     if stockline is None:
@@ -575,11 +587,16 @@ def stock_search(dept=None,exclude_stock_on_sale=True,
         finq="not null"
     else:
         finq="null"
+    if stocktype:
+        stq="AND s.stocktype=%d"%stocktype
+    else:
+        stq=""
     cur.execute("SELECT s.stockid FROM stock s INNER JOIN deliveries d ON "
                 "s.deliveryid=d.deliveryid INNER JOIN stocktypes st ON "
                 "st.stocktype=s.stocktype "
                 "WHERE finishcode is %s AND "
-                "d.checked=true %s %s ORDER BY %s"%(finq,sosq,deptq,order))
+                "d.checked=true %s %s %s ORDER BY %s"%(
+            finq,sosq,deptq,stq,order))
     return [x[0] for x in cur.fetchall()]
 
 def stock_putonsale(stockid,stocklineid):
