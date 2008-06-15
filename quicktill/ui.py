@@ -296,13 +296,54 @@ class keymenu(dismisspopup):
         else:
             dismisspopup.keypress(self,k)
 
-class menu(dismisspopup):
+class listpopup(dismisspopup):
+    """
+    A popup window with an initial non-scrolling blurb, and then a
+    scrollable list of selections.  Items in the list can be strings,
+    or any subclass of emptyline().
+
+    """
+    def __init__(self,linelist,default=0,blurb=None,title=None,
+                 colour=colour_input,w=None,keymap={}):
+        dl=[x if isinstance(x,emptyline) else line(x) for x in linelist]
+        if w is None:
+            w=max((x.idealwidth() for x in dl))+2 if len(linelist)>0 else 0
+            w=max(25,w)
+        if title is not None:
+            w=max(len(title)+3,w)
+        if blurb:
+            blurbl=textwrap.wrap(blurb,w-4)
+        else:
+            blurbl=[]
+        h=len(linelist)+len(blurbl)+2
+        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap)
+        (h,w)=self.win.getmaxyx()
+        y=1
+        for i in blurbl:
+            self.addstr(y,2,i)
+            y=y+1
+        # Note about keyboard handling: the scrollable will always have
+        # the focus.  It will deal with cursor keys itself.  All other
+        # keys will be passed through to our keypress() method, which
+        # may well be overridden in a subclass.  We expect subclasses to
+        # implement keypress() themselves, and access the methods of the
+        # scrollable directly.  If there's no scrollable this will fail!
+        if len(linelist)>0:
+            self.s=scrollable(y,1,w-2,h-y-1,dl)
+            self.s.cursor=default
+            self.s.focus()
+        else:
+            self.s=None
+
+class menu(listpopup):
     """
     A popup menu with a list of selections. Selection can be made by
     using cursor keys to move up and down, and pressing Cash/Enter to
     confirm.
 
-    itemlist entries are (desc,func,args)
+    itemlist is a list of (desc,func,args) tuples.  If desc is a
+    string it will be converted to a line(); otherwise it is assumed
+    to be some subclass of emptyline().
 
     """
     def __init__(self,itemlist,default=0,
@@ -312,40 +353,20 @@ class menu(dismisspopup):
                  keymap={}):
         self.itemlist=itemlist
         self.dismiss_on_select=dismiss_on_select
-        if w is None:
-            w=max((len(x[0]) for x in itemlist))+2 if len(itemlist)>0 else 0
-            w=max(25,w)
-        if title is not None:
-            w=max(len(title)+3,w)
-        if blurb:
-            blurbl=textwrap.wrap(blurb,w-4)
+        dl=[x[0] for x in itemlist]
+        listpopup.__init__(self,dl,default=default,blurb=blurb,title=title,
+                           colour=colour,w=w,keymap=keymap)
+    def keypress(self,k):
+        if k==keyboard.K_CASH:
+            if len(self.itemlist)>0:
+                i=self.itemlist[self.s.cursor]
+                if self.dismiss_on_select: self.dismiss()
+                if i[2] is None:
+                    i[1]()
+                else:
+                    i[1](*i[2])
         else:
-            blurbl=[]
-        h=len(itemlist)+len(blurbl)+2
-        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap)
-        (h,w)=self.win.getmaxyx()
-        y=1
-        for i in blurbl:
-            self.addstr(y,2,i)
-            y=y+1
-        dl=[line(x[0]) for x in itemlist]
-        # Note about keyboard handling: the scrollable will always have
-        # the focus.  It will deal with cursor keys itself.  All other
-        # keys will be passed through to our keypress() method.  We don't
-        # want that: we want to control what the "Cash/Enter" key does
-        # ourselves, so we get the scrollable to call us whenever it's
-        # pressed.
-        if len(itemlist)>0:
-            self.s=scrollable(y,1,w-2,h-y-1,dl,keymap={
-                    keyboard.K_CASH: (self.select,None)})
-            self.s.focus()
-    def select(self):
-        i=self.itemlist[self.s.cursor]
-        if self.dismiss_on_select: self.dismiss()
-        if i[2] is None:
-            i[1]()
-        else:
-            i[1](*i[2])
+            listpopup.keypress(self,k)
 
 class linepopup(dismisspopup):
     def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
@@ -632,12 +653,15 @@ class emptyline:
     no text.
 
     """
-    def __init__(self,colour=None):
+    def __init__(self,colour=None,userdata=None):
         if colour is None: colour=curses.color_pair(0)
         self.colour=colour
         self.cursor_colour=self.colour|curses.A_REVERSE
+        self.userdata=userdata
     def update(self):
         pass
+    def idealwidth(self):
+        return 0
     def display(self,width):
         """
         Returns a list of lines (of length 1), with one empty line.
@@ -650,8 +674,8 @@ class emptyline:
         return [""]
 
 class emptylines(emptyline):
-    def __init__(self,colour=None,lines=1):
-        emptyline.__init__(self,colour)
+    def __init__(self,colour=None,lines=1,userdata=None):
+        emptyline.__init__(self,colour,userdata)
         self.lines=lines
     def display(self,width):
         self.cursor=(0,0)
@@ -664,9 +688,11 @@ class line(emptyline):
     be truncated; this line will never wrap.
 
     """
-    def __init__(self,text="",colour=None):
-        emptyline.__init__(self,colour)
+    def __init__(self,text="",colour=None,userdata=None):
+        emptyline.__init__(self,colour,userdata)
         self.text=text
+    def idealwidth(self):
+        return len(self.text)
     def display(self,width):
         """
         Returns a list of lines (of length 1), truncated to the
@@ -687,10 +713,12 @@ class lrline(emptyline):
     right-aligned text.
 
     """
-    def __init__(self,ltext="",rtext="",colour=None):
+    def __init__(self,ltext="",rtext="",colour=None,userdata=None):
         emptyline.__init__(self,colour)
         self.ltext=ltext
         self.rtext=rtext
+    def idealwidth(self):
+        return len(self.ltext)+(len(self.rtext)+1 if len(self.rtext)>0 else 0)
     def display(self,width):
         """
         Returns a list of lines, formatted to the specified maximum
@@ -710,6 +738,63 @@ class lrline(emptyline):
         w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
         return w
 
+class tableformatter:
+    """
+    This class implements policy for formatting a table.
+    
+    """
+    def __init__(self,format):
+        self.f=format
+        self.lines=[]
+        self.colwidths=None
+        # Remove formatting characters from format and see what's left
+        f=format
+        f=f.replace('l','')
+        f=f.replace('c','')
+        f=f.replace('r','')
+        self.formatlen=len(f)
+    def update(self,line):
+        if self.colwidths is None:
+            self.colwidths=[0]*len(line.fields)
+        self.colwidths=[max(a,len(b))
+                        for a,b in zip(self.colwidths,line.fields)]
+    def idealwidth(self):
+        return self.formatlen+sum(self.colwidths)
+    def addline(self,line):
+        self.lines.append(line)
+        self.update(line)
+    def format(self,line,width):
+        r=[]
+        n=0
+        for i in self.f:
+            if i=='l':
+                r.append(line.fields[n].ljust(self.colwidths[n]))
+                n=n+1
+            elif i=='c':
+                r.append(line.fields[n].center(self.colwidths[n]))
+                n=n+1
+            elif i=='r':
+                r.append(line.fields[n].rjust(self.colwidths[n]))
+                n=n+1
+            else:
+                r.append(i)
+        return [''.join(r)[:width]]
+
+class tableline(emptyline):
+    def __init__(self,formatter,fields,colour=None,userdata=None):
+        emptyline.__init__(self,colour,userdata)
+        self.formatter=formatter
+        self.fields=fields
+        self.formatter.addline(self)
+    def update(self):
+        emptyline.update(self)
+        self.formatter.update(self)
+    def idealwidth(self):
+        return self.formatter.idealwidth()
+    def display(self,width):
+        self.cursor=(0,0)
+        return self.formatter.format(self,width)
+    
 class editfield(field):
     """Accept input in a field.  Processes an implicit set of keycodes; when an
     unrecognised code is found processing moves to the standard keymap."""
