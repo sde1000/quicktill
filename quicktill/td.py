@@ -357,9 +357,11 @@ def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
 
 def stocktype_search_inconsistent_prices():
     cur=cursor()
-    cur.execute("SELECT st.stocktype FROM stocktypes st WHERE "
-                "(SELECT COUNT(DISTINCT saleprice) FROM stock s"
-                " WHERE s.stocktype=st.stocktype AND s.finished IS NULL)>1")
+    cur.execute("SELECT st.stocktype FROM stocktypes st "
+                "INNER JOIN stock s ON s.stocktype=st.stocktype "
+                "WHERE s.finished IS NULL "
+                "GROUP BY st.stocktype "
+                "HAVING COUNT(DISTINCT s.saleprice)>1")
     return [x[0] for x in cur.fetchall()]
 
 ### Functions related to the department table
