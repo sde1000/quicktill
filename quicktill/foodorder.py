@@ -234,7 +234,6 @@ class tablenumber(ui.dismisspopup):
         self.func=func
         self.numberfield.focus()
     def enter(self):
-        pdriver=printer.driver
         try:
             number=int(self.numberfield.f)
         except:
