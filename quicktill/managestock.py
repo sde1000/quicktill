@@ -1,7 +1,7 @@
 """Implements the 'Manage Stock' menu."""
 
 import ui,td,keyboard,curses,curses.ascii,time,printer
-import stock,delivery,department
+import stock,delivery,department,stocklines
 
 import logging
 log=logging.getLogger()
@@ -131,6 +131,30 @@ def updatesupplier():
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
+class stockline_associations(ui.listpopup):
+    """
+    A window showing the list of stocklines and their associated stock
+    types.  Pressing Cancel on a line deletes the association.
+
+    """
+    def __init__(self):
+        salist=td.stockline_stocktype_log()
+        f=ui.tableformatter(' l l ')
+        lines=[ui.tableline(f,(linename,stname),userdata=(linenum,stocktype))
+               for (linenum,stocktype,linename,stname) in salist]
+        ui.listpopup.__init__(
+            self,lines,title="Stockline / Stock type associations",
+            blurb="Press Cancel to delete an association.  "
+            "To create a new association, use the 'Use Stock' "
+            "button to assign stock to a line.")
+    def keypress(self,k):
+        if k==keyboard.K_CANCEL and self.s:
+            line=self.s.dl.pop(self.s.cursor)
+            self.s.redraw()
+            td.stockline_stocktype_log_del(*line.userdata)
+        else:
+            ui.listpopup.keypress(self,k)
+
 class stocklevelcheck(ui.dismisspopup):
     def __init__(self):
         depts=td.department_list()
@@ -169,6 +193,20 @@ class stocklevelcheck(ui.dismisspopup):
                      colour=ui.colour_info,headerlines=len(header)+1,
                      dismiss=keyboard.K_CASH)
 
+def maintenance():
+    "Pop up the stock maintenance menu."
+    menu=[
+        (keyboard.K_ONE,"Re-fill all stock lines",stocklines.restock_all,None),
+        (keyboard.K_TWO,"Re-fill stock lines by location",
+         stocklines.restock_location,None),
+        (keyboard.K_THREE,"Auto-allocate stock to lines",
+         stocklines.auto_allocate,None),
+        (keyboard.K_FOUR,"Manage stock line associations",
+         stockline_associations,None),
+        (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
+        ]
+    ui.keymenu(menu,"Stock Maintenance options")
+
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
@@ -184,7 +222,7 @@ def popup():
          department.menu,(stockcheck,"Stock Check",True)),
         (keyboard.K_SIX,"Stock history (finished stock)",
          department.menu,(stockhistory,"Stock History",True)),
-        (keyboard.K_SEVEN,"Update supplier details",updatesupplier,None),
+        (keyboard.K_SEVEN,"Maintenance submenu",maintenance,None),
         (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
         (keyboard.K_NINE,"Check stock levels",stocklevelcheck,None),
 #        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
