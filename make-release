@@ -55,6 +55,8 @@ if [ "${oldversion}" = "${newversion}" ]; then
   exit 1
 fi
 
+releasedate="$(date -R)"
+
 # Construct a changelog entry with the new version number
 
 mv ${pkgdir}/debian/changelog ${pkgdir}/debian/changelog.old
@@ -62,7 +64,7 @@ mv ${pkgdir}/debian/changelog ${pkgdir}/debian/changelog.old
 echo -e "${packagename} (${newversion}) ${distribution}; urgency=${urgency}\n" >${pkgdir}/debian/changelog
 echo -e "  * New release ${newversion}\n" >>${pkgdir}/debian/changelog
 git-log '--pretty=format:  * %s%n' v${oldversion}.. -- >>${pkgdir}/debian/changelog
-echo -e "\n -- $(git-config --get user.name) <$(git-config --get user.email)>  $(date -R)\n">>${pkgdir}/debian/changelog
+echo -e "\n -- $(git-config --get user.name) <$(git-config --get user.email)>  ${releasedate}\n">>${pkgdir}/debian/changelog
 cat ${pkgdir}/debian/changelog.old >>${pkgdir}/debian/changelog
 rm ${pkgdir}/debian/changelog.old
 
@@ -73,7 +75,7 @@ cp setup.py ${pkgdir}/setup.py
 
 # Put the version number in the version.py file
 
-echo "version=\"${newversion}\"" >${pkgdir}/quicktill/version.py
+echo "version=\"${newversion} (${releasedate})\"" >${pkgdir}/quicktill/version.py
 
 # Build the Debian package files
 
