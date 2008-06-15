@@ -163,7 +163,7 @@ xpdfprinter={
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
 staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
 labelprinter={
-    'labelprinter': (pdflabel,["lpr %s"]+staples_3by6),
+    'labelprinter': (pdflabel,["xpdf %s"]+staples_3by6),
     }
 
 kb1={
@@ -494,7 +494,7 @@ stockcontrol={
 config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(pdfprinter)
+config0.update(xpdfprinter)
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal
