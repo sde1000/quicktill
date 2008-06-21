@@ -1,3 +1,17 @@
+quicktill (0.8.22) stable; urgency=low
+
+  * New release 0.8.22
+
+  * If default of "None" is supplied to listpopup, use '0' instead
+
+  * Display more useful error message when train departures web page is faulty
+
+  * Update some of the example scripts
+
+  * Include release date in version string
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 21 Jun 2008 14:42:11 +0100
+
 quicktill (0.8.21) stable; urgency=low
 
   * New release 0.8.21
