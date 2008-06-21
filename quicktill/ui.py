@@ -333,7 +333,7 @@ class listpopup(dismisspopup):
         if len(linelist)>0:
             log.debug("listpopup scrollable %d %d %d %d",y,1,w-2,h-y-1)
             self.s=scrollable(y,1,w-2,h-y-1,dl)
-            self.s.cursor=default
+            self.s.cursor=default if default is not None else 0
             self.s.focus()
         else:
             self.s=None
