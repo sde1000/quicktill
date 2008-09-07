@@ -819,13 +819,60 @@ class Statistics(DBPage):
             "LEFT JOIN stocktypes st ON s.stocktype=st.stocktype "
             "LEFT JOIN stockout so ON s.stockid=so.stockid "
             "WHERE so.removecode='sold' AND st.dept=1 "
+            "AND so.time>(now()-interval '1 year') "
             "GROUP BY s.stocktype,st.shortname "
-            "ORDER BY sum(so.qty) DESC LIMIT 20",()))]
+            "ORDER BY sum(so.qty) DESC LIMIT 20",())),
+                ('stockbought',(
+            "select d.dept,d.description,sup.name as supplier,"
+            "(sum(su.size)/288)::numeric(10,1) as barrelage from stock s "
+            "left join stockunits su on s.stockunit=su.stockunit "
+            "left join stocktypes st on s.stocktype=st.stocktype "
+            "left join departments d on st.dept=d.dept "
+            "left join deliveries del on s.deliveryid=del.deliveryid "
+            "left join suppliers sup on del.supplierid=sup.supplierid "
+            "where del.date>(now()-interval '1 year') "
+            "and st.unit='pt' "
+            "and s.finishcode!='credit' "
+            "group by d.dept,d.description,sup.name "
+            "order by d.dept,sum(su.size) desc",())),
+                ("stocksold",(
+            "select d.dept,d.description,"
+            "(sum(so.qty)/288)::numeric(10,1) as barrelage "
+            "from stockout so "
+            "left join stock s on so.stockid=s.stockid "
+            "left join stocktypes st on s.stocktype=st.stocktype "
+            "left join departments d on st.dept=d.dept "
+            "where removecode='sold' "
+            "and st.unit='pt' "
+            "and time>(now()-interval '1 year') "
+            "group by d.dept,d.description "
+            "order by d.dept",()))]
     def template(self,searchList):
         return Template.Template(source=formatBlock("""
         #extends page
         #implements body
         #filter webSafeFilter
+        <h1>Stock bought</h1>
+        <table>
+        <tr><th>Department</th><th>Supplier</th><th>Barrels</th></tr>
+        #for $dept,$desc,$sup,$barrels in $stockbought
+        <tr $zebra>
+        <td>$desc</td>
+        <td>$sup</td>
+        <td class="qty">$barrels</td>
+        </tr>
+        #end for
+        </table>
+        <h1>Stock sold</h1>
+        <table>
+        <tr><th>Department</th><th>Barrels</th></tr>
+        #for $dept,$desc,$barrels in $stocksold
+        <tr $zebra>
+        <td>$desc</td>
+        <td class="qty">$barrels</td>
+        </tr>
+        #end for
+        </table>
         <h1>Top 20 Best-Selling Real Ales</h1>
         <table>
         #for $stocktype,$name,$qty in $bestsellers
