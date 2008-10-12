@@ -1,3 +1,13 @@
+quicktill (0.8.24) stable; urgency=low
+
+  * New release 0.8.24
+
+  * Change stock auto-allocate function to use stockline_stocktype_log
+
+  * Bring the createdb file up to date
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 12 Oct 2008 18:20:25 +0100
+
 quicktill (0.8.23) stable; urgency=low
 
   * New release 0.8.23
