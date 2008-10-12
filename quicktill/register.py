@@ -871,6 +871,12 @@ class page(ui.basicpage):
                 self.dl.append(tline(i))
             for i in payments:
                 self.dl.append(payline(i))
+            if not td.trans_closed(trans):
+                age=td.trans_age(trans)
+                if age>2:
+                    ui.infopopup(["This transaction is %d days old.  Please "
+                                  "arrange for it to be paid soon."%age],
+                                 title="Warning")
         self.cursor_off()
         self.update_balance()
     def recalltranskey(self):

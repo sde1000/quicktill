@@ -101,6 +101,13 @@ def trans_getlines(trans):
     payments=cur.fetchall()
     return (lines,payments)
 
+def trans_age(trans):
+    "Return the age of the transaction in days"
+    cur=cursor()
+    cur.execute("SELECT extract(days from (now()-min(time))) "
+                "FROM translines WHERE transid=%d",(trans,))
+    return cur.fetchone()[0]
+
 def trans_balance(trans):
     "Return (linestotal,paymentstotal) on a transaction"
     cur=cursor()
