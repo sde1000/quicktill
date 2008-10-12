@@ -1,3 +1,15 @@
+quicktill (0.8.23) stable; urgency=low
+
+  * New release 0.8.23
+
+  * Change confusingly out-of-date error message in release script
+
+  * Warning popup for old transactions
+
+  * Barrelage statistics for till web server
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 12 Oct 2008 14:36:45 +0100
+
 quicktill (0.8.22) stable; urgency=low
 
   * New release 0.8.22
