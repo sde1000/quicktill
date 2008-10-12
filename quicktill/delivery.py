@@ -1,4 +1,4 @@
-import ui,stock,td,curses.ascii,keyboard,printer,tillconfig
+import ui,stock,td,curses.ascii,keyboard,printer,tillconfig,stocklines
 
 def create_and_edit_delivery(supplier):
     dn=td.delivery_new(supplier)
@@ -157,6 +157,7 @@ class delivery(ui.basicpopup):
         # Set the Confirm flag
         self.finish()
         td.delivery_check(self.dn)
+        stocklines.auto_allocate(deliveryid=self.dn,confirm=False)
     def confirmcheck(self):
         if self.pack_fields() is None: return
         # The confirm button was pressed; set the flag

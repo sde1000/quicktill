@@ -1,4 +1,4 @@
-import keyboard,ui,td,logging,tillconfig,printer
+import keyboard,ui,td,logging,tillconfig,printer,managestock
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
@@ -144,15 +144,50 @@ def restock_all():
     lines=[x[0] for x in td.stockline_list(caponly=True)]
     return restock_list(lines)
 
-def auto_allocate():
-    """Automatically allocate stock to stock lines.
+def auto_allocate(deliveryid=None,confirm=True):
+    """
+    Automatically allocate stock to stock lines.  If there's a potential
+    clash (the same type of stock has been allocated to more than one
+    stock line in the past) then enter a reduced version of the stockline
+    associations dialogue and let them sort out the clash; then retry.
 
     """
-    td.stock_autoallocate()
-    ui.infopopup(["New stock of the same type as stock already on display "
-                  "has automatically been allocated to those display lines."],
-                 title="Auto-allocate confirmation",colour=ui.colour_confirm,
-                 dismiss=keyboard.K_CASH)
+    cl=td.stock_autoallocate_candidates(deliveryid)
+    # Check for duplicate stockids
+    seen={}
+    duplines={}
+    for stockline,stockid,dq in cl:
+        if stockid in seen:
+            duplines[stockline]=stockid
+            duplines[seen[stockid]]=stockid
+        seen[stockid]=stockline
+    if duplines!={}:
+        # Oops, there were duplicate stockids.  Dump the user into the
+        # stockline associations editor to sort it out.
+        managestock.stockline_associations(
+            duplines.keys(),"The following stock line and stock type "
+            "associations meant an item of stock could not be allocated "
+            "unambiguously.  Delete associations from the list below "
+            "until there is only one stock line per stock type, then "
+            "press Clear and re-try the stock allocation using 'Use Stock' "
+            "option 3.")
+    else:
+        if len(cl)>0:
+            td.stock_allocate(cl)
+            message=("The following stock items have been allocated to "
+                     "display lines: %s."%(
+                    ', '.join(["%d"%stockid for sl,stockid,dq in cl])))
+            confirm=True
+        else:
+            message=("There was nothing available for automatic allocation.  "
+                     "To allocate stock to a stock line manually, press the "
+                     "'Use Stock' button, then the button for the stock line, "
+                     "and choose option 2.")
+        if confirm:
+            ui.infopopup([message],
+                         title="Auto-allocate confirmation",
+                         colour=ui.colour_confirm,
+                         dismiss=keyboard.K_CASH)
 
 def return_stock(stockline):
     sl=calculate_restock(stockline,target=0)
@@ -474,7 +509,8 @@ def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
         km[i]=(linemenu,(i,translate_keyline_to_stockline(func).linekey),True)
     ui.menu(ml,title=title,blurb=blurb,keymap=km)
 
-def selectlocation(func,title="Stock Locations",blurb=None,caponly=False):
+def selectlocation(func,title="Stock Locations",blurb="Choose a location",
+                   caponly=False):
     """A pop-up menu of stock locations.  Calls func with a list of
     stocklines for the selected location.
 

@@ -623,19 +623,38 @@ def stock_putonsale(stockid,stocklineid):
     commit()
     return True
 
-def stock_autoallocate():
+def stock_autoallocate_candidates(deliveryid=None):
+    """
+    Return a list of (stockline,stockid,displayqty) tuples, ordered
+    by stockid.  List is suitable for passing to stock_allocate() once
+    duplicate stockids have been resolved.
+
+    """
     cur=cursor()
+    ds="AND deliveryid=%s"%deliveryid if deliveryid is not None else ""
     cur.execute(
-        "INSERT INTO stockonsale (stocklineid,stockid,displayqty) "
         "SELECT sl.stocklineid,si.stockid,si.used AS displayqty "
         "FROM (SELECT * FROM stocklines WHERE capacity IS NOT NULL) AS sl "
         "CROSS JOIN (SELECT * FROM stockinfo WHERE deliverychecked "
-        "AND finished IS NULL AND stockid NOT IN ( "
+        "AND finished IS NULL %s AND stockid NOT IN ( "
         "SELECT stockid FROM stockonsale)) AS si "
         "WHERE si.stocktype IN "
-        "(SELECT stock.stocktype FROM stockonsale sos "
-        "LEFT JOIN stock ON stock.stockid=sos.stockid "
-        "WHERE sos.stocklineid=sl.stocklineid)")
+        "(SELECT stocktype FROM stockline_stocktype_log ssl "
+        "WHERE ssl.stocklineid=sl.stocklineid) "
+        "ORDER BY si.stockid"%ds)
+    return cur.fetchall()
+
+def stock_allocate(aal):
+    """
+    Allocate stock to stocklines; expects a list of
+    (stockline,stockid,displayqty) tuples, as produced by
+    stock_autoallocate_candidates() and then filtered for duplicate
+    stockids.
+
+    """
+    cur=cursor()
+    for i in aal:
+        cur.execute("INSERT INTO stockonsale VALUES (%d,%d,%d)",i)
     commit()
 
 def stock_purge():
@@ -771,14 +790,20 @@ def stocklevel_check(dept=None,period='3 weeks'):
 
 ### Functions related to the stocktype/stockline log table
 
-def stockline_stocktype_log():
+def stockline_stocktype_log(stocklines=None):
     cur=cursor()
+    if stocklines is None:
+        slt=""
+    else:
+        slt="WHERE ssl.stocklineid IN (%s) "%(
+            ",".join(["%d"%x for x in stocklines]))
     cur.execute(
         "SELECT ssl.stocklineid,ssl.stocktype,sl.name,st.shortname "
         "FROM stockline_stocktype_log ssl "
         "LEFT JOIN stocklines sl ON ssl.stocklineid=sl.stocklineid "
         "LEFT JOIN stocktypes st ON ssl.stocktype=st.stocktype "
-        "ORDER BY sl.dept,sl.name,st.shortname")
+        "%s"
+        "ORDER BY sl.dept,sl.name,st.shortname"%slt)
     return cur.fetchall()
 
 def stockline_stocktype_log_del(stockline,stocktype):

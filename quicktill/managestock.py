@@ -137,17 +137,23 @@ class stockline_associations(ui.listpopup):
     types.  Pressing Cancel on a line deletes the association.
 
     """
-    def __init__(self):
-        salist=td.stockline_stocktype_log()
+    def __init__(self,stocklines=None,
+                 blurb="To create a new association, use the 'Use Stock' "
+                 "button to assign stock to a line."):
+        """
+        If a list of stocklines is passed, restrict the editor to just
+        those; otherwise list all of them.
+
+        """
+        salist=td.stockline_stocktype_log(stocklines)
         f=ui.tableformatter(' l l ')
         headerline=ui.tableline(f,["Stock line","Stock type"])
         lines=[ui.tableline(f,(linename,stname),userdata=(linenum,stocktype))
                for (linenum,stocktype,linename,stname) in salist]
         ui.listpopup.__init__(
             self,lines,title="Stockline / Stock type associations",
-            header=["Press Cancel to delete an association.  "
-            "To create a new association, use the 'Use Stock' "
-            "button to assign stock to a line.",headerline])
+            header=["Press Cancel to delete an association.  "+blurb,
+                    headerline])
     def keypress(self,k):
         if k==keyboard.K_CANCEL and self.s:
             line=self.s.dl.pop(self.s.cursor)
