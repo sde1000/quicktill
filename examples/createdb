@@ -3,6 +3,7 @@
 CREATE TABLE businesses (
 	business int NOT NULL PRIMARY KEY,
 	name varchar(80),
+	abbrev varchar(20),
 	address varchar(200),
 	vatno varchar(30)
 	);
@@ -386,6 +387,17 @@ stockout.translineid references translines.translineid
 
 Set so that references are only checked at end of transaction.
 */
+
+/* The businesstotals view is used by the tillweb module */
+CREATE VIEW businesstotals AS
+ SELECT b.abbrev, s.sessionid, s.sessiondate, sum(tl.items::numeric * tl.amount) AS sum
+   FROM sessions s
+   JOIN transactions t ON t.sessionid = s.sessionid
+   JOIN translines tl ON t.transid = tl.transid
+   LEFT JOIN departments d ON tl.dept = d.dept
+   LEFT JOIN vat ON vat.band::text = d.vatband::text
+   LEFT JOIN businesses b ON b.business = vat.business
+  GROUP BY b.abbrev, s.sessionid, s.sessiondate;
 
 
 CREATE RULE max_one_open AS ON INSERT TO sessions
