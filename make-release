@@ -50,8 +50,7 @@ oldversion=$(dpkg-parsechangelog -l${pkgdir}/debian/changelog | grep Version: | 
 echo "Previous version: ${oldversion}"
 
 if [ "${oldversion}" = "${newversion}" ]; then
-  echo Versions are the same!  Have you forgotten to update setup.py and
-  echo run git-add on it?
+  echo Versions are the same!  Have you forgotten to update setup.py?
   exit 1
 fi
 
