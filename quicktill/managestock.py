@@ -215,6 +215,8 @@ def maintenance():
          stock.stocktype,(stock.reprice_stocktype,None,1,False)),
         (keyboard.K_SEVEN,"Re-price stock types with inconsistent prices",
          stock.inconsistent_prices_menu,None),
+        (keyboard.K_EIGHT,"Purge finished stock from stock lines",
+         td.stock_purge,None),
         ]
     ui.keymenu(menu,"Stock Maintenance options")
 
