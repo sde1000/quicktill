@@ -835,6 +835,15 @@ class Statistics(DBPage):
             "and s.finishcode!='credit' "
             "group by d.dept,d.description,sup.name "
             "order by d.dept,sum(su.size) desc",())),
+                ('barrelage',(
+            "select "
+            "(sum(su.size)/288)::numeric(10,1) as barrelage from stock s "
+            "left join stockunits su on s.stockunit=su.stockunit "
+            "left join stocktypes st on s.stocktype=st.stocktype "
+            "left join deliveries del on s.deliveryid=del.deliveryid "
+            "where del.date>(now()-interval '1 year') "
+            "and st.unit='pt' "
+            "and s.finishcode!='credit' ",())),
                 ("stocksold",(
             "select d.dept,d.description,"
             "(sum(so.qty)/288)::numeric(10,1) as barrelage "
@@ -863,6 +872,7 @@ class Statistics(DBPage):
         </tr>
         #end for
         </table>
+        <h1>Barrelage $barrelage[0][0] bbl/year</h1>
         <h1>Stock sold</h1>
         <table>
         <tr><th>Department</th><th>Barrels</th></tr>
