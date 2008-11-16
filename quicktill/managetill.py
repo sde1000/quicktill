@@ -5,6 +5,7 @@
 import ui,keyboard,td,printer,math,sys,curses,os,sets
 import register,tillconfig,managekeyboard,stocklines,event
 from version import version
+from mx.DateTime import DateTimeDelta
 
 import logging
 log=logging.getLogger()
@@ -19,6 +20,8 @@ class ssdialog(ui.dismisspopup):
         self.addstr(3,2,"Press Cash/Enter to continue and start the session.")
         self.addstr(5,2,"Session date:")
         date=ui.now()
+        if date.hour>=23:
+            date=date+DateTimeDelta(1)
         self.datefield=ui.datefield(5,16,f=date,keymap={
                 keyboard.K_CASH: (self.key_enter,None)})
         self.datefield.focus()
