@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH RUNTILL 1 "2007-03-29"
+.TH RUNTILL 1 "2008-11-16"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -32,7 +32,7 @@ command.
 system to be started, loading its configuration from a URL.
 .SH OPTIONS
 These programs follow the usual GNU command line syntax, with long
-options starting with two dashes (`-').
+options starting with two dashes (\-\-).
 A summary of options is included below.
 For a complete description, see the Info files.
 .TP
@@ -49,5 +49,16 @@ configured in /etc/quicktill/configurl
 .B \-c, \-\-config\-number=CONFIGNUM
 Indicate which configuration to use from the global configuration file.
 The default is 0.
+.TP
+.B \-d, \-\-database=DATABASE
+Override the database connection indicated in the configuration file.
+Will usually have to be escaped, because the connection string is of
+the form "dbname=foo host=bar"
+.TP
+.B \-l, \-\-logfile=LOGFILE
+Specify a log filename.
+.TP
+.B \-\-debug
+Include debug output in the logfile.
 .SH AUTHOR
 quicktill was written by <steve@greenend.org.uk>.
