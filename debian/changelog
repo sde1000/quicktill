@@ -1,3 +1,19 @@
+quicktill (0.8.25) stable; urgency=low
+
+  * New release 0.8.25
+
+  * More sanity checking in train timetable popup
+
+  * Update manpage
+
+  * Fix up date when session is started just before midnight
+
+  * Barrelage query in tillweb
+
+  * Add option to purge finished stock explicitly
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 11 Jan 2009 22:09:02 +0000
+
 quicktill (0.8.24) stable; urgency=low
 
   * New release 0.8.24
