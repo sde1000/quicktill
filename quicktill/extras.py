@@ -75,9 +75,9 @@ class departurelist:
                                          sys.exc_traceback)
             ui.infopopup(e,title="There is a problem with the web page")
         # Now p.tablelines contains the data!  Format and display it.
-        self.tablelines=p.tablelines
+        self.tablelines=[x for x in p.tablelines if len(x)>=3]
         self.station=name
-        t=ui.table(p.tablelines)
+        t=ui.table(self.tablelines)
         ll=t.format('l l l')
         if ll==[]: ll=["No train information available."]
         ui.linepopup(ll,name,colour=ui.colour_info,dismiss=keyboard.K_CASH,
