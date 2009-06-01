@@ -1,4 +1,4 @@
-import ui,keyboard,td,printer,urllib,imp,textwrap,curses,sys,traceback
+import ui,keyboard,td,printer,urllib,imp,textwrap,curses,sys,traceback,math
 
 kitchenprinter=None
 menuurl=None
@@ -12,9 +12,10 @@ class fooditem:
         return self.name
     def getprice(self):
         if self.staffdiscount:
-            if self.price<=1.50: return self.price
-            if self.price<=4.50: return self.price-1.50
-            return self.price-3.00
+            discount=self.price*0.4
+            if discount>3.00: discount=3.00
+            discount=math.floor(discount*20.0)/20.0
+            return self.price-discount
         return self.price
     def display(self,width):
         """
