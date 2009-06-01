@@ -1,3 +1,11 @@
+quicktill (0.8.26) stable; urgency=low
+
+  * New release 0.8.26
+
+  * Change staff discount policy on food orders
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 01 Jun 2009 21:14:03 +0100
+
 quicktill (0.8.25) stable; urgency=low
 
   * New release 0.8.25
