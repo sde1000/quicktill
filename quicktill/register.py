@@ -913,6 +913,13 @@ class page(ui.basicpage):
                      title="Transaction defer confirmed",
                      colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
     def freedrinktrans(self,transid):
+        # Temporarily disable this function - SDE 5/6/09
+        ui.infopopup(["This function is no longer available.  Instead you "
+                      "must write a note to Steve with the transaction IDs "
+                      "that need to be converted, and he will do it after "
+                      "checking very carefully!"],
+                     title="Convert to Free Drinks")
+        return
         if td.trans_closed(transid):
             ui.infopopup(["Transaction %d has been closed, and cannot now "
                           "be converted to free drinks."%transid],
