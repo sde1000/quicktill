@@ -1,3 +1,11 @@
+quicktill (0.8.27) stable; urgency=low
+
+  * New release 0.8.27
+
+  * Disable the 'convert to free drinks' function
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 05 Jun 2009 23:51:18 +0100
+
 quicktill (0.8.26) stable; urgency=low
 
   * New release 0.8.26
