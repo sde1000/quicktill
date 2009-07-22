@@ -1,3 +1,11 @@
+quicktill (0.8.29) stable; urgency=low
+
+  * New release 0.8.29
+
+  * Enable configname to be accessed from global config module
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 22 Jul 2009 20:54:25 +0100
+
 quicktill (0.8.28) stable; urgency=low
 
   * New release 0.8.28
