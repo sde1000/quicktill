@@ -1,7 +1,7 @@
-import ui,keyboard,printer,tillconfig
+import ui,keyboard,printer,tillconfig,event
 import HTMLParser
 import urllib
-import traceback,sys
+import traceback,sys,os,time
 
 ### Train departures
 
@@ -172,4 +172,68 @@ class bbcheck(ui.dismisspopup):
         pdriver.printline("Left on site:\t\t%s"%tillconfig.fc(left_on_site))
         pdriver.printline("Banked:\t\t%s"%tillconfig.fc(banked))
         pdriver.end()
+        self.dismiss()
+
+### Coffee pot timer
+
+class coffeealarm:
+    def __init__(self,timestampfilename):
+        self.tsf=timestampfilename
+        self.update()
+        event.eventlist.append(self)
+    def update(self):
+        try:
+            sd=os.stat(self.tsf)
+            self.nexttime=float(sd.st_mtime)
+        except:
+            self.nexttime=None
+    def setalarm(self,timeout):
+        "timeout is in seconds"
+        now=time.time()
+        self.nexttime=now+timeout
+        f=file(self.tsf,'w')
+        f.close()
+        os.utime(self.tsf,(now,self.nexttime))
+    def clearalarm(self):
+        self.nexttime=None
+        os.remove(self.tsf)
+    def alarm(self):
+        if self.nexttime==None: return
+        self.clearalarm()
+        ui.alarmpopup(title="Coffee pot alarm",
+                      text=["Please empty out and clean the coffee pot - the "
+                      "coffee in it is now too old."],
+                      colour=ui.colour_info,dismiss=keyboard.K_DEPT11)
+
+class managecoffeealarm(ui.dismisspopup):
+    def __init__(self,alarminstance):
+        self.ai=alarminstance
+        remaining=None if self.ai.nexttime is None else self.ai.nexttime-time.time()
+        ui.dismisspopup.__init__(self,8,40,title="Coffee pot alarm",
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_input)
+        if remaining is None:
+            self.addstr(2,2,"No alarm is currently set.")
+        else:
+            self.addstr(2,2,"Remaining time: %d minutes %d seconds"%(
+                    remaining/60,remaining%60))
+        self.addstr(3,2,"      New time:")
+        self.addstr(3,22,"minutes")
+        if remaining is not None:
+            self.addstr(5,2,"Press Cancel to clear the alarm.")
+        self.timefield=ui.editfield(
+            3,18,3,validate=ui.validate_int,keymap={
+                keyboard.K_CASH: (self.enter,None,False),
+                keyboard.K_CANCEL: (self.clearalarm,None,False)})
+        self.timefield.set("60") # Default time
+        self.timefield.focus()
+    def enter(self):
+        try:
+            timeout=int(self.timefield.f)*60
+        except:
+            return
+        self.ai.setalarm(timeout)
+        self.dismiss()
+    def clearalarm(self):
+        self.ai.clearalarm()
         self.dismiss()

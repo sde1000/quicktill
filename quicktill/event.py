@@ -18,13 +18,15 @@ def eventloop():
         timeout=None
         t=time.time()
         for i in eventlist:
-            nt=i.nexttime()
+            nt=i.nexttime
             i.mainloopnexttime=nt
+            if nt is None: continue
             if timeout is None or (nt-t)<timeout:
                 timeout=nt-t
         curses.panel.update_panels()
         curses.doupdate()
-        if timeout>0:
+        # debug curses.beep()
+        if timeout>0.0:
             (rd,wr,ex)=select.select(rdlist,[],[],timeout)
             for i in rd: i.doread()
             for i in wr: i.dowrite()
@@ -32,5 +34,6 @@ def eventloop():
         # Process any events whose time has come
         t=time.time()
         for i in eventlist:
+            if i.mainloopnexttime is None: continue
             if t>=i.mainloopnexttime:
                 i.alarm()

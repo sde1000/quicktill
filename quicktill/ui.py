@@ -46,11 +46,11 @@ def gettime():
 class clock:
     def __init__(self,win):
         self.stdwin=win
-    def nexttime(self):
-        now=time.time()
-        return math.ceil(now)
+        self.alarm()
     def alarm(self):
         drawheader()
+        now=time.time()
+        self.nexttime=math.ceil(now)+0.01
 
 def formattime(ts):
     "Returns ts formatted as %Y-%m-%d %H:%M:%S"
@@ -427,6 +427,23 @@ class infopopup(linepopup):
         padding=" "*w
         t=[padding]+t+[""]
         linepopup.__init__(self,t,title,dismiss,cleartext,colour,keymap)
+
+class alarmpopup(infopopup):
+    """This is like an infopopup, but goes "beep" every second until
+    it is dismissed.
+
+    """
+    def __init__(self,*args,**kwargs):
+        infopopup.__init__(self,*args,**kwargs)
+        self.mainloopnexttime=0
+        event.eventlist.append(self)
+        self.alarm()
+    def alarm(self):
+        curses.beep()
+        self.nexttime=math.ceil(time.time())
+    def dismiss(self):
+        del event.eventlist[event.eventlist.index(self)]
+        infopopup.dismiss(self)
 
 def validate_int(s,c):
     try:

@@ -55,10 +55,8 @@ class page(ui.basicpage):
             self.drawlines()
         elif self.display==1:
             self.drawstillage()
-    def nexttime(self):
-        return self.calltime
     def alarm(self):
-        self.calltime=time.time()+60.0
+        self.nexttime=time.time()+60.0
         self.display=self.display+1
         if self.display>1: self.display=0
         self.redraw()
