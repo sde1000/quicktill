@@ -96,6 +96,7 @@ def main():
 
     import imp
     g=imp.new_module("globalconfig")
+    g.configname=options.configname
     exec globalconfig in g.__dict__
 
     config=g.configurations.get(options.configname)
