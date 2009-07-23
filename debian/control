@@ -1,6 +1,6 @@
 Source: quicktill
 Section: python
-XS-Python-Version: all
+XS-Python-Version: >=2.5
 Priority: optional
 Maintainer: Stephen Early <sde@individualpubs.co.uk>
 Build-Depends: debhelper (>= 5), python-dev
