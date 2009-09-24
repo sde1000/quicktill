@@ -1,3 +1,11 @@
+quicktill (0.8.31) stable; urgency=low
+
+  * New release 0.8.31
+
+  * Support for printers with paper cutters for food orders
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 24 Sep 2009 16:33:08 +0100
+
 quicktill (0.8.30) stable; urgency=low
 
   * New release 0.8.30
