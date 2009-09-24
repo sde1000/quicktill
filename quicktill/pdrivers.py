@@ -60,7 +60,8 @@ class escpos:
     ep_center=l2s([27,97,1])
     ep_right=l2s([27,97,2])
     ep_ff=l2s([27,100,7])
-    def __init__(self,devicefile,cpl,coding):
+    ep_fullcut=l2s([27,105])
+    def __init__(self,devicefile,cpl,coding,has_cutter=False):
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -69,6 +70,7 @@ class escpos:
             self.ci=devicefile
         self.fontcpl=cpl
         self.coding=coding
+        self.has_cutter=has_cutter
     def start(self):
         if self.f is None:
             self.s=socket.socket(socket.AF_INET)
@@ -156,13 +158,18 @@ class escpos:
         return False
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
+    def fullcut(self):
+        if self.has_cutter:
+            self.f.write(escpos.ep_fullcut)
+            self.f.flush()
     def kickout(self):
         self.f.write(escpos.ep_pulse)
         self.f.flush()
 
 
 class Epson_TM_U220(escpos):
-    def __init__(self,devicefile,paperwidth,coding='iso-8859-1'):
+    def __init__(self,devicefile,paperwidth,coding='iso-8859-1',
+                 has_cutter=False):
         # Characters per line with fonts 0 and 1
         if paperwidth==57:
             cpl=(25,30)
@@ -170,7 +177,7 @@ class Epson_TM_U220(escpos):
             cpl=(33,40)
         else:
             raise "Unknown paper width"
-        escpos.__init__(self,devicefile,cpl,coding)
+        escpos.__init__(self,devicefile,cpl,coding,has_cutter)
 
 class pdf:
     def __init__(self,printcmd,width=140,pagesize=A4,

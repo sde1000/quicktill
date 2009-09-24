@@ -296,6 +296,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     else:
         driver.printline()
         driver.printline()
+        driver.fullcut()
     driver.end()
 
 def print_order_cancel(driver,number):
@@ -306,6 +307,7 @@ def print_order_cancel(driver,number):
     driver.printline("\t%s"%ui.formattime(ui.now()))
     driver.printline()
     driver.printline()
+    driver.fullcut()
     driver.end()
 
 def kickout():
