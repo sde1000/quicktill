@@ -154,12 +154,11 @@ class escpos:
         if underline is not None:
             self.f.write(escpos.ep_underline[self.underline])
         return fits
-    def cancut(self):
-        return False
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
     def fullcut(self):
         if self.has_cutter:
+            self.f.write('\n'*7+escpos.ep_left)
             self.f.write(escpos.ep_fullcut)
             self.f.flush()
     def kickout(self):
