@@ -1,3 +1,11 @@
+quicktill (0.8.32) stable; urgency=low
+
+  * New release 0.8.32
+
+  * Extra space before cut, otherwise the cut goes in the wrong place!
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 24 Sep 2009 16:48:43 +0100
+
 quicktill (0.8.31) stable; urgency=low
 
   * New release 0.8.31
