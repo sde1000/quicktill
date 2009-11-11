@@ -1,7 +1,7 @@
 import ui,keyboard,printer,tillconfig,event
 import HTMLParser
 import urllib
-import traceback,sys,os,time
+import traceback,sys,os,time,datetime
 
 ### Train departures
 
@@ -237,3 +237,34 @@ class managecoffeealarm(ui.dismisspopup):
     def clearalarm(self):
         self.ai.clearalarm()
         self.dismiss()
+
+### Reminders at particular times of day
+class reminderpopup:
+    def __init__(self,alarmtime,title,text,colour=ui.colour_info,
+                 dismiss=keyboard.K_CANCEL):
+        """
+
+        Alarmtime is a tuple of (hour,minute).  It will be interpreted
+        as being in local time; each time the alarm goes off it will
+        be reinterpreted.
+
+        """
+        self.alarmtime=alarmtime
+        self.title=title
+        self.text=text
+        self.colour=colour
+        self.dismisskey=dismiss
+        self.setalarm()
+        event.eventlist.append(self)
+    def setalarm(self):
+        # If the alarm time has already passed today, we set the alarm for
+        # the same time tomorrow
+        atime=datetime.time(*self.alarmtime)
+        candidate=datetime.datetime.combine(datetime.date.today(),atime)
+        if time.mktime(candidate.timetuple())<=time.time():
+            candidate=candidate+datetime.timedelta(1,0,0)
+        self.nexttime=time.mktime(candidate.timetuple())
+    def alarm(self):
+        ui.alarmpopup(title=self.title,text=self.text,
+                      colour=self.colour,dismiss=self.dismisskey)
+        self.setalarm()
