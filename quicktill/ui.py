@@ -430,17 +430,20 @@ class infopopup(linepopup):
 
 class alarmpopup(infopopup):
     """This is like an infopopup, but goes "beep" every second until
-    it is dismissed.
+    it is dismissed.  It dismisses itself after 5 minutes.
 
     """
     def __init__(self,*args,**kwargs):
         infopopup.__init__(self,*args,**kwargs)
         self.mainloopnexttime=0
+        self.remaining=300
         event.eventlist.append(self)
         self.alarm()
     def alarm(self):
         curses.beep()
         self.nexttime=math.ceil(time.time())
+        self.remaining=self.remaining-1
+        if self.remaining<1: self.dismiss()
     def dismiss(self):
         del event.eventlist[event.eventlist.index(self)]
         infopopup.dismiss(self)
