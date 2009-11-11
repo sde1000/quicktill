@@ -1,3 +1,13 @@
+quicktill (0.8.33) stable; urgency=low
+
+  * New release 0.8.33
+
+  * Reminder popups for particular times of day
+
+  * Alarm popups now disappear after 5 minutes, unless dismissed manually.
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 11 Nov 2009 19:02:23 +0000
+
 quicktill (0.8.32) stable; urgency=low
 
   * New release 0.8.32
