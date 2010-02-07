@@ -166,6 +166,8 @@ def main():
         tillconfig.checkdigit_print=config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
         tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
+    if 'allow_tabs' in config:
+        tillconfig.allow_tabs=config['allow_tabs']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

@@ -888,6 +888,12 @@ class page(ui.basicpage):
                           "current session."],title="Error")
             return
         log.info("Register: recalltrans")
+        if (tillconfig.allow_tabs is False and self.keyguard is False and
+            not (self.trans is None or td.trans_closed(self.trans))):
+            ui.infopopup(["We do not run tabs.  Food and drink must "
+                          "be paid for at the time it is ordered."],
+                         title="Error")
+            return
         tl=td.session_translist(sc[0])
         def transsummary(t):
             num,closed,amount=t
