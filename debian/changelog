@@ -1,3 +1,11 @@
+quicktill (0.8.34) stable; urgency=low
+
+  * New release 0.8.34
+
+  * Add configuration option to deny the use of 'Recall Transaction' for tabs
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 07 Feb 2010 22:40:39 +0000
+
 quicktill (0.8.33) stable; urgency=low
 
   * New release 0.8.33
