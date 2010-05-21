@@ -44,7 +44,7 @@ echo "New version: ${newversion}"
 rm -rf ${tmpdir}
 mkdir ${tmpdir}
 pkgdir=${tmpdir}/${packagename}-${newversion}
-git-checkout-index -a --prefix=${pkgdir}/
+git checkout-index -a --prefix=${pkgdir}/
 
 oldversion=$(dpkg-parsechangelog -l${pkgdir}/debian/changelog | grep Version: | sed 's/Version: //')
 echo "Previous version: ${oldversion}"
@@ -62,8 +62,8 @@ mv ${pkgdir}/debian/changelog ${pkgdir}/debian/changelog.old
 
 echo -e "${packagename} (${newversion}) ${distribution}; urgency=${urgency}\n" >${pkgdir}/debian/changelog
 echo -e "  * New release ${newversion}\n" >>${pkgdir}/debian/changelog
-git-log '--pretty=format:  * %s%n' v${oldversion}.. -- >>${pkgdir}/debian/changelog
-echo -e "\n -- $(git-config --get user.name) <$(git-config --get user.email)>  ${releasedate}\n">>${pkgdir}/debian/changelog
+git log '--pretty=format:  * %s%n' v${oldversion}.. -- >>${pkgdir}/debian/changelog
+echo -e "\n -- $(git config --get user.name) <$(git config --get user.email)>  ${releasedate}\n">>${pkgdir}/debian/changelog
 cat ${pkgdir}/debian/changelog.old >>${pkgdir}/debian/changelog
 rm ${pkgdir}/debian/changelog.old
 
