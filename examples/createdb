@@ -464,3 +464,5 @@ much was taken in the last two weeks; it lets the query exclude a large
 percentage of the translines table from consideration. */
 
 CREATE INDEX translines_time_key ON translines (time);
+
+CREATE SEQUENCE foodorder_seq;
