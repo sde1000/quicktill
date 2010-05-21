@@ -8,7 +8,7 @@ CREATE TABLE businesses (
 	vatno varchar(30)
 	);
 COPY businesses FROM stdin;
-1	Individual Pubs Limited	Unit 111, Norman Industrial Estate\\nCambridge Road\\nMilton\\nCambridge CB24 6AT	783 9983 50
+1	Individual Pubs Limited	IPL	Unit 111, Norman Industrial Estate\\nCambridge Road\\nMilton\\nCambridge CB24 6AT	783 9983 50
 \.
 
 CREATE TABLE vat (
