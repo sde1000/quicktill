@@ -265,6 +265,7 @@ cellar	Cellar work
 damaged	Damaged
 freebie	Free drink
 missing	Gone missing
+driptray     Drip tray
 \.
 
 /* One entry is made here every time stock is removed.  This table is
