@@ -1,3 +1,23 @@
+quicktill (0.9.1) stable; urgency=low
+
+  * New release 0.9.1
+
+  * Configuration option to ask for cashback amount first in card dialog
+
+  * New upstart configuration file for auto-start of till on Ubuntu 10.04
+
+  * Add 'driptray' waste reason to createdb script
+
+  * Updates for python-2.6 and Ubuntu 10.04 LTS
+
+  * Add food order sequence to database setup script
+
+  * Fix createdb to include company abbreviation when creating database
+
+  * git-foo commands no longer supported in Ubuntu; change to git foo
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 22 May 2010 18:55:07 +0100
+
 quicktill (0.8.34) stable; urgency=low
 
   * New release 0.8.34
