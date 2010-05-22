@@ -148,6 +148,8 @@ def main():
     tillconfig.companyaddr=config['companyaddr']
     tillconfig.currency=config['currency']
     tillconfig.cashback_limit=config['cashback_limit']
+    if 'cashback_first' in config:
+        tillconfig.cashback_first=config['cashback_first']
     if 'pricepolicy' in config:
         tillconfig.pricepolicy=config['pricepolicy']
     if 'qtystring' in config:

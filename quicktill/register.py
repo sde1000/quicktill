@@ -148,27 +148,39 @@ class cardpopup(ui.dismisspopup):
         ui.dismisspopup.__init__(self,16,44,title="Card payment",
                                  colour=ui.colour_input)
         self.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
-        self.addstr(4,2,"Please enter the receipt number from the")
-        self.addstr(5,2,"credit card receipt.")
-        self.addstr(7,2," Receipt number:")
-        self.rnfield=ui.editfield(7,19,16,keymap={
-                keyboard.K_CLEAR: (self.dismiss,None)})
-        self.addstr(9,2,"Is there any cashback?  Enter amount and")
-        self.addstr(10,2,"press Cash/Enter.  Leave blank and press")
-        self.addstr(11,2,"Cash/Enter if there is none.")
-        self.addstr(13,2,"Cashback amount: %s"%tillconfig.currency)
-        km={keyboard.K_CASH: (self.enter,None),
-            keyboard.K_TWENTY: (self.note,(20.0,)),
-            keyboard.K_TENNER: (self.note,(10.0,)),
-            keyboard.K_FIVER: (self.note,(5.0,))}
-        self.cbfield=ui.editfield(13,19+len(tillconfig.currency),6,
+        if tillconfig.cashback_first:
+            cbstart=4
+            rnstart=10
+        else:
+            cbstart=9
+            rnstart=4
+        self.addstr(rnstart,2,"Please enter the receipt number from the")
+        self.addstr(rnstart+1,2,"credit card receipt.")
+        self.addstr(rnstart+3,2," Receipt number:")
+        self.rnfield=ui.editfield(rnstart+3,19,16)
+        self.addstr(cbstart,2,"Is there any cashback?  Enter amount and")
+        self.addstr(cbstart+1,2,"press Cash/Enter.  Leave blank and press")
+        self.addstr(cbstart+2,2,"Cash/Enter if there is none.")
+        self.addstr(cbstart+4,2,"Cashback amount: %s"%tillconfig.currency)
+        self.cbfield=ui.editfield(cbstart+4,19+len(tillconfig.currency),6,
                                 validate=ui.validate_float,
-                                keymap=km)
+                                keymap={
+                keyboard.K_TWENTY: (self.note,(20.0,)),
+                keyboard.K_TENNER: (self.note,(10.0,)),
+                keyboard.K_FIVER: (self.note,(5.0,))})
+        if tillconfig.cashback_first:
+            firstfield=self.cbfield
+            lastfield=self.rnfield
+        else:
+            firstfield=self.rnfield
+            lastfield=self.cbfield
         ui.map_fieldlist([self.rnfield,self.cbfield])
-        self.rnfield.focus()
+        firstfield.keymap[keyboard.K_CLEAR]=(self.dismiss,None)
+        lastfield.keymap[keyboard.K_CASH]=(self.enter,None)
+        firstfield.focus()
     def note(self,size):
         self.cbfield.set("%0.2f"%size)
-        self.enter()
+        self.cbfield.keypress(keyboard.K_CASH)
     def enter(self):
         try:
             cba=float(self.cbfield.f)

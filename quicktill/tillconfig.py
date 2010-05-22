@@ -80,3 +80,6 @@ checkdigit_on_usestock=False
 
 # Do we allow transactions to be stored for use as tabs?
 allow_tabs=True
+
+# Does the card popup ask for cashback before receipt number?
+cashback_first=False
