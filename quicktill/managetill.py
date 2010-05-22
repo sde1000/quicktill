@@ -2,7 +2,7 @@
 
 """
 
-import ui,keyboard,td,printer,math,sys,curses,os,sets
+import ui,keyboard,td,printer,math,sys,curses,os
 import register,tillconfig,managekeyboard,stocklines,event
 from version import version
 from mx.DateTime import DateTimeDelta
@@ -198,7 +198,7 @@ def totalpopup(session):
     depts=td.session_depttotals(session)
     paytotals=td.session_paytotals(session)
     payments=td.session_actualtotals(session)
-    paytypes=sets.Set(paytotals.keys()+payments.keys())
+    paytypes=set(paytotals.keys()+payments.keys())
     l=[]
     l.append("Accounting date %s"%ui.formatdate(accdate))
     l.append("Started %s"%ui.formattime(start))

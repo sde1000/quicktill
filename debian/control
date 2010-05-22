@@ -9,7 +9,7 @@ Standards-Version: 3.7.2
 
 Package: quicktill
 Architecture: all
-Depends: ${python:Depends}, python-psycopg, python-reportlab
+Depends: ${python:Depends}, python-psycopg2, python-reportlab
 XB-Python-Version: ${python:Versions}
 Description: Simple stock-control and cash register software
  Developed for Individual Pubs Limited in the UK.

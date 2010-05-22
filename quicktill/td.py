@@ -6,7 +6,24 @@
 # implementing them in the database itself.
 
 import time,stock
-import psycopg as db
+import psycopg2 as db
+import psycopg2.extensions
+
+# psycopg converted database numeric() types into float() types.
+
+# By default, psycopg2 converts them into decimal.Decimal() types -
+# arguably more correct, but not what the rest of this package is
+# expecting.
+
+# Until the rest of the package is updated to expect Decimal()s,
+# convert to float()s instead:
+DEC2FLOAT = psycopg2.extensions.new_type(
+    db._psycopg.DECIMAL.values,
+    'DEC2FLOAT',
+    lambda value, curs: float(value) if value is not None else None)
+psycopg2.extensions.register_type(DEC2FLOAT)
+# If psycopg2._psycopg.DECIMAL stops working, use
+# psycopg2.extensions.DECIMAL instead.
 
 database=None
 
@@ -18,15 +35,6 @@ def commit():
     con.commit()
 
 ### Convenience functions
-
-def mkdate(d):
-    """This function originally took a time.struct_time and returned a
-    string suitable for passing to postgresql, but now uses the proper
-    DateFromMx() function from the psycopg module instead.
-    
-    """
-    if d is None: return None
-    return db.DateFromMx(d)
 
 def execone(cur,c,*args):
     "Execute c and return the single result. Does not commit."
@@ -49,14 +57,14 @@ def trans_new(note=None):
     cur=cursor()
     t=ticket(cur,"transactions_seq")
     cur.execute("INSERT INTO transactions (transid,sessionid,notes) "
-                "VALUES (%d,%d,%s)",(t,s[0],note))
+                "VALUES (%s,%s,%s)",(t,s[0],note))
     commit()
     return t
 
 def trans_closed(trans):
     cur=cursor()
     return execone(
-        cur,"SELECT closed FROM transactions WHERE transid=%d",(trans,))
+        cur,"SELECT closed FROM transactions WHERE transid=%s",(trans,))
 
 # See also stock_sell()
 
@@ -65,7 +73,7 @@ def trans_addline(trans,dept,items,amountper,source,transcode):
     cur=cursor()
     lid=ticket(cur,"translines_seq")
     cur.execute("INSERT INTO translines (translineid,transid,items,amount,"
-                "dept,source,transcode) VALUES (%d,%d,%d,%f,%d,%s,%s)",
+                "dept,source,transcode) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                 (lid,trans,items,amountper,dept,source,transcode))
     commit()
     return lid
@@ -74,8 +82,8 @@ def trans_additems(lid,items):
     "Update an existing line with additional items"
     cur=cursor()
     # XXX check the transaction is not closed
-    cur.execute("UPDATE translines SET items=items+%d "
-                "WHERE translines.translineid=%d",(items,lid))
+    cur.execute("UPDATE translines SET items=items+%s "
+                "WHERE translines.translineid=%s",(items,lid))
     commit()
 
 def trans_getline(lid):
@@ -85,19 +93,19 @@ def trans_getline(lid):
                 "translines.amount,translines.dept,departments.description,"
                 "translines.stockref,translines.transcode FROM translines "
                 "INNER JOIN departments ON translines.dept=departments.dept "
-                "WHERE translines.translineid=%d",(lid,))
+                "WHERE translines.translineid=%s",(lid,))
     return cur.fetchone()
 
 def trans_getlines(trans):
     "Retrieve lines and payments for a transaction"
     cur=cursor()
-    cur.execute("SELECT translineid FROM translines WHERE transid=%d "
+    cur.execute("SELECT translineid FROM translines WHERE transid=%s "
                 "ORDER BY translineid",(trans,))
     lines=[x[0] for x in cur.fetchall()]
     cur.execute("SELECT p.amount,p.paytype,pt.description,p.ref "
                 "FROM payments p "
                 "LEFT JOIN paytypes pt ON p.paytype=pt.paytype "
-                "WHERE transid=%d ORDER BY time ",(trans,))
+                "WHERE transid=%s ORDER BY time ",(trans,))
     payments=cur.fetchall()
     return (lines,payments)
 
@@ -105,15 +113,15 @@ def trans_age(trans):
     "Return the age of the transaction in days"
     cur=cursor()
     cur.execute("SELECT extract(days from (now()-min(time))) "
-                "FROM translines WHERE transid=%d",(trans,))
+                "FROM translines WHERE transid=%s",(trans,))
     return cur.fetchone()[0]
 
 def trans_balance(trans):
     "Return (linestotal,paymentstotal) on a transaction"
     cur=cursor()
     cur.execute("SELECT (SELECT sum(amount*items) FROM translines "
-                "WHERE translines.transid=%d),(SELECT sum(amount) "
-                "FROM payments WHERE payments.transid=%d)",(trans,trans));
+                "WHERE translines.transid=%s),(SELECT sum(amount) "
+                "FROM payments WHERE payments.transid=%s)",(trans,trans));
     r=cur.fetchone()
     if not r[0]: linestotal=0.0
     else: linestotal=r[0]
@@ -126,19 +134,19 @@ def trans_date(trans):
     cur=cursor()
     d=execone(cur,"SELECT s.sessiondate FROM transactions t "
               "LEFT JOIN sessions s ON t.sessionid=s.sessionid "
-              "WHERE t.transid=%d",(trans,))
+              "WHERE t.transid=%s",(trans,))
     return d
 
-def trans_addpayment(trans,type,amount,ref):
+def trans_addpayment(trans,ptype,amount,ref):
     """Add a payment to a transaction, and return the remaining balance.
     If the remaining balance is zero, mark the transaction closed."""
     cur=cursor()
     cur.execute("INSERT INTO payments (transid,amount,paytype,ref) VALUES "
-                "(%d,%f,%s,%s)",(trans,amount,type,ref))
+                "(%s,%s,%s,%s)",(trans,amount,ptype,ref))
     (lines,payments)=trans_balance(trans)
     remain=lines-payments
     if remain==0.0:
-        cur.execute("UPDATE transactions SET closed=true WHERE transid=%d",
+        cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
                     (trans,))
     commit()
     return remain
@@ -146,20 +154,20 @@ def trans_addpayment(trans,type,amount,ref):
 def trans_cancel(trans):
     """Delete a transaction and everything that depends on it."""
     cur=cursor()
-    closed=execone(cur,"SELECT closed FROM transactions WHERE transid=%d",
+    closed=execone(cur,"SELECT closed FROM transactions WHERE transid=%s",
                    (trans,))
     if closed: return "Transaction closed"
     cur.execute("DELETE FROM stockout WHERE stockout.translineid IN "
-                "(SELECT translineid FROM translines WHERE transid=%d)",(trans,))
-    cur.execute("DELETE FROM payments WHERE transid=%d",(trans,))
-    cur.execute("DELETE FROM translines WHERE transid=%d",(trans,))
-    cur.execute("DELETE FROM transactions WHERE transid=%d",(trans,))
+                "(SELECT translineid FROM translines WHERE transid=%s)",(trans,))
+    cur.execute("DELETE FROM payments WHERE transid=%s",(trans,))
+    cur.execute("DELETE FROM translines WHERE transid=%s",(trans,))
+    cur.execute("DELETE FROM transactions WHERE transid=%s",(trans,))
     commit()
 
 def trans_deleteline(transline):
     cur=cursor()
-    cur.execute("DELETE FROM stockout WHERE translineid=%d",(transline,))
-    cur.execute("DELETE FROM translines WHERE translineid=%d",(transline,))
+    cur.execute("DELETE FROM stockout WHERE translineid=%s",(transline,))
+    cur.execute("DELETE FROM translines WHERE translineid=%s",(transline,))
     commit()
 
 def trans_defer(trans):
@@ -168,7 +176,7 @@ def trans_defer(trans):
 
     """
     cur=cursor()
-    cur.execute("UPDATE transactions SET sessionid=null WHERE transid=%d",
+    cur.execute("UPDATE transactions SET sessionid=null WHERE transid=%s",
                 (trans,))
     commit()
 
@@ -177,9 +185,9 @@ def trans_merge(t1,t2):
 
     """
     cur=cursor()
-    cur.execute("UPDATE translines SET transid=%d WHERE transid=%d",
+    cur.execute("UPDATE translines SET transid=%s WHERE transid=%s",
                 (t2,t1))
-    cur.execute("DELETE FROM transactions WHERE transid=%d",(t1,))
+    cur.execute("DELETE FROM transactions WHERE transid=%s",(t1,))
     commit()
 
 def trans_restore():
@@ -190,7 +198,7 @@ def trans_restore():
     if s is None: return 0
     sessionid=s[0]
     cur=cursor()
-    cur.execute("UPDATE transactions SET sessionid=%d WHERE sessionid IS NULL",
+    cur.execute("UPDATE transactions SET sessionid=%s WHERE sessionid IS NULL",
                 (sessionid,))
     commit()
 
@@ -203,9 +211,9 @@ def trans_makefree(transid,removecode):
     cur=cursor()
     cur.execute("UPDATE stockout SET removecode=%s,translineid=NULL "
                 "WHERE translineid IN (SELECT translineid FROM translines "
-                "WHERE transid=%d)",(removecode,transid))
-    cur.execute("DELETE FROM translines WHERE transid=%d",(transid,))
-    cur.execute("DELETE FROM transactions WHERE transid=%d",(transid,))
+                "WHERE transid=%s)",(removecode,transid))
+    cur.execute("DELETE FROM translines WHERE transid=%s",(transid,))
+    cur.execute("DELETE FROM transactions WHERE transid=%s",(transid,))
     commit()
 
 def trans_incompletes():
@@ -228,14 +236,14 @@ def supplier_new(name,tel,email):
     cur=cursor()
     sid=ticket(cur,"suppliers_seq")
     cur.execute("INSERT INTO suppliers (supplierid,name,tel,email) "
-                "VALUES (%d,%s,%s,%s)",(sid,name,tel,email))
+                "VALUES (%s,%s,%s,%s)",(sid,name,tel,email))
     commit()
     return sid
 
 def supplier_fetch(sid):
     "Return supplier details"
     cur=cursor()
-    cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%d",
+    cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%s",
                 (sid,))
     return cur.fetchone()
 
@@ -243,7 +251,7 @@ def supplier_update(sid,name,tel,email):
     "Update supplier details"
     cur=cursor()
     cur.execute("UPDATE suppliers SET name=%s,tel=%s,email=%s "
-                "WHERE supplierid=%d",(name,tel,email,sid))
+                "WHERE supplierid=%s",(name,tel,email,sid))
     commit()
 
 ### Delivery-related functions
@@ -269,33 +277,33 @@ def delivery_new(supplier):
     cur=cursor()
     dn=ticket(cur,"deliveries_seq")
     cur.execute("INSERT INTO deliveries (deliveryid,supplierid) VALUES "
-                "(%d,%d)",(dn,supplier))
+                "(%s,%s)",(dn,supplier))
     commit()
     return dn
 
 def delivery_items(delivery):
     cur=cursor()
     cur.execute("SELECT stockid FROM stock "
-                "WHERE deliveryid=%d ORDER BY stockid",(delivery,))
+                "WHERE deliveryid=%s ORDER BY stockid",(delivery,))
     return [x[0] for x in cur.fetchall()]
 
 def delivery_update(delivery,supplier,date,docnumber):
     cur=cursor()
-    cur.execute("UPDATE deliveries SET supplierid=%d,date=%s,docnumber=%s "
-                "WHERE deliveryid=%d",
-                (supplier,mkdate(date),docnumber,delivery))
+    cur.execute("UPDATE deliveries SET supplierid=%s,date=%s,docnumber=%s "
+                "WHERE deliveryid=%s",
+                (supplier,date,docnumber,delivery))
     commit()
 
 def delivery_check(delivery):
     cur=cursor()
-    cur.execute("UPDATE deliveries SET checked=true WHERE deliveryid=%d",
+    cur.execute("UPDATE deliveries SET checked=true WHERE deliveryid=%s",
                 (delivery,))
     commit()
 
 def delivery_delete(delivery):
     cur=cursor()
-    cur.execute("DELETE FROM stock WHERE deliveryid=%d",(delivery,))
-    cur.execute("DELETE FROM deliveries WHERE deliveryid=%d",(delivery,))
+    cur.execute("DELETE FROM stock WHERE deliveryid=%s",(delivery,))
+    cur.execute("DELETE FROM deliveries WHERE deliveryid=%s",(delivery,))
     commit()
 
 ### Functions related to the stocktypes table
@@ -303,7 +311,7 @@ def delivery_delete(delivery):
 def stocktype_info(stn):
     cur=cursor()
     cur.execute("SELECT dept,manufacturer,name,shortname,abv,unit "
-                "FROM stocktypes WHERE stocktype=%d",(stn,))
+                "FROM stocktypes WHERE stocktype=%s",(stn,))
     return cur.fetchone()
 
 def stocktype_completemanufacturer(m):
@@ -333,33 +341,25 @@ def stocktype_fromall(dept,manufacturer,name,shortname,abv,unit):
     else:
         abvs="=%f"%abv
     return execone(cur,"SELECT stocktype FROM stocktypes WHERE "
-                   "dept=%%d AND manufacturer=%%s AND name=%%s AND "
+                   "dept=%%s AND manufacturer=%%s AND name=%%s AND "
                    "shortname=%%s AND unit=%%s AND abv%s"%abvs,
                    (dept,manufacturer,name,shortname,unit))
 
 def stocktype_new(dept,manufacturer,name,shortname,abv,unit):
     cur=cursor()
-    if abv is None:
-        abvs="null"
-    else:
-        abvs="%f"%abv
     sn=ticket(cur,"stocktypes_seq")
     cur.execute("INSERT INTO stocktypes (stocktype,dept,manufacturer,"
                 "name,shortname,abv,unit) VALUES "
-                "(%%d,%%d,%%s,%%s,%%s,%s,%%s)"%abvs,
-                (sn,dept,manufacturer,name,shortname,unit))
+                "(%s,%s,%s,%s,%s,%s,%s)",
+                (sn,dept,manufacturer,name,shortname,abv,unit))
     commit()
     return sn
 
 def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
     cur=cursor()
-    if abv is None:
-        abvs="null"
-    else:
-        abvs="%f"%abv
-    cur.execute("UPDATE stocktypes SET dept=%%d,manufacturer=%%s,name=%%s,"
-                "shortname=%%s,abv=%s,unit=%%s WHERE stocktype=%%d"%abvs,
-                (dept,manufacturer,name,shortname,unit,sn))
+    cur.execute("UPDATE stocktypes SET dept=%s,manufacturer=%s,name=%s,"
+                "shortname=%s,abv=%s,unit=%s WHERE stocktype=%s",
+                (dept,manufacturer,name,shortname,abv,unit,sn))
     commit()
 
 def stocktype_search_inconsistent_prices():
@@ -411,8 +411,14 @@ def stock_info(stockid_list):
     """Return lots of information on stock items in the list."""
     if len(stockid_list)==0: return []
     cur=cursor()
-    cur.execute("SELECT * FROM stockinfo WHERE stockid IN (%s)"%(
-        ','.join(["%d"%x for x in stockid_list])))
+    # Q: Does psycopg2 deal with lists?
+    # A: lists are turned into ARRAY types.  Tuples are turned into
+    # something suitable for the IN operator.  The documentation says
+    # that empty tuples are not supported so must be guarded against
+    # (already done, above).  The psycopg2.extensions module MUST be
+    # imported to register support for this.
+    cur.execute("SELECT * FROM stockinfo WHERE stockid IN %s",
+                (tuple(stockid_list),))
     r=cur.fetchall()
     # Q: This is a real candidate for returning a dict! Does pgdb support it?
     # A: not explicitly, but we can do something like:
@@ -442,7 +448,7 @@ def stock_extrainfo(stockid):
         "SELECT min(so.time) as firstsale, "
         "       max(so.time) as lastsale "
         "FROM stock s LEFT JOIN stockout so ON so.stockid=s.stockid "
-        "WHERE s.stockid=%d AND so.removecode='sold' ",(stockid,))
+        "WHERE s.stockid=%s AND so.removecode='sold' ",(stockid,))
     r=cur.fetchone()
     if r is None: r=[None,None]
     d={}
@@ -451,7 +457,7 @@ def stock_extrainfo(stockid):
     cur.execute(
         "SELECT so.removecode,sr.reason,sum(qty) "
         "FROM stockout so INNER JOIN stockremove sr "
-        "ON so.removecode=sr.removecode WHERE so.stockid=%d "
+        "ON so.removecode=sr.removecode WHERE so.stockid=%s "
         "GROUP BY so.removecode,sr.reason",(stockid,))
     d['stockout']=[]
     for i in cur.fetchall():
@@ -462,7 +468,7 @@ def stock_checkpullthru(stockid,maxtime):
     """Did this stock item require pulling through?"""
     cur=cursor()
     r=execone(cur,"SELECT now()-max(stockout.time)>%s FROM stockout "
-              "WHERE stockid=%d AND removecode IN ('sold','pullthru')",
+              "WHERE stockid=%s AND removecode IN ('sold','pullthru')",
               (maxtime,stockid))
     if r is None: r=False
     return r
@@ -474,9 +480,9 @@ def stock_receive(delivery,stocktype,stockunit,costprice,saleprice,
     i=ticket(cur,"stock_seq")
     cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,"
                 "stockunit,costprice,saleprice,bestbefore) "
-                "VALUES (%d,%d,%d,%s,%f,%f,%s)",
+                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
                 (i,delivery,stocktype,stockunit,costprice,saleprice,
-                 mkdate(bestbefore)))
+                 bestbefore))
     commit()
     return i
 
@@ -489,8 +495,8 @@ def stock_duplicate(sn):
     i=ticket(cur,"stock_seq")
     cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,stockunit,"
                 "costprice,saleprice) "
-                "SELECT %d AS stockid,deliveryid,stocktype,stockunit,"
-                "costprice,saleprice FROM stock WHERE stockid=%d",
+                "SELECT %s AS stockid,deliveryid,stocktype,stockunit,"
+                "costprice,saleprice FROM stock WHERE stockid=%s",
                 (i,sn))
     commit()
     return i
@@ -499,19 +505,19 @@ def stock_update(sn,stocktype,stockunit,costprice,saleprice,bestbefore=None):
     cur=cursor()
     # XXX check that delivery is not marked "checked"
     cur.execute("UPDATE stock SET stocktype=%s,stockunit=%s,"
-                "costprice=%f,saleprice=%f,bestbefore=%s WHERE "
-                "stockid=%d",(stocktype,stockunit,costprice,saleprice,
-                              mkdate(bestbefore),sn))
+                "costprice=%s,saleprice=%s,bestbefore=%s WHERE "
+                "stockid=%s",(stocktype,stockunit,costprice,saleprice,
+                              bestbefore,sn))
     commit()
 
 def stock_reprice(sn,saleprice):
     cur=cursor()
-    cur.execute("UPDATE stock SET saleprice=%f WHERE stockid=%d",(saleprice,sn))
+    cur.execute("UPDATE stock SET saleprice=%s WHERE stockid=%s",(saleprice,sn))
     commit()
 
 def stock_delete(sn):
     cur=cursor()
-    cur.execute("DELETE FROM stock WHERE stockid=%d",(sn,))
+    cur.execute("DELETE FROM stock WHERE stockid=%s",(sn,))
     commit()
 
 def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
@@ -540,12 +546,12 @@ def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
     son=ticket(cur,"stockout_seq")
     lid=ticket(cur,"translines_seq")
     cur.execute("INSERT INTO stockout (stockoutid,stockid,qty,removecode,"
-                "translineid) VALUES (%d,%d,%f,'sold',%d)",
+                "translineid) VALUES (%s,%s,%s,'sold',%s)",
                 (son,stockitem,qty*items,lid))
     # Write out a transaction line
     cur.execute("INSERT INTO translines (translineid,transid,items,amount,"
                 "dept,source,stockref,transcode) VALUES "
-                "(%d,%d,%d,%f,%d,%s,%d,%s)",
+                "(%s,%s,%s,%s,%s,%s,%s,%s)",
                 (lid,trans,items,price,dept,source,son,transcode))
     commit()
     return lid
@@ -554,13 +560,13 @@ def stock_sellmore(lid,items):
     "Update a transaction line and stock record with extra items"
     cur=cursor()
     # Fetch old number of items
-    oi=execone(cur,"SELECT items FROM translines WHERE translineid=%d",(lid,))
+    oi=execone(cur,"SELECT items FROM translines WHERE translineid=%s",(lid,))
     ni=oi+items
     # Update stockout line
-    cur.execute("UPDATE stockout SET qty=(qty/%d)*%d WHERE translineid=%d",
+    cur.execute("UPDATE stockout SET qty=(qty/%s)*%s WHERE translineid=%s",
                 (oi,ni,lid))
     # Update transaction line
-    cur.execute("UPDATE translines SET items=%d WHERE translineid=%d",(ni,lid))
+    cur.execute("UPDATE translines SET items=%s WHERE translineid=%s",(ni,lid))
     commit()
     return ni
 
@@ -573,7 +579,7 @@ def stock_fetchline(stocklineref):
                 "INNER JOIN stock ON so.stockid=stock.stockid "
                 "INNER JOIN stocktypes st ON st.stocktype=stock.stocktype "
                 "INNER JOIN unittypes ut ON ut.unit=st.unit "
-                "WHERE so.stockoutid=%d",(stocklineref,))
+                "WHERE so.stockoutid=%s",(stocklineref,))
     return cur.fetchone()
 
 def stock_search(dept=None,exclude_stock_on_sale=True,
@@ -614,12 +620,12 @@ def stock_putonsale(stockid,stocklineid):
 
     """
     cur=cursor()
-    cur.execute("UPDATE stock SET onsale=now() WHERE stockid=%d",(stockid,))
+    cur.execute("UPDATE stock SET onsale=now() WHERE stockid=%s",(stockid,))
     cur.execute("INSERT INTO stockonsale (stocklineid,stockid) VALUES "
-                "(%d,%d)",(stocklineid,stockid))
+                "(%s,%s)",(stocklineid,stockid))
     cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
-                "SELECT %d,'start',(SELECT name FROM stocklines "
-                "WHERE stocklineid=%d)",(stockid,stocklineid))
+                "SELECT %s,'start',(SELECT name FROM stocklines "
+                "WHERE stocklineid=%s)",(stockid,stocklineid))
     commit()
     return True
 
@@ -654,7 +660,7 @@ def stock_allocate(aal):
     """
     cur=cursor()
     for i in aal:
-        cur.execute("INSERT INTO stockonsale VALUES (%d,%d,%d)",i)
+        cur.execute("INSERT INTO stockonsale VALUES (%s,%s,%s)",i)
     commit()
 
 def stock_purge():
@@ -685,10 +691,10 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
     cur=cursor()
     t=ticket(cur,'stockout_seq')
     cur.execute("INSERT INTO stockout (stockoutid,stockid,qty,removecode) "
-                "VALUES (%d,%d,%f,%s)",(t,stock,amount,reason))
+                "VALUES (%s,%s,%s,%s)",(t,stock,amount,reason))
     if update_displayqty:
-        cur.execute("UPDATE stockonsale SET displayqty=displayqty+%d "
-                    "WHERE stockid=%d",(int(amount),stock))
+        cur.execute("UPDATE stockonsale SET displayqty=displayqty+%s "
+                    "WHERE stockid=%s",(int(amount),stock))
     commit()
     return t
 
@@ -696,16 +702,16 @@ def stock_finish(stock,reason):
     "Finish with a stock item; anything left is unaccounted waste"
     cur=cursor()
     # Disconnect it from its line, if it has one
-    cur.execute("DELETE FROM stockonsale WHERE stockid=%d",(stock,))
+    cur.execute("DELETE FROM stockonsale WHERE stockid=%s",(stock,))
     # Record the finish time and reason
     cur.execute("UPDATE stock SET finished=now(),finishcode=%s "
-                "WHERE stockid=%d",(reason,stock))
+                "WHERE stockid=%s",(reason,stock))
     commit()
 
 def stock_disconnect(stock):
     "Temporarily disconnect a stock item."
     cur=cursor()
-    cur.execute("DELETE FROM stockonsale WHERE stockid=%d",(stock,))
+    cur.execute("DELETE FROM stockonsale WHERE stockid=%s",(stock,))
     commit()
 
 def stock_onsale(line):
@@ -720,7 +726,7 @@ def stock_onsale(line):
         "SELECT sos.stockid,sos.displayqty "
         "FROM stockonsale sos "
         "LEFT JOIN stock s ON s.stockid=sos.stockid "
-        "WHERE sos.stocklineid=%d "
+        "WHERE sos.stocklineid=%s "
         "ORDER BY coalesce(sos.displayqty,0) DESC,"
         "s.bestbefore,sos.stockid",(line,))
     return cur.fetchall()
@@ -733,7 +739,7 @@ def stock_annotate(stock,atype,text):
     """
     cur=cursor()
     cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
-                "VALUES (%d,%s,%s)",(stock,atype,text))
+                "VALUES (%s,%s,%s)",(stock,atype,text))
     commit()
 
 def stock_annotations(stock,atype=None):
@@ -747,7 +753,39 @@ def stock_annotations(stock,atype=None):
     cur.execute("SELECT at.description,sa.time,sa.text "
                 "FROM stock_annotations sa "
                 "LEFT JOIN annotation_types at ON at.atype=sa.atype "
-                "WHERE sa.stockid=%%d%s ORDER BY sa.time"%ac,(stock,))
+                "WHERE sa.stockid=%%s%s ORDER BY sa.time"%ac,(stock,))
+    return cur.fetchall()
+
+def stocktake(dept=None):
+    cur=cursor()
+    if dept is None: deptclause=""
+    else: deptclause="and st.dept=%d "%dept
+    # We return:
+    # Department number
+    # Department name
+    # Stock type name
+    # Stock ID
+    # Stock line (may be null)
+    # Stock line display capacity (may be null)
+    # displayqty (may be null)
+    # used
+    # size
+    # unit
+    
+    cur.execute(
+        "select st.dept,d.description,st.shortname,s.stockid,"
+        "sl.name,sl.capacity,sos.displayqty,"
+        "(select sum(so.qty) as sum from stockout so "
+        "where so.stockid=s.stockid) as used,"
+        "su.size,su.unit "
+        "from stocktypes st "
+        "inner join stock s on s.stocktype=st.stocktype "
+        "left join stockonsale sos on s.stockid=sos.stockid "
+        "left join stocklines sl on sos.stocklineid=sl.stocklineid "
+        "left join stockunits su on s.stockunit=su.stockunit "
+        "left join departments d on st.dept=d.dept "
+        "where s.finished is null %s"
+        "order by st.dept,st.manufacturer,st.shortname,s.stockid"%deptclause)
     return cur.fetchall()
 
 ### Find out what's on the stillage by checking annotations
@@ -810,7 +848,7 @@ def stockline_stocktype_log_del(stockline,stocktype):
     cur=cursor()
     cur.execute(
         "DELETE FROM stockline_stocktype_log "
-        "WHERE stocklineid=%d AND stocktype=%d"%(stockline,stocktype))
+        "WHERE stocklineid=%s AND stocktype=%s",(stockline,stocktype))
     commit()
     return
 
@@ -835,28 +873,24 @@ def stockline_create(name,location,dept,capacity,pullthru):
     slid=ticket(cur,"stocklines_seq")
     try:
         cur.execute("INSERT INTO stocklines (stocklineid,name,location,"
-                    "dept) VALUES (%d,%s,%s,%d)",
+                    "dept) VALUES (%s,%s,%s,%s)",
                     (slid,name,location,dept))
     except:
         return None
     if capacity is not None:
-        cur.execute("UPDATE stocklines SET capacity=%d WHERE stocklineid=%d",
+        cur.execute("UPDATE stocklines SET capacity=%s WHERE stocklineid=%s",
                     (capacity,slid))
     if pullthru is not None:
-        cur.execute("UPDATE stocklines SET pullthru=%f WHERE stocklineid=%d",
+        cur.execute("UPDATE stocklines SET pullthru=%s WHERE stocklineid=%s",
                     (pullthru,slid))
     commit()
     return slid
 
 def stockline_update(stocklineid,name,location,capacity,pullthru):
     cur=cursor()
-    if capacity is None: capstr="NULL"
-    else: capstr="%d"%capacity
-    if pullthru is None: pullstr="NULL"
-    else: pullstr="%f"%pullthru
-    cur.execute("UPDATE stocklines SET name=%%s,location=%%s,capacity=%s,"
-                "pullthru=%s WHERE stocklineid=%%d"%(capstr,pullstr),
-                (name,location,stocklineid))
+    cur.execute("UPDATE stocklines SET name=%s,location=%s,capacity=%s,"
+                "pullthru=%s WHERE stocklineid=%s",
+                (name,location,capacity,pullthru,stocklineid))
     commit()
     return True
 
@@ -866,22 +900,22 @@ def stockline_delete(stocklineid):
 
     """
     cur=cursor()
-    cur.execute("DELETE FROM stockonsale WHERE stocklineid=%d",(stocklineid,))
-    cur.execute("DELETE FROM keyboard WHERE stocklineid=%d",(stocklineid,))
-    cur.execute("DELETE FROM stocklines WHERE stocklineid=%d",(stocklineid,))
+    cur.execute("DELETE FROM stockonsale WHERE stocklineid=%s",(stocklineid,))
+    cur.execute("DELETE FROM keyboard WHERE stocklineid=%s",(stocklineid,))
+    cur.execute("DELETE FROM stocklines WHERE stocklineid=%s",(stocklineid,))
     commit()
 
 def stockline_info(stocklineid):
     cur=cursor()
     cur.execute("SELECT name,location,capacity,dept,pullthru "
-                "FROM stocklines WHERE stocklineid=%d",(stocklineid,))
+                "FROM stocklines WHERE stocklineid=%s",(stocklineid,))
     return cur.fetchone()
 
 def stockline_restock(stocklineid,changes):
     cur=cursor()
     for sd,move,newdisplayqty,stockqty_after_move in changes:
-        cur.execute("UPDATE stockonsale SET displayqty=%d WHERE "
-                    "stocklineid=%d AND stockid=%d",(
+        cur.execute("UPDATE stockonsale SET displayqty=%s WHERE "
+                    "stocklineid=%s AND stockid=%s",(
             newdisplayqty,stocklineid,sd['stockid']))
     commit()
 
@@ -929,7 +963,7 @@ def keyboard_checklines(layout,keycode):
                 "k.menukey,k.stocklineid,sl.location,sl.capacity "
                 "FROM keyboard k "
                 "LEFT JOIN stocklines sl ON sl.stocklineid=k.stocklineid "
-                "WHERE k.layout=%d AND k.keycode=%s",(layout,keycode))
+                "WHERE k.layout=%s AND k.keycode=%s",(layout,keycode))
     return cur.fetchall()
 
 def keyboard_checkstockline(layout,stocklineid):
@@ -939,38 +973,38 @@ def keyboard_checkstockline(layout,stocklineid):
     """
     cur=cursor()
     cur.execute("SELECT keycode,menukey,qty FROM keyboard "
-                "WHERE stocklineid=%d",(stocklineid,))
+                "WHERE stocklineid=%s",(stocklineid,))
     return cur.fetchall()
 
 def keyboard_addbinding(layout,keycode,menukey,stocklineid,qty):
     cur=cursor()
     cur.execute("INSERT INTO keyboard (layout,keycode,menukey,stocklineid,qty) "
-                "VALUES (%d,%s,%s,%d,%f)",(layout,keycode,menukey,stocklineid,qty))
+                "VALUES (%s,%s,%s,%s,%s)",(layout,keycode,menukey,stocklineid,qty))
     commit()
 
 def keyboard_delbinding(layout,keycode,menukey):
     cur=cursor()
-    cur.execute("DELETE FROM keyboard WHERE layout=%d AND keycode=%s AND menukey=%s",
+    cur.execute("DELETE FROM keyboard WHERE layout=%s AND keycode=%s AND menukey=%s",
                 (layout,keycode,menukey))
     commit()
 
 def keyboard_setcap(layout,keycode,cap):
     """keycode is a string.  Stores a new keycap for the specified keyboard layout."""
     cur=cursor()
-    cur.execute("DELETE FROM keycaps WHERE layout=%d AND keycode=%s",(layout,keycode))
-    cur.execute("INSERT INTO keycaps (layout,keycode,keycap) VALUES (%d,%s,%s)",
+    cur.execute("DELETE FROM keycaps WHERE layout=%s AND keycode=%s",(layout,keycode))
+    cur.execute("INSERT INTO keycaps (layout,keycode,keycap) VALUES (%s,%s,%s)",
                 (layout,keycode,cap))
     commit()
 
 def keyboard_delcap(layout,keycode):
     cur=cursor()
-    cur.execute("DELETE FROM keycaps WHERE layout=%d AND keycode=%s",(layout,keycode))
+    cur.execute("DELETE FROM keycaps WHERE layout=%s AND keycode=%s",(layout,keycode))
     commit()
 
 def keyboard_getcaps(layout):
     """Returns all the keycaps for a particular layout."""
     cur=cursor()
-    cur.execute("SELECT keycode,keycap FROM keycaps WHERE layout=%d",(layout,))
+    cur.execute("SELECT keycode,keycap FROM keycaps WHERE layout=%s",(layout,))
     return cur.fetchall()
 
 ### Functions relating to the sessions,sessiontotals tables
@@ -991,8 +1025,7 @@ def session_start(date):
     if session_current(): return None
     # Create a new session
     cur=cursor()
-    cur.execute("INSERT INTO sessions (sessiondate) VALUES (%s)",
-                (mkdate(date),))
+    cur.execute("INSERT INTO sessions (sessiondate) VALUES (%s)",(date,))
     commit()
     return session_current()
 
@@ -1008,7 +1041,7 @@ def session_end():
     # Mark the sesion ended
     cur=cursor()
     cur.execute("UPDATE sessions SET endtime=now() "
-                "WHERE sessionid=%d",(cs[0],))
+                "WHERE sessionid=%s",(cs[0],))
     commit()
     return None
 
@@ -1017,17 +1050,17 @@ def session_recordtotals(number,amounts):
     (paytype,amount) tuples."""
     # Check that the session has ended, but is otherwise incomplete
     cur=cursor()
-    cur.execute("SELECT endtime FROM sessions WHERE sessionid=%d",(number,))
+    cur.execute("SELECT endtime FROM sessions WHERE sessionid=%s",(number,))
     s=cur.fetchall()
     if len(s)!=1: raise "Session does not exist"
-    cur.execute("SELECT sum(amount) FROM sessiontotals WHERE sessionid=%d",
+    cur.execute("SELECT sum(amount) FROM sessiontotals WHERE sessionid=%s",
                 (number,))
     s=cur.fetchall()
     if s[0][0]!=None:
         raise "Session has already had payments entered"
     # Record the amounts
     for i in amounts:
-        cur.execute("INSERT INTO sessiontotals VALUES (%d,%s,%f)",
+        cur.execute("INSERT INTO sessiontotals VALUES (%s,%s,%s)",
                     (number,i[0],i[1]))
     commit()
     return
@@ -1038,7 +1071,7 @@ def session_actualtotals(number):
     cur.execute("SELECT st.paytype,pt.description,st.amount "
                 "FROM sessiontotals st "
                 "INNER JOIN paytypes pt ON pt.paytype=st.paytype "
-                "WHERE st.sessionid=%d",
+                "WHERE st.sessionid=%s",
                 (number,))
     f=cur.fetchall()
     d={}
@@ -1055,7 +1088,7 @@ def session_paytotals(number):
     cur.execute("SELECT p.paytype,pt.description,sum(p.amount) "
                 "FROM payments p LEFT JOIN paytypes pt ON "
                 "p.paytype=pt.paytype WHERE transid in "
-                "(SELECT transid FROM transactions WHERE sessionid=%d) "
+                "(SELECT transid FROM transactions WHERE sessionid=%s) "
                 "GROUP BY p.paytype,pt.description",(number,))
     f=cur.fetchall()
     d={}
@@ -1070,7 +1103,7 @@ def session_depttotals(number):
                 "sessions s INNER JOIN transactions t ON "
                 "t.sessionid=s.sessionid INNER JOIN translines l ON "
                 "l.transid=t.transid INNER JOIN departments d ON "
-                "l.dept=d.dept WHERE s.sessionid=%d GROUP BY "
+                "l.dept=d.dept WHERE s.sessionid=%s GROUP BY "
                 "d.dept,d.description ORDER BY d.dept",(number,))
     return cur.fetchall()
 
@@ -1078,7 +1111,7 @@ def session_dates(number):
     "Return the start and end times of the session"
     cur=cursor()
     cur.execute("SELECT starttime,endtime,sessiondate FROM sessions WHERE "
-                "sessionid=%d",(number,))
+                "sessionid=%s",(number,))
     return cur.fetchone()
 
 def session_list():
@@ -1105,9 +1138,9 @@ def session_translist(session,onlyopen=False):
     cur.execute("SELECT t.transid,t.closed,sum(tl.items*tl.amount) "
                 "FROM transactions t LEFT JOIN translines tl "
                 "ON t.transid=tl.transid "
-                "WHERE t.sessionid=%d %s"
+                "WHERE t.sessionid=%%s %s"
                 "GROUP BY t.transid,t.closed "
-                "ORDER BY t.closed,t.transid DESC"%(session,oos))
+                "ORDER BY t.closed,t.transid DESC"%oos,(session,))
     return cur.fetchall()
 
 ### List of payment types

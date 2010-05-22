@@ -2,7 +2,7 @@
 
 """
 
-import ui,td,keyboard,tillconfig,stocklines,department,sha
+import ui,td,keyboard,tillconfig,stocklines,department,hashlib
 
 import logging
 log=logging.getLogger()
@@ -19,7 +19,7 @@ def checkdigits(stockid):
     particular item of stock in front of them.
 
     """
-    a=sha.new("quicktill-%d-quicktill"%stockid)
+    a=hashlib.sha1("quicktill-%d-quicktill"%stockid)
     return str(int(a.hexdigest(),16))[-3:]
 
 def format_stock(sd,maxw=None):

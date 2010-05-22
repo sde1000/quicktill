@@ -1,4 +1,4 @@
-import string,td,time,ui,stock,tillconfig,sets
+import string,td,time,ui,stock,tillconfig
 
 driver=None
 labeldriver=None
@@ -105,7 +105,7 @@ def print_sessiontotals(session):
     depts=td.session_depttotals(session)
     paytotals=td.session_paytotals(session)
     payments=td.session_actualtotals(session)
-    paytypes=sets.Set(paytotals.keys()+payments.keys())
+    paytypes=set(paytotals.keys()+payments.keys())
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)

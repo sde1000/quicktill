@@ -31,7 +31,7 @@ etc."""
 # sure that we scroll to the end of the list.
 
 import magcard,tillconfig
-import sets,curses
+import curses
 import td,ui,keyboard,printer,textwrap
 import stock,stocklines
 import logging
@@ -219,7 +219,7 @@ class page(ui.basicpage):
         """
         self.dl=[] # Display list
         self.s.set(self.dl) # Tell the scrollable about the new display list
-        self.ml=sets.Set() # Marked transactions set
+        self.ml=set() # Marked transactions set
         # than the length of the list then there is no selection.
         self.trans=None # Current transaction
         self.repeat=None # If dept/line button pressed, update this transline
@@ -503,7 +503,7 @@ class page(ui.basicpage):
         # The CASH/ENTER key is also used to create a new "void" transaction
         # from lines selected from a previous, closed transaction.  If any
         # lines are selected, do that instead.
-        if self.ml!=sets.Set():
+        if self.ml!=set():
             return self.cancelmarked()
         if self.qty is not None:
             log.info("Register: cashkey: payment with quantity not allowed")
@@ -801,7 +801,7 @@ class page(ui.basicpage):
                 ui.infopopup(["You can't void payments from closed "
                               "transactions."],title="Error")
                 return
-            if self.ml==sets.Set():
+            if self.ml==set():
                 ui.infopopup(
                     ["Use the Up and Down keys and the Cancel key "
                      "to select lines from this transaction that "
