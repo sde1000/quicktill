@@ -1,3 +1,13 @@
+quicktill (0.9.2) stable; urgency=low
+
+  * New release 0.9.2
+
+  * Support drawer kickout on network printers.
+
+  * Update copyright date
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 26 May 2010 22:41:43 +0100
+
 quicktill (0.9.1) stable; urgency=low
 
   * New release 0.9.1
