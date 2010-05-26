@@ -162,9 +162,17 @@ class escpos:
             self.f.write(escpos.ep_fullcut)
             self.f.flush()
     def kickout(self):
+        if self.f is None:
+            self.s=socket.socket(socket.AF_INET)
+            self.s.connect(self.ci)
+            self.f=self.s.makefile('w')
         self.f.write(escpos.ep_pulse)
         self.f.flush()
-
+        if self.ci is not None:
+            self.f.close()
+            self.s.close()
+            self.f=None
+            self.s=None
 
 class Epson_TM_U220(escpos):
     def __init__(self,devicefile,paperwidth,coding='iso-8859-1',
@@ -277,13 +285,35 @@ class pdf:
     def kickout(self):
         pass
 
-class pdflabel:
+class pdfpage:
+    def __init__(self,printcmd,pagesize):
+        self.printcmd=printcmd
+        self.pagesize=pagesize
+    def start(self,title="Page"):
+        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
+        self.tmpfilename=self.tmpfile.name
+        self.f=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
+        self.f.setAuthor("quicktill")
+        self.f.setTitle(title)
+    def newpage(self):
+        self.f.showPage()
+    def getCanvas(self):
+        return self.f
+    def end(self):
+        self.f.showPage()
+        self.f.save()
+        del self.f
+        os.system(self.printcmd%self.tmpfilename)
+        self.tmpfile.close()
+        del self.tmpfilename
+        del self.tmpfile
+
+class pdflabel(pdfpage):
     def __init__(self,printcmd,labelsacross,labelsdown,
                  labelwidth,labelheight,
                  horizlabelgap,vertlabelgap,
                  pagesize):
-        self.printcmd=printcmd
-        self.pagesize=pagesize
+        pdfpage.__init__(self,printcmd,pagesize)
         self.width=toLength(labelwidth)
         self.height=toLength(labelheight)
         horizlabelgap=toLength(horizlabelgap)
@@ -308,15 +338,11 @@ class pdflabel:
                 self.ll.append((xpos,ypos))
     def labels_per_page(self):
         return len(self.ll)
-    def start(self):
-        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
-        self.tmpfilename=self.tmpfile.name
-        self.f=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
-        self.f.setAuthor("quicktill")
-        self.f.setTitle("Labels")
+    def start(self,title="Labels"):
+        pdfpage.start(self,title)
         self.label=0
     def newpage(self):
-        self.f.showPage()
+        pdfpage.newpage(self)
         self.label=0
     def addlabel(self,function,data):
         # Save the graphics state, move the origin to the bottom-left-hand
@@ -328,11 +354,3 @@ class pdflabel:
         function(self.f,self.width,self.height,data)
         self.f.restoreState()
         self.label=self.label+1
-    def end(self):
-        self.f.showPage()
-        self.f.save()
-        del self.f
-        os.system(self.printcmd%self.tmpfilename)
-        self.tmpfile.close()
-        del self.tmpfilename
-        del self.tmpfile
