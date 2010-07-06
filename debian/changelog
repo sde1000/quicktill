@@ -1,3 +1,17 @@
+quicktill (0.9.3) stable; urgency=low
+
+  * New release 0.9.3
+
+  * Enable till users to edit the text of food order lines before printing the order
+
+  * Update example till config from current Pembury configuration
+
+  * Refactor foodorder.py to remove duplication of code in ui.py
+
+  * Fix location of runtill script
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 06 Jul 2010 22:49:38 +0100
+
 quicktill (0.9.2) stable; urgency=low
 
   * New release 0.9.2
