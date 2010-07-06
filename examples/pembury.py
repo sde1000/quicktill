@@ -13,14 +13,42 @@ from quicktill.usestock import popup as usestock
 from quicktill.recordwaste import popup as recordwaste
 from quicktill.stock import annotate
 import math
+import os
 
+#vatrate=0.175
+# VAT rate changed 1/12/2008
+#vatrate=0.150
+# VAT rate changed again 1/1/2010
 vatrate=0.175
+
+def pembury_deptkeycheck(dept,price):
+    """Check that the price entered when a department key is pressed is
+    appropriate for that department.  Returns either None (no problem
+    found), a string or a list of strings to display to the user.
+
+    """
+    if dept==7: # Soft drinks
+        if price not in [0.40,0.80,1.60,1.00]:
+            return (u"Soft drinks are 40p for a mixer, 80p for a half, "
+                    u"and £1.60 for a pint.  If you're selling a bottle, "
+                    u"you must press the appropriate button for that bottle.")
+    if dept==9: # Wine
+        if price not in [2.50,3.50,10.00,3.00,4.00,3.40,4.70,4.00,12.00,14.00]:
+            return ([u"Valid prices for wine are £2.50 for a medium glass, "
+                     u"£3.50 for a large glass, and £10.00 for a bottle.  "
+                     u"If you are selling any of the other wines by the "
+                     u"bottle, you should press the \"Wine Bottle\" key "
+                     u"instead.","",u"Mulled Mead is £3.40 for a 175ml glass.",
+                     u"Mead by the glass: £3.00/£4.00 for Monks Mead, "
+                     u"£3.40/£4.70 for Moniack.  Bottles are £12.00 for "
+                     u"Monks Mead, £14.00 for Moniack."])
 
 # Price policy function
 def pembury_pricepolicy(sd,qty):
     # Start with the standard price
     price=sd['saleprice']*qty
     if sd['dept']==4 and qty==2.0: price=price-0.50
+    if sd['dept']==1 and qty==4.0: price=price-1.00
     return price
 
 # Price guess algorithm goes here
@@ -37,6 +65,8 @@ def pembury_priceguess(dept,cost,abv):
         return guesssnack(cost)
     if dept==6:
         return guessbottle(cost)
+    if dept==9:
+        return guesswine(cost)
     return None
 
 # Unit is a pint
@@ -61,19 +91,23 @@ def guessbeer(cost,abv):
 
 def guesskeg(cost,abv):
     if abv==5.0: return 3.10 # Budvar
+    if abv==4.4: return 3.00 # Moravka
     return None
 
 def guesssnack(cost):
     return math.ceil(cost*2.0*(vatrate+1.0)*10.0)/10.0
 
 def guessbottle(cost):
-    return math.ceil(cost*2.1*(vatrate+1.0)*10.0)/10.0
+    return math.ceil(cost*2.5*(vatrate+1.0)*10.0)/10.0
+
+def guesswine(cost):
+    return math.ceil(cost*2.0*(vatrate+1.0)*10.0)/10.0
 
 def guessspirit(cost,abv):
     return max(2.00,math.ceil(cost*2.5*(vatrate+1.0)*10.0)/10.0)
 
 def guesscider(cost,abv):
-    return math.ceil(cost*2.1*(vatrate+1.0)*10.0)/10.0
+    return math.ceil(cost*2.6*(vatrate+1.0)*10.0)/10.0
 
 def departures():
     menu=[
@@ -86,11 +120,71 @@ def departures():
         ]
     ui.keymenu(menu,"Stations")
 
+def wireless_command(cmd):
+    try:
+        os.system("ssh root@public.pembury.individualpubs.co.uk %s"%cmd)
+    except:
+        pass
+
+# We really want to limit this to the mainbar configuration.  If we do
+# not then there is a race between other instances of the software
+# running on the main till (eg. the default configuration as a stock
+# terminal) that means only one of them will be successful at deleting
+# the alarm file; the others will catch an exception and exit.
+if configname=='mainbar':
+    coffeealarm=extras.coffeealarm("/home/till/coffeealarm")
+    extras.reminderpopup((22,50),"Outside area reminder",[
+            "Please check the triangular outdoor area and remind everyone "
+            "out there that it will be cleared and locked up at 11pm."])
+    extras.reminderpopup((23,0),"Outside area reminder",[
+            "Please clear everyone out of the triangular outdoor area "
+            "and lock the gate and the door."])
+    extras.reminderpopup((23,10),"Outside area reminder",[
+            "Please check that the triangular outdoor area is locked up "
+            "and clear of seats and glasses - this should have been done "
+            "at 11pm."])
+
+    import twitter
+    tapi=twitter.Api(username="XXX",password="xxx")
+
+class tilltwitter(ui.dismisspopup):
+    def __init__(self):
+        ui.dismisspopup.__init__(self,7,76,title="@PemburyTavern Twitter",
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Type in your update here and press Enter:")
+        self.tfield=ui.editfield(
+            4,2,72,flen=140,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None),
+                keyboard.K_CASH: (self.enter,None,False)})
+        self.tfield.focus()
+    def enter(self):
+        ttext=self.tfield.f
+        if len(ttext)<20:
+            ui.infopopup(title="Twitter Problem",text=[
+                    "That's too short!  Try typing some more."])
+            return
+        tapi.PostUpdate(ttext)
+        self.dismiss()
+        ui.infopopup(title="Twittered",text=["Your update has been posted."],
+                     dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
+
 def extrasmenu():
     menu=[
         (keyboard.K_ONE,"Bar Billiards checker",extras.bbcheck,None),
         (keyboard.K_TWO,"Train Departure Times",departures,None),
+        (keyboard.K_THREE,"Reboot the wireless access point",
+         wireless_command,("reboot",)),
+        (keyboard.K_FOUR,"Turn the wireless off",
+         wireless_command,("ifdown lan",)),
+        (keyboard.K_FIVE,"Turn the wireless on",
+         wireless_command,("ifup lan",)),
         ]
+    if configname=='mainbar':
+        menu.append(
+            (keyboard.K_SIX,"Coffee pot timer",extras.managecoffeealarm,
+             (coffeealarm,)))
+        menu.append((keyboard.K_SEVEN,"Post a twitter",tilltwitter,None))
     ui.keymenu(menu,"Extras")
 
 def panickey():
@@ -136,18 +230,24 @@ std={
     'cashback_limit':50.0,
     'pricepolicy':pembury_pricepolicy,
     'priceguess':pembury_priceguess,
+    'deptkeycheck':pembury_deptkeycheck,
     'modkeyinfo':modkeyinfo,
     'database':'dbname=pembury', # XXX needs changing before deployment,
     # because this file may be used by remote terminals too
+    'allow_tabs':False,
+    'nosale':False,
+    'checkdigit_print':True,
+    'checkdigit_on_usestock':True,
 }
 
 kitchen={
     'kitchenprinter':Epson_TM_U220(
-    ('kitchenprinter.pembury.i.individualpubs.co.uk',4010),57),
-    'menuurl':'http://till5.pembury.i.individualpubs.co.uk:8080/foodmenu.py',
+    ('epson-kitchenprinter.pembury.i.individualpubs.co.uk',9100),57),
+    'menuurl':'http://till.pembury.i.individualpubs.co.uk:8080/foodmenu.py',
+#    'menuurl':'http://localhost:8080/foodmenu.py',
     }
 
-nullprinter={
+noprinter={
     'printer': (nullprinter,()),
     }
 localprinter={
@@ -162,8 +262,11 @@ xpdfprinter={
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
 staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
+# The Laserjet 1320 doesn't believe in 'Label' media anywhere other than
+# tray one.  The labels are actually in tray three; I set the type to
+# "Letterhead" to stop other print jobs using them.
 labelprinter={
-    'labelprinter': (pdflabel,["xpdf %s"]+staples_3by6),
+    'labelprinter': (pdflabel,["lpr -o MediaType=Letterhead %s"]+staples_3by6),
     }
 
 kb1={
@@ -494,14 +597,14 @@ stockcontrol={
 config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(xpdfprinter)
+config0.update(pdfprinter)
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal
 config1={'description':"Pembury Tavern main bar"}
 config1.update(std)
 config1.update(kb1)
-config1.update(xpdfprinter)
+config1.update(localprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
 
@@ -509,7 +612,7 @@ config1.update(kitchen)
 config2={'description':"Pembury Tavern festival bar"}
 config2.update(std)
 config2.update(kb2)
-config2.update(xpdfprinter)
+config2.update(localprinter)
 config2.update(labelprinter)
 config2.update(kitchen)
 
@@ -517,11 +620,11 @@ config3={'description':"Test menu file 'testmenu.py' in current directory",
          'kbdriver':kbdrivers.curseskeyboard(),
          'kbtype':0,
          'menuurl':"file:testmenu.py",
-         'kitchenprinter':(nullprinter,()),
+         'kitchenprinter':nullprinter(),
          'pages':[(foodcheck.page,keyboard.K_ALICE,([],))],
          }
 config3.update(std)
-config3.update(pdfprinter)
+config3.update(xpdfprinter)
 
 # Things to define:
 #  description - summary of the configuration
