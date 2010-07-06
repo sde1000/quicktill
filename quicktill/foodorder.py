@@ -10,7 +10,8 @@ class fooditem(ui.lrline):
     def update(self,name,price):
         self.name=name
         self.price=price
-        ui.lrline.__init__(self,name,tillconfig.fc(self.price))
+        ui.lrline.__init__(self,name,tillconfig.fc(self.price)
+                           if self.price!=0.0 else "")
 
 # Default staff discount policy.  Returns the amount to be taken off
 # the price of each line of an order.  XXX After explicit discount
@@ -227,6 +228,27 @@ class tablenumber(ui.dismisspopup):
         self.dismiss()
         self.func(number)
 
+class edititem(ui.dismisspopup):
+    """
+    Allow the user to edit the text of a food order item.
+
+    """
+    def __init__(self,item,func):
+        ui.dismisspopup.__init__(self,5,66,title="Edit line",
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_line)
+        self.addstr(2,2,"Edit this line:")
+        self.linefield=ui.editfield(3,2,62,f=item.name,flen=240,
+            keymap={keyboard.K_CASH: (self.enter,None)})
+        self.func=func
+        self.item=item
+        self.linefield.focus()
+    def enter(self):
+        if len(self.linefield.f)>0:
+            self.item.update(self.linefield.f,self.item.price)
+        self.dismiss()
+        self.func()
+
 class popup(ui.basicpopup):
     def __init__(self,func,ordernumberfunc=td.foodorder_ticket):
         if menuurl is None:
@@ -295,6 +317,10 @@ class popup(ui.basicpopup):
             self.insert_item(self.ml[-1])
         else:
             self.insert_item(self.ml[self.order.cursor])
+    def edit_item(self):
+        if len(self.ml)==0: return
+        if self.order.cursor_at_end(): return
+        edititem(self.ml[self.order.cursor],self.order.redraw)
     def delete_item(self):
         """
         Delete the item under the cursor.  If there is no item under
@@ -336,10 +362,8 @@ class popup(ui.basicpopup):
             self.duplicate_item()
         elif k==keyboard.K_PRINT:
             self.printkey()
-        elif k==keyboard.K_UP:
-            self.cursor_up()
-        elif k==keyboard.K_DOWN:
-            self.cursor_down()
+        elif k==keyboard.K_CASH:
+            self.edit_item()
         elif self.toplevel.menu_keypress(self.insert_item,k):
             return
 
