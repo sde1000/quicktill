@@ -30,7 +30,7 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	python setup.py install \
-		--root=$(CURDIR)/debian/quicktill
+		--root=$(CURDIR)/debian/quicktill --prefix=/usr
 
 # Build architecture-independent files here.
 binary-indep: build install
