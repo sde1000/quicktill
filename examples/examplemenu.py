@@ -1,4 +1,12 @@
-from foodorder import simplemenu,subopts
+from quicktill.foodorder import simplemenu,subopts
+import math
+
+def staffdiscount(tablenumber,item):
+    if tablenumber!=1234: return 0.00
+    discount=item.price*0.4
+    if discount>3.00: discount=3.00
+    discount=math.floor(discount*20.0)/20.0
+    return discount
 
 class ices(subopts):
     """

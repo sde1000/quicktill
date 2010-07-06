@@ -44,6 +44,8 @@ class nullprinter:
         pass
     def cancut(self):
         return False
+    def fullcut(self):
+        pass
     def checkwidth(self,line):
         return self.printline(l,justcheckfit=True)
     def kickout(self):

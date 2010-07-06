@@ -1,42 +1,27 @@
 import ui,keyboard,td,printer,urllib,imp,textwrap,curses,sys,traceback,math
+import tillconfig
 
 kitchenprinter=None
 menuurl=None
 
-class fooditem:
-    def __init__(self,name,price,staffdiscount=False):
+class fooditem(ui.lrline):
+    def __init__(self,name,price):
+        self.update(name,price)
+    def update(self,name,price):
         self.name=name
         self.price=price
-        self.staffdiscount=staffdiscount
-    def getname(self):
-        return self.name
-    def getprice(self):
-        if self.staffdiscount:
-            discount=self.price*0.4
-            if discount>3.00: discount=3.00
-            discount=math.floor(discount*20.0)/20.0
-            return self.price-discount
-        return self.price
-    def display(self,width):
-        """
-        Returns a list of lines, formatted and padded with spaces to
-        the specified maximum width.  The final line includes the
-        price aligned to the right.
+        ui.lrline.__init__(self,name,tillconfig.fc(self.price))
 
-        """
-        name=self.getname()
-        price=self.getprice()
-        w=textwrap.wrap(name,width)
-        if len(w)==0: w=[""]
-        pf=" %0.2f"%price
-        if price==0.0: pf=""
-        if len(w[-1])+len(pf)>width:
-            w.append("")
-        w[-1]=w[-1]+(' '*(width-len(w[-1])-len(pf)))+pf
-        w=["%s%s"%(x,' '*(width-len(x))) for x in w]
-        return w
-
-emptyitem=fooditem("",0.0)
+# Default staff discount policy.  Returns the amount to be taken off
+# the price of each line of an order.  XXX After explicit discount
+# policies have been implemented at existing sites, this function will
+# be changed to always return 0.0
+def default_staffdiscount(tablenumber,item):
+    if tablenumber!=0: return 0.00
+    discount=item.price*0.4
+    if discount>3.00: discount=3.00
+    discount=math.floor(discount*20.0)/20.0
+    return discount
 
 class menuchoice:
     def __init__(self,options):
@@ -262,6 +247,15 @@ class popup(ui.basicpopup):
                                          sys.exc_traceback)
             ui.infopopup(e,title="There is a problem with the menu")
             return
+        if "menu" not in self.foodmenu.__dict__:
+            ui.infopopup(["The menu file was read succesfully, but did not "
+                          "contain a menu definition."],
+                         title="No menu defined")
+            return
+        self.staffdiscount=(
+            self.foodmenu.staffdiscount
+            if "staffdiscount" in self.foodmenu.__dict__
+            else default_staffdiscount)
         self.func=func
         self.ordernumberfunc=ordernumberfunc
         self.h=20
@@ -286,22 +280,21 @@ class popup(ui.basicpopup):
         for i in tlm:
             self.addstr(y,2,i)
             y=y+1
-        self.maxy=maxy
-        self.toplevel=menuchoice(self.foodmenu.menu)
         self.ml=[] # list of chosen items
-        self.cursor=0 # which entry in self.ml is highlighted
-        self.top=0 # which item in ml is currently at the top of the window
-        self.drawml()
+        self.order=ui.scrollable(2,2,self.w-4,maxy-1,self.ml,
+                                 lastline=ui.emptyline())
+        self.toplevel=menuchoice(self.foodmenu.menu)
+        self.order.focus()
     def insert_item(self,item):
-        self.ml.insert(self.cursor,item)
-        self.cursor_down()
-        self.drawml()
+        self.ml.insert(self.order.cursor,item)
+        self.order.cursor_down()
+        self.order.redraw()
     def duplicate_item(self):
         if len(self.ml)==0: return
-        if self.cursor>=len(self.ml):
+        if self.order.cursor>=len(self.ml):
             self.insert_item(self.ml[-1])
         else:
-            self.insert_item(self.ml[self.cursor])
+            self.insert_item(self.ml[self.order.cursor])
     def delete_item(self):
         """
         Delete the item under the cursor.  If there is no item under
@@ -310,77 +303,22 @@ class popup(ui.basicpopup):
 
         """
         if len(self.ml)==0: return # Nothing to delete
-        if self.cursor==len(self.ml):
+        if self.order.cursor_at_end():
             self.ml.pop()
-            self.cursor_up()
+            self.order.cursor_up()
         else:
-            del self.ml[self.cursor]
-        self.drawml()
-    def cursor_up(self):
-        if self.cursor>0: self.cursor=self.cursor-1
-        if self.cursor<self.top: self.top=self.cursor
-        self.drawml()
-    def cursor_down(self):
-        if self.cursor<len(self.ml): self.cursor=self.cursor+1
-        lastitem=self.drawml()
-        while self.cursor>lastitem:
-            self.top=self.top+1
-            lastitem=self.drawml()
-    def drawml(self):
-        """
-        Redraw the menu with the current scroll and cursor locations.
-        Returns the index of the last complete item that fits on the
-        screen.  (This is useful to compare against the cursor
-        position to ensure the cursor is displayed.)
-
-        """
-        # First clear the drawing space
-        for y in range(1,self.maxy):
-            self.addstr(y,1,' '*(self.w-2))
-        y=2
-        i=self.top
-        lastcomplete=i
-        if i>0: self.addstr(1,1,'...')
-        else: self.addstr(1,1,'   ')
-        cursor_y=None
-        while i<=len(self.ml):
-            if i>=len(self.ml):
-                item=emptyitem
-            else:
-                item=self.ml[i]
-            l=item.display(self.w-4)
-            colour=curses.color_pair(ui.colour_input)
-            if i==self.cursor:
-                colour=colour|curses.A_REVERSE
-                cursor_y=y
-            for j in l:
-                if y<self.maxy:
-                    self.addstr(y,2,j,colour)
-                    y=y+1
-            if y<self.maxy:
-                lastcomplete=i
-            else:
-                break
-            i=i+1
-        if len(self.ml)>i:
-            self.addstr(self.maxy,1,'...')
-        else:
-            self.addstr(self.maxy,1,'   ')
-        if cursor_y is not None:
-            self.win.move(cursor_y,2)
-        return lastcomplete
+            del self.ml[self.order.cursor]
+        self.order.redraw()
     def printkey(self):
         if len(self.ml)==0:
             ui.infopopup(["You haven't entered an order yet!"],title="Error")
             return
         tablenumber(self.finish)
     def finish(self,tablenumber):
-        staffdiscount=(tablenumber==0)
-        for i in self.ml:
-            i.staffdiscount=staffdiscount
-        tot=0.0
-        for i in self.ml:
-            tot+=i.getprice()
+        discount=sum([self.staffdiscount(tablenumber,x) for x in self.ml],0.0)
+        if discount>0.0:
+            self.ml.append(fooditem("Staff discount",0.0-discount))
+        tot=sum([x.price for x in self.ml],0.0)
         number=self.ordernumberfunc()
         printer.print_food_order(kitchenprinter,number,self.ml,verbose=False,
                                  tablenumber=tablenumber)

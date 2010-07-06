@@ -283,7 +283,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     for item in ol:
         for i in item.display(30):
             driver.printline(i)
-        tot+=item.getprice()
+        tot+=item.price
     driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
     driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
