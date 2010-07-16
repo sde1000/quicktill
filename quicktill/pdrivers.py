@@ -44,8 +44,6 @@ class nullprinter:
         pass
     def cancut(self):
         return False
-    def fullcut(self):
-        pass
     def checkwidth(self,line):
         return self.printline(l,justcheckfit=True)
     def kickout(self):
@@ -87,6 +85,9 @@ class escpos:
         self.f.write(escpos.ep_font[0])
     def end(self):
         self.f.write(escpos.ep_ff)
+        if self.has_cutter:
+            self.f.write('\n'*3+escpos.ep_left)
+            self.f.write(escpos.ep_fullcut)
         self.f.flush()
         if self.ci is not None:
             self.f.close()
@@ -158,11 +159,6 @@ class escpos:
         return fits
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
-    def fullcut(self):
-        if self.has_cutter:
-            self.f.write('\n'*7+escpos.ep_left)
-            self.f.write(escpos.ep_fullcut)
-            self.f.flush()
     def kickout(self):
         if self.f is None:
             self.s=socket.socket(socket.AF_INET)
