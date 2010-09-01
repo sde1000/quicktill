@@ -39,6 +39,7 @@ class ssdialog(ui.dismisspopup):
         td.trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d"%sc[0])
+        printer.kickout()
         ui.infopopup(["Started session number %d."%sc[0]],
                      title="Session started",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
