@@ -1,3 +1,19 @@
+quicktill (0.9.5) stable; urgency=low
+
+  * New release 0.9.5
+
+  * Tillweb support for free text in transaction lines
+
+  * Food orders now end up in the transaction log
+
+  * Support for free text in transaction lines - NB database update required
+
+  * Share transaction line to string code between register and printer
+
+  * Kick out cash drawer on session start
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 18 Oct 2010 21:46:02 +0100
+
 quicktill (0.9.4) stable; urgency=low
 
   * New release 0.9.4
