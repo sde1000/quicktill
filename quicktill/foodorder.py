@@ -13,16 +13,24 @@ class fooditem(ui.lrline):
         ui.lrline.__init__(self,name,tillconfig.fc(self.price)
                            if self.price!=0.0 else "")
 
+# Defaults, for compatibility with older menu definition files; these
+# defaults wil be removed once all known menu files have been updated,
+# and the popup code will display an error if any of them are missing.
+# These defaults are specific to Individual Pubs Limited.
+
 # Default staff discount policy.  Returns the amount to be taken off
-# the price of each line of an order.  XXX After explicit discount
-# policies have been implemented at existing sites, this function will
-# be changed to always return 0.0
+# the price of each line of an order.
 def default_staffdiscount(tablenumber,item):
     if tablenumber!=0: return 0.00
     discount=item.price*0.4
     if discount>3.00: discount=3.00
     discount=math.floor(discount*20.0)/20.0
     return discount
+
+default_footer=("Please make sure your table number is displayed "
+                "on your table.  Your food will be brought to you.")
+
+default_dept=10
 
 class menuchoice:
     def __init__(self,options):
@@ -278,6 +286,14 @@ class popup(ui.basicpopup):
             self.foodmenu.staffdiscount
             if "staffdiscount" in self.foodmenu.__dict__
             else default_staffdiscount)
+        self.footer=(
+            self.foodmenu.footer
+            if "footer" in self.foodmenu.__dict__
+            else default_footer)
+        self.dept=(
+            self.foodmenu.dept
+            if "dept" in self.foodmenu.__dict__
+            else default_dept)
         self.func=func
         self.ordernumberfunc=ordernumberfunc
         self.h=20
@@ -346,12 +362,27 @@ class popup(ui.basicpopup):
             self.ml.append(fooditem("Staff discount",0.0-discount))
         tot=sum([x.price for x in self.ml],0.0)
         number=self.ordernumberfunc()
-        printer.print_food_order(kitchenprinter,number,self.ml,verbose=False,
-                                 tablenumber=tablenumber)
-        printer.print_food_order(printer.driver,number,self.ml,verbose=True,
-                                 tablenumber=tablenumber)
-        self.dismiss()
-        self.func(tot)
+        # We need to prepare a list of (dept,text,amount) tuples for
+        # the register. We enter these into the register before
+        # printing, so that we can avoid printing if there is a
+        # register problem.
+        rl=[(self.dept,x.name,x.price) for x in self.ml]
+        if tablenumber is not None:
+            rl.insert(0,(self.dept,"Food order %d (table %s):"%
+                         (number,tablenumber),0.00))
+        else:
+            rl.insert(0,(self.dept,"Food order %d:"%number,0.00))
+        r=self.func(rl)
+        if r==True:
+            printer.print_food_order(kitchenprinter,number,self.ml,
+                                     verbose=False,tablenumber=tablenumber,
+                                     footer=self.footer)
+            printer.print_food_order(printer.driver,number,self.ml,
+                                     verbose=True,tablenumber=tablenumber,
+                                     footer=self.footer)
+            self.dismiss()
+        else:
+            ui.infopopup([r],title="Error")
     def keypress(self,k):
         if k==keyboard.K_CLEAR:
             # Maybe ask for confirmation?

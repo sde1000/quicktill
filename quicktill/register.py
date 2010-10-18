@@ -440,13 +440,29 @@ class page(ui.basicpage):
         self.dl.append(tline(lid))
         self.cursor_off()
         self.update_balance() # Also redraws
-    def foodline(self,amount):
-        """This is a nasty hack and should be removed in the future!
+    def deptlines(self,lines):
+        """Accept multiple transaction lines from an external source.
+
+        lines is a list of (dept,text,amount) tuples; text may be None
+        if the department name is to be used.
+
+        Returns True on success; on failure, returns an error message
+        as a string.
 
         """
-        self.buf=str(amount)
-        self.qty=None
-        self.deptkey(10)
+        self.prompt=self.defaultprompt
+        self.clearbuffer()
+        trans=self.gettrans()
+        if trans is None: return "Transaction cannot be started."
+        for dept,text,amount in lines:
+            lid=td.trans_addline(trans,dept,1,amount,self.name,'S',text)
+            log.info("Register: deptline: trans=%d,lid=%d,dept=%d,"
+                     "price=%f,text=%s"%(trans,lid,dept,amount,text))
+            self.dl.append(tline(lid))
+        self.repeat=None
+        self.cursor_off()
+        self.update_balance()
+        return True
     def gettrans(self):
         if self.trans:
             if not td.trans_closed(self.trans):
@@ -1014,7 +1030,9 @@ class page(ui.basicpage):
         if k in [keyboard.K_4JUG,keyboard.K_DOUBLE,keyboard.K_HALF]:
             return self.modkey(k)
         if k==keyboard.K_FOODORDER:
-            return foodorder.popup(self.foodline)
+            trans=self.gettrans()
+            if trans is None: return
+            return foodorder.popup(self.deptlines)
         if k==keyboard.K_CANCELFOOD:
             return foodorder.cancel()
         curses.beep()

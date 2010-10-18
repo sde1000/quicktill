@@ -69,10 +69,11 @@ def format_transline(transline):
         ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)
     else:
         ss=deptstr
-    amount=("%d @ %s = %s"%(items,tillconfig.fc(amount),
+    astr=("%d @ %s = %s"%(items,tillconfig.fc(amount),
                             tillconfig.fc(items*amount)) if items!=1
             else "%s"%tillconfig.fc(items*amount))
-    return (ss,amount)
+    if amount==0.0: astr=""
+    return (ss,astr)
 
 class stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:

@@ -244,7 +244,7 @@ def print_restock_list(rl):
     driver.printline("\tEnd of list")
     driver.end()
 
-def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
+def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer=""):
     """This function prints a food order to the _specified_ printer.
 
     """
@@ -272,8 +272,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     if verbose:
         driver.printline()
-        driver.printline("\tPlease make sure your table number is displayed "
-                         "on your table.  Your food will be brought to you.")
+        driver.printline("\t%s"%footer)
     else:
         driver.printline()
         driver.printline()

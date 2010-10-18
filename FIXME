@@ -2,10 +2,6 @@ This file records the various ipltd-specific kludges that have been
 put in the software, which will need to be fixed if the software is to
 be used by other companies.
 
-* Food order handling in register.py/foodline
-
-Department 10 has been hard-coded.
-
 * Location prompt in usestock.py/put_on_sale
 
 Department 1 has been hard-coded.
