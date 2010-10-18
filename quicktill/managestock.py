@@ -6,18 +6,10 @@ import stock,delivery,department,stocklines
 import logging
 log=logging.getLogger()
 
-def newdelivery():
-    # New deliveries need a supplier to be chosen before they can be edited.
-    log.info("New delivery")
-    delivery.selectsupplier(delivery.create_and_edit_delivery,allow_new=True)
-
-def editdelivery():
-    log.info("Edit delivery")
-    delivery.deliverylist(delivery.delivery,unchecked_only=True)
-
-def displaydelivery():
-    log.info("Display delivery")
-    delivery.deliverylist(delivery.delivery,checked_only=True)
+def deliverymenu():
+    log.info("Delivery menu")
+    delivery.deliverylist(delivery.delivery,
+                          createfunc=delivery.new_delivery)
 
 def finish_reason(sn,reason):
     td.stock_finish(sn,reason)
@@ -224,11 +216,7 @@ def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
     menu=[
-        (keyboard.K_ONE,"Record a new delivery",newdelivery,None),
-        (keyboard.K_TWO,"Edit an existing (unconfirmed) delivery",
-         editdelivery,None),
-        (keyboard.K_THREE,"Display an old (confirmed) delivery",
-         displaydelivery,None),
+        (keyboard.K_ONE,"Deliveries",deliverymenu,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
          department.menu,(finishstock,"Finish Stock",False)),
         (keyboard.K_FIVE,"Stock check (unfinished stock)",

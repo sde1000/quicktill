@@ -4,13 +4,18 @@ def create_and_edit_delivery(supplier):
     dn=td.delivery_new(supplier)
     delivery(dn)
 
-def deliverylist(func,unchecked_only=False,checked_only=False):
+def new_delivery():
+    selectsupplier(create_and_edit_delivery,allow_new=True)
+
+def deliverylist(func,unchecked_only=False,checked_only=False,createfunc=None):
     def d(x):
         did,supid,docnum,date,checked,name=x
-        return ("%d"%did,name,ui.formatdate(date))
+        return ("%d"%did,name,ui.formatdate(date),("not confirmed","")[checked])
     dl=td.delivery_get(unchecked_only=unchecked_only,checked_only=checked_only)
-    lines=ui.table([d(x) for x in dl]).format(' r l l ')
+    lines=ui.table([d(x) for x in dl]).format(' r l l l ')
     m=[(x,func,(y[0],)) for x,y in zip(lines,dl)]
+    if createfunc is not None:
+        m.insert(0,("Record new delivery",createfunc,None))
     ui.menu(m,title="Delivery List",
             blurb="Select a delivery and press Cash/Enter.")
 

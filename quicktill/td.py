@@ -271,7 +271,7 @@ def delivery_get(unchecked_only=False,checked_only=False,number=None):
     cur.execute("SELECT d.deliveryid,d.supplierid,d.docnumber,d.date,"
                 "d.checked,s.name FROM deliveries d "
                 "LEFT JOIN suppliers s ON d.supplierid=s.supplierid "
-                "WHERE %s ORDER BY d.date DESC,d.deliveryid DESC"%w)
+                "WHERE %s ORDER BY d.checked,d.date DESC,d.deliveryid DESC"%w)
     return cur.fetchall()
 
 def delivery_new(supplier):
