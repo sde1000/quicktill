@@ -565,6 +565,13 @@ class page(ui.basicpage):
             # Exact change, then, is it?
             log.info("Register: cashkey: exact change")
             amount=self.balance
+            if self.balance is None and len(self.ml)==0:
+                # Special case: cash key on an empty transaction.
+                # Just cancel the transaction silently.
+                td.trans_cancel(self.trans)
+                self.clear()
+                self.redraw()
+                return
         else:
             if self.buf.find('.')>=0:
                 amount=float(self.buf)
@@ -630,6 +637,7 @@ class page(ui.basicpage):
                     amount=float(self.buf)
                 else:
                     amount=float(self.buf)/100.0
+            if amount is None: return # Empty transaction
             return cardpopup(amount,self.cardkey)
         else:
             log.info("Register: cardkey: explicit amount specified in call")
