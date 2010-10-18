@@ -57,8 +57,10 @@ def format_stocktype(stn,maxw=None):
 
 def format_transline(transline):
     (trans,items,amount,dept,deptstr,stockref,
-     transcode)=td.trans_getline(transline)
-    if stockref is not None:
+     transcode,text)=td.trans_getline(transline)
+    if text is not None:
+        ss=text
+    elif stockref is not None:
         (qty,removecode,stockid,manufacturer,name,shortname,abv,
          unitname)=td.stock_fetchline(stockref)
         abvs=stock.abvstr(abv)

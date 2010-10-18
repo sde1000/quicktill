@@ -111,7 +111,8 @@ CREATE TABLE translines (
 	source varchar(10), /* for till use, eg. vc number */
 	stockref int, /* advisory link to stock sale link */
 	transcode char(1) NOT NULL REFERENCES transcodes(transcode),
-	time timestamp NOT NULL DEFAULT now()
+	time timestamp NOT NULL DEFAULT now(),
+	text text /* descriptive text for the line, eg. food order */
 	);
 
 /* Below here is stock control information */
@@ -265,7 +266,7 @@ cellar	Cellar work
 damaged	Damaged
 freebie	Free drink
 missing	Gone missing
-driptray     Drip tray
+driptray	Drip tray
 \.
 
 /* One entry is made here every time stock is removed.  This table is

@@ -846,14 +846,15 @@ class page(ui.basicpage):
         log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans))
         for i in tl:
             (transid,items,amount,dept,desc,stockref,
-             transcode)=td.trans_getline(i)
+             transcode,text)=td.trans_getline(i)
             if stockref is not None:
                 (qty,removecode,stockitem,manufacturer,name,shortname,abv,
                  unitname)=td.stock_fetchline(stockref)
                 lid=td.stock_sell(trans,dept,stockitem,-items,qty/items,
                                   amount,self.name,'V')
             else:
-                lid=td.trans_addline(trans,dept,-items,amount,self.name,'V')
+                lid=td.trans_addline(trans,dept,-items,amount,
+                                     self.name,'V',text)
             self.dl.append(tline(lid))
         self.cursor_off()
         self.update_balance()
