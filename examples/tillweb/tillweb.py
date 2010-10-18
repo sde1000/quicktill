@@ -756,7 +756,7 @@ class StockLines(DBPage):
 class TransLines(DBPage):
     def queries(self,request):
         fields=("tl.translineid,tl.transid,tl.items,tl.amount,tl.dept,"
-                "tl.source,tl.stockref,tl.transcode,tl.time,"
+                "tl.source,tl.stockref,tl.text,tl.transcode,tl.time,"
                 "s.stockid,st.shortname,d.description")
         clauses=[]
         transjoin=""
@@ -795,15 +795,18 @@ class TransLines(DBPage):
         #filter webSafeFilter
         <table>
         <tr><th>Transaction</th><th>ID</th><th>Department</th><th>Items</th>
-        <th>Price</th><th>Stock</th><th>Code</th><th>Time</th></tr>
-        #for $translineid,$transid,$items,$amount,$dept,$source,$stockref,$transcode,$time,$stockid,$shortname,$deptname in $translines
+        <th>Price</th><th>Stock / Text</th><th>Code</th><th>Time</th></tr>
+        #for $translineid,$transid,$items,$amount,$dept,$source,$stockref,$text,$transcode,$time,$stockid,$shortname,$deptname in $translines
         <tr $zebra>
         <td class="transid"><a href="$root/translines?transaction=$transid">$transid</a></td>
         <td class="translineid">$translineid</td>
         <td>$deptname</td>
         <td>$items</td>
         <td class="money">$amount</td>
-        <td><a href="$root/stock/$stockid">$shortname</a></td>
+        <td>
+        #if $stockid
+        <a href="$root/stock/$stockid">$shortname</a>
+        #end if#$text</td>
         <td>$transcode</td>
         <td class="date">$time</td>
         </tr>
