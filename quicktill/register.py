@@ -92,20 +92,7 @@ class tline(ui.lrline):
         self.transline=transline
         self.update()
     def update(self):
-        (trans,items,amount,dept,deptstr,stockref,
-         transcode)=td.trans_getline(self.transline)
-        if stockref is not None:
-            (qty,removecode,stockid,manufacturer,name,shortname,abv,
-             unitname)=td.stock_fetchline(stockref)
-            abvs=stock.abvstr(abv)
-            qty=qty/items
-            qtys=tillconfig.qtystring(qty,unitname)
-            ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)
-        else:
-            ss=deptstr
-        self.ltext=ss
-        self.rtext="%d @ %s = %s"%(items,tillconfig.fc(amount),
-                                   tillconfig.fc(items*amount))
+        self.ltext,self.rtext=stock.format_transline(self.transline)
     def update_mark(self,ml):
         if self.transline in ml:
             self.colour=curses.color_pair(ui.colour_cancelline)

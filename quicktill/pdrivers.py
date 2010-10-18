@@ -1,4 +1,4 @@
-import string,socket,os,tempfile
+import string,socket,os,tempfile,textwrap
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
@@ -25,12 +25,18 @@ from reportlab.lib.pagesizes import A4
 def l2s(l):
     return string.join([chr(x) for x in l],"")
 
-def lr(l,r,w):
-    w=w-len(l)-len(r)
-    return "%s%s%s\n"%(l,' '*w,r)
+def lrwrap(l,r,width):
+    w=textwrap.wrap(l,width)
+    if len(w)==0: w=[""]
+    if len(w[-1])+len(r)>=width:
+        w.append("")
+    w[-1]=w[-1]+(' '*(width-len(w[-1])-len(r)))+r
+    return w
 
-def r(r,w):
-    return "%s%s\n"%(" "*(w-len(r)),r)
+def wrap(l,width):
+    w=textwrap.wrap(l,width)
+    if len(w)==0: w=[""]
+    return w
 
 class nullprinter:
     def start(self):
@@ -117,7 +123,14 @@ class escpos:
         cpl=self.cpl
         if font is not None:
             cpl=self.fontcpl[font]
-        fits=(len(l)<=cpl)
+        s=l.split("\t")
+        if len(s)>0: left=s[0]
+        else: left=""
+        if len(s)>1: center=s[1]
+        else: center=""
+        if len(s)>2: right=s[2]
+        else: right=""
+        fits=(len(left)+len(center)+len(right)<=cpl)
         if justcheckfit: return fits
         if not allowwrap and not fits: return False
         if colour is not None:
@@ -128,21 +141,25 @@ class escpos:
             self.f.write(escpos.ep_emph[emph])
         if underline is not None:
             self.f.write(escpos.ep_underline[underline])
-        s=l.split("\t")
-        if len(s)>0: left=s[0]
-        else: left=""
-        if len(s)>1: center=s[1]
-        else: center=""
-        if len(s)>2: right=s[2]
-        else: right=""
-        # Special case: if there's only centered text, send the control code
-        # for centering.  Otherwise line up with spaces.
-        if left=="" and center!="" and right=="":
+        # Possible cases:
+        # Center is empty - can use lrwrap()
+        # Center is not empty, left and right are empty - can use wrap,
+        # and send the "centered text" control code
+        # Center is not empty, and left and right are not empty -
+        # can't use any wrap.
+
+        if center=="":
+            ll=lrwrap(left,right,cpl)
+            for i in ll:
+                self.f.write(("%s\n"%i).encode(self.coding))
+        elif left=="" and right=="":
             self.f.write(escpos.ep_center)
-            self.f.write(center.encode(self.coding))
-            self.f.write("\n"+escpos.ep_left)
+            ll=wrap(center,cpl)
+            for i in ll:
+                self.f.write(("%s\n"%i).encode(self.coding))
+            self.f.write(escpos.ep_left)
         else:
-            pad=cpl-len(left)-len(center)-len(right)
+            pad=max(cpl-len(left)-len(center)-len(right),0)
             padl=pad/2
             padr=pad-padl
             self.f.write(("%s%s%s%s%s\n"%(

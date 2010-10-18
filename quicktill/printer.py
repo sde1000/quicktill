@@ -16,23 +16,7 @@ def print_receipt(trans):
     driver.printline("\tTel. %s"%tillconfig.pubnumber)
     driver.printline()
     for i in lines:
-        (trans,items,amount,dept,deptstr,stockref,
-         transcode)=td.trans_getline(i)
-        if stockref is not None:
-            (qty,removecode,stockid,manufacturer,name,shortname,abv,
-             unitname)=td.stock_fetchline(stockref)
-            qty=qty/items
-            qtys=tillconfig.qtystring(qty,unitname)
-            ss="%s %s"%(shortname,qtys)
-        else:
-            ss=deptstr
-        if items==1:
-            astr=tillconfig.fc(amount)
-        else:
-            astr="%d @ %s = %s"%(items,tillconfig.fc(amount),tillconfig.fc(items*amount))
-        if not driver.printline("%s\t\t%s"%(ss,astr),allowwrap=False):
-            driver.printline(ss)
-            driver.printline("\t\t%s"%astr)
+        driver.printline("%s\t\t%s"%stock.format_transline(i))
     driver.printline("\t\tSubtotal %s"%tillconfig.fc(linestotal),
                      colour=1,emph=1)
     for amount,paytype,description,ref in payments:
@@ -281,18 +265,15 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None):
     driver.printline()
     tot=0.0
     for item in ol:
-        for i in item.display(30):
-            driver.printline(i)
+        driver.printline("%s\t\t%s"%(item.ltext,item.rtext))
         tot+=item.price
     driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
     driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     if verbose:
         driver.printline()
-        driver.printline("\tPlease make sure your table")
-        driver.printline("\tnumber is displayed on your")
-        driver.printline("\ttable.  Your food will be")
-        driver.printline("\tbrought to you.")
+        driver.printline("\tPlease make sure your table number is displayed "
+                         "on your table.  Your food will be brought to you.")
     else:
         driver.printline()
         driver.printline()

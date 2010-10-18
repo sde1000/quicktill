@@ -2,7 +2,7 @@
 
 """
 
-import ui,td,keyboard,tillconfig,stocklines,department,hashlib
+import ui,td,keyboard,tillconfig,stocklines,department,hashlib,stock
 
 import logging
 log=logging.getLogger()
@@ -54,6 +54,23 @@ def format_stocktype(stn,maxw=None):
     (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(stn)
     return format_stock({'manufacturer':manufacturer,'name':name,
                          'shortname':shortname,'abvstr':abvstr(abv)},maxw)
+
+def format_transline(transline):
+    (trans,items,amount,dept,deptstr,stockref,
+     transcode)=td.trans_getline(transline)
+    if stockref is not None:
+        (qty,removecode,stockid,manufacturer,name,shortname,abv,
+         unitname)=td.stock_fetchline(stockref)
+        abvs=stock.abvstr(abv)
+        qty=qty/items
+        qtys=tillconfig.qtystring(qty,unitname)
+        ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)
+    else:
+        ss=deptstr
+    amount=("%d @ %s = %s"%(items,tillconfig.fc(amount),
+                            tillconfig.fc(items*amount)) if items!=1
+            else "%s"%tillconfig.fc(items*amount))
+    return (ss,amount)
 
 class stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
