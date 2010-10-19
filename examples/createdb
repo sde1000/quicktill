@@ -20,6 +20,35 @@ COPY vat FROM stdin;
 A	17.5	1
 \.
 
+CREATE TABLE vatrates (
+	band CHAR(1) NOT NULL REFERENCES vat(band),
+	rate NUMERIC(5,2) NOT NULL,
+	business INT NOT NULL REFERENCES businesses(business),
+	active DATE NOT NULL,
+	PRIMARY KEY (band,active));
+COPY vatrates FROM stdin;
+A	15.0	1	2008-12-01
+A	17.5	1	2010-01-01
+A	20.0	1	2011-01-04
+\.
+
+CREATE OR REPLACE FUNCTION vatrate(CHAR(1),DATE) RETURNS NUMERIC(5,2) AS
+'SELECT COALESCE(
+ (SELECT rate FROM vatrates WHERE band=$1 AND active<=$2 AND active=
+  (SELECT MAX(active) FROM vatrates WHERE band=$1 AND active<=$2)),
+ (SELECT rate FROM vat WHERE band=$1));'
+LANGUAGE SQL
+STABLE
+RETURNS NULL ON NULL INPUT;
+CREATE OR REPLACE FUNCTION business(CHAR(1),DATE) RETURNS INT AS
+'SELECT COALESCE(
+ (SELECT business FROM vatrates WHERE band=$1 AND active<=$2 AND active=
+  (SELECT MAX(active) FROM vatrates WHERE band=$1 AND active<=$2)),
+ (SELECT business FROM vat WHERE band=$1));'
+LANGUAGE SQL
+STABLE
+RETURNS NULL ON NULL INPUT;
+
 CREATE TABLE paytypes (
 	paytype varchar(8) NOT NULL PRIMARY KEY,
 	description varchar(10) NOT NULL
