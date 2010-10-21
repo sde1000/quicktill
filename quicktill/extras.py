@@ -1,4 +1,4 @@
-import ui,keyboard,printer,tillconfig,event
+import ui,keyboard,printer,tillconfig,event,td
 import HTMLParser
 import urllib
 import traceback,sys,os,time,datetime
@@ -120,11 +120,15 @@ class bbcheck(ui.dismisspopup):
 
     """
     def __init__(self,share=25.0):
-        ui.dismisspopup.__init__(self,6,20,title="Bar Billiards check",
+        ui.dismisspopup.__init__(self,7,20,title="Bar Billiards check",
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
+        # We assume that VAT band 'A' is the current main VAT rate.
+        self.vatrate,business=td.vat_info('A',ui.now())
+        self.vatrate=self.vatrate/100.0
         self.addstr(2,2,"   Total gross:")
         self.addstr(3,2,"Supplier share:")
+        self.addstr(4,2,"      VAT rate: %0.1f%%"%(self.vatrate*100.0))
         self.grossfield=ui.editfield(
             2,18,5,validate=ui.validate_float,keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)})
@@ -151,11 +155,11 @@ class bbcheck(ui.dismisspopup):
             return ui.infopopup(["The supplier share is a percentage, "
                                  "and must be between 0 and 100."],
                                 title="You Muppet")
-        balancea=grossamount/(tillconfig.vatrate+1.0)
+        balancea=grossamount/(self.vatrate+1.0)
         vat_on_nett_take=grossamount-balancea
         supplier_share=balancea*sharepct/100.0
         brewery_share=balancea-supplier_share
-        vat_on_rent=supplier_share*tillconfig.vatrate
+        vat_on_rent=supplier_share*self.vatrate
         left_on_site=brewery_share+vat_on_nett_take-vat_on_rent
         banked=supplier_share+vat_on_rent
         pdriver.start()

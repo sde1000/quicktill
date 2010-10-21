@@ -27,6 +27,7 @@ CREATE TABLE vatrates (
 	active DATE NOT NULL,
 	PRIMARY KEY (band,active));
 COPY vatrates FROM stdin;
+A	17.5	1	2001-01-01
 A	15.0	1	2008-12-01
 A	17.5	1	2010-01-01
 A	20.0	1	2011-01-04

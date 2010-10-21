@@ -143,9 +143,6 @@ def main():
     tillconfig.pubname=config['pubname']
     tillconfig.pubnumber=config['pubnumber']
     tillconfig.pubaddr=config['pubaddr']
-    tillconfig.vatrate=config['vatrate']
-    tillconfig.vatno=config['vatno']
-    tillconfig.companyaddr=config['companyaddr']
     tillconfig.currency=config['currency']
     tillconfig.cashback_limit=config['cashback_limit']
     if 'cashback_first' in config:

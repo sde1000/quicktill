@@ -91,7 +91,7 @@ def trans_getline(lid):
     cur=cursor()
     cur.execute("SELECT tl.transid,tl.items,"
                 "tl.amount,tl.dept,d.description,"
-                "tl.stockref,tl.transcode,tl.text "
+                "tl.stockref,tl.transcode,tl.text,d.vatband "
                 "FROM translines tl "
                 "INNER JOIN departments d ON tl.dept=d.dept "
                 "WHERE tl.translineid=%s",(lid,))
@@ -109,6 +109,16 @@ def trans_getlines(trans):
                 "WHERE transid=%s ORDER BY time ",(trans,))
     payments=cur.fetchall()
     return (lines,payments)
+
+def trans_multiband(trans):
+    "Determine whether a transaction has lines in more than one VAT band."
+    cur=cursor()
+    cur.execute("SELECT DISTINCT vat.band FROM translines tl "
+                "LEFT JOIN departments d ON tl.dept=d.dept "
+                "LEFT JOIN vat ON d.vatband=vat.band "
+                "WHERE transid=%s",(trans,))
+    bands=cur.fetchall()
+    return len(bands)>1
 
 def trans_age(trans):
     "Return the age of the transaction in days"
@@ -223,6 +233,17 @@ def trans_incompletes():
     cur.execute("SELECT transid FROM transactions WHERE closed=false "
                 "AND sessionid IS NOT NULL")
     return [x[0] for x in cur.fetchall()]
+
+def vat_info(band,date):
+    cur=cursor()
+    cur.execute("SELECT vatrate(%s,%s),business(%s,%s)",(band,date,band,date))
+    return cur.fetchone()
+
+def business_info(business):
+    cur=cursor()
+    cur.execute("SELECT name,abbrev,address,vatno FROM businesses "
+                "WHERE business=%s",(business,))
+    return cur.fetchone()
 
 ### Suppliers of stock
 

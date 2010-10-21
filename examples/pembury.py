@@ -222,10 +222,6 @@ std={
     'pubname':"The Pembury Tavern",
     'pubnumber':"020 8986 8597",
     'pubaddr':("90 Amhurst Road","London E8 1JH"),
-    'vatrate':vatrate,
-    'vatno':"783 9983 50",
-    'companyaddr':("Individual Pubs Limited","Unit 111, Norman Ind. Estate",
-                   "Cambridge Road, Milton","Cambridge CB24 6AT"),
     'currency':u"£",
     'cashback_limit':50.0,
     'pricepolicy':pembury_pricepolicy,
@@ -242,7 +238,7 @@ std={
 
 kitchen={
     'kitchenprinter':Epson_TM_U220(
-    ('epson-kitchenprinter.pembury.i.individualpubs.co.uk',9100),57),
+    ('testprinter.pembury.i.individualpubs.co.uk',9100),57),
     'menuurl':'http://till.pembury.i.individualpubs.co.uk:8080/foodmenu.py',
 #    'menuurl':'http://localhost:8080/foodmenu.py',
     }
@@ -251,7 +247,7 @@ noprinter={
     'printer': (nullprinter,()),
     }
 localprinter={
-    'printer': (Epson_TM_U220,("/dev/lp0",57)),
+    'printer': ((Epson_TM_U220),(('testprinter',9100),76,'iso-8859-1',True)),
     }
 pdfprinter={
     'printer': (pdf,("lpr %s",)),
@@ -636,9 +632,6 @@ config3.update(xpdfprinter)
 #  pubname
 #  pubnumber
 #  pubaddr
-#  vatrate  (to be removed)
-#  vatno  (to be removed)
-#  companyaddr
 #  currency
 #  cashback_limit
 #  pricepolicy  (optional)

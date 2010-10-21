@@ -13,11 +13,6 @@ pubname="Test Pub Name"
 pubnumber="07715 422132"
 pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")
 
-vatrate=40.0 # Heh!  That ought to warn people if they forget to configure it
-vatno="123 4567 89"
-companyaddr=(
-    "Boring Pub Chain","Any High Street","Any Town","Britain")
-
 # Test multi-character currency name... monopoly money!
 currency="MPL"
 

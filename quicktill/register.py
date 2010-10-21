@@ -870,7 +870,7 @@ class page(ui.basicpage):
         log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans))
         for i in tl:
             (transid,items,amount,dept,desc,stockref,
-             transcode,text)=td.trans_getline(i)
+             transcode,text,vatband)=td.trans_getline(i)
             if stockref is not None:
                 (qty,removecode,stockitem,manufacturer,name,shortname,abv,
                  unitname)=td.stock_fetchline(stockref)

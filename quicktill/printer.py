@@ -15,38 +15,67 @@ def print_receipt(trans):
         driver.printline("\t%s"%i,colour=1)
     driver.printline("\tTel. %s"%tillconfig.pubnumber)
     driver.printline()
+    multiband=td.trans_multiband(trans)
+    date=td.trans_date(trans)
+    bandtotals={}
     for i in lines:
-        driver.printline("%s\t\t%s"%stock.format_transline(i))
-    driver.printline("\t\tSubtotal %s"%tillconfig.fc(linestotal),
+        (transx,items,amount,dept,deptstr,stockref,
+         transcode,text,vatband)=td.trans_getline(i)
+        bandtotals[vatband]=bandtotals.get(vatband,0.0)+(items*amount)
+        left,right=stock.format_transline(i)
+        if multiband and not transopen:
+            driver.printline("%s\t\t%s %s"%(left,right,vatband))
+        else:
+            driver.printline("%s\t\t%s"%(left,right))
+    totalpad="  " if multiband else ""
+    driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(linestotal),totalpad),
                      colour=1,emph=1)
     for amount,paytype,description,ref in payments:
         if paytype=='CASH':
-            driver.printline("\t\t%s %s"%(ref,tillconfig.fc(amount)))
+            driver.printline("\t\t%s %s%s"%(ref,tillconfig.fc(amount),totalpad))
         else:
             if ref is None:
-                driver.printline("\t\t%s %s"%(description,tillconfig.fc(amount)))
+                driver.printline("\t\t%s %s%s"%(description,
+                                                tillconfig.fc(amount),
+                                                totalpad))
             else:
-                driver.printline("\t\t%s %s %s"%(
-                    description,ref,tillconfig.fc(amount)))
+                driver.printline("\t\t%s %s %s%s"%(
+                    description,ref,tillconfig.fc(amount),totalpad))
     driver.printline("")
     if transopen:
         driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)
         driver.printline("\tTransaction number %d"%trans)
     else:
-        net=linestotal/(tillconfig.vatrate+1.0)
-        vat=linestotal-net
-        driver.printline("\t\tNet total: %s"%tillconfig.fc(net))
-        driver.printline("\t\tVAT @ %0.1f%%: %s"%(tillconfig.vatrate*100.0,
-                                                  tillconfig.fc(vat)))
-        driver.printline("\t\tReceipt total: %s"%tillconfig.fc(linestotal))
+        # We have a list of VAT bands; we need to look up rate and
+        # business information for each of them.  Once we have the
+        # list of businesses, we can print out a section per business.
+        # In each section, show the business name and address, VAT
+        # number, and then for each VAT band the net amount, VAT and
+        # total.
+        businesses={} # Keys are business IDs, values are (band,rate) tuples
+        for i in bandtotals.keys():
+            rate,business=td.vat_info(i,date)
+            businesses.setdefault(business,[]).append((i,rate))
+        for i in businesses.keys():
+            name,abbrev,address,vatno=td.business_info(i)
+            bands=businesses[i]
+            # Print the business info
+            driver.printline("\t%s"%name)
+            for l in address.split('\\n'):
+                driver.printline("\t%s"%l)
+            driver.printline()
+            driver.printline("VAT reg no. %s"%vatno)
+            for band,rate in bands:
+                # Print the band, amount ex VAT, amount inc VAT, gross
+                gross=bandtotals[band]
+                net=gross/((rate/100.0)+1.0)
+                vat=gross-net
+                driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
+                        band,tillconfig.fc(net),tillconfig.fc(vat),rate,
+                        tillconfig.fc(gross)))
         driver.printline("")
         driver.printline("\tReceipt number %d"%trans)
-    driver.printline("\t%s"%ui.formatdate(td.trans_date(trans)))
-    driver.printline("")
-    for i in tillconfig.companyaddr:
-        driver.printline("\t%s"%i)
-    driver.printline()
-    driver.printline("\tVAT reg. no. %s"%tillconfig.vatno)
+    driver.printline("\t%s"%ui.formatdate(date))
     driver.end()
 
 def print_sessioncountup(session):
