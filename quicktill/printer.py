@@ -6,6 +6,7 @@ labeldriver=None
 def print_receipt(trans):
     transopen=False
     (lines,payments)=td.trans_getlines(trans)
+    if len(lines)==0: return
     (linestotal,paymentstotal)=td.trans_balance(trans)
     if linestotal!=paymentstotal: transopen=True
     driver.start()
@@ -73,7 +74,7 @@ def print_receipt(trans):
                 driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
                         tillconfig.fc(gross)))
-        driver.printline("")
+            driver.printline("")
         driver.printline("\tReceipt number %d"%trans)
     driver.printline("\t%s"%ui.formatdate(date))
     driver.end()

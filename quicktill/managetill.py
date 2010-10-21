@@ -257,6 +257,25 @@ def currentsessionsummary():
         sn,starttime,sessiondate=sc
         totalpopup(sn)
 
+class receiptprint(ui.dismisspopup):
+    def __init__(self):
+        ui.dismisspopup.__init__(self,5,30,title="Receipt print",
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Receipt number:")
+        self.rnfield=ui.editfield(
+            2,18,10,validate=ui.validate_int,keymap={
+                keyboard.K_CASH: (self.enter,None,True)})
+        self.rnfield.focus()
+    def enter(self):
+        try:
+            rn=int(self.rnfield.f)
+        except:
+            rn=None
+        if rn is None: return
+        printer.print_receipt(rn)
+        self.dismiss()
+
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
@@ -300,6 +319,7 @@ def popup():
         (keyboard.K_THREE,"Restore deferred transactions",transrestore,None),
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
+        (keyboard.K_SIX,"Print a receipt",receiptprint,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]
