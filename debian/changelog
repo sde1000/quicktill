@@ -1,3 +1,19 @@
+quicktill (0.9.6) stable; urgency=low
+
+  * New release 0.9.6
+
+  * Printing of arbitrary receipts
+
+  * Proper handling of VAT rate changes (requires database update)
+
+  * Extra table in database to hold VAT rate changes
+
+  * Quick and easy way to nobble empty transactions
+
+  * Combine new/edit/view deliveries options into one menu
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 21 Oct 2010 16:04:46 +0100
+
 quicktill (0.9.5) stable; urgency=low
 
   * New release 0.9.5
