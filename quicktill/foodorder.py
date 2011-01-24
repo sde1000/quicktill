@@ -258,7 +258,7 @@ class edititem(ui.dismisspopup):
         self.func()
 
 class popup(ui.basicpopup):
-    def __init__(self,func,ordernumberfunc=td.foodorder_ticket):
+    def __init__(self,func,ordernumberfunc=td.foodorder_ticket,transid=None):
         if menuurl is None:
             ui.infopopup(["No menu has been set!"],title="Error")
             return
@@ -295,6 +295,7 @@ class popup(ui.basicpopup):
             if "dept" in self.foodmenu.__dict__
             else default_dept)
         self.func=func
+        self.transid=transid
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
@@ -376,10 +377,10 @@ class popup(ui.basicpopup):
         if r==True:
             printer.print_food_order(kitchenprinter,number,self.ml,
                                      verbose=False,tablenumber=tablenumber,
-                                     footer=self.footer)
+                                     footer=self.footer,transid=self.transid)
             printer.print_food_order(printer.driver,number,self.ml,
                                      verbose=True,tablenumber=tablenumber,
-                                     footer=self.footer)
+                                     footer=self.footer,transid=self.transid)
             self.dismiss()
         else:
             ui.infopopup([r],title="Error")

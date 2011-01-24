@@ -274,7 +274,8 @@ def print_restock_list(rl):
     driver.printline("\tEnd of list")
     driver.end()
 
-def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer=""):
+def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
+                     transid=None):
     """This function prints a food order to the _specified_ printer.
 
     """
@@ -288,6 +289,9 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer=""):
         driver.printline()
     if tablenumber is not None:
         driver.printline("\tTable number %s"%tablenumber,colour=1,emph=1)
+        driver.printline()
+    if transid is not None:
+        driver.printline("\tTransaction %s"%transid)
         driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     driver.printline()

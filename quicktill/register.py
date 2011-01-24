@@ -260,6 +260,7 @@ class page(ui.basicpage):
         if self.trans:
             (lines,payments)=td.trans_balance(self.trans)
             self.balance=lines-payments
+            if self.balance==0.00: self.balance=None
         else: self.balance=None
         self.update_bufferline()
         self.redraw()
@@ -546,6 +547,13 @@ class page(ui.basicpage):
             self.clearbuffer()
             self.redraw()
             return
+        if self.balance is None and len(self.ml)==0:
+            # Special case: cash key on an empty transaction.
+            # Just cancel the transaction silently.
+            td.trans_cancel(self.trans)
+            self.clear()
+            self.redraw()
+            return
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
         # confirmation - one of the most common user errors is to
@@ -565,13 +573,6 @@ class page(ui.basicpage):
             # Exact change, then, is it?
             log.info("Register: cashkey: exact change")
             amount=self.balance
-            if self.balance is None and len(self.ml)==0:
-                # Special case: cash key on an empty transaction.
-                # Just cancel the transaction silently.
-                td.trans_cancel(self.trans)
-                self.clear()
-                self.redraw()
-                return
         else:
             if self.buf.find('.')>=0:
                 amount=float(self.buf)
@@ -1040,7 +1041,7 @@ class page(ui.basicpage):
         if k==keyboard.K_FOODORDER:
             trans=self.gettrans()
             if trans is None: return
-            return foodorder.popup(self.deptlines)
+            return foodorder.popup(self.deptlines,transid=trans)
         if k==keyboard.K_CANCELFOOD:
             return foodorder.cancel()
         curses.beep()
