@@ -1,3 +1,11 @@
+quicktill (0.9.7) stable; urgency=low
+
+  * New release 0.9.7
+
+  * Print transaction ID on food orders
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 24 Jan 2011 20:21:44 +0000
+
 quicktill (0.9.6) stable; urgency=low
 
   * New release 0.9.6
