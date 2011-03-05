@@ -1,3 +1,17 @@
+quicktill (0.9.8) stable; urgency=low
+
+  * New release 0.9.8
+
+  * Deal with kitchen printer failures
+
+  * Add popup to warn about open transactions when till is restarted
+
+  * Minor updates to sanity-check script
+
+  * New database sanity-check script in examples
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 05 Mar 2011 16:28:12 +0000
+
 quicktill (0.9.7) stable; urgency=low
 
   * New release 0.9.7
