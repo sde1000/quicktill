@@ -375,12 +375,25 @@ class popup(ui.basicpopup):
             rl.insert(0,(self.dept,"Food order %d:"%number,0.00))
         r=self.func(rl)
         if r==True:
-            printer.print_food_order(kitchenprinter,number,self.ml,
-                                     verbose=False,tablenumber=tablenumber,
-                                     footer=self.footer,transid=self.transid)
             printer.print_food_order(printer.driver,number,self.ml,
                                      verbose=True,tablenumber=tablenumber,
                                      footer=self.footer,transid=self.transid)
+            try:
+                printer.print_food_order(kitchenprinter,number,self.ml,
+                                         verbose=False,tablenumber=tablenumber,
+                                         footer=self.footer,transid=self.transid)
+            except:
+                e=traceback.format_exception_only(sys.exc_type,sys.exc_value)
+                self.dismiss()
+                ui.infopopup(
+                    ["There was a problem sending the order to the "
+                     "printer in the kitchen.  You must now take "
+                     "the customer's copy of the order to the kitchen "
+                     "so that they can make it.  Check that the printer "
+                     "in the kitchen has paper, is turned on, and is plugged "
+                     "in to the network.","","The error message from the "
+                     "printer is:"]+e,title="Kitchen printer error")
+                return
             self.dismiss()
         else:
             ui.infopopup([r],title="Error")
