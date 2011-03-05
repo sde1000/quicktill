@@ -929,6 +929,20 @@ class page(ui.basicpage):
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
+    def firstpageinit(self):
+        sc=td.session_current()
+        if sc is None: return
+        tl=td.session_translist(sc[0],onlyopen=True)
+        if len(tl)<1: return
+        lines=ui.table([("%d"%num,tillconfig.fc(amount))
+                         for num,closed,amount in tl]).format(' r r ')
+        sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
+        ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
+                title="Open Transactions",
+                blurb="There are some transactions already open.  Choose one "
+                "from the list below to continue with it.  You can get back "
+                "to this list by pressing the 'Recall Transaction' button.",
+                colour=ui.colour_input)
     def defertrans(self,transid):
         if td.trans_closed(transid):
             ui.infopopup(["Transaction %d has been closed, and cannot now "

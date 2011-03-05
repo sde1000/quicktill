@@ -22,6 +22,7 @@ def start(stdwin):
         p=ui.addpage(pagedef,hotkey,args)
         if fp is None: fp=p
     ui.selectpage(fp)
+    fp.firstpageinit()
 
     # Enter main event loop
     event.eventloop()

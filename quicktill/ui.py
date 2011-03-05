@@ -182,6 +182,11 @@ class basicpage(basicwin):
         global focus
         focus=self
         basicwin.__init__(self) # Sets self.parent to self - ok!
+    def firstpageinit(self):
+        # Startup code will call this function on the first page to be
+        # initialised, after all other pages have been initialised and
+        # the first page has been brought to the top.
+        pass
     def pagename(self):
         return "Basic page"
     def pagesummary(self):
