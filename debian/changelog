@@ -1,3 +1,11 @@
+quicktill (0.9.9) stable; urgency=low
+
+  * New release 0.9.9
+
+  * Change Cancel key behaviour based on age of line being cancelled
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 05 Mar 2011 18:37:25 +0000
+
 quicktill (0.9.8) stable; urgency=low
 
   * New release 0.9.8
