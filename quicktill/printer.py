@@ -20,10 +20,11 @@ def print_receipt(trans):
     date=td.trans_date(trans)
     bandtotals={}
     for i in lines:
+        tli=td.trans_getline(i)
         (transx,items,amount,dept,deptstr,stockref,
-         transcode,text,vatband)=td.trans_getline(i)
+         transcode,transtime,text,vatband)=tli
         bandtotals[vatband]=bandtotals.get(vatband,0.0)+(items*amount)
-        left,right=stock.format_transline(i)
+        left,right=stock.format_transline(tli)
         if multiband and not transopen:
             driver.printline("%s\t\t%s %s"%(left,right,vatband))
         else:

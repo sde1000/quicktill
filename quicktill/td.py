@@ -91,7 +91,7 @@ def trans_getline(lid):
     cur=cursor()
     cur.execute("SELECT tl.transid,tl.items,"
                 "tl.amount,tl.dept,d.description,"
-                "tl.stockref,tl.transcode,tl.text,d.vatband "
+                "tl.stockref,tl.transcode,tl.time,tl.text,d.vatband "
                 "FROM translines tl "
                 "INNER JOIN departments d ON tl.dept=d.dept "
                 "WHERE tl.translineid=%s",(lid,))

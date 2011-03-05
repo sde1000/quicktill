@@ -35,8 +35,11 @@ import curses
 import td,ui,keyboard,printer,textwrap
 import stock,stocklines
 import logging
+import datetime
 log=logging.getLogger()
 import foodorder
+
+max_transline_modify_age=datetime.timedelta(minutes=1)
 
 class transnotify:
     def __init__(self):
@@ -92,7 +95,11 @@ class tline(ui.lrline):
         self.transline=transline
         self.update()
     def update(self):
-        self.ltext,self.rtext=stock.format_transline(self.transline)
+        tli=td.trans_getline(self.transline)
+        self.transtime=tli[7]
+        self.ltext,self.rtext=stock.format_transline(tli)
+    def age(self):
+        return datetime.datetime.now() - self.transtime
     def update_mark(self,ml):
         if self.transline in ml:
             self.colour=curses.color_pair(ui.colour_cancelline)
@@ -343,9 +350,10 @@ class page(ui.basicpage):
             else:
                 pullthru_required=False
             # If the stock number we're selling now matches repeat_stockid
-            # then we can add to the previous transline rather than
+            # then we may be able to add to the previous transline rather than
             # creating a new one
-            if repeat_stockid==stockid:
+            if (repeat_stockid==stockid and
+                self.dl[-1].age()<max_transline_modify_age):
                 lid=repeat_lid
                 log.info("Register: linekey: added %d to lid=%d"%
                          (items,lid))
@@ -396,7 +404,8 @@ class page(ui.basicpage):
                 (td.stock_recordwaste,(stockid,'pullthru',pullthru,False),
                  True)})
     def deptkey(self,dept):
-        if self.repeat and self.repeat[0]==dept:
+        if (self.repeat and self.repeat[0]==dept
+            and self.dl[-1].age()<max_transline_modify_age):
             # Increase the quantity of the most recent entry
             log.info("Register: deptkey: adding to lid=%d"%self.repeat[1])
             td.trans_additems(self.repeat[1],1)
@@ -547,7 +556,7 @@ class page(ui.basicpage):
             self.clearbuffer()
             self.redraw()
             return
-        if self.balance is None and len(self.ml)==0:
+        if self.balance is None and len(self.ml)==0 and len(self.dl)==0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
             td.trans_cancel(self.trans)
@@ -587,7 +596,8 @@ class page(ui.basicpage):
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
-        # We have a non-zero amount and a transaction. Pay it!
+        # We have a non-zero or null amount and a transaction. Pay it!
+        if amount is None: amount=0.0
         remain=td.trans_addpayment(self.trans,'CASH',amount,'Cash')
         self.dl.append(
             rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
@@ -760,17 +770,20 @@ class page(ui.basicpage):
                 "To cancel individual lines, use the Up and Down keys "
                 "to select the line and then press Cancel.  Lines "
                 "cancelled from a transaction that's still open are "
-                "removed immediately.  If you're looking at a closed "
+                "reversed immediately.  If you're looking at a closed "
                 "transaction, you must select the lines you're "
                 "interested in and then press Cash/Enter to void them."],
                          title="Help on Cancel")
         else:
             if self.s.cursor>=len(self.dl):
                 closed=td.trans_closed(self.trans)
-                if not closed and self.keyguard:
+                if not closed and (
+                    self.keyguard or 
+                    (len(self.dl)>0 and
+                     self.dl[0].age()>max_transline_modify_age)):
                     log.info("Register: cancelkey kill transaction denied")
-                    ui.infopopup(["This transaction has been stored and "
-                                  "recalled; you can't cancel it all in "
+                    ui.infopopup(["This transaction is old; you can't "
+                                  "cancel it all in "
                                   "one go.  Cancel each line separately "
                                   "instead."],
                                  title="Cancel Transaction")
@@ -843,16 +856,23 @@ class page(ui.basicpage):
             if isinstance(l,tline):
                 transline=l.transline
                 if force:
-                    log.info("Register: cancelline: delete "
-                             "transline %d"%transline)
-                    td.trans_deleteline(transline)
-                    del self.dl[self.s.cursor]
-                    self.cursor_off()
-                    self.update_balance()
-                    if len(self.dl)==0:
-                        # The last transaction line was deleted, so also
-                        # delete the transaction.
-                        self.canceltrans()
+                    if l.age()<max_transline_modify_age:
+                        log.info("Register: cancelline: delete "
+                                 "transline %d"%transline)
+                        td.trans_deleteline(transline)
+                        del self.dl[self.s.cursor]
+                        self.cursor_off()
+                        self.update_balance()
+                        if len(self.dl)==0:
+                            # The last transaction line was deleted, so also
+                            # delete the transaction.
+                            self.canceltrans()
+                    else:
+                        log.info("Register: cancelline: reverse "
+                                 "transline %d"%transline)
+                        self.voidline(transline)
+                        self.cursor_off()
+                        self.update_balance()
                 else:
                     log.info("Register: cancelline: confirm cancel")
                     ui.infopopup(["Are you sure you want to cancel this line? "
@@ -863,6 +883,19 @@ class page(ui.basicpage):
                 log.info("Register: cancelline: can't cancel payments")
                 ui.infopopup(["You can't cancel payments.  Cancel the whole "
                               "transaction instead."],title="Cancel")
+    def voidline(self,tl):
+        trans=self.gettrans()
+        (transid,items,amount,dept,desc,stockref,
+         transcode,transtime,text,vatband)=td.trans_getline(tl)
+        if stockref is not None:
+            (qty,removecode,stockitem,manufacturer,name,shortname,abv,
+             unitname)=td.stock_fetchline(stockref)
+            lid=td.stock_sell(trans,dept,stockitem,-items,qty/items,
+                              amount,self.name,'V')
+        else:
+            lid=td.trans_addline(trans,dept,-items,amount,
+                                 self.name,'V',text)
+        self.dl.append(tline(lid))
     def cancelmarked(self):
         tl=list(self.ml)
         self.clear()
@@ -870,19 +903,15 @@ class page(ui.basicpage):
         if trans is None: return
         log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans))
         for i in tl:
-            (transid,items,amount,dept,desc,stockref,
-             transcode,text,vatband)=td.trans_getline(i)
-            if stockref is not None:
-                (qty,removecode,stockitem,manufacturer,name,shortname,abv,
-                 unitname)=td.stock_fetchline(stockref)
-                lid=td.stock_sell(trans,dept,stockitem,-items,qty/items,
-                                  amount,self.name,'V')
-            else:
-                lid=td.trans_addline(trans,dept,-items,amount,
-                                     self.name,'V',text)
-            self.dl.append(tline(lid))
+            self.voidline(i)
         self.cursor_off()
         self.update_balance()
+        # XXX To deal properly with voids of card transactions, perhaps we
+        # should leave the voiding transaction open here and allow the
+        # operator to close with Cash or Card key as appropriate.  We'd
+        # need to make sure that negative card payments work properly for
+        # refunds!   Also, since this would be a change in behaviour, perhaps
+        # we should pop up an explanatory dialog box here.
         self.cashkey()
     def recalltrans(self,trans):
         self.clear()

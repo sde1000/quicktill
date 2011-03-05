@@ -55,9 +55,9 @@ def format_stocktype(stn,maxw=None):
     return format_stock({'manufacturer':manufacturer,'name':name,
                          'shortname':shortname,'abvstr':abvstr(abv)},maxw)
 
-def format_transline(transline):
+def format_transline(transline_info):
     (trans,items,amount,dept,deptstr,stockref,
-     transcode,text,vatband)=td.trans_getline(transline)
+     transcode,transtime,text,vatband)=transline_info
     if text is not None:
         ss=text
     elif stockref is not None:
