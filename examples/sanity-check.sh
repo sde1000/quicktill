@@ -17,8 +17,9 @@ SELECT * FROM stocklines WHERE stocklineid NOT IN (
  SELECT stocklineid FROM stockonsale) ORDER BY dept,location,name;
 
 \echo Stock on sale that has not sold recently:
-SELECT stockid,manufacturer,name,onsale,size-used AS remaining,
-(SELECT max(time) FROM stockout so WHERE so.stockid=si.stockid) AS lastused
+SELECT stockid,manufacturer,name,to_char(onsale,'YYYY-MM-DD') AS onsale,
+size-used AS remaining,
+to_char((SELECT max(time) FROM stockout so WHERE so.stockid=si.stockid),'YYYY-MM-DD') AS lastused
 FROM stockinfo si WHERE si.onsale IS NOT NULL AND finished IS NULL
 AND ((SELECT max(time) FROM stockout so WHERE so.stockid=si.stockid)+'7 days')<now()
 ORDER BY lastused;
