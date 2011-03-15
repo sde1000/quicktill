@@ -381,8 +381,10 @@ class page(ui.basicpage):
                     "started using a new item, tell the till about it "
                     "using the 'Use Stock' button after dismissing this "
                     "message."%(sd['remaining']-(qty*items),sd['unitname'],
-                                stock.format_stock(sd,maxw=40),sd['stockid'])],
-                             title="Warning")
+                                stock.format_stock(sd,maxw=40),sd['stockid']),
+                    "","If you don't understand this message, you MUST "
+                    "call your manager to deal with it."],
+                             title="Warning",dismiss=keyboard.K_USESTOCK)
         else:
             self.prompt="%s: %d left on display; %d in stock"%(
                 name,stockremain[0],stockremain[1])
