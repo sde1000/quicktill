@@ -1157,11 +1157,11 @@ def session_translist(session,onlyopen=False):
     oos=""
     if onlyopen:
         oos="AND t.closed=FALSE "
-    cur.execute("SELECT t.transid,t.closed,sum(tl.items*tl.amount) "
+    cur.execute("SELECT t.transid,t.notes,t.closed,sum(tl.items*tl.amount) "
                 "FROM transactions t LEFT JOIN translines tl "
                 "ON t.transid=tl.transid "
                 "WHERE t.sessionid=%%s %s"
-                "GROUP BY t.transid,t.closed "
+                "GROUP BY t.transid,t.notes,t.closed "
                 "ORDER BY t.closed,t.transid DESC"%oos,(session,))
     return cur.fetchall()
 

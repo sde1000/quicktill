@@ -480,7 +480,7 @@ class page(ui.basicpage):
             if not td.trans_closed(self.trans):
                 return self.trans
         self.clear()
-        self.trans=td.trans_new(note=self.name)
+        self.trans=td.trans_new()
         if self.trans is None:
             log.info("Register: gettrans: no session active")
             ui.infopopup(["No session is active.",
@@ -952,9 +952,10 @@ class page(ui.basicpage):
             return
         tl=td.session_translist(sc[0])
         def transsummary(t):
-            num,closed,amount=t
-            return ("%d"%num,('open','closed')[closed],tillconfig.fc(amount))
-        lines=ui.table([transsummary(x) for x in tl]).format(' r l r ')
+            num,notes,closed,amount=t
+            return ("%d"%num,('open','closed')[closed],tillconfig.fc(amount),
+                    notes if notes else '')
+        lines=ui.table([transsummary(x) for x in tl]).format(' r l r l ')
         sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
@@ -965,8 +966,8 @@ class page(ui.basicpage):
         if sc is None: return
         tl=td.session_translist(sc[0],onlyopen=True)
         if len(tl)<1: return
-        lines=ui.table([("%d"%num,tillconfig.fc(amount))
-                         for num,closed,amount in tl]).format(' r r ')
+        lines=ui.table([("%d"%num,tillconfig.fc(amount),notes if notes else '')
+                         for num,notes,closed,amount in tl]).format(' r r l ')
         sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Open Transactions",
@@ -1019,9 +1020,9 @@ class page(ui.basicpage):
         log.info("Register: mergetrans")
         tl=td.session_translist(sc[0],onlyopen=True)
         def transsummary(t):
-            num,closed,amount=t
-            return ("%d"%num,tillconfig.fc(amount))
-        lines=ui.table([transsummary(x) for x in tl]).format(' r r ')
+            num,notes,closed,amount=t
+            return ("%d"%num,tillconfig.fc(amount),notes if notes else '')
+        lines=ui.table([transsummary(x) for x in tl]).format(' r r l ')
         sl=[(x,self.mergetrans,(transid,t[0])) for x,t in zip(lines,tl)
             if t[0]!=transid]
         ui.menu(sl,
