@@ -1,3 +1,21 @@
+quicktill (0.9.11) stable; urgency=low
+
+  * New release 0.9.11
+
+  * Extra checking on "use stock" for items less than 20% used
+
+  * Display the transaction note on the first line of the register
+
+  * Fix menu title to include transaction number
+
+  * Add transaction_notes configuration option
+
+  * Support for editing the notes of an open transaction
+
+  * Display transaction notes in menus
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 09 Jun 2011 19:18:00 +0100
+
 quicktill (0.9.10) stable; urgency=low
 
   * New release 0.9.10
