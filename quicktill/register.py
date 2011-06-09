@@ -1070,7 +1070,7 @@ class page(ui.basicpage):
         sl=[(x,self.settransnote,(trans,x))
             for x in tillconfig.transaction_notes]
         ui.menu(sl,
-                title="Notes for transaction %d",
+                title="Notes for transaction %d"%trans,
                 blurb="Choose the new transaction note and press Cash/Enter.",
                 colour=ui.colour_input)
     def managetranskey(self):
