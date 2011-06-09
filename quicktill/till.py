@@ -168,6 +168,8 @@ def main():
         tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
     if 'allow_tabs' in config:
         tillconfig.allow_tabs=config['allow_tabs']
+    if 'transaction_notes' in config:
+        tillconfig.transaction_notes=config['transaction_notes']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
