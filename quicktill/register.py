@@ -282,6 +282,7 @@ class page(ui.basicpage):
         ui.updateheader()
     def update_note(self):
         note=td.trans_getnotes(self.trans) if self.trans is not None else ""
+        if note is None: note=""
         note=note+" "*(self.w-len(note))
         self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
         # Note - moves the cursor
