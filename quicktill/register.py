@@ -193,6 +193,24 @@ class cardpopup(ui.dismisspopup):
         self.dismiss()
         self.func(total,receiptno)
 
+class edittransnotes(ui.dismisspopup):
+    """A popup to allow a transaction's notes to be edited."""
+    def __init__(self,trans):
+        self.trans=trans
+        ui.dismisspopup.__init__(self,5,60,
+                                 title="Notes for transaction %d"%trans,
+                                 colour=ui.colour_input)
+        notes=td.trans_getnotes(trans)
+        notes=notes if notes else ''
+        self.notesfield=ui.editfield(2,2,56,f=notes,flen=60,keymap={
+                keyboard.K_CASH:(self.enter,None)})
+        self.notesfield.focus()
+    def enter(self):
+        notes=self.notesfield.f
+        if notes=="": notes=None
+        td.trans_setnotes(self.trans,notes)
+        self.dismiss()
+
 class page(ui.basicpage):
     def __init__(self,panel,name,hotkeys):
         global registry
@@ -1045,6 +1063,16 @@ class page(ui.basicpage):
             return
         td.trans_merge(transid,othertransid)
         self.recalltrans(othertransid)
+    def settransnote(self,trans,notes):
+        if notes=="": notes=None
+        td.trans_setnotes(trans,notes)
+    def settransnotes_menu(self,trans):
+        sl=[(x,self.settransnote,(trans,x))
+            for x in tillconfig.transaction_notes]
+        ui.menu(sl,
+                title="Notes for transaction %d",
+                blurb="Choose the new transaction note and press Cash/Enter.",
+                colour=ui.colour_input)
     def managetranskey(self):
         if self.trans is None or td.trans_closed(self.trans):
             ui.infopopup(["You can only modify an open transaction."],
@@ -1055,7 +1083,12 @@ class page(ui.basicpage):
                     (keyboard.K_TWO,"Convert transaction to free drinks",
                      self.freedrinktrans,(self.trans,)),
                     (keyboard.K_THREE,"Merge this transaction with another "
-                     "open transaction",self.mergetransmenu,(self.trans,))],
+                     "open transaction",self.mergetransmenu,(self.trans,)),
+                    (keyboard.K_FOUR,"Set this transaction's notes "
+                     "(from menu)",self.settransnotes_menu,(self.trans,)),
+                    (keyboard.K_FIVE,"Change this transaction's notes "
+                     "(free text entry)",
+                     edittransnotes,(self.trans,))],
                    title="Transaction %d"%self.trans)
     def keypress(self,k):
         if isinstance(k,magcard.magstripe):

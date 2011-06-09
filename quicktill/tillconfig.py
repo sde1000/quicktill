@@ -78,3 +78,7 @@ allow_tabs=True
 
 # Does the card popup ask for cashback before receipt number?
 cashback_first=False
+
+# Pre-defined transaction notes
+transaction_notes=[
+    "","Kitchen tab","Staff tab","Party tab","Brewery tab","Festival staff tab"]
