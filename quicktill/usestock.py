@@ -83,14 +83,23 @@ def line_chosen(line):
 def finish_stock(line,sn):
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
     sd=td.stock_info([sn])[0]
+    blurb=("'%s' is still associated with stock number %d "
+           "(%s %s, %0.1f %ss remaining).  "%
+           (name,sn,sd['manufacturer'],sd['name'],
+            sd['remaining'],sd['unitname']))
     fl=[("Stock still ok, will use again later",finish_disconnect,(line,sn))]
-    fl=fl+[(x[1],finish_reason,(line,sn,x[0])) for x in td.stockfinish_list()]
-    ui.menu(fl,blurb="'%s' is still associated with stock number %d "
-            "(%s %s, %0.1f %ss remaining).  "
-            "Please indicate why you're replacing it:"%
-            (name,sn,sd['manufacturer'],sd['name'],
-             sd['remaining'],sd['unitname']),
-            title="Finish Stock",w=60)
+    if sd['used']/sd['size']<0.2:
+        blurb=(blurb+"This item is less than 20% used.  To avoid mistakes, "
+               "you can't tell the till this item is finished at this "
+               "point; you can only take it off the stock line and leave "
+               "it in stock.  If it really is finished, you can tell the "
+               "till using the 'Finish stock not currently on sale' option "
+               "on the stock management menu.")
+    else:
+        fl=fl+[(x[1],finish_reason,(line,sn,x[0]))
+               for x in td.stockfinish_list()]
+        blurb=blurb+"Please indicate why you're replacing it:"
+    ui.menu(fl,blurb=blurb,title="Finish Stock",w=60)
 
 def finish_disconnect(line,sn):
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
