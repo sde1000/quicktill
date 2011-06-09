@@ -195,8 +195,9 @@ class cardpopup(ui.dismisspopup):
 
 class edittransnotes(ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
-    def __init__(self,trans):
+    def __init__(self,trans,func):
         self.trans=trans
+        self.func=func
         ui.dismisspopup.__init__(self,5,60,
                                  title="Notes for transaction %d"%trans,
                                  colour=ui.colour_input)
@@ -209,6 +210,7 @@ class edittransnotes(ui.dismisspopup):
         notes=self.notesfield.f
         if notes=="": notes=None
         td.trans_setnotes(self.trans,notes)
+        self.func()
         self.dismiss()
 
 class page(ui.basicpage):
@@ -220,7 +222,7 @@ class page(ui.basicpage):
         self.defaultprompt="Ready"
         registry.register(self)
         self.bufferline=bufferline()
-        self.s=ui.scrollable(0,0,self.w,self.h,[],
+        self.s=ui.scrollable(1,0,self.w,self.h-1,[],
                              lastline=self.bufferline)
         self.s.focus()
         self.clear()
@@ -252,6 +254,7 @@ class page(ui.basicpage):
         self.keyguard=False # Require confirmation for 'Cash' or 'Cancel'
         self.clearbuffer()
         self.update_bufferline()
+        self.update_note()
     def update_bufferline(self):
         self.bufferline.update_buffer(self.prompt,self.qty,self.mod,self.buf,
                                       self.balance)
@@ -277,6 +280,11 @@ class page(ui.basicpage):
         """
         self.s.redraw()
         ui.updateheader()
+    def update_note(self):
+        note=td.trans_getnotes(self.trans) if self.trans is not None else ""
+        note=note+" "*(self.w-len(note))
+        self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
+        # Note - moves the cursor
     def cursor_off(self):
         # Returns the cursor to the buffer line.  Does not redraw (because
         # the caller is almost certainly going to do other things first).
@@ -940,6 +948,7 @@ class page(ui.basicpage):
             registry.announce(self.name,trans)
             self.trans=trans
             self.keyguard=True
+            self.update_note()
             (lines,payments)=td.trans_getlines(trans)
             for i in lines:
                 self.dl.append(tline(i))
@@ -1066,6 +1075,8 @@ class page(ui.basicpage):
     def settransnote(self,trans,notes):
         if notes=="": notes=None
         td.trans_setnotes(trans,notes)
+        self.update_note()
+        self.redraw()
     def settransnotes_menu(self,trans):
         sl=[(x,self.settransnote,(trans,x))
             for x in tillconfig.transaction_notes]
@@ -1088,7 +1099,7 @@ class page(ui.basicpage):
                      "(from menu)",self.settransnotes_menu,(self.trans,)),
                     (keyboard.K_FIVE,"Change this transaction's notes "
                      "(free text entry)",
-                     edittransnotes,(self.trans,))],
+                     edittransnotes,(self.trans,self.update_note))],
                    title="Transaction %d"%self.trans)
     def keypress(self,k):
         if isinstance(k,magcard.magstripe):
