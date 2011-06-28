@@ -82,3 +82,8 @@ cashback_first=False
 # Pre-defined transaction notes
 transaction_notes=[
     "","Kitchen tab","Staff tab","Party tab","Brewery tab","Festival staff tab"]
+
+# Hook that is called whenever an item of stock is put on sale, with
+# the output of td.stock_info() as an argument.
+def usestock_hook(sd):
+    pass

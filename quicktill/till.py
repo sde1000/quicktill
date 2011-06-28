@@ -170,6 +170,8 @@ def main():
         tillconfig.allow_tabs=config['allow_tabs']
     if 'transaction_notes' in config:
         tillconfig.transaction_notes=config['transaction_notes']
+    if 'usestock_hook' in config:
+        tillconfig.usestock_hook=config['usestock_hook']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

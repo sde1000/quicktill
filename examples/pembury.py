@@ -156,6 +156,19 @@ tapi=extras.twitter_api(
     token='324415141-A7Ygvhi3YOMU7tRFys9GG9N5GZe1qJJFLKHMlSAY',
     token_secret='WfwmwGHyKTdaqIyVjUSpbbPLPhuCrSkr9cqvoMT4Mc')
 
+def usestock_hook(sd):
+    t=None
+    if sd['dept']==3:
+        # It's a cider. Tweet it.
+        t="Next cider: %(manufacturer)s %(name)s"%sd
+    elif sd['dept']==1:
+        # Real ale.  Tweet if not from Milton, or if particularly strong
+        if sd['manufacturer']!="Milton":
+            t="Next guest beer: %(manufacturer)s %(name)s%(abvstr)s"%sd
+        if sd['abv'] is not None and sd['abv']>6.4:
+            t="Next strong beer: %(manufacturer)s %(name)s%(abvstr)s"%sd
+    if t: extras.twitter_post(tapi,default_text=t,fail_silently=True)
+
 def extrasmenu():
     menu=[
         (keyboard.K_ONE,"Bar Billiards checker",extras.bbcheck,None),
@@ -220,7 +233,8 @@ std={
     'allow_tabs':False,
     'nosale':False,
     'checkdigit_print':True,
-    'checkdigit_on_usestock':True,
+    'checkdigit_on_usestock':False,
+    'usestock_hook':usestock_hook,
 }
 
 kitchen={

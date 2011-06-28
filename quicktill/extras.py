@@ -371,6 +371,7 @@ class twitter_post(ui.dismisspopup):
                                  title="@%s Twitter"%user.screen_name,
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
+        self.tapi=tapi
         self.addstr(2,2,"Type in your update here and press Enter:")
         self.tfield=ui.editfield(
             4,2,72,f=default_text,flen=140,keymap={
@@ -383,7 +384,7 @@ class twitter_post(ui.dismisspopup):
             ui.infopopup(title="Twitter Problem",text=[
                     "That's too short!  Try typing some more."])
             return
-        tapi.PostUpdate(ttext)
+        self.tapi.PostUpdate(ttext)
         self.dismiss()
         ui.infopopup(title="Twittered",text=["Your update has been posted."],
                      dismiss=keyboard.K_CASH,colour=ui.colour_confirm)

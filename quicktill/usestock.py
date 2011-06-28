@@ -178,6 +178,7 @@ def put_on_sale(line,sn):
         # the confirmation box.
         if len(td.stock_annotations(sn,atype='location'))==0 and dept==1:
             stock.annotate_location(sn)
+        tillconfig.usestock_hook(sdd)
     else:
         log.warning("Use Stock: problem putting item %d on line %s"%(sn,name))
         ui.infopopup(["There was an error putting stock item %d (%s) "
