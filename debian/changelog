@@ -1,3 +1,13 @@
+quicktill (0.9.14) stable; urgency=low
+
+  * New release 0.9.14
+
+  * Add a hook that's called after stock items are put on sale
+
+  * Move twitter update function from examples to extras
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 28 Jun 2011 19:43:03 +0100
+
 quicktill (0.9.13) stable; urgency=low
 
   * New release 0.9.13
