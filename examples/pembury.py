@@ -152,37 +152,9 @@ if configname=='mainbar':
 # >>> quicktill.extras.twitter_auth()
 # Follow the prompts - you will generate a PIN using your web browser and
 # then type it in to get the token and secret.
-tapi=extras.twitter_api(token='324415141-A7Ygvhi3YOMU7tRFys9GG9N5GZe1qJJFLKHMlSAY',
-                        token_secret='WfwmwGHyKTdaqIyVjUSpbbPLPhuCrSkr9cqvoMT4Mc')
-
-class tilltwitter(ui.dismisspopup):
-    def __init__(self):
-        try:
-            user=tapi.VerifyCredentials()
-        except:
-            ui.infopopup(["Unable to connect to Twitter"],
-                         title="Error")
-            return
-        ui.dismisspopup.__init__(self,7,76,
-                                 title="@%s Twitter"%user.screen_name,
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_input)
-        self.addstr(2,2,"Type in your update here and press Enter:")
-        self.tfield=ui.editfield(
-            4,2,72,flen=140,keymap={
-                keyboard.K_CLEAR: (self.dismiss,None),
-                keyboard.K_CASH: (self.enter,None,False)})
-        self.tfield.focus()
-    def enter(self):
-        ttext=self.tfield.f
-        if len(ttext)<20:
-            ui.infopopup(title="Twitter Problem",text=[
-                    "That's too short!  Try typing some more."])
-            return
-        tapi.PostUpdate(ttext)
-        self.dismiss()
-        ui.infopopup(title="Twittered",text=["Your update has been posted."],
-                     dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
+tapi=extras.twitter_api(
+    token='324415141-A7Ygvhi3YOMU7tRFys9GG9N5GZe1qJJFLKHMlSAY',
+    token_secret='WfwmwGHyKTdaqIyVjUSpbbPLPhuCrSkr9cqvoMT4Mc')
 
 def extrasmenu():
     menu=[
@@ -199,7 +171,7 @@ def extrasmenu():
         menu.append(
             (keyboard.K_SIX,"Coffee pot timer",extras.managecoffeealarm,
              (coffeealarm,)))
-    menu.append((keyboard.K_SEVEN,"Post a twitter",tilltwitter,None))
+    menu.append((keyboard.K_SEVEN,"Post a twitter",extras.twitter_post,(tapi,)))
     ui.keymenu(menu,"Extras")
 
 def panickey():

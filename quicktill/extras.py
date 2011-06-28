@@ -357,3 +357,33 @@ def twitter_api(token,token_secret):
                        consumer_secret=twitter_consumer_secret,
                        access_token_key=token,
                        access_token_secret=token_secret)
+
+class twitter_post(ui.dismisspopup):
+    def __init__(self,tapi,default_text="",fail_silently=False):
+        try:
+            user=tapi.VerifyCredentials()
+        except:
+            if not fail_silently:
+                ui.infopopup(["Unable to connect to Twitter"],
+                             title="Error")
+            return
+        ui.dismisspopup.__init__(self,7,76,
+                                 title="@%s Twitter"%user.screen_name,
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Type in your update here and press Enter:")
+        self.tfield=ui.editfield(
+            4,2,72,f=default_text,flen=140,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None),
+                keyboard.K_CASH: (self.enter,None,False)})
+        self.tfield.focus()
+    def enter(self):
+        ttext=self.tfield.f
+        if len(ttext)<20:
+            ui.infopopup(title="Twitter Problem",text=[
+                    "That's too short!  Try typing some more."])
+            return
+        tapi.PostUpdate(ttext)
+        self.dismiss()
+        ui.infopopup(title="Twittered",text=["Your update has been posted."],
+                     dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
