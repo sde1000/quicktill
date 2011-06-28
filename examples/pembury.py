@@ -144,12 +144,27 @@ if configname=='mainbar':
             "and clear of seats and glasses - this should have been done "
             "at 11pm."])
 
-    import twitter
-    tapi=twitter.Api(username="XXX",password="xxx")
+# This token and secret are for the indpubs twitter account, and are
+# probably out of date (and invalid) by now.  To generate a token and
+# secret for your own twitter account, do the following:
+# $ python
+# >>> import quicktill.extras
+# >>> quicktill.extras.twitter_auth()
+# Follow the prompts - you will generate a PIN using your web browser and
+# then type it in to get the token and secret.
+tapi=extras.twitter_api(token='324415141-A7Ygvhi3YOMU7tRFys9GG9N5GZe1qJJFLKHMlSAY',
+                        token_secret='WfwmwGHyKTdaqIyVjUSpbbPLPhuCrSkr9cqvoMT4Mc')
 
 class tilltwitter(ui.dismisspopup):
     def __init__(self):
-        ui.dismisspopup.__init__(self,7,76,title="@PemburyTavern Twitter",
+        try:
+            user=tapi.VerifyCredentials()
+        except:
+            ui.infopopup(["Unable to connect to Twitter"],
+                         title="Error")
+            return
+        ui.dismisspopup.__init__(self,7,76,
+                                 title="@%s Twitter"%user.screen_name,
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         self.addstr(2,2,"Type in your update here and press Enter:")
@@ -184,7 +199,7 @@ def extrasmenu():
         menu.append(
             (keyboard.K_SIX,"Coffee pot timer",extras.managecoffeealarm,
              (coffeealarm,)))
-        menu.append((keyboard.K_SEVEN,"Post a twitter",tilltwitter,None))
+    menu.append((keyboard.K_SEVEN,"Post a twitter",tilltwitter,None))
     ui.keymenu(menu,"Extras")
 
 def panickey():
@@ -239,6 +254,7 @@ std={
 kitchen={
     'kitchenprinter':Epson_TM_U220(
     ('testprinter.pembury.i.individualpubs.co.uk',9100),57),
+#    'kitchenprinter':nullprinter(),
     'menuurl':'http://till.pembury.i.individualpubs.co.uk:8080/foodmenu.py',
 #    'menuurl':'http://localhost:8080/foodmenu.py',
     }
@@ -247,7 +263,8 @@ noprinter={
     'printer': (nullprinter,()),
     }
 localprinter={
-    'printer': ((Epson_TM_U220),(('testprinter',9100),76,'iso-8859-1',True)),
+#    'printer': ((Epson_TM_U220),(('testprinter',9100),76,'iso-8859-1',True)),
+    'printer': (nullprinter,()),
     }
 pdfprinter={
     'printer': (pdf,("lpr %s",)),
@@ -593,14 +610,14 @@ stockcontrol={
 config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(pdfprinter)
+config0.update(localprinter)
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal
 config1={'description':"Pembury Tavern main bar"}
 config1.update(std)
 config1.update(kb1)
-config1.update(localprinter)
+config1.update(xpdfprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
 
