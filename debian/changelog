@@ -1,3 +1,13 @@
+quicktill (0.9.13) stable; urgency=low
+
+  * New release 0.9.13
+
+  * Support for Twitter access in extras
+
+  * Import twitter and oauth2 libraries
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 28 Jun 2011 13:14:06 +0100
+
 quicktill (0.9.12) stable; urgency=low
 
   * New release 0.9.12
