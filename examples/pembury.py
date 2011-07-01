@@ -184,7 +184,7 @@ def extrasmenu():
         menu.append(
             (keyboard.K_SIX,"Coffee pot timer",extras.managecoffeealarm,
              (coffeealarm,)))
-    menu.append((keyboard.K_SEVEN,"Post a twitter",extras.twitter_post,(tapi,)))
+    menu.append((keyboard.K_SEVEN,"Post a twitter",extras.twitter_client,(tapi,)))
     ui.keymenu(menu,"Extras")
 
 def panickey():

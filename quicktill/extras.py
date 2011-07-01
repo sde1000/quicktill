@@ -388,3 +388,70 @@ class twitter_post(ui.dismisspopup):
         self.dismiss()
         ui.infopopup(title="Twittered",text=["Your update has been posted."],
                      dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
+
+class Tweet(ui.lrline):
+    def __init__(self,status):
+        self.status=status
+        ui.lrline.__init__(self,ltext=status.text,
+                           rtext="(@%s %s)"%(
+                status.user.screen_name,status.relative_created_at))
+
+class twitter_client(ui.dismisspopup):
+    def __init__(self,tapi):
+        (mh,mw)=ui.stdwin.getmaxyx()
+        # We want to make our window very-nearly full screen
+        w=mw-4
+        h=mh-2
+        self.tapi=tapi
+        try:
+            user=tapi.VerifyCredentials()
+        except:
+            ui.infopopup(["Unable to connect to Twitter"],
+                         title="Error")
+            return
+        ui.dismisspopup.__init__(self,h,w,title="@%s Twitter"%user.screen_name,
+                                 dismiss=keyboard.K_CLEAR,
+                                 colour=ui.colour_input)
+        self.tl=[]
+        # The first line of the window is a text entry line for tweeting.
+        # The rest of the window is a scrollable list of tweets by us and
+        # by other people.
+        self.addstr(2,2,"Your tweet: ")
+        self.tfield=ui.editfield(
+            2,14,w-16,flen=140,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None),
+                keyboard.K_CASH: (self.enter,None,False)})
+        self.tweets=ui.scrollable(4,2,w-4,h-6,self.tl,keymap={
+                keyboard.K_CASH: (self.reply,None,False)})
+        self.rbutton=ui.buttonfield(
+            h-2,2,18,"Refresh",keymap={
+                keyboard.K_CASH: (self.refresh,None)})
+        ui.map_fieldlist([self.tfield,self.tweets,self.rbutton])
+        self.refresh()
+    def enter(self):
+        ttext=self.tfield.f
+        if len(ttext)<20:
+            ui.infopopup(title="Twitter Problem",text=[
+                    "That's too short!  Try typing some more."])
+            return
+        status=self.tapi.PostUpdate(ttext)
+        self.tfield.set("")
+        self.timeline.insert(0,status)
+        self.tl.insert(0,Tweet(status))
+        self.tweets.redraw()
+        self.tfield.focus()
+    def reply(self):
+        # Fill field with reply info
+        self.tfield.set("@%s: "%self.timeline[self.tweets.cursor].
+                        user.screen_name)
+        self.tfield.focus()
+    def refresh(self):
+        # We really ought to be using GetHomeTimeline but it doesn't
+        # exist yet in python-twitter.
+        self.timeline=self.tapi.GetFriendsTimeline(count=20,retweets=True)
+        self.timeline=self.timeline+self.tapi.GetReplies()
+        self.timeline.sort(key=lambda x:x.created_at_in_seconds)
+        self.timeline.reverse()
+        self.tl=[Tweet(x) for x in self.timeline]
+        self.tweets.set(self.tl)
+        self.tfield.focus()
