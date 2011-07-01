@@ -12,6 +12,8 @@ class fooditem(ui.lrline):
         self.price=price
         ui.lrline.__init__(self,name,tillconfig.fc(self.price)
                            if self.price!=0.0 else "")
+    def copy(self):
+        return fooditem(self.name,self.price)
 
 # Defaults, for compatibility with older menu definition files; these
 # defaults wil be removed once all known menu files have been updated,
@@ -331,9 +333,9 @@ class popup(ui.basicpopup):
     def duplicate_item(self):
         if len(self.ml)==0: return
         if self.order.cursor>=len(self.ml):
-            self.insert_item(self.ml[-1])
+            self.insert_item(self.ml[-1].copy())
         else:
-            self.insert_item(self.ml[self.order.cursor])
+            self.insert_item(self.ml[self.order.cursor].copy())
     def edit_item(self):
         if len(self.ml)==0: return
         if self.order.cursor_at_end(): return
