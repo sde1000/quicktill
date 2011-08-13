@@ -173,6 +173,27 @@ def trans_addpayment(trans,ptype,amount,ref):
     commit()
     return remain
 
+def trans_pingapint(trans,amount,code,vid,blob):
+    """Add a PingaPint voucher redemption to a transaction and return
+    the remaining balance.  If the remaining balance is zero, mark the
+    transaction closed.
+
+    This is similar to trans_addpayment but it's important that it all
+    execute in one database transaction."""
+    cur=cursor()
+    pid=ticket(cur,"payments_seq")
+    cur.execute("INSERT INTO payments (paymentid,transid,amount,paytype,ref) "
+                "VALUES (%s,%s,%s,'PPINT',%s)",(pid,trans,amount,code))
+    cur.execute("INSERT INTO pingapint (paymentid,amount,vid,json_data) VALUES "
+                "(%s,%s,%s,%s)",(pid,amount,vid,blob))
+    (lines,payments)=trans_balance(trans)
+    remain=lines-payments
+    if remain==0.0:
+        cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
+                    (trans,))
+    commit()
+    return remain
+
 def trans_cancel(trans):
     """Delete a transaction and everything that depends on it."""
     cur=cursor()

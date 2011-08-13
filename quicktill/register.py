@@ -38,6 +38,7 @@ import logging
 import datetime
 log=logging.getLogger()
 import foodorder
+import pingapint
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 
@@ -192,6 +193,32 @@ class cardpopup(ui.dismisspopup):
                                 title="Error")
         self.dismiss()
         self.func(total,receiptno)
+
+class pingapintpopup(ui.dismisspopup):
+    """A window that pops up whenever a PingaPint voucher is accepted.
+    It prompts for the voucher number and performs a validation
+    online.
+    
+    """
+    def __init__(self,func):
+        self.func=func
+        ui.dismisspopup.__init__(self,5,31+pingapint.codelengthmax,
+                                 title="PingaPint voucher",
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Please enter voucher code:")
+        self.vfield=ui.editfield(2,29,pingapint.codelengthmax,
+                                 validate=ui.validate_int,keymap={
+                keyboard.K_CASH:(self.enter,None)})
+        self.vfield.focus()
+    def enter(self):
+        if len(self.vfield.f)<pingapint.codelengthmin: return
+        try:
+            amount,vid,blob=r=tillconfig.pingapint_api.validate(self.vfield.f)
+            self.dismiss()
+            return self.func(amount,self.vfield.f,vid,blob)
+        except pingapint.PingaPintError as e:
+            self.vfield.set("")
+            ui.infopopup([str(e)],title="PingaPint error")
 
 class edittransnotes(ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
@@ -703,6 +730,54 @@ class page(ui.basicpage):
         self.update_balance()
         ui.updateheader()
         printer.kickout()
+    def pingapintkey(self):
+        """Redeem a PingaPint voucher.  We don't support the user
+        specifying the voucher amount to redeem; we try to redeem for
+        the whole transaction and the PingaPint server tells us the
+        maximum value of the voucher.
+
+        Aside from that, this is fairly similar to dealing with a card
+        payment.
+
+        """
+        if self.qty is not None:
+            ui.infopopup(["You can't enter a quantity before telling "
+                          "the till about a payment.  After dismissing "
+                          "this message, press Clear and try again."],
+                         title="Error")
+            return
+        if self.trans is None or td.trans_closed(self.trans):
+            ui.infopopup(["There is no transaction in progress."],
+                         title="Error")
+            self.clearbuffer()
+            self.redraw()
+            return
+        if self.buf is not None:
+            ui.infopopup(["You can't specify an amount when redeeming a "
+                          "voucher.  After dismissing this message, "
+                          "press Clear and try again."],title="Error")
+            return
+        self.prompt=self.defaultprompt
+        if self.balance==0.0:
+            ui.infopopup(["There is nothing to pay."],title="Error")
+            return
+        self.clearbuffer()
+        return pingapintpopup(self.pingapint)
+    def pingapint(self,amount,code,vid,blob):
+        """Record a valid PingaPint voucher redemption.  This might be
+        for 0.0 if we are in test mode; go through the motions anyway!
+
+        """
+        # We don't give change for vouchers.  If the voucher amount is
+        # greater than the transaction balance, we keep the
+        # difference!
+        if amount>self.balance: amount=self.balance
+        td.trans_pingapint(self.trans,amount,code,vid,blob)
+        self.dl.append(rline('PingaPint %s %s'%(code,tillconfig.fc(amount)),
+                             ui.colour_cashline))
+        self.cursor_off()
+        self.update_balance()
+        ui.updateheader()
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
             td.trans_closed(self.trans)):
@@ -1090,18 +1165,22 @@ class page(ui.basicpage):
             ui.infopopup(["You can only modify an open transaction."],
                          title="Error")
             return
-        ui.keymenu([(keyboard.K_ONE,"Defer transaction to next session",
-                     self.defertrans,(self.trans,)),
-                    (keyboard.K_TWO,"Convert transaction to free drinks",
-                     self.freedrinktrans,(self.trans,)),
-                    (keyboard.K_THREE,"Merge this transaction with another "
-                     "open transaction",self.mergetransmenu,(self.trans,)),
-                    (keyboard.K_FOUR,"Set this transaction's notes "
-                     "(from menu)",self.settransnotes_menu,(self.trans,)),
-                    (keyboard.K_FIVE,"Change this transaction's notes "
-                     "(free text entry)",
-                     edittransnotes,(self.trans,self.update_note))],
-                   title="Transaction %d"%self.trans)
+        menu=[(keyboard.K_ONE,"Defer transaction to next session",
+               self.defertrans,(self.trans,))]
+        if tillconfig.transaction_to_free_drinks_function:
+            menu=menu+[(keyboard.K_TWO,"Convert transaction to free drinks",
+                        self.freedrinktrans,(self.trans,))]
+        menu=menu+[(keyboard.K_THREE,"Merge this transaction with another "
+                    "open transaction",self.mergetransmenu,(self.trans,)),
+                   (keyboard.K_FOUR,"Set this transaction's notes "
+                    "(from menu)",self.settransnotes_menu,(self.trans,)),
+                   (keyboard.K_FIVE,"Change this transaction's notes "
+                    "(free text entry)",
+                    edittransnotes,(self.trans,self.update_note))]
+        if tillconfig.pingapint_api:
+            menu=menu+[(keyboard.K_SIX,"Redeem a PingaPint voucher code",
+                        self.pingapintkey,None)]
+        ui.keymenu(menu,title="Transaction %d"%self.trans)
     def keypress(self,k):
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)

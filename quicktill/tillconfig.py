@@ -87,3 +87,7 @@ transaction_notes=[
 # the output of td.stock_info() as an argument.
 def usestock_hook(sd):
     pass
+
+transaction_to_free_drinks_function=False
+
+pingapint_api=None

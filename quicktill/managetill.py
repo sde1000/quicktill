@@ -123,18 +123,22 @@ class recordsession(ui.dismisspopup):
                                  colour=ui.colour_input)
         self.addstr(2,2,"Please enter the actual takings for session %d."%
                     session)
-        self.addstr(4,10,"Till total:     Actual total:")
+        self.addstr(4,13,"Till total:     Actual total:")
         # Build a list of fields to be filled in
         self.fl=[]
         y=5
         for i in paytypes:
             self.addstr(y,2,"%s:"%paytypes[i])
             if i in paytotals:
-                self.addstr(y,12,tillconfig.fc(paytotals[i][1]))
+                self.addstr(y,15,tillconfig.fc(paytotals[i][1]))
                 pt=paytotals[i][1]
             else:
                 pt=0.0
-            field=ui.editfield(y,26,10,validate=ui.validate_float)
+            if i=='PPINT':
+                field=ui.editfield(y,29,10,validate=ui.validate_float,
+                                   f="%0.2f"%pt,readonly=True)
+            else:
+                field=ui.editfield(y,29,10,validate=ui.validate_float)
             y=y+1
             self.fl.append([i,paytypes[i],field,pt])
         ui.map_fieldlist([x[2] for x in self.fl])
@@ -191,7 +195,7 @@ def sessiontakings():
                 "want to record the takings for, and press Cash/Enter.")
 
 def totalpopup(session):
-    w=30
+    w=33
     def lr(l,r):
         return "%s%s%s"%(l,' '*(w-len(l)-len(r)),r)
     log.info("Totals popup for session %d"%session)
@@ -207,7 +211,7 @@ def totalpopup(session):
         l.append("Session is still open.")
     else:
         l.append("Ended %s"%ui.formattime(end))
-    l.append("Till totals:    Actual totals:")
+    l.append(lr("Till totals:","Actual totals:"))
     for i in paytypes:
         if i in paytotals:
             tt="%s: %s%0.2f"%(paytotals[i][0],tillconfig.currency,

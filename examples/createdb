@@ -102,6 +102,13 @@ CREATE TABLE payments (
 	time timestamp NOT NULL DEFAULT now()
 	);
 
+CREATE TABLE pingapint (
+	paymentid int NOT NULL PRIMARY KEY REFERENCES payments(paymentid),
+	amount numeric(10,2) NOT NULL,
+	vid int NOT NULL,
+	json_data TEXT NOT NULL
+	);
+
 CREATE TABLE departments (
 	dept int NOT NULL PRIMARY KEY,
 	description varchar(20) NOT NULL,

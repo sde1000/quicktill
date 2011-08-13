@@ -172,6 +172,8 @@ def main():
         tillconfig.transaction_notes=config['transaction_notes']
     if 'usestock_hook' in config:
         tillconfig.usestock_hook=config['usestock_hook']
+    if 'pingapint' in config:
+        tillconfig.pingapint_api=config['pingapint']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
