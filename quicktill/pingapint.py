@@ -131,11 +131,14 @@ class Api(object):
         d=json.loads(response)
         result=d.get("Result",None)
         if result=="ValidRedemption":
-            amount=d.get("ValueRedeemed",0.0)
+            amount=d.get("ValueRedeemed","0.0")
             vid=d.get("ValidationID",None)
             if vid is None:
                 raise InvalidVID
-            vid=int(vid)
+            try:
+                vid=int(vid)
+            except:
+                raise InvalidVID
             return (float(amount),vid,response)
         elif result=="CodeNotValid":
             raise CodeNotValid
