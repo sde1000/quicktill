@@ -1,12 +1,13 @@
 import ui,event,time,td,stock,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
-    def __init__(self,panel,hotkeys):
+    def __init__(self,panel,hotkeys,locations=None):
         ui.basicpage.__init__(self,panel)
         self.display=0
         self.alarm()
         self.redraw()
         self.hotkeys=hotkeys
+        self.locations=locations
         event.eventlist.append(self)
     def pagename(self):
         return "Stock Control"
@@ -18,8 +19,11 @@ class page(ui.basicpage):
         self.addstr(0,18,"Stock")
         self.addstr(0,64,"Used")
         self.addstr(0,70,"Remaining")
-        for name,dept,stockid in sl:
-            if dept>3: continue
+        for name,dept,location,stockid in sl:
+            if self.locations is None:
+                if dept>3: continue # Old behaviour - no location list
+            else:
+                if location not in self.locations: continue
             self.addstr(y,0,name)
             if stockid is not None:
                 sd=td.stock_info([stockid])[0]

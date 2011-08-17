@@ -997,7 +997,7 @@ def stockline_listunbound():
 
 def stockline_summary():
     cur=cursor()
-    cur.execute("SELECT sl.name,sl.dept,sos.stockid "
+    cur.execute("SELECT sl.name,sl.dept,sl.location,sos.stockid "
                 "FROM stocklines sl "
                 "LEFT JOIN stockonsale sos ON sos.stocklineid=sl.stocklineid "
                 "WHERE sl.capacity IS NULL ORDER BY sl.name")
