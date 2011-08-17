@@ -1,3 +1,17 @@
+quicktill (0.9.16) stable; urgency=low
+
+  * New release 0.9.16
+
+  * Allow stock terminal display to be restricted by stockline location
+
+  * PingaPint support in the register
+
+  * Ensure voucher amount is returned as a number not a string
+
+  * Add library for communicating with PingaPint
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 17 Aug 2011 13:38:42 +0100
+
 quicktill (0.9.15) stable; urgency=low
 
   * New release 0.9.15
