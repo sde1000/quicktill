@@ -165,6 +165,10 @@ class basicwin:
 
         """
         pass
+    def parents(self):
+        if self.parent==self:
+            return [self]
+        return [self]+self.parent.parents()
     def keypress(self,k):
         pass
 
@@ -435,7 +439,10 @@ class infopopup(linepopup):
 
 class alarmpopup(infopopup):
     """This is like an infopopup, but goes "beep" every second until
-    it is dismissed.  It dismisses itself after 5 minutes.
+    it is dismissed.  It dismisses itself after 5 minutes, provided it
+    still has the input focus.  (If it doesn't have the focus,
+    dismissing would put the focus in the wrong place - potentially on
+    a different page, which would be VERY confusing for the user!)
 
     """
     def __init__(self,*args,**kwargs):
@@ -445,10 +452,13 @@ class alarmpopup(infopopup):
         event.eventlist.append(self)
         self.alarm()
     def alarm(self):
+        global focus
         curses.beep()
         self.nexttime=math.ceil(time.time())
         self.remaining=self.remaining-1
-        if self.remaining<1: self.dismiss()
+        if self.remaining<1:
+            self.remaining=10
+            if self in focus.parents(): self.dismiss()
     def dismiss(self):
         del event.eventlist[event.eventlist.index(self)]
         infopopup.dismiss(self)
