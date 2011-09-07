@@ -106,7 +106,8 @@ CREATE TABLE pingapint (
 	paymentid int NOT NULL PRIMARY KEY REFERENCES payments(paymentid),
 	amount numeric(10,2) NOT NULL,
 	vid int NOT NULL,
-	json_data TEXT NOT NULL
+	json_data TEXT NOT NULL,
+	reimbursed DATE
 	);
 
 CREATE TABLE departments (
