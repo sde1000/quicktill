@@ -1,3 +1,13 @@
+quicktill (0.9.18) stable; urgency=low
+
+  * New release 0.9.18
+
+  * Lock Screen function
+
+  * Add keycodes for 'PANIC', 'APPS' and 'LOCK'
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 20 Feb 2012 23:12:23 +0000
+
 quicktill (0.9.17) stable; urgency=low
 
   * New release 0.9.17
