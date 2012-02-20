@@ -365,6 +365,13 @@ CREATE TABLE stockline_stocktype_log (
        PRIMARY KEY (stocklineid,stocktype)
        );
 
+/* Till users; this table is used for the "lock screen" function.  It
+   is _not_ for security. */
+CREATE TABLE users (
+       code char(2) NOT NULL PRIMARY KEY,
+       name varchar(30) NOT NULL
+       );
+
 CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
        ON INSERT TO stockline_stocktype_log
        WHERE (NEW.stocklineid,NEW.stocktype)
