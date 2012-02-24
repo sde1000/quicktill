@@ -1,7 +1,7 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-import curses,curses.ascii,time,math,keyboard,sys,string,textwrap
+import curses,curses.ascii,time,math,keyboard,sys,string,textwrap,traceback
 import event,locale
 
 from mx.DateTime import now,strptime
@@ -1148,6 +1148,10 @@ class table:
             return ''.join(r)
         return [ formatline(x) for x in self.rows ]
                 
+def popup_exception(title):
+    e=traceback.format_exception(sys.exc_type,sys.exc_value,
+                                 sys.exc_traceback)
+    infopopup(e,title=title)
 
 def addpage(page,hotkey,args=()):
     (my,mx)=stdwin.getmaxyx()

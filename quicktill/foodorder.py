@@ -275,9 +275,7 @@ class popup(ui.basicpopup):
             self.foodmenu=imp.new_module("foodmenu")
             exec g in self.foodmenu.__dict__
         except:
-            e=traceback.format_exception(sys.exc_type,sys.exc_value,
-                                         sys.exc_traceback)
-            ui.infopopup(e,title="There is a problem with the menu")
+            ui.popup_exception("There is a problem with the menu")
             return
         if "menu" not in self.foodmenu.__dict__:
             ui.infopopup(["The menu file was read succesfully, but did not "
