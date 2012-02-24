@@ -366,7 +366,8 @@ class menu(listpopup):
         self.itemlist=itemlist
         self.dismiss_on_select=dismiss_on_select
         dl=[x[0] for x in itemlist]
-        listpopup.__init__(self,dl,default=default,header=[blurb],title=title,
+        listpopup.__init__(self,dl,default=default,
+                           header=[blurb] if blurb else None,title=title,
                            colour=colour,w=w,keymap=keymap)
     def keypress(self,k):
         if k==keyboard.K_CASH:
