@@ -1,3 +1,15 @@
+quicktill (0.9.19) stable; urgency=low
+
+  * New release 0.9.19
+
+  * Client for timesheets service
+
+  * Permit a null "blurb" before popup menus
+
+  * Add convenience function for popping up exceptions to UI code
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 26 Feb 2012 18:58:41 +0000
+
 quicktill (0.9.18) stable; urgency=low
 
   * New release 0.9.18
