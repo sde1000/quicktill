@@ -1027,7 +1027,7 @@ def keyboard_checkstockline(layout,stocklineid):
     """
     cur=cursor()
     cur.execute("SELECT keycode,menukey,qty FROM keyboard "
-                "WHERE stocklineid=%s",(stocklineid,))
+                "WHERE layout=%s AND stocklineid=%s",(layout,stocklineid))
     return cur.fetchall()
 
 def keyboard_addbinding(layout,keycode,menukey,stocklineid,qty):
