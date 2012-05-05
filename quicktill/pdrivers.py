@@ -1,9 +1,11 @@
-import string,socket,os,tempfile,textwrap
+import string,socket,os,tempfile,textwrap,subprocess
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
 
 # Methods a printer class should implement:
+# available - returns True if start/print/end is likely to succeed
+#  (eg. checks network connection on network printers)
 # start - set up for printing; might do nothing
 # setdefattr - set default attributes for subsequent lines
 # printline - print a line.  Text up to first \t is left-justified;
@@ -22,6 +24,18 @@ from reportlab.lib.pagesizes import A4
 
 # Might implement kickout() if kickout goes through printer
 
+def test_ping(host):
+    """
+    Check whether a host is alive using ping; returns True if it is alive.
+
+    """
+    null=open('/dev/null','w')
+    r=subprocess.call("ping -q -w 2 -c 1 %s"%host,
+                      shell=True,stdout=null,stderr=null)
+    null.close()
+    if r==0: return True
+    return False
+
 def l2s(l):
     return string.join([chr(x) for x in l],"")
 
@@ -39,6 +53,8 @@ def wrap(l,width):
     return w
 
 class nullprinter:
+    def available(self):
+        return True
     def start(self):
         pass
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
@@ -77,6 +93,10 @@ class escpos:
         self.fontcpl=cpl
         self.coding=coding
         self.has_cutter=has_cutter
+    def available(self):
+        if self.f: return True
+        host=self.ci[0]
+        return test_ping(host)
     def start(self):
         if self.f is None:
             self.s=socket.socket(socket.AF_INET)
@@ -220,6 +240,8 @@ class pdf:
         self.fontsizes=fontsizes
         self.pitches=pitches
         self.leftmargin=40
+    def available(self):
+        return True
     def start(self):
         self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
         self.tmpfilename=self.tmpfile.name
@@ -304,6 +326,8 @@ class pdfpage:
     def __init__(self,printcmd,pagesize):
         self.printcmd=printcmd
         self.pagesize=pagesize
+    def available(self):
+        return True
     def start(self,title="Page"):
         self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
         self.tmpfilename=self.tmpfile.name

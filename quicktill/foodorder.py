@@ -299,6 +299,11 @@ class popup(ui.basicpopup):
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
+        if not kitchenprinter.available():
+            ui.infopopup(["The kitchen printer might not be connected or "
+                          "turned on.  Please check it!"],
+                         title="No connection to printer")
+            return
         ui.basicpopup.__init__(self,self.h,self.w,title="Food Order",
                           colour=ui.colour_input)
         self.addstr(self.h-1,3,"Clear: abandon order   Print: finish   "
