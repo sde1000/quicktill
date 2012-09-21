@@ -71,8 +71,8 @@ class menuchoice:
             try:
                 option[1].display_menu(itemfunc)
             except:
-                e=traceback.format_exception(sys.exc_type,sys.exc_value,
-                                             sys.exc_traceback)
+                e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
+                                             sys.exc_info()[2])
                 ui.infopopup(e,title="There is a problem with the menu")
             return True
         return False
@@ -388,7 +388,7 @@ class popup(ui.basicpopup):
                                          verbose=False,tablenumber=tablenumber,
                                          footer=self.footer,transid=self.transid)
             except:
-                e=traceback.format_exception_only(sys.exc_type,sys.exc_value)
+                e=traceback.format_exception_only(sys.exc_info()[0],sys.exc_info()[1])
                 self.dismiss()
                 ui.infopopup(
                     ["There was a problem sending the order to the "

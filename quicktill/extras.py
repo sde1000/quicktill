@@ -72,8 +72,8 @@ class departurelist:
             p.feed(l)
             p.close()
         except:
-            e=traceback.format_exception(sys.exc_type,sys.exc_value,
-                                         sys.exc_traceback)
+            e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
+                                         sys.exc_info()[2])
             ui.infopopup(e,title="There is a problem with the web page")
         # Now p.tablelines contains the data!  Format and display it.
         self.tablelines=[x for x in p.tablelines if len(x)>=3]

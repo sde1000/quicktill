@@ -1150,8 +1150,8 @@ class table:
         return [ formatline(x) for x in self.rows ]
                 
 def popup_exception(title):
-    e=traceback.format_exception(sys.exc_type,sys.exc_value,
-                                 sys.exc_traceback)
+    e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
+                                 sys.exc_info()[2])
     infopopup(e,title=title)
 
 def addpage(page,hotkey,args=()):
