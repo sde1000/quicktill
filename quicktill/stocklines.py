@@ -555,11 +555,10 @@ def linemenu(keycode,func):
     not a list, shortcut to the function."""
     linelist=td.keyboard_checklines(tillconfig.kbtype,
                                     keyboard.kcnames[keycode])
-    if type(linelist) is list:
+    if isinstance(linelist, list):
         if len(linelist)==1:
             func(linelist[0])
         else:
-            il=[(keyboard.keycodes[x[4]],x[0],func,(x,))
-                for x in linelist]
-            il.sort()
+            il=sorted([(keyboard.keycodes[x[4]],x[0],func,(x,))
+                for x in linelist])
             ui.keymenu(il,title="Choose an item",colour=ui.colour_line)

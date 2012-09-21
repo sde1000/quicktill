@@ -102,8 +102,7 @@ class departurelist:
             p.printline("  %s"%self.station,colour=1,emph=1)
         p.printline("Printed %s"%ui.formattime(ui.now()))
         p.printline()
-        d=list(destinations.keys())
-        d.sort()
+        d=sorted(destinations.keys())
         for i in d:
             p.printline(i,colour=1)
             for j in destinations[i]:
