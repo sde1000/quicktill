@@ -2465,7 +2465,7 @@ class Api(object):
 
     trends = []
 
-    for i in xrange(24):
+    for i in range(24):
       trends.append(None)
     for t in data['trends']:
       idx = int(time.strftime('%H', time.strptime(t, '%Y-%m-%d %H:%M')))
@@ -2499,7 +2499,7 @@ class Api(object):
 
     trends = []
 
-    for i in xrange(7):
+    for i in range(7):
       trends.append(None)
     # use the epochs of the dates as keys for a dictionary
     times = dict([(calendar.timegm(time.strptime(t, '%Y-%m-%d')),t)
