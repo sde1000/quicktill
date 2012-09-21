@@ -204,7 +204,7 @@ def totalpopup(session):
     depts=td.session_depttotals(session)
     paytotals=td.session_paytotals(session)
     payments=td.session_actualtotals(session)
-    paytypes=set(paytotals.keys()+payments.keys())
+    paytypes=set(list(paytotals.keys())+list(payments.keys()))
     l=[]
     l.append("Accounting date %s"%ui.formatdate(accdate))
     l.append("Started %s"%ui.formattime(start))

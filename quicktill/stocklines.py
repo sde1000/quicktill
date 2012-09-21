@@ -167,7 +167,7 @@ def auto_allocate(deliveryid=None,confirm=True):
         # stockline associations editor to sort it out.
         from . import managestock
         managestock.stockline_associations(
-            duplines.keys(),"The following stock line and stock type "
+            list(duplines.keys()),"The following stock line and stock type "
             "associations meant an item of stock could not be allocated "
             "unambiguously.  Delete associations from the list below "
             "until there is only one stock line per stock type, then "
@@ -522,7 +522,7 @@ def selectlocation(func,title="Stock Locations",blurb="Choose a location",
     for stocklineid,name,location,capacity,dept,pullthru in stocklines:
         if location in l: l[location].append(stocklineid)
         else: l[location]=[stocklineid]
-    ml=[(x,func,(l[x],)) for x in l.keys()]
+    ml=[(x,func,(l[x],)) for x in list(l.keys())]
     ui.menu(ml,title=title,blurb=blurb)
 
 def popup():

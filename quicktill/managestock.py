@@ -74,7 +74,7 @@ def stockcheck(dept=None):
     for i in sinfo:
         st.setdefault(i['stocktype'],[]).append(i)
     # Convert to a list
-    st=[x for x in st.values()]
+    st=[x for x in list(st.values())]
     # We might want to sort the list at this point... sorting by ascending
     # amount remaining will put the things that are closest to running out
     # near the start - handy!

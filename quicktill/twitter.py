@@ -3637,7 +3637,7 @@ class Api(object):
     if parameters is None:
       return None
     else:
-      return urllib.urlencode(dict([(k, self._Encode(v)) for k, v in parameters.items() if v is not None]))
+      return urllib.urlencode(dict([(k, self._Encode(v)) for k, v in list(parameters.items()) if v is not None]))
 
   def _EncodePostData(self, post_data):
     '''Return a string in key=value&key=value form
@@ -3656,7 +3656,7 @@ class Api(object):
     if post_data is None:
       return None
     else:
-      return urllib.urlencode(dict([(k, self._Encode(v)) for k, v in post_data.items()]))
+      return urllib.urlencode(dict([(k, self._Encode(v)) for k, v in list(post_data.items())]))
 
   def _ParseAndCheckTwitter(self, json):
     """Try and parse the JSON returned from Twitter and return

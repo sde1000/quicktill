@@ -104,7 +104,7 @@ def main():
     if config is None:
         print ("Configuration \"%s\" does not exist.  "
                "Available configurations:"%options.configname)
-        for i in g.configurations.keys():
+        for i in list(g.configurations.keys()):
             print "%s: %s"%(i,g.configurations[i]['description'])
         sys.exit(1)
 

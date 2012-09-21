@@ -57,10 +57,10 @@ def print_receipt(trans):
         # number, and then for each VAT band the net amount, VAT and
         # total.
         businesses={} # Keys are business IDs, values are (band,rate) tuples
-        for i in bandtotals.keys():
+        for i in list(bandtotals.keys()):
             rate,business=td.vat_info(i,date)
             businesses.setdefault(business,[]).append((i,rate))
-        for i in businesses.keys():
+        for i in list(businesses.keys()):
             name,abbrev,address,vatno=td.business_info(i)
             bands=businesses[i]
             # Print the business info
@@ -122,7 +122,7 @@ def print_sessiontotals(session):
     depts=td.session_depttotals(session)
     paytotals=td.session_paytotals(session)
     payments=td.session_actualtotals(session)
-    paytypes=set(paytotals.keys()+payments.keys())
+    paytypes=set(list(paytotals.keys())+list(payments.keys()))
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)

@@ -87,7 +87,7 @@ def build_xoauth_string(url, consumer, token=None):
     request.sign_request(signing_method, consumer, token)
 
     params = []
-    for k, v in sorted(request.iteritems()):
+    for k, v in sorted(request.items()):
         if v is not None:
             params.append('%s="%s"' % (k, escape(v)))
 
@@ -345,7 +345,7 @@ class Request(dict):
             self.url = to_unicode(url)
         self.method = method
         if parameters is not None:
-            for k, v in parameters.iteritems():
+            for k, v in parameters.items():
                 k = to_unicode(k)
                 v = to_unicode_optional_iterator(v)
                 self[k] = v
@@ -382,12 +382,12 @@ class Request(dict):
  
     def get_nonoauth_parameters(self):
         """Get any non-OAuth parameters."""
-        return dict([(k, v) for k, v in self.iteritems() 
+        return dict([(k, v) for k, v in self.items() 
                     if not k.startswith('oauth_')])
  
     def to_header(self, realm=''):
         """Serialize as a header for an HTTPAuth request."""
-        oauth_params = ((k, v) for k, v in self.items() 
+        oauth_params = ((k, v) for k, v in list(self.items()) 
                             if k.startswith('oauth_'))
         stringy_params = ((k, escape(str(v))) for k, v in oauth_params)
         header_params = ('%s="%s"' % (k, v) for k, v in stringy_params)
@@ -402,7 +402,7 @@ class Request(dict):
     def to_postdata(self):
         """Serialize as post data for a POST request."""
         d = {}
-        for k, v in self.iteritems():
+        for k, v in self.items():
             d[k.encode('utf-8')] = to_utf8_optional_iterator(v)
 
         # tell urlencode to deal with sequence values and map them correctly
@@ -419,7 +419,7 @@ class Request(dict):
             # must be python <2.5
             query = base_url[4]
         query = parse_qs(query)
-        for k, v in self.items():
+        for k, v in list(self.items()):
             query.setdefault(k, []).append(v)
         
         try:
@@ -450,7 +450,7 @@ class Request(dict):
     def get_normalized_parameters(self):
         """Return a string that contains the parameters that must be signed."""
         items = []
-        for key, value in self.iteritems():
+        for key, value in self.items():
             if key == 'oauth_signature':
                 continue
             # 1.0a/9.1.1 states that kvp must be sorted by key, then by value,
@@ -469,7 +469,7 @@ class Request(dict):
         # Include any query string parameters from the provided URL
         query = urlparse.urlparse(self.url)[4]
 
-        url_items = self._split_url_string(query).items()
+        url_items = list(self._split_url_string(query).items())
         url_items = [(to_utf8(k), to_utf8(v)) for k, v in url_items if k != 'oauth_signature' ]
         items.extend(url_items)
 
@@ -607,7 +607,7 @@ class Request(dict):
     def _split_url_string(param_str):
         """Turn URL string into parameters."""
         parameters = parse_qs(param_str.encode('utf-8'), keep_blank_values=True)
-        for k, v in parameters.iteritems():
+        for k, v in parameters.items():
             parameters[k] = urllib.unquote(v[0])
         return parameters
 
@@ -740,7 +740,7 @@ class Server(object):
             # Get the signature method object.
             signature_method = self.signature_methods[signature_method]
         except:
-            signature_method_names = ', '.join(self.signature_methods.keys())
+            signature_method_names = ', '.join(list(self.signature_methods.keys()))
             raise Error('Signature method %s not supported try one of the following: %s' % (signature_method, signature_method_names))
 
         return signature_method
