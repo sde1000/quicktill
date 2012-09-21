@@ -1107,12 +1107,12 @@ def session_recordtotals(number,amounts):
     cur=cursor()
     cur.execute("SELECT endtime FROM sessions WHERE sessionid=%s",(number,))
     s=cur.fetchall()
-    if len(s)!=1: raise "Session does not exist"
+    if len(s)!=1: raise Exception("Session does not exist")
     cur.execute("SELECT sum(amount) FROM sessiontotals WHERE sessionid=%s",
                 (number,))
     s=cur.fetchall()
     if s[0][0]!=None:
-        raise "Session has already had payments entered"
+        raise Exception("Session has already had payments entered")
     # Record the amounts
     for i in amounts:
         cur.execute("INSERT INTO sessiontotals VALUES (%s,%s,%s)",
@@ -1241,7 +1241,7 @@ def db_version():
 def init():
     global con,database
     if database is None:
-        raise "No database defined"
+        raise Exception("No database defined")
     if database[0]==":":
         database="dbname=%s"%database[1:]
     con=db.connect(database)

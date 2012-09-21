@@ -218,7 +218,7 @@ class Epson_TM_U220(escpos):
         elif paperwidth==76:
             cpl=(33,40)
         else:
-            raise "Unknown paper width"
+            raise Exception("Unknown paper width")
         escpos.__init__(self,devicefile,cpl,coding,has_cutter)
 
 class pdf:

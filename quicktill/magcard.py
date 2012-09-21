@@ -13,7 +13,7 @@ class magstripe:
         if self.i is None: return
         self.i.append(c)
     def track(self,t):
-        if t<1 or t>3: raise "Bad track"
+        if t<1 or t>3: raise Exception("Bad track")
         return string.join([chr(x) for x in self.t[t-1]],"")
     def __str__(self):
         return "magstripe(%s)"%','.join(

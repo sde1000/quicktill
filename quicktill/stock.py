@@ -106,7 +106,7 @@ class stocktype(ui.dismisspopup):
             blurb1="NOTE: this is the wrong mode for"
             blurb2="creating new stock types!"
         else:
-            raise "Bad mode"
+            raise Exception("Bad mode")
         depts=td.department_list()
         units=td.unittype_list()
         self.deptlist=[x[0] for x in depts]
