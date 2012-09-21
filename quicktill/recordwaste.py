@@ -1,4 +1,4 @@
-import ui,td,keyboard,stock,stocklines,department
+from . import ui,td,keyboard,stock,stocklines,department
 
 class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording

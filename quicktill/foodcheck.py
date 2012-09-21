@@ -1,5 +1,5 @@
 import sys
-import ui,foodorder,keyboard,event
+from . import ui,foodorder,keyboard,event
 
 class page(ui.basicpage):
     def __init__(self,panel,hotkeys):

@@ -2,7 +2,7 @@
 
 """
 
-import td,ui,keyboard,stock,stocklines,tillconfig
+from . import td,ui,keyboard,stock,stocklines,tillconfig
 
 def plu_keypress(key):
     stocklines.linemenu(key,plu_window)

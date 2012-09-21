@@ -2,7 +2,7 @@
 # windows, and so on.
 
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
-import keyboard,event
+from . import keyboard,event
 
 from mx.DateTime import now,strptime
 

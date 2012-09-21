@@ -1,5 +1,5 @@
 import logging
-import keyboard,ui,td,tillconfig,printer,managestock
+from . import keyboard,ui,td,tillconfig,printer
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
@@ -165,6 +165,7 @@ def auto_allocate(deliveryid=None,confirm=True):
     if duplines!={}:
         # Oops, there were duplicate stockids.  Dump the user into the
         # stockline associations editor to sort it out.
+        from . import managestock
         managestock.stockline_associations(
             duplines.keys(),"The following stock line and stock type "
             "associations meant an item of stock could not be allocated "

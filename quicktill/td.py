@@ -6,7 +6,7 @@
 # implementing them in the database itself.
 
 import time
-import stock
+#from . import stock
 import psycopg2 as db
 import psycopg2.extensions
 
@@ -478,6 +478,7 @@ def stock_info(stockid_list):
     # Q: This is a real candidate for returning a dict! Does pgdb support it?
     # A: not explicitly, but we can do something like:
     cn=[x[0] for x in cur.description]
+    from . import stock
     def mkdict(r):
         d={}
         for i in cn:

@@ -1,8 +1,8 @@
 """Implements the 'Manage Stock' menu."""
 
 import curses,curses.ascii,time
-import ui,td,keyboard,printer
-import stock,delivery,department,stocklines
+from . import ui,td,keyboard,printer
+from . import stock,delivery,department,stocklines
 
 import logging
 log=logging.getLogger()

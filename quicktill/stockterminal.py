@@ -1,5 +1,5 @@
 import time
-import ui,event,td,stock,keyboard,usestock,stocklines
+from . import ui,event,td,stock,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
     def __init__(self,panel,hotkeys,locations=None):

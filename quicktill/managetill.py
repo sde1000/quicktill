@@ -3,9 +3,9 @@
 """
 
 import sys,math,curses,os
-import ui,keyboard,td,printer
-import register,tillconfig,managekeyboard,stocklines,event
-from version import version
+from . import ui,keyboard,td,printer
+from . import register,tillconfig,managekeyboard,stocklines,event
+from .version import version
 from mx.DateTime import DateTimeDelta
 
 import logging

@@ -6,8 +6,8 @@ will be started by calling main() from this module.
 """
 
 import sys,os,curses,logging,locale
-import ui,keyboard,event,td,printer,tillconfig,event,foodorder
-from version import version
+from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
+from .version import version
 
 def start(stdwin):
     # The display is initialised at this point

@@ -1,6 +1,6 @@
 """Implements the "use stock" menu"""
 
-import ui,td,keyboard,stock,stocklines,tillconfig
+from . import ui,td,keyboard,stock,stocklines,tillconfig
 
 import logging
 log=logging.getLogger()

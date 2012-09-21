@@ -10,7 +10,7 @@
 # This is supplied using the initUI method.
 
 import sys,string,curses
-import keyboard,magcard,event
+from . import keyboard,magcard,event
 
 class curseskeyboard:
     # curses codes and their till keycode equivalents

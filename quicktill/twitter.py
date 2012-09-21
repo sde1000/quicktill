@@ -62,7 +62,7 @@ try:
 except ImportError:
   from md5 import md5
 
-import oauth2 as oauth
+from . import oauth2 as oauth
 
 
 CHARACTER_LIMIT = 140

@@ -3,7 +3,7 @@
 """
 
 import hashlib,logging
-import ui,td,keyboard,tillconfig,stocklines,department,stock
+from . import ui,td,keyboard,tillconfig,stocklines,department
 log=logging.getLogger()
 
 def abvstr(abv):
@@ -62,7 +62,7 @@ def format_transline(transline_info):
     elif stockref is not None:
         (qty,removecode,stockid,manufacturer,name,shortname,abv,
          unitname)=td.stock_fetchline(stockref)
-        abvs=stock.abvstr(abv)
+        abvs=abvstr(abv)
         qty=qty/items
         qtys=tillconfig.qtystring(qty,unitname)
         ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)

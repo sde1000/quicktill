@@ -1,4 +1,4 @@
-import ui,keyboard,printer,tillconfig,event,td
+from . import ui,keyboard,printer,tillconfig,event,td
 import HTMLParser
 import urllib
 import traceback,sys,os,time,datetime
@@ -287,7 +287,7 @@ def twitter_auth():
     # This code is from the example at
     # https://github.com/simplegeo/python-oauth2
     import urlparse
-    import oauth2 as oauth
+    from . import oauth2 as oauth
 
     consumer_key = twitter_consumer_key
     consumer_secret = twitter_consumer_secret
@@ -352,7 +352,7 @@ def twitter_auth():
     print
 
 def twitter_api(token,token_secret):
-    import twitter
+    from . import twitter
     return twitter.Api(consumer_key=twitter_consumer_key,
                        consumer_secret=twitter_consumer_secret,
                        access_token_key=token,

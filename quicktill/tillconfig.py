@@ -5,7 +5,7 @@ most of the entries here.
 
 """
 
-import keyboard
+from . import keyboard
 
 configversion="tillconfig.py"
 

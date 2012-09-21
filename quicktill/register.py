@@ -30,15 +30,15 @@ etc."""
 # list, you should call cursor_off() before calling redraw() to make
 # sure that we scroll to the end of the list.
 
-import magcard,tillconfig
+from . import magcard,tillconfig
 import curses,textwrap
-import td,ui,keyboard,printer
-import stock,stocklines
+from . import td,ui,keyboard,printer
+from . import stock,stocklines
 import logging
 import datetime
 log=logging.getLogger()
-import foodorder
-import pingapint
+from . import foodorder
+from . import pingapint
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 

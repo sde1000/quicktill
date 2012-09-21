@@ -1,5 +1,5 @@
 import urllib,imp,textwrap,curses,sys,traceback,math
-import ui,keyboard,td,printer,tillconfig
+from . import ui,keyboard,td,printer,tillconfig
 
 kitchenprinter=None
 menuurl=None

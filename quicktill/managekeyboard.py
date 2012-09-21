@@ -1,4 +1,4 @@
-import keyboard,ui,td,tillconfig
+from . import keyboard,ui,td,tillconfig
 
 # User interface for checking and editing the keyboard.  This really
 # only supports modification of keycaps of line keys; binding of keys

@@ -4,7 +4,7 @@ import urllib
 import urllib2
 import ssl
 import socket
-import ui,keyboard
+from . import ui,keyboard
 
 APIVersion="1.0"
 pinlength=8

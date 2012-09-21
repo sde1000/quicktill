@@ -1,5 +1,5 @@
 import curses.ascii
-import ui,stock,td,keyboard,printer,tillconfig,stocklines
+from . import ui,stock,td,keyboard,printer,tillconfig,stocklines
 
 def create_and_edit_delivery(supplier):
     dn=td.delivery_new(supplier)

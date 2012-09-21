@@ -1,5 +1,5 @@
 import string
-import ui
+from . import ui
 
 class magstripe:
     def __init__(self):

@@ -1,4 +1,4 @@
-import td,ui
+from . import td,ui
 
 def menu(func,title,allowall=False):
     # Obtain list of (department,description)

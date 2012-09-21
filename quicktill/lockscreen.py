@@ -1,4 +1,4 @@
-import ui,keyboard,td
+from . import ui,keyboard,td
 
 def usersmenu(func):
     users=td.users_list()

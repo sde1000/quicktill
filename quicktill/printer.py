@@ -1,10 +1,11 @@
 import string,time
-import td,ui,stock,tillconfig
+from . import td,ui,tillconfig
 
 driver=None
 labeldriver=None
 
 def print_receipt(trans):
+    from . import stock
     transopen=False
     (lines,payments)=td.trans_getlines(trans)
     if len(lines)==0: return
@@ -176,6 +177,7 @@ def stocklabel_print(sl):
     """Print stock labels for a list of stock numbers.
 
     """
+    from . import stock
     items_sdl=td.stock_info(sl)
     labeldriver.start()
     def stock_label(f,width,height,d):
@@ -211,6 +213,7 @@ def stocklabel_print(sl):
     labeldriver.end()
 
 def print_delivery(delivery):
+    from . import stock
     (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=delivery)[0]
     (name,tel,email)=td.supplier_fetch(supplier)
     items=td.delivery_items(delivery)
@@ -238,6 +241,7 @@ def print_delivery(delivery):
     driver.end()
 
 def print_stocklist(sl,title="Stock List"):
+    from . import stock
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
