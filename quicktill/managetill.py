@@ -2,7 +2,8 @@
 
 """
 
-import ui,keyboard,td,printer,math,sys,curses,os
+import sys,math,curses,os
+import ui,keyboard,td,printer
 import register,tillconfig,managekeyboard,stocklines,event
 from version import version
 from mx.DateTime import DateTimeDelta

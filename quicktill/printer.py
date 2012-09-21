@@ -1,4 +1,5 @@
-import string,td,time,ui,stock,tillconfig
+import string,time
+import td,ui,stock,tillconfig
 
 driver=None
 labeldriver=None

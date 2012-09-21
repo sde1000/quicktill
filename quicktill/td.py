@@ -5,7 +5,8 @@
 # never broken here, but that's not really a substitute for
 # implementing them in the database itself.
 
-import time,stock
+import time
+import stock
 import psycopg2 as db
 import psycopg2.extensions
 

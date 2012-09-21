@@ -1,4 +1,5 @@
-import keyboard,ui,td,logging,tillconfig,printer,managestock
+import logging
+import keyboard,ui,td,tillconfig,printer,managestock
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):

@@ -5,8 +5,8 @@ will be started by calling main() from this module.
 
 """
 
-import sys,os,curses,ui,keyboard,event,logging,td
-import printer,tillconfig,event,foodorder,locale
+import sys,os,curses,logging,locale
+import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from version import version
 
 def start(stdwin):

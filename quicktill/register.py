@@ -31,8 +31,8 @@ etc."""
 # sure that we scroll to the end of the list.
 
 import magcard,tillconfig
-import curses
-import td,ui,keyboard,printer,textwrap
+import curses,textwrap
+import td,ui,keyboard,printer
 import stock,stocklines
 import logging
 import datetime

@@ -1,4 +1,5 @@
-import string,ui
+import string
+import ui
 
 class magstripe:
     def __init__(self):

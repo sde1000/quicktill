@@ -2,9 +2,8 @@
 
 """
 
-import ui,td,keyboard,tillconfig,stocklines,department,hashlib,stock
-
-import logging
+import hashlib,logging
+import ui,td,keyboard,tillconfig,stocklines,department,stock
 log=logging.getLogger()
 
 def abvstr(abv):

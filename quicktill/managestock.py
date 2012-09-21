@@ -1,6 +1,7 @@
 """Implements the 'Manage Stock' menu."""
 
-import ui,td,keyboard,curses,curses.ascii,time,printer
+import curses,curses.ascii,time
+import ui,td,keyboard,printer
 import stock,delivery,department,stocklines
 
 import logging

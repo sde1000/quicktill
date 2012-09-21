@@ -9,7 +9,8 @@
 # initialisation time (eg. stdwin for the curses keyboard driver).
 # This is supplied using the initUI method.
 
-import curses,keyboard,magcard,event,sys,string
+import sys,string,curses
+import keyboard,magcard,event
 
 class curseskeyboard:
     # curses codes and their till keycode equivalents

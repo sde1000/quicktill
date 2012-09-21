@@ -1,8 +1,8 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-import curses,curses.ascii,time,math,keyboard,sys,string,textwrap,traceback
-import event,locale
+import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
+import keyboard,event
 
 from mx.DateTime import now,strptime
 
