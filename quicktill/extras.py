@@ -1,3 +1,4 @@
+from __future__ import print_function
 from . import ui,keyboard,printer,tillconfig,event,td
 import HTMLParser
 import urllib
@@ -308,18 +309,18 @@ def twitter_auth():
 
     request_token = dict(urlparse.parse_qsl(content))
 
-    print "Request Token:"
-    print "    - oauth_token        = %s" % request_token['oauth_token']
-    print "    - oauth_token_secret = %s" % request_token['oauth_token_secret']
-    print 
+    print("Request Token:")
+    print("    - oauth_token        = %s" % request_token['oauth_token'])
+    print("    - oauth_token_secret = %s" % request_token['oauth_token_secret'])
+    print() 
 
     # Step 2: Redirect to the provider. Since this is a CLI script we
     # do not redirect. In a web application you would redirect the
     # user to the URL below.
 
-    print "Go to the following link in your browser:"
-    print "%s?oauth_token=%s" % (authorize_url, request_token['oauth_token'])
-    print 
+    print("Go to the following link in your browser:")
+    print("%s?oauth_token=%s" % (authorize_url, request_token['oauth_token']))
+    print() 
 
     # After the user has granted access to you, the consumer, the provider will
     # redirect you to whatever URL you have told them to redirect to. You can 
@@ -343,12 +344,12 @@ def twitter_auth():
     resp, content = client.request(access_token_url, "POST")
     access_token = dict(urlparse.parse_qsl(content))
 
-    print "Access Token:"
-    print "    - oauth_token        = %s" % access_token['oauth_token']
-    print "    - oauth_token_secret = %s" % access_token['oauth_token_secret']
-    print
-    print "You may now access protected resources using the access tokens above." 
-    print
+    print("Access Token:")
+    print("    - oauth_token        = %s" % access_token['oauth_token'])
+    print("    - oauth_token_secret = %s" % access_token['oauth_token_secret'])
+    print()
+    print("You may now access protected resources using the access tokens above.") 
+    print()
 
 def twitter_api(token,token_secret):
     from . import twitter

@@ -16,9 +16,10 @@
 
 '''A library that provides a Python interface to the Twitter API'''
 
+from __future__ import print_function
+
 __author__ = 'python-twitter@googlegroups.com'
 __version__ = '0.8.2'
-
 
 import base64
 import calendar
@@ -2211,9 +2212,9 @@ class Api(object):
 
     if consumer_key is not None and (access_token_key is None or
                                      access_token_secret is None):
-      print >> sys.stderr, 'Twitter now requires an oAuth Access Token for API calls.'
-      print >> sys.stderr, 'If your using this library from a command line utility, please'
-      print >> sys.stderr, 'run the the included get_access_token.py tool to generate one.'
+      print('Twitter now requires an oAuth Access Token for API calls.', file=sys.stderr)
+      print('If your using this library from a command line utility, please', file=sys.stderr)
+      print('run the the included get_access_token.py tool to generate one.', file=sys.stderr)
 
       raise TwitterError('Twitter requires oAuth Access Token for all API access')
 
@@ -3795,7 +3796,7 @@ class Api(object):
           url_data = self._DecompressGzippedResponse(response)
           self._cache.Set(key, url_data)
         except urllib2.HTTPError as e:
-          print e
+          print(e)
         opener.close()
       else:
         url_data = self._cache.Get(key)

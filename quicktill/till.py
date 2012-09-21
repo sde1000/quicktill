@@ -5,6 +5,7 @@ will be started by calling main() from this module.
 
 """
 
+from __future__ import print_function
 import sys,os,curses,logging,locale
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
@@ -102,14 +103,14 @@ def main():
 
     config=g.configurations.get(options.configname)
     if config is None:
-        print ("Configuration \"%s\" does not exist.  "
-               "Available configurations:"%options.configname)
+        print(("Configuration \"%s\" does not exist.  "
+               "Available configurations:"%options.configname))
         for i in list(g.configurations.keys()):
-            print "%s: %s"%(i,g.configurations[i]['description'])
+            print("%s: %s"%(i,g.configurations[i]['description']))
         sys.exit(1)
 
     if options.debug and options.logfile is None:
-        print "You must specify a log file to enable debugging output."
+        print("You must specify a log file to enable debugging output.")
         sys.exit(1)
 
     log=logging.getLogger()
