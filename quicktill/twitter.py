@@ -3445,7 +3445,7 @@ class Api(object):
     url = '%s/account/verify_credentials.json' % self.base_url
     try:
       json = self._FetchUrl(url, no_cache=True)
-    except urllib2.HTTPError, http_error:
+    except urllib2.HTTPError as http_error:
       if http_error.code == httplib.UNAUTHORIZED:
         return None
       else:
@@ -3794,7 +3794,7 @@ class Api(object):
           response = opener.open(url, encoded_post_data)
           url_data = self._DecompressGzippedResponse(response)
           self._cache.Set(key, url_data)
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
           print e
         opener.close()
       else:
@@ -3861,7 +3861,7 @@ class _FileCache(object):
              os.getenv('USERNAME') or \
              os.getlogin() or \
              'nobody'
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
       return 'nobody'
 
   def _GetTmpCachePath(self):
