@@ -45,7 +45,7 @@ class menuchoice:
             keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
             keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
             keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
-        o=zip(possible_keys,options)
+        o=list(zip(possible_keys,options))
         self.options=o
         self.optionkeys={}
         for i in o:
@@ -152,7 +152,7 @@ class subopts_dialog(ui.dismisspopup):
             (keyboard.K_ZERO," 0"),
             (keyboard.K_ZEROZERO,"00"),
             (keyboard.K_POINT,". ")]
-        opts=zip(possible_keys,subopts)
+        opts=list(zip(possible_keys,subopts))
         km={keyboard.K_CASH: (self.finish,None,False)}
         for k,so in opts:
            km[k[0]]=(self.newsubopt,(so,),False)
@@ -206,7 +206,7 @@ class subopts_dialog(ui.dismisspopup):
                     keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
                     keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
                     keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
-                zz=zip(possible_keys,so[1])
+                zz=list(zip(possible_keys,so[1]))
                 il=[(key,opt[0],self.newsubopt,(opt,))
                     for key,opt in zz]
                 ui.keymenu(il,colour=ui.colour_input,title=so[0])
