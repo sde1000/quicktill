@@ -9,6 +9,7 @@ import time
 #from . import stock
 import psycopg2 as db
 import psycopg2.extensions
+from decimal import Decimal
 
 # psycopg converted database numeric() types into float() types.
 
@@ -18,11 +19,11 @@ import psycopg2.extensions
 
 # Until the rest of the package is updated to expect Decimal()s,
 # convert to float()s instead:
-DEC2FLOAT = psycopg2.extensions.new_type(
-    db._psycopg.DECIMAL.values,
-    'DEC2FLOAT',
-    lambda value, curs: float(value) if value is not None else None)
-psycopg2.extensions.register_type(DEC2FLOAT)
+#DEC2FLOAT = psycopg2.extensions.new_type(
+#    db._psycopg.DECIMAL.values,
+#    'DEC2FLOAT',
+#    lambda value, curs: float(value) if value is not None else None)
+#psycopg2.extensions.register_type(DEC2FLOAT)
 # If psycopg2._psycopg.DECIMAL stops working, use
 # psycopg2.extensions.DECIMAL instead.
 
@@ -146,9 +147,9 @@ def trans_balance(trans):
                 "WHERE translines.transid=%s),(SELECT sum(amount) "
                 "FROM payments WHERE payments.transid=%s)",(trans,trans));
     r=cur.fetchone()
-    if not r[0]: linestotal=0.0
+    if not r[0]: linestotal=Decimal("0.00")
     else: linestotal=r[0]
-    if not r[1]: paymentstotal=0.0
+    if not r[1]: paymentstotal=Decimal("0.00")
     else: paymentstotal=r[1]
     return (linestotal,paymentstotal)
 
@@ -168,7 +169,7 @@ def trans_addpayment(trans,ptype,amount,ref):
                 "(%s,%s,%s,%s)",(trans,amount,ptype,ref))
     (lines,payments)=trans_balance(trans)
     remain=lines-payments
-    if remain==0.0:
+    if remain==Decimal("0.00"):
         cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
                     (trans,))
     commit()
@@ -189,7 +190,7 @@ def trans_pingapint(trans,amount,code,vid,blob):
                 "(%s,%s,%s,%s)",(pid,amount,vid,blob))
     (lines,payments)=trans_balance(trans)
     remain=lines-payments
-    if remain==0.0:
+    if remain==Decimal("0.00"):
         cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
                     (trans,))
     commit()
@@ -485,7 +486,7 @@ def stock_info(stockid_list):
             d[i]=r[0]
             r=r[1:]
         d['abvstr']=stock.abvstr(d['abv'])
-        if d['used'] is None: d['used']=0.0
+        if d['used'] is None: d['used']=Decimal("0.0")
         d['remaining']=d['size']-d['used']
         return d
     # At this point we have a list of results, but that list is not

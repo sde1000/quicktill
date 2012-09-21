@@ -7,6 +7,7 @@ from . import ui,keyboard,td,printer
 from . import register,tillconfig,managekeyboard,stocklines,event
 from .version import version
 from mx.DateTime import DateTimeDelta
+from decimal import Decimal
 
 import logging
 log=logging.getLogger()
@@ -134,7 +135,7 @@ class recordsession(ui.dismisspopup):
                 self.addstr(y,15,tillconfig.fc(paytotals[i][1]))
                 pt=paytotals[i][1]
             else:
-                pt=0.0
+                pt=Decimal("0.00")
             if i=='PPINT':
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
@@ -151,16 +152,16 @@ class recordsession(ui.dismisspopup):
         self.amounts={}
         def guessamount(field,expected):
             if field.f.find('.')>=0:
-                return float(field.f)
+                return Decimal(field.f).quantize(Decimal("0.01"))
             try:
-                trial=float(field.f)
+                trial=Decimal(field.f)
             except:
-                trial=0.0
+                trial=Decimal("0.00")
             # It might be an amount 100 times larger
             diff1=math.fabs(trial-expected)
-            diff2=math.fabs((trial/100.0)-expected)
-            if diff2<diff1: return trial/100.0
-            return trial
+            diff2=math.fabs((trial/Decimal("100.00"))-expected)
+            if diff2<diff1: trial=trial/Decimal(100)
+            return trial.quantize(Decimal("0.01"))
         for i in self.fl:
             self.amounts[i[0]]=guessamount(i[2],i[3])
         km={keyboard.K_CASH:
@@ -227,7 +228,7 @@ def totalpopup(session):
         # Format tt and at at left/right
         l.append(lr(tt,at))
     l.append("")
-    dt=0.0
+    dt=Decimal("0.00")
     for i in depts:
         l.append(lr("%2d %s"%(i[0],i[1]),"%s%0.2f"%(tillconfig.currency,i[2])))
         dt=dt+i[2]

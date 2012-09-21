@@ -39,6 +39,9 @@ import datetime
 log=logging.getLogger()
 from . import foodorder
 from . import pingapint
+from decimal import Decimal
+
+zero=Decimal("0.00")
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 
@@ -321,7 +324,7 @@ class page(ui.basicpage):
         if self.trans:
             (lines,payments)=td.trans_balance(self.trans)
             self.balance=lines-payments
-            if self.balance==0.00: self.balance=None
+            if self.balance==zero: self.balance=None
         else: self.balance=None
         self.update_bufferline()
         self.redraw()

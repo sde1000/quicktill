@@ -43,7 +43,7 @@ def qtystring(qty,unitname):
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None: return "None"
-    return "%s%0.2f"%(currency,a)
+    return "%s%s"%(currency,a)
 
 def priceguess(dept,cost,abv):
     """Guess a suitable selling price for a new stock item.  Return a

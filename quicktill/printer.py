@@ -1,5 +1,6 @@
 import string,time
 from . import td,ui,tillconfig
+from decimal import Decimal
 
 driver=None
 labeldriver=None
@@ -25,7 +26,7 @@ def print_receipt(trans):
         tli=td.trans_getline(i)
         (transx,items,amount,dept,deptstr,stockref,
          transcode,transtime,text,vatband)=tli
-        bandtotals[vatband]=bandtotals.get(vatband,0.0)+(items*amount)
+        bandtotals[vatband]=bandtotals.get(vatband,Decimal("0.00"))+(items*amount)
         left,right=stock.format_transline(tli)
         if multiband and not transopen:
             driver.printline("%s\t\t%s %s"%(left,right,vatband))
@@ -72,7 +73,7 @@ def print_receipt(trans):
             for band,rate in bands:
                 # Print the band, amount ex VAT, amount inc VAT, gross
                 gross=bandtotals[band]
-                net=gross/((rate/100.0)+1.0)
+                net=gross/((rate/Decimal("100.0"))+Decimal("1.0"))
                 vat=gross-net
                 driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
@@ -135,8 +136,8 @@ def print_sessiontotals(session):
     else:
         driver.printline("  Ended %s"%ui.formattime(end))
     driver.printline("Till total:\t\tActual total:")
-    ttt=0.0
-    att=0.0
+    ttt=Decimal("0.00")
+    att=Decimal("0.00")
     for i in paytypes:
         desc=""
         if i in paytotals:
@@ -154,7 +155,7 @@ def print_sessiontotals(session):
         driver.printline("%s: %s\t\t%s"%(desc,tt,at))
     if len(paytypes)>1:
         tt=tillconfig.fc(ttt)
-        if att>0.0:
+        if att>Decimal("0.00"):
             at=tillconfig.fc(att)
         else:
             at=""

@@ -14,6 +14,7 @@ from quicktill.recordwaste import popup as recordwaste
 from quicktill.stock import annotate
 import math
 import os
+from decimal import Decimal
 
 #vatrate=0.175
 # VAT rate changed 1/12/2008
@@ -83,7 +84,7 @@ def guessbeer(cost,abv):
     else: return None
     # If the cost per pint is greater than that of Milton plus fiddle-factor,
     # add on the excess and round up to nearest 10p
-    idealcost=((abv*10.0)+18.0)/72.0
+    idealcost=((abv*Decimal(10))+Decimal(18)/Decimal(72))
     if cost>idealcost:
         r=r+((cost-idealcost)*(vatrate+1.0))
         r=math.ceil(r*10.0)/10.0
