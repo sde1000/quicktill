@@ -5,6 +5,7 @@ from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
 
 import logging
+from functools import reduce
 log=logging.getLogger()
 
 def deliverymenu():
