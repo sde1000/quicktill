@@ -345,7 +345,7 @@ CREATE TABLE keyboard (
 	layout int NOT NULL,
 	keycode varchar(20) NOT NULL,
 	menukey varchar(20) NOT NULL,
-	stocklineid int NOT NULL,
+	stocklineid int NOT NULL, /* Really needs REFERENCES! */
 	qty numeric(5,2) NOT NULL,
 	PRIMARY KEY (layout,keycode,menukey)
 	);

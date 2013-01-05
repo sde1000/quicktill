@@ -1,6 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
-from sqlalchemy.schema import Sequence
+from sqlalchemy.schema import Sequence,Index,MetaData
 from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import relationship,backref
 
@@ -152,3 +152,167 @@ class Delivery(Base):
     docnumber=Column(String(40))
     date=Column(Date,nullable=False,server_default=text('NOW()'))
     checked=Column(Boolean,nullable=False,server_default=text('false'))
+
+class UnitType(Base):
+    __tablename__='unittypes'
+    id=Column('unit',String(10),nullable=False,primary_key=True)
+    name=Column(String(30),nullable=False)
+
+class StockUnit(Base):
+    __tablename__='stockunits'
+    id=Column('stockunit',String(8),nullable=False,primary_key=True)
+    name=Column(String(30),nullable=False)
+    unit=Column(String(10),ForeignKey('unittypes.unit'),nullable=False)
+    size=Column(Numeric(5,1),nullable=False)
+
+stocktypes_seq=Sequence('stocktypes_seq')
+class StockType(Base):
+    __tablename__='stocktypes'
+    id=Column('stocktype',Integer,stocktypes_seq,nullable=False,
+              primary_key=True)
+    dept=Column(Integer,ForeignKey('departments.dept'),nullable=False)
+    manufacturer=Column(String(30),nullable=False)
+    name=Column(String(30),nullable=False)
+    shortname=Column(String(25),nullable=False)
+    abv=Column(Numeric(3,1))
+    unit=Column(String(10),ForeignKey('unittypes.unit'),nullable=False)
+
+class FinishCode(Base):
+    __tablename__='stockfinish'
+    id=Column('finishcode',String(8),nullable=False,primary_key=True)
+    description=Column(String(50),nullable=False)
+
+stock_seq=Sequence('stock_seq')
+class StockItem(Base):
+    __tablename__='stock'
+    id=Column('stockid',Integer,stock_seq,nullable=False,primary_key=True)
+    delivery=Column('deliveryid',Integer,ForeignKey('deliveries.deliveryid'),
+                    nullable=False)
+    stocktype=Column('stocktype',Integer,ForeignKey('stocktypes.stocktype'),
+                     nullable=False)
+    stockunit=Column(String(8),ForeignKey('stockunits.stockunit'),
+                     nullable=False)
+    costprice=Column(Numeric(7,2)) # ex VAT
+    saleprice=Column(Numeric(5,2),nullable=False) # inc VAT
+    onsale=Column(DateTime)
+    finished=Column(DateTime)
+    finishcode=Column(String(8),ForeignKey('stockfinish.finishcode'))
+    bestbefore=Column(Date)
+
+class AnnotationType(Base):
+    __tablename__='annotation_types'
+    id=Column('atype',String(8),nullable=False,primary_key=True)
+    description=Column(String(20),nullable=False)
+
+# This table needs a primary key if it is to be accessed through the ORM.
+#class StockAnnotation(Base):
+#    __tablename__='stock_annotations'
+#    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
+#                     nullable=False)
+#    atype=Column(String(8),ForeignKey('annotation_types.atype'),nullable=False)
+#    time=Column(DateTime,nullable=False,server_default=text('NOW()'))
+#    text=Column(String(60),nullable=False)
+
+class RemoveCode(Base):
+    __tablename__='stockremove'
+    id=Column('removecode',String(8),nullable=False,primary_key=True)
+    reason=Column(String(80))
+
+stockout_seq=Sequence('stockout_seq')
+class StockOut(Base):
+    __tablename__='stockout'
+    id=Column('stockoutid',Integer,stockout_seq,nullable=False,primary_key=True)
+    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
+                     nullable=False)
+    qty=Column(Numeric(5,1),nullable=False)
+    removecode=Column(String(8),ForeignKey('stockremove.removecode'),
+                      nullable=False)
+    transline=Column('translineid',Integer,ForeignKey('translines.translineid'))
+    time=Column(DateTime,nullable=False,server_default=text('NOW()'))
+
+stocklines_seq=Sequence('stocklines_seq',start=100)
+class StockLine(Base):
+    __tablename__='stocklines'
+    id=Column('stocklineid',Integer,nullable=False,primary_key=True)
+    name=Column(String(30),nullable=False,unique=True)
+    location=Column(String(20),nullable=False)
+    capacity=Column(Integer)
+    department=Column('dept',Integer,ForeignKey('departments.dept'),
+                      nullable=False)
+    pullthru=Column(Numeric(5,2))
+    # Maybe add a constraint to say capacity and pullthru can't both be
+    # non-null at the same time
+
+# This table doesn't actually have a primary key, it just has a UNIQUE
+# constraint on stockid.  Perhaps rewrite so that the stock on sale is
+# accessed through the stockline object.
+class StockOnSale(Base):
+    __tablename__='stockonsale'
+    stockline=Column('stocklineid',Integer,ForeignKey('stocklines.stocklineid'),
+                     nullable=False)
+    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
+                     nullable=False,primary_key=True)
+    displayqty=Column(Integer)
+
+class KeyboardBinding(Base):
+    __tablename__='keyboard'
+    layout=Column(Integer,nullable=False,primary_key=True)
+    keycode=Column(String(20),nullable=False,primary_key=True)
+    menukey=Column(String(20),nullable=False,primary_key=True)
+    stockline=Column('stocklineid',Integer,ForeignKey('stocklines.stocklineid'),
+                     nullable=False)
+    qty=Column(Numeric(5,2),nullable=False)
+
+class KeyCap(Base):
+    __tablename__='keycaps'
+    layout=Column(Integer,nullable=False,primary_key=True)
+    keycode=Column(String(20),nullable=False,primary_key=True)
+    keycap=Column(String(30))
+
+class StockLineTypeLog(Base):
+    __tablename__='stockline_stocktype_log'
+    stockline=Column('stocklineid',Integer,
+                     ForeignKey('stocklines.stocklineid',ondelete='CASCADE'),
+                     nullable=False,primary_key=True)
+    stocktype=Column(Integer,
+                     ForeignKey('stocktypes.stocktype',ondelete='CASCADE'),
+                     nullable=False,primary_key=True)
+# Code for ignore_duplicate_stockline_types rule here
+# Code for log_stocktype rule here
+
+class User(Base):
+    __tablename__='users'
+    code=Column(CHAR(2),nullable=False,primary_key=True)
+    name=Column(String(30),nullable=False)
+
+# stockinfo view definition here?  Probably don't need to use it, but
+# we might still want to emit the CREATE VIEW command sometimes.
+
+# stockqty view definition here?
+
+# businesstotals view definition
+
+# Lots of rule definitions here - see createdb
+
+# Add indexes here
+Index('translines_transid_key',Transline.transaction)
+Index('payments_transid_key',Payment.transaction)
+Index('transactions_sessionid_key',Transaction.session)
+#Index('stock_annotations_stockid_key',Annotation.stockitem)
+Index('stockout_stockid_key',StockOut.stockitem)
+
+# sqlalchemy currently doesn't support creating indexes on
+# expressions.  We need to use raw DDL for the following:
+# CREATE INDEX stockout_date_key ON stockout ( (time::date) );
+
+Index('stockout_translineid_key',StockOut.transline)
+Index('translines_time_key',Transline.time)
+
+foodorder_seq=Sequence('foodorder_seq')
+
+if __name__=='__main__':
+    from sqlalchemy import create_engine
+    engine=create_engine('postgresql+psycopg2:///testdb', echo=True)
+    Base.metadata.bind=engine
+    Base.metadata.create_all()
+    Base.metadata.drop_all()
