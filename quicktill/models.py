@@ -2,7 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
 from sqlalchemy.sql.expression import text
-from sqlalchemy.orm import relationship,backref,object_session
+from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc
 from sqlalchemy import event
@@ -77,9 +77,9 @@ class Session(Base):
     __tablename__='sessions'
 
     id=Column('sessionid',Integer,sessions_seq,primary_key=True)
-    starttime=Column(DateTime)
+    starttime=Column(DateTime,nullable=False)
     endtime=Column(DateTime)
-    date=Column('sessiondate',Date)
+    date=Column('sessiondate',Date,nullable=False)
 
     def __init__(self,date):
         self.date=date
@@ -111,6 +111,7 @@ class Session(Base):
             join(Transaction,Transline).scalar()
     @property
     def stock_sold(self):
+        "Returns a list of (StockType,quantity) tuples."
         return object_session(self).\
             query(StockType,func.sum(StockOut.qty)).\
             select_from(Transaction).\
@@ -121,20 +122,30 @@ class Session(Base):
             group_by(StockType,Transline.dept_id).\
             order_by(Transline.dept_id,desc(func.sum(StockOut.qty))).\
             all()
+    @classmethod
+    def current(cls,session):
+        """Return the currently open session, or None if no session is
+        open.  Must be passed a suitable sqlalchemy session in which
+        to run the query.
+
+        """
+        return session.query(Session).filter_by(endtime=None).first()
 
 add_ddl(Session.__table__,"""
-CREATE OR REPLACE RULE max_one_open AS ON INSERT TO sessions
-	WHERE (SELECT COUNT(*) FROM sessions WHERE endtime IS NULL)>0
-	DO INSTEAD NOTHING
+CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT count(*) FROM sessions WHERE endtime IS NULL)>1 THEN
+    RAISE EXCEPTION 'there is already an open session';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER max_one_session_open
+  AFTER INSERT OR UPDATE ON sessions
+  FOR EACH ROW EXECUTE PROCEDURE check_max_one_session_open();
 ""","""
-DROP RULE max_one_open ON sessions
-""")
-add_ddl(Session.__table__,"""
-CREATE OR REPLACE RULE may_not_change AS ON UPDATE TO sessions
-	WHERE OLD.endtime IS NOT NULL
-	DO INSTEAD NOTHING;
-""","""
-DROP RULE may_not_change ON sessions
+DROP TRIGGER max_one_session_open ON sessions;
+DROP FUNCTION check_max_one_session_open();
 """)
 
 class SessionTotal(Base):
@@ -170,33 +181,28 @@ class Transaction(Base):
     def __repr__(self):
         return "<Transaction(%s,%s,%s)>"%(self.id,self.sessionid,self.closed)
 
-add_ddl(Transaction.__table__,"""
-CREATE OR REPLACE RULE may_not_reopen AS ON UPDATE TO transactions
-	WHERE OLD.closed=true
-	DO INSTEAD NOTHING
-""","""
-DROP RULE may_not_reopen ON transactions
-""")
-
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
 # after all tables, and dropped before any tables.
-add_ddl(metadata,"""
-CREATE OR REPLACE RULE close_only_if_balanced AS ON UPDATE TO transactions
-	WHERE NEW.closed=true AND
-		(SELECT sum(amount*items) FROM translines
-			WHERE transid=NEW.transid)!=
-		(SELECT sum(amount) FROM payments
-			WHERE transid=NEW.transid)
-	DO INSTEAD NOTHING
-""","DROP RULE close_only_if_balanced ON transactions")
-add_ddl(metadata,"""
-CREATE OR REPLACE RULE close_only_if_nonzero AS ON UPDATE TO transactions
-	WHERE NEW.closed=true AND
-		((SELECT count(*) FROM translines WHERE transid=NEW.transid)=0
-		OR (SELECT count(*) FROM payments WHERE transid=NEW.transid)=0)
-	DO INSTEAD NOTHING
-""","DROP RULE close_only_if_nonzero ON transactions")
+add_ddl(Transaction.__table__,"""
+CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
+BEGIN
+  IF NEW.closed=true
+    AND (SELECT sum(amount*items) FROM translines
+      WHERE transid=NEW.transid)!=
+      (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction %%d does not balance', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER close_only_if_balanced
+  AFTER INSERT OR UPDATE ON transactions
+  FOR EACH ROW EXECUTE PROCEDURE check_transaction_balances();
+""","""
+DROP TRIGGER close_only_if_balanced ON transactions;
+DROP FUNCTION check_transaction_balances();
+""")
 
 payments_seq=Sequence('payments_seq',start=1)
 class Payment(Base):
@@ -217,12 +223,22 @@ class Payment(Base):
         return "<Payment(%s,%s,%s,'%s')>"%(self.id,self.transid,self.amount,
                                            self.paytype_id)
 
-add_ddl(metadata,"""
-CREATE OR REPLACE RULE no_add_to_closed AS ON INSERT TO payments
-	WHERE (SELECT closed FROM transactions
-		WHERE transid=NEW.transid)=true
-	DO INSTEAD NOTHING
-""","DROP RULE no_add_to_closed ON payments")
+add_ddl(Payment.__table__,"""
+CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d payment', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER no_modify_closed
+  AFTER INSERT OR UPDATE ON payments
+  FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_payment();
+""","""
+DROP TRIGGER no_modify_closed ON payments;
+DROP FUNCTION check_modify_closed_trans_payment();
+""")
 
 class PingapintPayment(Base):
     __tablename__='pingapint'
@@ -277,12 +293,22 @@ class Transline(Base):
     def __repr__(self):
         return "<Transline(%s,%s)>"%(self.id,self.transid)
 
-add_ddl(metadata,"""
-CREATE OR REPLACE RULE no_add_to_closed AS ON INSERT TO translines
-	WHERE (SELECT closed FROM transactions
-		WHERE transid=NEW.transid)=true
-	DO INSTEAD NOTHING
-""","DROP RULE no_add_to_closed ON translines")
+add_ddl(Transline.__table__,"""
+CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d line', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER no_modify_closed
+  AFTER INSERT OR UPDATE ON translines
+  FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_line();
+""","""
+DROP TRIGGER no_modify_closed ON translines;
+DROP FUNCTION check_modify_closed_trans_line();
+""")
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
@@ -591,7 +617,13 @@ foodorder_seq=Sequence('foodorder_seq')
 
 if __name__=='__main__':
     from sqlalchemy import create_engine
-    engine=create_engine('postgresql+psycopg2:///testdb', echo=True)
+    engine=create_engine('postgresql+psycopg2:///testdb',echo=True)
+    SM=sessionmaker(bind=engine)
     metadata.bind=engine
     metadata.create_all()
+    session=SM()
+    s=Session('2013-01-10')
+    session.add(s)
+    print s
+    session.commit()
     metadata.drop_all()
