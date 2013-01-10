@@ -282,7 +282,9 @@ stop	Removed from sale
 vent	Vented
 memo	Memo
 \.
+CREATE SEQUENCE stock_annotation_seq;
 CREATE TABLE stock_annotations (
+        id int NOT NULL PRIMARY KEY DEFAULT nextval('stock_annotation_seq'),
 	stockid int NOT NULL REFERENCES stock(stockid),
 	atype varchar(8) NOT NULL REFERENCES annotation_types(atype),
 	time timestamp NOT NULL DEFAULT now(),
@@ -409,8 +411,8 @@ CREATE VIEW stockinfo AS
 CREATE OR REPLACE RULE log_stocktype AS ON INSERT TO stockonsale
        DO ALSO
        INSERT INTO stockline_stocktype_log VALUES
-       (NEW.stocklineid,(SELECT stocktype FROM stockinfo
-       	WHERE stockinfo.stockid=NEW.stockid));
+       (NEW.stocklineid,(SELECT stocktype FROM stock
+       	WHERE stock.stockid=NEW.stockid));
 
 /* Stock id, qty in container, unitname, amount used, amount sold, amount
    pulled through */

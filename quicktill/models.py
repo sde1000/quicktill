@@ -1,12 +1,30 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
-from sqlalchemy.schema import Sequence,Index,MetaData
+from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
 from sqlalchemy.sql.expression import text
-from sqlalchemy.orm import relationship,backref
+from sqlalchemy.orm import relationship,backref,object_session
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql import select,func,desc
+from sqlalchemy import event
 
 import datetime
+import hashlib
+from decimal import Decimal
 
-Base=declarative_base()
+metadata=MetaData()
+Base=declarative_base(metadata=metadata)
+
+def add_ddl(target,create,drop):
+    """Convenience function to add CREATE and DROP statements for postgresql
+    database rules; can also be used to create nonstandard indexes.
+
+    """
+    if create:
+        event.listen(target,"after_create",
+                     DDL(create).execute_if(dialect='postgresql'))
+    if drop:
+        event.listen(target,"before_drop",
+                     DDL(drop).execute_if(dialect='postgresql'))
 
 class Business(Base):
     __tablename__='businesses'
@@ -15,7 +33,6 @@ class Business(Base):
     abbrev=Column(String(20))
     address=Column(String(200))
     vatno=Column(String(30))
-
     def __repr__(self):
         return "<Business('%s')>"%(self.name,)
 
@@ -23,17 +40,23 @@ class VatBand(Base):
     __tablename__='vat'
     band=Column(CHAR(1),primary_key=True)
     rate=Column(Numeric(5,2),nullable=False)
-    business=Column(Integer,ForeignKey('businesses.business'))
+    businessid=Column('business',Integer,ForeignKey('businesses.business'))
+    business=relationship(Business,backref='vatbands')
+    def __repr__(self):
+        return "<VatBand('%s')>"%(self.band,)
 
 class VatRate(Base):
     __tablename__='vatrates'
     band=Column(CHAR(1),ForeignKey('vat.band'),primary_key=True)
     rate=Column(Numeric(5,2),nullable=False)
-    business=Column(Integer,ForeignKey('businesses.business'))
+    businessid=Column('business',Integer,ForeignKey('businesses.business'))
     active=Column(Date,nullable=False,primary_key=True)
+    business=relationship(Business) # NB no backref
+    def __repr__(self):
+        return "<VatRate('%s',%s)>",(self.band,self.rate)
 
-# Vatrate function goes here
-# Business function goes here
+# vatrate() function may go here
+# business() function may go here
 
 class PayType(Base):
     __tablename__='paytypes'
@@ -42,7 +65,7 @@ class PayType(Base):
     def __repr__(self):
         return "<PayType('%s')>"%(self.paytype,)
 
-sessions_seq=Sequence('sessions_seq',start=1)
+sessions_seq=Sequence('sessions_seq')
 
 class Session(Base):
     """As well as a start and end time, sessions have an accounting
@@ -63,38 +86,143 @@ class Session(Base):
         self.starttime=datetime.datetime.now()
 
     def __repr__(self):
-        return "<Session('%s')>"%(self.date,)
+        return "<Session(%s,'%s')>"%(self.id,self.date,)
+    def __unicode__(self):
+        return u"Session %d"%self.id
+    @property
+    def tillweb_url(self):
+        return "sessions/%d/"%self.id
+    @property
+    def dept_totals(self):
+        return object_session(self).\
+            query(Department,func.sum(
+                Transline.items*Transline.amount)).\
+            select_from(Session).\
+            filter(Session.id==self.id).\
+            join(Transaction,Transline,Department).\
+            order_by(Department.id).\
+            group_by(Department.id).all()
+    @property
+    def total(self):
+        return object_session(self).\
+            query(func.sum(Transline.items*Transline.amount)).\
+            select_from(Session).\
+            filter(Session.id==self.id).\
+            join(Transaction,Transline).scalar()
+    @property
+    def stock_sold(self):
+        return object_session(self).\
+            query(StockType,func.sum(StockOut.qty)).\
+            select_from(Transaction).\
+            filter(Transaction.sessionid==self.id).\
+            join(Transline).\
+            join(StockOut,StockOut.id==Transline.stockref).\
+            join(StockItem,StockType).\
+            group_by(StockType,Transline.dept_id).\
+            order_by(Transline.dept_id,desc(func.sum(StockOut.qty))).\
+            all()
+
+add_ddl(Session.__table__,"""
+CREATE OR REPLACE RULE max_one_open AS ON INSERT TO sessions
+	WHERE (SELECT COUNT(*) FROM sessions WHERE endtime IS NULL)>0
+	DO INSTEAD NOTHING
+""","""
+DROP RULE max_one_open ON sessions
+""")
+add_ddl(Session.__table__,"""
+CREATE OR REPLACE RULE may_not_change AS ON UPDATE TO sessions
+	WHERE OLD.endtime IS NOT NULL
+	DO INSTEAD NOTHING;
+""","""
+DROP RULE may_not_change ON sessions
+""")
 
 class SessionTotal(Base):
     __tablename__='sessiontotals'
     sessionid=Column(Integer,ForeignKey('sessions.sessionid'),primary_key=True)
-    paytype=Column(String(8),ForeignKey('paytypes.paytype'),primary_key=True)
+    paytype_id=Column('paytype',String(8),ForeignKey('paytypes.paytype'),
+                      primary_key=True)
     amount=Column(Numeric(10,2),nullable=False)
-    session=relationship(Session,backref=backref('totals'))
+    session=relationship(Session,backref='actual_totals')
+    paytype=relationship(PayType)
     def __repr__(self):
-        return "<SessionTotal('%s','%s')>"%(self.paytype,self.amount)
+        return "<SessionTotal(%s,'%s','%s')>"%(
+            self.sessionid,self.paytype,self.amount)
 
-transactions_seq=Sequence('transactions_seq',start=1)
+transactions_seq=Sequence('transactions_seq')
 class Transaction(Base):
     __tablename__='transactions'
     id=Column('transid',Integer,transactions_seq,nullable=False,
               primary_key=True)
-    session=Column('sessionid',Integer,ForeignKey('sessions.sessionid'),
-                   nullable=True) # Null sessionid for deferred transactions
+    sessionid=Column(Integer,ForeignKey('sessions.sessionid'),
+                     nullable=True) # Null sessionid for deferred transactions
     notes=Column(String(60))
     closed=Column(Boolean,nullable=False,default=False)
+    session=relationship(Session,backref=backref('transactions',order_by=id))
+    @hybrid_property
+    def total(self):
+        return sum(tl.items*tl.amount for tl in self.lines)
+    @property
+    def tillweb_url(self):
+        return "transactions/%d/"%self.id
+    def __unicode__(self):
+        return u"Transaction %d"%self.id
+    def __repr__(self):
+        return "<Transaction(%s,%s,%s)>"%(self.id,self.sessionid,self.closed)
+
+add_ddl(Transaction.__table__,"""
+CREATE OR REPLACE RULE may_not_reopen AS ON UPDATE TO transactions
+	WHERE OLD.closed=true
+	DO INSTEAD NOTHING
+""","""
+DROP RULE may_not_reopen ON transactions
+""")
+
+# Rules that depend on the existence of more than one table must be
+# added to the metadata rather than the table - they will be created
+# after all tables, and dropped before any tables.
+add_ddl(metadata,"""
+CREATE OR REPLACE RULE close_only_if_balanced AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		(SELECT sum(amount*items) FROM translines
+			WHERE transid=NEW.transid)!=
+		(SELECT sum(amount) FROM payments
+			WHERE transid=NEW.transid)
+	DO INSTEAD NOTHING
+""","DROP RULE close_only_if_balanced ON transactions")
+add_ddl(metadata,"""
+CREATE OR REPLACE RULE close_only_if_nonzero AS ON UPDATE TO transactions
+	WHERE NEW.closed=true AND
+		((SELECT count(*) FROM translines WHERE transid=NEW.transid)=0
+		OR (SELECT count(*) FROM payments WHERE transid=NEW.transid)=0)
+	DO INSTEAD NOTHING
+""","DROP RULE close_only_if_nonzero ON transactions")
 
 payments_seq=Sequence('payments_seq',start=1)
 class Payment(Base):
     __tablename__='payments'
     id=Column('paymentid',Integer,payments_seq,nullable=False,
               primary_key=True)
-    transaction=Column('transid',Integer,ForeignKey('transactions.transid'),
-                       nullable=False)
+    transid=Column(Integer,ForeignKey('transactions.transid'),
+                   nullable=False)
     amount=Column(Numeric(10,2),nullable=False)
-    paytype=Column(String(8),ForeignKey('paytypes.paytype'),nullable=False)
+    paytype_id=Column('paytype',String(8),ForeignKey('paytypes.paytype'),
+                      nullable=False)
     ref=Column(String(16))
     time=Column(DateTime,nullable=False) # default?
+    transaction=relationship(Transaction,
+                             backref=backref('payments',order_by=id))
+    paytype=relationship(PayType)
+    def __repr__(self):
+        return "<Payment(%s,%s,%s,'%s')>"%(self.id,self.transid,self.amount,
+                                           self.paytype_id)
+
+add_ddl(metadata,"""
+CREATE OR REPLACE RULE no_add_to_closed AS ON INSERT TO payments
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING
+""","DROP RULE no_add_to_closed ON payments")
 
 class PingapintPayment(Base):
     __tablename__='pingapint'
@@ -104,36 +232,57 @@ class PingapintPayment(Base):
     vid=Column(Integer,nullable=False)
     json_data=Column(Text,nullable=False)
     reimbursed=Column(Date)
+    def __repr__(self):
+        return "<PingapintPayment(%s,%s)>"%(self.id,self.amount)
 
 class Department(Base):
     __tablename__='departments'
     id=Column('dept',Integer,nullable=False,primary_key=True)
     description=Column(String(20),nullable=False)
     vatband=Column(CHAR(1),ForeignKey('vat.band'),nullable=False)
+    def __unicode__(self):
+        return u"%s"%(self.description,)
+    def __repr__(self):
+        return "<Department(%s,'%s')>"%(self.id,self.description)
 
 class TransCode(Base):
     __tablename__='transcodes'
     code=Column('transcode',CHAR(1),nullable=False,primary_key=True)
     description=Column(String(20))
+    def __unicode__(self):
+        return u"%s"%(self.description,)
+    def __repr__(self):
+        return "<TransCode('%s','%s')>"%(self.code,self.description)
 
 translines_seq=Sequence('translines_seq',start=1)
 class Transline(Base):
     __tablename__='translines'
     id=Column('translineid',Integer,translines_seq,nullable=False,
               primary_key=True)
-    transaction=Column('transid',Integer,ForeignKey('transactions.transid'),
-                       nullable=False)
+    transid=Column(Integer,ForeignKey('transactions.transid'),
+                   nullable=False)
     items=Column(Integer,nullable=False)
     amount=Column(Numeric(10,2),nullable=False)
-    department=Column('dept',Integer,ForeignKey('departments.dept'),
-                      nullable=False)
+    dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
+                   nullable=False)
     source=Column(String(10))
     stockref=Column(Integer)
     transcode=Column(CHAR(1),ForeignKey('transcodes.transcode'),nullable=False)
-    time=Column(DateTime,nullable=False,server_default=text('NOW()'))
+    time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     text=Column(Text)
+    transaction=relationship(Transaction,backref=backref('lines',order_by=id))
+    department=relationship(Department)
+    @hybrid_property
+    def total(self): return self.items*self.amount
+    def __repr__(self):
+        return "<Transline(%s,%s)>"%(self.id,self.transid)
 
-# Stock control information below here
+add_ddl(metadata,"""
+CREATE OR REPLACE RULE no_add_to_closed AS ON INSERT TO translines
+	WHERE (SELECT closed FROM transactions
+		WHERE transid=NEW.transid)=true
+	DO INSTEAD NOTHING
+""","DROP RULE no_add_to_closed ON translines")
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
@@ -142,93 +291,172 @@ class Supplier(Base):
     name=Column(String(60),nullable=False)
     tel=Column(String(20))
     email=Column(String(60))
+    def __repr__(self):
+        return "<Supplier(%s,'%s')>"%(self.id,self.name)
 
 deliveries_seq=Sequence('deliveries_seq')
 class Delivery(Base):
     __tablename__='deliveries'
     id=Column('deliveryid',Integer,nullable=False,primary_key=True)
-    supplier=Column('supplierid',Integer,ForeignKey('suppliers.supplierid'),
-                    nullable=False)
+    supplierid=Column(Integer,ForeignKey('suppliers.supplierid'),
+                      nullable=False)
     docnumber=Column(String(40))
-    date=Column(Date,nullable=False,server_default=text('NOW()'))
+    date=Column(Date,nullable=False,server_default=func.current_timestamp())
     checked=Column(Boolean,nullable=False,server_default=text('false'))
+    supplier=relationship(Supplier,backref=backref('deliveries',order_by=id))
+    @property
+    def tillweb_url(self):
+        return "deliveries/%d/"%(self.id,)
+    def __repr__(self):
+        return "<Delivery(%s)>"%(self.id,)
 
 class UnitType(Base):
     __tablename__='unittypes'
     id=Column('unit',String(10),nullable=False,primary_key=True)
     name=Column(String(30),nullable=False)
+    def __unicode__(self):
+        return u"%s"%name
+    def __repr__(self):
+        return "<UnitType('%s','%s')>"%(self.id,self.name)
 
 class StockUnit(Base):
     __tablename__='stockunits'
     id=Column('stockunit',String(8),nullable=False,primary_key=True)
     name=Column(String(30),nullable=False)
-    unit=Column(String(10),ForeignKey('unittypes.unit'),nullable=False)
+    unit_id=Column('unit',String(10),ForeignKey('unittypes.unit'),
+                   nullable=False)
     size=Column(Numeric(5,1),nullable=False)
+    unit=relationship(UnitType)
+    def __repr__(self):
+        return "<StockUnit('%s',%s)>"%(self.id,self.size)
 
 stocktypes_seq=Sequence('stocktypes_seq')
 class StockType(Base):
     __tablename__='stocktypes'
     id=Column('stocktype',Integer,stocktypes_seq,nullable=False,
               primary_key=True)
-    dept=Column(Integer,ForeignKey('departments.dept'),nullable=False)
+    dept_id=Column('dept',Integer,ForeignKey('departments.dept'),nullable=False)
     manufacturer=Column(String(30),nullable=False)
     name=Column(String(30),nullable=False)
     shortname=Column(String(25),nullable=False)
     abv=Column(Numeric(3,1))
-    unit=Column(String(10),ForeignKey('unittypes.unit'),nullable=False)
+    unit_id=Column('unit',String(10),ForeignKey('unittypes.unit'),
+                   nullable=False)
+    department=relationship(Department)
+    unit=relationship(UnitType)
+    @property
+    def tillweb_url(self):
+        return "stocktypes/%d/"%self.id
+    def __unicode__(self):
+        return u"%s %s"%(self.manufacturer,self.name)
+    def __repr__(self):
+        return "<StockType(%s,'%s','%s')>"%(self.id,self.manufacturer,self.name)
 
 class FinishCode(Base):
     __tablename__='stockfinish'
     id=Column('finishcode',String(8),nullable=False,primary_key=True)
     description=Column(String(50),nullable=False)
+    def __unicode__(self):
+        return u"%s"%self.description
+    def __repr__(self):
+        return "<FinishCode('%s','%s')>"%(self.id,self.description)
 
 stock_seq=Sequence('stock_seq')
 class StockItem(Base):
     __tablename__='stock'
     id=Column('stockid',Integer,stock_seq,nullable=False,primary_key=True)
-    delivery=Column('deliveryid',Integer,ForeignKey('deliveries.deliveryid'),
-                    nullable=False)
-    stocktype=Column('stocktype',Integer,ForeignKey('stocktypes.stocktype'),
-                     nullable=False)
-    stockunit=Column(String(8),ForeignKey('stockunits.stockunit'),
-                     nullable=False)
+    deliveryid=Column(Integer,ForeignKey('deliveries.deliveryid'),
+                      nullable=False)
+    stocktype_id=Column('stocktype',Integer,ForeignKey('stocktypes.stocktype'),
+                        nullable=False)
+    stockunit_id=Column('stockunit',String(8),
+                        ForeignKey('stockunits.stockunit'),nullable=False)
     costprice=Column(Numeric(7,2)) # ex VAT
     saleprice=Column(Numeric(5,2),nullable=False) # inc VAT
     onsale=Column(DateTime)
     finished=Column(DateTime)
-    finishcode=Column(String(8),ForeignKey('stockfinish.finishcode'))
+    finishcode_id=Column('finishcode',String(8),
+                         ForeignKey('stockfinish.finishcode'))
     bestbefore=Column(Date)
+    delivery=relationship(Delivery,backref=backref('items',order_by=id))
+    stocktype=relationship(StockType,backref=backref('items',order_by=id))
+    stockunit=relationship(StockUnit)
+    finishcode=relationship(FinishCode)
+    @property
+    def used(self):
+        return object_session(self).\
+            query(func.coalesce(func.sum(StockOut.qty),Decimal("0.0"))).\
+            select_from(StockOut).\
+            filter(StockOut.stockid==self.id).\
+            scalar()
+    @property
+    def remaining(self):
+        return self.stockunit.size-self.used
+    @property
+    def checkdigits(self):
+        """
+        Return three digits derived from a stock ID number.  These
+        digits can be printed on stock labels; knowledge of the digits
+        can be used to confirm that a member of staff really does have
+        a particular item of stock in front of them.
+        
+        """
+        a=hashlib.sha1("quicktill-%d-quicktill"%self.id)
+        return str(int(a.hexdigest(),16))[-3:]
+    @property
+    def tillweb_url(self):
+        return "stock/%d/"%self.id
+    def __repr__(self):
+        return "<StockItem(%s)>"%(self.id,)
 
 class AnnotationType(Base):
     __tablename__='annotation_types'
     id=Column('atype',String(8),nullable=False,primary_key=True)
     description=Column(String(20),nullable=False)
+    def __unicode__(self):
+        return u"%s"%(self.description,)
+    def __repr__(self):
+        return "<AnnotationType('%s','%s')>"%(self.id,self.description)
 
-# This table needs a primary key if it is to be accessed through the ORM.
-#class StockAnnotation(Base):
-#    __tablename__='stock_annotations'
-#    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
-#                     nullable=False)
-#    atype=Column(String(8),ForeignKey('annotation_types.atype'),nullable=False)
-#    time=Column(DateTime,nullable=False,server_default=text('NOW()'))
-#    text=Column(String(60),nullable=False)
+stock_annotation_seq=Sequence('stock_annotation_seq');
+class StockAnnotation(Base):
+    __tablename__='stock_annotations'
+    id=Column(Integer,stock_annotation_seq,nullable=False,primary_key=True)
+    stockid=Column(Integer,ForeignKey('stock.stockid'),nullable=False)
+    atype=Column(String(8),ForeignKey('annotation_types.atype'),nullable=False)
+    time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
+    stockitem=relationship(StockItem,backref=backref(
+            'annotations',order_by=time))
+    text=Column(String(60),nullable=False)
+    type=relationship(AnnotationType)
+    def __repr__(self):
+        return "<StockAnnotation(%s,%s,'%s','%s')>"%(
+            self.id,self.stockitem,self.atype,self.text)
 
 class RemoveCode(Base):
     __tablename__='stockremove'
     id=Column('removecode',String(8),nullable=False,primary_key=True)
     reason=Column(String(80))
+    def __unicode__(self):
+        return u"%s"%(self.reason,)
+    def __repr__(self):
+        return "<RemoveCode('%s','%s')>"%(self.id,self.reason)
 
 stockout_seq=Sequence('stockout_seq')
 class StockOut(Base):
     __tablename__='stockout'
     id=Column('stockoutid',Integer,stockout_seq,nullable=False,primary_key=True)
-    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
-                     nullable=False)
+    stockid=Column(Integer,ForeignKey('stock.stockid'),nullable=False)
     qty=Column(Numeric(5,1),nullable=False)
-    removecode=Column(String(8),ForeignKey('stockremove.removecode'),
-                      nullable=False)
-    transline=Column('translineid',Integer,ForeignKey('translines.translineid'))
-    time=Column(DateTime,nullable=False,server_default=text('NOW()'))
+    removecode_id=Column('removecode',String(8),
+                         ForeignKey('stockremove.removecode'),nullable=False)
+    translineid=Column(Integer,ForeignKey('translines.translineid'))
+    time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
+    stockitem=relationship(StockItem,backref=backref('out',order_by=id))
+    removecode=relationship(RemoveCode)
+    transline=relationship(Transline) # No backref - stockref is not foreign key
+    def __repr__(self):
+        return "<StockOut(%s,%s)>"%(self.id,self.stockid)
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):
@@ -237,53 +465,100 @@ class StockLine(Base):
     name=Column(String(30),nullable=False,unique=True)
     location=Column(String(20),nullable=False)
     capacity=Column(Integer)
-    department=Column('dept',Integer,ForeignKey('departments.dept'),
-                      nullable=False)
+    dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
+                   nullable=False)
     pullthru=Column(Numeric(5,2))
-    # Maybe add a constraint to say capacity and pullthru can't both be
-    # non-null at the same time
+    department=relationship(Department)
+    # capacity and pullthru can't both be non-null at the same time
+    __table_args__=(
+        CheckConstraint(
+            "capacity IS NULL OR pullthru IS NULL",
+            name="line_type_constraint"),)
+    @property
+    def tillweb_url(self):
+        return "stocklines/%d/"%self.id
+    def __repr__(self):
+        return "<StockLine(%s,'%s')>"%(self.id,self.name)
 
-# This table doesn't actually have a primary key, it just has a UNIQUE
-# constraint on stockid.  Perhaps rewrite so that the stock on sale is
-# accessed through the stockline object.
+# In the original createdb script, this table doesn't actually have a
+# primary key: it just has a UNIQUE constraint on stockid.  For our
+# purposes, that's just the same as stockid being the primary key and
+# it shouldn't matter that we'll be working with legacy databases that
+# are different.
 class StockOnSale(Base):
     __tablename__='stockonsale'
-    stockline=Column('stocklineid',Integer,ForeignKey('stocklines.stocklineid'),
-                     nullable=False)
-    stockitem=Column('stockid',Integer,ForeignKey('stock.stockid'),
-                     nullable=False,primary_key=True)
+    stocklineid=Column(Integer,ForeignKey('stocklines.stocklineid'),
+                       nullable=False)
+    stockid=Column(Integer,ForeignKey('stock.stockid'),
+                   nullable=False,primary_key=True)
     displayqty=Column(Integer)
+    stockline=relationship(StockLine,backref='stockonsale')
+    stockitem=relationship(
+        StockItem,backref=backref('stockonsale',uselist=False))
+    def __repr__(self):
+        return "<StockOnSale(%s,%s)>"%(self.stocklineid,self.stockid)
 
 class KeyboardBinding(Base):
     __tablename__='keyboard'
     layout=Column(Integer,nullable=False,primary_key=True)
     keycode=Column(String(20),nullable=False,primary_key=True)
     menukey=Column(String(20),nullable=False,primary_key=True)
-    stockline=Column('stocklineid',Integer,ForeignKey('stocklines.stocklineid'),
-                     nullable=False)
+    stocklineid=Column(Integer,ForeignKey('stocklines.stocklineid'),
+                       nullable=False)
     qty=Column(Numeric(5,2),nullable=False)
+    stockline=relationship(StockLine,backref='keyboard_bindings')
+    def __repr__(self):
+        return "<KeyboardBinding(%s,'%s','%s',%s)>"%(
+            self.layout,self.keycode,self.menukey,self.stocklineid)
 
 class KeyCap(Base):
     __tablename__='keycaps'
     layout=Column(Integer,nullable=False,primary_key=True)
     keycode=Column(String(20),nullable=False,primary_key=True)
     keycap=Column(String(30))
+    def __repr__(self):
+        return "<KeyCap(%s,'%s','%s')>"%(self.layout,self.keycode,self.keycap)
 
+# This is the association table for stocklines to stocktypes.
 class StockLineTypeLog(Base):
     __tablename__='stockline_stocktype_log'
-    stockline=Column('stocklineid',Integer,
-                     ForeignKey('stocklines.stocklineid',ondelete='CASCADE'),
-                     nullable=False,primary_key=True)
-    stocktype=Column(Integer,
-                     ForeignKey('stocktypes.stocktype',ondelete='CASCADE'),
-                     nullable=False,primary_key=True)
-# Code for ignore_duplicate_stockline_types rule here
-# Code for log_stocktype rule here
+    stocklineid=Column(Integer,
+                       ForeignKey('stocklines.stocklineid',ondelete='CASCADE'),
+                       nullable=False,primary_key=True)
+    stocktype_id=Column('stocktype',Integer,
+                        ForeignKey('stocktypes.stocktype',ondelete='CASCADE'),
+                        nullable=False,primary_key=True)
+    stockline=relationship(StockLine,backref='stocktype_log')
+    stocktype=relationship(StockType,backref='stockline_log')
+    def __repr__(self):
+        return "<StockLineTypeLog(%s,%s)>"%(self.stocklineid,self.stocktype_id)
+
+add_ddl(StockLineTypeLog.__table__,"""
+CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
+       ON INSERT TO stockline_stocktype_log
+       WHERE (NEW.stocklineid,NEW.stocktype)
+       IN (SELECT stocklineid,stocktype FROM stockline_stocktype_log)
+       DO INSTEAD NOTHING
+""","""
+DROP RULE ignore_duplicate_stockline_types ON stockline_stocktype_log
+""")
+
+add_ddl(metadata,"""
+CREATE OR REPLACE RULE log_stocktype AS ON INSERT TO stockonsale
+       DO ALSO
+       INSERT INTO stockline_stocktype_log VALUES
+       (NEW.stocklineid,(SELECT stocktype FROM stock
+       	WHERE stock.stockid=NEW.stockid))
+""","""
+DROP RULE log_stocktype ON stockonsale
+""")
 
 class User(Base):
     __tablename__='users'
     code=Column(CHAR(2),nullable=False,primary_key=True)
     name=Column(String(30),nullable=False)
+    def __repr__(self):
+        return "<User('%s','%s')>"%(self.code,self.name)
 
 # stockinfo view definition here?  Probably don't need to use it, but
 # we might still want to emit the CREATE VIEW command sometimes.
@@ -295,17 +570,21 @@ class User(Base):
 # Lots of rule definitions here - see createdb
 
 # Add indexes here
-Index('translines_transid_key',Transline.transaction)
-Index('payments_transid_key',Payment.transaction)
-Index('transactions_sessionid_key',Transaction.session)
-#Index('stock_annotations_stockid_key',Annotation.stockitem)
-Index('stockout_stockid_key',StockOut.stockitem)
+Index('translines_transid_key',Transline.transid)
+Index('payments_transid_key',Payment.transid)
+Index('transactions_sessionid_key',Transaction.sessionid)
+Index('stock_annotations_stockid_key',StockAnnotation.stockid)
+Index('stockout_stockid_key',StockOut.stockid)
 
+# The "find free drinks on this day" function is speeded up
+# considerably by an index on stockout.time::date
 # sqlalchemy currently doesn't support creating indexes on
-# expressions.  We need to use raw DDL for the following:
-# CREATE INDEX stockout_date_key ON stockout ( (time::date) );
+# expressions.  We need to use raw DDL for this:
+add_ddl(StockOut.__table__,
+        "CREATE INDEX stockout_date_key ON stockout ( (time::date) )",
+        None)
 
-Index('stockout_translineid_key',StockOut.transline)
+Index('stockout_translineid_key',StockOut.translineid)
 Index('translines_time_key',Transline.time)
 
 foodorder_seq=Sequence('foodorder_seq')
@@ -313,6 +592,6 @@ foodorder_seq=Sequence('foodorder_seq')
 if __name__=='__main__':
     from sqlalchemy import create_engine
     engine=create_engine('postgresql+psycopg2:///testdb', echo=True)
-    Base.metadata.bind=engine
-    Base.metadata.create_all()
-    Base.metadata.drop_all()
+    metadata.bind=engine
+    metadata.create_all()
+    metadata.drop_all()
