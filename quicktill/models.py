@@ -3,6 +3,7 @@ from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CH
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
 from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
+from sqlalchemy.orm import column_property
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
@@ -471,28 +472,8 @@ class StockItem(Base):
     stocktype=relationship(StockType,backref=backref('items',order_by=id))
     stockunit=relationship(StockUnit)
     finishcode=relationship(FinishCode)
-    @hybrid_property
-    def used(self):
-        return object_session(self).\
-            query(func.coalesce(func.sum(StockOut.qty),Decimal("0.0"))).\
-            select_from(StockOut).\
-            filter(StockOut.stockid==self.id).\
-            scalar()
-    @used.expression
-    def used(cls):
-        return select([func.coalesce(func.sum(StockOut.qty),Decimal("0.0"))]).\
-            correlate(cls.__table__).\
-            where(StockOut.stockid==cls.id).\
-            label('used')
-    @hybrid_property
-    def remaining(self):
-        return self.stockunit.size-self.used
-    @remaining.expression
-    def remaining(cls):
-        return select([
-                select([StockUnit.size],StockUnit.id==cls.stockunit_id
-                       ).correlate(cls.__table__) - cls.used]).\
-            label('remaining')
+    # used and remaining column properties are added after the
+    # StockOut class is defined
     @property
     def checkdigits(self):
         """
@@ -558,6 +539,21 @@ class StockOut(Base):
     transline=relationship(Transline) # No backref - stockref is not foreign key
     def __repr__(self):
         return "<StockOut(%s,%s)>"%(self.id,self.stockid)
+
+# These are added to the StockItem class here because they refer
+# directly to the StockOut class, defined just above.
+StockItem.used=column_property(
+    select([func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
+        correlate(StockItem.__table__).\
+        where(StockOut.stockid==StockItem.id).\
+        label('used'))
+StockItem.remaining=column_property(
+    select([func.coalesce(
+                select([StockUnit.size],StockUnit.id==StockItem.stockunit_id
+                       ).correlate(StockItem.__table__) -
+                func.sum(StockOut.qty),text("0.0"))]).\
+        where(StockOut.stockid==StockItem.id).\
+        label('remaining'))
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):
