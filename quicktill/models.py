@@ -1,10 +1,10 @@
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base,declared_attr
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
-from sqlalchemy.sql.expression import text
+from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import select,func,desc
+from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
 
 import datetime
@@ -33,30 +33,59 @@ class Business(Base):
     abbrev=Column(String(20))
     address=Column(String(200))
     vatno=Column(String(30))
+    def __unicode__(self):
+        return u"%s"%(self.abbrev,)
     def __repr__(self):
         return "<Business('%s')>"%(self.name,)
 
-class VatBand(Base):
+# This is intended to be a mixin for both VatBand and VatRate.  It's
+# not intended to be instantiated.
+class Vat(object):
+    @declared_attr
+    def rate(cls):
+        return Column(Numeric(5,2),nullable=False)
+    @declared_attr
+    def businessid(cls):
+        return Column('business',Integer,ForeignKey('businesses.business'))
+    @declared_attr
+    def business(cls):
+        return relationship(Business)
+    @property
+    def rate_fraction(self):
+        return self.rate/Decimal(100)
+    def inc_to_exc(self,n):
+        return (n/(self.rate_fraction+Decimal(1))).quantize(Decimal("0.01"))
+    def inc_to_vat(self,n):
+        return n-self.inc_to_exc(n)
+    def exc_to_vat(self,n):
+        return (n*self.rate_fraction).quantize(Decimal("0.01"))
+    def exc_to_inc(self,n):
+        return n+self.exc_to_vat(n)
+    def at(self,date):
+        """Return the VatRate object that replaces this one at the
+        specified date.  If there is no suitable VatRate object,
+        returns self.
+
+        """
+        return object_session(self).\
+            query(VatRate).\
+            filter_by(band=self.band).\
+            filter(VatRate.active<=date).\
+            order_by(desc(VatRate.active)).\
+            first() or self
+
+class VatBand(Base,Vat):
     __tablename__='vat'
     band=Column(CHAR(1),primary_key=True)
-    rate=Column(Numeric(5,2),nullable=False)
-    businessid=Column('business',Integer,ForeignKey('businesses.business'))
-    business=relationship(Business,backref='vatbands')
     def __repr__(self):
         return "<VatBand('%s')>"%(self.band,)
 
-class VatRate(Base):
+class VatRate(Base,Vat):
     __tablename__='vatrates'
     band=Column(CHAR(1),ForeignKey('vat.band'),primary_key=True)
-    rate=Column(Numeric(5,2),nullable=False)
-    businessid=Column('business',Integer,ForeignKey('businesses.business'))
     active=Column(Date,nullable=False,primary_key=True)
-    business=relationship(Business) # NB no backref
     def __repr__(self):
-        return "<VatRate('%s',%s)>",(self.band,self.rate)
-
-# vatrate() function may go here
-# business() function may go here
+        return "<VatRate('%s',%s,'%s')>"%(self.band,self.rate,self.active)
 
 class PayType(Base):
     __tablename__='paytypes'
@@ -91,9 +120,10 @@ class Session(Base):
         return u"Session %d"%self.id
     @property
     def tillweb_url(self):
-        return "sessions/%d/"%self.id
+        return "session/%d/"%self.id
     @property
     def dept_totals(self):
+        "Transaction lines broken down by Department."
         return object_session(self).\
             query(Department,func.sum(
                 Transline.items*Transline.amount)).\
@@ -101,14 +131,44 @@ class Session(Base):
             filter(Session.id==self.id).\
             join(Transaction,Transline,Department).\
             order_by(Department.id).\
-            group_by(Department.id).all()
+            group_by(Department).all()
     @property
     def total(self):
+        "Total of all transaction lines."
         return object_session(self).\
             query(func.sum(Transline.items*Transline.amount)).\
             select_from(Session).\
             filter(Session.id==self.id).\
             join(Transaction,Transline).scalar()
+    @property
+    def actual_total(self):
+        "Total of all payments."
+        return sum(at.amount for at in self.actual_totals)
+    @property
+    def error(self):
+        "Difference between actual total and transaction line total."
+        return self.actual_total-self.total
+    @property
+    def vatband_totals(self):
+        """Transaction lines broken down by VatBand.
+
+        Returns (VatRate,amount,ex-vat amount,vat)
+
+        """
+        vt=object_session(self).\
+            query(VatBand,func.sum(Transline.items*Transline.amount)).\
+            select_from(Session).\
+            filter(Session.id==self.id).\
+            join(Transaction,Transline,Department,VatBand).\
+            order_by(VatBand.band).\
+            group_by(VatBand).\
+            all()
+        vt=[(a.at(self.date),b) for a,b in vt]
+        return [(a,b,a.inc_to_exc(b),a.inc_to_vat(b)) for a,b in vt]
+    # It may become necessary to add a further query here that returns
+    # transaction lines broken down by Business.  Must take into
+    # account multiple VAT rates per business - probably best to do
+    # the summing client side using the methods in the VatRate object.
     @property
     def stock_sold(self):
         "Returns a list of (StockType,quantity) tuples."
@@ -154,7 +214,7 @@ class SessionTotal(Base):
     paytype_id=Column('paytype',String(8),ForeignKey('paytypes.paytype'),
                       primary_key=True)
     amount=Column(Numeric(10,2),nullable=False)
-    session=relationship(Session,backref='actual_totals')
+    session=relationship(Session,backref=backref('actual_totals',order_by=desc('paytype')))
     paytype=relationship(PayType)
     def __repr__(self):
         return "<SessionTotal(%s,'%s','%s')>"%(
@@ -175,7 +235,7 @@ class Transaction(Base):
         return sum(tl.items*tl.amount for tl in self.lines)
     @property
     def tillweb_url(self):
-        return "transactions/%d/"%self.id
+        return "transaction/%d/"%self.id
     def __unicode__(self):
         return u"Transaction %d"%self.id
     def __repr__(self):
@@ -332,7 +392,7 @@ class Delivery(Base):
     supplier=relationship(Supplier,backref=backref('deliveries',order_by=id))
     @property
     def tillweb_url(self):
-        return "deliveries/%d/"%(self.id,)
+        return "delivery/%d/"%(self.id,)
     def __repr__(self):
         return "<Delivery(%s)>"%(self.id,)
 
@@ -370,9 +430,12 @@ class StockType(Base):
                    nullable=False)
     department=relationship(Department)
     unit=relationship(UnitType)
+    @hybrid_property
+    def fullname(self):
+        return self.manufacturer+' '+self.name
     @property
     def tillweb_url(self):
-        return "stocktypes/%d/"%self.id
+        return "stocktype/%d/"%self.id
     def __unicode__(self):
         return u"%s %s"%(self.manufacturer,self.name)
     def __repr__(self):
@@ -408,16 +471,28 @@ class StockItem(Base):
     stocktype=relationship(StockType,backref=backref('items',order_by=id))
     stockunit=relationship(StockUnit)
     finishcode=relationship(FinishCode)
-    @property
+    @hybrid_property
     def used(self):
         return object_session(self).\
             query(func.coalesce(func.sum(StockOut.qty),Decimal("0.0"))).\
             select_from(StockOut).\
             filter(StockOut.stockid==self.id).\
             scalar()
-    @property
+    @used.expression
+    def used(cls):
+        return select([func.coalesce(func.sum(StockOut.qty),Decimal("0.0"))]).\
+            correlate(cls.__table__).\
+            where(StockOut.stockid==cls.id).\
+            label('used')
+    @hybrid_property
     def remaining(self):
         return self.stockunit.size-self.used
+    @remaining.expression
+    def remaining(cls):
+        return select([
+                select([StockUnit.size],StockUnit.id==cls.stockunit_id
+                       ).correlate(cls.__table__) - cls.used]).\
+            label('remaining')
     @property
     def checkdigits(self):
         """
@@ -502,7 +577,7 @@ class StockLine(Base):
             name="line_type_constraint"),)
     @property
     def tillweb_url(self):
-        return "stocklines/%d/"%self.id
+        return "stockline/%d/"%self.id
     def __repr__(self):
         return "<StockLine(%s,'%s')>"%(self.id,self.name)
 
