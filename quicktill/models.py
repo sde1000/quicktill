@@ -3,6 +3,7 @@ from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CH
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
 from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
+from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
@@ -548,10 +549,9 @@ StockItem.used=column_property(
         where(StockOut.stockid==StockItem.id).\
         label('used'))
 StockItem.remaining=column_property(
-    select([func.coalesce(
-                select([StockUnit.size],StockUnit.id==StockItem.stockunit_id
-                       ).correlate(StockItem.__table__) -
-                func.sum(StockOut.qty),text("0.0"))]).\
+    select([select([StockUnit.size],StockUnit.id==StockItem.stockunit_id
+                   ).correlate(StockItem.__table__) -
+                func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
         where(StockOut.stockid==StockItem.id).\
         label('remaining'))
 
@@ -576,6 +576,24 @@ class StockLine(Base):
         return "stockline/%d/"%self.id
     def __repr__(self):
         return "<StockLine(%s,'%s')>"%(self.id,self.name)
+
+def location_summary(session,location):
+    """Return a list of (StockLine,StockItem) tuples corresponding to
+    the requested location.  (Note that, since there may be multiple
+    stock items on a line, some StockLine objects may be returned more
+    than once.)  Does not return StockLines that have no stock on
+    sale.
+
+    """
+    return session.query(StockLine,StockItem).\
+        join(StockOnSale).\
+        join(StockItem).\
+        filter(StockLine.location==location).\
+        order_by(StockLine.dept_id,StockLine.name).\
+        options(joinedload('stockonsale')).\
+        options(joinedload('stockonsale.stockitem')).\
+        options(joinedload('stockonsale.stockitem.stocktype')).\
+        all()
 
 # In the original createdb script, this table doesn't actually have a
 # primary key: it just has a UNIQUE constraint on stockid.  For our
