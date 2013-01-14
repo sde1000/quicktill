@@ -93,6 +93,8 @@ class PayType(Base):
     __tablename__='paytypes'
     paytype=Column(String(8),nullable=False,primary_key=True)
     description=Column(String(10),nullable=False)
+    def __unicode__(self):
+        return u"%s"%(self.description,)
     def __repr__(self):
         return "<PayType('%s')>"%(self.paytype,)
 
@@ -277,7 +279,7 @@ class Payment(Base):
     paytype_id=Column('paytype',String(8),ForeignKey('paytypes.paytype'),
                       nullable=False)
     ref=Column(String(16))
-    time=Column(DateTime,nullable=False) # default?
+    time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     transaction=relationship(Transaction,
                              backref=backref('payments',order_by=id))
     paytype=relationship(PayType)
@@ -381,6 +383,11 @@ class Supplier(Base):
     email=Column(String(60))
     def __repr__(self):
         return "<Supplier(%s,'%s')>"%(self.id,self.name)
+    def __unicode__(self):
+        return u"%s"%(self.name,)
+    @property
+    def tillweb_url(self):
+        return "supplier/%d/"%(self.id,)
 
 deliveries_seq=Sequence('deliveries_seq')
 class Delivery(Base):
@@ -403,7 +410,7 @@ class UnitType(Base):
     id=Column('unit',String(10),nullable=False,primary_key=True)
     name=Column(String(30),nullable=False)
     def __unicode__(self):
-        return u"%s"%name
+        return u"%s"%(self.name,)
     def __repr__(self):
         return "<UnitType('%s','%s')>"%(self.id,self.name)
 
