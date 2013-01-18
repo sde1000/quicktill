@@ -8,32 +8,33 @@ class page(ui.basicpage):
         self.alarm()
         self.redraw()
         self.hotkeys=hotkeys
-        self.locations=locations
+        self.locations=locations if locations else ['Bar']
         event.eventlist.append(self)
     def pagename(self):
         return "Stock Control"
     def drawlines(self):
-        sl=td.stockline_summary()
+        session=td.sm()
+        sl=td.stockline_summary(session,self.locations)
         y=1
         self.addstr(0,0,"Line")
         self.addstr(0,10,"StockID")
         self.addstr(0,18,"Stock")
         self.addstr(0,64,"Used")
         self.addstr(0,70,"Remaining")
-        for name,dept,location,stockid in sl:
-            if self.locations is None:
-                if dept>3: continue # Old behaviour - no location list
-            else:
-                if location not in self.locations: continue
-            self.addstr(y,0,name)
-            if stockid is not None:
-                sd=td.stock_info([stockid])[0]
-                self.addstr(y,10,"%d"%stockid)
-                self.addstr(y,18,stock.format_stock(sd,maxw=45))
-                self.addstr(y,64,"%0.1f"%sd['used'])
-                self.addstr(y,73,"%0.1f"%sd['remaining'])
+        for line in sl:
+            self.addstr(y,0,line.name)
+            if len(line.stockonsale)>0:
+                # We are only showing stock lines with null capacity.
+                # There should be no more than one stock item on sale
+                # at once.  Here we explicitly use the first one.
+                sos=line.stockonsale[0]
+                self.addstr(y,10,"%d"%sos.stockid)
+                self.addstr(y,18,sos.stockitem.stocktype.fullname)
+                self.addstr(y,64,"%0.1f"%sos.stockitem.used)
+                self.addstr(y,73,"%0.1f"%sos.stockitem.remaining)
             y=y+1
             if y>=(self.h-3): break
+        session.close()
     def drawstillage(self):
         sl=td.stillage_summary()
         y=1

@@ -1010,13 +1010,16 @@ def stockline_listunbound():
                 "WHERE kb.stocklineid IS NULL")
     return cur.fetchall()
 
-def stockline_summary():
-    cur=cursor()
-    cur.execute("SELECT sl.name,sl.dept,sl.location,sos.stockid "
-                "FROM stocklines sl "
-                "LEFT JOIN stockonsale sos ON sos.stocklineid=sl.stocklineid "
-                "WHERE sl.capacity IS NULL ORDER BY sl.name")
-    return cur.fetchall()
+def stockline_summary(session,locations):
+    s=session.query(StockLine).\
+        filter(StockLine.location.in_(locations)).\
+        filter(StockLine.capacity==None).\
+        order_by(StockLine.name).\
+        options(joinedload('stockonsale')).\
+        options(joinedload('stockonsale.stockitem')).\
+        options(joinedload('stockonsale.stockitem.stocktype')).\
+        all()
+    return s
 
 ### Functions relating to till keyboards
 
