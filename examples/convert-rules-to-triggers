@@ -1,0 +1,69 @@
+/* Replace the data integrity rules with triggers; should be run when
+converting to quicktill with sqlalchemy */
+
+DROP RULE IF EXISTS max_one_open ON sessions;
+CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT count(*) FROM sessions WHERE endtime IS NULL)>1 THEN
+    RAISE EXCEPTION 'there is already an open session';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER max_one_session_open
+  AFTER INSERT OR UPDATE ON sessions
+  FOR EACH ROW EXECUTE PROCEDURE check_max_one_session_open();
+
+DROP RULE IF EXISTS may_not_change ON sessions;
+
+DROP RULE IF EXISTS may_not_reopen ON transactions;
+
+DROP RULE IF EXISTS close_only_if_balanced ON transactions;
+
+CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
+BEGIN
+  IF NEW.closed=true
+    AND (SELECT sum(amount*items) FROM translines
+      WHERE transid=NEW.transid)!=
+      (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction %%d does not balance', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER close_only_if_balanced
+  AFTER INSERT OR UPDATE ON transactions
+  FOR EACH ROW EXECUTE PROCEDURE check_transaction_balances();
+
+DROP RULE IF EXISTS close_only_if_nonzero ON transactions;
+
+DROP RULE IF EXISTS create_only_if_session_open ON transactions;
+
+DROP RULE IF EXISTS no_add_to_closed ON payments;
+
+CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d payment', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER no_modify_closed
+  AFTER INSERT OR UPDATE ON payments
+  FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_payment();
+
+DROP RULE IF EXISTS no_add_to_closed ON translines;
+
+CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d line', NEW.transid;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER no_modify_closed
+  AFTER INSERT OR UPDATE ON translines
+  FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_line();
+
