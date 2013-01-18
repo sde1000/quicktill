@@ -137,13 +137,16 @@ class Session(Base):
             order_by(Department.id).\
             group_by(Department).all()
     @property
-    def total(self):
-        "Total of all transaction lines."
+    def payment_totals(self):
+        "Transactions broken down by payment type."
         return object_session(self).\
-            query(func.sum(Transline.items*Transline.amount)).\
+            query(PayType,func.sum(Payment.amount)).\
             select_from(Session).\
             filter(Session.id==self.id).\
-            join(Transaction,Transline).scalar()
+            join(Transaction,Payment,PayType).\
+            group_by(PayType).all()
+    # total property has been converted to a deferred column_property
+    # and is now declared after Transline
     @property
     def actual_total(self):
         "Total of all payments."
@@ -373,6 +376,18 @@ CREATE CONSTRAINT TRIGGER no_modify_closed
 DROP TRIGGER no_modify_closed ON translines;
 DROP FUNCTION check_modify_closed_trans_line();
 """)
+
+# Add "total" column property to the Session class now that
+# transactions and translines are defined
+Session.total=column_property(
+    select([func.coalesce(func.sum(Transline.items*Transline.amount),
+                          text("0.0"))],
+           whereclause=and_(Transline.transid==Transaction.id,
+                            Transaction.sessionid==Session.id)).\
+        correlate(Session.__table__).\
+        label('total'),
+    deferred=True,
+    doc="Transaction lines total")
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
