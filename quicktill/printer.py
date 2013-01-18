@@ -83,20 +83,20 @@ def print_receipt(trans):
     driver.printline("\t%s"%ui.formatdate(date))
     driver.end()
 
-def print_sessioncountup(session):
-    (start,end,accdate)=td.session_dates(session)
+def print_sessioncountup(s):
+    session=td.sm()
+    s=session.merge(s)
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
-    driver.printline("\tSession %d"%session,colour=1)
-    driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
-    driver.printline("Started %s"%ui.formattime(start))
-    driver.printline("  Ended %s"%ui.formattime(end))
+    driver.printline("\tSession %d"%s.id,colour=1)
+    driver.printline("\t%s"%ui.formatdate(s.date),colour=1)
+    driver.printline("Started %s"%ui.formattime(s.starttime))
+    driver.printline("  Ended %s"%ui.formattime(s.endtime))
     driver.printline()
-    tots=td.session_paytotals(session)
     driver.printline("Amounts registered:")
-    for i in tots:
-        driver.printline("%s: %s"%(tots[i][0],tillconfig.fc(tots[i][1])))
+    for paytype,total in s.payment_totals:
+        driver.printline("%s: %s"%(paytype.description,tillconfig.fc(total)))
     driver.printline()
     for i in ("    50","    20","    10",
               "     5","     2","     1",
@@ -109,47 +109,50 @@ def print_sessioncountup(session):
     driver.printline("Cash Total",colour=1,emph=1)
     driver.printline()
     driver.printline(underline=1)
-    if 'CASH' in tots: del tots['CASH']
-    for i in tots:
-        driver.printline("%s Total"%tots[i][0],colour=1,emph=1)
+    for paytype,total in s.payment_totals:
+        if paytype.paytype=='CASH': continue
+        driver.printline("%s Total"%paytype.description,colour=1,emph=1)
         driver.printline()
         driver.printline(underline=1)
     driver.printline("Enter totals into till using")
     driver.printline("management menu option 1,3.")
     driver.end()
+    session.close()
 
-def print_sessiontotals(session):
-    (start,end,accdate)=td.session_dates(session)
-    depts=td.session_depttotals(session)
-    paytotals=td.session_paytotals(session)
-    payments=td.session_actualtotals(session)
+def print_sessiontotals(s):
+    """Print a session totals report given a Session object.
+
+    """
+    session=td.sm()
+    s=session.merge(s)
+    depts=s.dept_totals
+    paytotals=dict(s.payment_totals)
+    payments=dict([(x.paytype,x) for x in s.actual_totals])
     paytypes=set(list(paytotals.keys())+list(payments.keys()))
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
-    driver.printline("\tSession %d"%session,colour=1)
-    driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
-    driver.printline("Started %s"%ui.formattime(start))
-    if end is None:
+    driver.printline("\tSession %d"%s.id,colour=1)
+    driver.printline("\t%s"%ui.formatdate(s.date),colour=1)
+    driver.printline("Started %s"%ui.formattime(s.starttime))
+    if s.endtime is None:
         driver.printline("Session still in progress")
         driver.printline("Printed %s"%ui.formattime(ui.now()))
     else:
-        driver.printline("  Ended %s"%ui.formattime(end))
+        driver.printline("  Ended %s"%ui.formattime(s.endtime))
     driver.printline("Till total:\t\tActual total:")
     ttt=Decimal("0.00")
     att=Decimal("0.00")
     for i in paytypes:
-        desc=""
+        desc=i.description
         if i in paytotals:
-            desc=paytotals[i][0]
-            tt=tillconfig.fc(paytotals[i][1])
-            ttt=ttt+paytotals[i][1]
+            tt=tillconfig.fc(paytotals[i])
+            ttt=ttt+paytotals[i]
         else:
             tt=""
         if i in payments:
-            desc=payments[i][0]
-            at=tillconfig.fc(payments[i][1])
-            att=att+payments[i][1]
+            at=tillconfig.fc(payments[i].amount)
+            att=att+payments[i].amount
         else:
             at=""
         driver.printline("%s: %s\t\t%s"%(desc,tt,at))
@@ -161,14 +164,16 @@ def print_sessiontotals(session):
             at=""
         driver.printline("Total: %s\t\t%s"%(tt,at),colour=1,emph=1)
     driver.printline()
-    dt=0.0
-    for i in depts:
-        driver.printline("%2d %s\t\t%s"%(i[0],i[1],tillconfig.fc(i[2])))
-        dt=dt+i[2]
+    dt=Decimal("0.00")
+    for dept,total in depts:
+        driver.printline("%2d %s\t\t%s"%(dept.id,dept.description,
+                                         tillconfig.fc(total)))
+        dt=dt+total
     driver.printline("\t\tTotal: %s"%tillconfig.fc(dt),colour=1,emph=1)
     driver.printline()
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.end()
+    session.close()
 
 def label_print_delivery(delivery):
     items=td.delivery_items(delivery)

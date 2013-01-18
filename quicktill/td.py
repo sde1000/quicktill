@@ -14,6 +14,7 @@ from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
+from sqlalchemy.orm import undefer
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select
 from models import *
@@ -268,13 +269,6 @@ def trans_makefree(transid,removecode):
     cur.execute("DELETE FROM translines WHERE transid=%s",(transid,))
     cur.execute("DELETE FROM transactions WHERE transid=%s",(transid,))
     commit()
-
-def trans_incompletes():
-    "Returns the list of incomplete transactions"
-    cur=cursor()
-    cur.execute("SELECT transid FROM transactions WHERE closed=false "
-                "AND sessionid IS NOT NULL")
-    return [x[0] for x in cur.fetchall()]
 
 def vat_info(band,date):
     cur=cursor()
@@ -1089,112 +1083,22 @@ def session_current():
         return r[0]
     return None
 
-def session_start(date):
-    "Start a new session, if there is no session currently active."
-    # Check that there's no session currently active
-    if session_current(): return None
-    # Create a new session
-    cur=cursor()
-    cur.execute("INSERT INTO sessions (sessiondate) VALUES (%s)",(date,))
-    commit()
-    return session_current()
+def session_list(session,unpaidonly,closedonly):
+    """Return the list of sessions.  Explicitly undefers loading of
+    the total column property so that we don't have to make a
+    round-trip to the database for each object returned.
 
-def session_end():
-    """End the current session; only succeeds if there are no incomplete
-    transactions.  On failure returns the list of incomplete transactions."""
-    # Check that the session is active
-    cs=session_current()
-    if cs is None: return None
-    # Check that there are no incomplete transactions
-    i=trans_incompletes()
-    if len(i)>0: return i
-    # Mark the sesion ended
-    cur=cursor()
-    cur.execute("UPDATE sessions SET endtime=now() "
-                "WHERE sessionid=%s",(cs[0],))
-    commit()
-    return None
-
-def session_recordtotals(number,amounts):
-    """Record actual takings for a session; amounts is a list of
-    (paytype,amount) tuples."""
-    # Check that the session has ended, but is otherwise incomplete
-    cur=cursor()
-    cur.execute("SELECT endtime FROM sessions WHERE sessionid=%s",(number,))
-    s=cur.fetchall()
-    if len(s)!=1: raise Exception("Session does not exist")
-    cur.execute("SELECT sum(amount) FROM sessiontotals WHERE sessionid=%s",
-                (number,))
-    s=cur.fetchall()
-    if s[0][0]!=None:
-        raise Exception("Session has already had payments entered")
-    # Record the amounts
-    for i in amounts:
-        cur.execute("INSERT INTO sessiontotals VALUES (%s,%s,%s)",
-                    (number,i[0],i[1]))
-    commit()
-    return
-
-def session_actualtotals(number):
-    "Return a list of actual payments received for the session"
-    cur=cursor()
-    cur.execute("SELECT st.paytype,pt.description,st.amount "
-                "FROM sessiontotals st "
-                "INNER JOIN paytypes pt ON pt.paytype=st.paytype "
-                "WHERE st.sessionid=%s",
-                (number,))
-    f=cur.fetchall()
-    d={}
-    for i in f:
-        d[i[0]]=(i[1],i[2])
-    return d
-
-def session_paytotals(number):
-    """Return the total of all payments in this session, as a dict of
-    amounts with the payment type (CASH, CARD, etc.) as the key.
-    
     """
-    cur=cursor()
-    cur.execute("SELECT p.paytype,pt.description,sum(p.amount) "
-                "FROM payments p LEFT JOIN paytypes pt ON "
-                "p.paytype=pt.paytype WHERE transid in "
-                "(SELECT transid FROM transactions WHERE sessionid=%s) "
-                "GROUP BY p.paytype,pt.description",(number,))
-    f=cur.fetchall()
-    d={}
-    for i in f:
-        d[i[0]]=(i[1],i[2])
-    return d
-
-def session_depttotals(number):
-    "Return a list of departments and the amounts taken in each department"
-    cur=cursor()
-    cur.execute("SELECT d.dept,d.description,sum(l.items*l.amount) FROM "
-                "sessions s INNER JOIN transactions t ON "
-                "t.sessionid=s.sessionid INNER JOIN translines l ON "
-                "l.transid=t.transid INNER JOIN departments d ON "
-                "l.dept=d.dept WHERE s.sessionid=%s GROUP BY "
-                "d.dept,d.description ORDER BY d.dept",(number,))
-    return cur.fetchall()
-
-def session_dates(number):
-    "Return the start and end times of the session"
-    cur=cursor()
-    cur.execute("SELECT starttime,endtime,sessiondate FROM sessions WHERE "
-                "sessionid=%s",(number,))
-    return cur.fetchone()
-
-def session_list():
-    """Return a list of sessions with summary details in descending order
-    of session number."""
-    cur=cursor()
-    cur.execute("SELECT s.sessionid,s.starttime,s.endtime,s.sessiondate,"
-                "sum(st.amount) "
-                "FROM sessions s LEFT OUTER JOIN sessiontotals st ON "
-                "s.sessionid=st.sessionid GROUP BY s.sessionid,"
-                "s.starttime,s.endtime,s.sessiondate "
-                "ORDER BY s.sessionid DESC")
-    return cur.fetchall()
+    q=session.query(Session).\
+        order_by(desc(Session.id)).\
+        options(undefer('total'))
+    if unpaidonly:
+        q=q.filter(select([func.count(SessionTotal.sessionid)],
+                          whereclause=SessionTotal.sessionid==Session.id).\
+                       correlate(Session.__table__).as_scalar()==0)
+    if closedonly:
+        q=q.filter(Session.endtime!=None)
+    return q.all()
 
 def session_translist(session,onlyopen=False):
     """Returns the list of transactions in a session; transaction number,
@@ -1212,18 +1116,6 @@ def session_translist(session,onlyopen=False):
                 "GROUP BY t.transid,t.notes,t.closed "
                 "ORDER BY t.closed,t.transid DESC"%oos,(session,))
     return cur.fetchall()
-
-### List of payment types
-
-def paytypes_list():
-    """Return a dictionary of payment types and their descriptions."""
-    cur=cursor()
-    cur.execute("SELECT paytype,description FROM paytypes")
-    f=cur.fetchall()
-    d={}
-    for i in f:
-        d[i[0]]=i[1]
-    return d
 
 ### User list for lock screen
 

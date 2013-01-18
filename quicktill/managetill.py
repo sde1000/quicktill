@@ -6,8 +6,9 @@ import sys,math,curses,os
 from . import ui,keyboard,td,printer
 from . import register,tillconfig,managekeyboard,stocklines,event
 from .version import version
-from mx.DateTime import DateTimeDelta
+import datetime
 from decimal import Decimal
+from models import Session,PayType,SessionTotal
 
 import logging
 log=logging.getLogger()
@@ -21,9 +22,9 @@ class ssdialog(ui.dismisspopup):
                    "if necessary.")
         self.addstr(3,2,"Press Cash/Enter to continue and start the session.")
         self.addstr(5,2,"Session date:")
-        date=ui.now()
+        date=datetime.datetime.now()
         if date.hour>=23:
-            date=date+DateTimeDelta(1)
+            date=date+datetime.timedelta(days=1)
         self.datefield=ui.datefield(5,16,f=date,keymap={
                 keyboard.K_CASH: (self.key_enter,None)})
         self.datefield.focus()
@@ -37,117 +38,131 @@ class ssdialog(ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        sc=td.session_start(date)
+        session=td.sm()
+        sc=Session(date)
+        session.add(sc)
+        session.commit()
         td.trans_restore()
         td.foodorder_reset()
-        log.info("Started session number %d"%sc[0])
+        log.info("Started session number %d"%sc.id)
         printer.kickout()
-        ui.infopopup(["Started session number %d."%sc[0]],
+        session.close()
+        ui.infopopup(["Started session number %d."%sc.id],
                      title="Session started",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
 def startsession():
-    sc=td.session_current()
+    session=td.sm()
+    sc=Session.current(session)
+    session.close()
     if sc:
-        sn,starttime,sessiondate=sc
-        log.info("Start session: session %d still in progress"%sn)
+        log.info("Start session: session %d still in progress"%sc.id)
         ui.infopopup(["There is already a session in progress (number %d, "
                       "started %s)."%
-                      (sc[0],starttime.strftime("%H:%M on %A"))],
+                      (sc.id,sc.starttime.strftime("%H:%M on %A"))],
                      title="Error")
     else:
         ssdialog()
 
-def checkendsession(endfunc):
-    sc=td.session_current()
-    if sc is None:
-        log.info("End session: no session in progress")
-        ui.infopopup(["There is no session in progress."],title="Error")
-        return None
-    tl=endfunc()
-    if tl is not None and len(tl)>0:
-        log.info("End session: there are incomplete transactions")
-        ui.infopopup(["There are incomplete transactions.  After dismissing "
-                      "this message, use the 'Recall Trans' button to find "
-                      "them, and either complete them, cancel them "
-                      "or defer them."],
-                     title="Error")
-        return None
-    return sc
+def checkendsession():
+    session=td.sm()
+    try:
+        sc=Session.current(session)
+        if sc is None:
+            log.info("End session: no session in progress")
+            ui.infopopup(["There is no session in progress."],title="Error")
+            return None
+        tl=sc.incomplete_transactions
+        if len(tl)>0:
+            log.info("End session: there are incomplete transactions")
+            ui.infopopup(
+                ["There are incomplete transactions.  After dismissing "
+                 "this message, use the 'Recall Trans' button to find "
+                 "them, and either complete them, cancel them "
+                 "or defer them."],
+                title="Error")
+            return None
+        return sc
+    finally:
+        session.close()
 
 def confirmendsession():
-    r=checkendsession(td.session_end)
-    if r is not None:
-        # Print out session count-up receipt and pop up a confirmation box
-        tots=td.session_paytotals(r[0])
-        register.registry.announce(None,0)
-        log.info("End of session %d confirmed. Amounts taken: %s"%(r[0],tots))
-        ui.infopopup(["Session %d has ended.  "
-                      "Please count the cash in the drawer and enter the "
-                      "actual amounts using management option 3."%r[0]],
-                     title="Session Ended",colour=ui.colour_info,
-                     dismiss=keyboard.K_CASH)
-        printer.print_sessioncountup(r[0])
-        printer.kickout()
-        stocklines.purge()
+    r=checkendsession()
+    if r is None: return
+    session=td.sm()
+    r=session.merge(r)
+    r.endtime=datetime.datetime.now()
+    session.commit()
+    register.registry.announce(None,0)
+    log.info("End of session %d confirmed."%(r.id,))
+    ui.infopopup(["Session %d has ended.  "
+                  "Please count the cash in the drawer and enter the "
+                  "actual amounts using management option 1,3."%(r.id,)],
+                 title="Session Ended",colour=ui.colour_info,
+                 dismiss=keyboard.K_CASH)
+    printer.print_sessioncountup(r)
+    printer.kickout()
+    session.close()
+    stocklines.purge()
 
 def endsession():
-    r=checkendsession(td.trans_incompletes)
+    r=checkendsession()
     if r is not None:
         km={keyboard.K_CASH:(confirmendsession,None,True)}
         log.info("End session popup: asking for confirmation")
         ui.infopopup(["Press Cash/Enter to confirm you want to end "
-                      "session number %d."%r[0]],title="Session End",
+                      "session number %d."%r.id],title="Session End",
                      keymap=km,colour=ui.colour_confirm)
 
-def sessionlist(func,unpaidonly=False,closedonly=False):
+def sessionlist(dbsession,func,unpaidonly=False,closedonly=False):
     "Return a list of sessions suitable for a menu"
-    def ss(sd):
-        if unpaidonly and sd[4] is not None: return None
-        if closedonly and sd[2]==None: return None
-        if sd[4] is None:
+    def ss(s):
+        if s.endtime is None:
             total=""
         else:
-            total="%s "%tillconfig.fc(sd[4])
+            total="%s "%tillconfig.fc(s.total)
             total="%s%s"%(' '*(10-len(total)),total)
-        return "%6d  %s  %s"%(sd[0],ui.formatdate(sd[3]),total)
-    sl=td.session_list()
-    return [(ss(x),func,(x[0],)) for x in sl if ss(x) is not None]
+        return "%6d  %s  %s"%(s.id,ui.formatdate(s.date),total)
+    sl=td.session_list(dbsession,unpaidonly,closedonly)
+    return [(ss(x),func,(x,)) for x in sl]
 
 class recordsession(ui.dismisspopup):
-    def __init__(self,session):
-        log.info("Record session takings popup: session %d"%session)
-        self.session=session
-        paytotals=td.session_paytotals(session)
-        paytypes=td.paytypes_list()
+    def __init__(self,s):
+        log.info("Record session takings popup: session %d"%s.id)
+        session=td.sm()
+        s=session.merge(s)
+        self.session=s
+        paytotals=dict(s.payment_totals)
+        paytypes=session.query(PayType).all()
         ui.dismisspopup.__init__(self,7+len(paytypes),60,
-                                 title="Session %d"%session,
+                                 title="Session %d"%s.id,
                                  colour=ui.colour_input)
         self.addstr(2,2,"Please enter the actual takings for session %d."%
-                    session)
+                    s.id)
         self.addstr(4,13,"Till total:     Actual total:")
         # Build a list of fields to be filled in
         self.fl=[]
         y=5
         for i in paytypes:
-            self.addstr(y,2,"%s:"%paytypes[i])
+            self.addstr(y,2,"%s:"%i.description)
             if i in paytotals:
-                self.addstr(y,15,tillconfig.fc(paytotals[i][1]))
-                pt=paytotals[i][1]
+                self.addstr(y,15,tillconfig.fc(paytotals[i]))
+                pt=paytotals[i]
             else:
                 pt=Decimal("0.00")
-            if i=='PPINT':
+            if i.paytype=='PPINT':
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
             else:
                 field=ui.editfield(y,29,10,validate=ui.validate_float)
             y=y+1
-            self.fl.append([i,paytypes[i],field,pt])
-        ui.map_fieldlist([x[2] for x in self.fl])
+            self.fl.append([i,field,pt])
+        ui.map_fieldlist([x[1] for x in self.fl])
         # Override key bindings for first/last fields
-        self.fl[0][2].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
-        self.fl[-1][2].keymap[keyboard.K_CASH]=(self.field_return,None)
-        self.fl[0][2].focus()
+        self.fl[0][1].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
+        self.fl[-1][1].keymap[keyboard.K_CASH]=(self.field_return,None)
+        self.fl[0][1].focus()
+        session.close()
     def field_return(self):
         self.amounts={}
         def guessamount(field,expected):
@@ -162,28 +177,36 @@ class recordsession(ui.dismisspopup):
             diff2=math.fabs((trial/Decimal("100.00"))-expected)
             if diff2<diff1: trial=trial/Decimal(100)
             return trial.quantize(Decimal("0.01"))
-        for i in self.fl:
-            self.amounts[i[0]]=guessamount(i[2],i[3])
+        for paytype,field,expected in self.fl:
+            self.amounts[paytype]=guessamount(field,expected)
         km={keyboard.K_CASH:
             (self.confirm_recordsession,None,True)}
         log.info("Record takings: asking for confirmation: session=%d"%
-                 self.session)
+                 self.session.id)
         ui.infopopup(["Press Cash/Enter to record the following as the "
-                      "amounts taken in session %d."%self.session]+
-                     ["%s: %s"%(x[1],tillconfig.fc(self.amounts[x[0]]))
-                      for x in self.fl],
+                      "amounts taken in session %d."%self.session.id]+
+                     ["%s: %s"%(paytype.description,tillconfig.fc(self.amounts[paytype]))
+                      for paytype,field,tilltotal in self.fl],
                      title="Confirm Session Total",keymap=km,
                      colour=ui.colour_confirm)
     def confirm_recordsession(self):
-        log.info("Record session takings: confirmed session %d"%self.session)
-        st=[(x[0],self.amounts[x[0]]) for x in self.fl
-            if self.amounts[x[0]]!=0.0]
-        td.session_recordtotals(self.session,st)
+        log.info("Record session takings: confirmed session %d"%self.session.id)
+        session=td.sm()
+        s=session.merge(self.session)
+        for paytype,field,expected in self.fl:
+            if self.amounts[paytype]==Decimal("0.00"): continue
+            st=SessionTotal(session=s,paytype=paytype,
+                            amount=self.amounts[paytype])
+            session.add(st)
+        session.commit()
+        session.close()
         printer.print_sessiontotals(self.session)
         self.dismiss()
 
 def sessiontakings():
-    m=sessionlist(recordsession,unpaidonly=True,closedonly=True)
+    session=td.sm()
+    m=sessionlist(session,recordsession,unpaidonly=True,closedonly=True)
+    session.close()
     if len(m)==0:
         log.info("Record takings: no sessions available")
         ui.infopopup(["Every session has already had its takings "
@@ -196,48 +219,64 @@ def sessiontakings():
                 blurb="Select the session that you "
                 "want to record the takings for, and press Cash/Enter.")
 
-def totalpopup(session):
+def totalpopup(s):
+    """Display popup session totals given a Session object.
+
+    """
+    session=td.sm()
+    s=session.merge(s)
     w=33
     def lr(l,r):
         return "%s%s%s"%(l,' '*(w-len(l)-len(r)),r)
-    log.info("Totals popup for session %d"%session)
-    (start,end,accdate)=td.session_dates(session)
-    depts=td.session_depttotals(session)
-    paytotals=td.session_paytotals(session)
-    payments=td.session_actualtotals(session)
+    log.info("Totals popup for session %d"%(s.id,))
+
+    depts=s.dept_totals # Now gives list of (Dept,total) tuples
+    paytotals=dict(s.payment_totals)
+    payments=dict([(x.paytype,x) for x in s.actual_totals])
+
     paytypes=set(list(paytotals.keys())+list(payments.keys()))
     l=[]
-    l.append("Accounting date %s"%ui.formatdate(accdate))
-    l.append("Started %s"%ui.formattime(start))
-    if end is None:
+    l.append("Accounting date %s"%ui.formatdate(s.date))
+    l.append("Started %s"%ui.formattime(s.starttime))
+    if s.endtime is None:
         l.append("Session is still open.")
     else:
-        l.append("Ended %s"%ui.formattime(end))
+        l.append("Ended %s"%ui.formattime(s.endtime))
     l.append(lr("Till totals:","Actual totals:"))
+    ttt=Decimal("0.00")
+    att=Decimal("0.00")
     for i in paytypes:
         if i in paytotals:
-            tt="%s: %s%0.2f"%(paytotals[i][0],tillconfig.currency,
-                              paytotals[i][1])
+            tt="%s: %s%0.2f"%(i.description,tillconfig.currency,
+                              paytotals[i])
+            ttt=ttt+paytotals[i]
         else:
             tt=""
         if i in payments:
-            at="%s: %s%0.2f"%(payments[i][0],tillconfig.currency,
-                              payments[i][1])
+            at="%s: %s%0.2f"%(i.description,tillconfig.currency,
+                              payments[i].amount)
+            att=att+payments[i].amount
         else:
             at=""
         # Format tt and at at left/right
         l.append(lr(tt,at))
+    if len(paytypes)>1:
+        tt="Total: %s"%(tillconfig.fc(ttt),)
+        at="Total: %s"%(tillconfig.fc(att),) if att>Decimal("0.00") else ""
+        l.append(lr(tt,at))
     l.append("")
     dt=Decimal("0.00")
-    for i in depts:
-        l.append(lr("%2d %s"%(i[0],i[1]),"%s%0.2f"%(tillconfig.currency,i[2])))
-        dt=dt+i[2]
+    for dept,total in depts:
+        l.append(lr("%2d %s"%(dept.id,dept.description),
+                    "%s%0.2f"%(tillconfig.currency,total)))
+        dt=dt+total
     l.append(lr("Total","%s%0.2f"%(tillconfig.currency,dt)))
     l.append("Press Print for a hard copy")
     keymap={
-        keyboard.K_PRINT:(printer.print_sessiontotals,(session,),False),
+        keyboard.K_PRINT:(printer.print_sessiontotals,(s,),False),
         }
-    ui.linepopup(l,title="Session number %d"%session,
+    session.close()
+    ui.linepopup(l,title="Session number %d"%s.id,
                  colour=ui.colour_info,keymap=keymap,
                  dismiss=keyboard.K_CASH)
 
@@ -250,18 +289,21 @@ def transrestore():
 
 def sessionsummary():
     log.info("Session summary popup")
-    m=sessionlist(totalpopup)
+    session=td.sm()
+    m=sessionlist(session,totalpopup)
     ui.menu(m,title="Session Summary",blurb="Select a session and "
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
+    session.close()
 
 def currentsessionsummary():
-    sc=td.session_current()
+    session=td.sm()
+    sc=Session.current(session)
+    session.close()
     if sc is None:
         ui.infopopup(["There is no session in progress."],title="Error")
     else:
-        sn,starttime,sessiondate=sc
-        totalpopup(sn)
+        totalpopup(sc)
 
 class receiptprint(ui.dismisspopup):
     def __init__(self):
@@ -285,7 +327,7 @@ class receiptprint(ui.dismisspopup):
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
-                  "(C) Copyright 2004-2010 Stephen Early",
+                  "(C) Copyright 2004-2013 Stephen Early",
                   "Configuration: %s"%tillconfig.configversion,
                   "Operating system: %s %s %s"%(os.uname()[0],
                                                 os.uname()[2],
