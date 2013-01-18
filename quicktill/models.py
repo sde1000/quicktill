@@ -383,7 +383,7 @@ DROP FUNCTION check_modify_closed_trans_line();
 # transactions and translines are defined
 Session.total=column_property(
     select([func.coalesce(func.sum(Transline.items*Transline.amount),
-                          text("0.0"))],
+                          text("0.00"))],
            whereclause=and_(Transline.transid==Transaction.id,
                             Transaction.sessionid==Session.id)).\
         correlate(Session.__table__).\
