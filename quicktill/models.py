@@ -125,6 +125,8 @@ class Session(Base):
     @property
     def tillweb_url(self):
         return "session/%d/"%self.id
+    incomplete_transactions=relationship(
+        "Transaction",primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
     @property
     def dept_totals(self):
         "Transaction lines broken down by Department."
