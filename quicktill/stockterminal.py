@@ -1,5 +1,5 @@
 import time
-from . import ui,event,td,stock,keyboard,usestock,stocklines
+from . import ui,event,td,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
     def __init__(self,panel,hotkeys,locations=None):
@@ -29,7 +29,7 @@ class page(ui.basicpage):
                 # at once.  Here we explicitly use the first one.
                 sos=line.stockonsale[0]
                 self.addstr(y,10,"%d"%sos.stockid)
-                self.addstr(y,18,sos.stockitem.stocktype.fullname)
+                self.addstr(y,18,sos.stockitem.stocktype.format(45))
                 self.addstr(y,64,"%0.1f"%sos.stockitem.used)
                 self.addstr(y,73,"%0.1f"%sos.stockitem.remaining)
             y=y+1
@@ -46,7 +46,7 @@ class page(ui.basicpage):
         for a in sl:
             self.addstr(y,0,a.text[:5])
             self.addstr(y,5,str(a.stockid))
-            self.addstr(y,13,a.stockitem.stocktype.fullname)
+            self.addstr(y,13,a.stockitem.stocktype.format(56))
             if a.stockitem.stockonsale:
                 self.addstr(y,70,a.stockitem.stockonsale.stockline.name[:9])
             y=y+1

@@ -449,6 +449,41 @@ class StockType(Base):
         return u"%s %s"%(self.manufacturer,self.name)
     def __repr__(self):
         return "<StockType(%s,'%s','%s')>"%(self.id,self.manufacturer,self.name)
+    @property
+    def descriptions(self):
+        """Various possible descriptions of this stocktype, returned in
+        descending order of string length.
+
+        """
+        if self.abv:
+            return [
+                '%s %s (%0.1f%% ABV)'%(self.manufacturer,self.name,self.abv),
+                '%s %s'%(self.manufacturer,self.name),
+                '%s (%0.1f%% ABV)'%(self.shortname,self.abv),
+                self.shortname,]
+        return [self.fullname,self.shortname]
+
+    def format(self,maxw=None):
+        """
+        maxw can be an integer specifying the maximum number of
+        characters, or a function with a single string argument that
+        returns True if the string will fit.  Note that if maxw is a
+        function, we do not _guarantee_ to return a string that will fit.
+        
+        """
+        d=self.descriptions
+        if maxw is None: return d[0]
+        if isinstance(maxw,int):
+            maxwf=lambda x:len(x)<=maxw
+        else:
+            maxwf=maxw
+        
+        while len(d)>1:
+            if maxwf(d[0]): return d[0]
+            d=d[1:]
+        if isinstance(maxw,int):
+            return d[0][:maxw]
+        return d[0]
 
 class FinishCode(Base):
     __tablename__='stockfinish'
