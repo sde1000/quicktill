@@ -36,7 +36,8 @@ class page(ui.basicpage):
             if y>=(self.h-3): break
         session.close()
     def drawstillage(self):
-        sl=td.stillage_summary()
+        session=td.sm()
+        sl=td.stillage_summary(session)
         y=1
         self.addstr(0,0,"Loc")
         self.addstr(0,5,"StockID")
@@ -50,6 +51,7 @@ class page(ui.basicpage):
                 self.addstr(y,70,a.stockitem.stockonsale.stockline.name[:9])
             y=y+1
             if y>=(self.h-3): break
+        session.close()
     def redraw(self):
         win=self.win
         win.erase()

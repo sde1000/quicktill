@@ -855,8 +855,7 @@ def stocktake(dept=None):
 
 ### Find out what's on the stillage by checking annotations
 
-def stillage_summary():
-    session=sm()
+def stillage_summary(session):
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
         outerjoin(StockOnSale).\
@@ -872,7 +871,6 @@ def stillage_summary():
         options(joinedload('stockitem.stockonsale')).\
         options(joinedload('stockitem.stockonsale.stockline')).\
         all()
-    session.close()
     return stillage
 
 ### Check stock levels
