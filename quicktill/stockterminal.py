@@ -41,11 +41,12 @@ class page(ui.basicpage):
         self.addstr(0,5,"StockID")
         self.addstr(0,13,"Name")
         self.addstr(0,70,"Line")
-        for loc,stockid,time,name,line in sl:
-            self.addstr(y,0,loc[:5])
-            self.addstr(y,5,"%d"%stockid)
-            self.addstr(y,13,name)
-            if line: self.addstr(y,70,line[:9])
+        for a in sl:
+            self.addstr(y,0,a.text[:5])
+            self.addstr(y,5,str(a.stockid))
+            self.addstr(y,13,a.stockitem.stocktype.fullname)
+            if a.stockitem.stockonsale:
+                self.addstr(y,70,a.stockitem.stockonsale.stockline.name[:9])
             y=y+1
             if y>=(self.h-3): break
     def redraw(self):

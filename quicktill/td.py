@@ -11,6 +11,14 @@ import psycopg2 as db
 import psycopg2.extensions
 from decimal import Decimal
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
+from sqlalchemy.sql.expression import tuple_,func,null
+from sqlalchemy.sql import select
+from models import *
+
+
 # psycopg converted database numeric() types into float() types.
 
 # By default, psycopg2 converts them into decimal.Decimal() types -
@@ -848,20 +856,24 @@ def stocktake(dept=None):
 ### Find out what's on the stillage by checking annotations
 
 def stillage_summary():
-    cur=cursor()
-    cur.execute(
-        "SELECT sa.text,sa.stockid,sa.time,st.shortname,sl.name "
-        "FROM stock_annotations sa "
-        "LEFT JOIN stock s ON s.stockid=sa.stockid "
-        "LEFT JOIN stocktypes st ON s.stocktype=st.stocktype "
-        "LEFT JOIN stockonsale sos ON sos.stockid=sa.stockid "
-        "LEFT JOIN stocklines sl ON sl.stocklineid=sos.stocklineid "
-        "WHERE (text,time) IN ("
-        "SELECT text,max(time) FROM stock_annotations "
-        "WHERE atype='location' GROUP BY text) "
-        "AND s.finished IS NULL AND st.dept=1"
-        "ORDER BY (sl.name is not null),sa.time")
-    return cur.fetchall()
+    session=sm()
+    stillage=session.query(StockAnnotation).\
+        join(StockItem).\
+        outerjoin(StockOnSale).\
+        outerjoin(StockLine).\
+        filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
+            select([StockAnnotation.text,func.max(StockAnnotation.time)],
+                   StockAnnotation.atype=='location').\
+                group_by(StockAnnotation.text))).\
+        filter(StockItem.finished==None).\
+        order_by(StockLine.name!=null(),StockAnnotation.time).\
+        options(joinedload('stockitem')).\
+        options(joinedload('stockitem.stocktype')).\
+        options(joinedload('stockitem.stockonsale')).\
+        options(joinedload('stockitem.stockonsale.stockline')).\
+        all()
+    session.close()
+    return stillage
 
 ### Check stock levels
 
@@ -1241,9 +1253,25 @@ def db_version():
     return execone(cur,"SELECT version()")
 
 def init():
-    global con,database
+    global con,database,engine,sm
     if database is None:
         raise Exception("No database defined")
     if database[0]==":":
         database="dbname=%s"%database[1:]
+    # Conversion to sqlalchemy: create sqlalchemy engine URL from
+    # libpq connection string
+    csdict=dict([x.split('=',1) for x in database.split(' ')])
+    estring="postgresql+psycopg2://"
+    if 'user' in csdict:
+        estring+=csdict[user]
+        if 'password' in csdict:
+            estring+=":%s"%(csdict['password'],)
+        estring+='@'
+    if 'host' in csdict:
+        estring+=csdict['host']
+    if 'port' in csdict:
+        estring+=":%s"%(csdict['port'],)
+    estring+="/%s"%(csdict['dbname'],)
+    engine=create_engine(estring)
+    sm=sessionmaker(bind=engine)
     con=db.connect(database)
