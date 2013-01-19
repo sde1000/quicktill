@@ -327,7 +327,7 @@ CREATE TABLE stocklines (
 	location varchar(20) NOT NULL,
 	capacity int,
 	dept int NOT NULL REFERENCES departments(dept),
-	pullthru numeric(5,2)
+	pullthru numeric(5,1)
 	);
 CREATE SEQUENCE stocklines_seq START WITH 100;
 

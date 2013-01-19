@@ -617,14 +617,15 @@ StockItem.remaining=column_property(
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):
     __tablename__='stocklines'
-    id=Column('stocklineid',Integer,nullable=False,primary_key=True)
+    id=Column('stocklineid',Integer,stocklines_seq,
+              nullable=False,primary_key=True)
     name=Column(String(30),nullable=False,unique=True)
     location=Column(String(20),nullable=False)
     capacity=Column(Integer)
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
-    pullthru=Column(Numeric(5,2))
-    department=relationship(Department)
+    pullthru=Column(Numeric(5,1))
+    department=relationship(Department,lazy='joined')
     # capacity and pullthru can't both be non-null at the same time
     __table_args__=(
         CheckConstraint(
@@ -661,12 +662,12 @@ def location_summary(session,location):
 # are different.
 class StockOnSale(Base):
     __tablename__='stockonsale'
-    stocklineid=Column(Integer,ForeignKey('stocklines.stocklineid'),
-                       nullable=False)
-    stockid=Column(Integer,ForeignKey('stock.stockid'),
-                   nullable=False,primary_key=True)
+    stocklineid=Column(Integer,ForeignKey(
+            'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
+    stockid=Column(Integer,ForeignKey(
+            'stock.stockid',ondelete='CASCADE'),nullable=False,primary_key=True)
     displayqty=Column(Integer)
-    stockline=relationship(StockLine,backref='stockonsale')
+    stockline=relationship(StockLine,backref=backref('stockonsale',cascade='all'))
     stockitem=relationship(
         StockItem,backref=backref('stockonsale',uselist=False))
     def __repr__(self):
@@ -677,10 +678,10 @@ class KeyboardBinding(Base):
     layout=Column(Integer,nullable=False,primary_key=True)
     keycode=Column(String(20),nullable=False,primary_key=True)
     menukey=Column(String(20),nullable=False,primary_key=True)
-    stocklineid=Column(Integer,ForeignKey('stocklines.stocklineid'),
-                       nullable=False)
+    stocklineid=Column(Integer,ForeignKey(
+            'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
     qty=Column(Numeric(5,2),nullable=False)
-    stockline=relationship(StockLine,backref='keyboard_bindings')
+    stockline=relationship(StockLine,backref=backref('keyboard_bindings',cascade='all'))
     def __repr__(self):
         return "<KeyboardBinding(%s,'%s','%s',%s)>"%(
             self.layout,self.keycode,self.menukey,self.stocklineid)
@@ -702,8 +703,8 @@ class StockLineTypeLog(Base):
     stocktype_id=Column('stocktype',Integer,
                         ForeignKey('stocktypes.stocktype',ondelete='CASCADE'),
                         nullable=False,primary_key=True)
-    stockline=relationship(StockLine,backref='stocktype_log')
-    stocktype=relationship(StockType,backref='stockline_log')
+    stockline=relationship(StockLine,backref=backref('stocktype_log',passive_deletes=True))
+    stocktype=relationship(StockType,backref=backref('stockline_log',passive_deletes=True))
     def __repr__(self):
         return "<StockLineTypeLog(%s,%s)>"%(self.stocklineid,self.stocktype_id)
 
