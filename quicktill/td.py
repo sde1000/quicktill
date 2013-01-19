@@ -17,6 +17,7 @@ from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select
+from sqlalchemy.exc import IntegrityError
 from models import *
 
 
@@ -929,49 +930,6 @@ def foodorder_ticket():
 
 ### Functions related to stock lines
 
-def stockline_create(name,location,dept,capacity,pullthru):
-    cur=cursor()
-    slid=ticket(cur,"stocklines_seq")
-    try:
-        cur.execute("INSERT INTO stocklines (stocklineid,name,location,"
-                    "dept) VALUES (%s,%s,%s,%s)",
-                    (slid,name,location,dept))
-    except:
-        return None
-    if capacity is not None:
-        cur.execute("UPDATE stocklines SET capacity=%s WHERE stocklineid=%s",
-                    (capacity,slid))
-    if pullthru is not None:
-        cur.execute("UPDATE stocklines SET pullthru=%s WHERE stocklineid=%s",
-                    (pullthru,slid))
-    commit()
-    return slid
-
-def stockline_update(stocklineid,name,location,capacity,pullthru):
-    cur=cursor()
-    cur.execute("UPDATE stocklines SET name=%s,location=%s,capacity=%s,"
-                "pullthru=%s WHERE stocklineid=%s",
-                (name,location,capacity,pullthru,stocklineid))
-    commit()
-    return True
-
-def stockline_delete(stocklineid):
-    """Delete a stock line.  Stock allocated to the line becomes
-    unallocated.  Keyboard bindings to the line are removed.
-
-    """
-    cur=cursor()
-    cur.execute("DELETE FROM stockonsale WHERE stocklineid=%s",(stocklineid,))
-    cur.execute("DELETE FROM keyboard WHERE stocklineid=%s",(stocklineid,))
-    cur.execute("DELETE FROM stocklines WHERE stocklineid=%s",(stocklineid,))
-    commit()
-
-def stockline_info(stocklineid):
-    cur=cursor()
-    cur.execute("SELECT name,location,capacity,dept,pullthru "
-                "FROM stocklines WHERE stocklineid=%s",(stocklineid,))
-    return cur.fetchone()
-
 def stockline_restock(stocklineid,changes):
     cur=cursor()
     for sd,move,newdisplayqty,stockqty_after_move in changes:
@@ -979,28 +937,6 @@ def stockline_restock(stocklineid,changes):
                     "stocklineid=%s AND stockid=%s",(
             newdisplayqty,stocklineid,sd['stockid']))
     commit()
-
-def stockline_list(caponly=False,exccap=False):
-    cur=cursor()
-    if caponly:
-        wc=" WHERE capacity IS NOT NULL"
-    elif exccap:
-        wc=" WHERE capacity IS NULL"
-    else:
-        wc=""
-    cur.execute("SELECT stocklineid,name,location,capacity,dept,pullthru "
-                "FROM stocklines%s ORDER BY dept,location,name"%wc)
-    return cur.fetchall()
-
-def stockline_listunbound():
-    """Return a list of stock lines that have no keyboard bindings.
-
-    """
-    cur=cursor()
-    cur.execute("SELECT sl.name,sl.location FROM stocklines sl "
-                "LEFT JOIN keyboard kb ON sl.stocklineid=kb.stocklineid "
-                "WHERE kb.stocklineid IS NULL")
-    return cur.fetchall()
 
 def stockline_summary(session,locations):
     s=session.query(StockLine).\

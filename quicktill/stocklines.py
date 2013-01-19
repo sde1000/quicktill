@@ -1,5 +1,6 @@
 import logging
 from . import keyboard,ui,td,tillconfig,printer
+from .models import Department,StockLine
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
@@ -11,23 +12,26 @@ def calculate_sale(stocklineid,items):
     remaining stock (ondisplay,instock)).
 
     """
-    name,location,capacity,dept,pullthru=td.stockline_info(stocklineid)
-    sl=td.stock_onsale(stocklineid)
+    session=td.sm()
+    stockline=session.query(StockLine).get(stocklineid)
+    sl=stockline.stockonsale
+    session.close()
     if len(sl)==0:
         return ([],items,{},(0,0))
-    sinfo=td.stock_info([x[0] for x in sl])
+    # This section is only necessary until register is converted to use the ORM
+    sinfo=td.stock_info([x.stockitem.id for x in sl])
     snd={}
     for a,b in zip(sl,sinfo):
-        if a[1] is None: b['displayqty']=0
-        else: b['displayqty']=a[1]
+        if a.displayqty is None: b['displayqty']=0
+        else: b['displayqty']=a.displayqty
         snd[b['stockid']]=b
     # Iterate over the stock items attached to the line and produce a
     # list of (stockid,items) pairs if possible; otherwise produce an
     # error message If the stockline has no capacity mentioned
     # ("capacity is None") then bypass this and just sell the
     # appropriate number of items from the only stockitem in the list!
-    if capacity is None:
-        return ([(sl[0][0],items)],0,snd,None)
+    if stockline.capacity is None:
+        return ([(sl[0].stockitem.id,items)],0,snd,None)
     unallocated=items
     leftondisplay=0
     totalinstock=0
@@ -43,7 +47,7 @@ def calculate_sale(stocklineid,items):
             sell.append((i['stockid'],sellqty))
     return (sell,unallocated,snd,(leftondisplay,totalinstock-leftondisplay))
 
-def calculate_restock(stockline,target=None):
+def calculate_restock(stocklineid,target=None):
     """Given a stocklineid and optionally a different target quantity
     (used when removing stock from display prior to stockline
     deletion, for example) calculate the stock movements required.
@@ -53,11 +57,13 @@ def calculate_restock(stockline,target=None):
     affected stock items.
 
     """
-    name,location,capacity,dept,pullthru=td.stockline_info(stockline)
-    if capacity is None: return None
-    if target is not None: capacity=target
-    log.info("Re-stock line '%s' capacity %d"%(name,capacity))
-    sl=td.stock_onsale(stockline)
+    session=td.sm()
+    stockline=session.query(StockLine).get(stocklineid)
+    session.close()
+    if stockline.capacity is None: return None
+    capacity=target if target else stockline.capacity
+    log.info("Re-stock line '%s' capacity %d"%(stockline.name,capacity))
+    sl=td.stock_onsale(stockline.id)
     sinfo=td.stock_info([x[0] for x in sl])
     # Merge the displayqty from sl into sinfo, and count up the amount
     # on display
@@ -92,7 +98,7 @@ def calculate_restock(stockline,target=None):
         if move!=0:
             sm.append((i,move,newdisplayqty,stockqty_after_move))
     if sm==[]: return None
-    return (stockline,name,ondisplay,capacity,sm)
+    return (stockline.id,stockline.name,ondisplay,capacity,sm)
         
 def restock_list(stockline_list):
     # Print out list of things to fetch and put on display
@@ -142,7 +148,9 @@ def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
 
     """
-    lines=[x[0] for x in td.stockline_list(caponly=True)]
+    session=td.sm()
+    lines=session.query(StockLine).filter(capacity!=None).all()
+    lines=[x.id for x in lines]
     return restock_list(lines)
 
 def auto_allocate(deliveryid=None,confirm=True):
@@ -213,8 +221,9 @@ class create(ui.dismisspopup):
         ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
-        depts=td.department_list()
-        self.deptlist=[x[0] for x in depts]
+        session=td.sm()
+        depts=session.query(Department).order_by(Department.id).all()
+        session.close()
         self.addstr(2,2,"    Stock line name:")
         self.addstr(3,2,"           Location:")
         self.addstr(4,2,"         Department:")
@@ -225,7 +234,8 @@ class create(ui.dismisspopup):
         self.namefield=ui.editfield(2,23,30,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
         self.locfield=ui.editfield(3,23,20)
-        self.deptfield=ui.listfield(4,23,20,self.deptlist,d=dict(depts))
+        self.deptfield=ui.listfield(4,23,20,depts,
+                                    d=dict((x,x.description) for x in depts))
         self.capacityfield=ui.editfield(5,23,5,validate=ui.validate_int)
         self.pullthrufield=ui.editfield(
             6,23,5,validate=ui.validate_float,keymap={
@@ -240,9 +250,6 @@ class create(ui.dismisspopup):
             ui.infopopup(["You must enter values in the first three fields."],
                          title="Error")
             return
-        name=self.namefield.f
-        loc=self.locfield.f
-        dept=self.deptlist[self.deptfield.f]
         if self.capacityfield.f!='': cap=int(self.capacityfield.f)
         else: cap=None
         if self.pullthrufield.f!='': pullthru=float(self.pullthrufield.f)
@@ -251,21 +258,28 @@ class create(ui.dismisspopup):
             ui.infopopup(["You may specify display capacity or quantity "
                           "to pull through, but not both."],title="Error")
             return
-        slid=td.stockline_create(name,loc,dept,cap,pullthru)
-        if slid is None:
+        session=td.sm()
+        sl=StockLine(name=self.namefield.f,
+                     location=self.locfield.f,
+                     department=self.deptfield.read(),
+                     capacity=cap,pullthru=pullthru)
+        session.add(sl)
+        try:
+            session.commit()
+        except td.IntegrityError:
             ui.infopopup(["Could not create display space '%s'; there is "
-                          "a display space with that name already."%name],
+                          "a display space with that name already."%(
+                        self.namefield.f,)],
                          title="Error")
-        else:
-            self.dismiss()
-            editbindings(slid)
+            return
+        finally:
+            session.close()
+        self.dismiss()
+        editbindings(sl)
 
 class modify(ui.dismisspopup):
-    def __init__(self,stocklineid):
-        self.stocklineid=stocklineid
-        name,location,capacity,dept,pullthru=td.stockline_info(stocklineid)
-        self.oldcapacity=capacity
-        depts=dict(td.department_list())
+    def __init__(self,stockline):
+        self.stockline=stockline
         ui.dismisspopup.__init__(self,8,63,title="Modify Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
@@ -274,25 +288,23 @@ class modify(ui.dismisspopup):
         # non-null to null or null to non-null.
         self.addstr(2,2,"    Stock line name:")
         self.addstr(3,2,"           Location:")
-        self.addstr(4,2,"         Department: %s"%depts[dept])
-        if capacity is None:
+        self.addstr(4,2,"         Department: %s"%stockline.department)
+        if stockline.capacity is None:
             self.addstr(5,2,"Pull-through amount:")
         else:
             self.addstr(5,2,"   Display capacity:")
-        if capacity is not None: capacity=str(capacity)
-        if pullthru is not None: pullthru="%0.2f"%pullthru
-        self.namefield=ui.editfield(2,23,30,f=name,keymap={
+        self.namefield=ui.editfield(2,23,30,f=stockline.name,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield=ui.editfield(3,23,20,f=location)
+        self.locfield=ui.editfield(3,23,20,f=stockline.location)
         fl=[self.namefield,self.locfield]
-        if capacity is None:
+        if stockline.capacity is None:
             self.pullthrufield=ui.editfield(
-                5,23,5,f=pullthru,validate=ui.validate_float,
+                5,23,5,f=stockline.pullthru,validate=ui.validate_float,
                 keymap={keyboard.K_CASH: (self.enter,None)})
             fl.append(self.pullthrufield)
         else:
             self.capacityfield=ui.editfield(
-                5,23,5,f=capacity,validate=ui.validate_int,
+                5,23,5,f=stockline.capacity,validate=ui.validate_int,
                 keymap={keyboard.K_CASH: (self.enter,None)})
             fl.append(self.capacityfield)
         ui.map_fieldlist(fl)
@@ -303,9 +315,7 @@ class modify(ui.dismisspopup):
                           "blank."],
                          title="Error")
             return
-        name=self.namefield.f
-        loc=self.locfield.f
-        if self.oldcapacity is None:
+        if self.stockline.capacity is None:
             cap=None
             pullthru=(float(self.pullthrufield.f) if self.pullthrufield.f!=''
                       else None)
@@ -313,26 +323,36 @@ class modify(ui.dismisspopup):
             cap=(int(self.capacityfield.f) if self.capacityfield.f!=''
                  else None)
             pullthru=None
-        if self.oldcapacity is not None and cap is None:
+        if self.stockline.capacity is not None and cap is None:
             ui.infopopup(["You may not change a line from one with "
                           "display space to one that does not have display "
                           "space.  You should delete and re-create it "
                           "instead."],title="Error")
             return
-        ok=td.stockline_update(self.stocklineid,name,loc,cap,pullthru)
-        if ok:
-            self.dismiss()
-            capmsg=("  The change in display capacity will take effect next "
-                    "time the line is re-stocked." if cap!=self.oldcapacity
-                    else "")
-            ui.infopopup(["Updated stock line '%s'.%s"%(name,capmsg)],
-                         colour=ui.colour_info,dismiss=keyboard.K_CASH,
-                         title="Confirmation")
-        else:
-            ui.infopopup(["Could not update stock line '%s'."%name],
-                         title="Error")
+        capmsg=("  The change in display capacity will take effect next "
+                "time the line is re-stocked." if cap!=self.stockline.capacity
+                else "")
+        session=td.sm()
+        self.stockline=session.merge(self.stockline)
+        self.stockline.name=self.namefield.f
+        self.stockline.location=self.locfield.f
+        self.stockline.capacity=cap
+        self.stockline.pullthru=pullthru
+        try:
+            session.commit()
+        except:
+            ui.infopopup(["Could not update stock line '%s'."%(
+                        self.stockline.name,)],title="Error")
+            session.close()
+            return
+        self.dismiss()
+        ui.infopopup(["Updated stock line '%s'.%s"%(
+                    self.stockline.name,capmsg)],
+                     colour=ui.colour_info,dismiss=keyboard.K_CASH,
+                     title="Confirmation")
+        session.close()
 
-def editbindings(stocklineid):
+def editbindings(stockline):
     """Allow keyboard bindings for a stock line to be added and
     deleted.  A keyboard binding consists of two parts: the line key
     and the menu key; if a line key has more than one stock line
@@ -350,28 +370,30 @@ def editbindings(stocklineid):
 
     """
 
-    (name,location,capacity,dept,pullthru)=td.stockline_info(stocklineid)
-    bindings=td.keyboard_checkstockline(tillconfig.kbtype,stocklineid)
+    session=td.sm()
+    stockline=session.merge(stockline)
+    bindings=td.keyboard_checkstockline(tillconfig.kbtype,stockline.id)
     blurb=("To add a keyboard binding for '%s', press the appropriate line "
-           "key now."%name)
+           "key now."%(stockline.name,))
     if len(bindings)>0:
         blurb=blurb+("  Existing bindings for '%s' are listed "
                      "below; if you would like to modify or delete one "
-                     "then select it and press Cash/Enter."%name)
+                     "then select it and press Cash/Enter."%(stockline.name,))
     menu=[("%s (%s) -> %s (%s), qty %0.1f"%(
         ui.kb.keycap(keyboard.keycodes[keycode]),
         keycode,ui.kb.keycap(keyboard.keycodes[menukey]),
         menukey,qty),
-           changebinding,(stocklineid,keycode,menukey,qty))
+           changebinding,(stockline,keycode,menukey,qty))
           for keycode,menukey,qty in bindings]
     kb={}
     for i in keyboard.lines:
-        kb[i]=(addbinding,(stocklineid,i),True)
+        kb[i]=(addbinding,(stockline,i),True)
     ui.menu(menu,blurb=blurb,title="Edit keyboard bindings",keymap=kb)
+    session.close()
 
 class addbinding(ui.linepopup):
-    def __init__(self,stocklineid,keycode):
-        self.stocklineid=stocklineid
+    def __init__(self,stockline,keycode):
+        self.stocklineid=stockline.id
         self.keycode=keyboard.kcnames[keycode]
         self.existing=td.keyboard_checklines(tillconfig.kbtype,self.keycode)
         self.exdict={}
@@ -443,19 +465,28 @@ class changebinding(ui.dismisspopup):
                                self.stocklineid,q)
         self.dismiss()
 
-def delete(stocklineid):
+def delete(stockline):
     """Delete a stock line.  Key bindings to the line are deleted at
     the same time.
 
     """
-    sl=td.stock_onsale(stocklineid)
-    td.stockline_delete(stocklineid)
+    session=td.sm()
+    stockline=session.merge(stockline)
+    sl=stockline.stockonsale
     if len(sl)>0:
         message=["The stock line has been deleted.  Note that it still "
                  "had stock attached to it; this stock is now available "
-                 "to be attached to another stock line."]
+                 "to be attached to another stock line.  The stock items "
+                 "affected are shown below.",""]
+        message=message+[
+            "  %d %s"%(x.stockitem.id,x.stockitem.stocktype.format())
+            for x in sl]
     else:
         message=["The stock line has been deleted."]
+    
+    session.delete(stockline)
+    session.commit()
+    session.close()
     ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
 
@@ -463,7 +494,9 @@ def listunbound():
     """Pop up a list of stock lines with no key bindings on any keyboard.
 
     """
-    l=td.stockline_listunbound()
+    session=td.sm()
+    l=td.stockline_listunbound(session)
+    session.close()
     if len(l)==0:
         ui.infopopup(["There are no stock lines that lack key bindings.",
                       "","Note that other tills may have key bindings to "
@@ -471,7 +504,7 @@ def listunbound():
                      title="Unbound stock lines",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
     else:
-        ll=["%s %s"%(x[0],x[1]) for x in l]
+        ll=["%s %s"%(x.name,x.location) for x in l]
         ui.linepopup(ll,title="Unbound stock lines",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
@@ -501,11 +534,16 @@ def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
     selected through that binding.
 
     """
-    stocklines=td.stockline_list(caponly=caponly,exccap=exccap)
-    mlines=ui.table([(name,location,"%d"%dept)
-                     for stocklineid,name,location,capacity,dept,pullthru
-                     in stocklines]).format(' l l l ')
-    ml=[(x,func,(y[0],)) for x,y in zip(mlines,stocklines)]
+    session=td.sm()
+    q=session.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
+                                        StockLine.name)
+    if caponly: q=q.filter(StockLine.capacity!=None)
+    if exccap: q=q.filter(StockLine.capacity==None)
+    stocklines=q.all()
+    session.close()
+    mlines=ui.table([(x.name,x.location,"%d"%x.dept_id)
+                     for x in stocklines]).format(' l l l ')
+    ml=[(x,func,(y,)) for x,y in zip(mlines,stocklines)]
     km={}
     for i in keyboard.lines:
         km[i]=(linemenu,(i,translate_keyline_to_stockline(func).linekey),True)

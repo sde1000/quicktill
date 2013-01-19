@@ -877,6 +877,7 @@ class editfield(field):
         self.draw()
     def set(self,l):
         if l is None: l=""
+        l=str(l)
         if len(l)>self.flen: l=l[:self.flen]
         self.f=l
         self.c=len(self.f)
