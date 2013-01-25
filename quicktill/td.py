@@ -18,6 +18,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import distinct
 from models import *
 
 
@@ -374,18 +375,23 @@ def stocktype_info(stn):
     return cur.fetchone()
 
 def stocktype_completemanufacturer(m):
-    cur=cursor()
-    m=m+'%'
-    cur.execute("SELECT DISTINCT manufacturer FROM stocktypes WHERE "
-                "manufacturer ILIKE %s",(m,))
-    return [x[0] for x in cur.fetchall()]
+    session=sm()
+    result=session.execute(
+        select([StockType.manufacturer]).\
+            where(StockType.manufacturer.ilike(m+'%'))
+        )
+    session.close()
+    return [x[0] for x in result]
 
 def stocktype_completename(m,n):
-    cur=cursor()
-    n=n+"%"
-    cur.execute("SELECT DISTINCT name FROM stocktypes WHERE "
-                "manufacturer=%s AND name ILIKE %s",(m,n))
-    return [x[0] for x in cur.fetchall()]
+    session=sm()
+    result=session.execute(
+        select([distinct(StockType.name)]).\
+            where(StockType.manufacturer==m).\
+            where(StockType.name.ilike(n+'%'))
+        )
+    session.close()
+    return [x[0] for x in result]
 
 def stocktype_search_inconsistent_prices():
     cur=cursor()
