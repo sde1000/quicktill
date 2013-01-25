@@ -387,40 +387,6 @@ def stocktype_completename(m,n):
                 "manufacturer=%s AND name ILIKE %s",(m,n))
     return [x[0] for x in cur.fetchall()]
 
-def stocktype_fromnames(m,n):
-    cur=cursor()
-    cur.execute("SELECT stocktype FROM stocktypes WHERE "
-                "manufacturer=%s AND name=%s",(m,n))
-    return [x[0] for x in cur.fetchall()]
-
-def stocktype_fromall(dept,manufacturer,name,shortname,abv,unit):
-    cur=cursor()
-    if abv is None:
-        abvs=" is null"
-    else:
-        abvs="=%f"%abv
-    return execone(cur,"SELECT stocktype FROM stocktypes WHERE "
-                   "dept=%%s AND manufacturer=%%s AND name=%%s AND "
-                   "shortname=%%s AND unit=%%s AND abv%s"%abvs,
-                   (dept,manufacturer,name,shortname,unit))
-
-def stocktype_new(dept,manufacturer,name,shortname,abv,unit):
-    cur=cursor()
-    sn=ticket(cur,"stocktypes_seq")
-    cur.execute("INSERT INTO stocktypes (stocktype,dept,manufacturer,"
-                "name,shortname,abv,unit) VALUES "
-                "(%s,%s,%s,%s,%s,%s,%s)",
-                (sn,dept,manufacturer,name,shortname,abv,unit))
-    commit()
-    return sn
-
-def stocktype_update(sn,dept,manufacturer,name,shortname,abv,unit):
-    cur=cursor()
-    cur.execute("UPDATE stocktypes SET dept=%s,manufacturer=%s,name=%s,"
-                "shortname=%s,abv=%s,unit=%s WHERE stocktype=%s",
-                (dept,manufacturer,name,shortname,abv,unit,sn))
-    commit()
-
 def stocktype_search_inconsistent_prices():
     cur=cursor()
     cur.execute("SELECT st.stocktype FROM stocktypes st "
@@ -435,13 +401,6 @@ def stocktype_search_inconsistent_prices():
 def department_list():
     cur=cursor()
     cur.execute("SELECT dept,description FROM departments ORDER BY dept")
-    return cur.fetchall()
-
-### Functions related to the unittypes table
-
-def unittype_list():
-    cur=cursor()
-    cur.execute("SELECT unit,name FROM unittypes")
     return cur.fetchall()
 
 ### Functions related to the stockunits table

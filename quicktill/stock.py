@@ -4,6 +4,7 @@
 
 import hashlib,logging
 from . import ui,td,keyboard,tillconfig,stocklines,department
+from .models import Department,UnitType,StockType
 log=logging.getLogger()
 
 def abvstr(abv):
@@ -91,8 +92,10 @@ class stocktype(ui.dismisspopup):
 
     """
     def __init__(self,func,default=None,mode=1,allownew=True):
+        """default, if present, is a models.StockType object.
+
+        """
         self.func=func
-        self.st=default
         self.mode=mode
         self.allownew=allownew
         if mode==1:
@@ -107,10 +110,10 @@ class stocktype(ui.dismisspopup):
             blurb2="creating new stock types!"
         else:
             raise Exception("Bad mode")
-        depts=td.department_list()
-        units=td.unittype_list()
-        self.deptlist=[x[0] for x in depts]
-        self.unitlist=[x[0] for x in units]
+        session=td.sm()
+        self.st=session.merge(default) if default else None
+        self.depts=session.query(Department).order_by(Department.id).all()
+        self.units=session.query(UnitType).all()
         ui.dismisspopup.__init__(self,15,48,title=title,colour=ui.colour_input)
         self.addstr(2,2,blurb1)
         self.addstr(3,2,blurb2)
@@ -120,26 +123,28 @@ class stocktype(ui.dismisspopup):
         self.addstr(8,2,"  Department:")
         self.addstr(8,38,"ABV:")
         self.addstr(9,2,"        Unit:")
-        self.addstr(13,2,"Note: 'Short Name' is printed on receipts.")
+        self.addstr(13,2,"Note: 'Short Name' may be printed on receipts.")
         self.manufield=ui.editfield(
             5,16,30,validate=self.validate_manufacturer,
             keymap={keyboard.K_CLEAR: (self.dismiss,None)})
         self.namefield=ui.editfield(
             6,16,30,validate=self.validate_name)
         self.snamefield=ui.editfield(7,16,25)
-        self.deptfield=ui.listfield(8,16,20,self.deptlist,
-                                    d=dict(depts),readonly=(mode==2))
+        self.deptfield=ui.listfield(
+            8,16,20,self.depts,d=dict((x,x.description) for x in self.depts),
+            readonly=(mode==2))
         self.abvfield=ui.editfield(8,42,4,validate=ui.validate_float)
-        self.unitfield=ui.listfield(9,16,30,self.unitlist,
-                                    d=dict(units),readonly=(mode==2))
+        self.unitfield=ui.listfield(
+            9,16,30,self.units,d=dict((x,x.name) for x in self.units),
+            readonly=(mode==2))
         self.confirmbutton=ui.buttonfield(11,15,20,prompt,keymap={
                 keyboard.K_CASH: (self.finish_mode1 if mode==1
                                   else self.finish_mode2, None)})
         ui.map_fieldlist(
             [self.manufield,self.namefield,self.snamefield,self.deptfield,
              self.abvfield,self.unitfield,self.confirmbutton])
-        if default is not None:
-            self.fill_fields(default)
+        if self.st:
+            self.fill_fields(self.st)
         if mode==1:
             # Some overrides; we want to be called when Enter is
             # pressed on the manufacturer field so we can pre-fill the
@@ -149,31 +154,35 @@ class stocktype(ui.dismisspopup):
             self.manufield.keymap[keyboard.K_CASH]=(self.defaultname,None)
             self.namefield.keymap[keyboard.K_CASH]=(self.lookupname,None)
         self.manufield.focus()
+        session.close()
     def fill_fields(self,st):
         "Fill all fields from the specified stock type"
-        (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(st)
-        self.manufield.set(manufacturer)
-        self.namefield.set(name)
-        self.snamefield.set(shortname)
-        self.deptfield.set(self.deptlist.index(dept))
-        if abv is None: self.abvfield.set(None)
-        else: self.abvfield.set("%0.1f"%abv)
-        self.unitfield.set(self.unitlist.index(unit))
-    def pack_fields(self):
+        self.manufield.set(st.manufacturer)
+        self.namefield.set(st.name)
+        self.snamefield.set(st.shortname)
+        self.deptfield.set(self.depts.index(st.department))
+        self.abvfield.set(st.abv)
+        self.unitfield.set(self.units.index(st.unit))
+    def validate_fields(self):
+        "Returns True or None."
         if self.deptfield.f is None: return None
         if self.unitfield.f is None: return None
         if len(self.snamefield.f)==0: return None
         if len(self.manufield.f)==0: return None
         if len(self.namefield.f)==0: return None
-        # Argh, special handling for the ABV field
+        return True
+    def get_abv(self):
         try:
-            abv=float(self.abvfield.f)
+            return float(self.abvfield.f)
         except:
-            abv=None
-        return (
-            self.deptlist[self.deptfield.f],self.manufield.f,
-            self.namefield.f,self.snamefield.f,
-            abv,self.unitlist[self.unitfield.f])
+            return None
+    def update_model(self,model):
+        model.manufacturer=self.manufield.f
+        model.name=self.namefield.f
+        model.shortname=self.snamefield.f
+        model.abv=self.get_abv()
+        model.department=self.deptfield.read()
+        model.unit=self.unitfield.read()
     def validate_manufacturer(self,s,c):
         if self.mode==2: return s
         t=s[:c+1]
@@ -203,7 +212,20 @@ class stocktype(ui.dismisspopup):
     def lookupname(self):
         # Called when Enter is pressed on the Name field.  Fills in
         # other fields if there's a match with an existing item.
-        l=td.stocktype_fromnames(self.manufield.f,self.namefield.f)
+        session=td.sm()
+        # When the StockType object is loaded, we need to make sure it
+        # re-uses the Department and StockUnit objects we loaded
+        # earlier for the ui.listfield() fields.  Add them to the
+        # session here so it knows about them.
+        for d in self.depts:
+            session.add(d)
+        for u in self.units:
+            session.add(u)
+        l=session.query(StockType).\
+            filter_by(manufacturer=self.manufield.f).\
+            filter_by(name=self.namefield.f).\
+            all()
+        session.close()
         if len(l)>0:
             self.fill_fields(l[0])
             self.confirmbutton.focus()
@@ -214,19 +236,32 @@ class stocktype(ui.dismisspopup):
             self.snamefield.focus()
     def finish_save(self):
         self.dismiss()
-        sn=td.stocktype_new(*self.pack_fields())
-        self.func(sn)
+        session=td.sm()
+        st=StockType()
+        self.update_model(st)
+        session.add(st)
+        session.commit()
+        session.close()
+        self.func(st)
     def finish_mode1(self):
         # If there's an exact match then return the existing stock
         # type.  Otherwise pop up a confirmation box asking whether we
         # can create a new one.
-        pf=self.pack_fields()
-        if pf is None:
+        if self.validate_fields() is None:
             ui.infopopup(["You must fill in all the fields (except ABV, "
                           "which should be left blank for non-alcoholic "
                           "stock types)."],title="Error")
             return
-        st=td.stocktype_fromall(*pf)
+        session=td.sm()
+        st=session.query(StockType).\
+            filter_by(manufacturer=self.manufield.f).\
+            filter_by(name=self.namefield.f).\
+            filter_by(shortname=self.snamefield.f).\
+            filter_by(abv=self.get_abv()).\
+            filter_by(unit=self.unitfield.read()).\
+            filter_by(department=self.deptfield.read()).\
+            first()
+        session.close()
         # Confirmation box time...
         if st is None:
             if self.allownew:
@@ -244,13 +279,16 @@ class stocktype(ui.dismisspopup):
             self.dismiss()
             self.func(st)
     def finish_mode2(self):
-        pf=self.pack_fields()
-        if pf is None:
+        if self.validate_fields() is None:
             ui.infopopup(["You are not allowed to leave any field other "
                           "than ABV blank."],title="Error")
         else:
             self.dismiss()
-            td.stocktype_update(self.st,*pf)
+            session=td.sm()
+            self.st=session.merge(self.st)
+            self.update_model(self.st)
+            session.commit()
+            session.close()
 
 def stockinfo_linelist(sn,qty=1):
     l=[]
