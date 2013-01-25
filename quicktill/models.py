@@ -454,8 +454,8 @@ class StockType(Base):
     abv=Column(Numeric(3,1))
     unit_id=Column('unit',String(10),ForeignKey('unittypes.unit'),
                    nullable=False)
-    department=relationship(Department)
-    unit=relationship(UnitType)
+    department=relationship(Department,lazy="joined")
+    unit=relationship(UnitType,lazy="joined")
     @hybrid_property
     def fullname(self):
         return self.manufacturer+' '+self.name
