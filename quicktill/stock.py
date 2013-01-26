@@ -4,7 +4,7 @@
 
 import hashlib,logging
 from . import ui,td,keyboard,tillconfig,stocklines,department
-from .models import Department,UnitType,StockType
+from .models import Department,UnitType,StockType,StockItem
 log=logging.getLogger()
 
 def abvstr(abv):
@@ -290,46 +290,33 @@ class stocktype(ui.dismisspopup):
             session.commit()
             session.close()
 
-def stockinfo_linelist(sn,qty=1):
+# XXX should probably convert this to take a StockItem object rather
+# than a stock ID at some point
+def stockinfo_linelist(sn):
+    session=td.sm()
+    s=session.query(StockItem).get(sn)
     l=[]
-    sd=td.stock_info([sn])[0]
-    sd['stockid']=sn
-    sx=td.stock_extrainfo(sn)
-    sd.update(sx)
-    if qty==1:
-        sd['saleunit']=sd['unitname']
-    elif qty==0.5:
-        sd['saleunit']="half %(unitname)s"%sd
-    else: sd['saleunit']="%f %s"%(qty,sd['unitname'])
-    sd['deliverydate']=ui.formatdate(sd['deliverydate'])
-    sd['bestbefore']=ui.formatdate(sd['bestbefore'])
-    sd['firstsale']=ui.formattime(sd['firstsale'])
-    sd['lastsale']=ui.formattime(sd['lastsale'])
-    sd['onsale']=ui.formattime(sd['onsale'])
-    sd['finished']=ui.formattime(sd['finished'])
-    sd['currency']=tillconfig.currency
-    l.append(format_stock(sd)+" - %(stockid)d"%sd)
-    l.append("Sells for %(currency)s%(saleprice)0.2f/%(unitname)s.  "
-             "%(used)0.1f %(unitname)ss used; "
-             "%(remaining)0.1f %(unitname)ss remaining."%sd)
+    l.append(s.stocktype.format()+" - %d"%s.id)
+    l.append("Sells for %s%s/%s.  "
+             "%s %ss used; %s %ss remaining."%(
+            tillconfig.currency,s.saleprice,s.stocktype.unit.name,
+            s.used,s.stocktype.unit.name,s.remaining,s.stocktype.unit.name))
     l.append("")
-    l.append("Delivered %(deliverydate)s by %(suppliername)s"%sd)
-    if sd['bestbefore']!="":
-        l.append("Best Before %(bestbefore)s"%sd)
-    if sd['onsale']!="":
-        l.append("Put on sale %(onsale)s"%sd)
-    if sd['firstsale']!="":
-        l.append("First sale: %(firstsale)s  Last sale: %(lastsale)s"%sd)
-    if sd['finished']!="":
-        l.append("Finished %(finished)s; %(finishdescription)s"%sd)
+    l.append("Delivered %s by %s"%(s.delivery.date,s.delivery.supplier.name))
+    if s.bestbefore: l.append("Best Before %s"%s.bestbefore)
+    if s.onsale: l.append("Put on sale %s"%s.onsale)
+    if s.firstsale:
+        l.append("First sale: %s  Last sale: %s"%(s.firstsale,s.lastsale))
+    if s.finished:
+        l.append("Finished %s; %s"%(s.finished,s.finishcode.description))
     l.append("")
-    for i in sd['stockout']:
-        l.append("%s: %0.1f"%(i[1],i[2]))
-    sa=td.stock_annotations(sn)
-    if len(sa)>0:
+    for code,qty in s.removed:
+        l.append("%s: %s"%(code.reason,qty))
+    if len(s.annotations)>0:
         l.append("Annotations:")
-    for desc,time,text in sa:
-        l.append("%s: %s: %s"%(time,desc,text))
+    for a in s.annotations:
+        l.append("%s: %s: %s"%(a.time,a.type.description,a.text))
+    session.close()
     return l
 
 def stockinfo_popup(sn,keymap={}):

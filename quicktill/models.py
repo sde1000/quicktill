@@ -530,8 +530,8 @@ class StockItem(Base):
     bestbefore=Column(Date)
     delivery=relationship(Delivery,backref=backref('items',order_by=id))
     stocktype=relationship(StockType,backref=backref('items',order_by=id))
-    stockunit=relationship(StockUnit)
-    finishcode=relationship(FinishCode)
+    stockunit=relationship(StockUnit,lazy="joined")
+    finishcode=relationship(FinishCode,lazy="joined")
     # used and remaining column properties are added after the
     # StockOut class is defined
     @property
@@ -545,6 +545,20 @@ class StockItem(Base):
         """
         a=hashlib.sha1("quicktill-%d-quicktill"%self.id)
         return str(int(a.hexdigest(),16))[-3:]
+    @property
+    def removed(self):
+        """Amount of stock removed from this item under all the
+        various RemoveCodes.  Returns a list of (RemoveCode,qty)
+        tuples.
+
+        """
+        return object_session(self).\
+            query(RemoveCode,func.sum(StockOut.qty)).\
+            select_from(StockOut.__table__).\
+            join(RemoveCode).\
+            filter(StockOut.stockid==self.id).\
+            group_by(RemoveCode).\
+            all()
     @property
     def tillweb_url(self):
         return "stock/%d/"%self.id
@@ -595,7 +609,7 @@ class StockOut(Base):
     translineid=Column(Integer,ForeignKey('translines.translineid'))
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     stockitem=relationship(StockItem,backref=backref('out',order_by=id))
-    removecode=relationship(RemoveCode)
+    removecode=relationship(RemoveCode,lazy="joined")
     transline=relationship(Transline) # No backref - stockref is not foreign key
     def __repr__(self):
         return "<StockOut(%s,%s)>"%(self.id,self.stockid)
@@ -613,6 +627,18 @@ StockItem.remaining=column_property(
                 func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
         where(StockOut.stockid==StockItem.id).\
         label('remaining'))
+StockItem.firstsale=column_property(
+    select([func.min(StockOut.time)]).\
+        correlate(StockItem.__table__).\
+        where(StockOut.stockid==StockItem.id).\
+        where(StockOut.removecode_id=='sold').\
+        label('firstsale'))
+StockItem.lastsale=column_property(
+    select([func.max(StockOut.time)]).\
+        correlate(StockItem.__table__).\
+        where(StockOut.stockid==StockItem.id).\
+        where(StockOut.removecode_id=='sold').\
+        label('lastsale'))
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):

@@ -466,29 +466,6 @@ def stock_info(stockid_list):
         sid[i[0]]=mkdict(i)
     return [sid[x] for x in stockid_list if x in sid]
 
-def stock_extrainfo(stockid):
-    "Return even more information on a particular stock item."
-    cur=cursor()
-    cur.execute(
-        "SELECT min(so.time) as firstsale, "
-        "       max(so.time) as lastsale "
-        "FROM stock s LEFT JOIN stockout so ON so.stockid=s.stockid "
-        "WHERE s.stockid=%s AND so.removecode='sold' ",(stockid,))
-    r=cur.fetchone()
-    if r is None: r=[None,None]
-    d={}
-    d['firstsale']=r[0]
-    d['lastsale']=r[1]
-    cur.execute(
-        "SELECT so.removecode,sr.reason,sum(qty) "
-        "FROM stockout so INNER JOIN stockremove sr "
-        "ON so.removecode=sr.removecode WHERE so.stockid=%s "
-        "GROUP BY so.removecode,sr.reason",(stockid,))
-    d['stockout']=[]
-    for i in cur.fetchall():
-        d['stockout'].append(i)
-    return d
-
 def stock_checkpullthru(stockid,maxtime):
     """Did this stock item require pulling through?"""
     cur=cursor()
