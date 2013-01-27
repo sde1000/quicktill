@@ -283,89 +283,6 @@ def business_info(business):
                 "WHERE business=%s",(business,))
     return cur.fetchone()
 
-### Suppliers of stock
-
-def supplier_list():
-    "Return the list of suppliers"
-    cur=cursor()
-    cur.execute("SELECT supplierid,name,tel,email FROM suppliers ORDER BY supplierid")
-    return cur.fetchall()
-
-def supplier_new(name,tel,email):
-    "Create a new supplier and return the id"
-    cur=cursor()
-    sid=ticket(cur,"suppliers_seq")
-    cur.execute("INSERT INTO suppliers (supplierid,name,tel,email) "
-                "VALUES (%s,%s,%s,%s)",(sid,name,tel,email))
-    commit()
-    return sid
-
-def supplier_fetch(sid):
-    "Return supplier details"
-    cur=cursor()
-    cur.execute("SELECT name,tel,email FROM suppliers WHERE supplierid=%s",
-                (sid,))
-    return cur.fetchone()
-
-def supplier_update(sid,name,tel,email):
-    "Update supplier details"
-    cur=cursor()
-    cur.execute("UPDATE suppliers SET name=%s,tel=%s,email=%s "
-                "WHERE supplierid=%s",(name,tel,email,sid))
-    commit()
-
-### Delivery-related functions
-
-def delivery_get(unchecked_only=False,checked_only=False,number=None):
-    cur=cursor()
-    if number is not None:
-        w="d.deliveryid=%d"%number
-    elif unchecked_only and checked_only: return None
-    elif unchecked_only:
-        w="d.checked=false"
-    elif checked_only:
-        w="d.checked=true"
-    else:
-        w="true"
-    cur.execute("SELECT d.deliveryid,d.supplierid,d.docnumber,d.date,"
-                "d.checked,s.name FROM deliveries d "
-                "LEFT JOIN suppliers s ON d.supplierid=s.supplierid "
-                "WHERE %s ORDER BY d.checked,d.date DESC,d.deliveryid DESC"%w)
-    return cur.fetchall()
-
-def delivery_new(supplier):
-    cur=cursor()
-    dn=ticket(cur,"deliveries_seq")
-    cur.execute("INSERT INTO deliveries (deliveryid,supplierid) VALUES "
-                "(%s,%s)",(dn,supplier))
-    commit()
-    return dn
-
-def delivery_items(delivery):
-    cur=cursor()
-    cur.execute("SELECT stockid FROM stock "
-                "WHERE deliveryid=%s ORDER BY stockid",(delivery,))
-    return [x[0] for x in cur.fetchall()]
-
-def delivery_update(delivery,supplier,date,docnumber):
-    cur=cursor()
-    cur.execute("UPDATE deliveries SET supplierid=%s,date=%s,docnumber=%s "
-                "WHERE deliveryid=%s",
-                (supplier,date,docnumber,delivery))
-    commit()
-
-def delivery_check(delivery):
-    cur=cursor()
-    cur.execute("UPDATE deliveries SET checked=true WHERE deliveryid=%s",
-                (delivery,))
-    commit()
-
-def delivery_delete(delivery):
-    cur=cursor()
-    cur.execute("DELETE FROM stock WHERE deliveryid=%s",(delivery,))
-    cur.execute("DELETE FROM deliveries WHERE deliveryid=%s",(delivery,))
-    commit()
-
 ### Functions related to the stocktypes table
 
 def stocktype_info(stn):
@@ -408,19 +325,6 @@ def department_list():
     cur=cursor()
     cur.execute("SELECT dept,description FROM departments ORDER BY dept")
     return cur.fetchall()
-
-### Functions related to the stockunits table
-
-def stockunits_list(unit):
-    cur=cursor()
-    cur.execute("SELECT stockunit,name,size FROM stockunits WHERE "
-                "unit=%s",(unit,))
-    return cur.fetchall()
-
-def stockunits_info(su):
-    cur=cursor()
-    cur.execute("SELECT name,size FROM stockunits WHERE stockunit=%s",(su,))
-    return cur.fetchone()
 
 ### Functions related to finishing stock
 
@@ -475,51 +379,9 @@ def stock_checkpullthru(stockid,maxtime):
     if r is None: r=False
     return r
 
-def stock_receive(delivery,stocktype,stockunit,costprice,saleprice,
-                  bestbefore=None):
-    "Receive stock, allocate a stock number and return it."
-    cur=cursor()
-    i=ticket(cur,"stock_seq")
-    cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,"
-                "stockunit,costprice,saleprice,bestbefore) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (i,delivery,stocktype,stockunit,costprice,saleprice,
-                 bestbefore))
-    commit()
-    return i
-
-def stock_duplicate(sn):
-    """Duplicate an existing stock item, returning the new stock number.
-    NB we deliberately do not duplicate the best before date, so the user
-    must check each item.
-    """
-    cur=cursor()
-    i=ticket(cur,"stock_seq")
-    cur.execute("INSERT INTO stock (stockid,deliveryid,stocktype,stockunit,"
-                "costprice,saleprice) "
-                "SELECT %s AS stockid,deliveryid,stocktype,stockunit,"
-                "costprice,saleprice FROM stock WHERE stockid=%s",
-                (i,sn))
-    commit()
-    return i
-
-def stock_update(sn,stocktype,stockunit,costprice,saleprice,bestbefore=None):
-    cur=cursor()
-    # XXX check that delivery is not marked "checked"
-    cur.execute("UPDATE stock SET stocktype=%s,stockunit=%s,"
-                "costprice=%s,saleprice=%s,bestbefore=%s WHERE "
-                "stockid=%s",(stocktype,stockunit,costprice,saleprice,
-                              bestbefore,sn))
-    commit()
-
 def stock_reprice(sn,saleprice):
     cur=cursor()
     cur.execute("UPDATE stock SET saleprice=%s WHERE stockid=%s",(saleprice,sn))
-    commit()
-
-def stock_delete(sn):
-    cur=cursor()
-    cur.execute("DELETE FROM stock WHERE stockid=%s",(sn,))
     commit()
 
 def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
@@ -1020,5 +882,9 @@ def init():
         estring+=":%s"%(csdict['port'],)
     estring+="/%s"%(csdict['dbname'],)
     engine=create_engine(estring)
+    # We might like to consider adding expire_on_commit=False to the
+    # sessionmaker at some point; let's not do that for now so we can
+    # spot potentially expired objects more easily while we're
+    # converting the code.
     sm=sessionmaker(bind=engine)
     con=db.connect(database)

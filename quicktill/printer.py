@@ -1,6 +1,7 @@
 import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
+from .models import Delivery
 
 driver=None
 labeldriver=None
@@ -176,15 +177,15 @@ def print_sessiontotals(s):
     session.close()
 
 def label_print_delivery(delivery):
-    items=td.delivery_items(delivery)
-    stocklabel_print(items)
+    session=td.sm()
+    d=session.query(Delivery).get(delivery)
+    stocklabel_print(d.items)
+    session.close()
 
 def stocklabel_print(sl):
     """Print stock labels for a list of stock numbers.
 
     """
-    from . import stock
-    items_sdl=td.stock_info(sl)
     labeldriver.start()
     def stock_label(f,width,height,d):
         # Item name
@@ -201,50 +202,47 @@ def stocklabel_print(sl):
             sw=f.stringWidth(s,fontname,fontsize)
             return sw<(width-(2*margin))
         y=height-margin-fontsize
-        f.drawCentredString(width/2,y,stock.format_stock(d,fits))
+        f.drawCentredString(width/2,y,d.stocktype.format(fits))
         y=y-pitch
-        f.drawCentredString(width/2,y,d['suppliername'])
+        f.drawCentredString(width/2,y,d.delivery.supplier.name)
         y=y-pitch
-        f.drawCentredString(width/2,y,ui.formatdate(d['deliverydate']))
+        f.drawCentredString(width/2,y,ui.formatdate(d.delivery.date))
         y=y-pitch
-        f.drawCentredString(width/2,y,d['sunitname'])
+        f.drawCentredString(width/2,y,d.stockunit.name)
         if tillconfig.checkdigit_print:
             y=y-pitch
-            f.drawCentredString(width/2,y,"Check digits: %s"%(
-                    stock.checkdigits(d['stockid'])))
+            f.drawCentredString(width/2,y,"Check digits: %s"%(d.checkdigits,))
         f.setFont(fontname,y-margin)
-        f.drawCentredString(width/2,margin,str(d['stockid']))
-    for sd in items_sdl:
+        f.drawCentredString(width/2,margin,str(d.id))
+    for sd in sl:
         labeldriver.addlabel(stock_label,sd)
     labeldriver.end()
 
 def print_delivery(delivery):
-    from . import stock
-    (id,supplier,docnumber,date,checked,supname)=td.delivery_get(number=delivery)[0]
-    (name,tel,email)=td.supplier_fetch(supplier)
-    items=td.delivery_items(delivery)
+    session=td.sm()
+    d=session.query(Delivery).get(delivery)
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
-    driver.printline("\tDelivery %d"%delivery,colour=1)
-    driver.printline("Supplier: %s"%name)
-    driver.printline("Date: %s"%ui.formatdate(date))
-    driver.printline("Delivery note: %s"%docnumber)
-    if not checked:
+    driver.printline("\tDelivery %d"%d.id,colour=1)
+    driver.printline("Supplier: %s"%d.supplier.name)
+    driver.printline("Date: %s"%ui.formatdate(d.date))
+    driver.printline("Delivery note: %s"%d.docnumber)
+    if not d.checked:
         driver.printline("Details not yet confirmed -")
         driver.printline("may still be edited.")
     driver.printline()
-    items_sdl=td.stock_info(items)
-    for sd in items_sdl:
-        driver.printline("Stock number %d"%sd['stockid'],colour=1)
-        driver.printline(stock.format_stock(sd,maxw=driver.checkwidth))
+    for s in d.items:
+        driver.printline("Stock number %d"%s.id,colour=1)
+        driver.printline(s.stocktype.format(maxw=driver.checkwidth))
         driver.printline("%s cost %s"%(
-            sd['stockunit'],tillconfig.fc(sd['costprice'])))
+            s.stockunit.name,tillconfig.fc(s.costprice)))
         driver.printline("sale %s BB %s"%(
-            tillconfig.fc(sd['saleprice']),ui.formatdate(sd['bestbefore'])))
+            tillconfig.fc(s.saleprice),ui.formatdate(s.bestbefore)))
         driver.printline()
     driver.printline("\tEnd of list")
     driver.end()
+    session.close()
 
 def print_stocklist(sl,title="Stock List"):
     from . import stock

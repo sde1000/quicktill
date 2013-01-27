@@ -10,8 +10,7 @@ log=logging.getLogger()
 
 def deliverymenu():
     log.info("Delivery menu")
-    delivery.deliverylist(delivery.delivery,
-                          createfunc=delivery.new_delivery)
+    delivery.deliverymenu()
 
 def finish_reason(sn,reason):
     td.stock_finish(sn,reason)
