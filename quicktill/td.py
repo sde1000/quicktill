@@ -995,30 +995,6 @@ def session_translist(session,onlyopen=False):
                 "ORDER BY t.closed,t.transid DESC"%oos,(session,))
     return cur.fetchall()
 
-### User list for lock screen
-
-def users_list():
-    cur=cursor()
-    cur.execute("SELECT code,name FROM users ORDER BY code")
-    return cur.fetchall()
-
-def users_get(code):
-    cur=cursor()
-    cur.execute("SELECT name FROM users WHERE code=%s",(code,))
-    u=cur.fetchall()
-    if len(u)==0: return None
-    return u[0][0]
-
-def users_add(code,name):
-    cur=cursor()
-    cur.execute("INSERT INTO USERS VALUES (%s,%s)",(code,name))
-    commit()
-
-def users_del(code):
-    cur=cursor()
-    cur.execute("DELETE FROM USERS WHERE code=%s",(code,))
-    commit()
-
 def db_version():
     cur=cursor()
     return execone(cur,"SELECT version()")

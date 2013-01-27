@@ -1,9 +1,12 @@
 from . import ui,keyboard,td
+from .models import User
 
 def usersmenu(func):
-    users=td.users_list()
-    lines=ui.table([(code,name) for code,name in users]).format(' r l ')
-    sl=[(x,func,(y[0],)) for x,y in zip(lines,users)]
+    session=td.sm()
+    users=session.query(User).order_by(User.code).all()
+    lines=ui.table([(u.code,u.name) for u in users]).format(' r l ')
+    sl=[(x,func,(u.code,)) for x,u in zip(lines,users)]
+    session.close()
     ui.menu(sl,title="Users",blurb="Choose a user and press Cash/Enter.")
 
 class popup(ui.dismisspopup):
@@ -18,10 +21,12 @@ class popup(ui.dismisspopup):
         self.codefield.focus()
     def enter_key(self):
         if self.codefield.f=='': usersmenu(self.user_selected)
-        user=td.users_get(self.codefield.f)
+        session=td.sm()
+        user=session.query(User).get(self.codefield.f)
+        session.close()
         if user:
             self.dismiss()
-            UnlockPopup(self.codefield.f,user)
+            UnlockPopup(user)
         else:
             self.codefield.set("")
     def user_selected(self,code):
@@ -29,13 +34,13 @@ class popup(ui.dismisspopup):
         self.enter_key()
 
 class UnlockPopup(ui.basicpopup):
-    def __init__(self,code,user):
-        msg="This screen is locked by %s."%user
+    def __init__(self,user):
+        msg="This screen is locked by %s."%(user.name,)
         minwidth=len(msg)+4
         ui.basicpopup.__init__(self,7,max(45,minwidth),title="Screen Lock",
                                colour=ui.colour_confirm)
-        self.code=code
-        self.addstr(2,2,"This screen is locked by %s."%user)
+        self.code=user.code
+        self.addstr(2,2,"This screen is locked by %s."%(user.name,))
         self.addstr(4,2,"Enter code to unlock: ")
         self.codefield=ui.editfield(4,24,2,keymap={
                 keyboard.K_CASH: (self.enter_key,None)})
@@ -58,11 +63,13 @@ class editusers(ui.listpopup):
 
     """
     def __init__(self):
-        ulist=td.users_list()
+        session=td.sm()
+        ulist=session.query(User).order_by(User.code).all()
+        session.close()
         f=ui.tableformatter(' l l ')
         headerline=ui.tableline(f,["Code","Name"])
-        lines=[ui.tableline(f,(code,user),userdata=code)
-               for code,user in ulist]
+        lines=[ui.tableline(f,(u.code,u.name),userdata=u.code)
+               for u in ulist]
         ui.listpopup.__init__(
             self,lines,title="Lock Screen Users",
             header=["Press Cancel to delete a code.  "
@@ -72,7 +79,11 @@ class editusers(ui.listpopup):
         if k==keyboard.K_CANCEL and self.s and len(self.s.dl)>0:
             line=self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            td.users_del(line.userdata)
+            session=td.sm()
+            u=session.query(User).get(line.userdata)
+            session.delete(u)
+            session.commit()
+            session.close()
         elif k==keyboard.K_CASH:
             self.dismiss()
             adduser()
@@ -85,7 +96,8 @@ class adduser(ui.dismisspopup):
                                  colour=ui.colour_input)
         self.addstr(2,2,"New code: ")
         self.addstr(3,2,"New user name:")
-        self.codefield=ui.editfield(2,12,2)
+        self.codefield=ui.editfield(2,12,2,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
         self.namefield=ui.editfield(4,2,30,keymap={
                 keyboard.K_CASH: (self.enter,None)})
         ui.map_fieldlist([self.codefield,self.namefield])
@@ -97,8 +109,12 @@ class adduser(ui.dismisspopup):
         if len(self.namefield.f)<2:
             ui.infopopup(["You must provide a name."],title="Error")
             return
-        if td.users_get(self.codefield.f):
+        session=td.sm()
+        if session.query(User).get(self.codefield.f):
             ui.infopopup(["That code is already in use."],title="Error")
+            session.close()
             return
         self.dismiss()
-        td.users_add(self.codefield.f,self.namefield.f)
+        session.add(User(code=self.codefield.f,name=self.namefield.f))
+        session.commit()
+        session.close()
