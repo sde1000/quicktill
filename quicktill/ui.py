@@ -1002,6 +1002,18 @@ class datefield(editfield):
             self.set(self.f+'-')
 
 class popupfield(field):
+    """A field which has its value set using a popup dialog.  The
+    values the field can take are unordered; there is no concept of
+    "next" and "previous".  The field can also be null.
+
+    popupfunc is a function that takes two arguments: the function to
+    call when a value is chosen, and the current value of the field.
+    
+    valuefunc is a function that takes one argument: the current value
+    of the field.  It returns a string to display.  It is never passed
+    None as an argument.
+
+    """
     def __init__(self,y,x,w,popupfunc,valuefunc,f=None,keymap={},
                  readonly=False):
         self.y=y
@@ -1041,9 +1053,16 @@ class popupfield(field):
         else:
             field.keypress(self,k)
 
-# If d is provided then values in l are looked up in d before being
-# displayed.
 class listfield(popupfield):
+    """A field which allows a value to be chosen from a list.  The
+    list is ordered: for any particular value there is a concept of
+    "next" and "previous".  self.f is an index into the list, or None;
+    self.read() returns the value of the item in the list or None.
+
+    A dictionary d can be provided; if it is, then values in l are looked
+    up in d before being displayed.
+
+    """
     def __init__(self,y,x,w,l,d=None,f=None,keymap={},readonly=False):
         self.l=l
         self.d=d
@@ -1055,7 +1074,7 @@ class listfield(popupfield):
     def listval(self,index):
         if self.d is not None:
             return self.d[self.l[index]]
-        return self.l[index]
+        return unicode(self.l[index])
     def popuplist(self,func,default):
         m=[]
         for i in range(0,len(self.l)):
