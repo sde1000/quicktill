@@ -43,7 +43,7 @@ def wrap_addstr(win,y,x,str,attr=None):
 def gettime():
     return time.strftime("%a %d %b %Y %H:%M:%S %Z")
 
-class clock:
+class clock(object):
     def __init__(self,win):
         self.stdwin=win
         self.alarm()
@@ -136,7 +136,7 @@ def handle_keyboard_input(k):
     else:
         focus.keypress(k)
 
-class basicwin:
+class basicwin(object):
     """Container for all pages, popup windows and fields.
 
     It is required that the parent holds the input focus whenever a
@@ -683,7 +683,7 @@ class scrollable(field):
         elif k==curses.KEY_PPAGE: self.cursor_up(10)
         else: field.keypress(self,k)
 
-class emptyline:
+class emptyline(object):
     """
     A line for use in a scrollable.  Has a natural colour, a "cursor
     is here" colour, and an optional "selected" colour.  This line has
@@ -792,7 +792,7 @@ class lrline(emptyline):
         w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
         return w
 
-class tableformatter:
+class tableformatter(object):
     """
     This class implements policy for formatting a table.
     
@@ -1112,7 +1112,7 @@ def map_fieldlist(fl):
         fl[i].nextfield=next
         fl[i].prevfield=prev
 
-class table:
+class table(object):
     """A 2d table.  Can be turned into a list of strings of identical
     length, with the columns lined up and justified.
 
