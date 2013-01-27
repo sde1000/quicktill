@@ -394,7 +394,8 @@ Session.total=column_property(
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
     __tablename__='suppliers'
-    id=Column('supplierid',Integer,nullable=False,primary_key=True)
+    id=Column('supplierid',Integer,suppliers_seq,
+              nullable=False,primary_key=True)
     name=Column(String(60),nullable=False)
     tel=Column(String(20))
     email=Column(String(60))
@@ -409,13 +410,15 @@ class Supplier(Base):
 deliveries_seq=Sequence('deliveries_seq')
 class Delivery(Base):
     __tablename__='deliveries'
-    id=Column('deliveryid',Integer,nullable=False,primary_key=True)
+    id=Column('deliveryid',Integer,deliveries_seq,
+              nullable=False,primary_key=True)
     supplierid=Column(Integer,ForeignKey('suppliers.supplierid'),
                       nullable=False)
     docnumber=Column(String(40))
     date=Column(Date,nullable=False,server_default=func.current_timestamp())
     checked=Column(Boolean,nullable=False,server_default=text('false'))
-    supplier=relationship(Supplier,backref=backref('deliveries',order_by=id))
+    supplier=relationship(Supplier,backref=backref('deliveries',order_by=id),
+                          lazy="joined")
     @property
     def tillweb_url(self):
         return "delivery/%d/"%(self.id,)
@@ -441,6 +444,8 @@ class StockUnit(Base):
     unit=relationship(UnitType)
     def __repr__(self):
         return "<StockUnit('%s',%s)>"%(self.id,self.size)
+    def __unicode__(self):
+        return self.name
 
 stocktypes_seq=Sequence('stocktypes_seq')
 class StockType(Base):
