@@ -139,7 +139,7 @@ class DBPage(Resource):
             'resource':self}]
         t=self.template(searchList)
         try:
-            request.write(t.respond())
+            request.write(t.respond().encode('utf-8'))
         except:
             request.write("There was an error.")
             request.finish()
