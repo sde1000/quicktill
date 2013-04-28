@@ -292,9 +292,9 @@ def twitter_auth():
     consumer_key = twitter_consumer_key
     consumer_secret = twitter_consumer_secret
 
-    request_token_url = 'http://twitter.com/oauth/request_token'
-    access_token_url = 'http://twitter.com/oauth/access_token'
-    authorize_url = 'http://twitter.com/oauth/authorize'
+    request_token_url = 'http://api.twitter.com/oauth/request_token'
+    access_token_url = 'http://api.twitter.com/oauth/access_token'
+    authorize_url = 'http://api.twitter.com/oauth/authorize'
 
     consumer = oauth.Consumer(consumer_key, consumer_secret)
     client = oauth.Client(consumer)
@@ -303,9 +303,9 @@ def twitter_auth():
     # used for having the user authorize an access token and to sign
     # the request to obtain said access token.
 
-    resp, content = client.request(request_token_url, "GET")
+    resp, content = client.request(request_token_url, "POST")
     if resp['status'] != '200':
-        raise Exception("Invalid response %s." % resp['status'])
+        raise Exception("Invalid response %s: %s." % (resp['status'],content))
 
     request_token = dict(urlparse.parse_qsl(content))
 
