@@ -1,3 +1,15 @@
+quicktill (0.9.22) stable; urgency=low
+
+  * New release 0.9.22
+
+  * Update for new Twitter api location
+
+  * Fix tillweb on Ubuntu 12.04
+
+  * Add a .gitignore
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 08 May 2013 16:36:39 +0100
+
 quicktill (0.9.21) stable; urgency=low
 
   * New release 0.9.21
