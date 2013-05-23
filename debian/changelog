@@ -1,3 +1,11 @@
+quicktill (0.9.23) stable; urgency=low
+
+  * New release 0.9.23
+
+  * Bitcoin merchant service support
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 23 May 2013 21:20:46 +0100
+
 quicktill (0.9.22) stable; urgency=low
 
   * New release 0.9.22
