@@ -39,6 +39,7 @@ import datetime
 log=logging.getLogger()
 import foodorder
 import pingapint
+import btcmerch
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 
@@ -128,7 +129,7 @@ def payline(p):
     colour=ui.colour_cashline
     if amount<0.0: colour=ui.colour_changeline
     if paytype=='CASH':
-            return rline('%s %s'%(ref,tillconfig.fc(amount)),colour)
+        return rline('%s %s'%(ref,tillconfig.fc(amount)),colour)
     if ref is None:
         return rline("%s %s"%(desc,tillconfig.fc(amount)),colour)
     return rline("%s %s %s"%(desc,ref,tillconfig.fc(amount)),colour)
@@ -158,8 +159,8 @@ class cardpopup(ui.dismisspopup):
         self.addstr(cbstart+2,2,"Cash/Enter if there is none.")
         self.addstr(cbstart+4,2,"Cashback amount: %s"%tillconfig.currency)
         self.cbfield=ui.editfield(cbstart+4,19+len(tillconfig.currency),6,
-                                validate=ui.validate_float,
-                                keymap={
+                                  validate=ui.validate_float,
+                                  keymap={
                 keyboard.K_TWENTY: (self.note,(20.0,)),
                 keyboard.K_TENNER: (self.note,(10.0,)),
                 keyboard.K_FIVER: (self.note,(5.0,))})
@@ -185,7 +186,7 @@ class cardpopup(ui.dismisspopup):
             self.cbfield.set("")
             return ui.infopopup(["Cashback is limited to a maximum of %s per "
                                  "transaction."%tillconfig.fc(
-                tillconfig.cashback_limit)],title="Error")
+                        tillconfig.cashback_limit)],title="Error")
         total=self.amount+cba
         receiptno=self.rnfield.f
         if receiptno=="":
@@ -219,6 +220,94 @@ class pingapintpopup(ui.dismisspopup):
         except pingapint.PingaPintError as e:
             self.vfield.set("")
             ui.infopopup([str(e)],title="PingaPint error")
+
+class btcpopup(ui.dismisspopup):
+    """
+    A window used to accept a Bitcoin payment.
+
+    """
+    def __init__(self,func,transid,amount):
+        self.func=func
+        self.transid=transid
+        self.amount=amount
+        (mh,mw)=ui.stdwin.getmaxyx()
+        self.h=mh
+        self.w=mh*2
+        self.response={}
+        ui.dismisspopup.__init__(
+            self,self.h,self.w,
+            title="Bitcoin payment - press Cash/Enter to check",
+            colour=ui.colour_input,keymap={
+                keyboard.K_CASH:(self.refresh,None,False),
+                keyboard.K_PRINT:(self.printout,None,False)})
+        self.refresh()
+    def draw_qrcode(self):
+        import qrcode
+        q=qrcode.QRCode(border=2)
+        q.add_data(self.response[u'to_pay_url'])
+        m=q.get_matrix()
+        size=len(m)
+        # Will it fit using single block characters?
+        if size+2<self.h and ((size*2)+2)<self.w:
+            # Yes!  Try to center it
+            x=(self.w/2)-size
+            y=(self.h-size)/2
+            for line in m:
+                self.addstr(y,x,''.join(["  " if c else u"\u2588\u2588" for c in line]))
+                y=y+1
+        # Will it fit using half block characters?
+        elif (size/2)<self.h and size+2<self.w:
+            # Yes.
+            x=(self.w-size)/2
+            y=(self.h-(size/2))/2
+            # We work on two rows at once.
+            lt={
+                (False,False): u"\u2588", # Full block
+                (False,True): u"\u2580", # Upper half block
+                (True,False): u"\u2584", # Lower half block
+                (True,True): " ", # No block
+                }
+            while len(m)>0:
+                if len(m)>1:
+                    row=zip(m[0],m[1])
+                else:
+                    row=zip(m[0],[True]*len(m[0]))
+                m=m[2:]
+                self.addstr(y,x,''.join([lt[c] for c in row]))
+                y=y+1
+        else:
+            self.addstr(2,2,
+                        "QR code will not fit on this screen.  Press Print.")
+    def printout(self):
+        if u'to_pay_url' in self.response:
+            printer.print_qrcode(self.response)
+    def refresh(self):
+        try:
+            result=tillconfig.btcmerch_api.request_payment(
+                "tx%d"%self.transid,"Transaction %d"%self.transid,self.amount)
+        except btcmerch.HTTPError as e:
+            if e.e.code==409:
+                return ui.infopopup(
+                    ["Once a request for Bitcoin payment has been made, the "
+                     "amount being requested can't be changed.  You have "
+                     "previously requested payment for this transaction of "
+                     "a different amount.  Please cancel the change and try "
+                     "again.  If you can't do this, cancel and re-enter the "
+                     "whole transaction."],title="Bitcoin error")
+            return ui.infopopup([str(e)],title="Bitcoin error")
+        except btcmerch.BTCMerchError as e:
+            return ui.infopopup([str(e)],title="Bitcoin error")
+        self.response=result
+        if u'to_pay_url' in result:
+            self.draw_qrcode()
+        self.addstr(self.h-1,3,"Received %s of %s BTC so far"%(
+                result[u'paid_so_far'],result[u'amount_in_btc']))
+        if result['paid']:
+            self.dismiss()
+            self.func(float(result[u'amount']),str(result['amount_in_btc']))
+            return ui.infopopup(["Bitcoin payment received"],title="Bitcoin",
+                                dismiss=keyboard.K_CASH,colour=ui.colour_info)
+
 
 class edittransnotes(ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
@@ -778,6 +867,55 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
         ui.updateheader()
+    def bitcoinkey(self):
+        """
+        Accept a Bitcoin payment.  This is currently quite primitive:
+        we only permit one payment per transaction (because we pass
+        the transaction number to the payment service provider to
+        allow for the transaction to be restarted if necessary), and
+        that payment must be for the whole outstanding balance of the
+        transaction.
+
+        In the future we will permit multiple payments per
+        transaction, but this will have to wait until we reorganise
+        the database layer to expose the paymentid so we can use that
+        as a reference instead.
+
+        """
+        if self.qty is not None:
+            ui.infopopup(["You can't enter a quantity before telling "
+                          "the till about a payment.  After dismissing "
+                          "this message, press Clear and try again."],
+                         title="Error")
+            return
+        if self.trans is None or td.trans_closed(self.trans):
+            ui.infopopup(["There is no transaction in progress."],
+                         title="Error")
+            self.clearbuffer()
+            self.redraw()
+            return
+        self.prompt=self.defaultprompt
+        if td.trans_paid_by_bitcoin(self.trans):
+            ui.infopopup(["This transaction has already been paid by "
+                          "Bitcoin; no other Bitcoin payments can be "
+                          "accepted for it."],title="Error")
+            return
+        self.clearbuffer()
+        return btcpopup(self.bitcoin,self.trans,self.balance)
+    def bitcoin(self,amount,btcamount):
+        "We've been paid by bitcoin!"
+        remain=td.trans_addpayment(self.trans,'BTC',amount,btcamount)
+        self.dl.append(rline('Bitcoin %s %s'%(btcamount,tillconfig.fc(amount)),
+                             ui.colour_cashline))
+        if remain<0.0:
+            # There's some cashback!
+            log.info("Register: bitcoin: calculated cashback")
+            td.trans_addpayment(self.trans,'CASH',remain,'Cashback')
+            self.dl.append(rline('Cashback %s'%tillconfig.fc(remain),
+                                 ui.colour_changeline))
+        self.cursor_off()
+        self.update_balance()
+        ui.updateheader()
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
             td.trans_closed(self.trans)):
@@ -1180,6 +1318,9 @@ class page(ui.basicpage):
         if tillconfig.pingapint_api:
             menu=menu+[(keyboard.K_SIX,"Redeem a PingaPint voucher code",
                         self.pingapintkey,None)]
+        if tillconfig.btcmerch_api:
+            menu=menu+[(keyboard.K_SEVEN,"Pay by Bitcoin",
+                        self.bitcoinkey,None)]
         ui.keymenu(menu,title="Transaction %d"%self.trans)
     def keypress(self,k):
         if isinstance(k,magcard.magstripe):

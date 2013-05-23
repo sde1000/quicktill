@@ -91,3 +91,5 @@ def usestock_hook(sd):
 transaction_to_free_drinks_function=False
 
 pingapint_api=None
+
+btcmerch_api=None

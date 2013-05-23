@@ -62,6 +62,8 @@ class nullprinter:
     def printline(self,l="",justcheckfit=False,allowwrap=True,
                   colour=None,font=None,emph=None,underline=None):
         return True
+    def printqrcode(self,code):
+        pass
     def end(self):
         pass
     def cancut(self):
@@ -83,7 +85,12 @@ class escpos:
     ep_right=l2s([27,97,2])
     ep_ff=l2s([27,100,7])
     ep_fullcut=l2s([27,105])
-    def __init__(self,devicefile,cpl,coding,has_cutter=False):
+    ep_unidirectional_on=l2s([27,85,1])
+    ep_unidirectional_off=l2s([27,85,0])
+    ep_bitimage_sd=l2s([27,42,0]) # follow with 16-bit little-endian data length
+    ep_short_feed=l2s([27,74,5])
+    ep_half_dot_feed=l2s([27,74,1])
+    def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False):
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -91,6 +98,7 @@ class escpos:
             self.f=None
             self.ci=devicefile
         self.fontcpl=cpl
+        self.dpl=dpl
         self.coding=coding
         self.has_cutter=has_cutter
     def available(self):
@@ -196,6 +204,43 @@ class escpos:
         return fits
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
+    def printqrcode(self,code):
+        """
+        code is a list of lists of True/False.
+
+        """
+        self.f.write(escpos.ep_unidirectional_on)
+        # To get a good print, we print two rows at a time - but only
+        # feed the paper through by one row.  This means that each
+        # part of the code should be printed twice.  We're also
+        # printing each pair of rows twice, advancing the paper by
+        # half a dot inbetween.  We only use 6 of the 8 pins of the
+        # printer to keep this code simple.
+        lt={
+            (False,False): chr(0x00),
+            (False,True): chr(0x1c),
+            (True,False): chr(0xe0),
+            (True,True): chr(0xfc),
+            }
+        while len(code)>0:
+            if len(code)>1:
+                row=zip(code[0],code[1])
+            else:
+                row=zip(code[0],[False]*len(code[0]))
+            code=code[1:]
+            width=len(row)*3
+            if width>self.dpl: break # Code too wide for paper
+            padding=(self.dpl-width)/2
+            width=width+padding
+            padchars=chr(0)*padding
+            header=escpos.ep_bitimage_sd+chr(width&0xff)+chr((width>>8)&0xff)
+            self.f.write(header+padchars+''.join(lt[x]+lt[x]+lt[x] for x in row)
+                         +"\r".encode(self.coding))
+            self.f.write(escpos.ep_half_dot_feed)
+            self.f.write(header+padchars+''.join(lt[x]+lt[x]+lt[x] for x in row)
+                         +"\r".encode(self.coding))
+            self.f.write(escpos.ep_short_feed)
+        self.f.write(escpos.ep_unidirectional_off)
     def kickout(self):
         if self.f is None:
             self.s=socket.socket(socket.AF_INET)
@@ -215,11 +260,13 @@ class Epson_TM_U220(escpos):
         # Characters per line with fonts 0 and 1
         if paperwidth==57:
             cpl=(25,30)
+            dpl=148
         elif paperwidth==76:
             cpl=(33,40)
+            dpl=192
         else:
             raise "Unknown paper width"
-        escpos.__init__(self,devicefile,cpl,coding,has_cutter)
+        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter)
 
 class pdf:
     def __init__(self,printcmd,width=140,pagesize=A4,
@@ -315,6 +362,8 @@ class pdf:
         if self.y<50:
             self.newcol()
         return fits
+    def printqrcode(self,code):
+        pass
     def cancut(self):
         return False
     def checkwidth(self,line):

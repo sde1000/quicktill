@@ -4,6 +4,7 @@
 
 import ui,keyboard,td,printer,math,sys,curses,os
 import register,tillconfig,managekeyboard,stocklines,event
+import btcmerch
 from version import version
 from mx.DateTime import DateTimeDelta
 
@@ -130,13 +131,23 @@ class recordsession(ui.dismisspopup):
         for i in paytypes:
             self.addstr(y,2,"%s:"%paytypes[i])
             if i in paytotals:
-                self.addstr(y,15,tillconfig.fc(paytotals[i][1]))
                 pt=paytotals[i][1]
             else:
                 pt=0.0
+            self.addstr(y,15,tillconfig.fc(pt))
             if i=='PPINT':
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
+            elif i=='BTC':
+                if pt>0.0:
+                    try:
+                        tl=td.session_bitcoin_translist(session)
+                        btcval=float(tillconfig.btcmerch_api.transactions_total(
+                            ["tx%d"%t for t in tl])[u"total"])
+                    except btcmerch.BTCMerchError:
+                        btcval=0.0
+                field=ui.editfield(y,29,10,validate=ui.validate_float,
+                                   f="%0.2f"%btcval,readonly=True)
             else:
                 field=ui.editfield(y,29,10,validate=ui.validate_float)
             y=y+1
@@ -177,6 +188,13 @@ class recordsession(ui.dismisspopup):
         st=[(x[0],self.amounts[x[0]]) for x in self.fl
             if self.amounts[x[0]]!=0.0]
         td.session_recordtotals(self.session,st)
+        tl=td.session_bitcoin_translist(self.session)
+        if len(tl)>0:
+            try:
+                tillconfig.btcmerch_api.transactions_reconcile(
+                    str(self.session),["tx%d"%t for t in tl])
+            except:
+                pass
         printer.print_sessiontotals(self.session)
         self.dismiss()
 
