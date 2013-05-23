@@ -55,7 +55,7 @@ class Api(object):
                  username,password,site,base_url):
         self._base_url=base_url+site+"/"
         password_mgr=urllib2.HTTPPasswordMgrWithDefaultRealm()
-        password_mgr.add_password(None,site+'/',username,password)
+        password_mgr.add_password(None,base_url,username,password)
         auth=urllib2.HTTPBasicAuthHandler(password_mgr)
         no_proxy=urllib2.ProxyHandler({})
 #        https=BTCMerchHTTPSHandler()
