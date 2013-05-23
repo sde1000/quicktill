@@ -301,7 +301,7 @@ class receiptprint(ui.dismisspopup):
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
-                  "(C) Copyright 2004-2010 Stephen Early",
+                  "(C) Copyright 2004-2013 Stephen Early",
                   "Configuration: %s"%tillconfig.configversion,
                   "Operating system: %s %s %s"%(os.uname()[0],
                                                 os.uname()[2],
