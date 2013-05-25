@@ -1,3 +1,11 @@
+quicktill (0.9.26) stable; urgency=low
+
+  * New release 0.9.26
+
+  * Try to use smaller qrcode in popup window
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 25 May 2013 14:08:17 +0100
+
 quicktill (0.9.25) stable; urgency=low
 
   * New release 0.9.25
