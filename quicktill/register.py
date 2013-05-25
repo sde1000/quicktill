@@ -244,7 +244,8 @@ class btcpopup(ui.dismisspopup):
     def draw_qrcode(self):
         import qrcode
         q=qrcode.QRCode(border=2)
-        q.add_data(self.response[u'to_pay_url'])
+        q.add_data("bitcoin:%s?amount=%s"%(self.response[u'pay_to_address'],
+                                           self.response[u'to_pay']))
         m=q.get_matrix()
         size=len(m)
         # Will it fit using single block characters?
