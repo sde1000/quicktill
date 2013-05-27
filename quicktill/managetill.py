@@ -139,13 +139,16 @@ class recordsession(ui.dismisspopup):
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
             elif i=='BTC':
+                btcval=0.0
                 if pt>0.0:
                     try:
                         tl=td.session_bitcoin_translist(session)
                         btcval=float(tillconfig.btcmerch_api.transactions_total(
                             ["tx%d"%t for t in tl])[u"total"])
                     except btcmerch.BTCMerchError:
-                        btcval=0.0
+                        ui.infopopup(
+                            ["Could not retrieve Bitcoin total; please try "
+                             "again later."],title="Error")
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%btcval,readonly=True)
             else:
