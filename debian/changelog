@@ -1,3 +1,11 @@
+quicktill (0.9.27) stable; urgency=low
+
+  * New release 0.9.27
+
+  * Bugfix: deal with sessions that have no Bitcoin transactions properly
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 27 May 2013 13:44:48 +0100
+
 quicktill (0.9.26) stable; urgency=low
 
   * New release 0.9.26
