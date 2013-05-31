@@ -98,6 +98,12 @@ class Api(object):
             return json.loads(response,parse_float=decimal.Decimal)
         except ValueError:
             raise JSONError
+    def test_connection(self):
+        response=self._sendrequest("totals.json")
+        try:
+            return json.loads(response,parse_float=decimal.Decimal)
+        except ValueError:
+            raise JSONError
 
 if __name__=='__main__':
     api=Api("test","test","test","http://localhost:8000/merchantservice/")
