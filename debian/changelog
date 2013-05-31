@@ -1,3 +1,11 @@
+quicktill (0.9.28) stable; urgency=low
+
+  * New release 0.9.28
+
+  * Bitcoin merchant service status checker
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 31 May 2013 20:37:04 +0100
+
 quicktill (0.9.27) stable; urgency=low
 
   * New release 0.9.27
