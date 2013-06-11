@@ -867,8 +867,8 @@ def session_bitcoin_translist(session):
     return [x[0] for x in cur.fetchall()]
 
 def db_version():
-    cur=cursor()
-    return execone(cur,"SELECT version()")
+    global s
+    return s.execute("select version()").scalar()
 
 def init():
     global con,database,engine,sm
