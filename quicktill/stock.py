@@ -50,11 +50,6 @@ def format_stock(sd,maxw=None):
             d=sd['shortname']
     return d
 
-def format_stocktype(stn,maxw=None):
-    (dept,manufacturer,name,shortname,abv,unit)=td.stocktype_info(stn)
-    return format_stock({'manufacturer':manufacturer,'name':name,
-                         'shortname':shortname,'abvstr':abvstr(abv)},maxw)
-
 def format_transline(transline_info):
     (trans,items,amount,dept,deptstr,stockref,
      transcode,transtime,text,vatband)=transline_info
@@ -474,7 +469,7 @@ class reprice_stocktype(ui.listpopup):
 
     """
     def __init__(self,stn):
-        name=format_stocktype(stn)
+        name=td.s.query(StockType).get(stn).format()
         self.sl=td.stock_search(stocktype=stn,exclude_stock_on_sale=False)
         if len(self.sl)==0:
             ui.infopopup(["There are no items of %s in stock "
@@ -543,7 +538,8 @@ class reprice_stocktype(ui.listpopup):
 
 def inconsistent_prices_menu():
     stl=td.stocktype_search_inconsistent_prices()
-    ml=[(format_stocktype(x),reprice_stocktype,(x,)) for x in stl]
+    ml=[(td.s.query(StockType).get(x).format(),reprice_stocktype,(x,))
+        for x in stl]
     ui.menu(ml,blurb="The following stock types have inconsistent pricing.  "
             "Choose a stock type to edit its pricing.",title="Stock types "
             "with inconsistent prices")

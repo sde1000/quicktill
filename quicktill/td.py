@@ -307,12 +307,6 @@ def trans_makefree(transid,removecode):
 
 ### Functions related to the stocktypes table
 
-def stocktype_info(stn):
-    cur=cursor()
-    cur.execute("SELECT dept,manufacturer,name,shortname,abv,unit "
-                "FROM stocktypes WHERE stocktype=%s",(stn,))
-    return cur.fetchone()
-
 def stocktype_completemanufacturer(m):
     global s
     result=s.execute(
