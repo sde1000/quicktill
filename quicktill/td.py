@@ -305,11 +305,6 @@ def trans_makefree(transid,removecode):
     cur.execute("DELETE FROM transactions WHERE transid=%s",(transid,))
     commit()
 
-def vat_info(band,date):
-    cur=cursor()
-    cur.execute("SELECT vatrate(%s,%s),business(%s,%s)",(band,date,band,date))
-    return cur.fetchone()
-
 def business_info(business):
     cur=cursor()
     cur.execute("SELECT name,abbrev,address,vatno FROM businesses "

@@ -1,7 +1,7 @@
 import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
-from .models import Delivery
+from .models import Delivery,VatBand
 
 driver=None
 labeldriver=None
@@ -65,8 +65,8 @@ def print_receipt(trans):
         # total.
         businesses={} # Keys are business IDs, values are (band,rate) tuples
         for i in list(bandtotals.keys()):
-            rate,business=td.vat_info(i,date)
-            businesses.setdefault(business,[]).append((i,rate))
+            vr=td.s.query(VatBand).get(i).at(date)
+            businesses.setdefault(vr.business.id,[]).append((i,vr.rate))
         for i in list(businesses.keys()):
             name,abbrev,address,vatno=td.business_info(i)
             bands=businesses[i]

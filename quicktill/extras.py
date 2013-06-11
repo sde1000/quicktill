@@ -1,5 +1,7 @@
 from __future__ import print_function
 from . import ui,keyboard,printer,tillconfig,event,td
+from .models import VatBand
+from decimal import Decimal
 import HTMLParser
 import urllib
 import traceback,sys,os,time,datetime
@@ -124,7 +126,7 @@ class bbcheck(ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         # We assume that VAT band 'A' is the current main VAT rate.
-        self.vatrate,business=td.vat_info('A',ui.now())
+        self.vatrate=float(td.s.query(VatBand).get('A').at(ui.now()).rate)
         self.vatrate=self.vatrate/100.0
         self.addstr(2,2,"   Total gross:")
         self.addstr(3,2,"Supplier share:")
