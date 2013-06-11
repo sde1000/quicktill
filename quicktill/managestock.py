@@ -3,6 +3,7 @@
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
+from .models import Department
 
 import logging
 from functools import reduce
@@ -157,12 +158,11 @@ class stockline_associations(ui.listpopup):
 
 class stocklevelcheck(ui.dismisspopup):
     def __init__(self):
-        depts=td.department_list()
-        self.deptlist=[x[0] for x in depts]
+        self.deptlist=td.s.query(Department).all()
         ui.dismisspopup.__init__(self,10,50,title="Stock level check",
                                  colour=ui.colour_input)
         self.addstr(2,2,'Department:')
-        self.deptfield=ui.listfield(2,14,20,self.deptlist,d=dict(depts),
+        self.deptfield=ui.listfield(2,14,20,self.deptlist,
                                     keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)})
         self.addstr(3,2,'    Period:')
@@ -181,7 +181,7 @@ class stocklevelcheck(ui.dismisspopup):
             return
         weeks=int(self.pfield.f)
         dept=(None if self.deptfield.f is None
-              else self.deptlist[self.deptfield.f])
+              else self.deptfield.read().id)
         self.dismiss()
         r=td.stocklevel_check(dept,'%d weeks'%weeks)
         r=[(name,str(sold),str(understock)) for (st,name,sold,understock) in r]

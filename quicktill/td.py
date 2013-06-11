@@ -333,13 +333,6 @@ def stocktype_search_inconsistent_prices():
                 "HAVING COUNT(DISTINCT s.saleprice)>1")
     return [x[0] for x in cur.fetchall()]
 
-### Functions related to the department table
-
-def department_list():
-    cur=cursor()
-    cur.execute("SELECT dept,description FROM departments ORDER BY dept")
-    return cur.fetchall()
-
 ### Functions related to finishing stock
 
 def stockfinish_list():
