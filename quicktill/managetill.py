@@ -38,23 +38,19 @@ class ssdialog(ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        session=td.sm()
         sc=Session(date)
-        session.add(sc)
-        session.commit()
+        td.s.add(sc)
+        td.s.commit()
         td.trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d"%sc.id)
         printer.kickout()
-        session.close()
         ui.infopopup(["Started session number %d."%sc.id],
                      title="Session started",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
 def startsession():
-    session=td.sm()
-    sc=Session.current(session)
-    session.close()
+    sc=Session.current(td.s)
     if sc:
         log.info("Start session: session %d still in progress"%sc.id)
         ui.infopopup(["There is already a session in progress (number %d, "
@@ -65,34 +61,28 @@ def startsession():
         ssdialog()
 
 def checkendsession():
-    session=td.sm()
-    try:
-        sc=Session.current(session)
-        if sc is None:
-            log.info("End session: no session in progress")
-            ui.infopopup(["There is no session in progress."],title="Error")
-            return None
-        tl=sc.incomplete_transactions
-        if len(tl)>0:
-            log.info("End session: there are incomplete transactions")
-            ui.infopopup(
-                ["There are incomplete transactions.  After dismissing "
-                 "this message, use the 'Recall Trans' button to find "
-                 "them, and either complete them, cancel them "
-                 "or defer them."],
-                title="Error")
-            return None
-        return sc
-    finally:
-        session.close()
+    sc=Session.current(td.s)
+    if sc is None:
+        log.info("End session: no session in progress")
+        ui.infopopup(["There is no session in progress."],title="Error")
+        return None
+    tl=sc.incomplete_transactions
+    if len(tl)>0:
+        log.info("End session: there are incomplete transactions")
+        ui.infopopup(
+            ["There are incomplete transactions.  After dismissing "
+             "this message, use the 'Recall Trans' button to find "
+             "them, and either complete them, cancel them "
+             "or defer them."],
+            title="Error")
+        return None
+    return sc
 
 def confirmendsession():
     r=checkendsession()
     if r is None: return
-    session=td.sm()
-    r=session.merge(r)
     r.endtime=datetime.datetime.now()
-    session.commit()
+    td.s.commit()
     register.registry.announce(None,0)
     log.info("End of session %d confirmed."%(r.id,))
     ui.infopopup(["Session %d has ended.  "
@@ -102,7 +92,6 @@ def confirmendsession():
                  dismiss=keyboard.K_CASH)
     printer.print_sessioncountup(r)
     printer.kickout()
-    session.close()
     stocklines.purge()
 
 def endsession():
@@ -129,11 +118,10 @@ def sessionlist(dbsession,func,unpaidonly=False,closedonly=False):
 class recordsession(ui.dismisspopup):
     def __init__(self,s):
         log.info("Record session takings popup: session %d"%s.id)
-        session=td.sm()
-        s=session.merge(s)
+        s=td.s.merge(s)
         self.session=s
         paytotals=dict(s.payment_totals)
-        paytypes=session.query(PayType).all()
+        paytypes=td.s.query(PayType).all()
         ui.dismisspopup.__init__(self,7+len(paytypes),60,
                                  title="Session %d"%s.id,
                                  colour=ui.colour_input)
@@ -157,7 +145,7 @@ class recordsession(ui.dismisspopup):
                 btcval=Decimal("0.00")
                 if pt>Decimal("0.00"):
                     try:
-                        tl=td.session_bitcoin_translist(session)
+                        tl=td.session_bitcoin_translist(s.id)
                         btcval=tillconfig.btcmerch_api.transactions_total(
                             ["tx%d"%t for t in tl])[u"total"]
                     except btcmerch.BTCMerchError:
@@ -175,7 +163,6 @@ class recordsession(ui.dismisspopup):
         self.fl[0][1].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
         self.fl[-1][1].keymap[keyboard.K_CASH]=(self.field_return,None)
         self.fl[0][1].focus()
-        session.close()
     def field_return(self):
         self.amounts={}
         def guessamount(field,expected):
@@ -204,15 +191,12 @@ class recordsession(ui.dismisspopup):
                      colour=ui.colour_confirm)
     def confirm_recordsession(self):
         log.info("Record session takings: confirmed session %d"%self.session.id)
-        session=td.sm()
-        s=session.merge(self.session)
+        s=td.s.merge(self.session)
         for paytype,field,expected in self.fl:
             if self.amounts[paytype]==Decimal("0.00"): continue
             st=SessionTotal(session=s,paytype=paytype,
                             amount=self.amounts[paytype])
             session.add(st)
-        session.commit()
-        session.close()
         tl=td.session_bitcoin_translist(self.session.id)
         if len(tl)>0:
             try:
@@ -224,9 +208,7 @@ class recordsession(ui.dismisspopup):
         self.dismiss()
 
 def sessiontakings():
-    session=td.sm()
-    m=sessionlist(session,recordsession,unpaidonly=True,closedonly=True)
-    session.close()
+    m=sessionlist(td.s,recordsession,unpaidonly=True,closedonly=True)
     if len(m)==0:
         log.info("Record takings: no sessions available")
         ui.infopopup(["Every session has already had its takings "
@@ -243,8 +225,7 @@ def totalpopup(s):
     """Display popup session totals given a Session object.
 
     """
-    session=td.sm()
-    s=session.merge(s)
+    s=td.s.merge(s)
     w=33
     def lr(l,r):
         return "%s%s%s"%(l,' '*(w-len(l)-len(r)),r)
@@ -295,7 +276,6 @@ def totalpopup(s):
     keymap={
         keyboard.K_PRINT:(printer.print_sessiontotals,(s,),False),
         }
-    session.close()
     ui.linepopup(l,title="Session number %d"%s.id,
                  colour=ui.colour_info,keymap=keymap,
                  dismiss=keyboard.K_CASH)
@@ -309,17 +289,13 @@ def transrestore():
 
 def sessionsummary():
     log.info("Session summary popup")
-    session=td.sm()
-    m=sessionlist(session,totalpopup)
+    m=sessionlist(td.s,totalpopup)
     ui.menu(m,title="Session Summary",blurb="Select a session and "
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
-    session.close()
 
 def currentsessionsummary():
-    session=td.sm()
-    sc=Session.current(session)
-    session.close()
+    sc=Session.current(td.s)
     if sc is None:
         ui.infopopup(["There is no session in progress."],title="Error")
     else:

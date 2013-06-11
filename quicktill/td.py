@@ -47,6 +47,32 @@ def cursor():
 def commit():
     con.commit()
 
+# ORM session; most database access will go through this
+s=None
+# Sessionmaker, set up during init()
+sm=None
+class SessionLifecycleError(Exception):
+    pass
+def start_session():
+    """
+    Change td.s from None to an active session object, or raise an
+    exception if td.s is not None.
+
+    """
+    global s,sm
+    if s is not None: raise SessionLifecycleError()
+    s=sm()
+def end_session():
+    """
+    Change td.s from an active session object to None, or raise an
+    exception if td.s is already None.  Calls s.close().
+
+    """
+    global s
+    if s is None: raise SessionLifecycleError()
+    s.close()
+    s=None
+
 ### Convenience functions
 
 def execone(cur,c,*args):
@@ -299,22 +325,20 @@ def stocktype_info(stn):
     return cur.fetchone()
 
 def stocktype_completemanufacturer(m):
-    session=sm()
-    result=session.execute(
+    global s
+    result=s.execute(
         select([StockType.manufacturer]).\
             where(StockType.manufacturer.ilike(m+'%'))
         )
-    session.close()
     return [x[0] for x in result]
 
 def stocktype_completename(m,n):
-    session=sm()
-    result=session.execute(
+    global s
+    result=s.execute(
         select([distinct(StockType.name)]).\
             where(StockType.manufacturer==m).\
             where(StockType.name.ilike(n+'%'))
         )
-    session.close()
     return [x[0] for x in result]
 
 def stocktype_search_inconsistent_prices():

@@ -6,6 +6,11 @@ from .models import Delivery
 driver=None
 labeldriver=None
 
+# All of these functions assume there's a database session in td.s
+# This should be the case if called during a keypress!  If being used
+# in any other context, create one using td.start_session() and then
+# remove it afterwards with td.end_session()
+
 def print_receipt(trans):
     from . import stock
     transopen=False
@@ -85,8 +90,6 @@ def print_receipt(trans):
     driver.end()
 
 def print_sessioncountup(s):
-    session=td.sm()
-    s=session.merge(s)
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
@@ -118,14 +121,11 @@ def print_sessioncountup(s):
     driver.printline("Enter totals into till using")
     driver.printline("management menu option 1,3.")
     driver.end()
-    session.close()
 
 def print_sessiontotals(s):
     """Print a session totals report given a Session object.
 
     """
-    session=td.sm()
-    s=session.merge(s)
     depts=s.dept_totals
     paytotals=dict(s.payment_totals)
     payments=dict([(x.paytype,x) for x in s.actual_totals])
@@ -174,13 +174,10 @@ def print_sessiontotals(s):
     driver.printline()
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.end()
-    session.close()
 
 def label_print_delivery(delivery):
-    session=td.sm()
-    d=session.query(Delivery).get(delivery)
+    d=td.s.query(Delivery).get(delivery)
     stocklabel_print(d.items)
-    session.close()
 
 def stocklabel_print(sl):
     """Print stock labels for a list of stock numbers.
@@ -219,8 +216,7 @@ def stocklabel_print(sl):
     labeldriver.end()
 
 def print_delivery(delivery):
-    session=td.sm()
-    d=session.query(Delivery).get(delivery)
+    d=td.s.query(Delivery).get(delivery)
     driver.start()
     driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
@@ -242,7 +238,6 @@ def print_delivery(delivery):
         driver.printline()
     driver.printline("\tEnd of list")
     driver.end()
-    session.close()
 
 def print_stocklist(sl,title="Stock List"):
     from . import stock

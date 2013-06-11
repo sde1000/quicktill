@@ -2,11 +2,9 @@ from . import ui,keyboard,td
 from .models import User
 
 def usersmenu(func):
-    session=td.sm()
-    users=session.query(User).order_by(User.code).all()
+    users=td.s.query(User).order_by(User.code).all()
     lines=ui.table([(u.code,u.name) for u in users]).format(' r l ')
     sl=[(x,func,(u.code,)) for x,u in zip(lines,users)]
-    session.close()
     ui.menu(sl,title="Users",blurb="Choose a user and press Cash/Enter.")
 
 class popup(ui.dismisspopup):
@@ -21,9 +19,7 @@ class popup(ui.dismisspopup):
         self.codefield.focus()
     def enter_key(self):
         if self.codefield.f=='': usersmenu(self.user_selected)
-        session=td.sm()
-        user=session.query(User).get(self.codefield.f)
-        session.close()
+        user=td.s.query(User).get(self.codefield.f)
         if user:
             self.dismiss()
             UnlockPopup(user)
@@ -63,9 +59,7 @@ class editusers(ui.listpopup):
 
     """
     def __init__(self):
-        session=td.sm()
-        ulist=session.query(User).order_by(User.code).all()
-        session.close()
+        ulist=td.s.query(User).order_by(User.code).all()
         f=ui.tableformatter(' l l ')
         headerline=ui.tableline(f,["Code","Name"])
         lines=[ui.tableline(f,(u.code,u.name),userdata=u.code)
@@ -79,11 +73,8 @@ class editusers(ui.listpopup):
         if k==keyboard.K_CANCEL and self.s and len(self.s.dl)>0:
             line=self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            session=td.sm()
-            u=session.query(User).get(line.userdata)
-            session.delete(u)
-            session.commit()
-            session.close()
+            u=td.s.query(User).get(line.userdata)
+            td.s.delete(u)
         elif k==keyboard.K_CASH:
             self.dismiss()
             adduser()
@@ -109,12 +100,8 @@ class adduser(ui.dismisspopup):
         if len(self.namefield.f)<2:
             ui.infopopup(["You must provide a name."],title="Error")
             return
-        session=td.sm()
-        if session.query(User).get(self.codefield.f):
+        if td.s.query(User).get(self.codefield.f):
             ui.infopopup(["That code is already in use."],title="Error")
-            session.close()
             return
         self.dismiss()
-        session.add(User(code=self.codefield.f,name=self.namefield.f))
-        session.commit()
-        session.close()
+        td.s.add(User(code=self.codefield.f,name=self.namefield.f))

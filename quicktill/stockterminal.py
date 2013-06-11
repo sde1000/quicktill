@@ -5,16 +5,14 @@ class page(ui.basicpage):
     def __init__(self,panel,hotkeys,locations=None):
         ui.basicpage.__init__(self,panel)
         self.display=0
-        self.alarm()
-        self.redraw()
+        self.alarm(need_new_session=False)
         self.hotkeys=hotkeys
         self.locations=locations if locations else ['Bar']
         event.eventlist.append(self)
     def pagename(self):
         return "Stock Control"
     def drawlines(self):
-        session=td.sm()
-        sl=td.stockline_summary(session,self.locations)
+        sl=td.stockline_summary(td.s,self.locations)
         y=1
         self.addstr(0,0,"Line")
         self.addstr(0,10,"StockID")
@@ -34,10 +32,8 @@ class page(ui.basicpage):
                 self.addstr(y,73,"%0.1f"%sos.stockitem.remaining)
             y=y+1
             if y>=(self.h-3): break
-        session.close()
     def drawstillage(self):
-        session=td.sm()
-        sl=td.stillage_summary(session)
+        sl=td.stillage_summary(td.s)
         y=1
         self.addstr(0,0,"Loc")
         self.addstr(0,5,"StockID")
@@ -51,7 +47,6 @@ class page(ui.basicpage):
                 self.addstr(y,70,a.stockitem.stockonsale.stockline.name[:9])
             y=y+1
             if y>=(self.h-3): break
-        session.close()
     def redraw(self):
         win=self.win
         win.erase()
@@ -64,15 +59,19 @@ class page(ui.basicpage):
             self.drawlines()
         elif self.display==1:
             self.drawstillage()
-    def alarm(self):
+    def alarm(self,need_new_session=True):
         self.nexttime=time.time()+60.0
         self.display=self.display+1
         if self.display>1: self.display=0
+        # There won't be a database session set up when we're called
+        # by the timer expiring.
+        if need_new_session: td.start_session()
         self.redraw()
+        if need_new_session: td.end_session()
     def keypress(self,k):
         if k in self.hotkeys: return self.hotkeys[k]()
         elif k==keyboard.K_CASH:
-            self.alarm()
+            self.alarm(need_new_session=False)
         elif k==ord('u') or k==ord('U'):
             stocklines.selectline(usestock.line_chosen,
                                   title="Use Stock",

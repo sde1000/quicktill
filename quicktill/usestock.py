@@ -45,43 +45,38 @@ def line_chosen(line):
     # We get all sorts of strange stuff if we're called from the popup,
     # but XXX let's deal with that later.  Assume for now we're being passed
     # a StockLine.
-    try:
-        session=td.sm()
-        line=session.merge(line)
-        sl=line.stockonsale
-        if line.capacity is None:
-            # We sell directly from a single stock item
-            if len(sl)==0:
-                pick_new_stock(line,blurb="Select a new stock item to put "
-                               "on sale as '%s', or press Clear to leave it "
-                               "unused."%(line.name,))
-            else:
-                finish_stock(session,line)
+    sl=line.stockonsale
+    if line.capacity is None:
+        # We sell directly from a single stock item
+        if len(sl)==0:
+            pick_new_stock(line,blurb="Select a new stock item to put "
+                           "on sale as '%s', or press Clear to leave it "
+                           "unused."%(line.name,))
         else:
-            # Several stock items are listed; stock can be taken from any of them.
-            # We need a window with a list of the current stock items, and
-            # a blurb that says:
-            lines=ui.table([("%d"%x.stockid,
-                             x.stockitem.stocktype.format(maxw=39).ljust(40),
-                             "%d"%(x.displayqty-x.stockitem.used,),
-                             "%d"%(x.stockitem.stockunit.size-x.displayqty))
-                            for x in sl]).format(' r l r+l ')
-            sl=[(x,select_stockitem,(line,y))
-                for x,y in zip(lines,sl)]
-            newstockblurb="Pick a stock item to add to %s."%name
-            ui.menu(sl,title="%s (%s) - display capacity %d"%
-                    (name,location,capacity),
-                    blurb="Press 1 to re-stock this stock line now.  "
-                    "Press 2 to add a new stock item to this line.  "
-                    "Alternatively, select a stock item from the list for "
-                    "options related to that item.",
-                    keymap={
-                    keyboard.K_ONE:(stocklines.restock_item,(stocklineid,),True),
-                    keyboard.K_TWO:(pick_new_stock,(line,newstockblurb),True)})
-    finally:
-        session.close()
+            finish_stock(line)
+    else:
+        # Several stock items are listed; stock can be taken from any of them.
+        # We need a window with a list of the current stock items, and
+        # a blurb that says:
+        lines=ui.table([("%d"%x.stockid,
+                         x.stockitem.stocktype.format(maxw=39).ljust(40),
+                         "%d"%(x.displayqty-x.stockitem.used,),
+                         "%d"%(x.stockitem.stockunit.size-x.displayqty))
+                        for x in sl]).format(' r l r+l ')
+        sl=[(x,select_stockitem,(line,y))
+            for x,y in zip(lines,sl)]
+        newstockblurb="Pick a stock item to add to %s."%name
+        ui.menu(sl,title="%s (%s) - display capacity %d"%
+                (name,location,capacity),
+                blurb="Press 1 to re-stock this stock line now.  "
+                "Press 2 to add a new stock item to this line.  "
+                "Alternatively, select a stock item from the list for "
+                "options related to that item.",
+                keymap={
+                keyboard.K_ONE:(stocklines.restock_item,(stocklineid,),True),
+                keyboard.K_TWO:(pick_new_stock,(line,newstockblurb),True)})
 
-def finish_stock(session,line):
+def finish_stock(line):
     # The line should have exactly one item of stock on sale.  Finish
     # this one.
     onsale=line.stockonsale[0]

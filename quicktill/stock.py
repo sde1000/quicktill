@@ -110,10 +110,9 @@ class stocktype(ui.dismisspopup):
             blurb2="creating new stock types!"
         else:
             raise Exception("Bad mode")
-        session=td.sm()
-        self.st=session.merge(default) if default else None
-        self.depts=session.query(Department).order_by(Department.id).all()
-        self.units=session.query(UnitType).all()
+        self.st=td.s.merge(default) if default else None
+        self.depts=td.s.query(Department).order_by(Department.id).all()
+        self.units=td.s.query(UnitType).all()
         ui.dismisspopup.__init__(self,15,48,title=title,colour=ui.colour_input)
         self.addstr(2,2,blurb1)
         self.addstr(3,2,blurb2)
@@ -154,7 +153,6 @@ class stocktype(ui.dismisspopup):
             self.manufield.keymap[keyboard.K_CASH]=(self.defaultname,None)
             self.namefield.keymap[keyboard.K_CASH]=(self.lookupname,None)
         self.manufield.focus()
-        session.close()
     def fill_fields(self,st):
         "Fill all fields from the specified stock type"
         self.manufield.set(st.manufacturer)
@@ -212,20 +210,18 @@ class stocktype(ui.dismisspopup):
     def lookupname(self):
         # Called when Enter is pressed on the Name field.  Fills in
         # other fields if there's a match with an existing item.
-        session=td.sm()
         # When the StockType object is loaded, we need to make sure it
         # re-uses the Department and StockUnit objects we loaded
         # earlier for the ui.listfield() fields.  Add them to the
         # session here so it knows about them.
         for d in self.depts:
-            session.add(d)
+            td.s.add(d)
         for u in self.units:
-            session.add(u)
-        l=session.query(StockType).\
+            td.s.add(u)
+        l=td.s.query(StockType).\
             filter_by(manufacturer=self.manufield.f).\
             filter_by(name=self.namefield.f).\
             all()
-        session.close()
         if len(l)>0:
             self.fill_fields(l[0])
             self.confirmbutton.focus()
@@ -236,12 +232,9 @@ class stocktype(ui.dismisspopup):
             self.snamefield.focus()
     def finish_save(self):
         self.dismiss()
-        session=td.sm()
         st=StockType()
         self.update_model(st)
-        session.add(st)
-        session.commit()
-        session.close()
+        td.s.add(st)
         self.func(st)
     def finish_mode1(self):
         # If there's an exact match then return the existing stock
@@ -252,8 +245,7 @@ class stocktype(ui.dismisspopup):
                           "which should be left blank for non-alcoholic "
                           "stock types)."],title="Error")
             return
-        session=td.sm()
-        st=session.query(StockType).\
+        st=td.s.query(StockType).\
             filter_by(manufacturer=self.manufield.f).\
             filter_by(name=self.namefield.f).\
             filter_by(shortname=self.snamefield.f).\
@@ -261,7 +253,6 @@ class stocktype(ui.dismisspopup):
             filter_by(unit=self.unitfield.read()).\
             filter_by(department=self.deptfield.read()).\
             first()
-        session.close()
         # Confirmation box time...
         if st is None:
             if self.allownew:
@@ -284,17 +275,13 @@ class stocktype(ui.dismisspopup):
                           "than ABV blank."],title="Error")
         else:
             self.dismiss()
-            session=td.sm()
-            self.st=session.merge(self.st)
+            self.st=td.s.merge(self.st)
             self.update_model(self.st)
-            session.commit()
-            session.close()
 
 # XXX should probably convert this to take a StockItem object rather
 # than a stock ID at some point
 def stockinfo_linelist(sn):
-    session=td.sm()
-    s=session.query(StockItem).get(sn)
+    s=td.s.query(StockItem).get(sn)
     l=[]
     l.append(s.stocktype.format()+" - %d"%s.id)
     l.append("Sells for %s%s/%s.  "
@@ -316,7 +303,6 @@ def stockinfo_linelist(sn):
         l.append("Annotations:")
     for a in s.annotations:
         l.append("%s: %s: %s"%(a.time,a.type.description,a.text))
-    session.close()
     return l
 
 def stockinfo_popup(sn,keymap={}):

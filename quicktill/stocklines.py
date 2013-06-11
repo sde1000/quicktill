@@ -12,10 +12,8 @@ def calculate_sale(stocklineid,items):
     remaining stock (ondisplay,instock)).
 
     """
-    session=td.sm()
-    stockline=session.query(StockLine).get(stocklineid)
+    stockline=td.s.query(StockLine).get(stocklineid)
     sl=stockline.stockonsale
-    session.close()
     if len(sl)==0:
         return ([],items,{},(0,0))
     # This section is only necessary until register is converted to use the ORM
@@ -57,9 +55,7 @@ def calculate_restock(stocklineid,target=None):
     affected stock items.
 
     """
-    session=td.sm()
-    stockline=session.query(StockLine).get(stocklineid)
-    session.close()
+    stockline=td.s.query(StockLine).get(stocklineid)
     if stockline.capacity is None: return None
     capacity=target if target else stockline.capacity
     log.info("Re-stock line '%s' capacity %d"%(stockline.name,capacity))
@@ -148,8 +144,7 @@ def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
 
     """
-    session=td.sm()
-    lines=session.query(StockLine).filter(capacity!=None).all()
+    lines=td.s.query(StockLine).filter(capacity!=None).all()
     lines=[x.id for x in lines]
     return restock_list(lines)
 
@@ -221,9 +216,7 @@ class create(ui.dismisspopup):
         ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
-        session=td.sm()
-        depts=session.query(Department).order_by(Department.id).all()
-        session.close()
+        depts=td.s.query(Department).order_by(Department.id).all()
         self.addstr(2,2,"    Stock line name:")
         self.addstr(3,2,"           Location:")
         self.addstr(4,2,"         Department:")
@@ -258,12 +251,11 @@ class create(ui.dismisspopup):
             ui.infopopup(["You may specify display capacity or quantity "
                           "to pull through, but not both."],title="Error")
             return
-        session=td.sm()
         sl=StockLine(name=self.namefield.f,
                      location=self.locfield.f,
                      department=self.deptfield.read(),
                      capacity=cap,pullthru=pullthru)
-        session.add(sl)
+        td.s.add(sl)
         try:
             session.commit()
         except td.IntegrityError:
@@ -272,8 +264,6 @@ class create(ui.dismisspopup):
                         self.namefield.f,)],
                          title="Error")
             return
-        finally:
-            session.close()
         self.dismiss()
         editbindings(sl)
 
@@ -332,25 +322,22 @@ class modify(ui.dismisspopup):
         capmsg=("  The change in display capacity will take effect next "
                 "time the line is re-stocked." if cap!=self.stockline.capacity
                 else "")
-        session=td.sm()
-        self.stockline=session.merge(self.stockline)
+        self.stockline=td.s.merge(self.stockline)
         self.stockline.name=self.namefield.f
         self.stockline.location=self.locfield.f
         self.stockline.capacity=cap
         self.stockline.pullthru=pullthru
         try:
-            session.commit()
+            td.s.commit()
         except:
             ui.infopopup(["Could not update stock line '%s'."%(
                         self.stockline.name,)],title="Error")
-            session.close()
             return
         self.dismiss()
         ui.infopopup(["Updated stock line '%s'.%s"%(
                     self.stockline.name,capmsg)],
                      colour=ui.colour_info,dismiss=keyboard.K_CASH,
                      title="Confirmation")
-        session.close()
 
 def editbindings(stockline):
     """Allow keyboard bindings for a stock line to be added and
@@ -370,8 +357,7 @@ def editbindings(stockline):
 
     """
 
-    session=td.sm()
-    stockline=session.merge(stockline)
+    stockline=td.s.merge(stockline)
     bindings=td.keyboard_checkstockline(tillconfig.kbtype,stockline.id)
     blurb=("To add a keyboard binding for '%s', press the appropriate line "
            "key now."%(stockline.name,))
@@ -389,7 +375,6 @@ def editbindings(stockline):
     for i in keyboard.lines:
         kb[i]=(addbinding,(stockline,i),True)
     ui.menu(menu,blurb=blurb,title="Edit keyboard bindings",keymap=kb)
-    session.close()
 
 class addbinding(ui.linepopup):
     def __init__(self,stockline,keycode):
@@ -470,8 +455,7 @@ def delete(stockline):
     the same time.
 
     """
-    session=td.sm()
-    stockline=session.merge(stockline)
+    stockline=td.s.merge(stockline)
     sl=stockline.stockonsale
     if len(sl)>0:
         message=["The stock line has been deleted.  Note that it still "
@@ -484,9 +468,8 @@ def delete(stockline):
     else:
         message=["The stock line has been deleted."]
     
-    session.delete(stockline)
-    session.commit()
-    session.close()
+    td.s.delete(stockline)
+    td.s.commit()
     ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
 
@@ -494,9 +477,7 @@ def listunbound():
     """Pop up a list of stock lines with no key bindings on any keyboard.
 
     """
-    session=td.sm()
-    l=td.stockline_listunbound(session)
-    session.close()
+    l=td.stockline_listunbound(td.s)
     if len(l)==0:
         ui.infopopup(["There are no stock lines that lack key bindings.",
                       "","Note that other tills may have key bindings to "
@@ -534,13 +515,11 @@ def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
     selected through that binding.
 
     """
-    session=td.sm()
-    q=session.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
-                                        StockLine.name)
+    q=td.s.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
+                                     StockLine.name)
     if caponly: q=q.filter(StockLine.capacity!=None)
     if exccap: q=q.filter(StockLine.capacity==None)
     stocklines=q.all()
-    session.close()
     mlines=ui.table([(x.name,x.location,"%d"%x.dept_id)
                      for x in stocklines]).format(' l l l ')
     ml=[(x,func,(y,)) for x,y in zip(mlines,stocklines)]

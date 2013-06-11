@@ -10,7 +10,7 @@
 # This is supplied using the initUI method.
 
 import sys,string,curses
-from . import keyboard,magcard,event
+from . import keyboard,magcard,event,td
 
 class curseskeyboard:
     # curses codes and their till keycode equivalents
@@ -92,7 +92,11 @@ class curseskeyboard:
         i=self.stdwin.getch()
         if i==-1: return
         if i in self.kbcodes: i=self.kbcodes[i]
+        # We ensure a database session exists for each keypress that
+        # is processed.
+        td.start_session()
         self.callback(i)
+        td.end_session()
     def keycap(self,k):
         if k in self.keycaps: return self.keycaps[k]
         return curses.keyname(k)

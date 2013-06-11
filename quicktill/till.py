@@ -14,6 +14,8 @@ def start(stdwin):
     # The display is initialised at this point
     stdwin.nodelay(1) # Make getch() non-blocking
 
+    td.start_session()
+
     # Initialise screen
     ui.init(stdwin)
 
@@ -25,6 +27,8 @@ def start(stdwin):
     ui.selectpage(fp)
     fp.firstpageinit()
 
+    td.end_session()
+
     # Enter main event loop
     event.eventloop()
 
@@ -34,6 +38,7 @@ def run():
     log.info("Starting version %s"%version)
     try:
         td.init()
+        td.start_session()
         # Copy keycaps from database to keyboard driver
         caps=td.keyboard_getcaps(tillconfig.kbtype)
         for keycode,keycap in caps:
@@ -41,6 +46,7 @@ def run():
                 log.info("Deleting stale keycap for layout %d keycode %s"%(
                     tillconfig.kbtype,keycode))
                 td.keyboard_delcap(tillconfig.kbtype,keycap)
+        td.end_session()
         curses.wrapper(start)
     except:
         log.exception("Exception caught at top level")
