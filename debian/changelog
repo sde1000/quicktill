@@ -1,3 +1,53 @@
+quicktill (0.9.28) stable; urgency=low
+
+  * New release 0.9.28
+
+  * Bitcoin merchant service status checker
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 31 May 2013 20:37:04 +0100
+
+quicktill (0.9.27) stable; urgency=low
+
+  * New release 0.9.27
+
+  * Bugfix: deal with sessions that have no Bitcoin transactions properly
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 27 May 2013 13:44:48 +0100
+
+quicktill (0.9.26) stable; urgency=low
+
+  * New release 0.9.26
+
+  * Try to use smaller qrcode in popup window
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 25 May 2013 14:08:17 +0100
+
+quicktill (0.9.25) stable; urgency=low
+
+  * New release 0.9.25
+
+  * Fix btcmerch basic auth base URL
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 23 May 2013 22:40:11 +0100
+
+quicktill (0.9.24) stable; urgency=low
+
+  * New release 0.9.24
+
+  * Update copyright dates
+
+  * Add python-qrcode dependency
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 23 May 2013 21:25:40 +0100
+
+quicktill (0.9.23) stable; urgency=low
+
+  * New release 0.9.23
+
+  * Bitcoin merchant service support
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 23 May 2013 21:20:46 +0100
+
 quicktill (0.9.22) stable; urgency=low
 
   * New release 0.9.22

@@ -3,7 +3,7 @@
 """
 
 import sys,math,curses,os
-from . import ui,keyboard,td,printer
+from . import ui,keyboard,td,printer,btcmerch
 from . import register,tillconfig,managekeyboard,stocklines,event
 from .version import version
 import datetime
@@ -146,13 +146,26 @@ class recordsession(ui.dismisspopup):
         for i in paytypes:
             self.addstr(y,2,"%s:"%i.description)
             if i in paytotals:
-                self.addstr(y,15,tillconfig.fc(paytotals[i]))
                 pt=paytotals[i]
             else:
                 pt=Decimal("0.00")
+            self.addstr(y,15,tillconfig.fc(pt))
             if i.paytype=='PPINT':
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
+            elif i.paytype=='BTC':
+                btcval=Decimal("0.00")
+                if pt>Decimal("0.00"):
+                    try:
+                        tl=td.session_bitcoin_translist(session)
+                        btcval=tillconfig.btcmerch_api.transactions_total(
+                            ["tx%d"%t for t in tl])[u"total"]
+                    except btcmerch.BTCMerchError:
+                        ui.infopopup(
+                            ["Could not retrieve Bitcoin total; please try "
+                             "again later."],title="Error")
+                field=ui.editfield(y,29,10,validate=ui.validate_float,
+                                   f="%0.2f"%btcval,readonly=True)
             else:
                 field=ui.editfield(y,29,10,validate=ui.validate_float)
             y=y+1
@@ -200,6 +213,13 @@ class recordsession(ui.dismisspopup):
             session.add(st)
         session.commit()
         session.close()
+        tl=td.session_bitcoin_translist(self.session.id)
+        if len(tl)>0:
+            try:
+                tillconfig.btcmerch_api.transactions_reconcile(
+                    str(self.session),["tx%d"%t for t in tl])
+            except:
+                pass
         printer.print_sessiontotals(self.session)
         self.dismiss()
 
@@ -324,6 +344,22 @@ class receiptprint(ui.dismisspopup):
         printer.print_receipt(rn)
         self.dismiss()
 
+def bitcoincheck():
+    log.info("Bitcoin service check")
+    if tillconfig.btcmerch_api is None:
+        return ui.infopopup(
+            ["Bitcoin service is not configured for this till."],
+            title="Bitcoin info",dismiss=keyboard.K_CASH)
+    try:
+        rv=tillconfig.btcmerch_api.test_connection()
+    except btcmerch.BTCMerchError as e:
+        return ui.infopopup([str(e)],title="Bitcoin error")
+    return ui.infopopup(
+        ["Bitcoin service ok; it reports it owes us %s for the current "
+         "session."%rv[u'total']],
+        title="Bitcoin info",dismiss=keyboard.K_CASH,
+        colour=ui.colour_info)
+
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
@@ -368,6 +404,7 @@ def popup():
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
+        (keyboard.K_SEVEN,"Check Bitcoin service connection",bitcoincheck,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]

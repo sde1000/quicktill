@@ -175,6 +175,8 @@ def main():
         tillconfig.usestock_hook=config['usestock_hook']
     if 'pingapint' in config:
         tillconfig.pingapint_api=config['pingapint']
+    if 'btcmerch' in config:
+        tillconfig.btcmerch_api=config['btcmerch']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

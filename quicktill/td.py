@@ -144,6 +144,13 @@ def trans_multiband(trans):
     bands=cur.fetchall()
     return len(bands)>1
 
+def trans_paid_by_bitcoin(trans):
+    "Determine whether a transaction includes a Bitcoin payment."
+    cur=cursor()
+    cur.execute("SELECT count(*)>0 FROM payments WHERE transid=%s "
+                "AND paytype='BTC'",(trans,))
+    return cur.fetchone()[0]
+
 def trans_age(trans):
     "Return the age of the transaction in days"
     cur=cursor()
@@ -856,6 +863,15 @@ def session_translist(session,onlyopen=False):
                 "GROUP BY t.transid,t.notes,t.closed "
                 "ORDER BY t.closed,t.transid DESC"%oos,(session,))
     return cur.fetchall()
+
+def session_bitcoin_translist(session):
+    """Returns the list of transactions involving Bitcoin payment in
+    a session."""
+    cur=cursor()
+    cur.execute("SELECT p.transid FROM payments p "
+                "LEFT JOIN transactions t ON t.transid=p.transid "
+                "WHERE p.paytype='BTC' AND t.sessionid=%s",(session,))
+    return [x[0] for x in cur.fetchall()]
 
 def db_version():
     cur=cursor()
