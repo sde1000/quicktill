@@ -1,7 +1,7 @@
 import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
-from .models import Delivery,VatBand
+from .models import Delivery,VatBand,Business
 
 driver=None
 labeldriver=None
@@ -68,14 +68,14 @@ def print_receipt(trans):
             vr=td.s.query(VatBand).get(i).at(date)
             businesses.setdefault(vr.business.id,[]).append((i,vr.rate))
         for i in list(businesses.keys()):
-            name,abbrev,address,vatno=td.business_info(i)
+            business=td.s.query(Business).get(i)
             bands=businesses[i]
             # Print the business info
-            driver.printline("\t%s"%name)
-            for l in address.split('\\n'):
+            driver.printline("\t%s"%business.name)
+            for l in business.address.split('\\n'):
                 driver.printline("\t%s"%l)
             driver.printline()
-            driver.printline("VAT reg no. %s"%vatno)
+            driver.printline("VAT reg no. %s"%business.vatno)
             for band,rate in bands:
                 # Print the band, amount ex VAT, amount inc VAT, gross
                 gross=bandtotals[band]

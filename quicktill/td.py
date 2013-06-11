@@ -305,12 +305,6 @@ def trans_makefree(transid,removecode):
     cur.execute("DELETE FROM transactions WHERE transid=%s",(transid,))
     commit()
 
-def business_info(business):
-    cur=cursor()
-    cur.execute("SELECT name,abbrev,address,vatno FROM businesses "
-                "WHERE business=%s",(business,))
-    return cur.fetchone()
-
 ### Functions related to the stocktypes table
 
 def stocktype_info(stn):
