@@ -3,7 +3,7 @@
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
-from .models import Department
+from .models import Department,FinishCode
 
 import logging
 from functools import reduce
@@ -20,8 +20,8 @@ def finish_reason(sn,reason):
                   title="Stock Finished",colour=ui.colour_info)
 
 def finish_item(sn):
-    sd=td.stock_info([sn])[0]
-    fl=[(x[1],finish_reason,(sn,x[0])) for x in td.stockfinish_list()]
+    sfl=td.s.query(FinishCode).all()
+    fl=[(x.description,finish_reason,(sn,x.id)) for x in sfl]
     ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
             sn,title="Finish Stock",w=60)
 

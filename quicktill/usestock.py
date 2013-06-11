@@ -1,7 +1,7 @@
 """Implements the "use stock" menu"""
 
 from . import ui,td,keyboard,stock,stocklines,tillconfig
-from models import StockLine
+from .models import StockLine,FinishCode
 
 import logging
 log=logging.getLogger()
@@ -94,8 +94,8 @@ def finish_stock(line):
                "till using the 'Finish stock not currently on sale' option "
                "on the stock management menu.")
     else:
-        fl=fl+[(x[1],finish_reason,(line,item.id,x[0]))
-               for x in td.stockfinish_list()]
+        sfl=td.s.query(FinishCode).all()
+        fl=fl+[(x.description,finish_reason,(line,item.id,x.id)) for x in sfl]
         blurb=blurb+"Please indicate why you're replacing it:"
     ui.menu(fl,blurb=blurb,title="Finish Stock",w=60)
 
