@@ -170,11 +170,15 @@ class prehkeyboard(curseskeyboard):
                 self.card.start_track(3)
             elif k==keyboard.K_M3T:
                 self.card.end_track(3)
+                td.start_session()
                 self.callback(self.card)
+                td.end_session()
                 self.card=None
             else:
                 self.card.handle_input(k)
             return
         if k in self.kbcodes: k=self.kbcodes[k]
+        td.start_session()
         self.callback(k)
+        td.end_session()
 
