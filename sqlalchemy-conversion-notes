@@ -15,10 +15,12 @@ Most code will access the session as td.s which will either be None or
 an active session object.
 
 td.sm() will obtain a new session, for code that needs a longer-lived
-session for whatever reason.
+session for whatever reason, or which needs to do fancy things with
+commit and rollback.
 
 td.start_session() will change td.s from None to an active session
 object, or raise an exception if td.s is not None
 
 td.end_session() will change td.s from an active session (calling
-close() on it) to None, or raise an exception if td.s is already None
+commit() and close() on it) to None, or raise an exception if td.s is
+already None

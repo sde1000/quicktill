@@ -73,6 +73,7 @@ def end_session():
     """
     global s
     if s is None: raise SessionLifecycleError()
+    s.commit()
     s.close()
     s=None
     log.debug("End session")
@@ -108,17 +109,6 @@ def trans_closed(trans):
     cur=cursor()
     return execone(
         cur,"SELECT closed FROM transactions WHERE transid=%s",(trans,))
-
-def trans_getnotes(trans):
-    cur=cursor()
-    return execone(
-        cur,"SELECT notes FROM transactions WHERE transid=%s",(trans,))
-
-def trans_setnotes(trans,notes):
-    cur=cursor()
-    cur.execute("UPDATE transactions SET notes=%s WHERE transid=%s",
-                (notes,trans))
-    commit()
 
 # See also stock_sell()
 

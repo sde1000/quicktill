@@ -40,7 +40,7 @@ class ssdialog(ui.dismisspopup):
         self.dismiss()
         sc=Session(date)
         td.s.add(sc)
-        td.s.commit()
+        td.s.flush() # Needed until trans_restore has been converted
         td.trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d"%sc.id)
@@ -82,7 +82,6 @@ def confirmendsession():
     r=checkendsession()
     if r is None: return
     r.endtime=datetime.datetime.now()
-    td.s.commit()
     register.registry.announce(None,0)
     log.info("End of session %d confirmed."%(r.id,))
     ui.infopopup(["Session %d has ended.  "

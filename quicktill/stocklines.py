@@ -257,7 +257,7 @@ class create(ui.dismisspopup):
                      capacity=cap,pullthru=pullthru)
         td.s.add(sl)
         try:
-            session.commit()
+            td.s.commit()
         except td.IntegrityError:
             ui.infopopup(["Could not create display space '%s'; there is "
                           "a display space with that name already."%(
@@ -469,7 +469,6 @@ def delete(stockline):
         message=["The stock line has been deleted."]
     
     td.s.delete(stockline)
-    td.s.commit()
     ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
 

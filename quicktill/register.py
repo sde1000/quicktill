@@ -41,7 +41,7 @@ log=logging.getLogger()
 from . import foodorder
 from . import pingapint
 from . import btcmerch
-from .models import Transline
+from .models import Transline,Transaction
 from decimal import Decimal
 
 zero=Decimal("0.00")
@@ -311,7 +311,7 @@ class btcpopup(ui.dismisspopup):
                 result[u'paid_so_far'],result[u'amount_in_btc']))
         if result['paid']:
             self.dismiss()
-            self.func(float(result[u'amount']),str(result['amount_in_btc']))
+            self.func(result[u'amount'],str(result['amount_in_btc']))
             return ui.infopopup(["Bitcoin payment received"],title="Bitcoin",
                                 dismiss=keyboard.K_CASH,colour=ui.colour_info)
 
@@ -324,15 +324,16 @@ class edittransnotes(ui.dismisspopup):
         ui.dismisspopup.__init__(self,5,60,
                                  title="Notes for transaction %d"%trans,
                                  colour=ui.colour_input)
-        notes=td.trans_getnotes(trans)
-        notes=notes if notes else ''
+        t=td.s.query(Transaction).get(trans)
+        notes=t.notes if t.notes else u''
         self.notesfield=ui.editfield(2,2,56,f=notes,flen=60,keymap={
                 keyboard.K_CASH:(self.enter,None)})
         self.notesfield.focus()
     def enter(self):
         notes=self.notesfield.f
         if notes=="": notes=None
-        td.trans_setnotes(self.trans,notes)
+        t=td.s.query(Transaction).get(self.trans)
+        t.notes=notes
         self.func()
         self.dismiss()
 
@@ -404,9 +405,10 @@ class page(ui.basicpage):
         self.s.redraw()
         ui.updateheader()
     def update_note(self):
-        note=td.trans_getnotes(self.trans) if self.trans is not None else ""
-        if note is None: note=""
-        note=note+" "*(self.w-len(note))
+        note=(td.s.query(Transaction).get(self.trans).notes
+              if self.trans is not None else None)
+        if note is None: note=u""
+        note=note+u" "*(self.w-len(note))
         self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
         # Note - moves the cursor
     def cursor_off(self):
@@ -1295,7 +1297,8 @@ class page(ui.basicpage):
         self.recalltrans(othertransid)
     def settransnote(self,trans,notes):
         if notes=="": notes=None
-        td.trans_setnotes(trans,notes)
+        t=td.s.query(Transaction).get(trans)
+        t.notes=notes
         self.update_note()
         self.redraw()
     def settransnotes_menu(self,trans):

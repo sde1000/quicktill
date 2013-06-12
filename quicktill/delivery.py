@@ -124,7 +124,6 @@ class delivery(ui.basicpopup):
     def reallydeleteline(self):
         stockitem=td.s.query(StockItem).get(self.dl[self.s.cursor].stockid)
         td.s.delete(stockitem)
-        td.s.commit()
         del self.dl[self.s.cursor]
         self.s.drawdl()
     def deleteline(self):
@@ -163,7 +162,6 @@ class delivery(ui.basicpopup):
         d=td.s.query(Delivery).get(self.dn)
         if self.pack_fields(d):
             self.dismiss()
-        td.s.commit()
     def printout(self):
         if self.dn is None: return
         d=td.s.query(Delivery).get(self.dn)
@@ -182,7 +180,6 @@ class delivery(ui.basicpopup):
         d=td.s.query(Delivery).get(self.dn)
         self.pack_fields(d)
         d.checked=True
-        td.s.commit()
         self.dismiss()
         stocklines.auto_allocate(deliveryid=self.dn,confirm=False)
     def confirmcheck(self):
@@ -202,12 +199,10 @@ class delivery(ui.basicpopup):
         self.dl[self.s.cursor].stockid=stockitem.id
         self.dl[self.s.cursor].update()
         self.s.cursor_down()
-        td.s.commit()
     def newline(self,stockitem):
         # The stockitem will not have been persisted
         stockitem.deliveryid=self.dn
         td.s.add(stockitem)
-        td.s.commit()
         self.dl.append(deliveryline(stockitem))
         self.s.cursor_down()
     def edit_line(self):
@@ -216,7 +211,6 @@ class delivery(ui.basicpopup):
             d=Delivery()
             if self.pack_fields(d):
                 td.s.add(d)
-                td.s.commit()
             else:
                 return
             self.dn=d.id
@@ -239,7 +233,6 @@ class delivery(ui.basicpopup):
                       stockunit=existing.stockunit,costprice=existing.costprice,
                       saleprice=existing.saleprice)
         td.s.add(new)
-        td.s.commit()
         self.dl.append(deliveryline(new))
         self.s.cursor_down()
     def reallydelete(self):
@@ -250,7 +243,6 @@ class delivery(ui.basicpopup):
         for i in d.items:
             td.s.delete(i)
         td.s.delete(d)
-        td.s.commit()
         self.dismiss()
     def confirmdelete(self):
         ui.infopopup(["Do you want to delete the entire delivery and all "
