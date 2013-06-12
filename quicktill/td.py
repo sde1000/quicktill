@@ -21,6 +21,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import distinct
 from models import *
 
+import logging
+log=logging.getLogger()
 
 # psycopg converted database numeric() types into float() types.
 
@@ -62,6 +64,7 @@ def start_session():
     global s,sm
     if s is not None: raise SessionLifecycleError()
     s=sm()
+    log.debug("Start session")
 def end_session():
     """
     Change td.s from an active session object to None, or raise an
@@ -72,6 +75,7 @@ def end_session():
     if s is None: raise SessionLifecycleError()
     s.close()
     s=None
+    log.debug("End session")
 
 ### Convenience functions
 

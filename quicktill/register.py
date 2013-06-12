@@ -10,7 +10,8 @@ etc."""
 # The screen header shows the page header, a summary of the other
 # pages, and the clock.  It needs updating whenever the current
 # transaction changes: from none to present, from present to none, or
-# from open to closed.  It is updated by calling ui.updateheader()
+# from open to closed.  It is updated by calling ui.updateheader();
+# this calls pagesummary() for all pages.
 #
 # The "buffer" line shows either a prompt or the input buffer at the
 # left, and the balance of the current transaction at the right.  It
@@ -40,6 +41,7 @@ log=logging.getLogger()
 from . import foodorder
 from . import pingapint
 from . import btcmerch
+from .models import Transline
 from decimal import Decimal
 
 zero=Decimal("0.00")
@@ -100,9 +102,10 @@ class tline(ui.lrline):
         self.transline=transline
         self.update()
     def update(self):
-        tli=td.trans_getline(self.transline)
-        self.transtime=tli[7]
-        self.ltext,self.rtext=stock.format_transline(tli)
+        tl=td.s.query(Transline).get(self.transline)
+        self.transtime=tl.time
+        self.ltext=tl.description
+        self.rtext=tl.regtotal(tillconfig.currency)
     def age(self):
         return datetime.datetime.now() - self.transtime
     def update_mark(self,ml):

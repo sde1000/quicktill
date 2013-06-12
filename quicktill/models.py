@@ -361,6 +361,34 @@ class Transline(Base):
     def total(self): return self.items*self.amount
     def __repr__(self):
         return "<Transline(%s,%s)>"%(self.id,self.transid)
+    @property
+    def description(self):
+        if self.text is not None: return self.text
+        if self.stockref is not None:
+            stockout=object_session(self).query(StockOut).get(self.stockref)
+            qty=stockout.qty/self.items
+            unitname=stockout.stockitem.stocktype.unit.name
+            if qty==Decimal("1.0"):
+                qtys=unitname
+            elif qty==Decimal("0.5"):
+                qtys=u"half %s"%unitname
+            else:
+                qtys=u"%s %s"%(qty,unitname)
+            if qtys==u'4.0 pint': qtys=u'4pt jug'
+            if qtys==u'2.0 25ml': qtys=u'double'
+            if qtys==u'2.0 50ml': qtys=u'double'
+            return u"%s %s"%(stockout.stockitem.stocktype.format(),qtys)
+        return self.department.description
+    def regtotal(self,currency):
+        """
+        The number of items and price formatted nicely for display in
+        the register or on a receipt.
+
+        """
+        if self.amount==Decimal("0.00"): return u""
+        if self.items==1: return u"%s%s"%(currency,self.amount)
+        return u"%d @ %s%s = %s%s"%(
+            self.items,currency,self.amount,currency,self.items*self.amount)
 
 add_ddl(Transline.__table__,"""
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$

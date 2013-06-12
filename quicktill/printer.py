@@ -1,7 +1,7 @@
 import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
-from .models import Delivery,VatBand,Business
+from .models import Delivery,VatBand,Business,Transline
 
 driver=None
 labeldriver=None
@@ -29,13 +29,13 @@ def print_receipt(trans):
     date=td.trans_date(trans)
     bandtotals={}
     for i in lines:
-        tli=td.trans_getline(i)
-        (transx,items,amount,dept,deptstr,stockref,
-         transcode,transtime,text,vatband)=tli
-        bandtotals[vatband]=bandtotals.get(vatband,Decimal("0.00"))+(items*amount)
-        left,right=stock.format_transline(tli)
+        tl=td.s.query(Transline).get(i)
+        bandtotals[tl.department.vatband]=bandtotals.get(
+            tl.department.vatband,Decimal("0.00"))+(tl.items*tl.amount)
+        left=tl.description
+        right=tl.regtotal(tillconfig.currency)
         if multiband and not transopen:
-            driver.printline("%s\t\t%s %s"%(left,right,vatband))
+            driver.printline("%s\t\t%s %s"%(left,right,tl.department.vatband))
         else:
             driver.printline("%s\t\t%s"%(left,right))
     totalpad="  " if multiband else ""

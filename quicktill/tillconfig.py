@@ -28,18 +28,6 @@ def pricepolicy(sd,qty):
     """
     return qty*sd['saleprice']
 
-def qtystring(qty,unitname):
-    if qty==1.0:
-        qtys=unitname
-    elif qty==0.5:
-        qtys="half %s"%unitname
-    else:
-        qtys="%.1f %s"%(qty,unitname)
-        if qtys=='4.0 pint': qtys='4pt jug'
-        if qtys=='2.0 25ml': qtys='double'
-        if qtys=='2.0 50ml': qtys='double'
-    return qtys
-
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None: return "None"

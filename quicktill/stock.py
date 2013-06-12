@@ -50,26 +50,6 @@ def format_stock(sd,maxw=None):
             d=sd['shortname']
     return d
 
-def format_transline(transline_info):
-    (trans,items,amount,dept,deptstr,stockref,
-     transcode,transtime,text,vatband)=transline_info
-    if text is not None:
-        ss=text
-    elif stockref is not None:
-        (qty,removecode,stockid,manufacturer,name,shortname,abv,
-         unitname)=td.stock_fetchline(stockref)
-        abvs=abvstr(abv)
-        qty=qty/items
-        qtys=tillconfig.qtystring(qty,unitname)
-        ss="%s %s%s %s"%(manufacturer,name,abvs,qtys)
-    else:
-        ss=deptstr
-    astr=("%d @ %s = %s"%(items,tillconfig.fc(amount),
-                            tillconfig.fc(items*amount)) if items!=1
-            else "%s"%tillconfig.fc(items*amount))
-    if amount==0.0: astr=""
-    return (ss,astr)
-
 class stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
 

@@ -157,8 +157,6 @@ def main():
         tillconfig.cashback_first=config['cashback_first']
     if 'pricepolicy' in config:
         tillconfig.pricepolicy=config['pricepolicy']
-    if 'qtystring' in config:
-        tillconfig.qtystring=config['qtystring']
     if 'format_currency' in config:
         tillconfig.fc=config['format_currency']
     if 'priceguess' in config:
