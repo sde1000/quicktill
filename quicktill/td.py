@@ -560,38 +560,6 @@ def stock_annotations(stock,atype=None):
                 "WHERE sa.stockid=%%s%s ORDER BY sa.time"%ac,(stock,))
     return cur.fetchall()
 
-def stocktake(dept=None):
-    cur=cursor()
-    if dept is None: deptclause=""
-    else: deptclause="and st.dept=%d "%dept
-    # We return:
-    # Department number
-    # Department name
-    # Stock type name
-    # Stock ID
-    # Stock line (may be null)
-    # Stock line display capacity (may be null)
-    # displayqty (may be null)
-    # used
-    # size
-    # unit
-    
-    cur.execute(
-        "select st.dept,d.description,st.shortname,s.stockid,"
-        "sl.name,sl.capacity,sos.displayqty,"
-        "(select sum(so.qty) as sum from stockout so "
-        "where so.stockid=s.stockid) as used,"
-        "su.size,su.unit "
-        "from stocktypes st "
-        "inner join stock s on s.stocktype=st.stocktype "
-        "left join stockonsale sos on s.stockid=sos.stockid "
-        "left join stocklines sl on sos.stocklineid=sl.stocklineid "
-        "left join stockunits su on s.stockunit=su.stockunit "
-        "left join departments d on st.dept=d.dept "
-        "where s.finished is null %s"
-        "order by st.dept,st.manufacturer,st.shortname,s.stockid"%deptclause)
-    return cur.fetchall()
-
 ### Find out what's on the stillage by checking annotations
 
 def stillage_summary(session):
