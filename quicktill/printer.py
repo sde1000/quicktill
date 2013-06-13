@@ -1,7 +1,7 @@
 import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
-from .models import Delivery,VatBand,Business,Transline
+from .models import Delivery,VatBand,Business,Transline,Transaction
 
 driver=None
 labeldriver=None
@@ -11,12 +11,12 @@ labeldriver=None
 # in any other context, create one using td.start_session() and then
 # remove it afterwards with td.end_session()
 
-def print_receipt(trans):
+def print_receipt(transid):
     from . import stock
+    trans=td.s.query(Transaction).get(transid)
     transopen=False
-    (lines,payments)=td.trans_getlines(trans)
-    if len(lines)==0: return
-    (linestotal,paymentstotal)=td.trans_balance(trans)
+    if len(trans.lines)==0: return
+    (linestotal,paymentstotal)=td.trans_balance(transid)
     if linestotal!=paymentstotal: transopen=True
     driver.start()
     driver.setdefattr(font=1)
@@ -25,11 +25,10 @@ def print_receipt(trans):
         driver.printline("\t%s"%i,colour=1)
     driver.printline("\tTel. %s"%tillconfig.pubnumber)
     driver.printline()
-    multiband=td.trans_multiband(trans)
-    date=td.trans_date(trans)
+    multiband=td.trans_multiband(transid)
+    date=trans.session.date
     bandtotals={}
-    for i in lines:
-        tl=td.s.query(Transline).get(i)
+    for tl in trans.lines:
         bandtotals[tl.department.vatband]=bandtotals.get(
             tl.department.vatband,Decimal("0.00"))+(tl.items*tl.amount)
         left=tl.description
@@ -41,21 +40,22 @@ def print_receipt(trans):
     totalpad="  " if multiband else ""
     driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(linestotal),totalpad),
                      colour=1,emph=1)
-    for amount,paytype,description,ref in payments:
-        if paytype=='CASH':
-            driver.printline("\t\t%s %s%s"%(ref,tillconfig.fc(amount),totalpad))
+    for p in trans.payments:
+        if p.paytype_id=='CASH':
+            driver.printline("\t\t%s %s%s"%(p.ref,
+                                            tillconfig.fc(p.amount),totalpad))
         else:
             if ref is None:
-                driver.printline("\t\t%s %s%s"%(description,
-                                                tillconfig.fc(amount),
+                driver.printline("\t\t%s %s%s"%(p.paytype.description,
+                                                tillconfig.fc(p.amount),
                                                 totalpad))
             else:
                 driver.printline("\t\t%s %s %s%s"%(
-                    description,ref,tillconfig.fc(amount),totalpad))
+                    p.paytype.description,p.ref,tillconfig.fc(p.amount),totalpad))
     driver.printline("")
     if transopen:
         driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)
-        driver.printline("\tTransaction number %d"%trans)
+        driver.printline("\tTransaction number %d"%trans.id)
     else:
         # We have a list of VAT bands; we need to look up rate and
         # business information for each of them.  Once we have the
@@ -85,7 +85,7 @@ def print_receipt(trans):
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
                         tillconfig.fc(gross)))
             driver.printline("")
-        driver.printline("\tReceipt number %d"%trans)
+        driver.printline("\tReceipt number %d"%trans.id)
     driver.printline("\t%s"%ui.formatdate(date))
     driver.end()
 

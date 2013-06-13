@@ -91,25 +91,6 @@ def ticket(cur,seq):
     "Fetch a new serial number from the named sequence"
     return execone(cur,"SELECT nextval(%s)",(seq,))
 
-### Functions relating to the transactions,lines,payments tables
-
-def trans_new(note=None):
-    "Create a new transaction and return its number"
-    # Check that there's a current session
-    s=session_current()
-    if not s: return None
-    cur=cursor()
-    t=ticket(cur,"transactions_seq")
-    cur.execute("INSERT INTO transactions (transid,sessionid,notes) "
-                "VALUES (%s,%s,%s)",(t,s[0],note))
-    commit()
-    return t
-
-def trans_closed(trans):
-    cur=cursor()
-    return execone(
-        cur,"SELECT closed FROM transactions WHERE transid=%s",(trans,))
-
 # See also stock_sell()
 
 def trans_addline(trans,dept,items,amountper,source,transcode,text=None):
@@ -171,13 +152,6 @@ def trans_paid_by_bitcoin(trans):
                 "AND paytype='BTC'",(trans,))
     return cur.fetchone()[0]
 
-def trans_age(trans):
-    "Return the age of the transaction in days"
-    cur=cursor()
-    cur.execute("SELECT extract(days from (now()-min(time))) "
-                "FROM translines WHERE transid=%s",(trans,))
-    return cur.fetchone()[0]
-
 def trans_balance(trans):
     "Return (linestotal,paymentstotal) on a transaction"
     cur=cursor()
@@ -191,41 +165,12 @@ def trans_balance(trans):
     else: paymentstotal=r[1]
     return (linestotal,paymentstotal)
 
-def trans_date(trans):
-    "Return the accounting date of the transaction"
-    cur=cursor()
-    d=execone(cur,"SELECT s.sessiondate FROM transactions t "
-              "LEFT JOIN sessions s ON t.sessionid=s.sessionid "
-              "WHERE t.transid=%s",(trans,))
-    return d
-
 def trans_addpayment(trans,ptype,amount,ref):
     """Add a payment to a transaction, and return the remaining balance.
     If the remaining balance is zero, mark the transaction closed."""
     cur=cursor()
     cur.execute("INSERT INTO payments (transid,amount,paytype,ref) VALUES "
                 "(%s,%s,%s,%s)",(trans,amount,ptype,ref))
-    (lines,payments)=trans_balance(trans)
-    remain=lines-payments
-    if remain==Decimal("0.00"):
-        cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
-                    (trans,))
-    commit()
-    return remain
-
-def trans_pingapint(trans,amount,code,vid,blob):
-    """Add a PingaPint voucher redemption to a transaction and return
-    the remaining balance.  If the remaining balance is zero, mark the
-    transaction closed.
-
-    This is similar to trans_addpayment but it's important that it all
-    execute in one database transaction."""
-    cur=cursor()
-    pid=ticket(cur,"payments_seq")
-    cur.execute("INSERT INTO payments (paymentid,transid,amount,paytype,ref) "
-                "VALUES (%s,%s,%s,'PPINT',%s)",(pid,trans,amount,code))
-    cur.execute("INSERT INTO pingapint (paymentid,amount,vid,json_data) VALUES "
-                "(%s,%s,%s,%s)",(pid,amount,vid,blob))
     (lines,payments)=trans_balance(trans)
     remain=lines-payments
     if remain==Decimal("0.00"):
@@ -277,9 +222,10 @@ def trans_restore():
     """Restores all deferred transactions.
 
     """
-    s=session_current()
-    if s is None: return 0
-    sessionid=s[0]
+    global s
+    sc=Session.current(s)
+    if sc is None: return 0
+    sessionid=sc.id
     cur=cursor()
     cur.execute("UPDATE transactions SET sessionid=%s WHERE sessionid IS NULL",
                 (sessionid,))
@@ -807,16 +753,6 @@ def keyboard_getcaps(layout):
 
 ### Functions relating to the sessions,sessiontotals tables
 
-def session_current():
-    "Return the current session number and the time it started."
-    cur=cursor()
-    cur.execute("SELECT sessionid,starttime,sessiondate FROM sessions WHERE "
-                "endtime IS NULL");
-    r=cur.fetchall()
-    if len(r)==1:
-        return r[0]
-    return None
-
 def session_list(session,unpaidonly,closedonly):
     """Return the list of sessions.  Explicitly undefers loading of
     the total column property so that we don't have to make a
@@ -833,23 +769,6 @@ def session_list(session,unpaidonly,closedonly):
     if closedonly:
         q=q.filter(Session.endtime!=None)
     return q.all()
-
-def session_translist(session,onlyopen=False):
-    """Returns the list of transactions in a session; transaction number,
-    closed status, total charge.
-
-    """
-    cur=cursor()
-    oos=""
-    if onlyopen:
-        oos="AND t.closed=FALSE "
-    cur.execute("SELECT t.transid,t.notes,t.closed,sum(tl.items*tl.amount) "
-                "FROM transactions t LEFT JOIN translines tl "
-                "ON t.transid=tl.transid "
-                "WHERE t.sessionid=%%s %s"
-                "GROUP BY t.transid,t.notes,t.closed "
-                "ORDER BY t.closed,t.transid DESC"%oos,(session,))
-    return cur.fetchall()
 
 def session_bitcoin_translist(session):
     """Returns the list of transactions involving Bitcoin payment in

@@ -39,9 +39,8 @@ import logging
 import datetime
 log=logging.getLogger()
 from . import foodorder
-from . import pingapint
 from . import btcmerch
-from .models import Transline,Transaction
+from .models import Transline,Transaction,Session
 from decimal import Decimal
 
 zero=Decimal("0.00")
@@ -201,32 +200,6 @@ class cardpopup(ui.dismisspopup):
         self.dismiss()
         self.func(total,receiptno)
 
-class pingapintpopup(ui.dismisspopup):
-    """A window that pops up whenever a PingaPint voucher is accepted.
-    It prompts for the voucher number and performs a validation
-    online.
-    
-    """
-    def __init__(self,func):
-        self.func=func
-        ui.dismisspopup.__init__(self,5,31+pingapint.codelengthmax,
-                                 title="PingaPint voucher",
-                                 colour=ui.colour_input)
-        self.addstr(2,2,"Please enter voucher code:")
-        self.vfield=ui.editfield(2,29,pingapint.codelengthmax,
-                                 validate=ui.validate_int,keymap={
-                keyboard.K_CASH:(self.enter,None)})
-        self.vfield.focus()
-    def enter(self):
-        if len(self.vfield.f)<pingapint.codelengthmin: return
-        try:
-            amount,vid,blob=r=tillconfig.pingapint_api.validate(self.vfield.f)
-            self.dismiss()
-            return self.func(amount,self.vfield.f,vid,blob)
-        except pingapint.PingaPintError as e:
-            self.vfield.set("")
-            ui.infopopup([str(e)],title="PingaPint error")
-
 class btcpopup(ui.dismisspopup):
     """
     A window used to accept a Bitcoin payment.
@@ -384,17 +357,17 @@ class page(ui.basicpage):
                                       self.balance)
     def pagename(self):
         if self.trans is not None:
-            ts=" - Transaction %d (%s)"%(self.trans,("open","closed")
-                                         [td.trans_closed(self.trans)])
+            ts=" - Transaction %d (%s)"%(self.trans.id,("open","closed")
+                                         [self.trans.closed])
         else: ts=""
         return "%s%s"%(self.name,ts)
     def pagesummary(self):
         if self.trans is None: return ""
-        elif td.trans_closed(self.trans): return ""
-        else: return "%s:%d"%(self.name[0],self.trans)
+        elif self.trans.closed: return ""
+        else: return "%s:%d"%(self.name[0],self.trans.id)
     def tnotify(self,name,trans):
         "Receive notification that another page has claimed this transaction"
-        if trans==0 or (self.name!=name and self.trans==trans):
+        if trans==0 or (self.name!=name and self.trans and self.trans.id==trans):
             self.clear()
             self.redraw()
     def redraw(self):
@@ -405,8 +378,7 @@ class page(ui.basicpage):
         self.s.redraw()
         ui.updateheader()
     def update_note(self):
-        note=(td.s.query(Transaction).get(self.trans).notes
-              if self.trans is not None else None)
+        note=self.trans.notes if self.trans is not None else None
         if note is None: note=u""
         note=note+u" "*(self.w-len(note))
         self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
@@ -417,8 +389,7 @@ class page(ui.basicpage):
         self.s.cursor=len(self.dl)
     def update_balance(self):
         if self.trans:
-            (lines,payments)=td.trans_balance(self.trans)
-            self.balance=lines-payments
+            self.balance=self.trans.total-self.trans.payments_total
             if self.balance==zero: self.balance=None
         else: self.balance=None
         self.update_bufferline()
@@ -440,10 +411,10 @@ class page(ui.basicpage):
         # buf is a price override.  Consider logging it.
         if self.buf is not None:
             if self.buf.find('.')>=0:
-                unitprice=float(self.buf)
+                unitprice=Decimal(self.buf)
             else:
-                unitprice=float(self.buf)/100.0
-            log.info("Register: linekey: manual price override to %0.2f"%(
+                unitprice=Decimal(self.buf)/Decimal("100.0")
+            log.info("Register: linekey: manual price override to %s"%(
                 unitprice))
         else:
             unitprice=None
@@ -515,12 +486,12 @@ class page(ui.basicpage):
                 repeat_lid=None
             else:
                 if unitprice is None: unitprice=tillconfig.pricepolicy(sd,qty)
-                lid=td.stock_sell(self.trans,sd['dept'],stockid,items,qty,
+                lid=td.stock_sell(self.trans.id,sd['dept'],stockid,items,qty,
                                   unitprice,self.name,'S')
                 self.dl.append(tline(lid))
                 log.info(
                     "Register: linekey: trans=%d,lid=%d,sn=%d,items=%d,qty=%f"
-                    %(self.trans,lid,stockid,items,qty))
+                    %(self.trans.id,lid,stockid,items,qty))
             if repeatcandidate: self.repeat=(line,lid,stockid)
         if stockremain is None:
             sd=snd[stockid]
@@ -582,9 +553,9 @@ class page(ui.basicpage):
         if self.qty: items=self.qty
         else: items=1
         if self.buf.find('.')>=0:
-            price=float(self.buf)
+            price=Decimal(self.buf)
         else:
-            price=float(self.buf)/100.0
+            price=Decimal(self.buf)/Decimal("100.0")
         self.prompt=self.defaultprompt
         self.clearbuffer()
         priceproblem=tillconfig.deptkeycheck(dept,price)
@@ -597,9 +568,9 @@ class page(ui.basicpage):
             return
         trans=self.gettrans()
         if trans is None: return
-        lid=td.trans_addline(trans,dept,items,price,self.name,'S')
+        lid=td.trans_addline(trans.id,dept,items,price,self.name,'S')
         log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
-                 "price=%f"%(trans,lid,dept,items,price))
+                 "price=%f"%(trans.id,lid,dept,items,price))
         self.repeat=(dept,lid)
         self.dl.append(tline(lid))
         self.cursor_off()
@@ -619,9 +590,9 @@ class page(ui.basicpage):
         trans=self.gettrans()
         if trans is None: return "Transaction cannot be started."
         for dept,text,amount in lines:
-            lid=td.trans_addline(trans,dept,1,amount,self.name,'S',text)
-            log.info("Register: deptline: trans=%d,lid=%d,dept=%d,"
-                     "price=%f,text=%s"%(trans,lid,dept,amount,text))
+            lid=td.trans_addline(trans.id,dept,1,amount,self.name,'S',text)
+            log.info("Register: deptlines: trans=%d,lid=%d,dept=%d,"
+                     "price=%f,text=%s"%(trans.id,lid,dept,amount,text))
             self.dl.append(tline(lid))
         self.repeat=None
         self.cursor_off()
@@ -629,17 +600,21 @@ class page(ui.basicpage):
         return True
     def gettrans(self):
         if self.trans:
-            if not td.trans_closed(self.trans):
+            if not self.trans.closed:
                 return self.trans
         self.clear()
-        self.trans=td.trans_new()
-        if self.trans is None:
+        session=Session.current(td.s)
+        if session is None:
             log.info("Register: gettrans: no session active")
             ui.infopopup(["No session is active.",
                           "You must use the Management menu "
                           "to start a session before you "
                           "can sell anything."],
                          title="Error")
+        else:
+            self.trans=Transaction(session=session)
+            td.s.add(self.trans)
+            td.s.flush()
         self.redraw()
         ui.updateheader()
         return self.trans
@@ -662,18 +637,16 @@ class page(ui.basicpage):
                           "'Drink In' button."],title="Error")
             return
         if self.buf.find('.')>=0:
-            amount=float(self.buf)
+            amount=Decimal(self.buf)
         else:
-            amount=float(self.buf)/100.0
-        if self.trans is None or td.trans_closed(self.trans):
+            amount=Decimal(self.buf)/Decimal("100.0")
+        if self.trans is None or self.trans.closed:
             ui.infopopup(["A Drink 'In' can't be the only item in a "
                           "transaction; it must be added to a transaction "
                           "that is already open."],title="Error")
             return
         self.clearbuffer()
-        trans=self.gettrans()
-        if trans is None: return # Will already have redrawn and displayed error
-        td.trans_addpayment(trans,'CASH',-amount,"Drink 'In'")
+        td.trans_addpayment(self.trans.id,'CASH',-amount,"Drink 'In'")
         self.dl.append(rline("Drink 'In' %s"%tillconfig.fc(-amount),
                              ui.colour_changeline))
         self.cursor_off()
@@ -691,7 +664,9 @@ class page(ui.basicpage):
                           "this message, press Clear and try again."],
                          title="Error")
             return
-        if self.trans is None or td.trans_closed(self.trans):
+        # We may have been entered from a dialog, bypassing the keypress method.
+        self.refresh_trans()
+        if self.trans is None or self.trans.closed:
             if self.buf is None:
                 log.info("Register: cashkey: NO SALE")
                 if tillconfig.nosale:
@@ -713,7 +688,7 @@ class page(ui.basicpage):
         if self.balance is None and len(self.ml)==0 and len(self.dl)==0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
-            td.trans_cancel(self.trans)
+            td.trans_cancel(self.trans.id)
             self.clear()
             self.redraw()
             return
@@ -738,24 +713,24 @@ class page(ui.basicpage):
             amount=self.balance
         else:
             if self.buf.find('.')>=0:
-                amount=float(self.buf)
+                amount=Decimal(self.buf)
             else:
-                amount=float(self.buf)/100.0
+                amount=Decimal(self.buf)/Decimal("100.0")
         self.clearbuffer()
         self.redraw()
-        if amount==0.0:
+        if amount==zero:
             log.info("Register: cashkey: payment of zero")
-            ui.infopopup(["You can't pay %s in cash!"%tillconfig.fc(0.0),
+            ui.infopopup(["You can't pay %s in cash!"%tillconfig.fc(zero),
                           'If you meant "exact change" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
         # We have a non-zero or null amount and a transaction. Pay it!
-        if amount is None: amount=0.0
-        remain=td.trans_addpayment(self.trans,'CASH',amount,'Cash')
+        if amount is None: amount=zero
+        remain=td.trans_addpayment(self.trans.id,'CASH',amount,'Cash')
         self.dl.append(
             rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
-        if remain<0.0:
+        if remain<zero:
             # There's some change!
             log.info("Register: cashkey: calculated change")
             td.trans_addpayment(self.trans,'CASH',remain,'Change')
@@ -784,7 +759,7 @@ class page(ui.basicpage):
                           "this message, press Clear and try again."],
                          title="Error")
             return
-        if self.trans is None or td.trans_closed(self.trans):
+        if self.trans is None or self.trans.closed:
             log.info("Register: cardkey: closed or no transaction")
             ui.infopopup(["There is no transaction in progress."],
                          title="Error")
@@ -799,83 +774,35 @@ class page(ui.basicpage):
                 amount=self.balance
             else:
                 if self.buf.find('.')>=0:
-                    amount=float(self.buf)
+                    amount=Decimal(self.buf)
                 else:
-                    amount=float(self.buf)/100.0
+                    amount=Decimal(self.buf)/Decimal("100.0")
             if amount is None: return # Empty transaction
             return cardpopup(amount,self.cardkey)
         else:
             log.info("Register: cardkey: explicit amount specified in call")
-        if amount==0.0:
+        if amount==zero:
             log.info("Register: cardkey: payment of zero")
-            ui.infopopup(["You can't pay %s by card!"%tillconfig.fc(0.0),
+            ui.infopopup(["You can't pay %s by card!"%tillconfig.fc(zero),
                           'If you meant "exact amount" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
         self.clearbuffer()
         # We have a non-zero amount and a transaction. Pay it!
-        remain=td.trans_addpayment(self.trans,'CARD',amount,receiptno)
+        remain=td.trans_addpayment(self.trans.id,'CARD',amount,receiptno)
         self.dl.append(rline('Card %s %s'%(receiptno,tillconfig.fc(amount)),
                              ui.colour_cashline))
-        if remain<0.0:
+        if remain<zero:
             # There's some cashback!
             log.info("Register: cardkey: calculated cashback")
-            td.trans_addpayment(self.trans,'CASH',remain,'Cashback')
+            td.trans_addpayment(self.trans.id,'CASH',remain,'Cashback')
             self.dl.append(rline('Cashback %s'%tillconfig.fc(remain),
                                  ui.colour_changeline))
         self.cursor_off()
         self.update_balance()
         ui.updateheader()
         printer.kickout()
-    def pingapintkey(self):
-        """Redeem a PingaPint voucher.  We don't support the user
-        specifying the voucher amount to redeem; we try to redeem for
-        the whole transaction and the PingaPint server tells us the
-        maximum value of the voucher.
-
-        Aside from that, this is fairly similar to dealing with a card
-        payment.
-
-        """
-        if self.qty is not None:
-            ui.infopopup(["You can't enter a quantity before telling "
-                          "the till about a payment.  After dismissing "
-                          "this message, press Clear and try again."],
-                         title="Error")
-            return
-        if self.trans is None or td.trans_closed(self.trans):
-            ui.infopopup(["There is no transaction in progress."],
-                         title="Error")
-            self.clearbuffer()
-            self.redraw()
-            return
-        if self.buf is not None:
-            ui.infopopup(["You can't specify an amount when redeeming a "
-                          "voucher.  After dismissing this message, "
-                          "press Clear and try again."],title="Error")
-            return
-        self.prompt=self.defaultprompt
-        if self.balance==0.0:
-            ui.infopopup(["There is nothing to pay."],title="Error")
-            return
-        self.clearbuffer()
-        return pingapintpopup(self.pingapint)
-    def pingapint(self,amount,code,vid,blob):
-        """Record a valid PingaPint voucher redemption.  This might be
-        for 0.0 if we are in test mode; go through the motions anyway!
-
-        """
-        # We don't give change for vouchers.  If the voucher amount is
-        # greater than the transaction balance, we keep the
-        # difference!
-        if amount>self.balance: amount=self.balance
-        td.trans_pingapint(self.trans,amount,code,vid,blob)
-        self.dl.append(rline('PingaPint %s %s'%(code,tillconfig.fc(amount)),
-                             ui.colour_cashline))
-        self.cursor_off()
-        self.update_balance()
-        ui.updateheader()
     def bitcoinkey(self):
         """
         Accept a Bitcoin payment.  This is currently quite primitive:
@@ -897,26 +824,26 @@ class page(ui.basicpage):
                           "this message, press Clear and try again."],
                          title="Error")
             return
-        if self.trans is None or td.trans_closed(self.trans):
+        if self.trans is None or self.trans.closed:
             ui.infopopup(["There is no transaction in progress."],
                          title="Error")
             self.clearbuffer()
             self.redraw()
             return
         self.prompt=self.defaultprompt
-        if td.trans_paid_by_bitcoin(self.trans):
+        if td.trans_paid_by_bitcoin(self.trans.id):
             ui.infopopup(["This transaction has already been paid by "
                           "Bitcoin; no other Bitcoin payments can be "
                           "accepted for it."],title="Error")
             return
         self.clearbuffer()
-        return btcpopup(self.bitcoin,self.trans,self.balance)
+        return btcpopup(self.bitcoin,self.trans.id,self.balance)
     def bitcoin(self,amount,btcamount):
         "We've been paid by bitcoin!"
-        remain=td.trans_addpayment(self.trans,'BTC',amount,btcamount)
+        remain=td.trans_addpayment(self.trans.id,'BTC',amount,btcamount)
         self.dl.append(rline('Bitcoin %s %s'%(btcamount,tillconfig.fc(amount)),
                              ui.colour_cashline))
-        if remain<0.0:
+        if remain<zero:
             # There's some cashback!
             log.info("Register: bitcoin: calculated cashback")
             td.trans_addpayment(self.trans,'CASH',remain,'Cashback')
@@ -927,7 +854,7 @@ class page(ui.basicpage):
         ui.updateheader()
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
-            td.trans_closed(self.trans)):
+            self.trans.closed):
             log.info("Register: numkey on closed transaction; "
                      "clearing display")
             self.clear()
@@ -986,13 +913,14 @@ class page(ui.basicpage):
         self.redraw()
     def clearkey(self):
         if (self.buf==None and self.qty==None and self.trans is not None and
-            td.trans_closed(self.trans)):
+            self.trans.closed):
             log.info("Register: clearkey on closed transaction; "
                      "clearing display")
             self.clear()
             self.redraw()
         else:
-            log.info("Register: clearkey on open transaction; clearing buffer")
+            log.info("Register: clearkey on open or null transaction; "
+                     "clearing buffer")
             self.cursor_off()
             self.clearbuffer()
             self.redraw()
@@ -1003,8 +931,8 @@ class page(ui.basicpage):
                           "print.  You can recall old transactions using "
                           "the 'Recall Trans' key."],title="Error")
             return
-        log.info("Register: printing transaction %d"%self.trans)
-        printer.print_receipt(self.trans)
+        log.info("Register: printing transaction %d"%self.trans.id)
+        printer.print_receipt(self.trans.id)
         ui.infopopup(["The receipt is being printed."],title="Printing",
                      dismiss=keyboard.K_CASH,colour=ui.colour_info)
     def cancelkey(self):
@@ -1027,7 +955,7 @@ class page(ui.basicpage):
                          title="Help on Cancel")
         else:
             if self.s.cursor>=len(self.dl):
-                closed=td.trans_closed(self.trans)
+                closed=self.trans.closed
                 if not closed and (
                     self.keyguard or 
                     (len(self.dl)>0 and
@@ -1040,11 +968,11 @@ class page(ui.basicpage):
                                  title="Cancel Transaction")
                 else:
                     log.info("Register: cancelkey confirm kill "
-                             "transaction %d"%self.trans)
+                             "transaction %d"%self.trans.id)
                     ui.infopopup(["Are you sure you want to %s all of "
                                   "transaction number %d?  Press Cash/Enter "
                                   "to confirm, or Clear to go back."%(
-                        ("cancel","void")[closed],self.trans)],
+                        ("cancel","void")[closed],self.trans.id)],
                                  title="Confirm Transaction Cancel",
                                  keymap={
                         keyboard.K_CASH: (self.canceltrans,None,True)})
@@ -1052,8 +980,8 @@ class page(ui.basicpage):
                 self.cancelline()
     def canceltrans(self):
         # Yes, they really want to do it.  But is it open or closed?
-        if td.trans_closed(self.trans):
-            log.info("Register: cancel closed transaction %d"%self.trans)
+        if self.trans.closed:
+            log.info("Register: cancel closed transaction %d"%self.trans.id)
             # Select all lines
             for i in range(0,len(self.dl)):
                 self.markline(i)
@@ -1062,10 +990,10 @@ class page(ui.basicpage):
         else:
             # Delete this transaction and everything to do with it
             log.info("Register: cancel open transaction %d"%self.trans)
-            tn=self.trans
+            tn=self.trans.id
             (tot,payments)=td.trans_balance(tn)
             td.trans_cancel(tn)
-            if payments>0.0:
+            if payments>zero:
                 printer.kickout()
                 refundtext="%s had already been put in the cash drawer."%(
                     tillconfig.fc(payments))
@@ -1083,7 +1011,7 @@ class page(ui.basicpage):
             l.update_mark(self.ml)
             self.s.drawdl()
     def cancelline(self,force=False):
-        if td.trans_closed(self.trans):
+        if self.trans.closed:
             l=self.dl[self.s.cursor]
             if isinstance(l,rline):
                 ui.infopopup(["You can't void payments from closed "
@@ -1141,10 +1069,10 @@ class page(ui.basicpage):
         if stockref is not None:
             (qty,removecode,stockitem,manufacturer,name,shortname,abv,
              unitname)=td.stock_fetchline(stockref)
-            lid=td.stock_sell(trans,dept,stockitem,-items,qty/items,
+            lid=td.stock_sell(trans.id,dept,stockitem,-items,qty/items,
                               amount,self.name,'V')
         else:
-            lid=td.trans_addline(trans,dept,-items,amount,
+            lid=td.trans_addline(trans.id,dept,-items,amount,
                                  self.name,'V',text)
         self.dl.append(tline(lid))
     def cancelmarked(self):
@@ -1152,7 +1080,7 @@ class page(ui.basicpage):
         self.clear()
         trans=self.gettrans()
         if trans is None: return
-        log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans))
+        log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans.id))
         for i in tl:
             self.voidline(i)
         self.cursor_off()
@@ -1169,7 +1097,7 @@ class page(ui.basicpage):
         if trans is not None:
             log.info("Register: recalltrans %d"%trans)
             registry.announce(self.name,trans)
-            self.trans=trans
+            self.trans=td.s.query(Transaction).get(trans)
             self.keyguard=True
             self.update_note()
             (lines,payments)=td.trans_getlines(trans)
@@ -1177,8 +1105,8 @@ class page(ui.basicpage):
                 self.dl.append(tline(i))
             for i in payments:
                 self.dl.append(payline(i))
-            if not td.trans_closed(trans):
-                age=td.trans_age(trans)
+            if not self.trans.closed:
+                age=self.trans.age
                 if age>2:
                     ui.infopopup(["This transaction is %d days old.  Please "
                                   "arrange for it to be paid soon."%age],
@@ -1186,7 +1114,7 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
     def recalltranskey(self):
-        sc=td.session_current()
+        sc=Session.current(td.s)
         if sc is None:
             log.info("Register: recalltrans: no session")
             ui.infopopup(["There is no session in progress.  You can "
@@ -1195,30 +1123,30 @@ class page(ui.basicpage):
             return
         log.info("Register: recalltrans")
         if (tillconfig.allow_tabs is False and self.keyguard is False and
-            not (self.trans is None or td.trans_closed(self.trans))):
+            not (self.trans is None or self.trans.closed)):
             ui.infopopup(["We do not run tabs.  Food and drink must "
                           "be paid for at the time it is ordered."],
                          title="Error")
             return
-        tl=td.session_translist(sc[0])
+        tl=sc.transactions
         def transsummary(t):
-            num,notes,closed,amount=t
-            return ("%d"%num,('open','closed')[closed],tillconfig.fc(amount),
-                    notes if notes else '')
+            return ("%d"%t.id,('open','closed')[t.closed],
+                    tillconfig.fc(t.total),t.notes if t.notes else u'')
         lines=ui.table([transsummary(x) for x in tl]).format(' r l r l ')
-        sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
+        sl=[(x,self.recalltrans,(t.id,)) for x,t in zip(lines,tl)]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
     def firstpageinit(self):
-        sc=td.session_current()
+        sc=Session.current(td.s)
         if sc is None: return
-        tl=td.session_translist(sc[0],onlyopen=True)
+        tl=[t for t in sc.transactions if not t.closed]
         if len(tl)<1: return
-        lines=ui.table([("%d"%num,tillconfig.fc(amount),notes if notes else '')
-                         for num,notes,closed,amount in tl]).format(' r r l ')
-        sl=[(x,self.recalltrans,(t[0],)) for x,t in zip(lines,tl)]
+        lines=ui.table([("%d"%t.id,tillconfig.fc(t.total),
+                         t.notes if t.notes else u'')
+                         for t in tl]).format(' r r l ')
+        sl=[(x,self.recalltrans,(t.id,)) for x,t in zip(lines,tl)]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Open Transactions",
                 blurb="There are some transactions already open.  Choose one "
@@ -1226,9 +1154,10 @@ class page(ui.basicpage):
                 "to this list by pressing the 'Recall Transaction' button.",
                 colour=ui.colour_input)
     def defertrans(self,transid):
-        if td.trans_closed(transid):
+        trans=td.s.query(Transaction).get(transid)
+        if trans.closed:
             ui.infopopup(["Transaction %d has been closed, and cannot now "
-                          "be deferred."],title="Error")
+                          "be deferred."%trans.id],title="Error")
             return
         self.clear()
         self.redraw()
@@ -1247,41 +1176,41 @@ class page(ui.basicpage):
                       "checking very carefully!"],
                      title="Convert to Free Drinks")
         return
-        if td.trans_closed(transid):
-            ui.infopopup(["Transaction %d has been closed, and cannot now "
-                          "be converted to free drinks."%transid],
-                         title="Error")
-            return
-        lines,payments=td.trans_getlines(transid)
-        if len(payments)>0:
-            ui.infopopup(["Some payments have already been entered against "
-                          "transaction %d, so it can't be converted to "
-                          "free drinks."%transid],
-                         title="Error")
-            return
-        td.trans_makefree(transid,'freebie')
-        self.clear()
-        self.redraw()
-        ui.infopopup(["Transaction %d has been converted to free drinks."%
-                      transid],title="Free Drinks",colour=ui.colour_confirm,
-                     dismiss=keyboard.K_CASH)
+        #if td.trans_closed(transid):
+        #    ui.infopopup(["Transaction %d has been closed, and cannot now "
+        #                  "be converted to free drinks."%transid],
+        #                 title="Error")
+        #    return
+        #lines,payments=td.trans_getlines(transid)
+        #if len(payments)>0:
+        #    ui.infopopup(["Some payments have already been entered against "
+        #                  "transaction %d, so it can't be converted to "
+        #                  "free drinks."%transid],
+        #                 title="Error")
+        #    return
+        #td.trans_makefree(transid,'freebie')
+        #self.clear()
+        #self.redraw()
+        #ui.infopopup(["Transaction %d has been converted to free drinks."%
+        #              transid],title="Free Drinks",colour=ui.colour_confirm,
+        #             dismiss=keyboard.K_CASH)
     def mergetransmenu(self,transid):
-        sc=td.session_current()
+        sc=Session.current(td.s)
         log.info("Register: mergetrans")
-        tl=td.session_translist(sc[0],onlyopen=True)
+        tl=[t for t in sc.transactions if not t.closed]
         def transsummary(t):
-            num,notes,closed,amount=t
-            return ("%d"%num,tillconfig.fc(amount),notes if notes else '')
+            return ("%d"%t.id,tillconfig.fc(t.total),t.notes if t.notes else u'')
         lines=ui.table([transsummary(x) for x in tl]).format(' r r l ')
-        sl=[(x,self.mergetrans,(transid,t[0])) for x,t in zip(lines,tl)
-            if t[0]!=transid]
+        sl=[(x,self.mergetrans,(transid,t.id)) for x,t in zip(lines,tl)
+            if t.id!=transid]
         ui.menu(sl,
                 title="Merge with transaction",
                 blurb="Select a transaction to merge this one into, "
                 "and press Cash/Enter.",
                 colour=ui.colour_input)
     def mergetrans(self,transid,othertransid):
-        if td.trans_closed(transid):
+        trans=td.s.query(Transaction).get(transid)
+        if trans.closed:
             ui.infopopup(["Transaction %d has been closed, and cannot now "
                           "be merged with another transaction."%transid],
                          title="Error")
@@ -1309,30 +1238,37 @@ class page(ui.basicpage):
                 blurb="Choose the new transaction note and press Cash/Enter.",
                 colour=ui.colour_input)
     def managetranskey(self):
-        if self.trans is None or td.trans_closed(self.trans):
+        if self.trans is None or self.trans.closed:
             ui.infopopup(["You can only modify an open transaction."],
                          title="Error")
             return
         menu=[(keyboard.K_ONE,"Defer transaction to next session",
-               self.defertrans,(self.trans,))]
+               self.defertrans,(self.trans.id,))]
         if tillconfig.transaction_to_free_drinks_function:
             menu=menu+[(keyboard.K_TWO,"Convert transaction to free drinks",
-                        self.freedrinktrans,(self.trans,))]
+                        self.freedrinktrans,(self.trans.id,))]
         menu=menu+[(keyboard.K_THREE,"Merge this transaction with another "
-                    "open transaction",self.mergetransmenu,(self.trans,)),
+                    "open transaction",self.mergetransmenu,(self.trans.id,)),
                    (keyboard.K_FOUR,"Set this transaction's notes "
-                    "(from menu)",self.settransnotes_menu,(self.trans,)),
+                    "(from menu)",self.settransnotes_menu,(self.trans.id,)),
                    (keyboard.K_FIVE,"Change this transaction's notes "
                     "(free text entry)",
                     edittransnotes,(self.trans,self.update_note))]
-        if tillconfig.pingapint_api:
-            menu=menu+[(keyboard.K_SIX,"Redeem a PingaPint voucher code",
-                        self.pingapintkey,None)]
         if tillconfig.btcmerch_api:
             menu=menu+[(keyboard.K_SEVEN,"Pay by Bitcoin",
                         self.bitcoinkey,None)]
-        ui.keymenu(menu,title="Transaction %d"%self.trans)
+        ui.keymenu(menu,title="Transaction %d"%self.trans.id)
+    def refresh_trans(self):
+        if self.trans:
+            td.s.add(self.trans)
+            td.s.refresh(self.trans)
     def keypress(self,k):
+        # This is our main entry point.  We will have a new database session.
+        # Update the transaction object before we do anything else!
+        self.refresh_trans()
+        if self.trans:
+            td.s.add(self.trans)
+            td.s.refresh(self.trans)
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
         if k in keyboard.lines:
@@ -1362,7 +1298,7 @@ class page(ui.basicpage):
         if k==keyboard.K_FOODORDER:
             trans=self.gettrans()
             if trans is None: return
-            return foodorder.popup(self.deptlines,transid=trans)
+            return foodorder.popup(self.deptlines,transid=trans.id)
         if k==keyboard.K_CANCELFOOD:
             return foodorder.cancel()
         curses.beep()
