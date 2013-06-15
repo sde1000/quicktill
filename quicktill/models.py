@@ -3,7 +3,7 @@ from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CH
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint
 from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
-from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
+from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
@@ -183,13 +183,15 @@ class Session(Base):
         "Returns a list of (StockType,quantity) tuples."
         return object_session(self).\
             query(StockType,func.sum(StockOut.qty)).\
-            select_from(Transaction).\
+            join(StockItem).\
+            join(StockOut).\
+            join(Transline,StockOut.id==Transline.stockref).\
+            join(Transaction).\
             filter(Transaction.sessionid==self.id).\
-            join(Transline).\
-            join(StockOut,StockOut.id==Transline.stockref).\
-            join(StockItem,StockType).\
-            group_by(StockType,Transline.dept_id).\
-            order_by(Transline.dept_id,desc(func.sum(StockOut.qty))).\
+            options(lazyload(StockType.department)).\
+            options(lazyload(StockType.unit)).\
+            group_by(StockType).\
+            order_by(StockType.dept_id,desc(func.sum(StockOut.qty))).\
             all()
     @classmethod
     def current(cls,session):
