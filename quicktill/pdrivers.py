@@ -2,6 +2,9 @@ import string,socket,os,tempfile,textwrap,subprocess
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
+import qrcode
+import logging
+log=logging.getLogger()
 
 # Methods a printer class should implement:
 # available - returns True if start/print/end is likely to succeed
@@ -73,6 +76,18 @@ class nullprinter:
     def kickout(self):
         pass
 
+def ep_2d_cmd(*params):
+    """
+    Assemble a 2d barcode command.  params are either 8-bit integers
+    or strings, which will be concatenated.  Strings are assumed to be
+    sequences of bytes here!
+
+    """
+    p=string.join([chr(x) if isinstance(x,int) else x for x in params],"")
+    pL=len(p)&0xff
+    pH=(len(p)>>8)&0xff
+    return string.join([chr(29),'(','k',chr(pL),chr(pH),p],"")
+
 class escpos:
     ep_reset=l2s([27,64,27,116,16])
     ep_pulse=l2s([27,ord('p'),0,50,50])
@@ -90,7 +105,8 @@ class escpos:
     ep_bitimage_sd=l2s([27,42,0]) # follow with 16-bit little-endian data length
     ep_short_feed=l2s([27,74,5])
     ep_half_dot_feed=l2s([27,74,1])
-    def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False):
+    def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False,
+                 lines_before_cut=3):
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -101,6 +117,7 @@ class escpos:
         self.dpl=dpl
         self.coding=coding
         self.has_cutter=has_cutter
+        self.lines_before_cut=lines_before_cut
     def available(self):
         if self.f: return True
         host=self.ci[0]
@@ -120,7 +137,7 @@ class escpos:
     def end(self):
         self.f.write(escpos.ep_ff)
         if self.has_cutter:
-            self.f.write('\n'*3+escpos.ep_left)
+            self.f.write('\n'*self.lines_before_cut+escpos.ep_left)
             self.f.write(escpos.ep_fullcut)
         self.f.flush()
         if self.ci is not None:
@@ -204,11 +221,10 @@ class escpos:
         return fits
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
-    def printqrcode(self,code):
-        """
-        code is a list of lists of True/False.
-
-        """
+    def printqrcode(self,data):
+        q=qrcode.QRCode(border=2)
+        q.add_data(data)
+        code=q.get_matrix()
         self.f.write(escpos.ep_unidirectional_on)
         # To get a good print, we print two rows at a time - but only
         # feed the paper through by one row.  This means that each
@@ -258,15 +274,63 @@ class Epson_TM_U220(escpos):
     def __init__(self,devicefile,paperwidth,coding='iso-8859-1',
                  has_cutter=False):
         # Characters per line with fonts 0 and 1
-        if paperwidth==57:
+        if paperwidth==57 or paperwidth==58:
             cpl=(25,30)
             dpl=148
         elif paperwidth==76:
             cpl=(33,40)
             dpl=192
         else:
-            raise "Unknown paper width"
+            raise Exception("Unknown paper width")
         escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter)
+
+class Epson_TM_T20(escpos):
+    def __init__(self,devicefile,paperwidth,coding='iso-8859-1'):
+        # Characters per line with fonts 0 and 1
+        if paperwidth==57 or paperwidth==58:
+            cpl=(35,46)
+            dpl=420
+        elif paperwidth==80:
+            cpl=(48,64)
+            dpl=576
+        else:
+            raise Exception("Unknown paper width")
+        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter=True,
+                        lines_before_cut=0)
+    def printqrcode(self,data):
+        log.debug("QR code print: %d bytes: %s"%(len(data),repr(data)))
+        # Set the size of a "module", in dots.  The default is apparently
+        # 3 (which is also the lowest).  The maximum is 16.
+        
+        # Note that these figures are for 58mm paper width.  I have
+        # not yet had a chance to calibrate for 80mm paper width.
+        ms=16
+        if len(data)>14: ms=14
+        if len(data)>24: ms=12
+        if len(data)>34: ms=11
+        if len(data)>44: ms=10
+        if len(data)>58: ms=9
+        if len(data)>64: ms=8
+        if len(data)>84: ms=7
+        if len(data)>119: ms=6
+        if len(data)>177: ms=5
+        if len(data)>250: ms=4
+        if len(data)>439: ms=3
+        if len(data)>742: return # Too big to print
+        self.f.write(ep_2d_cmd(49,67,ms))
+
+        # Set error correction:
+        # 48 = L = 7% recovery
+        # 49 = M = 15% recovery
+        # 50 = Q = 25% recovery
+        # 51 = H = 30% recovery
+        self.f.write(ep_2d_cmd(49,69,51))
+
+        # Send QR code data
+        self.f.write(ep_2d_cmd(49,80,48,data))
+
+        # Print the QR code
+        self.f.write(ep_2d_cmd(49,81,48))
 
 class pdf:
     def __init__(self,printcmd,width=140,pagesize=A4,

@@ -324,19 +324,13 @@ def print_order_cancel(driver,number):
     driver.end()
 
 def print_qrcode(btcinfo):
-    import qrcode
-    q=qrcode.QRCode(border=2)
-    q.add_data(btcinfo[u'to_pay_url'])
-    m=q.get_matrix()
     driver.start()
-    driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tBitcoin payment")
     driver.printline("\t%s"%btcinfo[u'description'])
     driver.printline("\t%s"%tillconfig.fc(float(btcinfo[u'amount'])))
     driver.printline("\t%s BTC to pay"%btcinfo[u'to_pay'])
-    driver.printqrcode(m)
+    driver.printqrcode(str(btcinfo[u'to_pay_url']))
     driver.printline()
     driver.printline()
     driver.end()
