@@ -19,7 +19,6 @@ def print_receipt(transid):
     (linestotal,paymentstotal)=td.trans_balance(transid)
     if linestotal!=paymentstotal: transopen=True
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     for i in tillconfig.pubaddr:
         driver.printline("\t%s"%i,colour=1)
@@ -34,9 +33,9 @@ def print_receipt(transid):
         left=tl.description
         right=tl.regtotal(tillconfig.currency)
         if multiband and not transopen:
-            driver.printline("%s\t\t%s %s"%(left,right,tl.department.vatband))
+            driver.printline("%s\t\t%s %s"%(left,right,tl.department.vatband),font=1)
         else:
-            driver.printline("%s\t\t%s"%(left,right))
+            driver.printline("%s\t\t%s"%(left,right),font=1)
     totalpad="  " if multiband else ""
     driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(linestotal),totalpad),
                      colour=1,emph=1)
@@ -83,7 +82,7 @@ def print_receipt(transid):
                 vat=gross-net
                 driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
-                        tillconfig.fc(gross)))
+                        tillconfig.fc(gross)),font=1)
             driver.printline("")
         driver.printline("\tReceipt number %d"%trans.id)
     driver.printline("\t%s"%ui.formatdate(date))
@@ -91,7 +90,6 @@ def print_receipt(transid):
 
 def print_sessioncountup(s):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%s.id,colour=1)
     driver.printline("\t%s"%ui.formatdate(s.date),colour=1)
@@ -131,7 +129,6 @@ def print_sessiontotals(s):
     payments=dict([(x.paytype,x) for x in s.actual_totals])
     paytypes=set(list(paytotals.keys())+list(payments.keys()))
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%s.id,colour=1)
     driver.printline("\t%s"%ui.formatdate(s.date),colour=1)
@@ -218,7 +215,6 @@ def stocklabel_print(sl):
 def print_delivery(delivery):
     d=td.s.query(Delivery).get(delivery)
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tDelivery %d"%d.id,colour=1)
     driver.printline("Supplier: %s"%d.supplier.name)
@@ -242,7 +238,6 @@ def print_delivery(delivery):
 def print_stocklist(sl,title="Stock List"):
     from . import stock
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\t%s"%title,colour=1)
     driver.printline("\t Printed %s"%ui.formattime(ui.now()))
@@ -260,7 +255,6 @@ def print_stocklist(sl,title="Stock List"):
 
 def print_restock_list(rl):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tRe-stock list")
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
@@ -285,7 +279,6 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
 
     """
     driver.start()
-    driver.setdefattr(font=1)
     if verbose:
         driver.printline("\t%s"%tillconfig.pubname,emph=1)
         for i in tillconfig.pubaddr:
@@ -319,7 +312,6 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
 
 def print_order_cancel(driver,number):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\tCANCEL order %d"%number,colour=1,emph=1)
     driver.printline()
     driver.printline("\t%s"%ui.formattime(ui.now()))
@@ -328,19 +320,13 @@ def print_order_cancel(driver,number):
     driver.end()
 
 def print_qrcode(btcinfo):
-    import qrcode
-    q=qrcode.QRCode(border=2)
-    q.add_data(btcinfo[u'to_pay_url'])
-    m=q.get_matrix()
     driver.start()
-    driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tBitcoin payment")
     driver.printline("\t%s"%btcinfo[u'description'])
     driver.printline("\t%s"%tillconfig.fc(float(btcinfo[u'amount'])))
     driver.printline("\t%s BTC to pay"%btcinfo[u'to_pay'])
-    driver.printqrcode(m)
+    driver.printqrcode(str(btcinfo[u'to_pay_url']))
     driver.printline()
     driver.printline()
     driver.end()
