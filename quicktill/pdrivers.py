@@ -106,7 +106,7 @@ class escpos:
     ep_short_feed=l2s([27,74,5])
     ep_half_dot_feed=l2s([27,74,1])
     def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False,
-                 lines_before_cut=3):
+                 lines_before_cut=3,default_font=0):
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -118,6 +118,7 @@ class escpos:
         self.coding=coding
         self.has_cutter=has_cutter
         self.lines_before_cut=lines_before_cut
+        self.default_font=default_font
     def available(self):
         if self.f: return True
         host=self.ci[0]
@@ -128,12 +129,12 @@ class escpos:
             self.s.connect(self.ci)
             self.f=self.s.makefile('w')
         self.colour=0
-        self.font=0
+        self.font=self.default_font
         self.emph=0
         self.underline=0
         self.cpl=self.fontcpl[0]
         self.f.write(escpos.ep_reset)
-        self.f.write(escpos.ep_font[0])
+        self.f.write(escpos.ep_font[self.font])
     def end(self):
         self.f.write(escpos.ep_ff)
         if self.has_cutter:
@@ -282,7 +283,8 @@ class Epson_TM_U220(escpos):
             dpl=192
         else:
             raise Exception("Unknown paper width")
-        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter)
+        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter,
+                        default_font=1)
 
 class Epson_TM_T20(escpos):
     def __init__(self,devicefile,paperwidth,coding='iso-8859-1'):
@@ -296,7 +298,7 @@ class Epson_TM_T20(escpos):
         else:
             raise Exception("Unknown paper width")
         escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter=True,
-                        lines_before_cut=0)
+                        lines_before_cut=0,default_font=0)
     def printqrcode(self,data):
         log.debug("QR code print: %d bytes: %s"%(len(data),repr(data)))
         # Set the size of a "module", in dots.  The default is apparently

@@ -10,7 +10,6 @@ def print_receipt(trans):
     (linestotal,paymentstotal)=td.trans_balance(trans)
     if linestotal!=paymentstotal: transopen=True
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     for i in tillconfig.pubaddr:
         driver.printline("\t%s"%i,colour=1)
@@ -26,9 +25,9 @@ def print_receipt(trans):
         bandtotals[vatband]=bandtotals.get(vatband,0.0)+(items*amount)
         left,right=stock.format_transline(tli)
         if multiband and not transopen:
-            driver.printline("%s\t\t%s %s"%(left,right,vatband))
+            driver.printline("%s\t\t%s %s"%(left,right,vatband),font=1)
         else:
-            driver.printline("%s\t\t%s"%(left,right))
+            driver.printline("%s\t\t%s"%(left,right),font=1)
     totalpad="  " if multiband else ""
     driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(linestotal),totalpad),
                      colour=1,emph=1)
@@ -74,7 +73,7 @@ def print_receipt(trans):
                 vat=gross-net
                 driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
-                        tillconfig.fc(gross)))
+                        tillconfig.fc(gross)),font=1)
             driver.printline("")
         driver.printline("\tReceipt number %d"%trans)
     driver.printline("\t%s"%ui.formatdate(date))
@@ -83,7 +82,6 @@ def print_receipt(trans):
 def print_sessioncountup(session):
     (start,end,accdate)=td.session_dates(session)
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%session,colour=1)
     driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
@@ -122,7 +120,6 @@ def print_sessiontotals(session):
     payments=td.session_actualtotals(session)
     paytypes=set(paytotals.keys()+payments.keys())
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tSession %d"%session,colour=1)
     driver.printline("\t%s"%ui.formatdate(accdate),colour=1)
@@ -214,7 +211,6 @@ def print_delivery(delivery):
     (name,tel,email)=td.supplier_fetch(supplier)
     items=td.delivery_items(delivery)
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tDelivery %d"%delivery,colour=1)
     driver.printline("Supplier: %s"%name)
@@ -238,7 +234,6 @@ def print_delivery(delivery):
 
 def print_stocklist(sl,title="Stock List"):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\t%s"%title,colour=1)
     driver.printline("\t Printed %s"%ui.formattime(ui.now()))
@@ -256,7 +251,6 @@ def print_stocklist(sl,title="Stock List"):
 
 def print_restock_list(rl):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tRe-stock list")
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
@@ -281,7 +275,6 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
 
     """
     driver.start()
-    driver.setdefattr(font=1)
     if verbose:
         driver.printline("\t%s"%tillconfig.pubname,emph=1)
         for i in tillconfig.pubaddr:
@@ -315,7 +308,6 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
 
 def print_order_cancel(driver,number):
     driver.start()
-    driver.setdefattr(font=1)
     driver.printline("\tCANCEL order %d"%number,colour=1,emph=1)
     driver.printline()
     driver.printline("\t%s"%ui.formattime(ui.now()))
