@@ -446,10 +446,8 @@ class twitter_client(ui.dismisspopup):
                         user.screen_name)
         self.tfield.focus()
     def refresh(self):
-        # We really ought to be using GetHomeTimeline but it doesn't
-        # exist yet in python-twitter.
         self.timeline=self.tapi.GetHomeTimeline(count=20)
-        self.timeline=self.timeline+self.tapi.GetReplies()
+        #self.timeline=self.timeline+self.tapi.GetReplies()
         self.timeline.sort(key=lambda x:x.created_at_in_seconds)
         self.timeline.reverse()
         self.tl=[Tweet(x) for x in self.timeline]
