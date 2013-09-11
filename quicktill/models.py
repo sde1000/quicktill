@@ -832,7 +832,7 @@ add_ddl(StockOut.__table__,
 Index('stockout_translineid_key',StockOut.translineid)
 Index('translines_time_key',Transline.time)
 
-foodorder_seq=Sequence('foodorder_seq')
+foodorder_seq=Sequence('foodorder_seq',metadata=metadata)
 
 if __name__=='__main__':
     from sqlalchemy import create_engine

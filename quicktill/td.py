@@ -19,7 +19,8 @@ from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import distinct
-from models import *
+from . import models
+from .models import *
 
 import logging
 log=logging.getLogger()
@@ -603,16 +604,12 @@ def stocklevel_check(dept=None,period='3 weeks'):
 ### Functions related to food order numbers
 
 def foodorder_reset():
-    cur=cursor()
-    cur.execute("DROP SEQUENCE foodorder_seq")
-    cur.execute("CREATE SEQUENCE foodorder_seq")
-    commit()
+    foodorder_seq.drop()
+    foodorder_seq.create()
 
 def foodorder_ticket():
-    cur=cursor()
-    n=ticket(cur,"foodorder_seq")
-    commit()
-    return n
+    global s
+    return s.execute(select([foodorder_seq.next_value()])).scalar()
 
 ### Functions related to stock lines
 
@@ -750,5 +747,6 @@ def init():
     # sessionmaker at some point; let's not do that for now so we can
     # spot potentially expired objects more easily while we're
     # converting the code.
+    models.metadata.bind=engine # for DDL, eg. to recreate foodorder_seq
     sm=sessionmaker(bind=engine)
     con=db.connect(database)
