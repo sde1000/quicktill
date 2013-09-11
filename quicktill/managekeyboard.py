@@ -1,4 +1,5 @@
 from . import keyboard,ui,td,tillconfig
+from .models import KeyCap
 
 # User interface for checking and editing the keyboard.  This really
 # only supports modification of keycaps of line keys; binding of keys
@@ -26,8 +27,11 @@ class popup(ui.dismisspopup):
     def setcap(self):
         if self.keycode is None: return
         if self.kcfield.f=="": return
-        td.keyboard_setcap(tillconfig.kbtype,keyboard.kcnames[self.keycode],
-                           self.kcfield.f)
+        newcap=KeyCap(layout=tillconfig.kbtype,
+                      keycode=keyboard.kcnames[self.keycode],
+                      keycap=self.kcfield.f)
+        td.s.merge(newcap)
+        td.s.flush()
         ui.kb.setkeycap(self.keycode,self.kcfield.f)
     def keypress(self,k):
         if k in keyboard.lines:

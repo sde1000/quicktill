@@ -682,25 +682,6 @@ def keyboard_delbinding(layout,keycode,menukey):
                 (layout,keycode,menukey))
     commit()
 
-def keyboard_setcap(layout,keycode,cap):
-    """keycode is a string.  Stores a new keycap for the specified keyboard layout."""
-    cur=cursor()
-    cur.execute("DELETE FROM keycaps WHERE layout=%s AND keycode=%s",(layout,keycode))
-    cur.execute("INSERT INTO keycaps (layout,keycode,keycap) VALUES (%s,%s,%s)",
-                (layout,keycode,cap))
-    commit()
-
-def keyboard_delcap(layout,keycode):
-    cur=cursor()
-    cur.execute("DELETE FROM keycaps WHERE layout=%s AND keycode=%s",(layout,keycode))
-    commit()
-
-def keyboard_getcaps(layout):
-    """Returns all the keycaps for a particular layout."""
-    cur=cursor()
-    cur.execute("SELECT keycode,keycap FROM keycaps WHERE layout=%s",(layout,))
-    return cur.fetchall()
-
 ### Functions relating to the sessions,sessiontotals tables
 
 def session_list(session,unpaidonly,closedonly):

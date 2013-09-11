@@ -9,6 +9,7 @@ from __future__ import print_function
 import sys,os,curses,logging,locale
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
+from .models import KeyCap
 
 def start(stdwin):
     # The display is initialised at this point
@@ -40,12 +41,13 @@ def run():
         td.init()
         td.start_session()
         # Copy keycaps from database to keyboard driver
-        caps=td.keyboard_getcaps(tillconfig.kbtype)
-        for keycode,keycap in caps:
-            if ui.kb.setkeycap(keyboard.keycodes[keycode],keycap)==False:
+        caps=td.s.query(KeyCap).filter(KeyCap.layout==tillconfig.kbtype).all()
+        for key in caps:
+            if ui.kb.setkeycap(keyboard.keycodes[key.keycode],key.keycap)==False:
                 log.info("Deleting stale keycap for layout %d keycode %s"%(
-                    tillconfig.kbtype,keycode))
-                td.keyboard_delcap(tillconfig.kbtype,keycap)
+                    tillconfig.kbtype,key.keycode))
+                td.s.delete(key)
+        td.s.flush()
         td.end_session()
         curses.wrapper(start)
     except:
