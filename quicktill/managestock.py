@@ -4,6 +4,7 @@ import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
 from .models import Department,FinishCode,StockLineTypeLog,StockLine,StockType
+from .models import StockItem
 
 import logging
 from functools import reduce
@@ -27,36 +28,43 @@ def finish_item(sn):
 
 def finishstock(dept=None):
     log.info("Finish stock")
-    sl=td.stock_search(dept=dept)
-    sinfo=td.stock_info(sl)
-    lines=ui.table([("%d"%x['stockid'],stock.format_stock(x))
-                    for x in sinfo]).format(' r l ')
-    sl=[(x,finish_item,(y['stockid'],)) for x,y in zip(lines,sinfo)]
+    sq=td.s.query(StockItem).join(StockItem.stocktype).\
+        filter(StockItem.finished==None).\
+        filter(StockItem.stockonsale==None).\
+        order_by(StockItem.id)
+    if dept: sq=sq.filter(StockType.dept_id==dept)
+    si=sq.all()
+    lines=ui.table([("%d"%s.id,s.stocktype.format())
+                    for s in si]).format(' r l ')
+    sl=[(x,finish_item,(y.id,)) for x,y in zip(lines,si)]
     ui.menu(sl,title="Finish stock not currently on sale",
             blurb="Choose a stock item to finish.")
 
-def format_stockmenuline(sd):
-    return ("%d"%sd['stockid'],
-            stock.format_stock(sd,maxw=40),
-            "%.0f %ss"%(sd['remaining'],sd['unitname']))
+def format_stockmenuline(stockitem):
+    return ("%d"%stockitem.id,
+            stockitem.stocktype.format(maxw=40),
+            "%.0f %ss"%(stockitem.remaining,stockitem.stocktype.unit.name))
 
 def print_stocklist_menu(sinfo,title):
+    td.s.add_all(sinfo)
     if printer.labeldriver is not None:
         menu=[
             (keyboard.K_ONE,"Print list",
              printer.print_stocklist,(sinfo,title)),
             (keyboard.K_TWO,"Print sticky labels",
-             printer.stocklabel_print,([x['stockid'] for x in sinfo],)),
+             printer.stocklabel_print,(sinfo,)),
             ]
         ui.keymenu(menu,"Stock print options",colour=ui.colour_confirm)
     else:
         printer.print_stocklist(sinfo,title)
 
 def stockdetail(sinfo):
+    # We are now passed a list of StockItem objects
+    td.s.add_all(sinfo)
     if len(sinfo)==1:
-        return stock.stockinfo_popup(sinfo[0]['stockid'])
+        return stock.stockinfo_popup(sinfo[0].id)
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
-    sl=[(x,stock.stockinfo_popup,(y['stockid'],))
+    sl=[(x,stock.stockinfo_popup,(y.id,))
         for x,y in zip(lines,sinfo)]
     print_title="Stock Check"
     ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
@@ -68,18 +76,22 @@ def stockdetail(sinfo):
 def stockcheck(dept=None):
     # Build a list of all not-finished stock items.
     log.info("Stock check")
-    sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
-    sinfo=td.stock_info(sl)
+    sq=td.s.query(StockItem).join(StockItem.stocktype).\
+        filter(StockItem.finished==None).\
+        order_by(StockItem.id)
+    if dept: sq=sq.filter(StockType.dept_id==dept)
+    sinfo=sq.all()
     # Split into groups by stocktype
     st={}
-    for i in sinfo:
-        st.setdefault(i['stocktype'],[]).append(i)
-    # Convert to a list
+    for s in sinfo:
+        st.setdefault(s.stocktype_id,[]).append(s)
+    # Convert to a list of lists; each inner list contains items with
+    # the same stocktype
     st=[x for x in list(st.values())]
     # We might want to sort the list at this point... sorting by ascending
     # amount remaining will put the things that are closest to running out
     # near the start - handy!
-    remfunc=lambda a:reduce(lambda x,y:x+y,[x['remaining'] for x in a])
+    remfunc=lambda a:reduce(lambda x,y:x+y,[x.remaining for x in a])
     cmpfunc=lambda a,b:(0,-1)[remfunc(a)<remfunc(b)]
     st.sort(cmpfunc)
     # We want to show name, remaining, items in each line
@@ -88,10 +100,10 @@ def stockcheck(dept=None):
     lines=[]
     details=[]
     for i in st:
-        name=stock.format_stock(i[0],maxw=40)
-        remaining=reduce(lambda x,y:x+y,[x['remaining'] for x in i])
+        name=i[0].stocktype.format(maxw=40)
+        remaining=reduce(lambda x,y:x+y,[x.remaining for x in i])
         items=len(i)
-        unit=i[0]['unitname']
+        unit=i[0].stocktype.unit.name
         lines.append((name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
             items,("s","")[items==1])))
         details.append(i)
@@ -106,11 +118,13 @@ def stockcheck(dept=None):
 def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
     log.info("Stock history")
-    sl=td.stock_search(finished_stock_only=True,dept=dept)
-    sl.reverse()
-    sinfo=td.stock_info(sl)
+    sq=td.s.query(StockItem).join(StockItem.stocktype).\
+        filter(StockItem.finished!=None).\
+        order_by(StockItem.id.desc())
+    if dept: sq=sq.filter(StockType.dept_id==dept)
+    sinfo=sq.all()
     lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
-    sl=[(x,stock.stockinfo_popup,(y['stockid'],))
+    sl=[(x,stock.stockinfo_popup,(y.id,))
         for x,y in zip(lines,sinfo)]
     title=("Stock History" if dept is None
            else "Stock History department %d"%dept)

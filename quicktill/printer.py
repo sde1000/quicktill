@@ -180,6 +180,7 @@ def stocklabel_print(sl):
     """Print stock labels for a list of stock numbers.
 
     """
+    td.s.add_all(sl)
     labeldriver.start()
     def stock_label(f,width,height,d):
         # Item name
