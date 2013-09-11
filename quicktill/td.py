@@ -600,32 +600,6 @@ def stocklevel_check(dept=None,period='3 weeks'):
         "ORDER BY understock DESC"%(deptstr,period))
     return cur.fetchall()
 
-### Functions related to the stocktype/stockline log table
-
-def stockline_stocktype_log(stocklines=None):
-    cur=cursor()
-    if stocklines is None:
-        slt=""
-    else:
-        slt="WHERE ssl.stocklineid IN (%s) "%(
-            ",".join(["%d"%x for x in stocklines]))
-    cur.execute(
-        "SELECT ssl.stocklineid,ssl.stocktype,sl.name,st.shortname "
-        "FROM stockline_stocktype_log ssl "
-        "LEFT JOIN stocklines sl ON ssl.stocklineid=sl.stocklineid "
-        "LEFT JOIN stocktypes st ON ssl.stocktype=st.stocktype "
-        "%s"
-        "ORDER BY sl.dept,sl.name,st.shortname"%slt)
-    return cur.fetchall()
-
-def stockline_stocktype_log_del(stockline,stocktype):
-    cur=cursor()
-    cur.execute(
-        "DELETE FROM stockline_stocktype_log "
-        "WHERE stocklineid=%s AND stocktype=%s",(stockline,stocktype))
-    commit()
-    return
-
 ### Functions related to food order numbers
 
 def foodorder_reset():

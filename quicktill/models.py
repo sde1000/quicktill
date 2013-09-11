@@ -773,8 +773,8 @@ class StockLineTypeLog(Base):
     stocktype_id=Column('stocktype',Integer,
                         ForeignKey('stocktypes.stocktype',ondelete='CASCADE'),
                         nullable=False,primary_key=True)
-    stockline=relationship(StockLine,backref=backref('stocktype_log',passive_deletes=True))
-    stocktype=relationship(StockType,backref=backref('stockline_log',passive_deletes=True))
+    stockline=relationship(StockLine,backref=backref('stocktype_log',passive_deletes=True),lazy='joined')
+    stocktype=relationship(StockType,backref=backref('stockline_log',passive_deletes=True),lazy='joined')
     def __repr__(self):
         return "<StockLineTypeLog(%s,%s)>"%(self.stocklineid,self.stocktype_id)
 

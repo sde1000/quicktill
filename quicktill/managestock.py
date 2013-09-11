@@ -3,7 +3,7 @@
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
-from .models import Department,FinishCode
+from .models import Department,FinishCode,StockLineTypeLog,StockLine,StockType
 
 import logging
 from functools import reduce
@@ -139,11 +139,18 @@ class stockline_associations(ui.listpopup):
         those; otherwise list all of them.
 
         """
-        salist=td.stockline_stocktype_log(stocklines)
+        stllist=td.s.query(StockLineTypeLog).\
+            join(StockLineTypeLog.stockline).\
+            join(StockLineTypeLog.stocktype).\
+            order_by(StockLine.dept_id,StockLine.name,StockType.fullname)
+        if stocklines:
+            stllist=stllist.filter(StockLine.id.in_(stocklines))
+        stllist=stllist.all()
         f=ui.tableformatter(' l l ')
         headerline=ui.tableline(f,["Stock line","Stock type"])
-        lines=[ui.tableline(f,(linename,stname),userdata=(linenum,stocktype))
-               for (linenum,stocktype,linename,stname) in salist]
+        lines=[ui.tableline(f,(stl.stockline.name,stl.stocktype.fullname),
+                            userdata=stl)
+               for stl in stllist]
         ui.listpopup.__init__(
             self,lines,title="Stockline / Stock type associations",
             header=["Press Cancel to delete an association.  "+blurb,
@@ -152,7 +159,9 @@ class stockline_associations(ui.listpopup):
         if k==keyboard.K_CANCEL and self.s:
             line=self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            td.stockline_stocktype_log_del(*line.userdata)
+            td.s.add(line.userdata)
+            td.s.delete(line.userdata)
+            td.s.flush()
         else:
             ui.listpopup.keypress(self,k)
 
