@@ -488,18 +488,6 @@ def listunbound():
         ui.linepopup(ll,title="Unbound stock lines",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
-def purge():
-    """Stock items that have been completely used up through the
-    display mechanism should be marked as 'finished' in the stock
-    table, and purged from the stockonsale table.  This is usually
-    done automatically at the end of each session because stock items
-    may be put back on display through the voiding mechanism during
-    the session, but is also available as an option on the till
-    management menu.
-
-    """
-    td.stock_purge()
-
 class translate_keyline_to_stockline:
     def __init__(self,func):
         self.func=func

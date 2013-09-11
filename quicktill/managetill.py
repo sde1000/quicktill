@@ -91,7 +91,7 @@ def confirmendsession():
                  dismiss=keyboard.K_CASH)
     printer.print_sessioncountup(r)
     printer.kickout()
-    stocklines.purge()
+    td.stock_purge()
 
 def endsession():
     r=checkendsession()

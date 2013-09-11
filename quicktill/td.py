@@ -10,13 +10,14 @@ import time
 import psycopg2 as db
 import psycopg2.extensions
 from decimal import Decimal
+import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql.expression import tuple_,func,null
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select,not_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import distinct
 from . import models
@@ -469,22 +470,32 @@ def stock_allocate(aal):
     commit()
 
 def stock_purge():
-    cur=cursor()
-    cur.execute(
-        "SELECT sos.stockid INTO TEMPORARY TABLE t_stockpurge "
-        "FROM stocklines sl "
-        "LEFT JOIN stockonsale sos ON sos.stocklineid=sl.stocklineid "
-        "LEFT JOIN stockinfo si ON si.stockid=sos.stockid "
-        "WHERE sl.capacity IS NOT NULL "
-        "AND si.used=si.size")
-    cur.execute(
-        "UPDATE stock SET finished=now(),finishcode='empty' "
-        "WHERE stockid IN (SELECT stockid FROM t_stockpurge)")
-    cur.execute(
-        "DELETE FROM stockonsale WHERE stockid IN "
-        "(SELECT stockid FROM t_stockpurge)")
-    cur.execute("DROP TABLE t_stockpurge")
-    commit()
+    """Stock items that have been completely used up through the
+    display mechanism should be marked as 'finished' in the stock
+    table, and purged from the stockonsale table.  This is usually
+    done automatically at the end of each session because stock items
+    may be put back on display through the voiding mechanism during
+    the session, but is also available as an option on the till
+    management menu.
+
+    """
+    global s
+    # Find stockonsale that is ready for purging: used==size on a
+    # stockline that has a display capacity
+    finished=s.query(StockOnSale).\
+        join(StockOnSale.stockline).\
+        join(StockOnSale.stockitem).\
+        filter(not_(StockLine.capacity==None)).\
+        filter(StockItem.remaining==0.0).\
+        all()
+
+    # Mark all these stockitems as finished, removing them from being
+    # on sale as we go
+    for sos in finished:
+        sos.stockitem.finished=datetime.datetime.now()
+        sos.stockitem.finishcode_id='empty' # guaranteed to exist
+        s.delete(sos)
+    s.flush()
 
 def stock_recordwaste(stock,reason,amount,update_displayqty):
     """Record wastage of a stock item.  If update_displayqty is set then
