@@ -1,49 +1,43 @@
 import logging
 from . import keyboard,ui,td,tillconfig,printer
-from .models import Department,StockLine
+from .models import Department,StockLine,KeyboardBinding
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
-    """Given a line, work out a plan to remove a number of items from
+    """
+    Given a line, work out a plan to remove a number of items from
     display.  They may be sold, wasted, etc.
 
-    Returns (list of (stockid,items) pairs, the number of items that
-    could not be allocated, a dictionary of all involved stock items,
-    remaining stock (ondisplay,instock)).
+    Returns (list of (stockitem,items) pairs, the number of items that
+    could not be allocated, remaining stock (ondisplay,instock)).
 
     """
     stockline=td.s.query(StockLine).get(stocklineid)
     sl=stockline.stockonsale
     if len(sl)==0:
-        return ([],items,{},(0,0))
-    # This section is only necessary until register is converted to use the ORM
-    sinfo=td.stock_info([x.stockitem.id for x in sl])
-    snd={}
-    for a,b in zip(sl,sinfo):
-        if a.displayqty is None: b['displayqty']=0
-        else: b['displayqty']=a.displayqty
-        snd[b['stockid']]=b
+        return ([],items,(0,0))
     # Iterate over the stock items attached to the line and produce a
     # list of (stockid,items) pairs if possible; otherwise produce an
     # error message If the stockline has no capacity mentioned
     # ("capacity is None") then bypass this and just sell the
     # appropriate number of items from the only stockitem in the list!
     if stockline.capacity is None:
-        return ([(sl[0].stockitem.id,items)],0,snd,None)
+        return ([(sl[0].stockitem,items)],0,None)
     unallocated=items
     leftondisplay=0
     totalinstock=0
     sell=[]
-    for i in sinfo:
-        ondisplay=max(i['displayqty']-i['used'],0)
+    # Iterate through the StockOnSale objects for this stock line
+    for i in sl:
+        ondisplay=max(sl.displayqty-sl.stockitem.used,0)
         sellqty=min(unallocated,ondisplay)
         log.debug("ondisplay=%d, sellqty=%d"%(ondisplay,sellqty))
         unallocated=unallocated-sellqty
         leftondisplay=leftondisplay+ondisplay-sellqty
-        totalinstock=totalinstock+i['remaining']-sellqty
+        totalinstock=totalinstock+sl.stockitem.remaining-sellqty
         if sellqty>0:
-            sell.append((i['stockid'],sellqty))
-    return (sell,unallocated,snd,(leftondisplay,totalinstock-leftondisplay))
+            sell.append((i.stockitem,sellqty))
+    return (sell,unallocated,(leftondisplay,totalinstock-leftondisplay))
 
 def calculate_restock(stocklineid,target=None):
     """Given a stocklineid and optionally a different target quantity
@@ -553,16 +547,21 @@ def popup():
     ui.keymenu(menu,"Stock line options")
 
 def linemenu(keycode,func):
-    """Pop up a menu to select a line from a list.  Call func with the
-    line as an argument when a selection is made.  No call is made if
-    Clear is pressed.  If there's only one line in the list, or it's
-    not a list, shortcut to the function."""
-    linelist=td.keyboard_checklines(tillconfig.kbtype,
-                                    keyboard.kcnames[keycode])
-    if isinstance(linelist, list):
-        if len(linelist)==1:
-            func(linelist[0])
-        else:
-            il=sorted([(keyboard.keycodes[x[4]],x[0],func,(x,))
-                for x in linelist])
-            ui.keymenu(il,title="Choose an item",colour=ui.colour_line)
+    """
+    Pop up a menu to select a line from a list.  Call func with the
+    keyboard binding as an argument when a selection is made.  No call
+    is made if Clear is pressed.  If there's only one keyboard binding
+    in the list, shortcut to the function.
+
+    """
+    # Find the keyboard bindings associated with this keycode
+    kb=td.s.query(KeyboardBinding).\
+        filter(KeyboardBinding.keycode==keyboard.kcnames[keycode]).\
+        filter(KeyboardBinding.layout==tillconfig.kbtype).\
+        all()
+
+    if len(kb)==1: func(kb[0])
+    else:
+        il=sorted([(keyboard.keycodes[x.menukey],x.stockline.name,func,(x,))
+                   for x in kb])
+        ui.keymenu(il,title="Choose an item",colour=ui.colour_line)

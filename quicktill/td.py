@@ -337,20 +337,6 @@ def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
     commit()
     return lid
 
-def stock_sellmore(lid,items):
-    "Update a transaction line and stock record with extra items"
-    cur=cursor()
-    # Fetch old number of items
-    oi=execone(cur,"SELECT items FROM translines WHERE translineid=%s",(lid,))
-    ni=oi+items
-    # Update stockout line
-    cur.execute("UPDATE stockout SET qty=(qty/%s)*%s WHERE translineid=%s",
-                (oi,ni,lid))
-    # Update transaction line
-    cur.execute("UPDATE translines SET items=%s WHERE translineid=%s",(ni,lid))
-    commit()
-    return ni
-
 def stock_fetchline(stocklineref):
     "Fetch stockout details given a line reference"
     cur=cursor()

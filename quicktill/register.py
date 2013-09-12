@@ -40,7 +40,7 @@ import datetime
 log=logging.getLogger()
 from . import foodorder
 from . import btcmerch
-from .models import Transline,Transaction,Session
+from .models import Transline,Transaction,Session,StockOut,Transline,penny
 from decimal import Decimal
 
 zero=Decimal("0.00")
@@ -394,12 +394,18 @@ class page(ui.basicpage):
         else: self.balance=None
         self.update_bufferline()
         self.redraw()
-    def linekey(self,line):
-        name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
+    def linekey(self,kb): # We are passed the keyboard binding
+        name=kb.stockline.name
+        qty=kb.qty
+        dept=kb.stockline.dept_id
+        pullthru=kb.stockline.pullthru
+        stocklineid=kb.stockline.id
+        capacity=kb.stockline.capacity
+
         repeat_lid=None
         repeat_stockid=None
         if self.repeat is not None:
-            if self.repeat[0]==line:
+            if self.repeat[0]==(stocklineid,qty):
                 log.info("Register: linekey: might sell more of lid=%d"%
                          self.repeat[1])
                 # We save the line id and stock number, and if we discover
@@ -432,7 +438,7 @@ class page(ui.basicpage):
         self.clearbuffer()
         self.redraw()
         # Now we know how many we are trying to sell.
-        (sell,unallocated,snd,stockremain)=(
+        (sell,unallocated,stockremain)=(
             stocklines.calculate_sale(stocklineid,items))
         if capacity is not None and unallocated>0:
             ui.infopopup(
@@ -442,7 +448,7 @@ class page(ui.basicpage):
                  "button after dismissing this message."%(
                 items,name)],title="Not enough stock on display")
             return
-        if sell==[]:
+        if len(sell)==0:
             log.info("Register: linekey: no stock in use for %s"%name)
             ui.infopopup(["No stock is registered for %s."%name,
                           "To tell the till about stock on sale, "
@@ -452,59 +458,83 @@ class page(ui.basicpage):
             return
         # We might have to abort if an invalid modifier key has been used.
         if checkdept is not None:
-            for stockid,items in sell:
-                dept=snd[stockid]['dept']
+            for stockitem,items in sell:
+                dept=stockitem.stocktype.dept_id
                 if dept not in checkdept:
                     ui.infopopup(["You can't use the '%s' modifier with "
                                   "stock in department %d."%(mod,dept)],
                                  title="Error")
                     return
-        # At this point we have a list of (stockid,amount) that corresponds
+        # At this point we have a list of (stockitem,amount) that corresponds
         # to the quantity requested.  We can go ahead and add them to the
         # transaction.
         trans=self.gettrans()
         if trans is None: return # Will already be displaying an error.
         # By this point we're committed to trying to sell the items.
-        for stockid,items in sell:
-            sd=snd[stockid]
+        for stockitem,items in sell:
             # Check first to see whether we may need to record a pullthrough.
             if pullthru is not None:
-                pullthru_required=td.stock_checkpullthru(stockid,'11:00:00')
+                pullthru_required=td.stock_checkpullthru(stockitem.id,'11:00:00')
             else:
                 pullthru_required=False
             # If the stock number we're selling now matches repeat_stockid
             # then we may be able to add to the previous transline rather than
             # creating a new one
-            if (repeat_stockid==stockid and
+            if (repeat_stockid==stockitem.id and
                 self.dl[-1].age()<max_transline_modify_age):
                 lid=repeat_lid
+                transline=td.s.query(Transline).get(lid)
+                stockout=td.s.query(StockOut).get(transline.stockref)
+                # We increase the number of items by 1.
+                orig_qty=stockout.qty/transline.items
+                transline.items=transline.items+1
+                stockout.qty=orig_qty*transline.items
+                td.s.flush()
                 log.info("Register: linekey: added %d to lid=%d"%
                          (items,lid))
-                td.stock_sellmore(lid,items)
                 self.dl[-1].update()
                 repeat_stockid=None
                 repeat_lid=None
             else:
-                if unitprice is None: unitprice=tillconfig.pricepolicy(sd,qty)
-                lid=td.stock_sell(self.trans.id,sd['dept'],stockid,items,qty,
-                                  unitprice,self.name,'S')
-                self.dl.append(tline(lid))
+                if unitprice is None:
+                    # Price has not been overridden
+                    unitprice=tillconfig.pricepolicy(stockitem,qty).quantize(penny)
+                stockout=StockOut(
+                    stockitem=stockitem,qty=qty,removecode_id='sold')
+                td.s.add(stockout)
+                td.s.flush()
+                transline=Transline(
+                    transaction=self.trans,items=items,amount=unitprice,
+                    department=stockitem.stocktype.department,
+                    source=self.name,stockref=stockout.id,transcode='S')
+                td.s.add(transline)
+                td.s.flush()
+                stockout.transline=transline
+                td.s.flush()
+                # Hmm, wonder if there's a better way to make objects
+                # refer to each other?
+                self.dl.append(tline(transline.id))
                 log.info(
                     "Register: linekey: trans=%d,lid=%d,sn=%d,items=%d,qty=%f"
-                    %(self.trans.id,lid,stockid,items,qty))
-            if repeatcandidate: self.repeat=(line,lid,stockid)
+                    %(self.trans.id,transline.id,stockitem.id,items,qty))
+            if repeatcandidate: self.repeat=((stocklineid,qty),transline.id,
+                                             stockitem.id)
         if stockremain is None:
-            sd=snd[stockid]
+            # We are using the last value of stockitem from the previous
+            # for loop
+
             self.prompt="%s: %0.1f %ss remaining"%(
-                name,sd['remaining']-(qty*items),sd['unitname'])
-            if sd['remaining']-(qty*items)<0.0 and not pullthru_required:
+                name,stockitem.remaining,stockitem.stocktype.unit.name)
+            if stockitem.remaining<0.0 and not pullthru_required:
                 ui.infopopup([
                     "There appears to be %0.1f %ss of %s left!  Please "
                     "check that you're still using stock item %d; if you've "
                     "started using a new item, tell the till about it "
                     "using the 'Use Stock' button after dismissing this "
-                    "message."%(sd['remaining']-(qty*items),sd['unitname'],
-                                stock.format_stock(sd,maxw=40),sd['stockid']),
+                    "message."%(stockitem.remaining,
+                                stockitem.stocktype.unit.name,
+                                stockitem.stocktype.format(maxw=40),
+                                stockitem.id),
                     "","If you don't understand this message, you MUST "
                     "call your manager to deal with it."],
                              title="Warning",dismiss=keyboard.K_USESTOCK)
@@ -514,19 +544,19 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance() # Also updates prompt and scrolls
         if pullthru_required:
-            sd=snd[stockid]
-            sd['pullthruqty']=pullthru
-            ui.infopopup(["According to the till records, %(manufacturer)s "
-                          "%(name)s hasn't been "
+            ui.infopopup(["According to the till records, %s "
+                          "hasn't been "
                           "sold or pulled through in the last 11 hours.  "
                           "Would you like to record that you've pulled "
-                          "through %(pullthruqty)0.1f %(unitname)ss?  "
+                          "through %0.1f %ss?  "
                           "Press 'Record Waste' if you do, or Clear if "
-                          "you don't."%sd],
+                          "you don't."%(
+                        stockitem.stocktype.format(),
+                        pullthru,stockitem.stocktype.unit.name)],
                          title="Pull through?",colour=ui.colour_input,
                          keymap={
                 keyboard.K_WASTE:
-                (td.stock_recordwaste,(stockid,'pullthru',pullthru,False),
+                (td.stock_recordwaste,(stockitem.id,'pullthru',pullthru,False),
                  True)})
     def deptkey(self,dept):
         if (self.repeat and self.repeat[0]==dept

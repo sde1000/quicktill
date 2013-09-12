@@ -45,11 +45,10 @@ def pembury_deptkeycheck(dept,price):
                      u"Monks Mead, £14.00 for Moniack."])
 
 # Price policy function
-def pembury_pricepolicy(sd,qty):
-    # Start with the standard price
-    price=sd['saleprice']*qty
-    if sd['dept']==4 and qty==2.0: price=price-0.50
-    if sd['dept']==1 and qty==4.0: price=price-1.00
+def pembury_pricepolicy(item,qty):
+    price=item.saleprice*qty
+    if item.stocktype.dept_id==4 and qty==2.0: price=price-0.50
+    if item.stocktype.dept_id==1 and qty==4.0: price=price-1.00
     return price
 
 # Price guess algorithm goes here
