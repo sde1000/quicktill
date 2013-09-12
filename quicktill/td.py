@@ -547,31 +547,6 @@ def stock_onsale(line):
         "s.bestbefore,sos.stockid",(line,))
     return cur.fetchall()
 
-def stock_annotate(stock,atype,text):
-    """Create an annotation for a stock item.  This routine performs
-    no checks; it is assumed the caller has already ensured the
-    annotation is sensible.
-
-    """
-    cur=cursor()
-    cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
-                "VALUES (%s,%s,%s)",(stock,atype,text))
-    commit()
-
-def stock_annotations(stock,atype=None):
-    """Return annotations for a stock item, restricted to atype if
-    specified.
-
-    """
-    if atype is not None: ac=" AND sa.atype='%s'"%atype
-    else: ac=""
-    cur=cursor()
-    cur.execute("SELECT at.description,sa.time,sa.text "
-                "FROM stock_annotations sa "
-                "LEFT JOIN annotation_types at ON at.atype=sa.atype "
-                "WHERE sa.stockid=%%s%s ORDER BY sa.time"%ac,(stock,))
-    return cur.fetchall()
-
 ### Find out what's on the stillage by checking annotations
 
 def stillage_summary(session):

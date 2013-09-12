@@ -174,7 +174,9 @@ def put_on_sale(line,sn):
         # department is number 1 (real ale) then pop up a window
         # asking for the location.  The window will pop up _on top_ of
         # the confirmation box.
-        if len(td.stock_annotations(sn,atype='location'))==0 and dept==1:
+        if dept==1 and td.s.query(StockAnnotation).\
+                filter(StockAnnotation.stockid==sn).\
+                filter(StockAnnotation.atype=='location').count()==0:
             stock.annotate_location(sn)
         tillconfig.usestock_hook(sdd)
     else:

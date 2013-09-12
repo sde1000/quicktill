@@ -4,7 +4,7 @@
 
 import hashlib,logging
 from . import ui,td,keyboard,tillconfig,stocklines,department
-from .models import Department,UnitType,StockType,StockItem
+from .models import Department,UnitType,StockType,StockItem,StockAnnotation
 log=logging.getLogger()
 
 def abvstr(abv):
@@ -324,11 +324,14 @@ class annotate(ui.dismisspopup):
                 self.stockfield.set(str(sl[0][0]))
                 self.stock_enter_key()
     def stock_dept_selected(self,dept):
-        sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
-        sinfo=td.stock_info(sl)
-        lines=ui.table([("%(stockid)d"%x,format_stock(x,maxw=40))
+        sinfo=td.s.query(StockItem).join(StockItem.stocktype).\
+            filter(StockItem.finished==None).\
+            filter(StockType.dept_id==dept).\
+            order_by(StockItem.id).\
+            all()
+        lines=ui.table([("%d"%x.id,x.stocktype.format(maxw=40))
                         for x in sinfo]).format(' r l ')
-        sl=[(x,self.stock_item_selected,(y['stockid'],))
+        sl=[(x,self.stock_item_selected,(y.id,))
             for x,y in zip(lines,sinfo)]
         ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
                 "Cash/Enter.")
@@ -340,21 +343,19 @@ class annotate(ui.dismisspopup):
             department.menu(self.stock_dept_selected,"Select Department")
             return
         sn=int(self.stockfield.f)
-        sd=td.stock_info([sn])
-        if sd==[]:
+        sd=td.s.query(StockItem).get(sn)
+        if sd is None:
             ui.infopopup(["Stock number %d does not exist."%sn],
                          title="Error")
             return
-        sd=sd[0]
-        if sd['deliverychecked'] is False:
+        if not sd.delivery.checked:
             ui.infopopup(["Stock number %d is part of a delivery that has "
                           "not yet been confirmed.  You can't annotate "
-                          "it until the whole delivery is confirmed."%(
-                sd['stockid'])],
+                          "it until the whole delivery is confirmed."%(sd.id)],
                          title="Error")
             return
         self.sd=sd
-        self.addstr(4,21,format_stock(sd,maxw=40))
+        self.addstr(4,21,sd.stocktype.format(maxw=40))
         self.create_extra_fields()
     def create_extra_fields(self):
         self.addstr(5,2,"Annotation type:")
@@ -376,10 +377,13 @@ class annotate(ui.dismisspopup):
             ui.infopopup(["You must choose an annotation type!"],title="Error")
             return
         annotation=self.annfield.f
-        td.stock_annotate(self.sd['stockid'],anntype,annotation)
+        td.s.add(self.sd)
+        td.s.add(
+            StockAnnotation(stockitem=self.sd,atype=anntype,text=annotation))
+        td.s.flush()
         self.dismiss()
         ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
-            self.sd['stockid'],format_stock(self.sd))],
+            self.sd.id,self.sd.stocktype.format())],
                      title="Annotation Recorded",dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
 
@@ -390,31 +394,31 @@ class annotate_location(ui.dismisspopup):
 
     """
     def __init__(self,stockid):
-        sd=td.stock_info([stockid])
-        if sd==[]:
+        sd=td.s.query(StockItem).get(stockid)
+        if sd is None:
             ui.infopopup(["Stock number %d does not exist."%sn],
                          title="Error")
             return
-        sd=sd[0]
-        if sd['deliverychecked'] is False:
+        if not sd.delivery.checked:
             ui.infopopup(["Stock number %d is part of a delivery that has "
                           "not yet been confirmed.  You can't annotate "
-                          "it until the whole delivery is confirmed."%(
-                sd['stockid'])],
+                          "it until the whole delivery is confirmed."%sd.id],
                          title="Error")
             return
         ui.dismisspopup.__init__(self,7,64,"Stock Location",
                                  colour=ui.colour_input)
-        self.stockid=stockid
-        self.addstr(2,2,format_stock(sd,maxw=60))
+        self.sd=sd
+        self.addstr(2,2,sd.stocktype.format(maxw=60))
         self.addstr(4,2,"Enter location:")
         self.locfield=ui.editfield(4,18,40,keymap={
             keyboard.K_CASH: (self.finish,None),
             keyboard.K_CLEAR: (self.dismiss,None)})
         self.locfield.focus()
     def finish(self):
-        annotation=self.locfield.f
-        td.stock_annotate(self.stockid,'location',annotation)
+        td.s.add(self.sd)
+        td.s.add(StockAnnotation(
+                stockitem=self.sd,atype='location',text=self.locfield.f))
+        td.s.flush()
         self.dismiss()
 
 class reprice_stockitem(ui.dismisspopup):
