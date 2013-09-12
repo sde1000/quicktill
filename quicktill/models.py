@@ -255,7 +255,12 @@ class Transaction(Base):
         return "transaction/%d/"%self.id
     @property
     def age(self):
-        "The age of the transaction's oldest line in days"
+        """
+        The age of the transaction's oldest line in days, or zero if the
+        transaction has no lines.
+
+        """
+        if len(self.lines)==0: return 0
         first=min(tl.time for tl in self.lines)
         age=datetime.datetime.now()-first
         return age.days
