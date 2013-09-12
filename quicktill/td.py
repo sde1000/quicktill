@@ -255,15 +255,6 @@ def stocktype_completename(m,n):
         )
     return [x[0] for x in result]
 
-def stocktype_search_inconsistent_prices():
-    cur=cursor()
-    cur.execute("SELECT st.stocktype FROM stocktypes st "
-                "INNER JOIN stock s ON s.stocktype=st.stocktype "
-                "WHERE s.finished IS NULL "
-                "GROUP BY st.stocktype "
-                "HAVING COUNT(DISTINCT s.saleprice)>1")
-    return [x[0] for x in cur.fetchall()]
-
 ### Functions related to the stock,stockout,stockonsale tables
 
 def stock_info(stockid_list):
@@ -309,11 +300,6 @@ def stock_checkpullthru(stockid,maxtime):
               (maxtime,stockid))
     if r is None: r=False
     return r
-
-def stock_reprice(sn,saleprice):
-    cur=cursor()
-    cur.execute("UPDATE stock SET saleprice=%s WHERE stockid=%s",(saleprice,sn))
-    commit()
 
 def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
     """Sell some stock.  Inserts a line into a transaction, and creates
