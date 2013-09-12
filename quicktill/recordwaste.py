@@ -1,4 +1,5 @@
 from . import ui,td,keyboard,stock,stocklines,department
+from .models import StockItem,StockType,StockOnSale
 
 class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording
@@ -27,12 +28,14 @@ class popup(ui.dismisspopup):
         if capacity is None:
             # Look up the stock number, put it in the field, and invoke
             # stock_enter_key
-            sl=td.stock_onsale(stocklineid)
-            if sl==[]:
+            sl=td.s.query(StockOnSale).\
+                filter(StockOnSale.stocklineid==stocklineid).\
+                first()
+            if sl is None:
                 ui.infopopup(["There is nothing on sale on %s."%name],
                              title="Error")
             else:
-                self.stockfield.set(str(sl[0][0]))
+                self.stockfield.set(str(sl.stockid))
                 self.stock_enter_key()
             return
         self.isline=True
@@ -53,11 +56,14 @@ class popup(ui.dismisspopup):
         self.addstr(4,21,"%d items on display"%self.ondisplay)
         self.create_extra_fields()
     def stock_dept_selected(self,dept):
-        sl=td.stock_search(exclude_stock_on_sale=False,dept=dept)
-        sinfo=td.stock_info(sl)
-        lines=ui.table([("%(stockid)d"%x,stock.format_stock(x,maxw=40))
+        sinfo=td.s.query(StockItem).join(StockItem.stocktype).\
+            filter(StockItem.finished==None).\
+            filter(StockType.dept_id==dept).\
+            order_by(StockItem.id).\
+            all()
+        lines=ui.table([("%d"%x.id,x.stocktype.format(maxw=40))
                         for x in sinfo]).format(' r l ')
-        sl=[(x,self.stock_item_selected,(y['stockid'],))
+        sl=[(x,self.stock_item_selected,(y.id,))
             for x,y in zip(lines,sinfo)]
         ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
                 "Cash/Enter.")
@@ -69,22 +75,21 @@ class popup(ui.dismisspopup):
             department.menu(self.stock_dept_selected,"Select Department")
             return
         sn=int(self.stockfield.f)
-        sd=td.stock_info([sn])
-        if sd==[]:
+        sd=td.s.query(StockItem).get(sn)
+        if sd is None:
             ui.infopopup(["Stock number %d does not exist."%sn],
                          title="Error")
             return
-        sd=sd[0]
-        if sd['deliverychecked'] is False:
+        if not sd.delivery.checked:
             ui.infopopup(["Stock number %d is part of a delivery that has "
                           "not yet been confirmed.  You can't record waste "
                           "against it until the whole delivery is confirmed."%(
-                sd['stockid'])],
+                        sn)],
                          title="Error")
             return
         self.isline=False
         self.sd=sd
-        self.addstr(4,21,stock.format_stock(sd,maxw=40))
+        self.addstr(4,21,sd.stocktype.format(maxw=40))
         self.create_extra_fields()
     def create_extra_fields(self):
         self.addstr(5,2,"Waste description:")
@@ -113,7 +118,7 @@ class popup(ui.dismisspopup):
         if self.isline:
             self.addstr(6,26,'items')
         else:
-            self.addstr(6,26,self.sd['unitname']+'s')
+            self.addstr(6,26,self.sd.stocktype.unit.name+'s')
         self.wastedescfield.set(0)
         self.wastedescfield.focus()
     def finish(self):
@@ -125,9 +130,8 @@ class popup(ui.dismisspopup):
             ui.infopopup(["You must enter an amount!"],title="Error")
             return
         amount=float(self.amountfield.f)
-        if amount<=0.0 and False:
-            # Actually this can be useful - allow it for now!
-            ui.infopopup(["You must enter an amount greater than zero!"],
+        if amount==0.0:
+            ui.infopopup(["You must enter an amount other than zero!"],
                          title='Error')
             self.amountfield.set("")
             return
@@ -150,10 +154,11 @@ class popup(ui.dismisspopup):
                 amount,self.name)],title="Waste Recorded",
                          dismiss=keyboard.K_CASH,colour=ui.colour_info)
         else:
-            td.stock_recordwaste(self.sd['stockid'],waste,amount,True)
+            td.s.add(self.sd)
+            td.stock_recordwaste(self.sd.id,waste,amount,True)
             self.dismiss()
             ui.infopopup(["Recorded %0.1f %ss against stock item %d (%s)."%(
-                amount,self.sd['unit'],self.sd['stockid'],
-                stock.format_stock(self.sd))],
+                amount,self.sd.stocktype.unit.name,self.sd.id,
+                self.sd.stocktype.format())],
                          title="Waste Recorded",dismiss=keyboard.K_CASH,
                          colour=ui.colour_info)
