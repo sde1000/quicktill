@@ -93,8 +93,6 @@ def ticket(cur,seq):
     "Fetch a new serial number from the named sequence"
     return execone(cur,"SELECT nextval(%s)",(seq,))
 
-# See also stock_sell()
-
 def trans_addline(trans,dept,items,amountper,source,transcode,text=None):
     "Insert a line into a transaction that has no associated stock record"
     cur=cursor()
@@ -300,54 +298,6 @@ def stock_checkpullthru(stockid,maxtime):
               (maxtime,stockid))
     if r is None: r=False
     return r
-
-def stock_sell(trans,dept,stockitem,items,qty,price,source,transcode):
-    """Sell some stock.  Inserts a line into a transaction, and creates
-    an associated stock record.
-
-    'dept' is the department the sale will be recorded in.
-
-    'qty' is the amount being sold as a unit, eg. 0.5 for a half pint,
-    2.0 for a double, 4.0 for a 4-pint jug.
-
-    'items' is the number of things of size 'qty' that are being sold.
-    It will be negative for void transactions.
-
-    'price' is the price of 'qty' of the stock, with discounts, etc. taken
-    into account.
-
-    'source' is a string identifying where the transaction is taking place.
-
-    'transcode' is a letter identifying the type of transaction;
-    currently 'S' for a sale, or 'V' for a void.
-
-    """
-    cur=cursor()
-    # Write out a stockout line
-    son=ticket(cur,"stockout_seq")
-    lid=ticket(cur,"translines_seq")
-    cur.execute("INSERT INTO stockout (stockoutid,stockid,qty,removecode,"
-                "translineid) VALUES (%s,%s,%s,'sold',%s)",
-                (son,stockitem,qty*items,lid))
-    # Write out a transaction line
-    cur.execute("INSERT INTO translines (translineid,transid,items,amount,"
-                "dept,source,stockref,transcode) VALUES "
-                "(%s,%s,%s,%s,%s,%s,%s,%s)",
-                (lid,trans,items,price,dept,source,son,transcode))
-    commit()
-    return lid
-
-def stock_fetchline(stocklineref):
-    "Fetch stockout details given a line reference"
-    cur=cursor()
-    cur.execute("SELECT so.qty,so.removecode,"
-                "so.stockid,st.manufacturer,st.name,st.shortname,"
-                "st.abv,ut.name FROM stockout so "
-                "INNER JOIN stock ON so.stockid=stock.stockid "
-                "INNER JOIN stocktypes st ON st.stocktype=stock.stocktype "
-                "INNER JOIN unittypes ut ON ut.unit=st.unit "
-                "WHERE so.stockoutid=%s",(stocklineref,))
-    return cur.fetchone()
 
 def stock_search(dept=None,exclude_stock_on_sale=True,
                  finished_stock_only=False,stockline=None,stocktype=None):

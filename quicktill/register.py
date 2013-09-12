@@ -395,6 +395,7 @@ class page(ui.basicpage):
         self.update_bufferline()
         self.redraw()
     def linekey(self,kb): # We are passed the keyboard binding
+        td.s.add(kb)
         name=kb.stockline.name
         qty=kb.qty
         dept=kb.stockline.dept_id
@@ -1009,6 +1010,7 @@ class page(ui.basicpage):
             else:
                 self.cancelline()
     def canceltrans(self):
+        self.refresh_trans()
         # Yes, they really want to do it.  But is it open or closed?
         if self.trans.closed:
             log.info("Register: cancel closed transaction %d"%self.trans.id)
@@ -1019,7 +1021,7 @@ class page(ui.basicpage):
             self.cancelmarked()
         else:
             # Delete this transaction and everything to do with it
-            log.info("Register: cancel open transaction %d"%self.trans)
+            log.info("Register: cancel open transaction %d"%self.trans.id)
             tn=self.trans.id
             (tot,payments)=td.trans_balance(tn)
             td.trans_cancel(tn)
@@ -1041,6 +1043,7 @@ class page(ui.basicpage):
             l.update_mark(self.ml)
             self.s.drawdl()
     def cancelline(self,force=False):
+        self.refresh_trans()
         if self.trans.closed:
             l=self.dl[self.s.cursor]
             if isinstance(l,rline):
@@ -1093,18 +1096,36 @@ class page(ui.basicpage):
                 ui.infopopup(["You can't cancel payments.  Cancel the whole "
                               "transaction instead."],title="Cancel")
     def voidline(self,tl):
+        """
+        Add a line reversing the supplied transaction line to the current
+        transaction.  tl is a Transline id
+
+        """
         trans=self.gettrans()
-        (transid,items,amount,dept,desc,stockref,
-         transcode,transtime,text,vatband)=td.trans_getline(tl)
-        if stockref is not None:
-            (qty,removecode,stockitem,manufacturer,name,shortname,abv,
-             unitname)=td.stock_fetchline(stockref)
-            lid=td.stock_sell(trans.id,dept,stockitem,-items,qty/items,
-                              amount,self.name,'V')
+        transline=td.s.query(Transline).get(tl)
+        if transline.stockref is not None:
+            stockout=td.s.query(StockOut).get(transline.stockref)
+            nso=StockOut(
+                stockitem=stockout.stockitem,qty=-stockout.qty,
+                removecode=stockout.removecode)
+            td.s.add(nso)
+            td.s.flush()
+            ntl=Transline(
+                transaction=trans,items=-transline.items,
+                amount=transline.amount,department=transline.department,
+                source=self.name,stockref=nso.id,transcode='V')
+            td.s.add(ntl)
+            td.s.flush()
+            nso.transline=ntl
+            td.s.flush()
         else:
-            lid=td.trans_addline(trans.id,dept,-items,amount,
-                                 self.name,'V',text)
-        self.dl.append(tline(lid))
+            ntl=Transline(
+                transaction=trans,items=-transline.items,
+                amount=transline.amount,department=transline.department,
+                source=self.name,transcode='V',text=transline.text)
+            td.s.add(ntl)
+            td.s.flush()
+        self.dl.append(tline(ntl.id))
     def cancelmarked(self):
         tl=list(self.ml)
         self.clear()
@@ -1297,9 +1318,6 @@ class page(ui.basicpage):
         # This is our main entry point.  We will have a new database session.
         # Update the transaction object before we do anything else!
         self.refresh_trans()
-        if self.trans:
-            td.s.add(self.trans)
-            td.s.refresh(self.trans)
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
         if k in keyboard.lines:

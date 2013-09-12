@@ -549,9 +549,10 @@ def popup():
 def linemenu(keycode,func):
     """
     Pop up a menu to select a line from a list.  Call func with the
-    keyboard binding as an argument when a selection is made.  No call
-    is made if Clear is pressed.  If there's only one keyboard binding
-    in the list, shortcut to the function.
+    keyboard binding as an argument when a selection is made (NB it
+    may be a detached instance).  No call is made if Clear is pressed.
+    If there's only one keyboard binding in the list, shortcut to the
+    function.
 
     """
     # Find the keyboard bindings associated with this keycode
