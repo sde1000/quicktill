@@ -200,16 +200,6 @@ def trans_deleteline(transline):
     cur.execute("DELETE FROM translines WHERE translineid=%s",(transline,))
     commit()
 
-def trans_defer(trans):
-    """Defers a transaction to a later session, by setting its sessionid to
-    null.
-
-    """
-    cur=cursor()
-    cur.execute("UPDATE transactions SET sessionid=null WHERE transid=%s",
-                (trans,))
-    commit()
-
 def trans_merge(t1,t2):
     """Merge t1 into t2, and delete t1.
 

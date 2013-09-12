@@ -1161,7 +1161,8 @@ class page(ui.basicpage):
             return
         self.clear()
         self.redraw()
-        td.trans_defer(transid)
+        trans.session=None
+        td.s.flush()
         ui.infopopup(["Transaction %d has been deferred to the next "
                       "session.  Make sure you keep a note of the "
                       "transaction number and the name of the person "
