@@ -217,11 +217,10 @@ def trans_restore():
     global s
     sc=Session.current(s)
     if sc is None: return 0
-    sessionid=sc.id
-    cur=cursor()
-    cur.execute("UPDATE transactions SET sessionid=%s WHERE sessionid IS NULL",
-                (sessionid,))
-    commit()
+    deferred=s.query(Transaction).filter(Transaction.sessionid==None).all()
+    for i in deferred:
+        i.session=sc
+    s.flush()
 
 def trans_makefree(transid,removecode):
     """Converts all stock sold in this transaction to 'removecode', and
