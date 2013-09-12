@@ -13,6 +13,9 @@ import datetime
 import hashlib
 from decimal import Decimal
 
+# Used for quantization of money
+penny=Decimal("0.01")
+
 metadata=MetaData()
 Base=declarative_base(metadata=metadata)
 
@@ -56,11 +59,11 @@ class Vat(object):
     def rate_fraction(self):
         return self.rate/Decimal(100)
     def inc_to_exc(self,n):
-        return (n/(self.rate_fraction+Decimal(1))).quantize(Decimal("0.01"))
+        return (n/(self.rate_fraction+Decimal(1))).quantize(penny)
     def inc_to_vat(self,n):
         return n-self.inc_to_exc(n)
     def exc_to_vat(self,n):
-        return (n*self.rate_fraction).quantize(Decimal("0.01"))
+        return (n*self.rate_fraction).quantize(penny)
     def exc_to_inc(self,n):
         return n+self.exc_to_vat(n)
     def at(self,date):
