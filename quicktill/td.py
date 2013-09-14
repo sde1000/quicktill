@@ -123,19 +123,6 @@ def trans_paid_by_bitcoin(trans):
                 "AND paytype='BTC'",(trans,))
     return cur.fetchone()[0]
 
-def trans_balance(trans):
-    "Return (linestotal,paymentstotal) on a transaction"
-    cur=cursor()
-    cur.execute("SELECT (SELECT sum(amount*items) FROM translines "
-                "WHERE translines.transid=%s),(SELECT sum(amount) "
-                "FROM payments WHERE payments.transid=%s)",(trans,trans));
-    r=cur.fetchone()
-    if not r[0]: linestotal=Decimal("0.00")
-    else: linestotal=r[0]
-    if not r[1]: paymentstotal=Decimal("0.00")
-    else: paymentstotal=r[1]
-    return (linestotal,paymentstotal)
-
 def trans_merge(t1,t2):
     """Merge t1 into t2, and delete t1.
 

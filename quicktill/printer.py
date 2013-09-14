@@ -16,7 +16,8 @@ def print_receipt(transid):
     trans=td.s.query(Transaction).get(transid)
     transopen=False
     if len(trans.lines)==0: return
-    (linestotal,paymentstotal)=td.trans_balance(transid)
+    linestotal=trans.total
+    paymentstotal=trans.payments_total
     if linestotal!=paymentstotal: transopen=True
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
