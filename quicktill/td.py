@@ -93,19 +93,6 @@ def ticket(cur,seq):
     "Fetch a new serial number from the named sequence"
     return execone(cur,"SELECT nextval(%s)",(seq,))
 
-def trans_getlines(trans):
-    "Retrieve lines and payments for a transaction"
-    cur=cursor()
-    cur.execute("SELECT translineid FROM translines WHERE transid=%s "
-                "ORDER BY translineid",(trans,))
-    lines=[x[0] for x in cur.fetchall()]
-    cur.execute("SELECT p.amount,p.paytype,pt.description,p.ref "
-                "FROM payments p "
-                "LEFT JOIN paytypes pt ON p.paytype=pt.paytype "
-                "WHERE transid=%s ORDER BY time ",(trans,))
-    payments=cur.fetchall()
-    return (lines,payments)
-
 def trans_multiband(trans):
     "Determine whether a transaction has lines in more than one VAT band."
     cur=cursor()

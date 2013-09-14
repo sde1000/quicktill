@@ -1184,11 +1184,11 @@ class page(ui.basicpage):
             self.trans=td.s.query(Transaction).get(trans)
             self.keyguard=True
             self.update_note()
-            (lines,payments)=td.trans_getlines(trans)
-            for i in lines:
-                self.dl.append(tline(i))
-            for i in payments:
-                self.dl.append(payline(i))
+            for i in self.trans.lines:
+                self.dl.append(tline(i.id))
+            for i in self.trans.payments:
+                self.dl.append(payline((i.amount,i.paytype_id,
+                                        i.paytype.description,i.ref)))
             if not self.trans.closed:
                 age=self.trans.age
                 if age>2:
@@ -1300,8 +1300,7 @@ class page(ui.basicpage):
                           "be merged with another transaction."%transid],
                          title="Error")
             return
-        lines,payments=td.trans_getlines(transid)
-        if len(payments)>0:
+        if len(trans.payments)>0:
             ui.infopopup(["Some payments have already been entered against "
                           "transaction %d, so it can't be merged with another "
                           "transaction."%transid],
