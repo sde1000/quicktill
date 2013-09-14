@@ -14,6 +14,7 @@ import hashlib
 from decimal import Decimal
 
 # Used for quantization of money
+zero=Decimal("0.00")
 penny=Decimal("0.01")
 
 metadata=MetaData()
@@ -246,10 +247,18 @@ class Transaction(Base):
     session=relationship(Session,backref=backref('transactions',order_by=id))
     @hybrid_property
     def total(self):
-        return sum(tl.items*tl.amount for tl in self.lines)
+        """
+        Transaction lines total
+
+        """
+        return sum((tl.items*tl.amount for tl in self.lines),zero)
     @hybrid_property
     def payments_total(self):
-        return sum(p.amount for p in self.payments)
+        """
+        Payments total
+
+        """
+        return sum((p.amount for p in self.payments),zero)
     @property
     def tillweb_url(self):
         return "transaction/%d/"%self.id
@@ -404,7 +413,7 @@ class Transline(Base):
         the register or on a receipt.
 
         """
-        if self.amount==Decimal("0.00"): return u""
+        if self.amount==zero: return u""
         if self.items==1: return u"%s%s"%(currency,self.amount)
         return u"%d @ %s%s = %s%s"%(
             self.items,currency,self.amount,currency,self.items*self.amount)

@@ -41,9 +41,8 @@ log=logging.getLogger()
 from . import foodorder
 from . import btcmerch
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
+from .models import zero
 from decimal import Decimal
-
-zero=Decimal("0.00")
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 
@@ -719,7 +718,9 @@ class page(ui.basicpage):
         if self.balance is None and len(self.ml)==0 and len(self.dl)==0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
-            td.trans_cancel(self.trans.id)
+            td.s.delete(self.trans)
+            self.trans=None
+            td.s.flush()
             self.clear()
             self.redraw()
             return
@@ -1021,10 +1022,18 @@ class page(ui.basicpage):
             self.cancelmarked()
         else:
             # Delete this transaction and everything to do with it
-            log.info("Register: cancel open transaction %d"%self.trans.id)
             tn=self.trans.id
-            (tot,payments)=td.trans_balance(tn)
-            td.trans_cancel(tn)
+            log.info("Register: cancel open transaction %d"%tn)
+            payments=self.trans.payments_total
+            for p in self.trans.payments: td.s.delete(p)
+            for l in self.trans.lines:
+                if l.stockref:
+                    so=td.s.query(StockOut).get(l.stockref)
+                    if so: td.s.delete(so)
+                td.s.delete(l)
+            td.s.delete(self.trans)
+            self.trans=None
+            td.s.flush()
             if payments>zero:
                 printer.kickout()
                 refundtext="%s had already been put in the cash drawer."%(

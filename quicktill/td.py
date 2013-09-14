@@ -179,19 +179,6 @@ def trans_addpayment(trans,ptype,amount,ref):
     commit()
     return remain
 
-def trans_cancel(trans):
-    """Delete a transaction and everything that depends on it."""
-    cur=cursor()
-    closed=execone(cur,"SELECT closed FROM transactions WHERE transid=%s",
-                   (trans,))
-    if closed: return "Transaction closed"
-    cur.execute("DELETE FROM stockout WHERE stockout.translineid IN "
-                "(SELECT translineid FROM translines WHERE transid=%s)",(trans,))
-    cur.execute("DELETE FROM payments WHERE transid=%s",(trans,))
-    cur.execute("DELETE FROM translines WHERE transid=%s",(trans,))
-    cur.execute("DELETE FROM transactions WHERE transid=%s",(trans,))
-    commit()
-
 def trans_deleteline(transline):
     cur=cursor()
     cur.execute("DELETE FROM stockout WHERE translineid=%s",(transline,))
