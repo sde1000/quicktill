@@ -340,15 +340,13 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
     there is no entry for the stockid in stockonsale then nothing happens.)
 
     """
-    cur=cursor()
-    t=ticket(cur,'stockout_seq')
-    cur.execute("INSERT INTO stockout (stockoutid,stockid,qty,removecode) "
-                "VALUES (%s,%s,%s,%s)",(t,stock,amount,reason))
+    global s
+    so=StockOut(stockid=stock,qty=amount,removecode_id=reason)
+    s.add(so)
     if update_displayqty:
-        cur.execute("UPDATE stockonsale SET displayqty=displayqty+%s "
-                    "WHERE stockid=%s",(int(amount),stock))
-    commit()
-    return t
+        sos=s.query(StockOnSale).get(stock) # stockid is primary key here!
+        if sos: sos.displayqty=sos.displayqty+1
+    s.flush()
 
 def stock_finish(stock,reason):
     "Finish with a stock item; anything left is unaccounted waste"
