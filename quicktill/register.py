@@ -570,7 +570,9 @@ class page(ui.basicpage):
             and self.dl[-1].age()<max_transline_modify_age):
             # Increase the quantity of the most recent entry
             log.info("Register: deptkey: adding to lid=%d"%self.repeat[1])
-            td.trans_additems(self.repeat[1],1)
+            tl=td.s.query(Transline).get(self.repeat[1])
+            tl.items=tl.items+1
+            td.s.flush()
             self.dl[-1].update()
             self.update_balance() # Also redraws screen
             return
@@ -602,11 +604,14 @@ class page(ui.basicpage):
             return
         trans=self.gettrans()
         if trans is None: return
-        lid=td.trans_addline(trans.id,dept,items,price,self.name,'S')
+        tl=Transline(transaction=trans,dept_id=dept,items=items,amount=price,
+                     source=self.name,transcode='S')
+        td.s.add(tl)
+        td.s.flush()
         log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
-                 "price=%f"%(trans.id,lid,dept,items,price))
-        self.repeat=(dept,lid)
-        self.dl.append(tline(lid))
+                 "price=%f"%(trans.id,tl.id,dept,items,price))
+        self.repeat=(dept,tl.id)
+        self.dl.append(tline(tl.id))
         self.cursor_off()
         self.update_balance() # Also redraws
     def deptlines(self,lines):
@@ -624,10 +629,13 @@ class page(ui.basicpage):
         trans=self.gettrans()
         if trans is None: return "Transaction cannot be started."
         for dept,text,amount in lines:
-            lid=td.trans_addline(trans.id,dept,1,amount,self.name,'S',text)
+            tl=Transline(transaction=trans,dept_id=dept,items=1,amount=amount,
+                         source=self.name,transcode='S',text=text)
+            td.s.add(tl)
+            td.s.flush()
             log.info("Register: deptlines: trans=%d,lid=%d,dept=%d,"
-                     "price=%f,text=%s"%(trans.id,lid,dept,amount,text))
-            self.dl.append(tline(lid))
+                     "price=%f,text=%s"%(trans.id,tl.id,dept,amount,text))
+            self.dl.append(tline(tl.id))
         self.repeat=None
         self.cursor_off()
         self.update_balance()

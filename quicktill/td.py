@@ -93,24 +93,6 @@ def ticket(cur,seq):
     "Fetch a new serial number from the named sequence"
     return execone(cur,"SELECT nextval(%s)",(seq,))
 
-def trans_addline(trans,dept,items,amountper,source,transcode,text=None):
-    "Insert a line into a transaction that has no associated stock record"
-    cur=cursor()
-    lid=ticket(cur,"translines_seq")
-    cur.execute("INSERT INTO translines (translineid,transid,items,amount,"
-                "dept,source,transcode,text) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-                (lid,trans,items,amountper,dept,source,transcode,text))
-    commit()
-    return lid
-
-def trans_additems(lid,items):
-    "Update an existing line with additional items"
-    cur=cursor()
-    # XXX check the transaction is not closed
-    cur.execute("UPDATE translines SET items=items+%s "
-                "WHERE translines.translineid=%s",(items,lid))
-    commit()
-
 def trans_getlines(trans):
     "Retrieve lines and payments for a transaction"
     cur=cursor()
