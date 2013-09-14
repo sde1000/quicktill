@@ -348,16 +348,6 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
         if sos: sos.displayqty=sos.displayqty+1
     s.flush()
 
-def stock_finish(stock,reason):
-    "Finish with a stock item; anything left is unaccounted waste"
-    cur=cursor()
-    # Disconnect it from its line, if it has one
-    cur.execute("DELETE FROM stockonsale WHERE stockid=%s",(stock,))
-    # Record the finish time and reason
-    cur.execute("UPDATE stock SET finished=now(),finishcode=%s "
-                "WHERE stockid=%s",(reason,stock))
-    commit()
-
 def stock_onsale(line):
     """Find out what's on sale on a particular [beer] line.  This function
     returns a list of all the stock items allocated to the line, in order

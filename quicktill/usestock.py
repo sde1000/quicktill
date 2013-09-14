@@ -1,7 +1,8 @@
 """Implements the "use stock" menu"""
 
 from . import ui,td,keyboard,stock,stocklines,tillconfig
-from .models import StockLine,FinishCode,StockOnSale
+from .models import StockLine,FinishCode,StockOnSale,StockItem
+import datetime
 
 import logging
 log=logging.getLogger()
@@ -112,7 +113,12 @@ def finish_disconnect(line,sn):
 
 def finish_reason(line,sn,reason):
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    td.stock_finish(sn,reason)
+    stockitem=td.s.query(StockItem).get(sn)
+    stockitem.finished=datetime.datetime.now()
+    stockitem.finishcode_id=reason
+    sos=td.s.query(StockOnSale).get(sn)
+    if sos: td.s.delete(sos)
+    td.s.flush()
     log.info("Use Stock: finished item %d reason %s"%(sn,reason))
     pick_new_stock(line,"Stock item %d is finished.  Now select "
                    "a new stock item to put on sale on %s, or press "
