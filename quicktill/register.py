@@ -41,7 +41,7 @@ log=logging.getLogger()
 from . import foodorder
 from . import btcmerch
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
-from .models import zero
+from .models import Payment,zero
 from decimal import Decimal
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
@@ -183,9 +183,9 @@ class cardpopup(ui.dismisspopup):
         self.cbfield.keypress(keyboard.K_CASH)
     def enter(self):
         try:
-            cba=float(self.cbfield.f)
+            cba=Decimal(self.cbfield.f).quantize(penny)
         except:
-            cba=0.0
+            cba=zero
         if cba>tillconfig.cashback_limit:
             self.cbfield.set("")
             return ui.infopopup(["Cashback is limited to a maximum of %s per "
@@ -197,7 +197,7 @@ class cardpopup(ui.dismisspopup):
             return ui.infopopup(["You must enter a receipt number."],
                                 title="Error")
         self.dismiss()
-        self.func(total,receiptno)
+        self.func(total,receiptno,cba)
 
 class btcpopup(ui.dismisspopup):
     """
@@ -309,6 +309,11 @@ class edittransnotes(ui.dismisspopup):
         self.func()
         self.dismiss()
 
+def strtoamount(s):
+    if s.find('.')>=0:
+        return Decimal(s).quantize(penny)
+    return (Decimal(s)/Decimal("100.00")).quantize(penny)
+
 class page(ui.basicpage):
     def __init__(self,panel,name,hotkeys):
         global registry
@@ -393,6 +398,11 @@ class page(ui.basicpage):
         else: self.balance=None
         self.update_bufferline()
         self.redraw()
+    def close_if_balanced(self):
+        if self.trans and not self.trans.closed:
+            if self.trans.total==self.trans.payments_total:
+                self.trans.closed=True
+                td.s.flush()
     def linekey(self,kb): # We are passed the keyboard binding
         td.s.add(kb)
         name=kb.stockline.name
@@ -416,10 +426,7 @@ class page(ui.basicpage):
         self.repeat=None
         # buf is a price override.  Consider logging it.
         if self.buf is not None:
-            if self.buf.find('.')>=0:
-                unitprice=Decimal(self.buf)
-            else:
-                unitprice=Decimal(self.buf)/Decimal("100.0")
+            unitprice=strtoamount(self.buf)
             log.info("Register: linekey: manual price override to %s"%(
                 unitprice))
         else:
@@ -582,10 +589,7 @@ class page(ui.basicpage):
             return
         if self.qty: items=self.qty
         else: items=1
-        if self.buf.find('.')>=0:
-            price=Decimal(self.buf)
-        else:
-            price=Decimal(self.buf)/Decimal("100.0")
+        price=strtoamount(self.buf)
         self.prompt=self.defaultprompt
         self.clearbuffer()
         priceproblem=tillconfig.deptkeycheck(dept,price)
@@ -666,17 +670,19 @@ class page(ui.basicpage):
             ui.infopopup(["You must enter an amount before pressing the "
                           "'Drink In' button."],title="Error")
             return
-        if self.buf.find('.')>=0:
-            amount=Decimal(self.buf)
-        else:
-            amount=Decimal(self.buf)/Decimal("100.0")
+        amount=strtoamount(self.buf)
         if self.trans is None or self.trans.closed:
             ui.infopopup(["A Drink 'In' can't be the only item in a "
                           "transaction; it must be added to a transaction "
                           "that is already open."],title="Error")
             return
         self.clearbuffer()
-        td.trans_addpayment(self.trans.id,'CASH',-amount,"Drink 'In'")
+        payment=Payment(transaction=self.trans,paytype_id='CASH',
+                        amount=-amount,ref="Drink 'In'")
+        td.s.add(payment)
+        td.s.flush()
+        # XXX when we have a pline() function that takes a Payment, use it
+        # here instead
         self.dl.append(rline("Drink 'In' %s"%tillconfig.fc(-amount),
                              ui.colour_changeline))
         self.cursor_off()
@@ -744,10 +750,7 @@ class page(ui.basicpage):
             log.info("Register: cashkey: exact change")
             amount=self.balance
         else:
-            if self.buf.find('.')>=0:
-                amount=Decimal(self.buf)
-            else:
-                amount=Decimal(self.buf)/Decimal("100.0")
+            amount=strtoamount(self.buf)
         self.clearbuffer()
         self.redraw()
         if amount==zero:
@@ -757,17 +760,23 @@ class page(ui.basicpage):
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
-        # We have a non-zero or null amount and a transaction. Pay it!
-        if amount is None: amount=zero
-        remain=td.trans_addpayment(self.trans.id,'CASH',amount,'Cash')
+        payment=Payment(transaction=self.trans,amount=amount,
+                        paytype_id='CASH',ref='Cash')
+        td.s.add(payment)
+        td.s.flush()
         self.dl.append(
             rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
+        remain=self.trans.total-self.trans.payments_total
         if remain<zero:
             # There's some change!
             log.info("Register: cashkey: calculated change")
-            td.trans_addpayment(self.trans,'CASH',remain,'Change')
+            payment=Payment(transaction=self.trans,amount=remain,
+                            paytype_id='CASH',ref='Change')
+            td.s.add(payment)
+            td.s.flush()
             self.dl.append(rline('Change %s'%tillconfig.fc(remain),
                                  ui.colour_changeline))
+        self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
         ui.updateheader()
@@ -783,7 +792,8 @@ class page(ui.basicpage):
         self.buf=str(amount)
         log.info("Register: notekey %d"%amount)
         return self.cashkey()
-    def cardkey(self,amount=None,receiptno=None):
+    def cardkey(self,amount=None,receiptno=None,cashback=None):
+        self.refresh_trans()
         if self.qty is not None:
             log.info("Register: cardkey: payment with quantity not allowed")
             ui.infopopup(["You can't enter a quantity before telling "
@@ -805,10 +815,7 @@ class page(ui.basicpage):
                 log.info("Register: cardkey: exact amount")
                 amount=self.balance
             else:
-                if self.buf.find('.')>=0:
-                    amount=Decimal(self.buf)
-                else:
-                    amount=Decimal(self.buf)/Decimal("100.0")
+                amount=strtoamount(self.buf)
             if amount is None: return # Empty transaction
             return cardpopup(amount,self.cardkey)
         else:
@@ -822,15 +829,18 @@ class page(ui.basicpage):
             return
         self.clearbuffer()
         # We have a non-zero amount and a transaction. Pay it!
-        remain=td.trans_addpayment(self.trans.id,'CARD',amount,receiptno)
+        payment=Payment(transaction=self.trans,amount=amount,
+                        paytype_id='CARD',ref=receiptno)
+        td.s.add(payment)
         self.dl.append(rline('Card %s %s'%(receiptno,tillconfig.fc(amount)),
                              ui.colour_cashline))
-        if remain<zero:
-            # There's some cashback!
-            log.info("Register: cardkey: calculated cashback")
-            td.trans_addpayment(self.trans.id,'CASH',remain,'Cashback')
-            self.dl.append(rline('Cashback %s'%tillconfig.fc(remain),
+        if cashback:
+            payment=Payment(transaction=self.trans,amount=-cashback,
+                            paytype_id='CASH',ref='Cashback')
+            td.s.add(payment)
+            self.dl.append(rline('Cashback %s'%tillconfig.fc(cashback),
                                  ui.colour_changeline))
+        self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
         ui.updateheader()
@@ -871,16 +881,20 @@ class page(ui.basicpage):
         self.clearbuffer()
         return btcpopup(self.bitcoin,self.trans.id,self.balance)
     def bitcoin(self,amount,btcamount):
-        "We've been paid by bitcoin!"
-        remain=td.trans_addpayment(self.trans.id,'BTC',amount,btcamount)
+        """
+        We've been paid by bitcoin!
+
+        """
+        self.refresh_trans()
+        payment=Payment(transaction=self.trans,amount=amount,
+                        paytype_id='BTC',ref=btcamount)
+        td.s.add(payment)
+        td.s.flush()
         self.dl.append(rline('Bitcoin %s %s'%(btcamount,tillconfig.fc(amount)),
                              ui.colour_cashline))
-        if remain<zero:
-            # There's some cashback!
-            log.info("Register: bitcoin: calculated cashback")
-            td.trans_addpayment(self.trans,'CASH',remain,'Cashback')
-            self.dl.append(rline('Cashback %s'%tillconfig.fc(remain),
-                                 ui.colour_changeline))
+        # Cashback should never arise; however, it is possible for the
+        # Bitcoin payment not to cover the whole transaction.
+        self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
         ui.updateheader()
@@ -1080,7 +1094,9 @@ class page(ui.basicpage):
                     if l.age()<max_transline_modify_age:
                         log.info("Register: cancelline: delete "
                                  "transline %d"%transline)
-                        td.trans_deleteline(transline)
+                        tl=td.s.query(Transline).get(transline)
+                        td.s.delete(tl)
+                        td.s.flush()
                         del self.dl[self.s.cursor]
                         self.cursor_off()
                         self.update_balance()

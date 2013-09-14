@@ -111,17 +111,6 @@ def trans_additems(lid,items):
                 "WHERE translines.translineid=%s",(items,lid))
     commit()
 
-def trans_getline(lid):
-    "Retrieve information about a transaction line"
-    cur=cursor()
-    cur.execute("SELECT tl.transid,tl.items,"
-                "tl.amount,tl.dept,d.description,"
-                "tl.stockref,tl.transcode,tl.time,tl.text,d.vatband "
-                "FROM translines tl "
-                "INNER JOIN departments d ON tl.dept=d.dept "
-                "WHERE tl.translineid=%s",(lid,))
-    return cur.fetchone()
-
 def trans_getlines(trans):
     "Retrieve lines and payments for a transaction"
     cur=cursor()
@@ -164,26 +153,6 @@ def trans_balance(trans):
     if not r[1]: paymentstotal=Decimal("0.00")
     else: paymentstotal=r[1]
     return (linestotal,paymentstotal)
-
-def trans_addpayment(trans,ptype,amount,ref):
-    """Add a payment to a transaction, and return the remaining balance.
-    If the remaining balance is zero, mark the transaction closed."""
-    cur=cursor()
-    cur.execute("INSERT INTO payments (transid,amount,paytype,ref) VALUES "
-                "(%s,%s,%s,%s)",(trans,amount,ptype,ref))
-    (lines,payments)=trans_balance(trans)
-    remain=lines-payments
-    if remain==Decimal("0.00"):
-        cur.execute("UPDATE transactions SET closed=true WHERE transid=%s",
-                    (trans,))
-    commit()
-    return remain
-
-def trans_deleteline(transline):
-    cur=cursor()
-    cur.execute("DELETE FROM stockout WHERE translineid=%s",(transline,))
-    cur.execute("DELETE FROM translines WHERE translineid=%s",(transline,))
-    commit()
 
 def trans_merge(t1,t2):
     """Merge t1 into t2, and delete t1.
