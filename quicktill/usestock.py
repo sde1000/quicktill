@@ -1,7 +1,7 @@
 """Implements the "use stock" menu"""
 
 from . import ui,td,keyboard,stock,stocklines,tillconfig
-from .models import StockLine,FinishCode
+from .models import StockLine,FinishCode,StockOnSale
 
 import logging
 log=logging.getLogger()
@@ -102,7 +102,9 @@ def finish_stock(line):
 def finish_disconnect(line,sn):
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
     log.info("Use Stock: disconnected item %d from %s"%(sn,name))
-    td.stock_disconnect(sn)
+    sos=td.s.query(StockOnSale).get(sn)
+    if sos: td.s.delete(sos)
+    td.s.flush()
     pick_new_stock(line,"Stock item %d disconnected from %s.  Now select "
                    "a new stock item to put on sale, or press Clear to "
                    "leave the line unused."%
@@ -205,7 +207,9 @@ def remove_stockitem(line,sd):
 
     """
     (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    td.stock_disconnect(sd['stockid'])
+    sos=td.s.query(StockOnSale).get(sd['stockid'])
+    if sos: td.s.delete(sos)
+    td.s.flush()
     if (sd['displayqty']-sd['used'])>0:
         displaynote=(
             "  Note: The till believes that %d items need to be "

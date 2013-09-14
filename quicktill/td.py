@@ -358,12 +358,6 @@ def stock_finish(stock,reason):
                 "WHERE stockid=%s",(reason,stock))
     commit()
 
-def stock_disconnect(stock):
-    "Temporarily disconnect a stock item."
-    cur=cursor()
-    cur.execute("DELETE FROM stockonsale WHERE stockid=%s",(stock,))
-    commit()
-
 def stock_onsale(line):
     """Find out what's on sale on a particular [beer] line.  This function
     returns a list of all the stock items allocated to the line, in order
