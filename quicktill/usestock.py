@@ -2,6 +2,7 @@
 
 from . import ui,td,keyboard,stock,stocklines,tillconfig
 from .models import StockLine,FinishCode,StockOnSale,StockItem
+from .models import StockType,StockAnnotation
 import datetime
 
 import logging
@@ -43,9 +44,7 @@ class popup(ui.infopopup):
             ui.infopopup.keypress(self,k)
 
 def line_chosen(line):
-    # We get all sorts of strange stuff if we're called from the popup,
-    # but XXX let's deal with that later.  Assume for now we're being passed
-    # a StockLine.
+    td.s.add(line)
     sl=line.stockonsale
     if line.capacity is None:
         # We sell directly from a single stock item
@@ -101,18 +100,18 @@ def finish_stock(line):
     ui.menu(fl,blurb=blurb,title="Finish Stock",w=60)
 
 def finish_disconnect(line,sn):
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    log.info("Use Stock: disconnected item %d from %s"%(sn,name))
+    td.s.add(line)
+    log.info("Use Stock: disconnected item %d from %s"%(sn,line.name))
     sos=td.s.query(StockOnSale).get(sn)
     if sos: td.s.delete(sos)
     td.s.flush()
     pick_new_stock(line,"Stock item %d disconnected from %s.  Now select "
                    "a new stock item to put on sale, or press Clear to "
                    "leave the line unused."%
-                   (sn,name))
+                   (sn,line.name))
 
 def finish_reason(line,sn,reason):
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
+    td.s.add(line)
     stockitem=td.s.query(StockItem).get(sn)
     stockitem.finished=datetime.datetime.now()
     stockitem.finishcode_id=reason
@@ -130,18 +129,28 @@ def pick_new_stock(line,blurb=""):
     is displayed before the list of stock items.
 
     """
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    sl=td.stock_search(dept=dept,stockline=stocklineid)
-    sinfo=td.stock_info(sl)
-    lines=ui.table([("%d"%x['stockid'],stock.format_stock(x),
-                     "%.0f %ss"%(x['remaining'],x['unitname']),
-                     ui.formatdate(x['bestbefore']))
+    td.s.add(line)
+    # We want to filter by dept, unfinished stock only, exclude stock on sale,
+    # and order based on the stocktype/stockline log
+    sinfo=td.s.query(StockItem).join(StockType).\
+        filter(StockItem.finished==None).\
+        filter(StockItem.stockonsale==None).\
+        filter(StockType.department==line.department).\
+        order_by(StockItem.id).\
+        all()
+    # The relevant part of the original code for ordering by stocktype/line log
+    # is:
+    #    order="(s.stocktype IN (SELECT stocktype FROM stockline_stocktype_log stl WHERE stl.stocklineid=%d)) DESC,s.stockid"%stockline
+
+    lines=ui.table([("%d"%x.id,x.stocktype.format(),
+                     "%.0f %ss"%(x.remaining,x.stocktype.unit.name),
+                     ui.formatdate(x.bestbefore))
                     for x in sinfo]).format(' r l l l ')
     nextfunc=(
         check_checkdigits if tillconfig.checkdigit_on_usestock
         and capacity is None
         else put_on_sale)
-    sl=[(x,nextfunc,(line,y['stockid'])) for x,y in zip(lines,sinfo)]
+    sl=[(x,nextfunc,(line,y.id)) for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Select Stock Item",blurb=blurb)
 
 class check_checkdigits(ui.dismisspopup):
@@ -157,7 +166,8 @@ class check_checkdigits(ui.dismisspopup):
                 keyboard.K_CASH:(self.check,None)})
         self.cdfield.focus()
     def check(self):
-        if self.cdfield.f==stock.checkdigits(self.sn):
+        s=td.s.query(StockItem).get(self.sn)
+        if self.cdfield.f==s.checkdigits:
             self.dismiss()
             put_on_sale(self.line,self.sn)
         else:
@@ -169,30 +179,31 @@ class check_checkdigits(ui.dismisspopup):
                           "any item that has no label."],title="Error")
 
 def put_on_sale(line,sn):
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
-    ok=td.stock_putonsale(sn,stocklineid)
+    td.s.add(line)
+    ok=td.stock_putonsale(sn,line.id)
     sdd=td.stock_info([sn])[0]
     sd=stock.format_stock(sdd)
     if ok:
-        log.info("Use Stock: item %d (%s) put on sale as %s"%(sn,sd,line))
+        log.info("Use Stock: item %d (%s) put on sale as %s"%(sn,sd,line.name))
         ui.infopopup(["Stock item %d (%s) has been put on sale "
-                      "as '%s'."%(sn,sd,name)],title="Confirmation",
+                      "as '%s'."%(sn,sd,line.name)],title="Confirmation",
                      dismiss=keyboard.K_CASH,colour=ui.colour_info)
         # If no location is recorded for the stock item, and the
         # department is number 1 (real ale) then pop up a window
         # asking for the location.  The window will pop up _on top_ of
         # the confirmation box.
-        if dept==1 and td.s.query(StockAnnotation).\
+        # XXX this is IPL-specific code and should be removed!
+        if line.dept_id==1 and td.s.query(StockAnnotation).\
                 filter(StockAnnotation.stockid==sn).\
                 filter(StockAnnotation.atype=='location').count()==0:
             stock.annotate_location(sn)
         tillconfig.usestock_hook(sdd)
     else:
-        log.warning("Use Stock: problem putting item %d on line %s"%(sn,name))
+        log.warning("Use Stock: problem putting item %d on line %s"%(sn,line.name))
         ui.infopopup(["There was an error putting stock item %d (%s) "
                       "on sale as '%s'.  Perhaps you already allocated "
                       "a stock item to this line on another page?"%
-                      (sn,sd,line)],title="Error")
+                      (sn,sd,line.name)],title="Error")
 
 def select_stockitem(line,sd):
     """Present options to the user:
@@ -200,9 +211,9 @@ def select_stockitem(line,sd):
     uh, that's it for now; can't think of anything else
 
     """
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
+    td.s.add(line)
     ui.infopopup(["To remove stock item %d ('%s') from %s, press "
-                  "Cash/Enter."%(sd['stockid'],stock.format_stock(sd),name)],
+                  "Cash/Enter."%(sd['stockid'],stock.format_stock(sd),line.name)],
                  title="Remove stock from line",
                  colour=ui.colour_input,
                  keymap={keyboard.K_CASH:(remove_stockitem,(line,sd),True)})
@@ -212,7 +223,7 @@ def remove_stockitem(line,sd):
     the user that the items need to be removed from display.
 
     """
-    (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=line
+    td.s.add(line)
     sos=td.s.query(StockOnSale).get(sd['stockid'])
     if sos: td.s.delete(sos)
     td.s.flush()
@@ -224,6 +235,6 @@ def remove_stockitem(line,sd):
     else:
         displaynote=""
     ui.infopopup(["Stock item %d (%s) has been removed from line %s.%s"%(
-        sd['stockid'],stock.format_stock(sd),name,displaynote)],
+        sd['stockid'],stock.format_stock(sd),line.name,displaynote)],
                  title="Stock removed from line",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)

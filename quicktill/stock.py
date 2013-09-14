@@ -2,7 +2,7 @@
 
 """
 
-import hashlib,logging
+import logging
 from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,UnitType,StockType,StockItem,StockAnnotation
@@ -12,17 +12,6 @@ log=logging.getLogger()
 def abvstr(abv):
     if abv is None: return ""
     return " (%0.1f%% ABV)"%abv
-
-def checkdigits(stockid):
-    """
-    Return three digits derived from a stock ID number.  These digits
-    can be printed on stock labels; knowledge of the digits can be
-    used to confirm that a member of staff really does have a
-    particular item of stock in front of them.
-
-    """
-    a=hashlib.sha1("quicktill-%d-quicktill"%stockid)
-    return str(int(a.hexdigest(),16))[-3:]
 
 def format_stock(sd,maxw=None):
     """

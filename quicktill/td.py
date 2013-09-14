@@ -211,38 +211,6 @@ def stock_checkpullthru(stockid,maxtime):
     if r is None: r=False
     return r
 
-def stock_search(dept=None,exclude_stock_on_sale=True,
-                 finished_stock_only=False,stockline=None,stocktype=None):
-    """Return a list of stock numbers that fit the criteria."""
-    cur=cursor()
-    if stockline is None:
-        order="s.stockid"
-    else:
-        order="(s.stocktype IN (SELECT stocktype FROM stockline_stocktype_log stl WHERE stl.stocklineid=%d)) DESC,s.stockid"%stockline
-    if dept is None:
-        deptq=""
-    else:
-        deptq="AND st.dept=%d"%dept
-    if exclude_stock_on_sale:
-        sosq="AND s.stockid NOT IN (SELECT stockid FROM stockonsale)"
-    else:
-        sosq=""
-    if finished_stock_only:
-        finq="not null"
-    else:
-        finq="null"
-    if stocktype:
-        stq="AND s.stocktype=%d"%stocktype
-    else:
-        stq=""
-    cur.execute("SELECT s.stockid FROM stock s INNER JOIN deliveries d ON "
-                "s.deliveryid=d.deliveryid INNER JOIN stocktypes st ON "
-                "st.stocktype=s.stocktype "
-                "WHERE finishcode is %s AND "
-                "d.checked=true %s %s %s ORDER BY %s"%(
-            finq,sosq,deptq,stq,order))
-    return [x[0] for x in cur.fetchall()]
-
 def stock_putonsale(stockid,stocklineid):
     """Connect a stock item to a particular line.  Additionally, create
     an annotation that records the line name.
