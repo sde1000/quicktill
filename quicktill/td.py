@@ -110,16 +110,6 @@ def trans_paid_by_bitcoin(trans):
                 "AND paytype='BTC'",(trans,))
     return cur.fetchone()[0]
 
-def trans_merge(t1,t2):
-    """Merge t1 into t2, and delete t1.
-
-    """
-    cur=cursor()
-    cur.execute("UPDATE translines SET transid=%s WHERE transid=%s",
-                (t2,t1))
-    cur.execute("DELETE FROM transactions WHERE transid=%s",(t1,))
-    commit()
-
 def trans_restore():
     """Restores all deferred transactions.
 

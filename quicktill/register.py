@@ -1295,6 +1295,7 @@ class page(ui.basicpage):
                 colour=ui.colour_input)
     def mergetrans(self,transid,othertransid):
         trans=td.s.query(Transaction).get(transid)
+        othertrans=td.s.query(Transaction).get(othertransid)
         if trans.closed:
             ui.infopopup(["Transaction %d has been closed, and cannot now "
                           "be merged with another transaction."%transid],
@@ -1306,7 +1307,21 @@ class page(ui.basicpage):
                           "transaction."%transid],
                          title="Error")
             return
-        td.trans_merge(transid,othertransid)
+        if othertrans.closed:
+            ui.infopopup(["Transaction %d has been closed, so we can't "
+                          "merge this transaction into it."%othertrans.id],
+                         title="Error")
+            return
+        for line in trans.lines:
+            line.transid=othertrans.id
+        td.s.flush()
+        # At this point the ORM still believes the translines belong
+        # to the original transaction, and will attempt to set their transid
+        # fields to NULL when we delete it.  Refresh here!
+        # XXX is it possible to get the ORM to update this automatically?
+        td.s.refresh(trans)
+        td.s.delete(trans)
+        td.s.flush()
         self.recalltrans(othertransid)
     def settransnote(self,trans,notes):
         if notes=="": notes=None
