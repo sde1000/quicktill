@@ -1,8 +1,9 @@
-"""Price lookup window.
+"""
+Price lookup window.
 
 """
 
-from . import td,ui,keyboard,stock,stocklines,tillconfig
+from . import td,ui,keyboard,stock,stocklines
 
 def plu_keypress(key):
     bindings=stocklines.linemenu(key,plu_window)
