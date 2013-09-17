@@ -307,18 +307,34 @@ class Epson_TM_T20(escpos):
         # Note that these figures are for 58mm paper width.  I have
         # not yet had a chance to calibrate for 80mm paper width.
         ms=16
-        if len(data)>14: ms=14
-        if len(data)>24: ms=12
-        if len(data)>34: ms=11
-        if len(data)>44: ms=10
-        if len(data)>58: ms=9
-        if len(data)>64: ms=8
-        if len(data)>84: ms=7
-        if len(data)>119: ms=6
-        if len(data)>177: ms=5
-        if len(data)>250: ms=4
-        if len(data)>439: ms=3
-        if len(data)>742: return # Too big to print
+        if self.dpl==420:
+            if len(data)>14: ms=14
+            if len(data)>24: ms=12
+            if len(data)>34: ms=11
+            if len(data)>44: ms=10
+            if len(data)>58: ms=9
+            if len(data)>64: ms=8
+            if len(data)>84: ms=7
+            if len(data)>119: ms=6
+            if len(data)>177: ms=5
+            if len(data)>250: ms=4
+            if len(data)>439: ms=3
+            if len(data)>742: return # Too big to print
+        else:
+            if len(data)>34: ms=15
+            if len(data)>44: ms=14
+            if len(data)>45: ms=13
+            if len(data)>58: ms=12
+            if len(data)>64: ms=11
+            if len(data)>84: ms=10
+            if len(data)>119: ms=9
+            if len(data)>137: ms=8
+            if len(data)>177: ms=7
+            if len(data)>250: ms=6
+            if len(data)>338: ms=5
+            if len(data)>511: ms=4
+            if len(data)>790: ms=3
+            if len(data)>1273: return # Too big to print
         self.f.write(ep_2d_cmd(49,67,ms))
 
         # Set error correction:

@@ -1,3 +1,21 @@
+quicktill (0.9.31) stable; urgency=low
+
+  * New release 0.9.31
+
+  * Support QR code printing on 80mm wide thermal paper with TM-T20
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 02 Jul 2013 17:08:47 +0100
+
+quicktill (0.9.30) stable; urgency=low
+
+  * New release 0.9.30
+
+  * Allow different default font size settings per printer
+
+  * Add support for TM-T20, alter QR code print API to be more sensible
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 29 Jun 2013 10:24:59 +0100
+
 quicktill (0.9.29) stable; urgency=low
 
   * New release 0.9.29
