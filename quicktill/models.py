@@ -759,6 +759,18 @@ class StockOnSale(Base):
         StockItem,backref=backref('stockonsale',uselist=False))
     def __repr__(self):
         return "<StockOnSale(%s,%s)>"%(self.stocklineid,self.stockid)
+    @property
+    def displayqty_or_zero(self):
+        """
+        displayqty is always null when a stockline has no display capacity.
+
+        On lines with a display capacity, a displayqty of null should be
+        read as zero.
+
+        This is needed for compatibility with legacy till databases.
+        """
+        if self.displayqty is None: return 0
+        return self.displayqty
 
 class KeyboardBinding(Base):
     __tablename__='keyboard'

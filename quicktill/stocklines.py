@@ -542,7 +542,7 @@ def popup():
         (keyboard.K_SIX,"Return stock from display",selectline,
          (return_stock,"Return Stock","Select the stock line to remove "
           "from display",True)),
-        (keyboard.K_NINE,"Purge finished stock items",purge,None),
+        (keyboard.K_NINE,"Purge finished stock items",td.stock_purge,None),
         ]
     ui.keymenu(menu,"Stock line options")
 
@@ -554,6 +554,10 @@ def linemenu(keycode,func):
     If there's only one keyboard binding in the list, shortcut to the
     function.
 
+    This function returns the number of keyboard bindings found.  Some
+    callers may wish to use this to inform the user that a key has no
+    bindings rather than having an uninformative empty menu pop up.
+    
     """
     # Find the keyboard bindings associated with this keycode
     kb=td.s.query(KeyboardBinding).\
@@ -562,7 +566,8 @@ def linemenu(keycode,func):
         all()
 
     if len(kb)==1: func(kb[0])
-    else:
+    elif len(kb)>1:
         il=sorted([(keyboard.keycodes[x.menukey],x.stockline.name,func,(x,))
                    for x in kb])
         ui.keymenu(il,title="Choose an item",colour=ui.colour_line)
+    return len(kb)

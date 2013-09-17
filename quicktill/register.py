@@ -1353,7 +1353,8 @@ class page(ui.basicpage):
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
         if k in keyboard.lines:
-            return stocklines.linemenu(k,self.linekey)
+            stocklines.linemenu(k,self.linekey)
+            return
         if k in keyboard.depts:
             return self.deptkey(keyboard.depts[k])
         self.repeat=None
