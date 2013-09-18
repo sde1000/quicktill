@@ -29,7 +29,7 @@ def calculate_sale(stocklineid,items):
     sell=[]
     # Iterate through the StockOnSale objects for this stock line
     for i in sl:
-        ondisplay=max(sl.displayqty-sl.stockitem.used,0)
+        ondisplay=max(sl.displayqty_or_zero-sl.stockitem.used,0)
         sellqty=min(unallocated,ondisplay)
         log.debug("ondisplay=%d, sellqty=%d"%(ondisplay,sellqty))
         unallocated=unallocated-sellqty
@@ -449,7 +449,7 @@ def delete(stockline):
     the same time.
 
     """
-    stockline=td.s.merge(stockline)
+    td.s.add(stockline)
     sl=stockline.stockonsale
     if len(sl)>0:
         message=["The stock line has been deleted.  Note that it still "
@@ -470,7 +470,9 @@ def listunbound():
     """Pop up a list of stock lines with no key bindings on any keyboard.
 
     """
-    l=td.stockline_listunbound(td.s)
+    l=td.s.query(StockLine).outerjoin(KeyboardBinding).\
+        filter(KeyboardBinding.stocklineid==None).\
+        all()
     if len(l)==0:
         ui.infopopup(["There are no stock lines that lack key bindings.",
                       "","Note that other tills may have key bindings to "
@@ -478,9 +480,18 @@ def listunbound():
                      title="Unbound stock lines",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
     else:
-        ll=["%s %s"%(x.name,x.location) for x in l]
-        ui.linepopup(ll,title="Unbound stock lines",colour=ui.colour_info,
-                     dismiss=keyboard.K_CASH)
+        f=ui.tableformatter(' l l l l ')
+        headerline=ui.tableline(f,["Name","Location","Department","Stock"])
+        ll=[ui.tableline(f,(x.name,x.location,x.department.description,
+                            "Yes" if len(x.stockonsale)>0 else "No"))
+            for x in l]
+        # Items in this list are selectable but doing so currently
+        # does nothing.  At some point the "edit" and "delete"
+        # stockline menu options should be merged into a single
+        # stockline editor, and selecting a line here should open the
+        # editor.
+        ui.listpopup(ll,title="Unbound stock lines",colour=ui.colour_info,
+                     header=[headerline])
 
 class translate_keyline_to_stockline:
     def __init__(self,func):
