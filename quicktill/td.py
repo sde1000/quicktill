@@ -92,13 +92,6 @@ def trans_multiband(trans):
     bands=cur.fetchall()
     return len(bands)>1
 
-def trans_paid_by_bitcoin(trans):
-    "Determine whether a transaction includes a Bitcoin payment."
-    cur=cursor()
-    cur.execute("SELECT count(*)>0 FROM payments WHERE transid=%s "
-                "AND paytype='BTC'",(trans,))
-    return cur.fetchone()[0]
-
 def trans_restore():
     """Restores all deferred transactions.
 

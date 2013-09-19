@@ -881,11 +881,12 @@ class page(ui.basicpage):
             self.redraw()
             return
         self.prompt=self.defaultprompt
-        if td.trans_paid_by_bitcoin(self.trans.id):
-            ui.infopopup(["This transaction has already been paid by "
-                          "Bitcoin; no other Bitcoin payments can be "
-                          "accepted for it."],title="Error")
-            return
+        for p in self.trans.payments:
+            if p.paytype_id=='BTC':
+                ui.infopopup(["This transaction has already been paid by "
+                              "Bitcoin; no other Bitcoin payments can be "
+                              "accepted for it."],title="Error")
+                return
         self.clearbuffer()
         return btcpopup(self.bitcoin,self.trans.id,self.balance)
     def bitcoin(self,amount,btcamount):
