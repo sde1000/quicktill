@@ -94,20 +94,6 @@ def trans_restore():
         i.session=sc
     s.flush()
 
-def trans_makefree(transid,removecode):
-    """Converts all stock sold in this transaction to 'removecode', and
-    deletes the transaction.  Usually used when converting an open transaction
-    to 'free drinks'.
-
-    """
-    cur=cursor()
-    cur.execute("UPDATE stockout SET removecode=%s,translineid=NULL "
-                "WHERE translineid IN (SELECT translineid FROM translines "
-                "WHERE transid=%s)",(removecode,transid))
-    cur.execute("DELETE FROM translines WHERE transid=%s",(transid,))
-    cur.execute("DELETE FROM transactions WHERE transid=%s",(transid,))
-    commit()
-
 ### Functions related to the stocktypes table
 
 def stocktype_completemanufacturer(m):
