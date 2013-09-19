@@ -752,7 +752,8 @@ class StockOnSale(Base):
     stocklineid=Column(Integer,ForeignKey(
             'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
     stockid=Column(Integer,ForeignKey(
-            'stock.stockid',ondelete='CASCADE'),nullable=False,primary_key=True)
+            'stock.stockid',ondelete='CASCADE'),nullable=False,primary_key=True,
+                   autoincrement=False)
     displayqty=Column(Integer)
     stockline=relationship(StockLine,backref=backref('stockonsale',cascade='all'))
     stockitem=relationship(

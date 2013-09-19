@@ -148,7 +148,7 @@ def pick_new_stock(line,blurb=""):
                     for x in sinfo]).format(' r l l l ')
     nextfunc=(
         check_checkdigits if tillconfig.checkdigit_on_usestock
-        and capacity is None
+        and line.capacity is None
         else put_on_sale)
     sl=[(x,nextfunc,(line,y.id)) for x,y in zip(lines,sinfo)]
     ui.menu(sl,title="Select Stock Item",blurb=blurb)
@@ -180,30 +180,27 @@ class check_checkdigits(ui.dismisspopup):
 
 def put_on_sale(line,sn):
     td.s.add(line)
-    ok=td.stock_putonsale(sn,line.id)
-    sdd=td.stock_info([sn])[0]
-    sd=stock.format_stock(sdd)
-    if ok:
-        log.info("Use Stock: item %d (%s) put on sale as %s"%(sn,sd,line.name))
-        ui.infopopup(["Stock item %d (%s) has been put on sale "
-                      "as '%s'."%(sn,sd,line.name)],title="Confirmation",
-                     dismiss=keyboard.K_CASH,colour=ui.colour_info)
-        # If no location is recorded for the stock item, and the
-        # department is number 1 (real ale) then pop up a window
-        # asking for the location.  The window will pop up _on top_ of
-        # the confirmation box.
-        # XXX this is IPL-specific code and should be removed!
-        if line.dept_id==1 and td.s.query(StockAnnotation).\
-                filter(StockAnnotation.stockid==sn).\
-                filter(StockAnnotation.atype=='location').count()==0:
-            stock.annotate_location(sn)
-        tillconfig.usestock_hook(sdd)
-    else:
-        log.warning("Use Stock: problem putting item %d on line %s"%(sn,line.name))
-        ui.infopopup(["There was an error putting stock item %d (%s) "
-                      "on sale as '%s'.  Perhaps you already allocated "
-                      "a stock item to this line on another page?"%
-                      (sn,sd,line.name)],title="Error")
+    si=td.s.query(StockItem).get(sn)
+    si.onsale=datetime.datetime.now()
+    td.s.add(StockAnnotation(stockitem=si,atype='start',text=line.name))
+    td.s.add(StockOnSale(stockline=line,stockid=si.id))
+    td.s.flush()
+    log.info("Use Stock: item %d (%s) put on sale as %s"%(
+            si.id,si.stocktype.format(),line.name))
+    ui.infopopup(["Stock item %d (%s) has been put on sale "
+                  "as '%s'."%(si.id,si.stocktype.format(),line.name)],
+                 title="Confirmation",
+                 dismiss=keyboard.K_CASH,colour=ui.colour_info)
+    # If no location is recorded for the stock item, and the
+    # department is number 1 (real ale) then pop up a window
+    # asking for the location.  The window will pop up _on top_ of
+    # the confirmation box.
+    # XXX this is IPL-specific code and should be removed!
+    if line.dept_id==1 and td.s.query(StockAnnotation).\
+            filter(StockAnnotation.stockid==sn).\
+            filter(StockAnnotation.atype=='location').count()==0:
+        stock.annotate_location(sn)
+    tillconfig.usestock_hook(si,line) # calling convention changed!
 
 def select_stockitem(line,sd):
     """Present options to the user:

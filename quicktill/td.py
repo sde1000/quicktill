@@ -115,41 +115,6 @@ def stocktype_completename(m,n):
 
 ### Functions related to the stock,stockout,stockonsale tables
 
-def stock_info(stockid_list):
-    """Return lots of information on stock items in the list."""
-    if len(stockid_list)==0: return []
-    cur=cursor()
-    # Q: Does psycopg2 deal with lists?
-    # A: lists are turned into ARRAY types.  Tuples are turned into
-    # something suitable for the IN operator.  The documentation says
-    # that empty tuples are not supported so must be guarded against
-    # (already done, above).  The psycopg2.extensions module MUST be
-    # imported to register support for this.
-    cur.execute("SELECT * FROM stockinfo WHERE stockid IN %s",
-                (tuple(stockid_list),))
-    r=cur.fetchall()
-    # Q: This is a real candidate for returning a dict! Does pgdb support it?
-    # A: not explicitly, but we can do something like:
-    cn=[x[0] for x in cur.description]
-    from . import stock
-    def mkdict(r):
-        d={}
-        for i in cn:
-            d[i]=r[0]
-            r=r[1:]
-        d['abvstr']=stock.abvstr(d['abv'])
-        if d['used'] is None: d['used']=Decimal("0.0")
-        d['remaining']=d['size']-d['used']
-        return d
-    # At this point we have a list of results, but that list is not
-    # necessarily in the order of the input list.  We must sort it
-    # into the appropriate order.  Note that we may have been passed
-    # stockids that do not exist!
-    sid={}
-    for i in r:
-        sid[i[0]]=mkdict(i)
-    return [sid[x] for x in stockid_list if x in sid]
-
 def stock_checkpullthru(stockid,maxtime):
     """Did this stock item require pulling through?"""
     global s
@@ -158,21 +123,6 @@ def stock_checkpullthru(stockid,maxtime):
             where(StockOut.stockid==stockid).\
             where(StockOut.removecode_id.in_(['sold','pullthru']))
         ).scalar()
-
-def stock_putonsale(stockid,stocklineid):
-    """Connect a stock item to a particular line.  Additionally, create
-    an annotation that records the line name.
-
-    """
-    cur=cursor()
-    cur.execute("UPDATE stock SET onsale=now() WHERE stockid=%s",(stockid,))
-    cur.execute("INSERT INTO stockonsale (stocklineid,stockid) VALUES "
-                "(%s,%s)",(stocklineid,stockid))
-    cur.execute("INSERT INTO stock_annotations (stockid,atype,text) "
-                "SELECT %s,'start',(SELECT name FROM stocklines "
-                "WHERE stocklineid=%s)",(stockid,stocklineid))
-    commit()
-    return True
 
 def stock_autoallocate_candidates(deliveryid=None):
     """
@@ -194,19 +144,6 @@ def stock_autoallocate_candidates(deliveryid=None):
         "WHERE ssl.stocklineid=sl.stocklineid) "
         "ORDER BY si.stockid"%ds)
     return cur.fetchall()
-
-def stock_allocate(aal):
-    """
-    Allocate stock to stocklines; expects a list of
-    (stockline,stockid,displayqty) tuples, as produced by
-    stock_autoallocate_candidates() and then filtered for duplicate
-    stockids.
-
-    """
-    cur=cursor()
-    for i in aal:
-        cur.execute("INSERT INTO stockonsale VALUES (%s,%s,%s)",i)
-    commit()
 
 def stock_purge():
     """Stock items that have been completely used up through the

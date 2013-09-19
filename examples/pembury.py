@@ -16,6 +16,7 @@ from quicktill.lockscreen import popup as lockscreen
 from quicktill import timesheets,btcmerch
 import math
 import os
+from decimal import Decimal
 
 # VAT rate changed 4/1/2011
 vatrate=0.2
@@ -172,17 +173,18 @@ tapi=extras.twitter_api(
     token='not-a-valid-token',
     token_secret='not-a-valid-secret')
 
-def usestock_hook(sd):
+def usestock_hook(stock,line):
     t=None
-    if sd['dept']==3:
+    if stock.stocktype.dept_id==3:
         # It's a cider. Tweet it.
-        t="Next cider: %(manufacturer)s %(name)s"%sd
-    elif sd['dept']==1:
+        t="Next cider: %s"%(stock.stocktype.format())
+    elif stock.stocktype.dept_id==1:
         # Real ale.  Tweet if not from Milton, or if particularly strong
-        if sd['manufacturer']!="Milton":
-            t="Next guest beer: %(manufacturer)s %(name)s%(abvstr)s"%sd
-        if sd['abv'] is not None and sd['abv']>6.4:
-            t="Next strong beer: %(manufacturer)s %(name)s%(abvstr)s"%sd
+        if stock.stocktype.manufacturer!="Milton":
+            t="Next guest beer: %s"%stock.stocktype.format()
+        if (stock.stocktype.abv is not None
+            and stock.stocktype.abv>Decimal('6.4')):
+            t="Next strong beer: %s"%stock.stocktype.format()
     if t: extras.twitter_post(tapi,default_text=t,fail_silently=True)
 
 tsapi=timesheets.Api("pembury","not-a-valid-password",
@@ -285,7 +287,7 @@ pdfprinter={
     'printer': (pdf,("lpr %s",)),
     }
 xpdfprinter={
-    'printer': (pdf,("evince %s",)),
+    'printer': (pdf,("evince %s",300)),
     }
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
@@ -615,7 +617,7 @@ stockcontrol={
 config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(pdfprinter)
+config0.update(xpdfprinter) # XXX for testing
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal

@@ -20,13 +20,12 @@ kbtype=1
 
 cashback_limit=50.0
 
-def pricepolicy(sd,qty):
-    """How much does qty of stock item sd cost? qty is a float,
-    eg. 1.0 or 0.5, and sd is a dictionary as returned by
-    td.stock_info()
+def pricepolicy(si,qty):
+    """How much does qty of stock item sd cost? qty is a Decimal,
+    eg. 1.0 or 0.5, and si is a StockItem
 
     """
-    return qty*sd['saleprice']
+    return qty*si.saleprice
 
 def fc(a):
     """Format currency, using the configured currency symbol."""
@@ -72,8 +71,8 @@ transaction_notes=[
     "","Kitchen tab","Staff tab","Party tab","Brewery tab","Festival staff tab"]
 
 # Hook that is called whenever an item of stock is put on sale, with
-# the output of td.stock_info() as an argument.
-def usestock_hook(sd):
+# a StockItem and StockLine as the arguments
+def usestock_hook(stock,line):
     pass
 
 transaction_to_free_drinks_function=False

@@ -172,7 +172,10 @@ def auto_allocate(deliveryid=None,confirm=True):
             "option 3.")
     else:
         if len(cl)>0:
-            td.stock_allocate(cl)
+            for lineid,stockid,displayqty in cl:
+                td.s.add(StockOnSale(stocklineid=lineid,stockid=stockid,
+                                     displayqty=displayqty))
+            td.s.flush()
             message=("The following stock items have been allocated to "
                      "display lines: %s."%(
                     ', '.join(["%d"%stockid for sl,stockid,dq in cl])))
