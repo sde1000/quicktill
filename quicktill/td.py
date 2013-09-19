@@ -82,16 +82,6 @@ def end_session():
 
 ### Convenience functions
 
-def trans_multiband(trans):
-    "Determine whether a transaction has lines in more than one VAT band."
-    cur=cursor()
-    cur.execute("SELECT DISTINCT vat.band FROM translines tl "
-                "LEFT JOIN departments d ON tl.dept=d.dept "
-                "LEFT JOIN vat ON d.vatband=vat.band "
-                "WHERE transid=%s",(trans,))
-    bands=cur.fetchall()
-    return len(bands)>1
-
 def trans_restore():
     """Restores all deferred transactions.
 

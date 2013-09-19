@@ -2,6 +2,7 @@ import string,time
 from . import td,ui,tillconfig
 from decimal import Decimal
 from .models import Delivery,VatBand,Business,Transline,Transaction
+from .models import zero,penny
 
 driver=None
 labeldriver=None
@@ -12,40 +13,36 @@ labeldriver=None
 # remove it afterwards with td.end_session()
 
 def print_receipt(transid):
-    from . import stock
     trans=td.s.query(Transaction).get(transid)
-    transopen=False
+    if trans is None: return
     if len(trans.lines)==0: return
-    linestotal=trans.total
-    paymentstotal=trans.payments_total
-    if linestotal!=paymentstotal: transopen=True
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     for i in tillconfig.pubaddr:
         driver.printline("\t%s"%i,colour=1)
     driver.printline("\tTel. %s"%tillconfig.pubnumber)
     driver.printline()
-    multiband=td.trans_multiband(transid)
-    date=trans.session.date
     bandtotals={}
     for tl in trans.lines:
         bandtotals[tl.department.vatband]=bandtotals.get(
-            tl.department.vatband,Decimal("0.00"))+(tl.items*tl.amount)
+            tl.department.vatband,Decimal("0.00"))+tl.total
+    for tl in trans.lines:
         left=tl.description
         right=tl.regtotal(tillconfig.currency)
-        if multiband and not transopen:
-            driver.printline("%s\t\t%s %s"%(left,right,tl.department.vatband),font=1)
+        if len(bandtotals)>1 and trans.closed:
+            driver.printline(
+                "%s\t\t%s %s"%(left,right,tl.department.vatband),font=1)
         else:
             driver.printline("%s\t\t%s"%(left,right),font=1)
-    totalpad="  " if multiband else ""
-    driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(linestotal),totalpad),
+    totalpad="  " if len(bandtotals)>1 else ""
+    driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(trans.total),totalpad),
                      colour=1,emph=1)
     for p in trans.payments:
         if p.paytype_id=='CASH':
             driver.printline("\t\t%s %s%s"%(p.ref,
                                             tillconfig.fc(p.amount),totalpad))
         else:
-            if ref is None:
+            if p.ref is None:
                 driver.printline("\t\t%s %s%s"%(p.paytype.description,
                                                 tillconfig.fc(p.amount),
                                                 totalpad))
@@ -53,7 +50,7 @@ def print_receipt(transid):
                 driver.printline("\t\t%s %s %s%s"%(
                     p.paytype.description,p.ref,tillconfig.fc(p.amount),totalpad))
     driver.printline("")
-    if transopen:
+    if not trans.closed:
         driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)
         driver.printline("\tTransaction number %d"%trans.id)
     else:
@@ -65,7 +62,7 @@ def print_receipt(transid):
         # total.
         businesses={} # Keys are business IDs, values are (band,rate) tuples
         for i in list(bandtotals.keys()):
-            vr=td.s.query(VatBand).get(i).at(date)
+            vr=td.s.query(VatBand).get(i).at(trans.session.date)
             businesses.setdefault(vr.business.id,[]).append((i,vr.rate))
         for i in list(businesses.keys()):
             business=td.s.query(Business).get(i)
@@ -79,14 +76,15 @@ def print_receipt(transid):
             for band,rate in bands:
                 # Print the band, amount ex VAT, amount inc VAT, gross
                 gross=bandtotals[band]
-                net=gross/((rate/Decimal("100.0"))+Decimal("1.0"))
+                net=(gross/((rate/Decimal("100.0"))+Decimal("1.0"))).\
+                    quantize(penny)
                 vat=gross-net
                 driver.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
                         band,tillconfig.fc(net),tillconfig.fc(vat),rate,
                         tillconfig.fc(gross)),font=1)
             driver.printline("")
         driver.printline("\tReceipt number %d"%trans.id)
-    driver.printline("\t%s"%ui.formatdate(date))
+    driver.printline("\t%s"%ui.formatdate(trans.session.date))
     driver.end()
 
 def print_sessioncountup(s):
