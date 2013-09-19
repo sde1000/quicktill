@@ -305,16 +305,16 @@ class annotate(ui.dismisspopup):
             self.stockfield.set(str(stockid))
             self.stock_enter_key()
     def stock_line(self,line):
-        name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
-        if capacity is None:
+        td.s.add(line)
+        if line.capacity is None:
             # Look up the stock number, put it in the field, and invoke
             # stock_enter_key
-            sl=td.stock_onsale(stocklineid)
+            sl=line.stockonsale
             if sl==[]:
-                ui.infopopup(["There is nothing on sale on %s."%name],
+                ui.infopopup(["There is nothing on sale on %s."%line.name],
                              title="Error")
             else:
-                self.stockfield.set(str(sl[0][0]))
+                self.stockfield.set(str(sl[0].stockitem.id))
                 self.stock_enter_key()
     def stock_dept_selected(self,dept):
         sinfo=td.s.query(StockItem).join(StockItem.stocktype).\
