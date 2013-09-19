@@ -82,17 +82,6 @@ def end_session():
 
 ### Convenience functions
 
-def execone(cur,c,*args):
-    "Execute c and return the single result. Does not commit."
-    cur.execute(c,*args)
-    r=cur.fetchone()
-    if not r: return None
-    return r[0]
-
-def ticket(cur,seq):
-    "Fetch a new serial number from the named sequence"
-    return execone(cur,"SELECT nextval(%s)",(seq,))
-
 def trans_multiband(trans):
     "Determine whether a transaction has lines in more than one VAT band."
     cur=cursor()
@@ -194,12 +183,12 @@ def stock_info(stockid_list):
 
 def stock_checkpullthru(stockid,maxtime):
     """Did this stock item require pulling through?"""
-    cur=cursor()
-    r=execone(cur,"SELECT now()-max(stockout.time)>%s FROM stockout "
-              "WHERE stockid=%s AND removecode IN ('sold','pullthru')",
-              (maxtime,stockid))
-    if r is None: r=False
-    return r
+    global s
+    return s.execute(
+        select([func.now()-func.max(StockOut.time)>maxtime]).\
+            where(StockOut.stockid==stockid).\
+            where(StockOut.removecode_id.in_(['sold','pullthru']))
+        ).scalar()
 
 def stock_putonsale(stockid,stocklineid):
     """Connect a stock item to a particular line.  Additionally, create
