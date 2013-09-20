@@ -91,8 +91,12 @@ def main():
                       help="Log filename")
     parser.add_option("--debug", action="store_true", dest="debug",
                       help="Include debug output in logfile")
+    parser.add_option("-i", "--interactive", action="store_true",
+                      dest="interactive",
+                      help="Enter interactive database shell")
     parser.set_defaults(configurl=configurl,configname="default",
-                        database=None,logfile=None,debug=False)
+                        database=None,logfile=None,debug=False,
+                        interactive=False)
     (options,args)=parser.parse_args()
     if len(args)>0:
         parser.error("this program takes no arguments")
@@ -186,7 +190,19 @@ def main():
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
 
     locale.setlocale(locale.LC_ALL,'')
-    sys.exit(run())
+
+    if options.interactive:
+        import code
+        import readline
+        td.init()
+        td.start_session()
+        console=code.InteractiveConsole()
+        console.push("import quicktill.td as td")
+        console.push("from quicktill.models import *")
+        console.interact()
+        td.end_session()
+    else:
+        sys.exit(run())
 
 if __name__=='__main__':
     main()
