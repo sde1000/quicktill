@@ -703,16 +703,56 @@ StockItem.lastsale=column_property(
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):
+    """
+    All stock is sold through stocklines.  An item of stock is "on
+    sale" if it has an entry in the stockonsale table pointing to a
+    stockline.  Keyboard bindings on the till keyboard point to
+    stocklines and supply a quantity (usually "1" but may be otherwise
+    for keys that do doubles, halves, 4pt jugs and so on).
+
+    There are currently two types of stockline:
+
+    1. "Regular" stocklines.  These can have at most one stock item on
+    sale at any one time.  Finishing that stock item and putting
+    another item on sale are done explicitly by the staff.  These
+    stocklines have a null "capacity".  They are typically used where
+    units are dispensed directly from the stock item to the customer
+    and it's obvious to the member of staff when the stock item is
+    empty, for example casks/kegs through a pump, bottles of spirits,
+    cards or boxes of snacks, and so on.
+
+    2. "Display" stocklines.  These can have several stock items on
+    sale at once.  Moving from one stock item to the next is
+    automatic; when one item is empty the next is used.  These
+    stocklines have a non-null "capacity", and the system keeps track
+    of how many units of each stock item are "on display" and
+    available to be sold; the "capacity" is the number of units that
+    can be on display at any one time (for example, in a fridge).
+    Display stocklines are typically used where it isn't obvious to
+    the member of staff where one stock item finishes and another one
+    starts; for example, the bottles on display in a fridge may come
+    from several different stock items.
+
+    """
     __tablename__='stocklines'
     id=Column('stocklineid',Integer,stocklines_seq,
               nullable=False,primary_key=True)
-    name=Column(String(30),nullable=False,unique=True)
-    location=Column(String(20),nullable=False)
-    capacity=Column(Integer)
+    name=Column(String(30),nullable=False,unique=True,
+                doc="User-visible name of this stockline")
+    location=Column(String(20),nullable=False,
+                    doc="Used for grouping stocklines together in the UI")
+    capacity=Column(Integer,doc='If a "Display" stockline, the number of '
+                    'units of stock that can be ready to sell to customers '
+                    'at once, for example space in a fridge.')
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
-    pullthru=Column(Numeric(5,1))
-    department=relationship(Department,lazy='joined')
+    pullthru=Column(Numeric(5,1),doc='If a "Regular" stockline, the amount '
+                    'of stock that should be disposed of the first time the '
+                    'stock is sold each day.')
+    department=relationship(
+        Department,lazy='joined',
+        doc="All stock items on sale on this line must belong to this "
+        "department.")
     # capacity and pullthru can't both be non-null at the same time
     __table_args__=(
         CheckConstraint(
@@ -723,6 +763,61 @@ class StockLine(Base):
         return "stockline/%d/"%self.id
     def __repr__(self):
         return "<StockLine(%s,'%s')>"%(self.id,self.name)
+    @property
+    def ondisplay(self):
+        """
+        For "Display" stocklines, the total number of units of stock
+        on display for sale across all the stock items on sale on this
+        line.  For other stocklines, returns None.
+
+        """
+        if self.capacity is None: return None
+        return sum(sos.ondisplay for sos in self.stockonsale)
+    @property
+    def instock(self):
+        """
+        For "Display" stocklines, the total number of units of stock
+        available to be put on display for sale across all the stock items
+        on sale on this line.  For other stocklines, returns None.
+
+        """
+        if self.capacity is None: return None
+        return sum(sos.instock for sos in self.stockonsale)
+    def calculate_restock(self,target=None):
+        """
+        Calculate the stock movements required to set the displayed
+        quantity of this stockline to the target (which is the display
+        capacity if not specified as an argument).  This function DOES NOT
+        commit the movements to the database.  Returns a list of
+        (stockonsale,fetchqty,newdisplayqty,qtyremain) tuples for the
+        affected stock items.
+
+        """
+        if self.capacity is None: return None
+        target=target if target else self.capacity
+        sos=list(self.stockonsale) # copy because we may reverse it later
+        needed=target-self.ondisplay
+        # If needed is negative we need to return some stock!  The list
+        # returned via the stockonsale backref is sorted by best before
+        # date and delivery date, so if we're returning stock we need to
+        # reverse the list to return stock with the latest best before
+        # date / latest delivery first.
+        if needed<0:
+            sos.reverse()
+        sm=[]
+        for i in sos:
+            move=0
+            if needed>0:
+                move=min(needed,i.instock)
+            if needed<0:
+                # We can only put back what is already on display!
+                move=max(needed,0-i.ondisplay)
+            needed=needed-move
+            newdisplayqty=i.displayqty_or_zero+move
+            instock_after_move=int(i.stockitem.stockunit.size)-newdisplayqty
+            if move!=0:
+                sm.append((i,move,newdisplayqty,instock_after_move))
+        return sm
 
 def location_summary(session,location):
     """Return a list of (StockLine,StockItem) tuples corresponding to
@@ -748,6 +843,28 @@ def location_summary(session,location):
 # it shouldn't matter that we'll be working with legacy databases that
 # are different.
 class StockOnSale(Base):
+    """
+    This class represents a StockItem on sale on a StockLine.  A
+    StockItem can be on sale on at most one StockLine, but "Display"
+    StockLines can have multiple StockItems on sale at once.
+
+    This class only exists because of a design error in the original
+    database schema!  stocklineid and displayqty should really be
+    fields in a StockItem.  Merging these two tables will have to wait
+    for a future release.
+
+    displayqty is always null on "Regular" StockLines.  On "Display"
+    StockLines, a null displayqty should be read as zero.
+
+    This diagram shows how displayqty works:
+
+    0     1     2     3     4     5     6     7     8     9    10
+    |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+    <---------------- stockitem.stockunit.size -----------------> = 10
+    <--- stockitem.used --->|<-- ondisplay -->|<--- instock ---->
+    <-------------- displayqty -------------->|
+
+    """
     __tablename__='stockonsale'
     stocklineid=Column(Integer,ForeignKey(
             'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
@@ -755,7 +872,15 @@ class StockOnSale(Base):
             'stock.stockid',ondelete='CASCADE'),nullable=False,primary_key=True,
                    autoincrement=False)
     displayqty=Column(Integer)
-    stockline=relationship(StockLine,backref=backref('stockonsale',cascade='all'))
+    stockline=relationship(StockLine,backref=backref(
+            'stockonsale',cascade='all',
+            order_by=lambda: (
+                desc(func.coalesce(StockOnSale.displayqty,0)),
+                #StockOnSale.stockitem.bestbefore,
+                # XXX we need an extra join here to make best-before sorting
+                # work - not sure how to achieve this in sqlalchemy!  When
+                # we merge this class with StockItem this should just work.
+                StockOnSale.stockid)))
     stockitem=relationship(
         StockItem,backref=backref('stockonsale',uselist=False))
     def __repr__(self):
@@ -772,6 +897,22 @@ class StockOnSale(Base):
         """
         if self.displayqty is None: return 0
         return self.displayqty
+    @property
+    def ondisplay(self):
+        """
+        The number of units of stock on display waiting to be sold.
+
+        """
+        if self.stockline.capacity is None: return None
+        return int(self.displayqty_or_zero-self.stockitem.used)
+    @property
+    def instock(self):
+        """
+        The number of units of stock not yet on display.
+
+        """
+        if self.stockline.capacity is None: return None
+        return int(self.stockitem.stockunit.size)-self.displayqty_or_zero
 
 class KeyboardBinding(Base):
     __tablename__='keyboard'

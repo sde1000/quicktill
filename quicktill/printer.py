@@ -254,21 +254,31 @@ def print_stocklist(sl,title="Stock List"):
     driver.end()
 
 def print_restock_list(rl):
+    """
+    Print a list of (stockline,stockmovement) tuples.
+    A stockmovement tuple is (stockonsale,fetchqty,newdisplayqty,qtyremain).
+
+    We can't assume that any of these objects are in the current
+    session.
+
+    """
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tRe-stock list")
     driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
     driver.printline()
-    for stockline,name,ondisplay,capacity,sl in rl:
-        driver.printline("%s:"%name)
-        driver.printline("%d/%d displayed"%(ondisplay,capacity))
-        for sd,move,newdisplayqty,stockqty_after_move in sl:
+    for sl,sm in rl:
+        td.s.add(sl)
+        driver.printline("%s:"%sl.name)
+        driver.printline("%d/%d displayed"%(sl.ondisplay,sl.capacity))
+        for sos,move,newdisplayqty,stockqty_after_move in sm:
+            td.s.add(sos)
             if move>0:
                 driver.printline(" %d from item %d leaving %d"%(
-                    move,sd['stockid'],stockqty_after_move))
+                    move,sos.stockitem.id,stockqty_after_move))
             if move<0:
                 driver.printline(" %d to item %d making %d"%(
-                    -move,sd['stockid'],stockqty_after_move),colour=1)
+                    -move,sos.stockitem.stockid,stockqty_after_move),colour=1)
     driver.printline()
     driver.printline("\tEnd of list")
     driver.end()

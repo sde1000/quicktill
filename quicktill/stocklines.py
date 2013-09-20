@@ -39,65 +39,15 @@ def calculate_sale(stocklineid,items):
             sell.append((i.stockitem,sellqty))
     return (sell,unallocated,(leftondisplay,totalinstock-leftondisplay))
 
-def calculate_restock(stocklineid,target=None):
-    """Given a stocklineid and optionally a different target quantity
-    (used when removing stock from display prior to stockline
-    deletion, for example) calculate the stock movements required.
-    This function DOES NOT commit the movements to the database; there
-    is a separate function for that.  Returns a list of
-    (stockdict,fetchqty,newdisplayqty,qtyremain) tuples for the
-    affected stock items.
-
-    """
-    stockline=td.s.query(StockLine).get(stocklineid)
-    if stockline.capacity is None: return None
-    capacity=target if target else stockline.capacity
-    log.info("Re-stock line '%s' capacity %d"%(stockline.name,capacity))
-    sl=td.stock_onsale(stockline.id)
-    sinfo=td.stock_info([x[0] for x in sl])
-    # Merge the displayqty from sl into sinfo, and count up the amount
-    # on display
-    ondisplay=0
-    for a,b in zip(sl,sinfo):
-        if a[1] is None: dq=0
-        else: dq=a[1]
-        b['displayqty']=max(dq,b['used'])
-        b['ondisplay']=b['displayqty']-b['used']
-        ondisplay=ondisplay+b['ondisplay']
-    del sl # Make sure we don't refer to it later
-    needed=capacity-ondisplay
-    # If needed is negative we need to return some stock!  The list
-    # returned by td.stock_onsale is sorted by best before date and
-    # delivery date, so if we're returning stock we need to reverse
-    # the list to return stock with the latest best before date /
-    # latest delivery first.
-    if needed<0:
-        sinfo.reverse()
-    sm=[]
-    for i in sinfo:
-        iondisplay=i['ondisplay'] # number already on display
-        available=i['size']-i['displayqty'] # number available to go on display
-        move=0
-        if needed>0:
-            move=min(needed,available)
-        if needed<0:
-            move=max(needed,0-iondisplay)
-        needed=needed-move
-        newdisplayqty=i['displayqty']+move
-        stockqty_after_move=i['size']-newdisplayqty
-        if move!=0:
-            sm.append((i,move,newdisplayqty,stockqty_after_move))
-    if sm==[]: return None
-    return (stockline.id,stockline.name,ondisplay,capacity,sm)
-        
 def restock_list(stockline_list):
     # Print out list of things to fetch and put on display
     # Display prompt: have you fetched them all?
     # If yes, update records.  If no, don't.
     sl=[]
     for i in stockline_list:
-        sl.append(calculate_restock(i))
-    sl=[x for x in sl if x is not None]
+        td.s.add(i)
+        r=i.calculate_restock()
+        if len(r)>0: sl.append((i,r))
     if sl==[]:
         ui.infopopup(["There is no stock to be put on display."],
                      title="Stock movement")
@@ -118,8 +68,12 @@ def abandon_restock(sl):
                  title="Stock movement abandoned")
 
 def finish_restock(sl):
-    for stockline,name,ondisplay,capacity,stockmovements in sl:
-        td.stockline_restock(stockline,stockmovements)
+    for stockline,stockmovement in sl:
+        td.s.add(stockline)
+        for sos,move,newdisplayqty,instock_after_move in stockmovement:
+            td.s.add(sos)
+            sos.displayqty=newdisplayqty
+    td.s.flush()
     ui.infopopup(["The till has recorded all the stock movements "
                   "in the list."],title="Stock movement confirmed",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
@@ -138,9 +92,7 @@ def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
 
     """
-    lines=td.s.query(StockLine).filter(capacity!=None).all()
-    lines=[x.id for x in lines]
-    return restock_list(lines)
+    restock_list(td.s.query(StockLine).filter(StockLine.capacity!=None).all())
 
 def auto_allocate(deliveryid=None,confirm=True):
     """
@@ -192,12 +144,13 @@ def auto_allocate(deliveryid=None,confirm=True):
                          dismiss=keyboard.K_CASH)
 
 def return_stock(stockline):
-    sl=calculate_restock(stockline,target=0)
-    if sl is None:
+    td.s.add(stockline)
+    sl=stockline.calculate_restock(target=0)
+    if not sl:
         ui.infopopup(["The till has no record of stock on display for "
                       "this line."],title="Remove stock")
         return
-    printer.print_restock_list([sl])
+    printer.print_restock_list([(stockline,sl)])
     ui.infopopup([
         "The list of stock to be taken off display has been printed.",
         "","Press Cash/Enter to "
@@ -529,11 +482,13 @@ def selectlocation(func,title="Stock Locations",blurb="Choose a location",
     stocklines for the selected location.
 
     """
-    stocklines=td.stockline_list(caponly=caponly)
+    stocklines=td.s.query(StockLine)
+    if caponly: stocklines=stocklines.filter(StockLine.capacity!=None)
+    stocklines=stocklines.all()
     l={}
-    for stocklineid,name,location,capacity,dept,pullthru in stocklines:
-        if location in l: l[location].append(stocklineid)
-        else: l[location]=[stocklineid]
+    for sl in stocklines:
+        if sl.location in l: l[sl.location].append(sl)
+        else: l[sl.location]=[sl]
     ml=[(x,func,(l[x],)) for x in list(l.keys())]
     ui.menu(ml,title=title,blurb=blurb)
 

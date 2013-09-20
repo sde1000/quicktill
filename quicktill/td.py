@@ -188,23 +188,6 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
         if sos: sos.displayqty=sos.displayqty+1
     s.flush()
 
-def stock_onsale(line):
-    """Find out what's on sale on a particular [beer] line.  This function
-    returns a list of all the stock items allocated to the line, in order
-    of best before date and then stock number, earliest dates/lowest numbers
-    first.
-
-    """
-    cur=cursor()
-    cur.execute(
-        "SELECT sos.stockid,sos.displayqty "
-        "FROM stockonsale sos "
-        "LEFT JOIN stock s ON s.stockid=sos.stockid "
-        "WHERE sos.stocklineid=%s "
-        "ORDER BY coalesce(sos.displayqty,0) DESC,"
-        "s.bestbefore,sos.stockid",(line,))
-    return cur.fetchall()
-
 ### Find out what's on the stillage by checking annotations
 
 def stillage_summary(session):
@@ -256,14 +239,6 @@ def foodorder_ticket():
     return s.execute(select([foodorder_seq.next_value()])).scalar()
 
 ### Functions related to stock lines
-
-def stockline_restock(stocklineid,changes):
-    cur=cursor()
-    for sd,move,newdisplayqty,stockqty_after_move in changes:
-        cur.execute("UPDATE stockonsale SET displayqty=%s WHERE "
-                    "stocklineid=%s AND stockid=%s",(
-            newdisplayqty,stocklineid,sd['stockid']))
-    commit()
 
 def stockline_summary(session,locations):
     s=session.query(StockLine).\
