@@ -794,7 +794,7 @@ class StockLine(Base):
 
         """
         if self.capacity is None: return None
-        target=target if target else self.capacity
+        target=self.capacity if target is None else target
         sos=list(self.stockonsale) # copy because we may reverse it later
         needed=target-self.ondisplay
         # If needed is negative we need to return some stock!  The list
