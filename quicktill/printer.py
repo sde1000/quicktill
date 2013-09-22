@@ -236,19 +236,18 @@ def print_delivery(delivery):
     driver.end()
 
 def print_stocklist(sl,title="Stock List"):
-    from . import stock
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\t%s"%title,colour=1)
     driver.printline("\t Printed %s"%ui.formattime(ui.now()))
     driver.printline()
-    for sd in sl:
-        driver.printline("Stock number %d"%sd['stockid'],colour=1)
-        driver.printline(stock.format_stock(sd,maxw=driver.checkwidth))
+    for s in sl:
+        driver.printline("Stock number %d"%s.id,colour=1)
+        driver.printline(s.stocktype.format(maxw=driver.checkwidth))
         driver.printline("%s cost %s"%(
-            sd['stockunit'],tillconfig.fc(sd['costprice'])))
+            s.stockunit_id,tillconfig.fc(s.costprice)))
         driver.printline("sale %s BB %s"%(
-            tillconfig.fc(sd['saleprice']),ui.formatdate(sd['bestbefore'])))
+            tillconfig.fc(s.saleprice),ui.formatdate(s.bestbefore)))
         driver.printline()
     driver.printline("\tEnd of list")
     driver.end()
@@ -278,7 +277,7 @@ def print_restock_list(rl):
                     move,sos.stockitem.id,stockqty_after_move))
             if move<0:
                 driver.printline(" %d to item %d making %d"%(
-                    -move,sos.stockitem.stockid,stockqty_after_move),colour=1)
+                    -move,sos.stockitem.id,stockqty_after_move),colour=1)
     driver.printline()
     driver.printline("\tEnd of list")
     driver.end()

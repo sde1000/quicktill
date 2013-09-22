@@ -67,8 +67,8 @@ def abandon_restock(sl):
     ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
                  title="Stock movement abandoned")
 
-def finish_restock(sl):
-    for stockline,stockmovement in sl:
+def finish_restock(rsl):
+    for stockline,stockmovement in rsl:
         td.s.add(stockline)
         for sos,move,newdisplayqty,instock_after_move in stockmovement:
             td.s.add(sos)
@@ -145,12 +145,13 @@ def auto_allocate(deliveryid=None,confirm=True):
 
 def return_stock(stockline):
     td.s.add(stockline)
-    sl=stockline.calculate_restock(target=0)
-    if not sl:
+    rsl=stockline.calculate_restock(target=0)
+    if not rsl:
         ui.infopopup(["The till has no record of stock on display for "
                       "this line."],title="Remove stock")
         return
-    printer.print_restock_list([(stockline,sl)])
+    restock=[(stockline,rsl)]
+    printer.print_restock_list(restock)
     ui.infopopup([
         "The list of stock to be taken off display has been printed.",
         "","Press Cash/Enter to "
@@ -158,7 +159,7 @@ def return_stock(stockline):
         "allow the till to update its records.  Pressing Clear "
         "at this point will completely cancel the operation."],
                  title="Confirm stock movement",
-                 keymap={keyboard.K_CASH:(finish_restock,([sl],),True)},
+                 keymap={keyboard.K_CASH:(finish_restock,(restock,),True)},
                  colour=ui.colour_confirm)
 
 class create(ui.dismisspopup):
@@ -452,9 +453,9 @@ def listunbound():
 class translate_keyline_to_stockline:
     def __init__(self,func):
         self.func=func
-    def linekey(self,kl):
-        (name,qty,dept,pullthru,menukey,stocklineid,location,capacity)=kl
-        self.func(stocklineid)
+    def linekey(self,kb):
+        td.s.add(kb)
+        self.func(kb.stockline)
 
 def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
     """A pop-up menu of stocklines, sorted by department, location and

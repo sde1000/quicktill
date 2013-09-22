@@ -13,34 +13,6 @@ def abvstr(abv):
     if abv is None: return ""
     return " (%0.1f%% ABV)"%abv
 
-def format_stock(sd,maxw=None):
-    """
-    maxw can be an integer specifying the maximum number of
-    characters, or a function with a single string argument that
-    returns True if the string will fit.  Note that if maxw is a
-    function, we do not _guarantee_ to return a string that will fit.
-
-    """
-    d="%(manufacturer)s %(name)s%(abvstr)s"%sd
-    if maxw is None: return d
-    if isinstance(maxw,int):
-        if len(d)>maxw:
-            d="%(manufacturer)s %(name)s"%sd
-        if len(d)>maxw:
-            d="%(shortname)s%(abvstr)s"%sd
-        if len(d)>maxw:
-            d=sd['shortname']
-        if len(d)>maxw:
-            d=d[:maxw]
-    else:
-        if not maxw(d):
-            d="%(manufacturer)s %(name)s"%sd
-        if not maxw(d):
-            d="%(shortname)s%(abvstr)s"%sd
-        if not maxw(d):
-            d=sd['shortname']
-    return d
-
 class stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
 

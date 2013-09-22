@@ -34,9 +34,10 @@ class popup(ui.infopopup):
             keymap={keyboard.K_ONE:(stocklines.restock_all,None,True),
                     keyboard.K_TWO:(stocklines.restock_location,None,True),
                     keyboard.K_THREE:(stocklines.auto_allocate,None,True)})
-    def line_chosen(self,line):
+    def line_chosen(self,kb):
         self.dismiss()
-        line_chosen(line)
+        td.s.add(kb)
+        line_chosen(kb.stockline)
     def keypress(self,k):
         if k in keyboard.lines:
             stocklines.linemenu(k,self.line_chosen)
@@ -60,20 +61,20 @@ def line_chosen(line):
         # a blurb that says:
         lines=ui.table([("%d"%x.stockid,
                          x.stockitem.stocktype.format(maxw=39).ljust(40),
-                         "%d"%(x.displayqty-x.stockitem.used,),
-                         "%d"%(x.stockitem.stockunit.size-x.displayqty))
+                         "%d"%x.ondisplay,
+                         "%d"%x.instock)
                         for x in sl]).format(' r l r+l ')
         sl=[(x,select_stockitem,(line,y))
             for x,y in zip(lines,sl)]
-        newstockblurb="Pick a stock item to add to %s."%name
+        newstockblurb="Pick a stock item to add to %s."%line.name
         ui.menu(sl,title="%s (%s) - display capacity %d"%
-                (name,location,capacity),
+                (line.name,line.location,line.capacity),
                 blurb="Press 1 to re-stock this stock line now.  "
                 "Press 2 to add a new stock item to this line.  "
                 "Alternatively, select a stock item from the list for "
                 "options related to that item.",
                 keymap={
-                keyboard.K_ONE:(stocklines.restock_item,(stocklineid,),True),
+                keyboard.K_ONE:(stocklines.restock_item,(line,),True),
                 keyboard.K_TWO:(pick_new_stock,(line,newstockblurb),True)})
 
 def finish_stock(line):
@@ -200,38 +201,41 @@ def put_on_sale(line,sn):
             filter(StockAnnotation.stockid==sn).\
             filter(StockAnnotation.atype=='location').count()==0:
         stock.annotate_location(sn)
-    tillconfig.usestock_hook(si,line) # calling convention changed!
+    if line.capacity is None:
+        tillconfig.usestock_hook(si,line) # calling convention changed!
 
-def select_stockitem(line,sd):
+def select_stockitem(line,sos):
     """Present options to the user:
     Enter: Remove stock item from line
     uh, that's it for now; can't think of anything else
 
     """
     td.s.add(line)
+    td.s.add(sos)
+    item=sos.stockitem
     ui.infopopup(["To remove stock item %d ('%s') from %s, press "
-                  "Cash/Enter."%(sd['stockid'],stock.format_stock(sd),line.name)],
+                  "Cash/Enter."%(item.id,item.stocktype.format(),line.name)],
                  title="Remove stock from line",
                  colour=ui.colour_input,
-                 keymap={keyboard.K_CASH:(remove_stockitem,(line,sd),True)})
+                 keymap={keyboard.K_CASH:(remove_stockitem,(line,sos),True)})
 
-def remove_stockitem(line,sd):
+def remove_stockitem(line,sos):
     """Remove a stock item from a line.  If any of it was on display, warn
     the user that the items need to be removed from display.
 
     """
     td.s.add(line)
-    sos=td.s.query(StockOnSale).get(sd['stockid'])
-    if sos: td.s.delete(sos)
-    td.s.flush()
-    if (sd['displayqty']-sd['used'])>0:
+    td.s.add(sos)
+    item=sos.stockitem
+    if sos.ondisplay>0:
         displaynote=(
             "  Note: The till believes that %d items need to be "
-            "returned to stock.  Please check carefully!  "%(
-            max(sd['displayqty']-sd['used'],0)))
+            "returned to stock.  Please check carefully!  "%sos.ondisplay)
     else:
         displaynote=""
+    td.s.delete(sos)
+    td.s.flush()
     ui.infopopup(["Stock item %d (%s) has been removed from line %s.%s"%(
-        sd['stockid'],stock.format_stock(sd),line.name,displaynote)],
+        item.id,item.stocktype.format(),line.name,displaynote)],
                  title="Stock removed from line",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
