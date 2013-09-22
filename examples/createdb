@@ -146,7 +146,7 @@ CREATE TABLE translines (
 	items int NOT NULL, /* Number of items sold in line, for receipts */
 	amount numeric(10,2) NOT NULL,
 	dept int NOT NULL REFERENCES departments(dept),
-	source varchar(10), /* for till use, eg. vc number */
+	source varchar, /* for till use, eg. vc number */
 	stockref int, /* advisory link to stock sale link */
 	transcode char(1) NOT NULL REFERENCES transcodes(transcode),
 	time timestamp NOT NULL DEFAULT now(),

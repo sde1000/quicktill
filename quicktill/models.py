@@ -378,7 +378,7 @@ class Transline(Base):
     amount=Column(Numeric(10,2),nullable=False)
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
-    source=Column(String(10))
+    source=Column(String())
     stockref=Column(Integer)
     transcode=Column(CHAR(1),ForeignKey('transcodes.transcode'),nullable=False)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())

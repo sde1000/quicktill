@@ -1,5 +1,7 @@
-/* Replace the data integrity rules with triggers; should be run when
-converting to quicktill with sqlalchemy */
+/* This script should be run in psql when updating a database for use
+with the sqlalchemy ORM based till client */
+
+/* Replace the data integrity rules with triggers */
 
 DROP RULE IF EXISTS max_one_open ON sessions;
 CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
@@ -66,4 +68,8 @@ $$ LANGUAGE plpgsql;
 CREATE CONSTRAINT TRIGGER no_modify_closed
   AFTER INSERT OR UPDATE ON translines
   FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_line();
+
+/* Transline "source" column can now be an arbitrary length */
+
+ALTER TABLE translines ALTER COLUMN source TYPE VARCHAR;
 
