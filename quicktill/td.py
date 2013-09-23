@@ -272,13 +272,17 @@ def session_list(session,unpaidonly,closedonly):
     return q.all()
 
 def session_bitcoin_translist(session):
-    """Returns the list of transactions involving Bitcoin payment in
-    a session."""
-    cur=cursor()
-    cur.execute("SELECT p.transid FROM payments p "
-                "LEFT JOIN transactions t ON t.transid=p.transid "
-                "WHERE p.paytype='BTC' AND t.sessionid=%s",(session,))
-    return [x[0] for x in cur.fetchall()]
+    """
+    Returns the list of transactions involving Bitcoin payment in
+    a session.
+
+    """
+    global s
+    pl=s.query(Payment).join(Transaction).\
+        filter(Payment.paytype_id=='BTC').\
+        filter(Transaction.sessionid==session).\
+        all()
+    return [p.transid for p in pl]
 
 def db_version():
     global s

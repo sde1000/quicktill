@@ -116,8 +116,8 @@ def sessionlist(dbsession,func,unpaidonly=False,closedonly=False):
 
 class recordsession(ui.dismisspopup):
     def __init__(self,s):
+        td.s.add(s)
         log.info("Record session takings popup: session %d"%s.id)
-        s=td.s.merge(s)
         self.session=s
         paytotals=dict(s.payment_totals)
         paytypes=td.s.query(PayType).all()
