@@ -188,7 +188,7 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
     s.add(so)
     if update_displayqty:
         sos=s.query(StockOnSale).get(stock) # stockid is primary key here!
-        if sos: sos.displayqty=sos.displayqty+1
+        if sos: sos.displayqty=sos.displayqty+amount
     s.flush()
 
 ### Find out what's on the stillage by checking annotations
