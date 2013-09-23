@@ -214,22 +214,20 @@ def stillage_summary(session):
 ### Check stock levels
 
 def stocklevel_check(dept=None,period='3 weeks'):
-    cur=cursor()
-    deptstr="" if dept==None else "AND dept=%d"%dept
-    cur.execute(
-        "SELECT st.stocktype,st.shortname,sum(qty) as sold,"
-        "sum(qty)-coalesce((select sum(size-coalesce(used,0)) "
-        "FROM stockinfo WHERE stocktype=st.stocktype "
-        "AND finished is null),0) as understock "
-        "FROM stocktypes st "
-        "LEFT JOIN stock s ON st.stocktype=s.stocktype "
-        "LEFT JOIN stockout so ON so.stockid=s.stockid "
-        "WHERE (removecode='sold' or removecode is null) "
-        "%s "
-        "AND now()-so.time<'%s' "
-        "GROUP BY st.stocktype,st.shortname "
-        "ORDER BY understock DESC"%(deptstr,period))
-    return cur.fetchall()
+    global s
+    q=s.query(StockType,func.sum(StockOut.qty)).\
+        join(StockItem).\
+        join(StockOut).\
+        options(lazyload(StockType.department)).\
+        options(lazyload(StockType.unit)).\
+        filter(StockOut.removecode_id=='sold').\
+        filter((func.now()-StockOut.time)<period).\
+        having(func.sum(StockOut.qty)>0).\
+        group_by(StockType).\
+        order_by(desc(func.sum(StockOut.qty)-StockType.instock))
+    if dept is not None:
+        q=q.filter(StockType.dept_id==dept.id)
+    return q.all()
 
 ### Functions related to food order numbers
 

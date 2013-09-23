@@ -681,13 +681,22 @@ StockItem.used=column_property(
     select([func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
         correlate(StockItem.__table__).\
         where(StockOut.stockid==StockItem.id).\
-        label('used'))
+        label('used'),
+    doc="Amount of this item that has been used for any reason")
+StockItem.sold=column_property(
+    select([func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
+        correlate(StockItem.__table__).\
+        where(StockOut.stockid==StockItem.id).\
+        where(StockOut.removecode_id=="sold").\
+        label('sold'),
+    doc="Amount of this item that has been used by being sold")
 StockItem.remaining=column_property(
     select([select([StockUnit.size],StockUnit.id==StockItem.stockunit_id
                    ).correlate(StockItem.__table__) -
                 func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
         where(StockOut.stockid==StockItem.id).\
-        label('remaining'))
+        label('remaining'),
+    doc="Amount of this item remaining")
 StockItem.firstsale=column_property(
     select([func.min(StockOut.time)]).\
         correlate(StockItem.__table__).\
@@ -700,6 +709,24 @@ StockItem.lastsale=column_property(
         where(StockOut.stockid==StockItem.id).\
         where(StockOut.removecode_id=='sold').\
         label('lastsale'))
+
+# Similarly, this is added to the StockType class here because it
+# refers to StockOnSale
+StockType.instock=column_property(
+    select([func.coalesce(func.sum(
+                    select([func.sum(StockUnit.size)],
+                           StockUnit.id==StockItem.stockunit_id,
+                           ).as_scalar() -
+                    select([func.coalesce(func.sum(StockOut.qty),text("0.0"))],
+                           StockOut.stockid==StockItem.id,
+                           ).as_scalar()
+                    ),text("0.0"))],
+           and_(StockItem.stocktype_id==StockType.id,
+                StockItem.finished==None)).\
+        correlate(StockType.__table__).\
+        label('instock'),
+    deferred=True,
+    doc="Amount remaining in stock")
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):

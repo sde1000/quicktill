@@ -148,11 +148,12 @@ def updatesupplier():
 
 class stocklevelcheck(ui.dismisspopup):
     def __init__(self):
-        self.deptlist=td.s.query(Department).all()
+        depts=td.s.query(Department).all()
         ui.dismisspopup.__init__(self,10,50,title="Stock level check",
                                  colour=ui.colour_input)
         self.addstr(2,2,'Department:')
-        self.deptfield=ui.listfield(2,14,20,self.deptlist,
+        self.deptfield=ui.listfield(2,14,20,depts,
+                                    d=dict((x,x.description) for x in depts),
                                     keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)})
         self.addstr(3,2,'    Period:')
@@ -171,12 +172,14 @@ class stocklevelcheck(ui.dismisspopup):
             return
         weeks=int(self.pfield.f)
         dept=(None if self.deptfield.f is None
-              else self.deptfield.read().id)
+              else self.deptfield.read())
+        if dept: td.s.add(dept)
         self.dismiss()
         r=td.stocklevel_check(dept,'%d weeks'%weeks)
-        r=[(name,str(sold),str(understock)) for (st,name,sold,understock) in r]
-        r=[('Name','Sold','Buy')]+r
-        lines=ui.table(r).format(' l r  r ')
+        r=[(st.format(maxw=40),str(sold),str(st.instock),str(sold-st.instock))
+           for (st,sold) in r]
+        r=[('Name','Sold','In stock','Buy')]+r
+        lines=ui.table(r).format(' l r  r  r ')
         header=["Do not order any stock if the 'Buy' amount",
                "is negative!",""]
         ui.linepopup(header+lines,title="Stock level check - %d weeks"%weeks,
