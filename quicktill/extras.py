@@ -1,5 +1,6 @@
 from __future__ import print_function
 from . import ui,keyboard,printer,tillconfig,event,td
+from . import twitter
 from .models import VatBand
 import traceback,sys,os,time,datetime
 
@@ -165,14 +166,7 @@ class reminderpopup:
                       colour=self.colour,dismiss=self.dismisskey)
         self.setalarm()
 
-# This key and secret will be retired before the till software is
-# released.  A new key and secret are expected to be provided in the
-# configuration file.
-twitter_consumer_key = 'pMURcpHi1zWtQ52bZCMyg'
-twitter_consumer_secret = 'g6cAOMBrCWsrDuEMXnTpi9BnuMWMzawK0sPGQsK8WQ'
-
-def twitter_auth(consumer_key=twitter_consumer_key,
-                 consumer_secret=twitter_consumer_secret):
+def twitter_auth(consumer_key,consumer_secret):
     """
     Generate oauth_token and oauth_token_secret for twitter login.
     Call this function from an interactive shell.
@@ -216,9 +210,6 @@ def twitter_auth(consumer_key=twitter_consumer_key,
     # After the user has granted access to you, the consumer, the provider will
     # redirect you to whatever URL you have told them to redirect to. You can 
     # usually define this in the oauth_callback argument as well.
-    accepted = 'n'
-    while accepted.lower() == 'n':
-        accepted = raw_input('Have you authorized me? (y/n) ')
     oauth_verifier = raw_input('What is the PIN? ')
 
     # Step 3: Once the consumer has redirected the user back to the
@@ -242,9 +233,7 @@ def twitter_auth(consumer_key=twitter_consumer_key,
     print("You may now access protected resources using the access tokens above.") 
     print()
 
-def twitter_api(token,token_secret,consumer_key=twitter_consumer_key,
-                consumer_secret=twitter_consumer_secret):
-    from . import twitter
+def twitter_api(token,token_secret,consumer_key,consumer_secret):
     return twitter.Api(consumer_key=consumer_key,
                        consumer_secret=consumer_secret,
                        access_token_key=token,
@@ -278,7 +267,7 @@ class twitter_post(ui.dismisspopup):
             return
         self.tapi.PostUpdate(ttext)
         self.dismiss()
-        ui.infopopup(title="Twittered",text=["Your update has been posted."],
+        ui.infopopup(title="Tweeted",text=["Your update has been posted."],
                      dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
 
 class Tweet(ui.lrline):
