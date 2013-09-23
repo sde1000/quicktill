@@ -3,7 +3,7 @@
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
-from .models import Department,FinishCode,StockLineTypeLog,StockLine,StockType
+from .models import Department,FinishCode,StockLine,StockType
 from .models import StockItem,StockOnSale
 import datetime
 
@@ -146,46 +146,6 @@ def updatesupplier():
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
-class stockline_associations(ui.listpopup):
-    """
-    A window showing the list of stocklines and their associated stock
-    types.  Pressing Cancel on a line deletes the association.
-
-    """
-    def __init__(self,stocklines=None,
-                 blurb="To create a new association, use the 'Use Stock' "
-                 "button to assign stock to a line."):
-        """
-        If a list of stocklines is passed, restrict the editor to just
-        those; otherwise list all of them.
-
-        """
-        stllist=td.s.query(StockLineTypeLog).\
-            join(StockLineTypeLog.stockline).\
-            join(StockLineTypeLog.stocktype).\
-            order_by(StockLine.dept_id,StockLine.name,StockType.fullname)
-        if stocklines:
-            stllist=stllist.filter(StockLine.id.in_(stocklines))
-        stllist=stllist.all()
-        f=ui.tableformatter(' l l ')
-        headerline=ui.tableline(f,["Stock line","Stock type"])
-        lines=[ui.tableline(f,(stl.stockline.name,stl.stocktype.fullname),
-                            userdata=stl)
-               for stl in stllist]
-        ui.listpopup.__init__(
-            self,lines,title="Stockline / Stock type associations",
-            header=["Press Cancel to delete an association.  "+blurb,
-                    headerline])
-    def keypress(self,k):
-        if k==keyboard.K_CANCEL and self.s:
-            line=self.s.dl.pop(self.s.cursor)
-            self.s.redraw()
-            td.s.add(line.userdata)
-            td.s.delete(line.userdata)
-            td.s.flush()
-        else:
-            ui.listpopup.keypress(self,k)
-
 class stocklevelcheck(ui.dismisspopup):
     def __init__(self):
         self.deptlist=td.s.query(Department).all()
@@ -232,7 +192,7 @@ def maintenance():
         (keyboard.K_THREE,"Auto-allocate stock to lines",
          stocklines.auto_allocate,None),
         (keyboard.K_FOUR,"Manage stock line associations",
-         stockline_associations,None),
+         stocklines.stockline_associations,None),
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
         (keyboard.K_SIX,"Re-price a particular stock type",
          stock.stocktype,(stock.reprice_stocktype,None,1,False)),

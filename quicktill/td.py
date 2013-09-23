@@ -124,7 +124,7 @@ def stock_checkpullthru(stockid,maxtime):
             where(StockOut.removecode_id.in_(['sold','pullthru']))
         ).scalar()
 
-def new_auto(deliveryid=None):
+def stock_autoallocate_candidates(deliveryid=None):
     """
     Return a list of (stockitem,stockline) tuples.
 
@@ -147,27 +147,6 @@ def new_auto(deliveryid=None):
     if deliveryid is not None:
         q=q.filter(Delivery.id==deliveryid)
     return q.all()
-
-def stock_autoallocate_candidates(deliveryid=None):
-    """
-    Return a list of (stockline,stockid,displayqty) tuples, ordered
-    by stockid.  List is suitable for passing to stock_allocate() once
-    duplicate stockids have been resolved.
-
-    """
-    cur=cursor()
-    ds="AND deliveryid=%s"%deliveryid if deliveryid is not None else ""
-    cur.execute(
-        "SELECT sl.stocklineid,si.stockid,si.used AS displayqty "
-        "FROM (SELECT * FROM stocklines WHERE capacity IS NOT NULL) AS sl "
-        "CROSS JOIN (SELECT * FROM stockinfo WHERE deliverychecked "
-        "AND finished IS NULL %s AND stockid NOT IN ( "
-        "SELECT stockid FROM stockonsale)) AS si "
-        "WHERE si.stocktype IN "
-        "(SELECT stocktype FROM stockline_stocktype_log ssl "
-        "WHERE ssl.stocklineid=sl.stocklineid) "
-        "ORDER BY si.stockid"%ds)
-    return cur.fetchall()
 
 def stock_purge():
     """Stock items that have been completely used up through the

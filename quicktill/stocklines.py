@@ -1,6 +1,7 @@
 import logging
 from . import keyboard,ui,td,tillconfig,printer
 from .models import Department,StockLine,KeyboardBinding
+from .models import StockType,StockOnSale,StockLineTypeLog
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
@@ -94,6 +95,46 @@ def restock_all():
     """
     restock_list(td.s.query(StockLine).filter(StockLine.capacity!=None).all())
 
+class stockline_associations(ui.listpopup):
+    """
+    A window showing the list of stocklines and their associated stock
+    types.  Pressing Cancel on a line deletes the association.
+
+    """
+    def __init__(self,stocklines=None,
+                 blurb="To create a new association, use the 'Use Stock' "
+                 "button to assign stock to a line."):
+        """
+        If a list of stocklines is passed, restrict the editor to just
+        those; otherwise list all of them.
+
+        """
+        stllist=td.s.query(StockLineTypeLog).\
+            join(StockLineTypeLog.stockline).\
+            join(StockLineTypeLog.stocktype).\
+            order_by(StockLine.dept_id,StockLine.name,StockType.fullname)
+        if stocklines:
+            stllist=stllist.filter(StockLine.id.in_(stocklines))
+        stllist=stllist.all()
+        f=ui.tableformatter(' l l ')
+        headerline=ui.tableline(f,["Stock line","Stock type"])
+        lines=[ui.tableline(f,(stl.stockline.name,stl.stocktype.fullname),
+                            userdata=stl)
+               for stl in stllist]
+        ui.listpopup.__init__(
+            self,lines,title="Stockline / Stock type associations",
+            header=["Press Cancel to delete an association.  "+blurb,
+                    headerline])
+    def keypress(self,k):
+        if k==keyboard.K_CANCEL and self.s:
+            line=self.s.dl.pop(self.s.cursor)
+            self.s.redraw()
+            td.s.add(line.userdata)
+            td.s.delete(line.userdata)
+            td.s.flush()
+        else:
+            ui.listpopup.keypress(self,k)
+
 def auto_allocate(deliveryid=None,confirm=True):
     """
     Automatically allocate stock to stock lines.  If there's a potential
@@ -106,16 +147,15 @@ def auto_allocate(deliveryid=None,confirm=True):
     # Check for duplicate stockids
     seen={}
     duplines={}
-    for stockline,stockid,dq in cl:
-        if stockid in seen:
-            duplines[stockline]=stockid
-            duplines[seen[stockid]]=stockid
-        seen[stockid]=stockline
+    for item,line in cl:
+        if item in seen:
+            duplines[line.id]=item
+            duplines[seen[item].id]=item
+        seen[item]=line
     if duplines!={}:
         # Oops, there were duplicate stockids.  Dump the user into the
         # stockline associations editor to sort it out.
-        from . import managestock
-        managestock.stockline_associations(
+        stockline_associations(
             list(duplines.keys()),"The following stock line and stock type "
             "associations meant an item of stock could not be allocated "
             "unambiguously.  Delete associations from the list below "
@@ -124,13 +164,13 @@ def auto_allocate(deliveryid=None,confirm=True):
             "option 3.")
     else:
         if len(cl)>0:
-            for lineid,stockid,displayqty in cl:
-                td.s.add(StockOnSale(stocklineid=lineid,stockid=stockid,
-                                     displayqty=displayqty))
+            for item,line in cl:
+                td.s.add(StockOnSale(stockline=line,stockid=item.id,
+                                     displayqty=item.used))
             td.s.flush()
             message=("The following stock items have been allocated to "
                      "display lines: %s."%(
-                    ', '.join(["%d"%stockid for sl,stockid,dq in cl])))
+                    ', '.join(["%d"%item.id for item,line in cl])))
             confirm=True
         else:
             message=("There was nothing available for automatic allocation.  "
