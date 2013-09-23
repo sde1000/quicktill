@@ -5,11 +5,6 @@
 # never broken here, but that's not really a substitute for
 # implementing them in the database itself.
 
-import time
-#from . import stock
-import psycopg2 as db
-import psycopg2.extensions
-from decimal import Decimal
 import datetime
 
 from sqlalchemy import create_engine
@@ -25,31 +20,6 @@ from .models import *
 
 import logging
 log=logging.getLogger()
-
-# psycopg converted database numeric() types into float() types.
-
-# By default, psycopg2 converts them into decimal.Decimal() types -
-# arguably more correct, but not what the rest of this package is
-# expecting.
-
-# Until the rest of the package is updated to expect Decimal()s,
-# convert to float()s instead:
-#DEC2FLOAT = psycopg2.extensions.new_type(
-#    db._psycopg.DECIMAL.values,
-#    'DEC2FLOAT',
-#    lambda value, curs: float(value) if value is not None else None)
-#psycopg2.extensions.register_type(DEC2FLOAT)
-# If psycopg2._psycopg.DECIMAL stops working, use
-# psycopg2.extensions.DECIMAL instead.
-
-database=None
-
-con=None
-def cursor():
-    con.commit()
-    return con.cursor()
-def commit():
-    con.commit()
 
 # ORM session; most database access will go through this
 s=None
@@ -288,14 +258,11 @@ def db_version():
     global s
     return s.execute("select version()").scalar()
 
-def init():
-    global con,database,engine,sm
-    if database is None:
-        raise Exception("No database defined")
-    if database[0]==":":
-        database="dbname=%s"%database[1:]
-    # Conversion to sqlalchemy: create sqlalchemy engine URL from
-    # libpq connection string
+def libpq_to_sqlalchemy(database):
+    """
+    Create asqlalchemy engine URL from a libpq connection string
+
+    """
     csdict=dict([x.split('=',1) for x in database.split(' ')])
     estring="postgresql+psycopg2://"
     if 'user' in csdict:
@@ -308,11 +275,21 @@ def init():
     if 'port' in csdict:
         estring+=":%s"%(csdict['port'],)
     estring+="/%s"%(csdict['dbname'],)
-    engine=create_engine(estring)
-    # We might like to consider adding expire_on_commit=False to the
-    # sessionmaker at some point; let's not do that for now so we can
-    # spot potentially expired objects more easily while we're
-    # converting the code.
+    return estring
+
+def init(database):
+    """
+    Initialise the database subsystem.
+
+    database can be a libpq connection string or a sqlalchemy URL
+
+    """
+    global sm
+    if database[0]==":":
+        database="dbname=%s"%database[1:]
+
+    if '://' not in database: database=libpq_to_sqlalchemy(database)
+
+    engine=create_engine(database)
     models.metadata.bind=engine # for DDL, eg. to recreate foodorder_seq
     sm=sessionmaker(bind=engine)
-    con=db.connect(database)

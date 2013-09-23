@@ -78,3 +78,5 @@ def usestock_hook(stock,line):
 transaction_to_free_drinks_function=False
 
 btcmerch_api=None
+
+database=None

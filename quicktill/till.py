@@ -38,7 +38,7 @@ def run():
     log=logging.getLogger()
     log.info("Starting version %s"%version)
     try:
-        td.init()
+        td.init(tillconfig.database)
         td.start_session()
         # Copy keycaps from database to keyboard driver
         caps=td.s.query(KeyCap).filter(KeyCap.layout==tillconfig.kbtype).all()
@@ -148,8 +148,8 @@ def main():
         printer.labeldriver=config['labelprinter'][0](
             *config['labelprinter'][1])
     tillconfig.pages=config['pages']
-    td.database=config.get('database')
-    if options.database is not None: td.database=options.database
+    tillconfig.database=config.get('database')
+    if options.database is not None: tillconfig.database=options.database
     ui.kb=config['kbdriver']
     tillconfig.kbtype=config['kbtype']
     foodorder.kitchenprinter=config.get('kitchenprinter')
