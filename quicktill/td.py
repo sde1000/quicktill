@@ -124,6 +124,30 @@ def stock_checkpullthru(stockid,maxtime):
             where(StockOut.removecode_id.in_(['sold','pullthru']))
         ).scalar()
 
+def new_auto(deliveryid=None):
+    """
+    Return a list of (stockitem,stockline) tuples.
+
+    """
+    global s
+    q=s.query(StockItem,StockLine).\
+        join(StockType).\
+        join(Delivery).\
+        outerjoin(StockOnSale).\
+        filter(StockLine.id.in_(
+            select([StockLineTypeLog.stocklineid],
+                   whereclause=(
+                        StockLineTypeLog.stocktype_id==StockItem.stocktype_id)).\
+                correlate(StockItem.__table__))).\
+        filter(StockItem.finished==None).\
+        filter(StockOnSale.stockline==None).\
+        filter(Delivery.checked==True).\
+        filter(StockLine.capacity!=None).\
+        order_by(StockItem.id)
+    if deliveryid is not None:
+        q=q.filter(Delivery.id==deliveryid)
+    return q.all()
+
 def stock_autoallocate_candidates(deliveryid=None):
     """
     Return a list of (stockline,stockid,displayqty) tuples, ordered
