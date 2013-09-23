@@ -275,12 +275,14 @@ class reminderpopup:
                       colour=self.colour,dismiss=self.dismisskey)
         self.setalarm()
 
-# These keys are specific to the till software
-# The app is registered under the "indpubs" account
+# This key and secret will be retired before the till software is
+# released.  A new key and secret are expected to be provided in the
+# configuration file.
 twitter_consumer_key = 'pMURcpHi1zWtQ52bZCMyg'
 twitter_consumer_secret = 'g6cAOMBrCWsrDuEMXnTpi9BnuMWMzawK0sPGQsK8WQ'
 
-def twitter_auth():
+def twitter_auth(consumer_key=twitter_consumer_key,
+                 consumer_secret=twitter_consumer_secret):
     """
     Generate oauth_token and oauth_token_secret for twitter login.
     Call this function from an interactive shell.
@@ -290,9 +292,6 @@ def twitter_auth():
     # https://github.com/simplegeo/python-oauth2
     import urlparse
     from . import oauth2 as oauth
-
-    consumer_key = twitter_consumer_key
-    consumer_secret = twitter_consumer_secret
 
     request_token_url = 'http://api.twitter.com/oauth/request_token'
     access_token_url = 'http://api.twitter.com/oauth/access_token'
@@ -353,10 +352,11 @@ def twitter_auth():
     print("You may now access protected resources using the access tokens above.") 
     print()
 
-def twitter_api(token,token_secret):
+def twitter_api(token,token_secret,consumer_key=twitter_consumer_key,
+                consumer_secret=twitter_consumer_secret):
     from . import twitter
-    return twitter.Api(consumer_key=twitter_consumer_key,
-                       consumer_secret=twitter_consumer_secret,
+    return twitter.Api(consumer_key=consumer_key,
+                       consumer_secret=consumer_secret,
                        access_token_key=token,
                        access_token_secret=token_secret)
 
