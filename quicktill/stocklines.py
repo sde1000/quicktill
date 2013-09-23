@@ -348,20 +348,23 @@ def editbindings(stockline):
 
     """
 
-    stockline=td.s.merge(stockline)
-    bindings=td.keyboard_checkstockline(tillconfig.kbtype,stockline.id)
+    td.s.add(stockline)
+    bindings=td.s.query(KeyboardBinding).\
+        filter(KeyboardBinding.layout==tillconfig.kbtype).\
+        filter(KeyboardBinding.stockline==stockline).\
+        all()
     blurb=("To add a keyboard binding for '%s', press the appropriate line "
            "key now."%(stockline.name,))
     if len(bindings)>0:
         blurb=blurb+("  Existing bindings for '%s' are listed "
                      "below; if you would like to modify or delete one "
                      "then select it and press Cash/Enter."%(stockline.name,))
-    menu=[("%s (%s) -> %s (%s), qty %0.1f"%(
-        ui.kb.keycap(keyboard.keycodes[keycode]),
-        keycode,ui.kb.keycap(keyboard.keycodes[menukey]),
-        menukey,qty),
-           changebinding,(stockline,keycode,menukey,qty))
-          for keycode,menukey,qty in bindings]
+    menu=[("%s (%s) -> %s (%s), qty %s"%(
+        ui.kb.keycap(keyboard.keycodes[kb.keycode]),
+        kb.keycode,ui.kb.keycap(keyboard.keycodes[kb.menukey]),
+        kb.menukey,kb.qty),
+           changebinding,(stockline,kb.keycode,kb.menukey,kb.qty))
+          for kb in bindings]
     kb={}
     for i in keyboard.lines:
         kb[i]=(addbinding,(stockline,i),True)
@@ -369,12 +372,16 @@ def editbindings(stockline):
 
 class addbinding(ui.linepopup):
     def __init__(self,stockline,keycode):
+        td.s.add(stockline)
         self.stocklineid=stockline.id
         self.keycode=keyboard.kcnames[keycode]
-        self.existing=td.keyboard_checklines(tillconfig.kbtype,self.keycode)
+        existing=td.s.query(KeyboardBinding).\
+            filter(KeyboardBinding.layout==tillconfig.kbtype).\
+            filter(KeyboardBinding.keycode==self.keycode).\
+            all()
         self.exdict={}
         lines=[]
-        if len(self.existing)>0:
+        if len(existing)>0:
             lines=[
                 "That key already has some other stock lines",
                 "associated with it; they are listed below.",
@@ -394,10 +401,9 @@ class addbinding(ui.linepopup):
                 "to press to select this line.",
                 "",
                 "Pressing '1' now is usually the right thing to do!"]
-        for (linename,qty,dept,pullthru,menukey,
-             stocklineid,location,capacity) in self.existing:
-            lines.append("%s: %s"%(menukey,linename))
-            self.exdict[menukey]=linename
+        for kb in existing:
+            lines.append("%s: %s"%(kb.menukey,kb.stockline.name))
+            self.exdict[kb.menukey]=kb.stockline.name
         ui.linepopup.__init__(self,lines,title="Add keyboard binding",
                               colour=ui.colour_input)
     def keypress(self,k):
@@ -406,8 +412,10 @@ class addbinding(ui.linepopup):
             return
         name=keyboard.kcnames[k]
         if name in self.exdict: return
-        td.keyboard_addbinding(tillconfig.kbtype,self.keycode,name,
-                               self.stocklineid,1.0)
+        td.s.add(KeyboardBinding(layout=tillconfig.kbtype,keycode=self.keycode,
+                                 menukey=name,stocklineid=self.stocklineid,
+                                 qty=1))
+        td.s.flush()
         self.dismiss()
         changebinding(self.stocklineid,self.keycode,name,1.0)
 
@@ -429,16 +437,21 @@ class changebinding(ui.dismisspopup):
         self.qtyfield.focus()
     def deletebinding(self):
         self.dismiss()
-        td.keyboard_delbinding(tillconfig.kbtype,self.keycode,self.menukey)
+        binding=td.s.query(KeyboardBinding).get(
+            (tillconfig.kbtype,self.keycode,self.menukey))
+        if binding: td.s.delete(binding)
+        td.s.flush()
     def setqty(self):
         if self.qtyfield.f=="":
             ui.infopopup(["You must specify a quantity (1 is the most usual)"],
                          title="Error")
             return
         q=float(self.qtyfield.f)
-        td.keyboard_delbinding(tillconfig.kbtype,self.keycode,self.menukey)
-        td.keyboard_addbinding(tillconfig.kbtype,self.keycode,self.menukey,
-                               self.stocklineid,q)
+        binding=td.s.query(KeyboardBinding).get(
+            (tillconfig.kbtype,self.keycode,self.menukey))
+        if binding:
+            binding.qty=q
+        td.s.flush()
         self.dismiss()
 
 def delete(stockline):

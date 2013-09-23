@@ -252,45 +252,6 @@ def stockline_summary(session,locations):
         all()
     return s
 
-### Functions relating to till keyboards
-
-def keyboard_checklines(layout,keycode):
-    """keycode is a string.  Returns a list of (linename,qty,dept,
-    pullthru,menukey,stocklineid,location,capacity) tuples (possibly
-    empty).  The list may be in any order; it's up to the caller to
-    sort it (eg. by menukey numeric keycode).
-
-    """
-    cur=cursor()
-    cur.execute("SELECT sl.name,k.qty,sl.dept,sl.pullthru,"
-                "k.menukey,k.stocklineid,sl.location,sl.capacity "
-                "FROM keyboard k "
-                "LEFT JOIN stocklines sl ON sl.stocklineid=k.stocklineid "
-                "WHERE k.layout=%s AND k.keycode=%s",(layout,keycode))
-    return cur.fetchall()
-
-def keyboard_checkstockline(layout,stocklineid):
-    """Return all the key bindings in this keyboard layout for the
-    specified stock line.
-
-    """
-    cur=cursor()
-    cur.execute("SELECT keycode,menukey,qty FROM keyboard "
-                "WHERE layout=%s AND stocklineid=%s",(layout,stocklineid))
-    return cur.fetchall()
-
-def keyboard_addbinding(layout,keycode,menukey,stocklineid,qty):
-    cur=cursor()
-    cur.execute("INSERT INTO keyboard (layout,keycode,menukey,stocklineid,qty) "
-                "VALUES (%s,%s,%s,%s,%s)",(layout,keycode,menukey,stocklineid,qty))
-    commit()
-
-def keyboard_delbinding(layout,keycode,menukey):
-    cur=cursor()
-    cur.execute("DELETE FROM keyboard WHERE layout=%s AND keycode=%s AND menukey=%s",
-                (layout,keycode,menukey))
-    commit()
-
 ### Functions relating to the sessions,sessiontotals tables
 
 def session_list(session,unpaidonly,closedonly):
