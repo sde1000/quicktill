@@ -1031,16 +1031,3 @@ Index('stockout_translineid_key',StockOut.translineid)
 Index('translines_time_key',Transline.time)
 
 foodorder_seq=Sequence('foodorder_seq',metadata=metadata)
-
-if __name__=='__main__':
-    from sqlalchemy import create_engine
-    engine=create_engine('postgresql+psycopg2:///testdb',echo=True)
-    SM=sessionmaker(bind=engine)
-    metadata.bind=engine
-    metadata.create_all()
-    session=SM()
-    s=Session('2013-01-10')
-    session.add(s)
-    print s
-    session.commit()
-    metadata.drop_all()
