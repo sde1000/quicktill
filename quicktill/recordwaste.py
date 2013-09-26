@@ -1,5 +1,5 @@
 from . import ui,td,keyboard,stock,stocklines,department
-from .models import StockItem,StockType,StockOnSale
+from .models import StockItem,StockType
 
 class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording
@@ -23,36 +23,30 @@ class popup(ui.dismisspopup):
         self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int,
                                      keymap=stockfield_km)
         self.stockfield.focus()
-    def stock_line(self,line):
-        name,qty,dept,pullthru,menukey,stocklineid,location,capacity=line
-        if capacity is None:
-            # Look up the stock number, put it in the field, and invoke
-            # stock_enter_key
-            sl=td.s.query(StockOnSale).\
-                filter(StockOnSale.stocklineid==stocklineid).\
-                first()
-            if sl is None:
-                ui.infopopup(["There is nothing on sale on %s."%name],
+    def stock_line(self,kb):
+        td.s.add(kb)
+        line=kb.stockline
+        if line.capacity is None:
+            if len(line.stockonsale)==0:
+                ui.infopopup(["There is nothing on sale on %s."%line.name],
                              title="Error")
             else:
-                self.stockfield.set(str(sl.stockid))
+                self.stockfield.set(str(line.stockonsale[0].id))
                 self.stock_enter_key()
             return
         self.isline=True
-        self.stocklineid=stocklineid
-        self.name=name
-        # Find out how much is available to sell by trying to sell 0 items
-        sell,unallocated,snd,remain=stocklines.calculate_sale(stocklineid,0)
-        self.ondisplay=remain[0]
+        self.stocklineid=line.id
+        self.name=line.name
+        self.ondisplay=line.ondisplay
         if self.ondisplay<1:
             self.dismiss()
             ui.infopopup(
                 ["There is no stock on display for '%s'.  If you want to "
                  "record waste against items still in storage, you have "
                  "to enter the stock number instead of pressing the line "
-                 "key."%name],title="No stock on display")
+                 "key."%line.name],title="No stock on display")
             return
-        self.stockfield.set(name)
+        self.stockfield.set(line.name)
         self.addstr(4,21,"%d items on display"%self.ondisplay)
         self.create_extra_fields()
     def stock_dept_selected(self,dept):

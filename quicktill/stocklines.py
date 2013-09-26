@@ -1,7 +1,7 @@
 import logging
 from . import keyboard,ui,td,tillconfig,printer
 from .models import Department,StockLine,KeyboardBinding
-from .models import StockType,StockOnSale,StockLineTypeLog
+from .models import StockType,StockLineTypeLog
 log=logging.getLogger()
 
 def calculate_sale(stocklineid,items):
@@ -14,8 +14,8 @@ def calculate_sale(stocklineid,items):
 
     """
     stockline=td.s.query(StockLine).get(stocklineid)
-    sl=stockline.stockonsale
-    if len(sl)==0:
+    stocklist=stockline.stockonsale
+    if len(stocklist)==0:
         return ([],items,(0,0))
     # Iterate over the stock items attached to the line and produce a
     # list of (stockid,items) pairs if possible; otherwise produce an
@@ -23,21 +23,25 @@ def calculate_sale(stocklineid,items):
     # ("capacity is None") then bypass this and just sell the
     # appropriate number of items from the only stockitem in the list!
     if stockline.capacity is None:
-        return ([(sl[0].stockitem,items)],0,None)
+        return ([(stocklist[0],items)],0,None)
     unallocated=items
     leftondisplay=0
     totalinstock=0
     sell=[]
-    # Iterate through the StockOnSale objects for this stock line
-    for i in sl:
-        ondisplay=max(sl.displayqty_or_zero-sl.stockitem.used,0)
+    # Iterate through the StockItem objects for this stock line
+
+    # XXX this can probably be stated more simply now that StockOnSale
+    # and StockItem have been merged, and StockItem has lots of nice
+    # informative properties!
+    for item in stocklist:
+        ondisplay=item.ondisplay
         sellqty=min(unallocated,ondisplay)
         log.debug("ondisplay=%d, sellqty=%d"%(ondisplay,sellqty))
         unallocated=unallocated-sellqty
         leftondisplay=leftondisplay+ondisplay-sellqty
-        totalinstock=totalinstock+sl.stockitem.remaining-sellqty
+        totalinstock=totalinstock+item.remaining-sellqty
         if sellqty>0:
-            sell.append((i.stockitem,sellqty))
+            sell.append((item,sellqty))
     return (sell,unallocated,(leftondisplay,totalinstock-leftondisplay))
 
 def restock_list(stockline_list):
@@ -165,8 +169,8 @@ def auto_allocate(deliveryid=None,confirm=True):
     else:
         if len(cl)>0:
             for item,line in cl:
-                td.s.add(StockOnSale(stockline=line,stockid=item.id,
-                                     displayqty=item.used))
+                item.stockline=line
+                item.displayqty=item.used
             td.s.flush()
             message=("The following stock items have been allocated to "
                      "display lines: %s."%(
@@ -467,12 +471,16 @@ def delete(stockline):
                  "to be attached to another stock line.  The stock items "
                  "affected are shown below.",""]
         message=message+[
-            "  %d %s"%(x.stockitem.id,x.stockitem.stocktype.format())
+            "  %d %s"%(x.id,x.stocktype.format())
             for x in sl]
     else:
         message=["The stock line has been deleted."]
     
     td.s.delete(stockline)
+    # Any StockItems that point to this stockline should have their
+    # stocklineid set to null by the database.  XXX check that sqlalchemy
+    # isn't trying to delete StockItems here!
+    td.s.flush()
     ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
 

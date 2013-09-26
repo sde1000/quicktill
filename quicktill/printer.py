@@ -255,7 +255,7 @@ def print_stocklist(sl,title="Stock List"):
 def print_restock_list(rl):
     """
     Print a list of (stockline,stockmovement) tuples.
-    A stockmovement tuple is (stockonsale,fetchqty,newdisplayqty,qtyremain).
+    A stockmovement tuple is (stockitem,fetchqty,newdisplayqty,qtyremain).
 
     We can't assume that any of these objects are in the current
     session.
@@ -270,14 +270,14 @@ def print_restock_list(rl):
         td.s.add(sl)
         driver.printline("%s:"%sl.name)
         driver.printline("%d/%d displayed"%(sl.ondisplay,sl.capacity))
-        for sos,move,newdisplayqty,stockqty_after_move in sm:
-            td.s.add(sos)
+        for item,move,newdisplayqty,stockqty_after_move in sm:
+            td.s.add(item)
             if move>0:
                 driver.printline(" %d from item %d leaving %d"%(
-                    move,sos.stockitem.id,stockqty_after_move))
+                    move,item.id,stockqty_after_move))
             if move<0:
                 driver.printline(" %d to item %d making %d"%(
-                    -move,sos.stockitem.id,stockqty_after_move),colour=1)
+                    -move,item.id,stockqty_after_move),colour=1)
     driver.printline()
     driver.printline("\tEnd of list")
     driver.end()

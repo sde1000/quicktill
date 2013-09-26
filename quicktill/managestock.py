@@ -4,12 +4,12 @@ import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines
 from .models import Department,FinishCode,StockLine,StockType
-from .models import StockItem,StockOnSale
+from .models import StockItem
 import datetime
 
 import logging
-from functools import reduce
 log=logging.getLogger()
+from functools import reduce
 
 def deliverymenu():
     log.info("Delivery menu")
@@ -19,9 +19,8 @@ def finish_reason(sn,reason):
     stockitem=td.s.query(StockItem).get(sn)
     stockitem.finished=datetime.datetime.now()
     stockitem.finishcode_id=reason
-    # Probably not on sale right now but doesn't hurt to check!
-    sos=td.s.query(StockOnSale).get(sn)
-    if sos: td.s.delete(sos)
+    stockitem.displayqty=None
+    stockitem.stocklineid=None
     td.s.flush()
     log.info("Stock: finished item %d reason %s"%(sn,reason))
     ui.infopopup(["Stock item %d is now finished."%sn],dismiss=keyboard.K_CASH,

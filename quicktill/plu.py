@@ -29,14 +29,14 @@ def plu_window(kb):
     td.s.add(kb)
     sos=kb.stockline.stockonsale
     if len(sos)==1:
-        stock.stockinfo_popup(sos[0].stockitem.id,plu_keymap)
+        stock.stockinfo_popup(sos[0].id,plu_keymap)
     elif len(sos)>1:
-        lines=ui.table([("%d"%x.stockitem.id,
-                         x.stockitem.stocktype.format().ljust(40),
-                         "%d"%max(x.displayqty_or_zero-x.stockitem.used,0),
-                         "%d"%(x.stockitem.stockunit.size-max(x.displayqty_or_zero,x.stockitem.used)))
+        lines=ui.table([("%d"%x.id,
+                         x.stocktype.format().ljust(40),
+                         "%d"%max(x.displayqty_or_zero-x.used,0),
+                         "%d"%(x.stockunit.size-max(x.displayqty_or_zero,x.used)))
                         for x in sos]).format(' r l r+l ')
-        sl=[(x,stock.stockinfo_popup,(y.stockitem.id,plu_keymap))
+        sl=[(x,stock.stockinfo_popup,(y.id,plu_keymap))
             for x,y in zip(lines,sos)]
         ui.menu(sl,title="%s (%s) - display capacity %d"%
                 (kb.stockline.name,kb.stockline.location,kb.stockline.capacity),

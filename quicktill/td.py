@@ -83,7 +83,7 @@ def stocktype_completename(m,n):
         )
     return [x[0] for x in result]
 
-### Functions related to the stock,stockout,stockonsale tables
+### Functions related to the stock,stockout tables
 
 def stock_checkpullthru(stockid,maxtime):
     """Did this stock item require pulling through?"""
@@ -103,14 +103,13 @@ def stock_autoallocate_candidates(deliveryid=None):
     q=s.query(StockItem,StockLine).\
         join(StockType).\
         join(Delivery).\
-        outerjoin(StockOnSale).\
         filter(StockLine.id.in_(
             select([StockLineTypeLog.stocklineid],
                    whereclause=(
                         StockLineTypeLog.stocktype_id==StockItem.stocktype_id)).\
                 correlate(StockItem.__table__))).\
         filter(StockItem.finished==None).\
-        filter(StockOnSale.stockline==None).\
+        filter(StockItem.stocklineid==None).\
         filter(Delivery.checked==True).\
         filter(StockLine.capacity!=None).\
         order_by(StockItem.id)
@@ -121,7 +120,7 @@ def stock_autoallocate_candidates(deliveryid=None):
 def stock_purge():
     """Stock items that have been completely used up through the
     display mechanism should be marked as 'finished' in the stock
-    table, and purged from the stockonsale table.  This is usually
+    table, and disconnected from the stockline.  This is usually
     done automatically at the end of each session because stock items
     may be put back on display through the voiding mechanism during
     the session, but is also available as an option on the till
@@ -131,19 +130,19 @@ def stock_purge():
     global s
     # Find stockonsale that is ready for purging: used==size on a
     # stockline that has a display capacity
-    finished=s.query(StockOnSale).\
-        join(StockOnSale.stockline).\
-        join(StockOnSale.stockitem).\
+    finished=s.query(StockItem).\
+        join(StockLine).\
         filter(not_(StockLine.capacity==None)).\
         filter(StockItem.remaining==0.0).\
         all()
 
     # Mark all these stockitems as finished, removing them from being
     # on sale as we go
-    for sos in finished:
-        sos.stockitem.finished=datetime.datetime.now()
-        sos.stockitem.finishcode_id='empty' # guaranteed to exist
-        s.delete(sos)
+    for item in finished:
+        item.finished=datetime.datetime.now()
+        item.finishcode_id='empty' # guaranteed to exist
+        item.displayqty=None
+        item.stocklineid=None
     s.flush()
 
 def stock_recordwaste(stock,reason,amount,update_displayqty):
@@ -157,8 +156,9 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
     so=StockOut(stockid=stock,qty=amount,removecode_id=reason)
     s.add(so)
     if update_displayqty:
-        sos=s.query(StockOnSale).get(stock) # stockid is primary key here!
-        if sos: sos.displayqty=sos.displayqty+amount
+        sos=s.query(StockItem).get(stock) # stockid is primary key here!
+        if sos.stocklineid is not None:
+            sos.displayqty=sos.displayqty_or_zero+amount
     s.flush()
 
 ### Find out what's on the stillage by checking annotations
@@ -166,7 +166,6 @@ def stock_recordwaste(stock,reason,amount,update_displayqty):
 def stillage_summary(session):
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
-        outerjoin(StockOnSale).\
         outerjoin(StockLine).\
         filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
             select([StockAnnotation.text,func.max(StockAnnotation.time)],
@@ -176,8 +175,7 @@ def stillage_summary(session):
         order_by(StockLine.name!=null(),StockAnnotation.time).\
         options(joinedload('stockitem')).\
         options(joinedload('stockitem.stocktype')).\
-        options(joinedload('stockitem.stockonsale')).\
-        options(joinedload('stockitem.stockonsale.stockline')).\
+        options(joinedload('stockitem.stockline')).\
         all()
     return stillage
 
@@ -217,8 +215,7 @@ def stockline_summary(session,locations):
         filter(StockLine.capacity==None).\
         order_by(StockLine.name).\
         options(joinedload('stockonsale')).\
-        options(joinedload('stockonsale.stockitem')).\
-        options(joinedload('stockonsale.stockitem.stocktype')).\
+        options(joinedload('stockonsale.stocktype')).\
         all()
     return s
 

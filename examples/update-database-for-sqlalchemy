@@ -73,3 +73,32 @@ CREATE CONSTRAINT TRIGGER no_modify_closed
 
 ALTER TABLE translines ALTER COLUMN source TYPE VARCHAR;
 
+/* stockonsale table is now merged with stock */
+
+ALTER TABLE stock ADD COLUMN stocklineid INT REFERENCES stocklines(stocklineid)
+  ON DELETE SET NULL;
+ALTER TABLE stock ADD COLUMN displayqty INT;
+ALTER TABLE stock ADD CONSTRAINT displayqty_null_if_no_stockline
+  CHECK (not(stocklineid is null) or displayqty is null);
+
+UPDATE stock SET stocklineid=sos.stocklineid,displayqty=sos.displayqty
+  FROM stock s LEFT JOIN stockonsale sos ON s.stockid=sos.stockid
+  WHERE stock.stockid=s.stockid;
+
+CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
+  WHERE NEW.stocklineid is not null
+  DO ALSO
+  INSERT INTO stockline_stocktype_log VALUES
+  (NEW.stocklineid,NEW.stocktype);
+
+/* This rule is possible even without removing stockonsale */
+ALTER TABLE stock ADD CONSTRAINT finished_and_finishcode_null_together
+  CHECK ((finished IS NULL)=(finishcode IS NULL));
+
+/* This rule only works once stockonsale and stock are merged.  It
+could be written without the double-negative but then it is less
+obvious that it is "not-null finished implies stocklineid is null". */
+ALTER TABLE stock ADD CONSTRAINT stockline_null_if_finished
+  CHECK (NOT(finished IS NOT NULL) OR stocklineid IS NULL);
+
+DROP TABLE stockonsale;

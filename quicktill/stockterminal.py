@@ -26,10 +26,10 @@ class page(ui.basicpage):
                 # There should be no more than one stock item on sale
                 # at once.  Here we explicitly use the first one.
                 sos=line.stockonsale[0]
-                self.addstr(y,10,"%d"%sos.stockid)
-                self.addstr(y,18,sos.stockitem.stocktype.format(45))
-                self.addstr(y,64,"%0.1f"%sos.stockitem.used)
-                self.addstr(y,73,"%0.1f"%sos.stockitem.remaining)
+                self.addstr(y,10,"%d"%sos.id)
+                self.addstr(y,18,sos.stocktype.format(45))
+                self.addstr(y,64,"%0.1f"%sos.used)
+                self.addstr(y,73,"%0.1f"%sos.remaining)
             y=y+1
             if y>=(self.h-3): break
     def drawstillage(self):
@@ -43,8 +43,8 @@ class page(ui.basicpage):
             self.addstr(y,0,a.text[:5])
             self.addstr(y,5,str(a.stockid))
             self.addstr(y,13,a.stockitem.stocktype.format(56))
-            if a.stockitem.stockonsale:
-                self.addstr(y,70,a.stockitem.stockonsale.stockline.name[:9])
+            if a.stockitem.stockline:
+                self.addstr(y,70,a.stockitem.stockline.name[:9])
             y=y+1
             if y>=(self.h-3): break
     def redraw(self):
