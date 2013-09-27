@@ -91,6 +91,8 @@ def main():
                       help="Log filename")
     parser.add_option("--debug", action="store_true", dest="debug",
                       help="Include debug output in logfile")
+    parser.add_option("--log-sql", action="store_true", dest="logsql",
+                      help="Include SQL queries in logfile")
     parser.add_option("-i", "--interactive", action="store_true",
                       dest="interactive",
                       help="Enter interactive database shell")
@@ -138,6 +140,8 @@ def main():
         loghandler.setLevel(logging.DEBUG if options.debug else logging.INFO)
         log.addHandler(loghandler)
         log.setLevel(loglevel)
+        if options.logsql:
+            logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     if 'printer' in config:
         printer.driver=config['printer'][0](*config['printer'][1])
