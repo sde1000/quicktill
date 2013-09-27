@@ -257,7 +257,7 @@ def db_version():
 
 def libpq_to_sqlalchemy(database):
     """
-    Create asqlalchemy engine URL from a libpq connection string
+    Create a sqlalchemy engine URL from a libpq connection string
 
     """
     csdict=dict([x.split('=',1) for x in database.split(' ')])
@@ -282,11 +282,13 @@ def init(database):
 
     """
     global sm
+    log.info("init database \'%s\'",database)
     if database[0]==":":
         database="dbname=%s"%database[1:]
 
     if '://' not in database: database=libpq_to_sqlalchemy(database)
 
+    log.info("sqlalchemy engine URL \'%s\'",database)
     engine=create_engine(database)
     models.metadata.bind=engine # for DDL, eg. to recreate foodorder_seq
     sm=sessionmaker(bind=engine)

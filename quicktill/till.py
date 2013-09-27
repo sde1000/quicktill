@@ -128,7 +128,7 @@ def main():
         sys.exit(1)
 
     log=logging.getLogger()
-    formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    formatter=logging.Formatter('%(asctime)s %(levelname)s %(name)s\n  %(message)s')
     handler=logging.StreamHandler()
     handler.setFormatter(formatter)
     handler.setLevel(logging.ERROR)
