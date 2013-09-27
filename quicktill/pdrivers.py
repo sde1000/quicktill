@@ -4,7 +4,7 @@ from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
 import qrcode
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 # Methods a printer class should implement:
 # available - returns True if start/print/end is likely to succeed

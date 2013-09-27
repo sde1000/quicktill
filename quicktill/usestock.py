@@ -6,7 +6,7 @@ from .models import StockType,StockAnnotation
 import datetime
 
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 # The "Use Stock" popup has several different functions:
 

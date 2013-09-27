@@ -11,7 +11,7 @@ from decimal import Decimal
 from models import Session,PayType,SessionTotal
 
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 class ssdialog(ui.dismisspopup):
     def __init__(self):

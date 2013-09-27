@@ -8,7 +8,7 @@ from .models import StockItem
 import datetime
 
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 from functools import reduce
 
 def deliverymenu():

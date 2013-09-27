@@ -7,7 +7,7 @@ from . import keyboard,event
 from mx.DateTime import now,strptime
 
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 # curses requires unicode strings to be encoded before being passed
 # to functions like addstr() and addch().  Very tedious!

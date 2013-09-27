@@ -19,7 +19,7 @@ from . import models
 from .models import *
 
 import logging
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 # ORM session; most database access will go through this
 s=None

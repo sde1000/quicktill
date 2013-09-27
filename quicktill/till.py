@@ -10,6 +10,7 @@ import sys,os,curses,logging,locale
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
 from .models import KeyCap
+log=logging.getLogger(__name__)
 
 def start(stdwin):
     # The display is initialised at this point
@@ -35,7 +36,6 @@ def start(stdwin):
 
 def run():
     # Initialise logging
-    log=logging.getLogger()
     log.info("Starting version %s"%version)
     try:
         td.init(tillconfig.database)

@@ -7,7 +7,7 @@ from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,UnitType,StockType,StockItem,StockAnnotation
 from .models import penny,func,lazyload
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 def abvstr(abv):
     if abv is None: return ""

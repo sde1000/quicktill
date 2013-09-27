@@ -37,7 +37,7 @@ from . import td,ui,keyboard,printer
 from . import stock,stocklines
 import logging
 import datetime
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 from . import foodorder
 from . import btcmerch
 from .models import Transline,Transaction,Session,StockOut,Transline,penny

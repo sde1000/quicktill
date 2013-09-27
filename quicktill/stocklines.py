@@ -2,7 +2,7 @@ import logging
 from . import keyboard,ui,td,tillconfig,printer
 from .models import Department,StockLine,KeyboardBinding
 from .models import StockType,StockLineTypeLog
-log=logging.getLogger()
+log=logging.getLogger(__name__)
 
 def calculate_sale(stocklineid,items):
     """
