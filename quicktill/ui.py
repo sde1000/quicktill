@@ -38,15 +38,52 @@ def wrap_addstr(win,y,x,str,attr=None):
     else:
         win.addstr(y,x,str.encode(c),attr)
 
-def gettime():
-    return time.strftime("%a %d %b %Y %H:%M:%S %Z")
+class clockheader(object):
+    """
+    A single-line header at the top of the screen, with a clock at the
+    right-hand side.  Can be passed text for the top-left and the
+    middle.  Draws directly on the curses root window, not into a
+    panel.
 
-class clock(object):
-    def __init__(self,win):
+    """
+    def __init__(self,win,left="Quicktill",middle=""):
         self.stdwin=win
+        self.left=left
+        self.middle=middle
         self.alarm()
+        event.eventlist.append(self)
+    def redraw(self):
+        """
+        The header line consists of the title of the page at the left,
+        optionally a summary of what's on other pages in the middle,
+        and the clock at the right.  If we do not have enough space,
+        we truncate the summary section until we do.  If we still
+        don't, we truncate the page name.
+        
+        """
+        m=self.left
+        s=self.middle
+        t=time.strftime("%a %d %b %Y %H:%M:%S %Z")
+        (my,mx)=stdwin.getmaxyx()
+        def cat(m,s,t):
+            w=len(m)+len(s)+len(t)
+            pad1=(mx-w)/2
+            pad2=pad1
+            if w+pad1+pad2!=mx: pad1=pad1+1
+            return "%s%s%s%s%s"%(m,' '*pad1,s,' '*pad2,t)
+        x=cat(m,s,t)
+        while len(x)>mx:
+            if len(s)>0: s=s[:-1]
+            elif len(m)>0: m=m[:-1]
+            else: t=t[1:]
+            x=cat(m,s,t)
+        self.stdwin.addstr(0,0,x.encode(c),curses.color_pair(colour_header))
+    def update(self,left=None,middle=None):
+        if left: self.left=left
+        if middle: self.middle=middle
+        self.redraw()
     def alarm(self):
-        drawheader()
+        self.redraw()
         now=time.time()
         self.nexttime=math.ceil(now)+0.01
 
@@ -60,37 +97,8 @@ def formatdate(ts):
     if ts is None: return ""
     return ts.strftime("%Y-%m-%d")
 
-header_pagename=""
-header_summary=""
-def drawheader():
-    """
-    The header line consists of the name of the page at the left, a
-    number of "summary" sections from all the other pages separated by
-    spaces in the center, and the clock at the right.  If we do not
-    have enough space, we truncate the summary section until we do.
-    If we still don't, we truncate the page name.
-
-    """
-    m=header_pagename
-    s=header_summary
-    t=gettime()
-    (my,mx)=stdwin.getmaxyx()
-    def cat(m,s,t):
-        w=len(m)+len(s)+len(t)
-        pad1=(mx-w)/2
-        pad2=pad1
-        if w+pad1+pad2!=mx: pad1=pad1+1
-        return "%s%s%s%s%s"%(m,' '*pad1,s,' '*pad2,t)
-    x=cat(m,s,t)
-    while len(x)>mx:
-        if len(s)>0: s=s[:-1]
-        elif len(m)>0: m=m[:-1]
-        else: t=t[1:]
-        x=cat(m,s,t)
-    stdwin.addstr(0,0,x.encode(c),curses.color_pair(colour_header))
-
 def updateheader():
-    global header_pagename,header_summary
+    global header
     m=""
     s=""
     for i in pagelist:
@@ -98,9 +106,7 @@ def updateheader():
         else:
             ps=i.pagesummary()
             if ps: s=s+i.pagesummary()+' '
-    header_pagename=m
-    header_summary=s
-    drawheader()
+    header.update(m,s)
 
 def handle_keyboard_input(k):
     global focus
@@ -1182,7 +1188,7 @@ def popup_exception(title):
     infopopup(e,title=title)
 
 def init(w):
-    global stdwin,kb
+    global stdwin,kb,header
     stdwin=w
     (my,mx)=stdwin.getmaxyx()
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
@@ -1193,7 +1199,7 @@ def init(w):
     curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
-    event.eventlist.append(clock(stdwin))
+    header=clockheader(stdwin)
     kb.initUI(handle_keyboard_input,stdwin)
 
 beep=curses.beep
