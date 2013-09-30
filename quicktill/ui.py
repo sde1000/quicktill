@@ -4,7 +4,7 @@
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
 from . import keyboard,event,tillconfig
 
-from mx.DateTime import now,strptime
+import datetime
 
 import logging
 log=logging.getLogger(__name__)
@@ -994,7 +994,7 @@ class datefield(editfield):
             editfield.set(self,formatdate(v))
     def read(self):
         try:
-            d=strptime(self.f,"%Y-%m-%d")
+            d=datetime.datetime.strptime(self.f,"%Y-%m-%d")
         except:
             d=None
         if d is None: editfield.set(self,"")
