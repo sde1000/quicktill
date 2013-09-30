@@ -2,8 +2,10 @@ import time
 from . import ui,event,td,keyboard,usestock,stocklines
 
 class page(ui.basicpage):
-    def __init__(self,panel,hotkeys,locations=None):
-        ui.basicpage.__init__(self,panel)
+    def __init__(self,hotkeys,locations=None):
+        ui.basicpage.__init__(self)
+        self.mainloopnexttime=0 # XXX needed when being created dynamically
+        # - sort out the event loop code sometime so it doesn't need this!
         self.display=0
         self.alarm(need_new_session=False)
         self.hotkeys=hotkeys

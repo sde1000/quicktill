@@ -46,7 +46,7 @@ from decimal import Decimal
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
 
-class transnotify:
+class transnotify(object):
     def __init__(self):
         self.nl=[]
     def register(self,page):
@@ -315,11 +315,13 @@ def strtoamount(s):
     return (Decimal(s)/Decimal("100.00")).quantize(penny)
 
 class page(ui.basicpage):
-    def __init__(self,panel,name,hotkeys):
+    def __init__(self,name,hotkeys):
         global registry
-        ui.basicpage.__init__(self,panel)
-        self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
+        # trans and name needed for "pagename" which is called in basicpage.__init__()
+        self.trans=None
         self.name=name
+        ui.basicpage.__init__(self)
+        self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.defaultprompt="Ready"
         registry.register(self)
         self.bufferline=bufferline()
@@ -329,8 +331,6 @@ class page(ui.basicpage):
         self.clear()
         self.redraw()
         self.hotkeys=hotkeys
-        self.savedfocus=ui.focus # Save this, so that it can be
-                                 # restored when we are selected.
     def clearbuffer(self):
         self.buf=None # Input buffer
         self.qty=None # Quantity (integer)
@@ -360,17 +360,18 @@ class page(ui.basicpage):
         self.bufferline.update_buffer(self.prompt,self.qty,self.mod,self.buf,
                                       self.balance)
     def pagename(self):
-        if self.trans is not None:
-            ts=" - Transaction %d (%s)"%(self.trans.id,("open","closed")
-                                         [self.trans.closed])
-        else: ts=""
-        return "%s%s"%(self.name,ts)
+        if self.trans is None: return self.name
+        td.s.add(self.trans)
+        return "%s - Transaction %d (%s)"%(
+            self.name,self.trans.id,("open","closed")[self.trans.closed])
     def pagesummary(self):
         if self.trans is None: return ""
-        elif self.trans.closed: return ""
-        else: return "%s:%d"%(self.name[0],self.trans.id)
+        td.s.add(self.trans)
+        if self.trans.closed: return ""
+        return "%s:%d"%(self.name[0],self.trans.id)
     def tnotify(self,name,trans):
         "Receive notification that another page has claimed this transaction"
+        if self.trans: td.s.add(self.trans)
         if trans==0 or (self.name!=name and self.trans and self.trans.id==trans):
             self.clear()
             self.redraw()

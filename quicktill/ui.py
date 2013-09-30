@@ -2,7 +2,7 @@
 # windows, and so on.
 
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
-from . import keyboard,event
+from . import keyboard,event,tillconfig
 
 from mx.DateTime import now,strptime
 
@@ -23,13 +23,11 @@ colour_changeline=6
 colour_cancelline=7
 colour_confirm=8 # black on cyan
 
-# The page having the input focus - at top of stack
+# The window having the input focus - at top of stack
 focus=None
-# The page at the bottom of the stack
+# The currently selected page; this will always be at the bottom of
+# the stack of windows
 basepage=None
-
-# Hotkeys for switching between pages.
-hotkeys={}
 
 # List of pages, in order
 pagelist=[]
@@ -61,18 +59,6 @@ def formatdate(ts):
     "Returns ts formatted as %Y-%m-%d"
     if ts is None: return ""
     return ts.strftime("%Y-%m-%d")
-
-def savefocus():
-    "Save the current panel stack down to the base panel"
-    l=[]
-    t=curses.panel.top_panel()
-    while t.userptr()!=basepage:
-        st=t
-        l.append(t)
-        t=t.below()
-        st.hide()
-    l.reverse()
-    return l
 
 header_pagename=""
 header_summary=""
@@ -111,28 +97,16 @@ def updateheader():
         if i==basepage: m=i.pagename()+' '
         else:
             ps=i.pagesummary()
-            if ps!="": s=s+i.pagesummary()+' '
+            if ps: s=s+i.pagesummary()+' '
     header_pagename=m
     header_summary=s
     drawheader()
 
-# Switch to a VC
-def selectpage(page):
-    global focus,basepage
-    if page==basepage: return # Nothing to do
-    # Tell the current page we're switching away
-    if basepage:
-        basepage.deselected(focus,savefocus())
-    focus=page
-    basepage=page
-    updateheader()
-    page.selected()
-
 def handle_keyboard_input(k):
     global focus
-    log.debug("Keypress %s"%kb.keycap(k))
-    if k in hotkeys:
-        selectpage(hotkeys[k])
+    log.debug("Keypress %s",kb.keycap(k))
+    if k in tillconfig.hotkeys:
+        tillconfig.hotkeys[k]()
     else:
         focus.keypress(k)
 
@@ -146,7 +120,7 @@ class basicwin(object):
     def __init__(self):
         global focus
         self.parent=focus
-        log.debug("New %s with parent %s"%(self,self.parent))
+        log.debug("New %s with parent %s",self,self.parent)
     def addstr(self,y,x,s,attr=None):
         wrap_addstr(self.win,y,x,s,attr)
     def focus(self):
@@ -173,43 +147,73 @@ class basicwin(object):
         pass
 
 class basicpage(basicwin):
-    def __init__(self,pan):
-        self.pan=pan
-        self.win=pan.window()
+    def __init__(self):
+        """
+        Create a new page.  This function should be called at
+        the start of the __init__ function of any subclass.
+
+        Newly-created pages are always selected.
+
+        """
+        global pagelist,basepage,focus
+        # We need to deselect any current page before creating our
+        # panel, because creating a panel implicitly puts it on top of
+        # the panel stack.
+        if basepage: basepage.deselect()
+        (my,mx)=stdwin.getmaxyx()
+        self.win=curses.newwin(my-1,mx,1,0)
+        self.pan=curses.panel.new_panel(self.win)
+        self.pan.set_userptr(self)
+        pagelist.append(self) # XXX do we really need to manage this here?
+        (self.h,self.w)=self.win.getmaxyx()
         self.savedfocus=self
         self.stack=None
-        (self.h,self.w)=self.win.getmaxyx()
-        # Pages are only ever initialised during startup, when there
-        # is no focus.  The page must hold the focus so that UI
-        # elements can determine their parent correctly, for keypress
-        # handling.
-        global focus
+        basepage=self
         focus=self
         basicwin.__init__(self) # Sets self.parent to self - ok!
     def firstpageinit(self):
         # Startup code will call this function on the first page to be
-        # initialised, after all other pages have been initialised and
-        # the first page has been brought to the top.
+        # initialised; it can be used for a "welcome" popup, list of
+        # open transactions, and so on.
         pass
     def pagename(self):
         return "Basic page"
     def pagesummary(self):
         return ""
-    def deselected(self,focus,stack):
-        # When we're deselected this function is called to let us save
-        # our stack of panels, if we want to.  Then when selected we
-        # can just restore the focus and panel stack.
-        self.savedfocus=focus
-        self.stack=stack
-    def selected(self):
-        global focus
-        self.pan.show()
+    def select(self):
+        global focus,basepage
+        if basepage==self: return # Nothing to do
+        # Tell the current page we're switching away
+        if basepage: basepage.deselect()
+        basepage=self
         focus=self.savedfocus
+        self.pan.show()
         if self.stack:
             for i in self.stack:
                 i.show()
-        self.savedfocus=self
+        self.savedfocus=None
         self.stack=None
+        updateheader()
+    def deselect(self):
+        """
+        Deselect this page if it is currently selected.  Save the
+        panel stack so we can restore it next time we are selected.
+
+        """
+        global basepage
+        if basepage!=self: return
+        self.savedfocus=focus
+        l=[]
+        t=curses.panel.top_panel()
+        while t.userptr()!=basepage:
+            st=t
+            l.append(t)
+            t=t.below()
+            st.hide()
+        l.reverse()
+        self.stack=l
+        self.pan.hide()
+        basepage=None
 
 class basicpopup(basicwin):
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
@@ -224,8 +228,11 @@ class basicpopup(basicwin):
         if cleartext: w=max(w,len(cleartext)+3)
         w=min(w,mw)
         h=min(h,mh)
-        self.pan=popup(self,h,w)
-        self.win=self.pan.window()
+        y=(mh-h)/2
+        x=(mw-w)/2
+        self.win=curses.newwin(h,w,y,x)
+        self.pan=curses.panel.new_panel(self.win)
+        self.pan.set_userptr(self)
         self.win.bkgdset(ord(' '),curses.color_pair(colour))
         self.win.clear()
         self.win.border()
@@ -234,7 +241,7 @@ class basicpopup(basicwin):
         self.pan.show()
     def dismiss(self):
         self.pan.hide()
-        del self.pan
+        del self.pan,self.win
         self.parent.focus()
     def keypress(self,k):
         # We never want to pass unhandled keypresses back to the parent
@@ -1174,28 +1181,6 @@ def popup_exception(title):
                                  sys.exc_info()[2])
     infopopup(e,title=title)
 
-def addpage(page,hotkey,args=()):
-    (my,mx)=stdwin.getmaxyx()
-    win=curses.newwin(my-1,mx,1,0)
-    pan=curses.panel.new_panel(win)
-    p=page(pan,*args)
-    pan.set_userptr(p)
-    hotkeys[hotkey]=p
-    pagelist.append(p)
-    return p
-
-def popup(page,h=0,w=0,y=0,x=0):
-    # Convenience function: returns a panel of suitable size
-    (my,mx)=stdwin.getmaxyx()
-    if h==0: h=my/2
-    if w==0: w=mx/2
-    if y==0: y=(my-h)/2
-    if x==0: x=(mx-w)/2
-    win=curses.newwin(h,w,y,x)
-    pan=curses.panel.new_panel(win)
-    pan.set_userptr(page)
-    return pan
-
 def init(w):
     global stdwin,kb
     stdwin=w
@@ -1208,7 +1193,6 @@ def init(w):
     curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
-#    stdwin.addstr(0,0," "*mx,curses.color_pair(1))
     event.eventlist.append(clock(stdwin))
     kb.initUI(handle_keyboard_input,stdwin)
 

@@ -12,6 +12,11 @@ from .version import version
 from .models import KeyCap,Session
 log=logging.getLogger(__name__)
 
+class intropage(ui.basicpage):
+    def __init__(self):
+        ui.basicpage.__init__(self)
+        self.win.addstr(0,0,"No page has been defined in the configuration file.")
+
 def start(stdwin):
     """
     ncurses has been initialised, and calls us with the root window.
@@ -28,14 +33,11 @@ def start(stdwin):
     td.start_session()
     ui.init(stdwin)
 
-    # Create pages for various functions
-    fp=None
-    for pagedef,hotkey,args in tillconfig.pages:
-        p=ui.addpage(pagedef,hotkey,args)
-        if fp is None: fp=p
-    ui.selectpage(fp)
-    fp.firstpageinit()
-
+    if tillconfig.firstpage:
+        fp=tillconfig.firstpage()
+        fp.firstpageinit()
+    else:
+        intropage()
     td.end_session()
 
     # Enter main event loop
@@ -259,7 +261,6 @@ def main():
     if 'labelprinter' in config:
         printer.labeldriver=config['labelprinter'][0](
             *config['labelprinter'][1])
-    tillconfig.pages=config['pages']
     tillconfig.database=config.get('database')
     if options.database is not None: tillconfig.database=options.database
     ui.kb=config['kbdriver']
@@ -297,6 +298,10 @@ def main():
         tillconfig.usestock_hook=config['usestock_hook']
     if 'btcmerch' in config:
         tillconfig.btcmerch_api=config['btcmerch']
+    if 'hotkeys' in config:
+        tillconfig.hotkeys=config['hotkeys']
+    if 'firstpage' in config:
+        tillconfig.firstpage=config['firstpage']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

@@ -2,8 +2,8 @@ import sys
 from . import ui,foodorder,keyboard,event
 
 class page(ui.basicpage):
-    def __init__(self,panel,hotkeys):
-        ui.basicpage.__init__(self,panel)
+    def __init__(self,hotkeys):
+        ui.basicpage.__init__(self)
         self.display=0
         self.redraw()
         self.hotkeys=hotkeys

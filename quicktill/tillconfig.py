@@ -17,6 +17,7 @@ pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")
 currency="MPL"
 
 kbtype=1
+hotkeys={}
 
 cashback_limit=50.0
 
@@ -80,3 +81,5 @@ transaction_to_free_drinks_function=False
 btcmerch_api=None
 
 database=None
+
+firstpage=None
