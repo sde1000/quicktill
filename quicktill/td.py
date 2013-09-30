@@ -8,6 +8,8 @@
 import datetime
 
 from sqlalchemy import create_engine
+from sqlalchemy.pool import Pool
+from sqlalchemy import event,exc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
 from sqlalchemy.orm import undefer
@@ -235,6 +237,20 @@ def session_bitcoin_translist(session):
 def db_version():
     global s
     return s.execute("select version()").scalar()
+
+# This is "pessimistic disconnect handling" as described in the
+# sqlalchemy documentation.  A "ping" select is issued on every
+# connection checkout before the connection is used, and a failure of
+# the ping causes a reconnection.  This enables the till software to
+# keep running even after a database restart.
+@event.listens_for(Pool, "checkout")
+def ping_connection(dbapi_connection, connection_record, connection_proxy):
+    cursor=dbapi_connection.cursor()
+    try:
+        cursor.execute("SELECT 1")
+    except:
+        raise exc.DisconnectionError()
+    cursor.close()
 
 def libpq_to_sqlalchemy(database):
     """
