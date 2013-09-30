@@ -219,25 +219,6 @@ def stockline_summary(session,locations):
         all()
     return s
 
-### Functions relating to the sessions,sessiontotals tables
-
-def session_list(session,unpaidonly,closedonly):
-    """Return the list of sessions.  Explicitly undefers loading of
-    the total column property so that we don't have to make a
-    round-trip to the database for each object returned.
-
-    """
-    q=session.query(Session).\
-        order_by(desc(Session.id)).\
-        options(undefer('total'))
-    if unpaidonly:
-        q=q.filter(select([func.count(SessionTotal.sessionid)],
-                          whereclause=SessionTotal.sessionid==Session.id).\
-                       correlate(Session.__table__).as_scalar()==0)
-    if closedonly:
-        q=q.filter(Session.endtime!=None)
-    return q.all()
-
 def session_bitcoin_translist(session):
     """
     Returns the list of transactions involving Bitcoin payment in

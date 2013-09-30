@@ -17,7 +17,7 @@ class bbcheck(ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         # We assume that VAT band 'A' is the current main VAT rate.
-        self.vatrate=float(td.s.query(VatBand).get('A').at(ui.now()).rate)
+        self.vatrate=float(td.s.query(VatBand).get('A').at(datetime.datetime.now()).rate)
         self.vatrate=self.vatrate/100.0
         self.addstr(2,2,"   Total gross:")
         self.addstr(3,2,"Supplier share:")

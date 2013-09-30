@@ -8,7 +8,8 @@ from . import register,tillconfig,managekeyboard,stocklines,event
 from .version import version
 import datetime
 from decimal import Decimal
-from models import Session,PayType,SessionTotal
+from .models import Session,PayType,SessionTotal,zero,penny
+from .td import undefer,func,desc,select
 
 import logging
 log=logging.getLogger(__name__)
@@ -40,10 +41,10 @@ class ssdialog(ui.dismisspopup):
         self.dismiss()
         sc=Session(date)
         td.s.add(sc)
-        td.s.flush() # Needed until trans_restore has been converted
+        td.s.flush()
         td.trans_restore()
         td.foodorder_reset()
-        log.info("Started session number %d"%sc.id)
+        log.info("Started session number %d",sc.id)
         printer.kickout()
         ui.infopopup(["Started session number %d."%sc.id],
                      title="Session started",colour=ui.colour_info,
@@ -66,8 +67,7 @@ def checkendsession():
         log.info("End session: no session in progress")
         ui.infopopup(["There is no session in progress."],title="Error")
         return None
-    tl=sc.incomplete_transactions
-    if len(tl)>0:
+    if len(sc.incomplete_transactions)>0:
         log.info("End session: there are incomplete transactions")
         ui.infopopup(
             ["There are incomplete transactions.  After dismissing "
@@ -83,7 +83,7 @@ def confirmendsession():
     if r is None: return
     r.endtime=datetime.datetime.now()
     register.registry.announce(None,0)
-    log.info("End of session %d confirmed."%(r.id,))
+    log.info("End of session %d confirmed.",r.id)
     ui.infopopup(["Session %d has ended.  "
                   "Please count the cash in the drawer and enter the "
                   "actual amounts using management option 1,3."%(r.id,)],
@@ -102,7 +102,7 @@ def endsession():
                       "session number %d."%r.id],title="Session End",
                      keymap=km,colour=ui.colour_confirm)
 
-def sessionlist(dbsession,func,unpaidonly=False,closedonly=False):
+def sessionlist(dbsession,cont,unpaidonly=False,closedonly=False):
     "Return a list of sessions suitable for a menu"
     def ss(s):
         if s.endtime is None:
@@ -111,13 +111,21 @@ def sessionlist(dbsession,func,unpaidonly=False,closedonly=False):
             total="%s "%tillconfig.fc(s.total)
             total="%s%s"%(' '*(10-len(total)),total)
         return "%6d  %s  %s"%(s.id,ui.formatdate(s.date),total)
-    sl=td.session_list(dbsession,unpaidonly,closedonly)
-    return [(ss(x),func,(x,)) for x in sl]
+    q=td.s.query(Session).\
+        order_by(desc(Session.id)).\
+        options(undefer('total'))
+    if unpaidonly:
+        q=q.filter(select([func.count(SessionTotal.sessionid)],
+                          whereclause=SessionTotal.sessionid==Session.id).\
+                       correlate(Session.__table__).as_scalar()==0)
+    if closedonly:
+        q=q.filter(Session.endtime!=None)
+    return [(ss(x),cont,(x,)) for x in q.all()]
 
 class recordsession(ui.dismisspopup):
     def __init__(self,s):
         td.s.add(s)
-        log.info("Record session takings popup: session %d"%s.id)
+        log.info("Record session takings popup: session %d",s.id)
         self.session=s
         paytotals=dict(s.payment_totals)
         paytypes=td.s.query(PayType).all()
@@ -163,24 +171,26 @@ class recordsession(ui.dismisspopup):
         self.fl[-1][1].keymap[keyboard.K_CASH]=(self.field_return,None)
         self.fl[0][1].focus()
     def field_return(self):
+        td.s.add(self.session)
         self.amounts={}
         def guessamount(field,expected):
             if field.f.find('.')>=0:
-                return Decimal(field.f).quantize(Decimal("0.01"))
+                return Decimal(field.f).quantize(penny)
             try:
                 trial=Decimal(field.f)
             except:
-                trial=Decimal("0.00")
+                trial=zero
             # It might be an amount 100 times larger
             diff1=math.fabs(trial-expected)
             diff2=math.fabs((trial/Decimal("100.00"))-expected)
             if diff2<diff1: trial=trial/Decimal(100)
-            return trial.quantize(Decimal("0.01"))
+            return trial.quantize(penny)
         for paytype,field,expected in self.fl:
+            td.s.add(paytype)
             self.amounts[paytype]=guessamount(field,expected)
         km={keyboard.K_CASH:
             (self.confirm_recordsession,None,True)}
-        log.info("Record takings: asking for confirmation: session=%d"%
+        log.info("Record takings: asking for confirmation: session=%d",
                  self.session.id)
         ui.infopopup(["Press Cash/Enter to record the following as the "
                       "amounts taken in session %d."%self.session.id]+
@@ -189,13 +199,14 @@ class recordsession(ui.dismisspopup):
                      title="Confirm Session Total",keymap=km,
                      colour=ui.colour_confirm)
     def confirm_recordsession(self):
-        log.info("Record session takings: confirmed session %d"%self.session.id)
-        s=td.s.merge(self.session)
+        td.s.add(self.session)
+        log.info("Record session takings: confirmed session %d",self.session.id)
         for paytype,field,expected in self.fl:
-            if self.amounts[paytype]==Decimal("0.00"): continue
-            st=SessionTotal(session=s,paytype=paytype,
-                            amount=self.amounts[paytype])
-            session.add(st)
+            td.s.add(paytype)
+            if self.amounts[paytype]==zero: continue
+            td.s.add(SessionTotal(session=self.session,paytype=paytype,
+                                  amount=self.amounts[paytype]))
+        td.s.flush()
         tl=td.session_bitcoin_translist(self.session.id)
         if len(tl)>0:
             try:

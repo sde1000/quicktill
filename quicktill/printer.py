@@ -4,6 +4,9 @@ from decimal import Decimal
 from .models import Delivery,VatBand,Business,Transline,Transaction
 from .models import zero,penny
 
+import datetime
+now=datetime.datetime.now
+
 driver=None
 labeldriver=None
 
@@ -138,7 +141,7 @@ def print_sessiontotals(s):
     driver.printline("Started %s"%ui.formattime(s.starttime))
     if s.endtime is None:
         driver.printline("Session still in progress")
-        driver.printline("Printed %s"%ui.formattime(ui.now()))
+        driver.printline("Printed %s"%ui.formattime(now()))
     else:
         driver.printline("  Ended %s"%ui.formattime(s.endtime))
     driver.printline("Till total:\t\tActual total:")
@@ -172,7 +175,7 @@ def print_sessiontotals(s):
         dt=dt+total
     driver.printline("\t\tTotal: %s"%tillconfig.fc(dt),colour=1,emph=1)
     driver.printline()
-    driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
+    driver.printline("\tPrinted %s"%ui.formattime(now()))
     driver.end()
 
 def label_print_delivery(delivery):
@@ -243,7 +246,7 @@ def print_stocklist(sl,title="Stock List"):
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\t%s"%title,colour=1)
-    driver.printline("\t Printed %s"%ui.formattime(ui.now()))
+    driver.printline("\t Printed %s"%ui.formattime(now()))
     driver.printline()
     for s in sl:
         driver.printline("Stock number %d"%s.id,colour=1)
@@ -268,7 +271,7 @@ def print_restock_list(rl):
     driver.start()
     driver.printline("\t%s"%tillconfig.pubname,emph=1)
     driver.printline("\tRe-stock list")
-    driver.printline("\tPrinted %s"%ui.formattime(ui.now()))
+    driver.printline("\tPrinted %s"%ui.formattime(now()))
     driver.printline()
     for sl,sm in rl:
         td.s.add(sl)
@@ -306,7 +309,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
         driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     driver.printline()
-    driver.printline("\t%s"%ui.formattime(ui.now()))
+    driver.printline("\t%s"%ui.formattime(now()))
     driver.printline()
     tot=0.0
     for item in ol:
@@ -327,7 +330,7 @@ def print_order_cancel(driver,number):
     driver.start()
     driver.printline("\tCANCEL order %d"%number,colour=1,emph=1)
     driver.printline()
-    driver.printline("\t%s"%ui.formattime(ui.now()))
+    driver.printline("\t%s"%ui.formattime(now()))
     driver.printline()
     driver.printline()
     driver.end()
