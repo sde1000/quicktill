@@ -15,7 +15,14 @@ log=logging.getLogger(__name__)
 class intropage(ui.basicpage):
     def __init__(self):
         ui.basicpage.__init__(self)
-        self.win.addstr(0,0,"No page has been defined in the configuration file.")
+        self.win.addstr(1,1,"This is quicktill version %s"%version)
+        if tillconfig.hotkeys:
+            self.win.addstr(3,1,"To continue, press one of these keys:")
+            y=5
+            for k in tillconfig.hotkeys:
+               self.win.addstr(y,3,ui.kb.keycap(k))
+               y=y+1
+        self.win.move(0,0)
 
 def start(stdwin):
     """
@@ -34,8 +41,7 @@ def start(stdwin):
     ui.init(stdwin)
 
     if tillconfig.firstpage:
-        fp=tillconfig.firstpage()
-        fp.firstpageinit()
+        tillconfig.firstpage()
     else:
         intropage()
     td.end_session()

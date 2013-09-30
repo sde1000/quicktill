@@ -1224,7 +1224,7 @@ class page(ui.basicpage):
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
-    def firstpageinit(self):
+    def list_open_transactions(self):
         sc=Session.current(td.s)
         if sc is None: return
         tl=[t for t in sc.transactions if not t.closed]

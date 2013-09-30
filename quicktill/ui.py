@@ -163,11 +163,6 @@ class basicpage(basicwin):
         basicpage._basepage=self
         basicwin._focus=self
         basicwin.__init__(self) # Sets self.parent to self - ok!
-    def firstpageinit(self):
-        # Startup code will call this function on the first page to be
-        # initialised; it can be used for a "welcome" popup, list of
-        # open transactions, and so on.
-        pass
     def pagename(self):
         return "Basic page"
     def pagesummary(self):

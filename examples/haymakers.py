@@ -399,7 +399,8 @@ kb1={
     ("A13","Line 77",K_LINE77),
     ]),
     'kbtype':1,
-    'firstpage': lambda: register.select_page("Alice", register_hotkeys),
+    'firstpage': lambda: register.select_page("Alice", register_hotkeys).\
+        list_open_transactions(),
     }
 
 stock_hotkeys={
@@ -419,14 +420,14 @@ global_hotkeys={
     K_ALICE: lambda: register.select_page("Alice", register_hotkeys),
     K_BOB: lambda: register.select_page("Bob", register_hotkeys),
     K_CHARLIE: lambda: register.select_page("Charlie", register_hotkeys),
-    K_DORIS: lambda: stockterminal.page(register_hotkeys),
+    K_DORIS: lambda: stockterminal.page(register_hotkeys,["Bar"]),
     K_LOCK: lockscreen,
 }
 
 stockcontrol={
     'kbdriver':kbdrivers.curseskeyboard(),
     'kbtype':0,
-    'firstpage': lambda: stockterminal.page(stock_hotkeys,"Bar"),
+    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"]),
 }    
 
 # Config0 is a QWERTY-keyboard stock-control terminal
