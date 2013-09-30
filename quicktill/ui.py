@@ -23,15 +23,6 @@ colour_changeline=6
 colour_cancelline=7
 colour_confirm=8 # black on cyan
 
-# The window having the input focus - at top of stack
-focus=None
-# The currently selected page; this will always be at the bottom of
-# the stack of windows
-basepage=None
-
-# List of pages, in order
-pagelist=[]
-
 def wrap_addstr(win,y,x,str,attr=None):
     if attr is None:
         win.addstr(y,x,str.encode(c))
@@ -79,8 +70,8 @@ class clockheader(object):
             x=cat(m,s,t)
         self.stdwin.addstr(0,0,x.encode(c),curses.color_pair(colour_header))
     def update(self,left=None,middle=None):
-        if left: self.left=left
-        if middle: self.middle=middle
+        if left is not None: self.left=left
+        if middle is not None: self.middle=middle
         self.redraw()
     def alarm(self):
         self.redraw()
@@ -97,24 +88,12 @@ def formatdate(ts):
     if ts is None: return ""
     return ts.strftime("%Y-%m-%d")
 
-def updateheader():
-    global header
-    m=""
-    s=""
-    for i in pagelist:
-        if i==basepage: m=i.pagename()+' '
-        else:
-            ps=i.pagesummary()
-            if ps: s=s+i.pagesummary()+' '
-    header.update(m,s)
-
 def handle_keyboard_input(k):
-    global focus
     log.debug("Keypress %s",kb.keycap(k))
     if k in tillconfig.hotkeys:
         tillconfig.hotkeys[k]()
     else:
-        focus.keypress(k)
+        basicwin._focus.keypress(k)
 
 class basicwin(object):
     """Container for all pages, popup windows and fields.
@@ -123,20 +102,26 @@ class basicwin(object):
     basicwin instance is created.  This should usually be true!
     
     """
+    _focus=None
     def __init__(self):
-        global focus
-        self.parent=focus
+        self.parent=basicwin._focus
         log.debug("New %s with parent %s",self,self.parent)
     def addstr(self,y,x,s,attr=None):
         wrap_addstr(self.win,y,x,s,attr)
+    @property
+    def focused(self):
+        """
+        Do we hold the focus at the moment?
+
+        """
+        return basicwin._focus==self
     def focus(self):
         """Called when we are being told to take the focus.
 
         """
-        global focus
-        if focus!=self:
-            oldfocus=focus
-            focus=self
+        if basicwin._focus!=self:
+            oldfocus=basicwin._focus
+            basicwin._focus=self
             oldfocus.defocus()
             log.debug("Focus %s -> %s"%(oldfocus,self))
     def defocus(self):
@@ -153,6 +138,8 @@ class basicwin(object):
         pass
 
 class basicpage(basicwin):
+    _pagelist=[]
+    _basepage=None
     def __init__(self):
         """
         Create a new page.  This function should be called at
@@ -161,21 +148,20 @@ class basicpage(basicwin):
         Newly-created pages are always selected.
 
         """
-        global pagelist,basepage,focus
         # We need to deselect any current page before creating our
         # panel, because creating a panel implicitly puts it on top of
         # the panel stack.
-        if basepage: basepage.deselect()
+        if basicpage._basepage: basicpage._basepage.deselect()
         (my,mx)=stdwin.getmaxyx()
         self.win=curses.newwin(my-1,mx,1,0)
         self.pan=curses.panel.new_panel(self.win)
         self.pan.set_userptr(self)
-        pagelist.append(self) # XXX do we really need to manage this here?
+        basicpage._pagelist.append(self)
         (self.h,self.w)=self.win.getmaxyx()
         self.savedfocus=self
         self.stack=None
-        basepage=self
-        focus=self
+        basicpage._basepage=self
+        basicwin._focus=self
         basicwin.__init__(self) # Sets self.parent to self - ok!
     def firstpageinit(self):
         # Startup code will call this function on the first page to be
@@ -187,31 +173,29 @@ class basicpage(basicwin):
     def pagesummary(self):
         return ""
     def select(self):
-        global focus,basepage
-        if basepage==self: return # Nothing to do
+        if basicpage._basepage==self: return # Nothing to do
         # Tell the current page we're switching away
-        if basepage: basepage.deselect()
-        basepage=self
-        focus=self.savedfocus
+        if basicpage._basepage: basicpage._basepage.deselect()
+        basicpage._basepage=self
+        basicwin._focus=self.savedfocus
         self.pan.show()
         if self.stack:
             for i in self.stack:
                 i.show()
         self.savedfocus=None
         self.stack=None
-        updateheader()
+        self.updateheader()
     def deselect(self):
         """
         Deselect this page if it is currently selected.  Save the
         panel stack so we can restore it next time we are selected.
 
         """
-        global basepage
-        if basepage!=self: return
-        self.savedfocus=focus
+        if basicpage._basepage!=self: return
+        self.savedfocus=basicwin._focus
         l=[]
         t=curses.panel.top_panel()
-        while t.userptr()!=basepage:
+        while t.userptr()!=self:
             st=t
             l.append(t)
             t=t.below()
@@ -219,7 +203,19 @@ class basicpage(basicwin):
         l.reverse()
         self.stack=l
         self.pan.hide()
-        basepage=None
+        basicpage._basepage=None
+    @staticmethod
+    def updateheader():
+        global header
+        m=""
+        s=""
+        for i in basicpage._pagelist:
+            if i==basicpage._basepage: m=i.pagename()+' '
+            else:
+                ps=i.pagesummary()
+                if ps: s=s+i.pagesummary()+' '
+        header.update(m,s)
+
 
 class basicpopup(basicwin):
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
@@ -466,13 +462,12 @@ class alarmpopup(infopopup):
         event.eventlist.append(self)
         self.alarm()
     def alarm(self):
-        global focus
         curses.beep()
         self.nexttime=math.ceil(time.time())
         self.remaining=self.remaining-1
         if self.remaining<1:
             self.remaining=10
-            if self in focus.parents(): self.dismiss()
+            if self in basicwin._focus.parents(): self.dismiss()
     def dismiss(self):
         del event.eventlist[event.eventlist.index(self)]
         infopopup.dismiss(self)
@@ -581,9 +576,8 @@ class scrollable(field):
         # move the cursor to the top.  If we are obtaining it from the next
         # field, we should move the cursor to the bottom.  Otherwise we
         # leave the cursor untouched.
-        global focus
-        if focus==self.prevfield: self.cursor=0
-        elif focus==self.nextfield:
+        if self.prevfield and self.prevfield.focused: self.cursor=0
+        elif self.nextfield and self.nextfield.focused:
             self.cursor=len(self.dl) if self.lastline else len(self.dl)-1
         field.focus(self)
         self.redraw()
@@ -598,7 +592,6 @@ class scrollable(field):
         position to ensure the cursor is displayed.)
 
         """
-        global focus
         # First clear the drawing space
         for y in range(self.y,self.y+self.h):
             self.addstr(y,self.x,' '*self.w)
@@ -625,7 +618,7 @@ class scrollable(field):
             l=item.display(self.w)
             colour=item.colour
             ccolour=item.cursor_colour
-            if focus==self and i==self.cursor and self.show_cursor:
+            if self.focused and i==self.cursor and self.show_cursor:
                 colour=ccolour
                 cursor_y=y+item.cursor[1]
                 cursor_x=self.x+item.cursor[0]
@@ -1123,8 +1116,7 @@ class buttonfield(field):
         field.defocus(self)
         self.draw()
     def draw(self):
-        global focus
-        if focus==self: s="[%s]"%self.t
+        if self.focused: s="[%s]"%self.t
         else: s=" %s "%self.t
         pos=self.win.getyx()
         self.addstr(self.y,self.x,s,curses.A_REVERSE)

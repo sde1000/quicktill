@@ -10,7 +10,7 @@ etc."""
 # The screen header shows the page header, a summary of the other
 # pages, and the clock.  It needs updating whenever the current
 # transaction changes: from none to present, from present to none, or
-# from open to closed.  It is updated by calling ui.updateheader();
+# from open to closed.  It is updated by calling self.updateheader();
 # this calls pagesummary() for all pages.
 #
 # The "buffer" line shows either a prompt or the input buffer at the
@@ -381,7 +381,7 @@ class page(ui.basicpage):
 
         """
         self.s.redraw()
-        ui.updateheader()
+        self.updateheader()
     def update_note(self):
         note=self.trans.notes if self.trans is not None else None
         if note is None: note=u""
@@ -659,7 +659,7 @@ class page(ui.basicpage):
             td.s.add(self.trans)
             td.s.flush()
         self.redraw()
-        ui.updateheader()
+        self.updateheader()
         return self.trans
     def drinkinkey(self):
         """The 'Drink In' key creates a negative entry in the
@@ -788,7 +788,7 @@ class page(ui.basicpage):
         self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
-        ui.updateheader()
+        self.updateheader()
         printer.kickout()
     def notekey(self,amount):
         if self.qty is not None or self.buf is not None:
@@ -852,7 +852,7 @@ class page(ui.basicpage):
         self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
-        ui.updateheader()
+        self.updateheader()
         printer.kickout()
     def bitcoinkey(self):
         """
@@ -907,7 +907,7 @@ class page(ui.basicpage):
         self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
-        ui.updateheader()
+        self.updateheader()
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
             self.trans.closed):

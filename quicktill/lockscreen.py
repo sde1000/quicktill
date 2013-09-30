@@ -15,7 +15,7 @@ class popup(ui.dismisspopup):
         """
         # Check down the stack of windows to see if any of them are
         # this popup or the UnlockPopup; exit if any of them are
-        for p in ui.focus.parents():
+        for p in ui.basicwin._focus.parents():
             if isinstance(p,popup): return
             if isinstance(p,UnlockPopup): return
         ui.dismisspopup.__init__(self,7,45,title="Screen Lock",

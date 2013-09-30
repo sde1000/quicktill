@@ -375,7 +375,7 @@ class stockline(ui.basicpopup):
         # to them and pop up the stock type entry dialog.  Then
         # synthesise the keypress again to enter it into the
         # manufacturer field.
-        if (ui.focus==self.typefield and self.typefield.f is None
+        if (self.typefield.focused and self.typefield.f is None
             and curses.ascii.isprint(k)):
             self.typefield.popup() # Grabs the focus
             ui.handle_keyboard_input(k)
