@@ -9,6 +9,15 @@ def usersmenu(func):
 
 class popup(ui.dismisspopup):
     def __init__(self):
+        """
+        If there is not already a lock popup on the current page, display one.
+
+        """
+        # Check down the stack of windows to see if any of them are
+        # this popup or the UnlockPopup; exit if any of them are
+        for p in ui.focus.parents():
+            if isinstance(p,popup): return
+            if isinstance(p,UnlockPopup): return
         ui.dismisspopup.__init__(self,7,45,title="Screen Lock",
                                  colour=ui.colour_confirm)
         self.addstr(2,2,"Enter your code to lock:")
