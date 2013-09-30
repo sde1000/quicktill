@@ -5,6 +5,7 @@ Copying
 -------
 
 quicktill is Copyright (C) 2004-2013 Stephen Early <sde@individualpubs.co.uk>
+
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
 of the License, or (at your option) any later version.
@@ -23,6 +24,28 @@ under different licences; see the individual source files for details:
  - quicktill/twitter.py - Apache License, version 2.0
  - quicktill/oauth2.py - MIT License
 
+A big warning
+-------------
+
+This software is in the middle of being rewritten; it isn't finished,
+it isn't tested and it isn't easy to use.  This is the development
+branch and isn't being used regularly in live situations!
+
+The stable branch has been in use in a few pubs since 2004 without any
+problems, but is becoming difficult to maintain.  The rewrite has
+replaced lots of embedded SQL with the sqlalchemy ORM; this enables
+the code be rather more readable!  There is also a django-based
+reporting interface to the till database that makes use of the ORM
+models defined here in quicktill/models.py; that's in a separate
+repository (probably not yet published).
+
+I intend to start using this branch in one of my pubs (probably the
+Pembury) sometime in late 2013 or early 2014, once the "members of
+staff have NFC ID cards to bring up their personal page on the
+register" feature has been implemented and I'm happy the whole thing
+is stable.  There might be some concept of till users and permissions
+by then, too.
+
 Getting started
 ---------------
 
@@ -35,7 +58,7 @@ it is set up differently, it's fairly easy to write a new keyboard
 driver: see quicktill/kbdrivers.py
 
 quicktill is quite a complicated program to configure.  You should
-start with an example configuration file, examples/pembury.py, and
+start with an example configuration file, examples/haymakers.py, and
 edit it according to your needs.
 
 You must create a postgresql database and make it accessible to
@@ -43,7 +66,7 @@ whichever user is running the till software.  Name this database in
 the configuration file.
 
 Put a URL pointing at the config file in /etc/quicktill/configurl
-(eg. file:///home/till/configweb/pembury.py)
+(eg. file:///home/till/configweb/haymakers.py)
 
 Create database tables:
 > runtill syncdb
@@ -91,3 +114,13 @@ session started, and the td module and models.* already imported.  So
 for example, to get a list of departments:
 
 >>> td.s.query(Department).all()
+
+A list of transactions in the current session:
+
+>>> Session.current(td.s).transactions
+
+A list of sessions and their totals (in a single round-trip to the
+database):
+
+>>> from sqlalchemy.orm import undefer
+>>> [(x,x.total) for x in td.s.query(Session).options(undefer('total')).all()]
