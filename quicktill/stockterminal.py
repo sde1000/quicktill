@@ -11,6 +11,7 @@ class page(ui.basicpage):
         self.hotkeys=hotkeys
         self.locations=locations if locations else ['Bar']
         event.eventlist.append(self)
+        self.updateheader()
     def pagename(self):
         return "Stock Control"
     def drawlines(self):
@@ -80,3 +81,8 @@ class page(ui.basicpage):
                                   blurb="Select a stock line",exccap=True)
         else:
             ui.beep()
+    def deselect(self):
+        # Ensure that we're not still hanging around when we are invisible
+        ui.basicpage.deselect(self)
+        del event.eventlist[event.eventlist.index(self)]
+        self.dismiss()

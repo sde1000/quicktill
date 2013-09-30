@@ -204,6 +204,16 @@ class basicpage(basicwin):
         self.stack=l
         self.pan.hide()
         basicpage._basepage=None
+    def dismiss(self):
+        """
+        Remove this page.  Whoever is calling this needs to make sure
+        another page is selected afterwards, otherwise the screen will
+        be blank!
+
+        """
+        if basicpage._basepage==self: self.deselect()
+        del self.pan,self.win,self.stack
+        del basicpage._pagelist[basicpage._pagelist.index(self)]
     @staticmethod
     def updateheader():
         global header
