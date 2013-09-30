@@ -1402,4 +1402,15 @@ class page(ui.basicpage):
             return foodorder.cancel()
         curses.beep()
 
+def select_page(name,*args):
+    """
+    If the named register page exists, select it.  If it doesn't, create it.
+
+    """
+    for p in ui.basicpage._pagelist:
+        if isinstance(p,page) and p.name==name:
+            p.select()
+            return p
+    return page(name,*args)
+
 registry=transnotify()
