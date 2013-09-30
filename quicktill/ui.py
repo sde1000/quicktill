@@ -1208,7 +1208,7 @@ def init(w):
     curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
-    stdwin.addstr(0,0," "*mx,curses.color_pair(1))
+#    stdwin.addstr(0,0," "*mx,curses.color_pair(1))
     event.eventlist.append(clock(stdwin))
     kb.initUI(handle_keyboard_input,stdwin)
 

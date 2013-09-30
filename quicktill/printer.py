@@ -69,7 +69,11 @@ def print_receipt(transid):
             bands=businesses[i]
             # Print the business info
             driver.printline("\t%s"%business.name)
-            for l in business.address.split('\\n'):
+            # The business address may be stored in the database with either the
+            # string "\n" (legacy) or a newline character (current) to separate the lines.
+            if "\\n" in business.address: addrlines=business.address.split("\\n")
+            else: addrlines=business.address.splitlines()
+            for l in addrlines:
                 driver.printline("\t%s"%l)
             driver.printline()
             driver.printline("VAT reg no. %s"%business.vatno)

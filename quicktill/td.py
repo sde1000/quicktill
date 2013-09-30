@@ -292,3 +292,18 @@ def init(database):
     engine=create_engine(database)
     models.metadata.bind=engine # for DDL, eg. to recreate foodorder_seq
     sm=sessionmaker(bind=engine)
+
+def create_tables():
+    """
+    Adds any database tables that are missing.  NB does not update
+    tables that don't match our model!
+
+    """
+    models.metadata.create_all()
+
+def remove_tables():
+    """
+    Removes all our database tables.
+
+    """
+    models.metadata.drop_all()

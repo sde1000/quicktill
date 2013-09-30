@@ -1,3 +1,52 @@
+quicktill - cash register software
+==================================
+
+Copying
+-------
+
+quicktill is Copyright (C) 2004-2013 Stephen Early <sde@individualpubs.co.uk>
+It is distributed under the terms of the GNU General Public License
+as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version.
+
+Parts of this program were written by other people and are distributed
+under different licences; see the individual source files for details:
+ - quicktill/twitter.py - Apache License, version 2.0
+ - quicktill/oauth2.py - MIT License
+
+Getting started
+---------------
+
+quicktill is quite a complicated program to configure.  You should
+start with an example configuration file, examples/pembury.py, and
+edit it according to your needs.
+
+You must create a postgresql database and make it accessible to
+whichever user is running the till software.  Name this database in
+the configuration file.
+
+Put a URL pointing at the config file in /etc/quicktill/configurl
+(eg. file:///home/till/configweb/pembury.py)
+
+Create database tables:
+> runtill syncdb
+
+Get a draft database setup file and edit it:
+> runtill dbsetup >database-config
+> (edit database-config)
+> runtill dbsetup database-config
+
+Run in "stock control terminal" mode and enter your initial stock
+(this mode doesn't require a special keyboard)
+> runtill
+
+Run in "cash register" mode, create stocklines, bind them to keys, put
+your stock on sale, and sell it:
+> runtill -c mainbar
+
+Old notes that shouldn't be here
+--------------------------------
+
 What configuration goes where?
 
 Default printer: printer.driver (includes connection details)

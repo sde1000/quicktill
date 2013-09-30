@@ -34,7 +34,7 @@ def add_ddl(target,create,drop):
 
 class Business(Base):
     __tablename__='businesses'
-    id=Column('business',Integer,primary_key=True)
+    id=Column('business',Integer,primary_key=True,autoincrement=False)
     name=Column(String(80))
     abbrev=Column(String(20))
     address=Column(String(200))
@@ -350,7 +350,8 @@ class PingapintPayment(Base):
 
 class Department(Base):
     __tablename__='departments'
-    id=Column('dept',Integer,nullable=False,primary_key=True)
+    id=Column('dept',Integer,nullable=False,primary_key=True,
+              autoincrement=False)
     description=Column(String(20),nullable=False)
     vatband=Column(CHAR(1),ForeignKey('vat.band'),nullable=False)
     def __unicode__(self):
@@ -742,7 +743,7 @@ class StockItem(Base):
             "not(stocklineid is null) or displayqty is null",
             name="displayqty_null_if_no_stockline"),
         CheckConstraint(
-            "(finished is null)=(finishcode_id is null)",
+            "(finished is null)=(finishcode is null)",
             name="finished_and_finishcode_null_together"),
         CheckConstraint(
             "not(finished is not null) or stocklineid is null",

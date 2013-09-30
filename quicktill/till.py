@@ -1,7 +1,7 @@
-#!/usr/bin/env python
-
-"""Entry point for the till application.  In normal use the application
-will be started by calling main() from this module.
+"""
+Entry point for the till application.  In normal use the application
+will be started by the "runtill" script calling main() from this
+module.
 
 """
 
@@ -9,16 +9,23 @@ from __future__ import print_function
 import sys,os,curses,logging,locale
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
-from .models import KeyCap
+from .models import KeyCap,Session
 log=logging.getLogger(__name__)
 
 def start(stdwin):
-    # The display is initialised at this point
+    """
+    ncurses has been initialised, and calls us with the root window.
+
+    When we leave this function for whatever reason, ncurses will shut
+    down and return the display to normal mode.  If we're leaving with
+    an exception, ncurses will reraise it.
+
+    """
+
     stdwin.nodelay(1) # Make getch() non-blocking
 
+    # Some of the init functions may make use of the database.
     td.start_session()
-
-    # Initialise screen
     ui.init(stdwin)
 
     # Create pages for various functions
@@ -34,8 +41,14 @@ def start(stdwin):
     # Enter main event loop
     event.eventloop()
 
-def run():
-    # Initialise logging
+def runtill(args):
+    """
+    Run the till interactively.
+
+    """
+    if len(args)>0:
+        print("runtill takes no arguments.")
+        return 1
     log.info("Starting version %s"%version)
     try:
         td.init(tillconfig.database)
@@ -55,8 +68,104 @@ def run():
 
     log.info("Shutting down")
     logging.shutdown()
-
     return event.shutdowncode
+
+def dbshell(args):
+    """
+    Provide an interactive python prompt with the 'td' module and
+    'models.*' already imported, and a database session started.
+
+    """
+    import code
+    import readline
+    td.init(tillconfig.database)
+    td.start_session()
+    console=code.InteractiveConsole()
+    console.push("import quicktill.td as td")
+    console.push("from quicktill.models import *")
+    console.interact()
+    td.end_session()
+
+def syncdb(args):
+    """
+    Create database tables that have not already been created.
+
+    """
+    td.init(tillconfig.database)
+    td.create_tables()
+
+def flushdb(args):
+    """
+    Remove database tables.  This command will refuse to run without
+    an additional "really" option if your database contains more than
+    two sessions of data, because it will delete it all!  It's
+    intended for use during testing and setup.
+
+    """
+    really=len(args)>0 and args[0]=="really"
+    td.init(tillconfig.database)
+    td.start_session()
+    sessions=td.s.query(Session).count()
+    td.end_session()
+    if sessions>2 and not really:
+        print("You have more than two sessions in the database!  Try again "
+              "as 'flushdb really' if you definitely want to remove all "
+              "the data and tables from the database.")
+        return 1
+    if sessions>0:
+        print("There is some data in the database.  Are you sure you want "
+              "to remove all the data and tables?")
+        ok=raw_input("Sure? (y/n) ")
+        if ok!='y': return 1
+    td.remove_tables()
+    print("Finished.")
+
+def dbsetup(args):
+    """
+    With no arguments, print a template database setup file.
+    With one argument, import and process a database setup file.
+
+    """
+    from .dbsetup import template,setup
+    if len(args)==0:
+        print(template)
+    elif len(args)==1:
+        td.init(tillconfig.database)
+        td.start_session()
+        setup(file(args[0]))
+        td.end_session()
+    else:
+        print("Usage: dbsetup [filename]")
+        return 1
+
+def helpcmd(args):
+    """
+    Provide help on available commands.
+
+    """
+    if len(args)==0:
+        print("Available commands:")
+        for c in commands.keys():
+            print("  %s"%c)
+    elif len(args)==1:
+        if args[0] in commands:
+            print("Help on %s:"%args[0])
+            print(commands[args[0]].__doc__)
+        else:
+            print("Unknown command '%s'."%args[0])
+            return 1
+    else:
+        print("Usage: help [command]")
+        return 1
+        
+commands={
+    'dbshell':dbshell,
+    'runtill':runtill,
+    'syncdb':syncdb,
+    'flushdb':flushdb,
+    'dbsetup':dbsetup,
+    'help':helpcmd,
+    }
 
 def main():
     """Usual main entry point for the till software, unless you are doing
@@ -74,7 +183,7 @@ def main():
         configurl=None
     from optparse import OptionParser
     import urllib
-    usage="usage: %prog [options]"
+    usage="usage: %prog [options] [command]"
     parser=OptionParser(usage,version=version)
     parser.add_option("-u", "--config-url", action="store",
                       type="string", dest="configurl",
@@ -93,15 +202,14 @@ def main():
                       help="Include debug output in logfile")
     parser.add_option("--log-sql", action="store_true", dest="logsql",
                       help="Include SQL queries in logfile")
-    parser.add_option("-i", "--interactive", action="store_true",
-                      dest="interactive",
-                      help="Enter interactive database shell")
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
                         interactive=False)
     (options,args)=parser.parse_args()
-    if len(args)>0:
-        parser.error("this program takes no arguments")
+    if len(args)==0:
+        command="runtill"
+    elif len(args)>0:
+        command=args[0]
     if options.configurl==None:
         parser.error("No configuration URL provided in "
                      "/etc/quicktill/configurl or on command line")
@@ -195,18 +303,9 @@ def main():
 
     locale.setlocale(locale.LC_ALL,'')
 
-    if options.interactive:
-        import code
-        import readline
-        td.init()
-        td.start_session()
-        console=code.InteractiveConsole()
-        console.push("import quicktill.td as td")
-        console.push("from quicktill.models import *")
-        console.interact()
-        td.end_session()
+    if command in commands:
+        sys.exit(commands[command](args[1:]))
     else:
-        sys.exit(run())
-
-if __name__=='__main__':
-    main()
+        print("Unknown command '%s'.")
+        # XXX print out list of commands
+        sys.exit(1)
