@@ -241,9 +241,9 @@ class escpos:
             }
         while len(code)>0:
             if len(code)>1:
-                row=zip(code[0],code[1])
+                row=list(zip(code[0],code[1]))
             else:
-                row=zip(code[0],[False]*len(code[0]))
+                row=list(zip(code[0],[False]*len(code[0])))
             code=code[1:]
             width=len(row)*3
             if width>self.dpl: break # Code too wide for paper

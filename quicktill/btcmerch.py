@@ -104,7 +104,3 @@ class Api(object):
             return json.loads(response,parse_float=decimal.Decimal)
         except ValueError:
             raise JSONError
-
-if __name__=='__main__':
-    api=Api("test","test","test","http://localhost:8000/merchantservice/")
-    print api.request_payment(5,"Foo",3.45)

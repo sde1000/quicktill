@@ -153,7 +153,7 @@ def helpcmd(args):
     """
     if len(args)==0:
         print("Available commands:")
-        for c in commands.keys():
+        for c in list(commands.keys()):
             print("  %s"%c)
     elif len(args)==1:
         if args[0] in commands:
@@ -229,7 +229,7 @@ def main():
     import imp
     g=imp.new_module("globalconfig")
     g.configname=options.configname
-    exec globalconfig in g.__dict__
+    exec(globalconfig,g.__dict__)
 
     config=g.configurations.get(options.configname)
     if config is None:

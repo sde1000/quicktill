@@ -273,7 +273,7 @@ class popup(ui.basicpopup):
             return
         try:
             self.foodmenu=imp.new_module("foodmenu")
-            exec g in self.foodmenu.__dict__
+            exec(g,self.foodmenu.__dict__)
         except:
             ui.popup_exception("There is a problem with the menu")
             return

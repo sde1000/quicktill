@@ -32,7 +32,7 @@ __all__=["kcnames","notes","numberkeys","depts"]
 kcnames={}
 keycodes={}
 def add_keycode(name,num):
-    add_keycode.func_globals[name]=num
+    globals()[name]=num
     __all__.append(name)
     keycodes[name]=num
     kcnames[num]=name

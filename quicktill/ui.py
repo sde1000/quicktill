@@ -1091,20 +1091,20 @@ class listfield(popupfield):
         for i in range(0,len(self.l)):
             m.append((self.listval(i),func,(i,)))
         menu(m,colour=colour_line,default=default)
-    def next(self):
+    def nextitem(self):
         if self.f is None: self.f=0
         else: self.f=self.f+1
         if self.f>=len(self.l): self.f=0
         self.draw()
-    def prev(self):
+    def previtem(self):
         if self.f is None: self.f=len(self.l)-1
         else: self.f=self.f-1
         if self.f<0: self.f=len(self.l)-1
         self.draw()
     def keypress(self,k):
         if not self.readonly:
-            if k==keyboard.K_RIGHT: return self.next()
-            elif k==keyboard.K_LEFT: return self.prev()
+            if k==keyboard.K_RIGHT: return self.nextitem()
+            elif k==keyboard.K_LEFT: return self.previtem()
         popupfield.keypress(self,k)
 
 class buttonfield(field):

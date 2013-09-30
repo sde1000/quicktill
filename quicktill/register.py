@@ -248,9 +248,9 @@ class btcpopup(ui.dismisspopup):
                 }
             while len(m)>0:
                 if len(m)>1:
-                    row=zip(m[0],m[1])
+                    row=list(zip(m[0],m[1]))
                 else:
-                    row=zip(m[0],[True]*len(m[0]))
+                    row=list(zip(m[0],[True]*len(m[0])))
                 m=m[2:]
                 self.addstr(y,x,''.join([lt[c] for c in row]))
                 y=y+1
