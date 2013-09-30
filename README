@@ -9,6 +9,15 @@ It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
 of the License, or (at your option) any later version.
 
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see [this
+link](http://www.gnu.org/licenses/).
+
 Parts of this program were written by other people and are distributed
 under different licences; see the individual source files for details:
  - quicktill/twitter.py - Apache License, version 2.0
@@ -16,6 +25,14 @@ under different licences; see the individual source files for details:
 
 Getting started
 ---------------
+
+The first hurdle is finding a suitable keyboard!  I generally use 16x8
+matrix keyboards from Preh (MCI128), configured so that on each
+keypress they output a sequence of keystrokes giving the coordinates
+of the key that was pressed, for example [A01] for the bottom-left and
+[G16] for the top-right.  If you have a different type of keyboard, or
+it is set up differently, it's fairly easy to write a new keyboard
+driver: see quicktill/kbdrivers.py
 
 quicktill is quite a complicated program to configure.  You should
 start with an example configuration file, examples/pembury.py, and
@@ -64,60 +81,13 @@ Assuming the command was "runtill":
  - runtill() copies keyboard caps from the database to the keyboard driver
  - runtill() invokes quicktill.till.start() via the curses wrapper that catches exceptions
    and returns the display to a sane state on exit
- - start() invokes ui.init() with the root window, which sets up colours and the clock
- - start() goes through the pages defined in the config and calls ui.addpage() on each of them
- - start() calls ui.selectpage() on the first page
- - start() calls the firstpageinit() method of the first page
+ - start() invokes ui.init() with the root window, which sets up colours and the clock/header
+ - start() invokes whatever callable was defined as the 'firstpage' config option
  - start() enters the main event loop
 
-So we really just need to change things in start() and ui
+Another useful command is "dbshell", which starts an interactive
+python interpreter with a database connection already set up, a
+session started, and the td module and models.* already imported.  So
+for example, to get a list of departments:
 
-New scheme:
-  hotkeys just run functions
-  first page should be specified explicitly in config file
-  we need a function for "find a particular page and create it if it doesn't exist"
-  nb that creating a page selects it implicitly
-
-
-Old notes that shouldn't be here
---------------------------------
-
-What configuration goes where?
-
-Default printer: printer.driver (includes connection details)
-Kickout procedure: printer.kickout
-Defined pages: tillconfig.pages (includes hotkeys etc.)
-Database connection string: td.database
-Keyboard driver: ui.kb (includes keyboard layout)
-Kitchen printer: foodorder.kitchenprinter
-Menu URL: foodorder.menuurl
-
-Pub name: tillconfig.pubname
-Pub phone number: tillconfig.pubnumber
-Pub address: tillconfig.pubaddr
-
-VAT rate (to be obsoleted): tillconfig.vatrate
-VAT number (to be obsoleted): tillconfig.vatno
-Business address (to be obsoleted): tillconfig.companyaddr
-
-Currency symbol: tillconfig.currency
-Keyboard layout number: tillconfig.kbtype
-Cashback limit: tillconfig.cashback_limit
-
-Price policy function (optional): tillconfig.pricepolicy(sd,qty)
-Quantity string function (optional): tillconfig.qtystring(qty,unitname)
-Currency format function (optional): tillconfig.fc(amount)
-Price guess function (optional): tillconfig.priceguess(dept,cost,abv)
-
-Things that shouldn't be set in a global config module:
-  how to connect to the local receipt printer / kickout
-  ...er, that's about it!
-
-Keyboard layouts and associated pages can be global because they may
-be shared.
-
-So what we really want is a "runner" script that fetches the global
-config file (location defined in an /etc file), picks out a particular
-configuration by keyboard layout number, and optionally takes
-arguments to override the default printer type.  This could be till.py
-with __name__=='__main__'...
+>>> td.s.query(Department).all()
