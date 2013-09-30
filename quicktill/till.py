@@ -6,11 +6,13 @@ module.
 """
 
 from __future__ import print_function
-import sys,os,curses,logging,locale
+import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
 from .models import KeyCap,Session
 log=logging.getLogger(__name__)
+
+configurlfile="/etc/quicktill/configurl"
 
 class intropage(ui.basicpage):
     def __init__(self):
@@ -184,80 +186,89 @@ def main():
     """
     
     try:
-        f=file("/etc/quicktill/configurl")
+        f=file(configurlfile)
         configurl=f.readline()
         f.close()
     except:
         configurl=None
-    from optparse import OptionParser
-    import urllib
     usage="usage: %prog [options] [command]"
-    parser=OptionParser(usage,version=version)
-    parser.add_option("-u", "--config-url", action="store",
-                      type="string", dest="configurl",
-                      help="URL of global till configuration file")
-    parser.add_option("-c", "--config-name", action="store",
-                      type="string", dest="configname",
-                      help="Till type to use from configuration file")
-    parser.add_option("-d", "--database", action="store",
-                      type="string", dest="database",
-                      help="Database connection string; overrides "
-                      "configuration file")
-    parser.add_option("-l", "--logfile", action="store",
-                      type="string", dest="logfile",
-                      help="Log filename")
-    parser.add_option("--debug", action="store_true", dest="debug",
-                      help="Include debug output in logfile")
-    parser.add_option("--log-sql", action="store_true", dest="logsql",
-                      help="Include SQL queries in logfile")
+    parser=argparse.ArgumentParser(
+        description="Figure out where all the money and stock went")
+    parser.add_argument("--version", action="version", version=version)
+    parser.add_argument("-u", "--config-url", action="store",
+                        dest="configurl", default=configurl,
+                        help="URL of global till configuration file; overrides "
+                        "contents of %s"%configurlfile)
+    parser.add_argument("-c", "--config-name", action="store",
+                        dest="configname", default="default",
+                        help="Till type to use from configuration file")
+    parser.add_argument("-d", "--database", action="store",
+                        dest="database",
+                        help="Database connection string; overrides "
+                        "database specified in configuration file")
+    loggroup=parser.add_mutually_exclusive_group()
+    loggroup.add_argument("-y", "--log-config", help="Logging configuration file "
+                          "in YAML", type=argparse.FileType('r'),
+                          dest="logconfig")
+    loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
+                          dest="logfile", help="Simple logging output file")
+    parser.add_argument("--debug", action="store_true", dest="debug",
+                         help="Include debug output in log")
+    parser.add_argument("--log-sql", action="store_true", dest="logsql",
+                         help="Include SQL queries in logfile")
+    parser.add_argument("action",nargs="*",default="runtill",
+                        help="The action to perform; use action 'help' for a list")
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
                         interactive=False)
-    (options,args)=parser.parse_args()
-    if len(args)==0:
-        command="runtill"
-    elif len(args)>0:
-        command=args[0]
-    if options.configurl==None:
+    args=parser.parse_args()
+
+    if not args.configurl:
         parser.error("No configuration URL provided in "
-                     "/etc/quicktill/configurl or on command line")
-    tillconfig.configversion=options.configurl
-    f=urllib.urlopen(options.configurl)
+                     "%s or on command line"%configurlfile)
+    tillconfig.configversion=args.configurl
+    f=urllib.urlopen(args.configurl)
     globalconfig=f.read()
     f.close()
 
     import imp
     g=imp.new_module("globalconfig")
-    g.configname=options.configname
+    g.configname=args.configname
     exec(globalconfig,g.__dict__)
 
-    config=g.configurations.get(options.configname)
+    config=g.configurations.get(args.configname)
     if config is None:
         print(("Configuration \"%s\" does not exist.  "
-               "Available configurations:"%options.configname))
+               "Available configurations:"%args.configname))
         for i in list(g.configurations.keys()):
             print("%s: %s"%(i,g.configurations[i]['description']))
         sys.exit(1)
 
-    if options.debug and options.logfile is None:
-        print("You must specify a log file to enable debugging output.")
-        sys.exit(1)
-
-    log=logging.getLogger()
-    formatter=logging.Formatter('%(asctime)s %(levelname)s %(name)s\n  %(message)s')
-    handler=logging.StreamHandler()
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.ERROR)
-    log.addHandler(handler)
-    if options.logfile:
-        loglevel=logging.DEBUG if options.debug else logging.INFO
-        loghandler=logging.FileHandler(options.logfile)
+    # Logging configuration.  If we have a log configuration file,
+    # read it and apply it
+    if args.logconfig:
+        logconfig=yaml.load(args.logconfig)
+        args.logconfig.close()
+        logging.config.dictConfig(logconfig)
+    else:
+        log=logging.getLogger()
+        formatter=logging.Formatter('%(asctime)s %(levelname)s %(name)s\n  %(message)s')
+        handler=logging.StreamHandler()
+        handler.setFormatter(formatter)
+        handler.setLevel(logging.ERROR)
+        log.addHandler(handler)
+    if args.logfile:
+        log=logging.getLogger()
+        loglevel=logging.DEBUG if args.debug else logging.INFO
+        loghandler=logging.StreamHandler(args.logfile)
         loghandler.setFormatter(formatter)
-        loghandler.setLevel(logging.DEBUG if options.debug else logging.INFO)
+        loghandler.setLevel(logging.DEBUG if args.debug else logging.INFO)
         log.addHandler(loghandler)
         log.setLevel(loglevel)
-        if options.logsql:
-            logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    if args.logsql:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     if 'printer' in config:
         printer.driver=config['printer'][0](*config['printer'][1])
@@ -268,7 +279,7 @@ def main():
         printer.labeldriver=config['labelprinter'][0](
             *config['labelprinter'][1])
     tillconfig.database=config.get('database')
-    if options.database is not None: tillconfig.database=options.database
+    if args.database is not None: tillconfig.database=args.database
     ui.kb=config['kbdriver']
     tillconfig.kbtype=config['kbtype']
     foodorder.kitchenprinter=config.get('kitchenprinter')
@@ -314,9 +325,9 @@ def main():
 
     locale.setlocale(locale.LC_ALL,'')
 
-    if command in commands:
-        sys.exit(commands[command](args[1:]))
+    command=[args.action] if isinstance(args.action,str) else args.action
+    if command[0] in commands:
+        sys.exit(commands[command[0]](command[1:]))
     else:
-        print("Unknown command '%s'.")
-        # XXX print out list of commands
+        print("Unknown command '%s'.  Try 'help'."%command[0])
         sys.exit(1)
