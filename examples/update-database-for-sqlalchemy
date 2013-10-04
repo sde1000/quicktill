@@ -102,3 +102,29 @@ ALTER TABLE stock ADD CONSTRAINT stockline_null_if_finished
   CHECK (NOT(finished IS NOT NULL) OR stocklineid IS NULL);
 
 DROP TABLE stockonsale;
+
+/* The "stockref" field on translines is redundant.  It's much better
+just to see which stockout row points at a particular transline.  We
+need a 'unique' constraint on stockout.translineid too, and we have to
+put back the foreign key constraint we left out in the original
+schema! */
+
+ALTER TABLE translines DROP COLUMN stockref;
+
+/* Some existing databases have dangling references from
+stockout.translineid - these seem to be to do with manually-performed
+voids.  Set these to null instead. */
+UPDATE stockout SET translineid=null WHERE stockoutid IN
+  (SELECT stockoutid FROM stockout so
+    LEFT JOIN translines tl ON so.translineid=tl.translineid
+    WHERE tl.translineid is null AND so.translineid IS NOT NULL);
+
+DROP INDEX IF EXISTS stockout_translineid_key;
+ALTER TABLE stockout
+  ADD CONSTRAINT stockout_translineid_key
+  UNIQUE (translineid);
+
+ALTER TABLE stockout
+  ADD CONSTRAINT stockout_translineid_fkey
+  FOREIGN KEY (translineid) REFERENCES translines(translineid)
+  ON DELETE CASCADE;

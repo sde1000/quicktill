@@ -492,7 +492,7 @@ class page(ui.basicpage):
                 self.dl[-1].age()<max_transline_modify_age):
                 lid=repeat_lid
                 transline=td.s.query(Transline).get(lid)
-                stockout=td.s.query(StockOut).get(transline.stockref)
+                stockout=transline.stockref
                 # We increase the number of items by 1.
                 orig_qty=stockout.qty/transline.items
                 transline.items=transline.items+1
@@ -507,20 +507,16 @@ class page(ui.basicpage):
                 if unitprice is None:
                     # Price has not been overridden
                     unitprice=tillconfig.pricepolicy(stockitem,qty).quantize(penny)
-                stockout=StockOut(
-                    stockitem=stockitem,qty=qty,removecode_id='sold')
-                td.s.add(stockout)
-                td.s.flush()
                 transline=Transline(
                     transaction=self.trans,items=items,amount=unitprice,
                     department=stockitem.stocktype.department,
-                    source=self.name,stockref=stockout.id,transcode='S')
+                    source=self.name,transcode='S')
                 td.s.add(transline)
+                stockout=StockOut(
+                    transline=transline,
+                    stockitem=stockitem,qty=qty,removecode_id='sold')
+                td.s.add(stockout)
                 td.s.flush()
-                stockout.transline=transline
-                td.s.flush()
-                # Hmm, wonder if there's a better way to make objects
-                # refer to each other?
                 self.dl.append(tline(transline.id))
                 log.info(
                     "Register: linekey: trans=%d,lid=%d,sn=%d,items=%d,qty=%f"
@@ -769,6 +765,9 @@ class page(ui.basicpage):
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
+        # If we're closing a transaction that's been completely voided,
+        # permit payment of zero.
+        if amount is None: amount=zero
         payment=Payment(transaction=self.trans,amount=amount,
                         paytype_id='CASH',ref='Cash')
         td.s.add(payment)
@@ -778,7 +777,7 @@ class page(ui.basicpage):
         remain=self.trans.total-self.trans.payments_total
         if remain<zero:
             # There's some change!
-            log.info("Register: cashkey: calculated change")
+            log.info("Register: cashkey: calculated change %s",remain)
             payment=Payment(transaction=self.trans,amount=remain,
                             paytype_id='CASH',ref='Change')
             td.s.add(payment)
@@ -1050,11 +1049,8 @@ class page(ui.basicpage):
             log.info("Register: cancel open transaction %d"%tn)
             payments=self.trans.payments_total
             for p in self.trans.payments: td.s.delete(p)
-            for l in self.trans.lines:
-                if l.stockref:
-                    so=td.s.query(StockOut).get(l.stockref)
-                    if so: td.s.delete(so)
-                td.s.delete(l)
+            for l in self.trans.lines: td.s.delete(l)
+            # stockout objects should be deleted implicitly in cascade
             td.s.delete(self.trans)
             self.trans=None
             td.s.flush()
@@ -1139,19 +1135,17 @@ class page(ui.basicpage):
         trans=self.gettrans()
         transline=td.s.query(Transline).get(tl)
         if transline.stockref is not None:
-            stockout=td.s.query(StockOut).get(transline.stockref)
-            nso=StockOut(
-                stockitem=stockout.stockitem,qty=-stockout.qty,
-                removecode=stockout.removecode)
-            td.s.add(nso)
-            td.s.flush()
+            stockout=transline.stockref
             ntl=Transline(
                 transaction=trans,items=-transline.items,
                 amount=transline.amount,department=transline.department,
-                source=self.name,stockref=nso.id,transcode='V')
+                source=self.name,transcode='V')
             td.s.add(ntl)
-            td.s.flush()
-            nso.transline=ntl
+            nso=StockOut(
+                transline=ntl,
+                stockitem=stockout.stockitem,qty=-stockout.qty,
+                removecode=stockout.removecode)
+            td.s.add(nso)
             td.s.flush()
         else:
             ntl=Transline(

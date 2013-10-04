@@ -189,7 +189,7 @@ class Session(Base):
             query(StockType,func.sum(StockOut.qty)).\
             join(StockItem).\
             join(StockOut).\
-            join(Transline,StockOut.id==Transline.stockref).\
+            join(Transline).\
             join(Transaction).\
             filter(Transaction.sessionid==self.id).\
             options(lazyload(StockType.department)).\
@@ -380,7 +380,6 @@ class Transline(Base):
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
     source=Column(String())
-    stockref=Column(Integer)
     transcode=Column(CHAR(1),ForeignKey('transcodes.transcode'),nullable=False)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     text=Column(Text)
@@ -394,7 +393,7 @@ class Transline(Base):
     def description(self):
         if self.text is not None: return self.text
         if self.stockref is not None:
-            stockout=object_session(self).query(StockOut).get(self.stockref)
+            stockout=self.stockref
             qty=stockout.qty/self.items
             unitname=stockout.stockitem.stocktype.unit.name
             if qty==Decimal("1.0"):
@@ -862,11 +861,14 @@ class StockOut(Base):
     qty=Column(Numeric(5,1),nullable=False)
     removecode_id=Column('removecode',String(8),
                          ForeignKey('stockremove.removecode'),nullable=False)
-    translineid=Column(Integer,ForeignKey('translines.translineid'))
+    translineid=Column(Integer,ForeignKey('translines.translineid',
+                                          ondelete='CASCADE'),
+                       nullable=True,unique=True)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     stockitem=relationship(StockItem,backref=backref('out',order_by=id))
     removecode=relationship(RemoveCode,lazy="joined")
-    transline=relationship(Transline) # No backref - stockref is not foreign key
+    transline=relationship(Transline,backref=backref('stockref',uselist=False,
+                                                     cascade="all,delete"))
     def __repr__(self):
         return "<StockOut(%s,%s)>"%(self.id,self.stockid)
 
