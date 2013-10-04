@@ -51,131 +51,169 @@ def start(stdwin):
     # Enter main event loop
     event.eventloop()
 
-def runtill(args):
+class CommandTracker(type):
+    """
+    Metaclass keeping track of all the types of command we understand.
+
+    """
+    def __init__(cls,name,bases,attrs):
+        if not hasattr(cls,'_commands'):
+            cls._commands=[]
+        else:
+            cls._commands.append(cls)
+
+class command(object):
+    __metaclass__=CommandTracker
+    @staticmethod
+    def add_arguments(parser):
+        pass
+    @staticmethod
+    def run(args):
+        pass
+
+class runtill(command):
     """
     Run the till interactively.
 
     """
-    if len(args)>0:
-        print("runtill takes no arguments.")
-        return 1
-    log.info("Starting version %s"%version)
-    try:
-        td.init(tillconfig.database)
-        td.start_session()
-        # Copy keycaps from database to keyboard driver
-        caps=td.s.query(KeyCap).filter(KeyCap.layout==tillconfig.kbtype).all()
-        for key in caps:
-            if ui.kb.setkeycap(keyboard.keycodes[key.keycode],key.keycap)==False:
-                log.info("Deleting stale keycap for layout %d keycode %s"%(
-                    tillconfig.kbtype,key.keycode))
-                td.s.delete(key)
-        td.s.flush()
-        td.end_session()
-        curses.wrapper(start)
-    except:
-        log.exception("Exception caught at top level")
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'start',help="run the till interactively",
+            description=runtill.__doc__)
+        parser.set_defaults(command=runtill.run)
+    @staticmethod
+    def run(args):
+        log.info("Starting version %s"%version)
+        try:
+            td.init(tillconfig.database)
+            td.start_session()
+            # Copy keycaps from database to keyboard driver
+            caps=td.s.query(KeyCap).\
+                filter(KeyCap.layout==tillconfig.kbtype).all()
+            for key in caps:
+                if ui.kb.setkeycap(keyboard.keycodes[key.keycode],
+                                   key.keycap)==False:
+                    log.info("Deleting stale keycap for layout %d keycode %s"%(
+                            tillconfig.kbtype,key.keycode))
+                    td.s.delete(key)
+            td.s.flush()
+            td.end_session()
+            curses.wrapper(start)
+        except:
+            log.exception("Exception caught at top level")
 
-    log.info("Shutting down")
-    logging.shutdown()
-    return event.shutdowncode
+        log.info("Shutting down")
+        logging.shutdown()
+        return event.shutdowncode
 
-def dbshell(args):
+class dbshell(command):
     """
     Provide an interactive python prompt with the 'td' module and
     'models.*' already imported, and a database session started.
 
     """
-    import code
-    import readline
-    td.init(tillconfig.database)
-    td.start_session()
-    console=code.InteractiveConsole()
-    console.push("import quicktill.td as td")
-    console.push("from quicktill.models import *")
-    console.interact()
-    td.end_session()
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'dbshell',description=dbshell.__doc__,
+            help="interactive python prompt with database initialised")
+        parser.set_defaults(command=dbshell.run)
+    @staticmethod
+    def run(args):
+        import code
+        import readline
+        td.init(tillconfig.database)
+        td.start_session()
+        console=code.InteractiveConsole()
+        console.push("import quicktill.td as td")
+        console.push("from quicktill.models import *")
+        console.interact()
+        td.end_session()
 
-def syncdb(args):
+class syncdb(command):
     """
-    Create database tables that have not already been created.
+    Create database tables and indexes that have not already been
+    created.  This command should always be safe to run; it won't
+    alter existing tables and indexes and won't remove any data.
+
+    If this version of the till software requires schema changes that
+    are incompatible with previous versions this will be mentioned in
+    the release notes, and you should be able to find a migration
+    script under "examples".
 
     """
-    td.init(tillconfig.database)
-    td.create_tables()
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'syncdb',help="create new database tables",
+            description=syncdb.__doc__)
+        parser.set_defaults(command=syncdb.run)
+    @staticmethod
+    def run(args):
+        td.init(tillconfig.database)
+        td.create_tables()
 
-def flushdb(args):
+class flushdb(command):
     """
     Remove database tables.  This command will refuse to run without
-    an additional "really" option if your database contains more than
-    two sessions of data, because it will delete it all!  It's
-    intended for use during testing and setup.
+    the "--really" option if your database contains more than two
+    sessions of data, because it will delete it all!  It's intended
+    for use during testing and setup.
 
     """
-    really=len(args)>0 and args[0]=="really"
-    td.init(tillconfig.database)
-    td.start_session()
-    sessions=td.s.query(Session).count()
-    td.end_session()
-    if sessions>2 and not really:
-        print("You have more than two sessions in the database!  Try again "
-              "as 'flushdb really' if you definitely want to remove all "
-              "the data and tables from the database.")
-        return 1
-    if sessions>0:
-        print("There is some data in the database.  Are you sure you want "
-              "to remove all the data and tables?")
-        ok=raw_input("Sure? (y/n) ")
-        if ok!='y': return 1
-    td.remove_tables()
-    print("Finished.")
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'flushdb',help="remove database tables",description=flushdb.__doc__)
+        parser.set_defaults(command=flushdb.run)
+        parser.add_argument("--really", action="store_true", dest="really",
+                            help="confirm removal of data")
+    @staticmethod
+    def run(args):
+        td.init(tillconfig.database)
+        td.start_session()
+        sessions=td.s.query(Session).count()
+        td.end_session()
+        if sessions>2 and not args.really:
+            print("You have more than two sessions in the database!  Try again "
+                  "as 'flushdb -- really' if you definitely want to remove all "
+                  "the data and tables from the database.")
+            return 1
+        if sessions>0:
+            print("There is some data (%d sessions) in the database.  "
+                  "Are you sure you want to remove all the data and tables?"%(
+                    sessions,))
+            ok=raw_input("Sure? (y/n) ")
+            if ok!='y': return 1
+        td.remove_tables()
+        print("Finished.")
 
-def dbsetup(args):
+class dbsetup(command):
     """
     With no arguments, print a template database setup file.
     With one argument, import and process a database setup file.
 
     """
-    from .dbsetup import template,setup
-    if len(args)==0:
-        print(template)
-    elif len(args)==1:
-        td.init(tillconfig.database)
-        td.start_session()
-        setup(file(args[0]))
-        td.end_session()
-    else:
-        print("Usage: dbsetup [filename]")
-        return 1
-
-def helpcmd(args):
-    """
-    Provide help on available commands.
-
-    """
-    if len(args)==0:
-        print("Available commands:")
-        for c in list(commands.keys()):
-            print("  %s"%c)
-    elif len(args)==1:
-        if args[0] in commands:
-            print("Help on %s:"%args[0])
-            print(commands[args[0]].__doc__)
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'dbsetup',help="add initial records to the database",
+            description=dbsetup.__doc__)
+        parser.set_defaults(command=dbsetup.run)
+        parser.add_argument("dbfile", help="Initial records file "
+                            "in YAML", type=argparse.FileType('r'),
+                            nargs="?")
+    @staticmethod
+    def run(args):
+        from .dbsetup import template,setup
+        if not args.dbfile:
+            print(template)
         else:
-            print("Unknown command '%s'."%args[0])
-            return 1
-    else:
-        print("Usage: help [command]")
-        return 1
-        
-commands={
-    'dbshell':dbshell,
-    'runtill':runtill,
-    'syncdb':syncdb,
-    'flushdb':flushdb,
-    'dbsetup':dbsetup,
-    'help':helpcmd,
-    }
+            td.init(tillconfig.database)
+            td.start_session()
+            setup(args.dbfile)
+            td.end_session()
 
 def main():
     """Usual main entry point for the till software, unless you are doing
@@ -216,8 +254,9 @@ def main():
                          help="Include debug output in log")
     parser.add_argument("--log-sql", action="store_true", dest="logsql",
                          help="Include SQL queries in logfile")
-    parser.add_argument("action",nargs="*",default="runtill",
-                        help="The action to perform; use action 'help' for a list")
+    subparsers=parser.add_subparsers(title="commands")
+    for c in command._commands:
+        c.add_arguments(subparsers)
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
                         interactive=False)
@@ -325,9 +364,4 @@ def main():
 
     locale.setlocale(locale.LC_ALL,'')
 
-    command=[args.action] if isinstance(args.action,str) else args.action
-    if command[0] in commands:
-        sys.exit(commands[command[0]](command[1:]))
-    else:
-        print("Unknown command '%s'.  Try 'help'."%command[0])
-        sys.exit(1)
+    sys.exit(args.command(args))
