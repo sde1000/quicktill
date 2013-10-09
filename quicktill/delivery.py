@@ -35,7 +35,7 @@ class deliveryline(ui.line):
             coststr="????? "
         self.text="%7d %-37s %-8s %s %-5.2f %-10s"%(
             s.id,s.stocktype.format(maxw=37),s.stockunit.id,
-            coststr,s.saleprice,ui.formatdate(s.bestbefore))
+            coststr,s.stocktype.saleprice,ui.formatdate(s.bestbefore))
 
 class delivery(ui.basicpopup):
     """The delivery window allows a delivery to be edited, printed or
@@ -230,8 +230,7 @@ class delivery(ui.basicpopup):
         # We deliberately do not copy the best-before date, because it
         # might be different on the new item.
         new=StockItem(delivery=existing.delivery,stocktype=existing.stocktype,
-                      stockunit=existing.stockunit,costprice=existing.costprice,
-                      saleprice=existing.saleprice)
+                      stockunit=existing.stockunit,costprice=existing.costprice)
         td.s.add(new)
         self.dl.append(deliveryline(new))
         self.s.cursor_down()
@@ -256,6 +255,8 @@ class delivery(ui.basicpopup):
         elif k==keyboard.K_CLEAR:
             self.dismiss()
 
+# XXX "stockline" is a horribly confusing name for this class because
+# it clashes with models.StockLine and the "stocklines" module.
 class stockline(ui.basicpopup):
     def __init__(self,func,stockid=None):
         # We call func with a StockItem model as argument.  We do not
@@ -269,11 +270,16 @@ class stockline(ui.basicpopup):
                                cleartext=cleartext,colour=ui.colour_line)
         if stockid is None:
             self.addstr(2,2,"Stock number not yet assigned")
+            # XXX Add field for quantity here too
         else:
             self.addstr(2,2,"        Stock number: %d"%stockid)
         self.addstr(3,2,"          Stock type:")
         self.addstr(4,2,"                Unit:")
         self.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
+        # XXX saleprice should now show as three fields:
+        # suggested sale price (worked out from cost price)
+        # current sale price (from stocktype)
+        # new sale price (fill in to change)
         self.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
         self.addstr(7,2,"         Best before:")
         self.typefield=ui.popupfield(

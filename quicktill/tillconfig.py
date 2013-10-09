@@ -26,7 +26,7 @@ def pricepolicy(si,qty):
     eg. 1.0 or 0.5, and si is a StockItem
 
     """
-    return qty*si.saleprice
+    return qty*si.stocktype.saleprice
 
 def fc(a):
     """Format currency, using the configured currency symbol."""

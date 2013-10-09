@@ -237,7 +237,7 @@ def print_delivery(delivery):
         driver.printline("%s cost %s"%(
             s.stockunit.name,tillconfig.fc(s.costprice)))
         driver.printline("sale %s BB %s"%(
-            tillconfig.fc(s.saleprice),ui.formatdate(s.bestbefore)))
+            tillconfig.fc(s.stocktype.saleprice),ui.formatdate(s.bestbefore)))
         driver.printline()
     driver.printline("\tEnd of list")
     driver.end()
@@ -254,7 +254,7 @@ def print_stocklist(sl,title="Stock List"):
         driver.printline("%s cost %s"%(
             s.stockunit_id,tillconfig.fc(s.costprice)))
         driver.printline("sale %s BB %s"%(
-            tillconfig.fc(s.saleprice),ui.formatdate(s.bestbefore)))
+            tillconfig.fc(s.stocktype.saleprice),ui.formatdate(s.bestbefore)))
         driver.printline()
     driver.printline("\tEnd of list")
     driver.end()

@@ -633,6 +633,8 @@ class StockType(Base):
     abv=Column(Numeric(3,1))
     unit_id=Column('unit',String(10),ForeignKey('unittypes.unit'),
                    nullable=False)
+    saleprice=Column(Numeric(5,2),nullable=True) # inc VAT
+    pricechanged=Column(DateTime,nullable=True) # Last time price was changed
     department=relationship(Department,lazy="joined")
     unit=relationship(UnitType,lazy="joined")
     @hybrid_property
@@ -723,7 +725,6 @@ class StockItem(Base):
     stockunit_id=Column('stockunit',String(8),
                         ForeignKey('stockunits.stockunit'),nullable=False)
     costprice=Column(Numeric(7,2)) # ex VAT
-    saleprice=Column(Numeric(5,2),nullable=False) # inc VAT
     onsale=Column(DateTime)
     finished=Column(DateTime)
     finishcode_id=Column('finishcode',String(8),

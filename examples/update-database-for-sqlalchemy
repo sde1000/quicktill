@@ -128,3 +128,9 @@ ALTER TABLE stockout
   ADD CONSTRAINT stockout_translineid_fkey
   FOREIGN KEY (translineid) REFERENCES translines(translineid)
   ON DELETE CASCADE;
+
+/* The various views defined in the createdb script are no longer
+used. */
+DROP VIEW stockinfo;
+DROP VIEW stockqty;
+DROP VIEW businesstotals;
