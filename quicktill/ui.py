@@ -1125,7 +1125,7 @@ class buttonfield(field):
         else: s=" %s "%self.t
         pos=self.win.getyx()
         self.addstr(self.y,self.x,s,curses.A_REVERSE)
-        if focus==self: self.win.move(self.y,self.x)
+        if self.focused: self.win.move(self.y,self.x)
         else: self.win.move(*pos)
 
 def map_fieldlist(fl):
