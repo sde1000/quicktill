@@ -1,5 +1,5 @@
 from . import ui,td,keyboard,stock,stocklines,department
-from .models import StockItem,StockType
+from .models import StockItem,StockType,RemoveCode
 
 class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording
@@ -88,22 +88,26 @@ class popup(ui.dismisspopup):
     def create_extra_fields(self):
         self.addstr(5,2,"Waste description:")
         self.addstr(6,2,"    Amount wasted:")
-        if self.isline:
-            wastelist=['missing','taste','damaged','ood','freebie']
-        else:
-            wastelist=['cellar','pullthru','taster','taste','damaged',
-                       'ood','freebie','missing','driptray']
-        wastedict={'pullthru':'Pulled through',
-                   'cellar':'Cellar work',
-                   'taster':'Free taster',
-                   'taste':'Bad taste',
-                   'damaged':'Damaged',
-                   'ood':'Out of date',
-                   'freebie':'Free drink',
-                   'missing':'Gone missing',
-                   'driptray':'Drip tray'}
+        # XXX all of this needs to be re-done.  We should call a hook
+        # from the till config to obtain a suitable list of RemoveCode
+        # models.
+        #if self.isline:
+        #    wastelist=['missing','taste','damaged','ood','freebie']
+        #else:
+        #    wastelist=['cellar','pullthru','taster','taste','damaged',
+        #               'ood','freebie','missing','driptray']
+        #wastedict={'pullthru':'Pulled through',
+        #           'cellar':'Cellar work',
+        #           'taster':'Free taster',
+        #           'taste':'Bad taste',
+        #           'damaged':'Damaged',
+        #           'ood':'Out of date',
+        #           'freebie':'Free drink',
+        #           'missing':'Gone missing',
+        #           'driptray':'Drip tray'}
+        wastelist=td.s.query(RemoveCode).all()
         self.wastedescfield=ui.listfield(
-            5,21,30,wastelist,wastedict,
+            5,21,30,wastelist,lambda rc:rc.reason,
             keymap={keyboard.K_CLEAR:(self.dismiss,None)})
         self.amountfield=ui.editfield(
             6,21,4,validate=ui.validate_float,
@@ -113,7 +117,7 @@ class popup(ui.dismisspopup):
             self.addstr(6,26,'items')
         else:
             self.addstr(6,26,self.sd.stocktype.unit.name+'s')
-        self.wastedescfield.set(0)
+        self.wastedescfield.set(wastelist[0])
         self.wastedescfield.focus()
     def finish(self):
         waste=self.wastedescfield.read()

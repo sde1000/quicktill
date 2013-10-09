@@ -2,7 +2,7 @@
 # windows, and so on.
 
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
-from . import keyboard,event,tillconfig
+from . import keyboard,event,tillconfig,td
 
 import datetime
 
@@ -1013,9 +1013,10 @@ class datefield(editfield):
             self.set(self.f+'-')
 
 class popupfield(field):
-    """A field which has its value set using a popup dialog.  The
-    values the field can take are unordered; there is no concept of
-    "next" and "previous".  The field can also be null.
+    """
+    A field which has its value set using a popup dialog.  The values
+    the field can take are unordered; there is no concept of "next"
+    and "previous".  The field can also be null.
 
     popupfunc is a function that takes two arguments: the function to
     call when a value is chosen, and the current value of the field.
@@ -1024,9 +1025,16 @@ class popupfield(field):
     of the field.  It returns a string to display.  It is never passed
     None as an argument.
 
+    The current value of the field, if not-None, is always a database
+    model.
+
     """
     def __init__(self,y,x,w,popupfunc,valuefunc,f=None,keymap={},
                  readonly=False):
+        """
+        f is the default value, and must be a database model.
+
+        """
         self.y=y
         self.x=x
         self.w=w
@@ -1047,7 +1055,9 @@ class popupfield(field):
         self.set(value)
         if self.nextfield: self.nextfield.focus()
     def draw(self):
-        if self.f is not None: s=self.valuefunc(self.f)
+        if self.f is not None:
+            td.s.add(self.f)
+            s=self.valuefunc(self.f)
         else: s=""
         if len(s)>self.w: s=s[:self.w]
         self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
@@ -1065,41 +1075,51 @@ class popupfield(field):
             field.keypress(self,k)
 
 class listfield(popupfield):
-    """A field which allows a value to be chosen from a list.  The
-    list is ordered: for any particular value there is a concept of
-    "next" and "previous".  self.f is an index into the list, or None;
-    self.read() returns the value of the item in the list or None.
+    """
+    A field which allows a model to be chosen from a list of models.
+    The list is ordered: for any particular value there is a concept
+    of "next" and "previous".
 
-    A dictionary d can be provided; if it is, then values in l are looked
-    up in d before being displayed.
+    A function d can be provided; if it is, then d(model) is expected
+    to return a suitable string for display.  If it is not then
+    unicode(model) is called to obtain a string.
 
     """
     def __init__(self,y,x,w,l,d=None,f=None,keymap={},readonly=False):
-        self.l=l
+        self.l=list(l)
         self.d=d
         popupfield.__init__(self,y,x,w,self.popuplist,
                             self.listval,f=f,keymap=keymap,readonly=readonly)
     def read(self):
         if self.f is None: return None
-        return self.l[self.f]
-    def listval(self,index):
+        td.s.add(self.f)
+        return self.f
+    def listval(self,val):
+        td.s.add(val)
         if self.d is not None:
-            return self.d[self.l[index]]
-        return unicode(self.l[index])
+            return self.d(val)
+        return unicode(val)
     def popuplist(self,func,default):
-        m=[]
-        for i in range(0,len(self.l)):
-            m.append((self.listval(i),func,(i,)))
+        try:
+            default=self.l.index(self.f)
+        except ValueError:
+            pass
+        m=[(self.listval(x),func,(x,)) for x in self.l]
         menu(m,colour=colour_line,default=default)
     def nextitem(self):
-        if self.f is None: self.f=0
-        else: self.f=self.f+1
-        if self.f>=len(self.l): self.f=0
+        if self.f in self.l:
+            ni=self.l.index(self.f)+1
+            if ni>=len(self.l): ni=0
+            self.f=self.l[ni]
+        else:
+            if len(self.l)>0: self.f=self.l[0]
         self.draw()
     def previtem(self):
-        if self.f is None: self.f=len(self.l)-1
-        else: self.f=self.f-1
-        if self.f<0: self.f=len(self.l)-1
+        if self.f in self.l:
+            pi=self.l.index(self.f)-1
+            self.f=self.l[pi]
+        else:
+            if len(self.l)>0: self.f=self.l[-1]
         self.draw()
     def keypress(self,k):
         if not self.readonly:

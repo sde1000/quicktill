@@ -152,7 +152,7 @@ class stocklevelcheck(ui.dismisspopup):
                                  colour=ui.colour_input)
         self.addstr(2,2,'Department:')
         self.deptfield=ui.listfield(2,14,20,depts,
-                                    d=dict((x,x.description) for x in depts),
+                                    d=lambda x:x.description,
                                     keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)})
         self.addstr(3,2,'    Period:')

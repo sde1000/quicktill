@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,UnitType,StockType,StockItem,StockAnnotation
-from .models import penny,func,lazyload
+from .models import AnnotationType,penny,func,lazyload
 log=logging.getLogger(__name__)
 
 def abvstr(abv):
@@ -68,11 +68,11 @@ class stocktype(ui.dismisspopup):
             6,16,30,validate=self.validate_name)
         self.snamefield=ui.editfield(7,16,25)
         self.deptfield=ui.listfield(
-            8,16,20,self.depts,d=dict((x,x.description) for x in self.depts),
+            8,16,20,self.depts,d=lambda x:x.description,
             readonly=(mode==2))
         self.abvfield=ui.editfield(8,42,4,validate=ui.validate_float)
         self.unitfield=ui.listfield(
-            9,16,30,self.units,d=dict((x,x.name) for x in self.units),
+            9,16,30,self.units,d=lambda x:x.name,
             readonly=(mode==2))
         self.confirmbutton=ui.buttonfield(11,15,20,prompt,keymap={
                 keyboard.K_CASH: (self.finish_mode1 if mode==1
@@ -226,7 +226,7 @@ def stockinfo_linelist(sn):
     l.append(s.stocktype.format()+" - %d"%s.id)
     l.append("Sells for %s%s/%s.  "
              "%s %ss used; %s %ss remaining."%(
-            tillconfig.currency,s.saleprice,s.stocktype.unit.name,
+            tillconfig.currency,s.stocktype.saleprice,s.stocktype.unit.name,
             s.used,s.stocktype.unit.name,s.remaining,s.stocktype.unit.name))
     l.append("")
     l.append("Delivered %s by %s"%(s.delivery.date,s.delivery.supplier.name))
@@ -325,11 +325,9 @@ class annotate(ui.dismisspopup):
     def create_extra_fields(self):
         self.addstr(5,2,"Annotation type:")
         self.addstr(7,2,"Annotation:")
-        annlist=['location','memo','vent']
-        anndict={'location':'Location',
-                 'memo':'Memo',
-                 'vent':'Vented'}
-        self.anntypefield=ui.listfield(5,21,30,annlist,anndict,keymap={
+        annlist=td.s.query(AnnotationType).all()
+        self.anntypefield=ui.listfield(5,21,30,annlist,
+                                       d=lambda x:x.description,keymap={
                 keyboard.K_CLEAR:(self.dismiss,None)})
         self.annfield=ui.editfield(8,2,60,keymap={
                 keyboard.K_CASH: (self.finish,None)})
