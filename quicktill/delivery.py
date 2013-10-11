@@ -330,8 +330,8 @@ class stockline(ui.basicpopup):
             cost=None
         else:
             cost=float(self.costfield.f)
-        stocktype=td.s.merge(self.typefield.f)
-        stockunit=td.s.merge(self.unitfield.read())
+        stocktype=td.s.add(self.typefield.f)
+        stockunit=td.s.add(self.unitfield.read())
         if self.stockid:
             stockitem=td.s.query(StockItem).get(self.stockid)
         else:

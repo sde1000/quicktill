@@ -134,3 +134,14 @@ used. */
 DROP VIEW stockinfo;
 DROP VIEW stockqty;
 DROP VIEW businesstotals;
+
+/* Saleprice has moved from stock to stocktypes.  Since prices tend
+only to go up, use the maximum saleprice when migrating! */
+ALTER TABLE stocktypes ADD COLUMN saleprice NUMERIC(5,2);
+ALTER TABLE stocktypes ADD COLUMN pricechanged TIMESTAMP;
+
+UPDATE stocktypes st SET saleprice=(
+  SELECT max(saleprice) FROM stock
+  WHERE stock.stocktype=st.stocktype);
+
+ALTER TABLE stock DROP COLUMN saleprice;

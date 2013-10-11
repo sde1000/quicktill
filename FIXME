@@ -13,3 +13,8 @@ Department 11 has been hard-coded.
 * Bar billiards checker in extras.py
 
 Vat band 'A' has been hard-coded.
+
+* Waste descriptions in recordwaste.py
+
+Many waste descriptions have been hard-coded.  These should at a
+minimum be referred to the config file!

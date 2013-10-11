@@ -222,8 +222,7 @@ class create(ui.dismisspopup):
         self.namefield=ui.editfield(2,23,30,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
         self.locfield=ui.editfield(3,23,20)
-        self.deptfield=ui.listfield(4,23,20,depts,
-                                    d=dict((x,x.description) for x in depts))
+        self.deptfield=ui.listfield(4,23,20,depts,d=lambda x:x.description)
         self.capacityfield=ui.editfield(5,23,5,validate=ui.validate_int)
         self.pullthrufield=ui.editfield(
             6,23,5,validate=ui.validate_float,keymap={
