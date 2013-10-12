@@ -23,12 +23,6 @@ colour_changeline=6
 colour_cancelline=7
 colour_confirm=8 # black on cyan
 
-def wrap_addstr(win,y,x,str,attr=None):
-    if attr is None:
-        win.addstr(y,x,str.encode(c))
-    else:
-        win.addstr(y,x,str.encode(c),attr)
-
 class clockheader(object):
     """
     A single-line header at the top of the screen, with a clock at the
@@ -107,7 +101,10 @@ class basicwin(object):
         self.parent=basicwin._focus
         log.debug("New %s with parent %s",self,self.parent)
     def addstr(self,y,x,s,attr=None):
-        wrap_addstr(self.win,y,x,s,attr)
+        if attr is None:
+            self.win.addstr(y,x,s.encode(c))
+        else:
+            self.win.addstr(y,x,s.encode(c),attr)
     @property
     def focused(self):
         """
@@ -333,7 +330,7 @@ class listpopup(dismisspopup):
         hl=[x if isinstance(x,emptyline) else marginline(lrline(x),margin=1)
             for x in header] if header else []
         if w is None:
-            w=max((x.idealwidth() for x in dl))+2 if len(linelist)>0 else 0
+            w=max((x.idealwidth() for x in dl+hl))+2
             w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
