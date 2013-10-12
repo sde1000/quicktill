@@ -6,6 +6,7 @@ most of the entries here.
 """
 
 from . import keyboard
+from .models import penny
 
 configversion="tillconfig.py"
 
@@ -31,7 +32,7 @@ def pricepolicy(si,qty):
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None: return "None"
-    return "%s%s"%(currency,a)
+    return "%s%s"%(currency,a.quantize(penny))
 
 def priceguess(dept,cost,abv):
     """Guess a suitable selling price for a new stock item.  Return a

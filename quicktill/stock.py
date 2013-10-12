@@ -4,6 +4,7 @@
 
 import logging
 from decimal import Decimal
+import datetime
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,UnitType,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,penny,func,lazyload
@@ -384,130 +385,67 @@ class annotate_location(ui.dismisspopup):
         td.s.flush()
         self.dismiss()
 
-class reprice_stockitem(ui.dismisspopup):
-    """Re-price a particular stock item.  Call func when done.
+class reprice_stocktype(ui.dismisspopup):
+    """
+    Allow the sale price to be changed on a particular StockType.
+
+    Shows a list of items that are currently in stock and their
+    suggested sale prices, worked out from their cost prices.
 
     """
-    def __init__(self,stockitem,func):
-        td.s.add(stockitem)
-        self.stockitem=stockitem
-        self.func=func
-        ui.dismisspopup.__init__(
-            self,5,30,title="Re-price stock item %d"%stockitem.id,
-            colour=ui.colour_line)
-        self.addstr(2,2,"New price:")
-        self.field=ui.editfield(
-            2,13,5,validate=ui.validate_float,
-            keymap={keyboard.K_CASH: (self.finish,None)})
-        self.field.focus()
-    def finish(self):
-        if self.field.f is None or self.field.f=='': return
-        number=Decimal(self.field.f).quantize(penny)
-        self.dismiss()
-        td.s.add(self.stockitem)
-        self.stockitem.saleprice=number
-        td.s.flush()
-        self.func()
-
-class reprice_stocktype(ui.listpopup):
-    """Allow all items of stock of a particular type to be re-priced.
-
-    Options include:
-    1. Set all items to the highest price
-    2. Set all items to the lowest price
-    3. Set all items to the guide price
-
-    """
-    def __init__(self,stn):
+    def __init__(self,st):
         """
         We are passed a StockType that may not be in the current session.
 
         """
-        td.s.add(stn)
-        name=stn.format()
-        self.sl=td.s.query(StockItem).filter(StockItem.stocktype==stn).\
+        (mh,mw)=ui.stdwin.getmaxyx()
+        self.st=st
+        td.s.add(st)
+        name=st.format()
+        sl=td.s.query(StockItem).filter(StockItem.stocktype==st).\
             filter(StockItem.finished==None).order_by(StockItem.id).all()
-        if len(self.sl)==0:
-            ui.infopopup(["There are no items of %s in stock "
-                          "at the moment."%name],title="Error")
-            return
-        self.updatedl()
-        ui.listpopup.__init__(self,self.dl,title=name,w=45,header=[
-                "Please choose from the following options:",
-                "1. Set prices to match the highest price",
-                "2. Set prices to match the guide price",
-                "3. Set prices to match the lowest price","",
-                "Alternatively, press Cash/Enter to re-price "
-                "individual stock items.","",self.header])
-    def guideprice(self,item):
-        if item.costprice is None: return None
-        return tillconfig.priceguess(item.stocktype.dept_id,
-                                     item.costprice/item.stockunit.size,
-                                     item.stocktype.abv)
-    def updatedl(self):
-        # For each item of stock, we want:
-        # Stock ID
-        # Cost price
-        # Guide price
-        # Current price
-        self.minprice=None
-        self.maxprice=None
-        td.s.add_all(self.sl)
-        for i in self.sl:
-            self.minprice=(i.saleprice if self.minprice is None
-                           else min(self.minprice,i.saleprice))
-            self.maxprice=(i.saleprice if self.maxprice is None
-                           else max(self.maxprice,i.saleprice))
-        log.debug("maxprice=%s minprice=%s",self.maxprice,self.minprice)
-        f=ui.tableformatter(' r  r  r  r ')
-        self.header=ui.tableline(f,["StockID","Cost","Guide","Sale"])
-        self.dl=[ui.tableline(f,[str(x.id),
-                                 tillconfig.fc(x.costprice),
-                                 tillconfig.fc(self.guideprice(x)),
-                                 tillconfig.fc(x.saleprice)],
-                              userdata=x)
-                 for x in self.sl]
-    def update(self):
-        self.updatedl()
-        self.s.set(self.dl)
-        self.s.redraw()
-    def setall(self,price):
-        for i in self.dl:
-            td.s.add(i.userdata)
-            i.userdata.saleprice=price
-        td.s.flush()
-        self.update()
-    def setguide(self):
-        for i in self.dl:
-            td.s.add(i.userdata)
-            g=self.guideprice(i.userdata)
-            if g: i.userdata.saleprice=Decimal(g).quantize(penny)
-        td.s.flush()
-        self.update()
-    def keypress(self,k):
-        if k==keyboard.K_ONE:
-            self.setall(self.maxprice)
-        elif k==keyboard.K_TWO:
-            self.setguide()
-        elif k==keyboard.K_THREE:
-            self.setall(self.minprice)
-        elif k==keyboard.K_CASH:
-            reprice_stockitem(self.dl[self.s.cursor].userdata,
-                              self.update)
-        else:
-            ui.listpopup.keypress(self,k)
 
-def inconsistent_prices_menu():
-    # Make a list of stocktypes with inconsistent prices
-    # The lazyload options are to avoid problems with the "group_by" clause
-    stl=td.s.query(StockType).join(StockItem).\
-        filter(StockItem.finished==None).\
-        options(lazyload("department")).\
-        options(lazyload("unit")).\
-        group_by(StockType).\
-        having(func.count(func.distinct(StockItem.saleprice))>1).\
-        all()
-    ml=[(x.format(),reprice_stocktype,(x,)) for x in stl]
-    ui.menu(ml,blurb="The following stock types have inconsistent pricing.  "
-            "Choose a stock type to edit its pricing.",title="Stock types "
-            "with inconsistent prices")
+        # The height includes 2 lines for top and bottom borders, 3
+        # lines for entry field for price, one line for the scrollable
+        # list header and the remainder for the scrollable list of
+        # guide prices.
+        h=min(6+len(sl),mh-1)
+        f=ui.tableformatter(' r c c c c c ')
+        headerline=ui.tableline(f,[
+                "StockID","Delivered","Cost","Size","Remaining","Guide price"])
+        ll=[ui.tableline(
+                f,[x.id,x.delivery.date,tillconfig.fc(x.costprice),
+                   x.stockunit.size,x.remaining,
+                   tillconfig.fc(
+                        tillconfig.priceguess(
+                            x.stocktype,x.stockunit,x.costprice))])
+            for x in sl]
+        w=min(max(f.idealwidth()+2,len(name)+4,30),mw)
+        ui.dismisspopup.__init__(self,h,w,title="Re-price %s"%name,
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Sale price: %s"%tillconfig.currency)
+        self.salefield=ui.editfield(2,14+len(tillconfig.currency),6,
+                                    validate=ui.validate_float)
+        self.salefield.set(st.saleprice)
+        self.addstr(4,1,headerline.display(w-2)[0])
+        s=ui.scrollable(5,1,w-2,h-6,dl=ll,show_cursor=False)
+        self.salefield.keymap[keyboard.K_DOWN]=(s.cursor_down,None)
+        self.salefield.keymap[keyboard.K_UP]=(s.cursor_up,None)
+        self.salefield.keymap[keyboard.K_CASH]=(self.reprice,None)
+        self.salefield.focus()
+    def reprice(self):
+        if len(self.salefield.f)==0:
+            ui.infopopup(["You must specify a sale price."],
+                         title="Error")
+            return
+        self.dismiss()
+        td.s.add(self.st)
+        newprice=Decimal(self.salefield.f).quantize(penny)
+        if self.st.saleprice!=newprice:
+            self.st.saleprice=newprice
+            self.st.pricechanged=datetime.datetime.now()
+            td.s.flush()
+            ui.infopopup(["Price of %s changed to %s."%(
+                        self.st.format(),tillconfig.fc(self.st.saleprice))],
+                         title="Price changed",colour=ui.colour_info,
+                         dismiss=keyboard.K_CASH)

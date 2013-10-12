@@ -196,10 +196,8 @@ def maintenance():
         (keyboard.K_FOUR,"Manage stock line associations",
          stocklines.stockline_associations,None),
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
-        (keyboard.K_SIX,"Re-price a particular stock type",
+        (keyboard.K_SIX,"Re-price stock",
          stock.stocktype,(stock.reprice_stocktype,None,1,False)),
-        (keyboard.K_SEVEN,"Re-price stock types with inconsistent prices",
-         stock.inconsistent_prices_menu,None),
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
          td.stock_purge,None),
         ]

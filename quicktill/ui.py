@@ -577,7 +577,7 @@ class scrollable(field):
         self.lastline=lastline
         self.cursor=default
         self.top=0
-        self.drawdl()
+        self.redraw()
     def set(self,dl):
         self.dl=dl
         if self.cursor>=len(self.dl): self.cursor=max(0,len(self.dl)-1)
@@ -667,7 +667,8 @@ class scrollable(field):
         self.display_complete=(lastitem==end_of_displaylist-1)
     def cursor_up(self,n=1):
         if self.cursor==0:
-            if self.prevfield is not None: return self.prevfield.focus()
+            if self.prevfield is not None and self.focused:
+                return self.prevfield.focus()
         else:
             self.cursor=self.cursor-n
             if self.cursor<0: self.cursor=0
@@ -684,7 +685,8 @@ class scrollable(field):
         return self.cursor==len(self.dl)
     def cursor_down(self,n=1):
         if self.cursor_at_end():
-            if self.nextfield is not None: return self.nextfield.focus()
+            if self.nextfield is not None and self.focused:
+                return self.nextfield.focus()
         else:
             self.cursor=self.cursor+n
             if self.lastline:
@@ -857,7 +859,7 @@ class tableline(emptyline):
     def __init__(self,formatter,fields,colour=None,userdata=None):
         emptyline.__init__(self,colour,userdata)
         self.formatter=formatter
-        self.fields=fields
+        self.fields=[unicode(x) for x in fields]
         self.formatter.addline(self)
     def update(self):
         emptyline.update(self)
