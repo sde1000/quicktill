@@ -3,8 +3,8 @@ from .models import User
 
 def usersmenu(func):
     users=td.s.query(User).order_by(User.code).all()
-    lines=ui.table([(u.code,u.name) for u in users]).format(' r l ')
-    sl=[(x,func,(u.code,)) for x,u in zip(lines,users)]
+    f=ui.tableformatter(' r l ')
+    sl=[(ui.tableline(f,(u.code,u.name)),func,(u.code,)) for u in users]
     ui.menu(sl,title="Users",blurb="Choose a user and press Cash/Enter.")
 
 class popup(ui.dismisspopup):
