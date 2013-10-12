@@ -3,8 +3,9 @@ from .models import Department
 
 def menu(func,title,allowall=False):
     depts=td.s.query(Department).order_by(Department.id).all()
-    lines=ui.table([("%d"%d.id,d.description) for d in depts]).format(' r l ')
-    sl=[(x,func,(y.id,)) for x,y in zip(lines,depts)]
+    f=ui.tableformatter(' r l ')
+    lines=[(ui.tableline(f,(d.id,d.description)),func,(d.id,))
+           for d in depts]
     if allowall:
-        sl=[("All departments",func,(None,))]+sl
-    ui.menu(sl,title=title,blurb="Choose a department and press Cash/Enter.")
+        lines.insert(0,("All departments",func,(None,)))
+    ui.menu(lines,title=title,blurb="Choose a department and press Cash/Enter.")
