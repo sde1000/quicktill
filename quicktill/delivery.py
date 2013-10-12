@@ -10,18 +10,17 @@ def deliverymenu():
     Display a list of deliveries and call the edit function.
 
     """
-    def d(x):
-        return (str(x.id),x.supplier.name,str(x.date),x.docnumber or "",
-                ("not confirmed","")[x.checked])
     dl=td.s.query(Delivery).\
         order_by(Delivery.checked).\
         order_by(desc(Delivery.date)).\
         order_by(desc(Delivery.id)).\
         all()
-    lines=ui.table([d(x) for x in dl]).format(' r l l l l ')
-    m=[(x,delivery,(y.id,)) for x,y in zip(lines,dl)]
-    m.insert(0,("Record new delivery",delivery,None))
-    ui.menu(m,title="Delivery List",
+    f=ui.tableformatter(' r l l l l ')
+    lines=[(ui.tableline(f,(x.id,x.supplier.name,x.date,x.docnumber or "",
+            "" if x.checked else "not confirmed")),
+            delivery,(x.id,)) for x in dl]
+    lines.insert(0,("Record new delivery",delivery,None))
+    ui.menu(lines,title="Delivery List",
             blurb="Select a delivery and press Cash/Enter.")
 
 class deliveryline(ui.line):
