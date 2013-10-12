@@ -330,7 +330,7 @@ class listpopup(dismisspopup):
         hl=[x if isinstance(x,emptyline) else marginline(lrline(x),margin=1)
             for x in header] if header else []
         if w is None:
-            w=max((x.idealwidth() for x in dl+hl))+2
+            w=max((x.idealwidth() for x in dl))+2 if len(dl)>0 else 0
             w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
