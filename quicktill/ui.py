@@ -1106,24 +1106,23 @@ class listfield(popupfield):
     unicode(model) is called to obtain a string.
 
     """
-    def __init__(self,y,x,w,l,d=None,f=None,keymap={},readonly=False):
+    def __init__(self,y,x,w,l,d=unicode,f=None,keymap={},readonly=False):
+        # We copy the list because we're going to modify it in-place
+        # whenever we refresh from the database
         self.l=list(l)
         self.d=d
-        popupfield.__init__(self,y,x,w,self._popuplist,
-                            self._listval,f=f,keymap=keymap,readonly=readonly)
-    def _listval(self,val):
-        td.s.add(val)
-        if self.d is not None:
-            return self.d(val)
-        return unicode(val)
+        popupfield.__init__(self,y,x,w,self._popuplist,d,
+                            f=f,keymap=keymap,readonly=readonly)
+    def _update_list(self):
+        self.l=[td.s.merge(x) for x in self.l]
     def _popuplist(self,func,default):
-        if self.f: td.s.add(self.f)
-        td.s.add_all(self.l)
+        self._update_list()
+        self.read()
         try:
             default=self.l.index(self.f)
         except ValueError:
             pass
-        m=[(self._listval(x),func,(x,)) for x in self.l]
+        m=[(self.valuefunc(x),func,(x,)) for x in self.l]
         menu(m,colour=colour_line,default=default)
     def change_list(self,l):
         """
@@ -1133,7 +1132,7 @@ class listfield(popupfield):
         
         """
         self.l=l
-        if self.f: td.s.add(self.f)
+        self.read()
         if self.f in l:
             return
         if len(l)>0:
@@ -1143,6 +1142,8 @@ class listfield(popupfield):
         self.sethook()
         self.draw()
     def nextitem(self):
+        self._update_list()
+        self.read()
         if self.f in self.l:
             ni=self.l.index(self.f)+1
             if ni>=len(self.l): ni=0
@@ -1152,6 +1153,8 @@ class listfield(popupfield):
         self.sethook()
         self.draw()
     def previtem(self):
+        self._update_list()
+        self.read()
         if self.f in self.l:
             pi=self.l.index(self.f)-1
             self.f=self.l[pi]

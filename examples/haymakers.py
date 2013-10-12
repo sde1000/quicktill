@@ -14,12 +14,13 @@ from quicktill.recordwaste import popup as recordwaste
 from quicktill.lockscreen import popup as lockscreen
 from quicktill.stock import annotate
 from quicktill import timesheets,btcmerch
-from decimal import Decimal
+from decimal import Decimal,ROUND_UP
 import math
 import os
 import socket,struct
 
-vatrate=0.2
+import logging
+log=logging.getLogger('config')
 
 def haymakers_deptkeycheck(dept,price):
     """Check that the price entered when a department key is pressed is
@@ -48,26 +49,31 @@ def haymakers_pricepolicy(item,qty):
     if item.stocktype.dept_id==1 and qty==4.0: price=price-1.00
     return price
 
-# Price guess algorithm goes here
-def haymakers_priceguess(dept,cost,abv):
-    if dept==1:
-        return guessbeer(cost,abv)
-    if dept==2:
-        return guesskeg(cost,abv)
-    if dept==3:
-        return guesscider(cost,abv)
-    if dept==4:
-        return guessspirit(cost,abv)
-    if dept==5:
-        return guesssnack(cost)
-    if dept==6:
-        return guessbottle(cost)
-    if dept==9:
-        return guesswine(cost)
+# Suggested sale price algorithm
+
+# We are passed a StockType (from which we can get manufacturer, name,
+# department, abv and so on); StockUnit (size of container, eg. 72
+# pints) and the ex-VAT cost of that unit
+def haymakers_priceguess(stocktype,stockunit,cost):
+    if stocktype.dept_id==1:
+        return guessbeer(stocktype,stockunit,cost)
+    if stocktype.dept_id==2:
+        return Decimal("3.10") # It's Moravka.  It's all we do.
+    if stocktype.dept_id==3:
+        return markup(stocktype,stockunit,cost,Decimal("2.6"))
+    if stocktype.dept_id==4:
+        return max(Decimal("2.50"),
+                   markup(stocktype,stockunit,cost,Decimal("2.5")))
+    if stocktype.dept_id==5:
+        return markup(stocktype,stockunit,cost,Decimal("2.0"))
+    if stocktype.dept_id==6:
+        return markup(stocktype,stockunit,cost,Decimal("2.5"))
     return None
 
 # Unit is a pint
-def guessbeer(cost,abv):
+def guessbeer(stocktype,stockunit,cost):
+    cost_per_pint=cost/stockunit.size
+    abv=stocktype.abv
     if abv is None: return None
     if abv<3.1: r=2.50
     elif abv<3.3: r=2.60
@@ -78,32 +84,19 @@ def guessbeer(cost,abv):
     elif abv<5.7: r=3.10
     elif abv<6.2: r=3.20
     else: return None
+    r=Decimal(r)
     # If the cost per pint is greater than that of Milton plus fiddle-factor,
     # add on the excess and round up to nearest 10p
-    idealcost=((abv*10.0)+18.0)/72.0
-    if cost>idealcost:
-        r=r+((cost-idealcost)*(vatrate+1.0))
-        r=math.ceil(r*10.0)/10.0
+    idealcost=((Decimal(abv)*Decimal(10.0))+Decimal(18.0))/Decimal(72.0)
+    if cost_per_pint>idealcost:
+        r=r+stocktype.department.vat.current.exc_to_inc(cost_per_pint-idealcost)
+    r=r.quantize(Decimal("0.1"),rounding=ROUND_UP) # Round to 10p
     return r
 
-def guesskeg(cost,abv):
-    if abv==4.4: return 3.10 # Moravka
-    return None
-
-def guesssnack(cost):
-    return math.ceil(cost*2.0*(vatrate+1.0)*10.0)/10.0
-
-def guessbottle(cost):
-    return math.ceil(cost*2.5*(vatrate+1.0)*10.0)/10.0
-
-def guesswine(cost):
-    return math.ceil(cost*2.0*(vatrate+1.0)*10.0)/10.0
-
-def guessspirit(cost,abv):
-    return max(2.50,math.ceil(cost*2.5*(vatrate+1.0)*10.0)/10.0)
-
-def guesscider(cost,abv):
-    return math.ceil(cost*2.6*(vatrate+1.0)*10.0)/10.0
+def markup(stocktype,stockunit,cost,markup):
+    return stocktype.department.vat.current.exc_to_inc(
+        cost*markup/stockunit.size).\
+        quantize(Decimal("0.1"),rounding=ROUND_UP)
 
 tapi=extras.twitter_api(
     token='not-a-valid-token',
@@ -475,8 +468,6 @@ config3.update(xpdfprinter)
 #  pubname
 #  pubnumber
 #  pubaddr
-#  vatrate  (to be removed)
-#  vatno  (to be removed)
 #  companyaddr
 #  currency
 #  cashback_limit

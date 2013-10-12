@@ -79,6 +79,15 @@ class Vat(object):
             filter(VatRate.active<=date).\
             order_by(desc(VatRate.active)).\
             first() or self
+    @property
+    def current(self):
+        """
+        Return the VatRate object that replaces this one at the
+        current date.  If there is no suitable VatRate object,
+        returns self.
+
+        """
+        return self.at(datetime.datetime.now())
 
 class VatBand(Base,Vat):
     __tablename__='vat'
@@ -354,6 +363,7 @@ class Department(Base):
               autoincrement=False)
     description=Column(String(20),nullable=False)
     vatband=Column(CHAR(1),ForeignKey('vat.band'),nullable=False)
+    vat=relationship(VatBand)
     def __unicode__(self):
         return u"%s"%(self.description,)
     def __repr__(self):

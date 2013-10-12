@@ -2,21 +2,23 @@ import curses.ascii
 from . import ui,stock,td,keyboard,printer,tillconfig,stocklines
 from decimal import Decimal
 from .models import Delivery,Supplier,StockUnit,StockItem,desc
+from .models import penny
 import datetime
 
 def deliverymenu():
-    """Display a list of deliveries and call the edit function.
+    """
+    Display a list of deliveries and call the edit function.
 
     """
     def d(x):
-        return (str(x.id),x.supplier.name,str(x.date),
+        return (str(x.id),x.supplier.name,str(x.date),x.docnumber or "",
                 ("not confirmed","")[x.checked])
     dl=td.s.query(Delivery).\
         order_by(Delivery.checked).\
         order_by(desc(Delivery.date)).\
         order_by(desc(Delivery.id)).\
         all()
-    lines=ui.table([d(x) for x in dl]).format(' r l l l ')
+    lines=ui.table([d(x) for x in dl]).format(' r l l l l ')
     m=[(x,delivery,(y.id,)) for x,y in zip(lines,dl)]
     m.insert(0,("Record new delivery",delivery,None))
     ui.menu(m,title="Delivery List",
@@ -25,10 +27,11 @@ def deliverymenu():
 class deliveryline(ui.line):
     def __init__(self,stockitem):
         ui.line.__init__(self)
-        self.stockid=stockitem.id
+        self.stockitem=stockitem
         self.update()
     def update(self):
-        s=td.s.query(StockItem).get(self.stockid)
+        s=self.stockitem
+        td.s.add(s)
         try:
             coststr="%-6.2f"%s.costprice
         except:
@@ -38,13 +41,15 @@ class deliveryline(ui.line):
             coststr,s.stocktype.saleprice,ui.formatdate(s.bestbefore))
 
 class delivery(ui.basicpopup):
-    """The delivery window allows a delivery to be edited, printed or
+    """
+    The delivery window allows a delivery to be edited, printed or
     confirmed.  Prior to confirmation all details of a delivery can be
-    changed.  After confirmation the delivery is read-only.  The window
-    contains a header area, with supplier name, delivery date and
-    document number; a couple of prompts, and a scrollable list of stock
-    items.  If the window is not read-only, there is always a blank line
-    at the bottom of the list to enable new entries to be made.
+    changed.  After confirmation the delivery is read-only.  The
+    window contains a header area, with supplier name, delivery date
+    and document number; a couple of prompts, and a scrollable list of
+    stock items.  If the window is not read-only, there is always a
+    blank line at the bottom of the list to enable new entries to be
+    made.
 
     If no delivery ID is passed, a new delivery will be created once a
     supplier has been chosen.
@@ -68,15 +73,18 @@ class delivery(ui.basicpopup):
             self.dl=[]
             self.dn=None
         if d and d.checked:
-            title="Delivery Details - read only (already confirmed)"
+            title="Delivery Details - %d - read only (already confirmed)"%d.id
             cleartext="Press Clear to go back"
             skm={keyboard.K_CASH: (self.view_line,None)}
+            readonly=True
         else:
             title="Delivery Details"
+            if self.dn: title=title+" - %d"%self.dn
             cleartext=None
             skm={keyboard.K_CASH: (self.edit_line,None),
                  keyboard.K_CANCEL: (self.deleteline,None),
                  keyboard.K_QUANTITY: (self.duplicate_item,None)}
+            readonly=False
         # The window can be as tall as the screen; we expand the scrollable
         # field to fit.  The scrollable field must be at least three lines
         # high!
@@ -89,22 +97,22 @@ class delivery(ui.basicpopup):
                         "Unit.... Cost.. Sale  BestBefore")
         self.supfield=ui.popupfield(2,19,59,selectsupplier,lambda x:unicode(x),
                                     f=d.supplier if d else None,
-                                    readonly=d.checked if d else False)
+                                    readonly=readonly)
         # If there is not yet an underlying Delivery object, the window
         # can be dismissed by pressing Clear on the supplier field
         if self.dn is None:
             self.supfield.keymap[keyboard.K_CLEAR]=(self.dismiss,None)
         self.datefield=ui.datefield(
             3,19,f=d.date if d else datetime.date.today(),
-            readonly=d.checked if d else False)
+            readonly=readonly)
         self.docnumfield=ui.editfield(4,19,40,f=d.docnumber if d else "",
-                                      readonly=d.checked if d else False)
-        self.entryprompt=None if d and d.checked else ui.line(
+                                      readonly=readonly)
+        self.entryprompt=None if readonly else ui.line(
             " [ New item ]")
         self.s=ui.scrollable(
-            7,1,78,mh-9 if d and d.checked else mh-11,self.dl,
+            7,1,78,mh-9 if readonly else mh-11,self.dl,
             lastline=self.entryprompt,keymap=skm)
-        if d and d.checked:
+        if readonly:
             self.s.focus()
         else:
             self.deletefield=ui.buttonfield(
@@ -119,12 +127,66 @@ class delivery(ui.basicpopup):
             ui.map_fieldlist(
                 [self.supfield,self.datefield,self.docnumfield,self.s,
                  self.deletefield,self.confirmfield,self.savefield])
-            self.supfield.focus()
-            if not self.dn: self.supfield.popup()
+            self.supfield.sethook=self.update_model
+            self.datefield.sethook=self.update_model
+            self.docnumfield.sethook=self.update_model
+            if self.dn:
+                self.s.focus()
+            else:
+                self.supfield.focus()
+                self.supfield.popup()
+    def update_model(self):
+        # Called whenever one of the three fields at the top changes.
+        # If the three fields are valid and we have a Delivery model,
+        # update it.  If any of them are not valid, or there is not
+        # yet a Delivery model, do nothing.
+        if self.supfield.f is None: return
+        date=self.datefield.read()
+        if not date: return
+        if self.docnumfield.f=="": return
+        if not self.dn: return
+        d=td.s.query(Delivery).get(self.dn)
+        d.supplier=self.supfield.read()
+        d.date=date
+        d.docnumber=self.docnumfield.f
+        td.s.flush()
+    def make_delivery_model(self):
+        # If we do not have a delivery ID, create one if possible.  If
+        # we still don't have one after this, it's because a required
+        # field was missing and we've just popped up an error message
+        # about it.
+        if self.dn: return
+        if self.supfield.f is None:
+            ui.infopopup(["Select a supplier before continuing!"],title="Error")
+            return
+        date=self.datefield.read()
+        if date is None:
+            ui.infopopup(["Check that the delivery date is correct before "
+                          "continuing!"],title="Error")
+            return
+        if self.docnumfield.f=="":
+            ui.infopopup(["Enter a document number before continuing!"],
+                         title="Error")
+            return
+        d=Delivery()
+        d.supplier=self.supfield.read()
+        d.date=date
+        d.docnumber=self.docnumfield.f
+        td.s.add(d)
+        td.s.flush()
+        self.dn=d.id
+        del self.supfield.keymap[keyboard.K_CLEAR]
+    def finish(self):
+        # Save and exit button
+        self.make_delivery_model()
+        if self.dn:
+            self.dismiss()
     def reallydeleteline(self):
-        stockitem=td.s.query(StockItem).get(self.dl[self.s.cursor].stockid)
-        td.s.delete(stockitem)
+        item=self.dl[self.s.cursor].stockitem
+        td.s.add(item)
+        td.s.delete(item)
         del self.dl[self.s.cursor]
+        td.s.flush()
         self.s.drawdl()
     def deleteline(self):
         if not self.s.cursor_on_lastline():
@@ -133,58 +195,33 @@ class delivery(ui.basicpopup):
                  "number %d.  Note that once it's deleted you can't "
                  "create a new stock item with the same number; new "
                  "stock items always get fresh numbers."%(
-                        self.dl[self.s.cursor].stockid)],
+                        self.dl[self.s.cursor].stockitem.id)],
                 title="Confirm Delete",
                 keymap={keyboard.K_CASH:(self.reallydeleteline,None,True)})
-    def pack_fields(self,model):
-        """Update the supplied model with the field contents.  Return
-        True if ok, otherwise return None.
-
-        """
-        if self.supfield.f is None:
-            ui.infopopup(["Select a supplier before continuing!"],title="Error")
-            return
-        self.supfield.f=td.s.merge(self.supfield.f)
-        model.supplier=self.supfield.f
-        d=self.datefield.read()
-        if d is None:
-            ui.infopopup(["Check that the delivery date is correct before "
-                          "continuing!"],title="Error")
-            return
-        model.date=d
-        if self.docnumfield.f=="":
-            ui.infopopup(["Enter a document number before continuing!"],
-                         title="Error")
-            return
-        model.docnumber=self.docnumfield.f
-        return True
-    def finish(self):
-        d=td.s.query(Delivery).get(self.dn)
-        if self.pack_fields(d):
-            self.dismiss()
     def printout(self):
         if self.dn is None: return
-        d=td.s.query(Delivery).get(self.dn)
-        if not self.pack_fields(d): return
         if printer.labeldriver is not None:
             menu=[
                 (keyboard.K_ONE,"Print list",
-                 printer.print_delivery,(d.id,)),
+                 printer.print_delivery,(self.dn,)),
                 (keyboard.K_TWO,"Print sticky labels",
-                 printer.label_print_delivery,(d.id,)),
+                 printer.label_print_delivery,(self.dn,)),
                 ]
             ui.keymenu(menu,"Delivery print options",colour=ui.colour_confirm)
         else:
-            printer.print_delivery(d.id)
+            printer.print_delivery(self.dn)
     def reallyconfirm(self):
+        if not self.dn: return
         d=td.s.query(Delivery).get(self.dn)
-        self.pack_fields(d)
         d.checked=True
+        td.s.flush()
         self.dismiss()
         stocklines.auto_allocate(deliveryid=self.dn,confirm=False)
     def confirmcheck(self):
-        if not self.pack_fields(Delivery()): return
-        # The confirm button was pressed; set the flag
+        if not self.dn:
+            ui.infopopup(["There is nothing here to confirm!"],
+                         title="Error")
+            return
         ui.infopopup(["When you confirm a delivery you are asserting that "
                       "you have received and checked every item listed as part "
                       "of the delivery.  Once the delivery is confirmed, you "
@@ -195,43 +232,34 @@ class delivery(ui.basicpopup):
     def line_edited(self,stockitem):
         # Only called when a line has been edited; not called for new
         # lines or deletions
-        td.s.add(stockitem)
-        self.dl[self.s.cursor].stockid=stockitem.id
         self.dl[self.s.cursor].update()
         self.s.cursor_down()
     def newline(self,stockitem):
-        # The stockitem will not have been persisted
-        stockitem.deliveryid=self.dn
-        td.s.add(stockitem)
         self.dl.append(deliveryline(stockitem))
         self.s.cursor_down()
     def edit_line(self):
         # If there is not yet an underlying Delivery object, create one
-        if self.dn is None:
-            d=Delivery()
-            if self.pack_fields(d):
-                td.s.add(d)
-            else:
-                return
-            self.dn=d.id
-            del self.supfield.keymap[keyboard.K_CLEAR]
+        self.make_delivery_model()
+        if self.dn is None: return # with errors already popped up
         # If it's the "lastline" then we create a new stock item
         if self.s.cursor_on_lastline():
-            stockline(self.newline)
+            stockitem(self.newline,self.dn)
         else:
-            stockline(self.line_edited,self.dl[self.s.cursor].stockid)
+            td.s.add(self.dl[self.s.cursor].stockitem)
+            stockitem(self.line_edited,self.dn,self.dl[self.s.cursor].stockitem)
     def view_line(self):
         # In read-only mode there is no "lastline"
-        stock.stockinfo_popup(self.dl[self.s.cursor].stockid)
+        stock.stockinfo_popup(self.dl[self.s.cursor].stockitem.id)
     def duplicate_item(self):
-        ln=self.dl[len(self.dl)-1 if self.s.cursor_on_lastline()
-                   else self.s.cursor].stockid
-        existing=td.s.query(StockItem).get(ln)
+        existing=self.dl[len(self.dl)-1 if self.s.cursor_on_lastline()
+                         else self.s.cursor].stockitem
+        td.s.add(existing)
         # We deliberately do not copy the best-before date, because it
         # might be different on the new item.
         new=StockItem(delivery=existing.delivery,stocktype=existing.stocktype,
                       stockunit=existing.stockunit,costprice=existing.costprice)
         td.s.add(new)
+        td.s.flush()
         self.dl.append(deliveryline(new))
         self.s.cursor_down()
     def reallydelete(self):
@@ -255,71 +283,105 @@ class delivery(ui.basicpopup):
         elif k==keyboard.K_CLEAR:
             self.dismiss()
 
-# XXX "stockline" is a horribly confusing name for this class because
-# it clashes with models.StockLine and the "stocklines" module.
-class stockline(ui.basicpopup):
-    def __init__(self,func,stockid=None):
-        # We call func with a StockItem model as argument.  We do not
-        # persist the model first.
+class stockitem(ui.basicpopup):
+    """
+    Create a number of stockitems, or edit a single stockitem.
+
+    """
+    def __init__(self,func,deliveryid,item=None):
+        """
+        If item is provided then we edit it; otherwise we create one
+        or more StockItems and call func with the StockItem as an
+        argument (possibly multiple times).  The StockItem we call
+        func with is in the current ORM session.
+
+        """
         self.func=func
-        self.stockid=stockid
+        self.item=item
+        self.deliveryid=deliveryid
         cleartext=(
-            "Press Clear to exit, forgetting all changes" if stockid else
+            "Press Clear to exit, forgetting all changes" if item else
             "Press Clear to exit without creating a new stock item")
-        ui.basicpopup.__init__(self,12,78,title="Stock Item",
+        ui.basicpopup.__init__(self,13,78,title="Stock Item",
                                cleartext=cleartext,colour=ui.colour_line)
-        if stockid is None:
-            self.addstr(2,2,"Stock number not yet assigned")
-            # XXX Add field for quantity here too
+        if item is None:
+            self.addstr(2,2,"     Number of items:")
         else:
-            self.addstr(2,2,"        Stock number: %d"%stockid)
+            self.addstr(2,2,"        Stock number: %d"%item.id)
         self.addstr(3,2,"          Stock type:")
         self.addstr(4,2,"                Unit:")
         self.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
-        # XXX saleprice should now show as three fields:
-        # suggested sale price (worked out from cost price)
-        # current sale price (from stocktype)
-        # new sale price (fill in to change)
-        self.addstr(6,2,"Sale price (inc VAT): %s"%tillconfig.currency)
-        self.addstr(7,2,"         Best before:")
+        self.addstr(6,2,"Suggested sale price:")
+        self.addstr(7,2,"Sale price (inc VAT): %s"%tillconfig.currency)
+        self.addstr(8,2,"         Best before:")
+        if not item:
+            self.qtyfield=ui.editfield(2,24,5,f=1,
+                                       validate=ui.validate_positive_int)
+            self.qtyfield.sethook=self.update_suggested_price
         self.typefield=ui.popupfield(
             3,24,52,stock.stocktype,lambda si:si.format(),
             keymap={keyboard.K_CLEAR: (self.dismiss,None)})
-        self.unitfield=ui.listfield(4,24,20,[])
+        self.typefield.sethook=self.typefield_changed
+        self.unitfield=ui.listfield(4,24,30,[],lambda x:x.name)
+        self.unitfield.sethook=self.update_suggested_price
         self.costfield=ui.editfield(5,24+len(tillconfig.currency),6,
                                     validate=ui.validate_float)
-        self.costfield.sethook=self.guesssaleprice
-        self.salefield=ui.editfield(6,24+len(tillconfig.currency),6,
+        self.costfield.sethook=self.update_suggested_price
+        self.salefield=ui.editfield(7,24+len(tillconfig.currency),6,
                                     validate=ui.validate_float)
-        self.bestbeforefield=ui.datefield(7,24)
-        self.acceptbutton=ui.buttonfield(9,28,21,"Accept values",keymap={
+        self.bestbeforefield=ui.datefield(8,24)
+        self.acceptbutton=ui.buttonfield(10,28,21,"Accept values",keymap={
                 keyboard.K_CASH: (self.accept,None)})
-        ui.map_fieldlist(
-            [self.typefield,self.unitfield,self.costfield,self.salefield,
-             self.bestbeforefield,self.acceptbutton])
-        if stockid is not None:
-            stockitem=td.s.query(StockItem).get(stockid)
-            self.typefield.set(stockitem.stocktype)
-            self.costfield.set(stockitem.costprice)
-            self.salefield.set(stockitem.saleprice)
-            self.bestbeforefield.set(stockitem.bestbefore)
-            self.updateunitfield(default=stockitem.stockunit)
+        fieldlist=[self.typefield,self.unitfield,self.costfield,self.salefield,
+                   self.bestbeforefield,self.acceptbutton]
+        if not item: fieldlist.insert(0,self.qtyfield)
+        ui.map_fieldlist(fieldlist)
+        if item:
+            self.typefield.set(item.stocktype)
+            self.unitfield.set(item.stockunit)
+            self.costfield.set(item.costprice)
+            self.salefield.set(item.stocktype.saleprice)
+            self.bestbeforefield.set(item.bestbefore)
             if self.bestbeforefield.f=="":
                 self.bestbeforefield.focus()
             else:
                 self.acceptbutton.focus()
+            self.updateunitfield()
         else:
             self.typefield.focus()
-        # We can't set this earlier, otherwise we will have nested sessions
-        # when typefield.set calls updateunitfield
-        self.typefield.sethook=self.updateunitfield
-    def check_fields(self):
-        if self.typefield.f is None: return None
-        if self.unitfield.f is None: return None
-        if len(self.salefield.f)==0: return None
-        return True
+    def typefield_changed(self):
+        self.updateunitfield()
+        self.update_suggested_price()
+        self.salefield.set(self.typefield.read().saleprice if self.typefield.f
+                           else "")
+    def updateunitfield(self):
+        if self.typefield.f==None:
+            self.unitfield.change_list([])
+            return
+        ul=td.s.query(StockUnit).\
+            filter(StockUnit.unit==self.typefield.read().unit).\
+            order_by(StockUnit.size).\
+            all()
+        self.unitfield.change_list(ul)
+    def update_suggested_price(self):
+        self.addstr(6,24,' '*10)
+        if self.typefield.read() is None: return
+        if len(self.costfield.f)==0: return
+        if not self.item and len(self.qtyfield.f)==0: return
+        if self.item: qty=1
+        else: qty=int(self.qtyfield.f)
+        wholeprice=Decimal(self.costfield.f)
+        g=tillconfig.priceguess(
+            self.typefield.read(),self.unitfield.read(),wholeprice/qty)
+        if g is not None:
+            g=g.quantize(penny)
+            self.addstr(6,24,' '*10)
+            self.addstr(6,24,tillconfig.fc(g))
     def accept(self):
-        if self.check_fields() is None:
+        if ((not self.item and len(self.qtyfield.f)==0) or
+            self.typefield.f is None or
+            self.unitfield.f is None or
+            len(self.salefield.f)==0):
             ui.infopopup(["You have not filled in all the fields.  "
                           "The only optional fields are 'Best Before' "
                           "and 'Cost Price'."],
@@ -329,53 +391,40 @@ class stockline(ui.basicpopup):
         if len(self.costfield.f)==0:
             cost=None
         else:
-            cost=float(self.costfield.f)
-        stocktype=td.s.add(self.typefield.f)
-        stockunit=td.s.add(self.unitfield.read())
-        if self.stockid:
-            stockitem=td.s.query(StockItem).get(self.stockid)
+            cost=Decimal(self.costfield.f).quantize(penny)
+        saleprice=Decimal(self.salefield.f).quantize(penny)
+        stocktype=self.typefield.read()
+        stockunit=self.unitfield.read()
+        if self.item:
+            td.s.add(self.item)
+            self.item.stocktype=stocktype
+            self.item.stockunit=stockunit
+            self.item.costprice=cost
+            if stocktype.saleprice!=saleprice:
+                stocktype.saleprice=saleprice
+                stocktype.pricechanged=datetime.datetime.now()
+            self.item.bestbefore=self.bestbeforefield.read()
+            td.s.flush()
+            self.func(self.item)
         else:
-            stockitem=StockItem()
-        stockitem.stocktype=stocktype
-        stockitem.stockunit=stockunit
-        stockitem.costprice=cost
-        stockitem.saleprice=Decimal(self.salefield.f)
-        stockitem.bestbefore=self.bestbeforefield.read()
-        # Changes to the model will be persisted by the callee
-        self.func(stockitem)
-    def updateunitfield(self,default=None):
-        # If the unit field contains a value which is not valid for
-        # the unittype of the selected stock type, rebuild the list of
-        # stockunits
-        if self.typefield.f==None:
-            self.unitfield.l=[]
-            self.unitfield.set(None)
-            return
-        u=self.unitfield.read()
-        if u: td.s.add(u)
-        td.s.add(self.typefield.f)
-        ul=td.s.query(StockUnit).\
-            filter(StockUnit.unit==self.typefield.f.unit).\
-            all()
-        if default is not None:
-            oldunit=default
-        elif self.unitfield.f is not None:
-            oldunit=self.unitfield.read()
-        else: oldunit=None
-        if oldunit in ul: newunit=ul.index(oldunit)
-        else: newunit=0
-        self.unitfield.l=ul
-        self.unitfield.set(newunit)
-    def guesssaleprice(self):
-        # Called when the Cost field has been filled in
-        if self.typefield.f is None or self.unitfield.f is None: return
-        if len(self.costfield.f)>0 and self.salefield.f=="":
-            wholeprice=Decimal(self.costfield.f)
-            g=tillconfig.priceguess(
-                self.typefield.f.dept_id,(wholeprice/self.unitfield.read().size),
-                self.typefield.f.abv)
-            if g is not None:
-                self.salefield.set("%0.2f"%g)
+            qty=int(self.qtyfield.f)
+            costper=(cost/qty).quantize(penny) if cost else None
+            remaining_cost=cost
+            if stocktype.saleprice!=saleprice:
+                stocktype.saleprice=saleprice
+                stocktype.pricechanged=datetime.datetime.now()
+            for i in range(qty):
+                thiscost=remaining_cost if i==(qty-1) else costper
+                remaining_cost=remaining_cost-thiscost
+                item=StockItem()
+                item.deliveryid=self.deliveryid
+                item.stocktype=stocktype
+                item.stockunit=stockunit
+                item.costprice=thiscost
+                item.bestbefore=self.bestbeforefield.read()
+                td.s.add(item)
+                td.s.flush()
+                self.func(item)
     def keypress(self,k):
         # If the user starts typing into the stocktype field, be nice
         # to them and pop up the stock type entry dialog.  Then

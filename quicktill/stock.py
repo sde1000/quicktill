@@ -96,9 +96,9 @@ class stocktype(ui.dismisspopup):
         self.manufield.set(st.manufacturer)
         self.namefield.set(st.name)
         self.snamefield.set(st.shortname)
-        self.deptfield.set(self.depts.index(st.department))
+        self.deptfield.set(st.department)
         self.abvfield.set(st.abv)
-        self.unitfield.set(self.units.index(st.unit))
+        self.unitfield.set(st.unit)
     def validate_fields(self):
         "Returns True or None."
         if self.deptfield.f is None: return None
