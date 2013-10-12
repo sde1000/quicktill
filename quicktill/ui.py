@@ -483,6 +483,13 @@ def validate_int(s,c):
     except:
         return None
     return s
+def validate_positive_int(s,c):
+    try:
+        x=int(s)
+        if x<1: return None
+    except:
+        return None
+    return s
 def validate_float(s,c):
     if s=='-': return s
     try:
@@ -521,7 +528,7 @@ class field(basicwin):
     def __init__(self,keymap={}):
         self.nextfield=None
         self.prevfield=None
-        self.sethook=None
+        self.sethook=lambda:None
         # We _must_ copy the provided keymap; it is permissible for our
         # keymap to be modified after initialisation, and it would be
         # a Very Bad Thing (TM) for the default empty keymap to be
@@ -530,7 +537,7 @@ class field(basicwin):
         basicwin.__init__(self)
         self.win=self.parent.win
     def set(self):
-        if self.sethook is not None: self.sethook()
+        self.sethook()
     def keypress(self,k):
         # All keypresses handled here are defaults; if they are present
         # in the keymap, we should not handle them ourselves.
@@ -574,8 +581,8 @@ class scrollable(field):
     def set(self,dl):
         self.dl=dl
         if self.cursor>=len(self.dl): self.cursor=max(0,len(self.dl)-1)
+        self.sethook()
         self.redraw()
-        field.set(self)
     def focus(self):
         # If we are obtaining the focus from the previous field, we should
         # move the cursor to the top.  If we are obtaining it from the next
@@ -683,7 +690,8 @@ class scrollable(field):
             if self.lastline:
                 if self.cursor>len(self.dl): self.cursor=len(self.dl)
             else:
-                if self.cursor>=len(self.dl): self.cursor=len(self.dl)-1
+                if self.cursor>=len(self.dl):
+                    self.cursor=len(self.dl)-1 if len(self.dl)>0 else 0
         self.redraw()
     def keypress(self,k):
         if k==keyboard.K_DOWN: self.cursor_down(1)
@@ -893,8 +901,8 @@ class editfield(field):
         self.f=l
         self.c=len(self.f)
         self.i=0 # will be updated by draw() if necessary
+        self.sethook()
         self.draw()
-        field.set(self)
     def draw(self):
         if self.c-self.i>self.w:
             self.i=self.c-self.w
@@ -915,6 +923,7 @@ class editfield(field):
             self.c=self.c+len(s)
             if self.c>len(self.f):
                 self.c=len(self.f)
+            self.sethook()
             self.draw()
         else:
             curses.beep()
@@ -923,12 +932,14 @@ class editfield(field):
         if self.c>0 and not self.readonly:
             self.f=self.f[:self.c-1]+self.f[self.c:]
             self.move_left()
+            self.sethook()
             self.draw()
         else: curses.beep()
     def delete(self):
         "Delete the character under the cursor"
         if self.c<len(self.f) and not self.readonly:
             self.f=self.f[:self.c]+self.f[self.c+1:]
+            self.sethook()
             self.draw()
         else: curses.beep()
     def move_left(self):
@@ -948,12 +959,14 @@ class editfield(field):
     def clear(self):
         self.f=""
         self.c=0
+        self.sethook()
         self.draw()
     def killtoeol(self):
         if self.readonly:
             curses.beep()
             return
         self.f=self.f[:self.c]
+        self.sethook()
         self.draw()
     def keypress(self,k):
         # Valid keys are numbers, point, any letter or number from the
@@ -1001,7 +1014,6 @@ class datefield(editfield):
             d=datetime.datetime.strptime(self.f,"%Y-%m-%d")
         except:
             d=None
-        if d is None: editfield.set(self,"")
         return d
     def draw(self):
         self.addstr(self.y,self.x,'YYYY-MM-DD',curses.A_REVERSE)
@@ -1026,7 +1038,8 @@ class popupfield(field):
     None as an argument.
 
     The current value of the field, if not-None, is always a database
-    model.
+    model.  It is not necessarily a model previously supplied via
+    set() or through popupfunc().
 
     """
     def __init__(self,y,x,w,popupfunc,valuefunc,f=None,keymap={},
@@ -1049,8 +1062,17 @@ class popupfield(field):
         self.draw()
     def set(self,value):
         self.f=value
+        self.sethook()
         self.draw()
-        field.set(self)
+    def read(self):
+        if self.f is None: return None
+        # We have to be careful here: self.f is very likely to be a
+        # detached instance, and there's no guarantee that another
+        # instance with the same primary key has not already been
+        # loaded into the current session.  Get via primary key
+        # instead of just doing td.s.add()
+        self.f=td.s.merge(self.f)
+        return self.f
     def setf(self,value):
         self.set(value)
         if self.nextfield: self.nextfield.focus()
@@ -1067,8 +1089,7 @@ class popupfield(field):
         if not self.readonly: self.popupfunc(self.setf,self.f)
     def keypress(self,k):
         if k==keyboard.K_CLEAR and self.f is not None and not self.readonly:
-            self.f=None
-            self.draw()
+            self.set(None)
         elif k==keyboard.K_CASH and not self.readonly:
             self.popup()
         else:
@@ -1088,24 +1109,39 @@ class listfield(popupfield):
     def __init__(self,y,x,w,l,d=None,f=None,keymap={},readonly=False):
         self.l=list(l)
         self.d=d
-        popupfield.__init__(self,y,x,w,self.popuplist,
-                            self.listval,f=f,keymap=keymap,readonly=readonly)
-    def read(self):
-        if self.f is None: return None
-        td.s.add(self.f)
-        return self.f
-    def listval(self,val):
+        popupfield.__init__(self,y,x,w,self._popuplist,
+                            self._listval,f=f,keymap=keymap,readonly=readonly)
+    def _listval(self,val):
         td.s.add(val)
         if self.d is not None:
             return self.d(val)
         return unicode(val)
-    def popuplist(self,func,default):
+    def _popuplist(self,func,default):
+        if self.f: td.s.add(self.f)
+        td.s.add_all(self.l)
         try:
             default=self.l.index(self.f)
         except ValueError:
             pass
-        m=[(self.listval(x),func,(x,)) for x in self.l]
+        m=[(self._listval(x),func,(x,)) for x in self.l]
         menu(m,colour=colour_line,default=default)
+    def change_list(self,l):
+        """
+        Replace the current list of models with a new one.  If the
+        currently chosen model is in the list, keep it; otherwise,
+        select the first model from the new list.
+        
+        """
+        self.l=l
+        if self.f: td.s.add(self.f)
+        if self.f in l:
+            return
+        if len(l)>0:
+            self.f=l[0]
+        else:
+            self.f=None
+        self.sethook()
+        self.draw()
     def nextitem(self):
         if self.f in self.l:
             ni=self.l.index(self.f)+1
@@ -1113,6 +1149,7 @@ class listfield(popupfield):
             self.f=self.l[ni]
         else:
             if len(self.l)>0: self.f=self.l[0]
+        self.sethook()
         self.draw()
     def previtem(self):
         if self.f in self.l:
@@ -1120,6 +1157,7 @@ class listfield(popupfield):
             self.f=self.l[pi]
         else:
             if len(self.l)>0: self.f=self.l[-1]
+        self.sethook()
         self.draw()
     def keypress(self,k):
         if not self.readonly:
