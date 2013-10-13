@@ -36,15 +36,18 @@ def finishstock(dept=None):
     log.info("Finish stock")
     sq=td.s.query(StockItem).join(StockItem.stocktype).\
         filter(StockItem.finished==None).\
-        filter(StockItem.stockonsale==None).\
+        filter(StockItem.stockline==None).\
         order_by(StockItem.id)
     if dept: sq=sq.filter(StockType.dept_id==dept)
     si=sq.all()
-    lines=ui.table([("%d"%s.id,s.stocktype.format())
-                    for s in si]).format(' r l ')
-    sl=[(x,finish_item,(y.id,)) for x,y in zip(lines,si)]
+    f=ui.tableformatter(' r l c ')
+    sl=[(ui.tableline(f,(s.id,s.stocktype.format(),"%s %ss"%(
+                        s.remaining,s.stockunit.unit.name))),
+         finish_item,(s.id,))
+        for s in si]
+    header=ui.tableline(f,["StockID","Description","Remaining"])
     ui.menu(sl,title="Finish stock not currently on sale",
-            blurb="Choose a stock item to finish.")
+            blurb=["Choose a stock item to finish.",header])
 
 def format_stockmenuline(stockitem):
     return ("%d"%stockitem.id,
