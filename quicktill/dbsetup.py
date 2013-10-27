@@ -167,6 +167,13 @@ template=r"""
 - {model: RemoveCode, id: missing,  reason: "Gone missing"}
 - {model: RemoveCode, id: driptray, reason: "Drip tray"}
 
+# The 'empty' finishcode is used in the code, so must exist.  All
+# other codes are optional.
+- {model: FinishCode, id: empty,  description: "All gone"}
+- {model: FinishCode, id: credit, description: "Returned for credit"}
+- {model: FinishCode, id: turned, description: "Turned sour / off taste"}
+- {model: FinishCode, id: ood,    description: "Out of date"}
+
 """
 
 import yaml
