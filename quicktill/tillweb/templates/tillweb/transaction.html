@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — transaction {{transaction.id}}{% endblock %}
+
+{% block heading %}{{till}} — transaction {{transaction.id}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>ID</td><td>{{transaction.id}}</td></tr>
+<tr><td>Session</td><td><a href="{{u}}{{transaction.session.tillweb_url}}">{{transaction.session.id}}</a></td></tr>
+<tr><td>Date</td><td>{{transaction.session.date}}</td></tr>
+<tr><td>Closed?</td><td>{{transaction.closed}}</td></tr>
+<tr><td>Notes</td><td>{{transaction.notes}}</td></tr>
+<tr><td>Total</td><td><span class="money">{{transaction.total}}</span></td></tr>
+</table>
+
+<h2>Lines</h2>
+
+<table>
+{% for tl in transaction.lines %}
+<tr><td>{{tl.id}}</td><td>{{tl.items}}</td><td class="money">{{tl.amount}}</td>
+<td>{{tl.department}}</td><td>{{tl.description}}</td><td>{{tl.code}}</td><td>{{tl.time}}</td></tr>
+{% endfor %}
+</table>
+
+{% if transaction.payments %}
+<h2>Payments</h2>
+<table>
+{% for p in transaction.payments %}
+<tr><td>{{p.id}}</td><td>{{p.paytype}}{% if p.ref %} ({{p.ref}}){% endif %}</td>
+<td class="money">{{p.amount}}</td><td>{{p.time}}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+{% endblock %}

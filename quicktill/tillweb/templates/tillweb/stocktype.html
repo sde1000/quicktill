@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — {{stocktype.fullname}}{% endblock %}
+
+{% block heading %}{{till}} — {{stocktype.fullname}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>Manufacturer</td><td>{{stocktype.manufacturer}}</td></tr>
+<tr><td>Name</td><td>{{stocktype.name}}</td></tr>
+<tr><td>Short name</td><td>{{stocktype.shortname}}</td></tr>
+{% if stocktype.abv %}
+<tr><td>ABV</td><td>{{stocktype.abv}}%</td></tr>
+{% endif %}
+<tr><td>Department</td><td>{{stocktype.department}}</td></tr>
+<tr><td>Unit</td><td>{{stocktype.unit}}</td></tr>
+</table>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{object}}{% endblock %}
+
+{% block heading %}503 Operational Error on {{object}}{% endblock %}
+
+{% block content %}
+
+<p>There was a problem accessing the till database.  This problem may
+be temporary — the pub's network connection might be down or
+congested.  Please try again in a few minutes.</p>
+
+<p>The problem was: {{error}}.</p>
+
+{% endblock %}

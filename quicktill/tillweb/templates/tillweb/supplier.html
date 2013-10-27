@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — supplier {{supplier.name}}{% endblock %}
+
+{% block heading %}{{till}} — supplier {{supplier.name}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>Name</td><td>{{supplier.name}}</td></tr>
+<tr><td>Telephone</td><td>{{supplier.tel}}</td></tr>
+<tr><td>Email</td><td>{{supplier.email}}</td></tr>
+</table>
+{% comment %}List of deliveries{% endcomment %}
+
+{% endblock %}

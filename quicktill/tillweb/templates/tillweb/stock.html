@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — Stock item  {{stock.id}}{% endblock %}
+
+{% block heading %}{{till}} — Stock item  {{stock.id}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>Stock ID</td><td>{{stock.id}}</td></tr>
+<tr><td>Check digits</td><td>{{stock.checkdigits}}</td></tr>
+<tr><td>Manufacturer</td><td>{{stock.stocktype.manufacturer}}</td></tr>
+<tr><td>Name</td><td>{{stock.stocktype.name}}</td></tr>
+<tr><td>Short name</td><td>{{stock.stocktype.shortname}}</td></tr>
+<tr><td>ABV</td>
+{% if stock.stocktype.abv %}<td>{{stock.stocktype.abv}}%</td>
+{% else %}<td></td>{% endif %}</tr>
+<tr><td>Supplier</td><td><a href="{{u}}{{stock.delivery.supplier.tillweb_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
+<tr><td>Delivery date</td><td>{{stock.delivery.date}}</td></tr>
+<tr><td>Delivery ID</td><td><a href="{{u}}{{stock.delivery.tillweb_url}}">{{stock.delivery.id}}</a></td></tr>
+<tr><td>Department</td><td>{{stock.stocktype.department.description}}</td></tr>
+<tr><td>Stock unit</td><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
+<tr><td>Cost price</td>
+{% if stock.costprice %}
+<td><span class="money">{{stock.costprice}}</span> (ex-VAT)</td>
+{% else %}<td>Unknown</td>{% endif %}</tr>
+<tr><td>Sale price</td><td><span class="money">{{stock.saleprice}}</span>/{{stock.stockunit.unit.name}} (inc-VAT)</td></tr>
+{% if stock.onsale %}
+<tr><td>Put on sale</td><td>{{stock.onsale}}
+{% if stock.stockonsale %} on line <a href="{{u}}{{stock.stockonsale.stockline.tillweb_url}}">{{stock.stockonsale.stockline.name}}</a>
+{% endif %}
+</td></tr>
+{% endif %}
+{% if stock.finished %}
+<tr><td>Finished</td><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
+{% endif %}
+{% if stock.bestbefore %}
+<tr><td>Best before</td><td>{{stock.bestbefore}}</td></tr>
+{% endif %}
+<tr><td>Amount used</td><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
+{% comment %}Insert breakdown of how it was used here!{% endcomment %}
+<tr><td>Amount remaining</td><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
+</table>
+
+<table>
+{% for a in stock.annotations %}
+<tr><td>{{a.time}}</td><td>{{a.type}}</td><td>{{a.text}}</td></tr>
+{% empty %}
+<tr><td>None</td></tr>
+{% endfor %}
+</table>
+
+<table>
+<tr><th>Code</th><th>Quantity</th><th>Time</th></tr>
+{% for so in stock.out %}
+<tr class="{% cycle 'even' 'odd' %}">
+<td>{% if so.removecode_id == 'sold' %}<a href="{{u}}{{so.transline.transaction.tillweb_url}}">Sold {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td><td>{{so.qty}}</td><td>{{so.time}}</td>
+</tr>
+{% endfor %}
+</table>
+
+<p>Associated stocklines:</p>
+<ul>
+{% for sl in stock.stocktype.stockline_log %}
+<li><a href="{{u}}{{sl.stockline.tillweb_url}}">{{sl.stockline.name}}</a></li>
+{% empty %}
+<li>None</li>
+{% endfor %}
+</ul>
+
+{% endblock %}

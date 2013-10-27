@@ -1,0 +1,47 @@
+from django.db import models
+from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
+
+def get_app_details(user):
+    tills=Till.objects.filter(access__user=user)
+    return [{'name':"Till access",
+            'url':reverse('quicktill.tillweb.views.publist'),
+            'objects':tills}]
+
+class Till(models.Model):
+    """
+    A till database that we want to refer to.  NB the database
+    connection must also be defined in the Django settings as a
+    SQLAlchemy Session constructor.
+
+    """
+    slug=models.SlugField()
+    name=models.TextField()
+    database=models.TextField()
+    @models.permalink
+    def get_absolute_url(self):
+        return ('quicktill.tillweb.views.pubroot',[self.slug])
+    def __unicode__(self): return self.name
+    def nav(self):
+        return [self]
+    def navtext(self):
+        return u"%s till"%(self.name,)
+
+PERMISSIONS=(
+    ('R','Read-only'),
+    ('M','Pub manager'),
+    ('F','Full access'),
+)
+
+class Access(models.Model):
+    """
+    Access to a till database by a particular user.  Also encodes the
+    type of access.
+
+    """
+    till=models.ForeignKey(Till)
+    user=models.ForeignKey(User,related_name="till_access")
+    permission=models.CharField(max_length=1,choices=PERMISSIONS)
+    def __unicode__(self):
+        return "%s can access %s %s"%(
+            self.user.username,self.till,self.get_permission_display())

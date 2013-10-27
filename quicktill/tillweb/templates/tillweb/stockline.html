@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — stock line {{stockline.name}}{% endblock %}
+
+{% block heading %}{{till}} — stock line {{stockline.name}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>Name</td><td>{{stockline.name}}</td></tr>
+<tr><td>Location</td><td>{{stockline.location}}</td></tr>
+<tr><td>Capacity</td><td>{{stockline.capacity}}</td></tr>
+<tr><td>Department</td><td>{{stockline.department}}</td></tr>
+<tr><td>Pullthru</td><td>{{stockline.pullthru}}</td></tr>
+</table>
+
+{% comment %}
+Stock items here
+{% endcomment %}
+
+{% endblock %}

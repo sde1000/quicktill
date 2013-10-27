@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — Session {{session.id}} — {{department.description}}{% endblock %}
+
+{% block heading %}{{till}} — Session {{session.id}} ({{session.date}}) — {{department.description}}{% endblock %}
+
+{% block content %}
+
+{% if translines %}
+<table>
+<tr>
+<th>Transaction</th>
+<th>Ref</th>
+<th>Description</th>
+<th>Items</th>
+<th>Price</th>
+<th>Code</th>
+<th>Time</th>
+</tr>
+{% for tl in translines %}
+<tr class="{% cycle 'even' 'odd' %}">
+<td><a href="{{object.get_absolute_url}}{{tl.transaction.tillweb_url}}">{{tl.transid}}</a></td>
+<td>{{tl.id}}</td>
+<td>{{tl.description}}</td>
+<td>{{tl.items}}</td>
+<td class="money">{{tl.amount}}</td>
+<td>{{tl.transcode}}</td>
+<td>{{tl.time}}</td>
+</tr>
+{% endfor %}
+</table>
+{% else %}
+<p>There are no transactions for the {{department.description}}
+department in session {{session.id}}.</p>
+{% endif %}
+
+{% endblock %}

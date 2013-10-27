@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Till access{% endblock %}
+
+{% block heading %}Till access{% endblock %}
+
+{% block content %}
+
+{% if access %}
+<p>You can access these pub tills:</p>
+<ul>
+{% for a in access %}
+<li><a href="{{a.till.get_absolute_url}}">{{a.till.name}}</a>
+({{a.get_permission_display}})</li>
+{% endfor %}
+</ul>
+{% else %}
+<p>You do not have access to any pub tills.</p>
+{% endif %}
+
+{% endblock %}

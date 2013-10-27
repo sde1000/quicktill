@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — delivery from {{delivery.supplier}} on {{delivery.date}}{% endblock %}
+
+{% block heading %}{{till}} — delivery from {{delivery.supplier}} on {{delivery.date}}{% endblock %}
+
+{% block content %}
+
+<table>
+<tr><td>ID</td><td>{{delivery.id}}</td></tr>
+<tr><td>Supplier</td><td><a href="{{u}}{{delivery.supplier.tillweb_url}}">
+{{delivery.supplier}}</a></td></tr>
+<tr><td>Document number</td><td>{{delivery.docnumber}}</td></tr>
+<tr><td>Date</td><td>{{delivery.date}}</td></tr>
+<tr><td>Confirmed?</td><td>{{delivery.checked}}</td></tr>
+</table>
+
+{% endblock %}

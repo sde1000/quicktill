@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}} — Session {{session.id}}{% endblock %}
+
+{% block heading %}{{till}} — Session {{session.id}} ({{session.date}}){% endblock %}
+
+{% block content %}
+
+<p>{{session.starttime}}–{{session.endtime}}</p>
+
+{% if session.endtime %}
+{% if session.actual_totals %}
+<table>
+<tr>
+{% for p in session.actual_totals %}
+<td><strong>{{p.paytype.description}}</strong><br />£{{p.amount}}</td>
+{% endfor %}
+<td><strong>Error</strong><br />£{{session.error}}</td>
+{% for vb,t,ex,vat in session.vatband_totals %}
+{% if vb.business.abbrev == "IPL" %}
+<td><strong>{{vb.business}} ex-VAT</strong><br />£{{ex}}</td>
+<td><strong>{{vb.business}} VAT</strong><br />£{{vat}}</td>
+{% else %}
+<td><strong>{{vb.business}}</strong><br />£{{t}}</td>
+{% endif %}
+{% endfor %}
+</tr>
+</table>
+{% else %}
+<p>Session totals have not yet been recorded.</p>
+{% endif %}
+{% endif %}
+
+<h2>Departments</h2>
+
+<table>
+<tr><th>Dept</th><th>Description</th><th>Total</th></tr>
+{% for d,t in session.dept_totals %}
+<tr class="{% cycle 'even' 'odd' %}">
+<td>{{d.id}}</td>
+<td><a href="{% url tillweb.views.sessiondept object.slug session.id d.id %}">{{d.description}}</a></td>
+<td class="money">{{t}}</td>
+</tr>
+{% endfor %}
+<tr><td></td><td>Total</td><td class="money">{{session.total}}</td></tr>
+</table>
+
+<h2>Stock sold in this session</h2>
+<table>
+{% for st,q in session.stock_sold %}
+<tr><td><a href="{{u}}{{st.tillweb_url}}">{{st.shortname}}</a></td>
+<td>{{q}} {{st.unit.name}}s</td></tr>
+{% empty %}
+<tr><td>None</td></tr>
+{% endfor %}
+</table>
+
+<h2>Transactions</h2>
+
+<table>
+<tr><th>Transaction</th><th>Amount</th><th>Closed</th><th>Note</th></tr>
+{% for t in session.transactions %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{object.get_absolute_url}}{{t.tillweb_url}}">{{t.id}}</a></td>
+<td class="money">{{t.total}}</td><td>{{t.closed}}</td>
+<td>{{t.notes}}</td></tr>
+{% endfor %}
+</table>
+
+{% endblock %}

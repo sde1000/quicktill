@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{till}}{% endblock %}
+
+{% block heading %}{{till}}{% endblock %}
+
+{% block content %}
+
+<table class="bordered">
+<tr><th>Current session</th><th>Current week</th><th>Last week</th></tr>
+<tr><td>
+{% if currentsession %}
+<a href="{{u}}{{currentsession.tillweb_url}}">
+{{currentsession.id}} ({{currentsession.date}})<br />
+{% for vr,t,ex,vat in currentsession.vatband_totals %}
+{{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
+{% endfor %}</a>
+{% else %}No current session{% endif %}
+</td><td>TODO</td><td>TODO</td></tr>
+</table>
+
+<h2>On the bar</h2>
+
+<table>
+<tr><th>Line</th><th>Product</th><th>ABV</th><th>Price</th>
+<th>Started</th><th>Used</th><th>Remaining</th></tr>
+{% for line,item in barsummary %}
+<tr class="{% cycle 'even' 'odd' %}">
+<td><a href="{{u}}{{line.tillweb_url}}">
+{{line.name}}</a></td>
+<td><a href="{{u}}{{item.tillweb_url}}">
+{{item.stocktype.fullname}}</a></td>
+<td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
+<td>£{{item.saleprice}}/{{item.stocktype.unit.name}}</td>
+<td>{{item.onsale}}</td>
+<td>{{item.used}} {{item.stocktype.unit.name}}s</td>
+<td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
+</tr>
+{% endfor %}
+</table>
+
+<h2>On the stillage</h2>
+
+<table>
+<tr><th>Location</th><th>Time</th><th>Cask</th>
+<th>Used</th><th>Remaining</th><th>Line</th></tr>
+{% for s in stillage %}
+<tr><td>{{s.text}}</td><td>{{s.time}}</td>
+<td><a href="{{u}}{{s.stockitem.tillweb_url}}">
+{{s.stockitem.stocktype.fullname}}</a></td>
+<td>{{s.stockitem.used}} {{s.stockitem.stocktype.unit.name}}s</td>
+<td>{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
+<td>{% if s.stockitem.stockonsale %}<a href="{{u}}{{s.stockitem.stockonsale.stockline.tillweb_url}}">{{s.stockitem.stockonsale.stockline.name}}</a>{% endif %}</td></tr>
+{% endfor %}
+</table>
+
+{% endblock %}
