@@ -69,19 +69,23 @@ Put a URL pointing at the config file in /etc/quicktill/configurl
 (eg. file:///home/till/configweb/haymakers.py)
 
 Create database tables:
+
     runtill syncdb
 
 Get a draft database setup file and edit it:
+
     runtill dbsetup >database-config
     (edit database-config)
     runtill dbsetup database-config
 
 Run in "stock control terminal" mode and enter your initial stock
 (this mode doesn't require a special keyboard)
+
     runtill start
 
 Run in "cash register" mode, create stocklines, bind them to keys, put
 your stock on sale, and sell it:
+
     runtill -c mainbar start
 
 Startup procedure
