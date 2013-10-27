@@ -320,34 +320,38 @@ class annotate(ui.dismisspopup):
                           "it until the whole delivery is confirmed."%(sd.id)],
                          title="Error")
             return
-        self.sd=sd
+        # We want the popup to be focused while creating the next two
+        # fields; if the stocknumber field is focused then it will be
+        # their parent and focus may return there in error!
+        self.focus()
+        self.sn=sn
         self.addstr(4,21,sd.stocktype.format(maxw=40))
-        self.create_extra_fields()
-    def create_extra_fields(self):
         self.addstr(5,2,"Annotation type:")
         self.addstr(7,2,"Annotation:")
-        annlist=td.s.query(AnnotationType).all()
+        annlist=td.s.query(AnnotationType).\
+            filter(~AnnotationType.id.in_(['start','stop'])).\
+            all()
         self.anntypefield=ui.listfield(5,21,30,annlist,
                                        d=lambda x:x.description,keymap={
                 keyboard.K_CLEAR:(self.dismiss,None)})
         self.annfield=ui.editfield(8,2,60,keymap={
                 keyboard.K_CASH: (self.finish,None)})
         ui.map_fieldlist([self.anntypefield,self.annfield])
-        self.anntypefield.set(0)
         self.anntypefield.focus()
     def finish(self):
         anntype=self.anntypefield.read()
-        if anntype is None or anntype=="":
+        if anntype is None:
             ui.infopopup(["You must choose an annotation type!"],title="Error")
             return
-        annotation=self.annfield.f
-        td.s.add(self.sd)
+        annotation=self.annfield.f or ""
+        item=td.s.query(StockItem).get(self.sn)
+        log.debug("%s %s %s",item,anntype,annotation)
         td.s.add(
-            StockAnnotation(stockitem=self.sd,atype=anntype,text=annotation))
+            StockAnnotation(stockitem=item,type=anntype,text=annotation))
         td.s.flush()
         self.dismiss()
         ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
-            self.sd.id,self.sd.stocktype.format())],
+                    item.id,item.stocktype.format())],
                      title="Annotation Recorded",dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
 

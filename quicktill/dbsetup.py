@@ -174,6 +174,14 @@ template=r"""
 - {model: FinishCode, id: turned, description: "Turned sour / off taste"}
 - {model: FinishCode, id: ood,    description: "Out of date"}
 
+# The 'location', 'start' and 'stop' annotation types are referred to
+# in the code, so must exist.  Other types are optional.
+- {model: AnnotationType, id: location, description: "Location"}
+- {model: AnnotationType, id: start,    description: "Put on sale"}
+- {model: AnnotationType, id: stop,     description: "Removed from sale"}
+- {model: AnnotationType, id: vent,     description: "Vented"}
+- {model: AnnotationType, id: memo,     description: "Memo"}
+
 """
 
 import yaml
