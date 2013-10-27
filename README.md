@@ -96,7 +96,7 @@ Startup procedure
  - main() sets up logging based on command line options
  - main() looks for keys in globalconfig.configurations[configname] and sets parameters
    throughout the library (mostly in tillconfig, but some in eg. printer)
- - main() runs the command that was specified on the command line (or "runtill" by default)
+ - main() runs the command that was specified on the command line
 
 Assuming the command was "runtill":
 
