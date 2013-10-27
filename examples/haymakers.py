@@ -44,7 +44,7 @@ def haymakers_deptkeycheck(dept,price):
 # Price policy function
 def haymakers_pricepolicy(item,qty):
     # Start with the standard price
-    price=item.saleprice*qty
+    price=item.stocktype.saleprice*qty
     if item.stocktype.dept_id==4 and qty==2.0: price=price-0.50
     if item.stocktype.dept_id==1 and qty==4.0: price=price-1.00
     return price
