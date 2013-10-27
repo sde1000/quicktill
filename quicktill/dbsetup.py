@@ -153,6 +153,20 @@ template=r"""
 - {model: TransCode, code: S, description: Sale}
 - {model: TransCode, code: V, description: Void}
 
+# The 'sold' and 'pullthru' and 'freebie' stock removal codes are
+# referred to in the register code, so should not be changed.  All the
+# other removal reasons are optional.
+- {model: RemoveCode, id: sold,     reason: Sold}
+- {model: RemoveCode, id: pullthru, reason: "Pulled through"}
+- {model: RemoveCode, id: freebie,  reason: "Free drink"}
+- {model: RemoveCode, id: ood,      reason: "Out of date"}
+- {model: RemoveCode, id: taste,    reason: "Bad taste"}
+- {model: RemoveCode, id: taster,   reason: "Free taster"}
+- {model: RemoveCode, id: cellar,   reason: "Cellar work"}
+- {model: RemoveCode, id: damaged,  reason: Damaged}
+- {model: RemoveCode, id: missing,  reason: "Gone missing"}
+- {model: RemoveCode, id: driptray, reason: "Drip tray"}
+
 """
 
 import yaml
