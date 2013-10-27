@@ -548,6 +548,10 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance() # Also updates prompt and scrolls
         if pullthru_required:
+            def record_pullthru(stockid,qty):
+                td.s.add(StockOut(stockid=stockid,qty=qty,
+                                  removecode_id='pullthru'))
+                td.s.flush()
             ui.infopopup(["According to the till records, %s "
                           "hasn't been "
                           "sold or pulled through in the last 11 hours.  "
@@ -560,8 +564,7 @@ class page(ui.basicpage):
                          title="Pull through?",colour=ui.colour_input,
                          keymap={
                 keyboard.K_WASTE:
-                (td.stock_recordwaste,(stockitem.id,'pullthru',pullthru,False),
-                 True)})
+                (record_pullthru,(stockitem.id,pullthru),True)})
     def deptkey(self,dept):
         if (self.repeat and self.repeat[0]==dept
             and self.dl[-1].age()<max_transline_modify_age):

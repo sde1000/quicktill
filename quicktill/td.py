@@ -147,22 +147,6 @@ def stock_purge():
         item.stocklineid=None
     s.flush()
 
-def stock_recordwaste(stock,reason,amount,update_displayqty):
-    """Record wastage of a stock item.  If update_displayqty is set then
-    the displayqty field in the stockonsale table will be increased by the
-    same amount, so that the quantity on display remains unchanged.  (If
-    there is no entry for the stockid in stockonsale then nothing happens.)
-
-    """
-    global s
-    so=StockOut(stockid=stock,qty=amount,removecode_id=reason)
-    s.add(so)
-    if update_displayqty:
-        sos=s.query(StockItem).get(stock) # stockid is primary key here!
-        if sos.stocklineid is not None:
-            sos.displayqty=sos.displayqty_or_zero+amount
-    s.flush()
-
 ### Find out what's on the stillage by checking annotations
 
 def stillage_summary(session):

@@ -1,5 +1,6 @@
 from . import ui,td,keyboard,stock,stocklines,department
-from .models import StockItem,StockType,RemoveCode
+from .models import StockItem,StockType,RemoveCode,StockOut
+from decimal import Decimal
 
 class popup(ui.dismisspopup):
     """This popup talks the user through the process of recording
@@ -55,10 +56,9 @@ class popup(ui.dismisspopup):
             filter(StockType.dept_id==dept).\
             order_by(StockItem.id).\
             all()
-        lines=ui.table([("%d"%x.id,x.stocktype.format(maxw=40))
-                        for x in sinfo]).format(' r l ')
-        sl=[(x,self.stock_item_selected,(y.id,))
-            for x,y in zip(lines,sinfo)]
+        f=ui.tableformatter(' r l ')
+        sl=[(ui.tableline(f,(x.id,x.stocktype.format())),
+             self.stock_item_selected,(x.id,)) for x in sinfo]
         ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
                 "Cash/Enter.")
     def stock_item_selected(self,stockid):
@@ -105,7 +105,7 @@ class popup(ui.dismisspopup):
         #           'freebie':'Free drink',
         #           'missing':'Gone missing',
         #           'driptray':'Drip tray'}
-        wastelist=td.s.query(RemoveCode).all()
+        wastelist=td.s.query(RemoveCode).filter(RemoveCode.id!='sold').all()
         self.wastedescfield=ui.listfield(
             5,21,30,wastelist,lambda rc:rc.reason,
             keymap={keyboard.K_CLEAR:(self.dismiss,None)})
@@ -127,8 +127,8 @@ class popup(ui.dismisspopup):
         if self.amountfield.f=="":
             ui.infopopup(["You must enter an amount!"],title="Error")
             return
-        amount=float(self.amountfield.f)
-        if amount==0.0:
+        amount=Decimal(self.amountfield.f)
+        if amount==Decimal(0):
             ui.infopopup(["You must enter an amount other than zero!"],
                          title='Error')
             self.amountfield.set("")
@@ -141,19 +141,23 @@ class popup(ui.dismisspopup):
                     amount,self.ondisplay)],
                              title="Error")
                 return
-            sell,unallocated,snd,remaining=stocklines.calculate_sale(
+            sell,unallocated,remaining=stocklines.calculate_sale(
                 self.stocklineid,amount)
-            for stockid,qty in sell:
-                # Call to td.stock_recordwaste WITH NO UPDATE OF displayqty
-                # in stockonsale
-                td.stock_recordwaste(stockid,waste,qty,False)
+            for item,qty in sell:
+                td.s.add(StockOut(stockitem=item,qty=qty,removecode=waste))
+            td.s.flush()
             self.dismiss()
             ui.infopopup(["Recorded %d items against stock line %s."%(
                 amount,self.name)],title="Waste Recorded",
                          dismiss=keyboard.K_CASH,colour=ui.colour_info)
         else:
             td.s.add(self.sd)
-            td.stock_recordwaste(self.sd.id,waste,amount,True)
+            td.s.add(StockOut(stockitem=self.sd,qty=amount,removecode=waste))
+            # If this is an item on display, we increase displayqty by
+            # the amount wasted
+            if self.sd.stockline and self.sd.stockline.capacity:
+                self.sd.displayqty=self.sd.displayqty_or_zero+int(amount)
+            td.s.flush()
             self.dismiss()
             ui.infopopup(["Recorded %0.1f %ss against stock item %d (%s)."%(
                 amount,self.sd.stocktype.unit.name,self.sd.id,
