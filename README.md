@@ -69,20 +69,20 @@ Put a URL pointing at the config file in /etc/quicktill/configurl
 (eg. file:///home/till/configweb/haymakers.py)
 
 Create database tables:
-> runtill syncdb
+    runtill syncdb
 
 Get a draft database setup file and edit it:
-> runtill dbsetup >database-config
-> (edit database-config)
-> runtill dbsetup database-config
+    runtill dbsetup >database-config
+    (edit database-config)
+    runtill dbsetup database-config
 
 Run in "stock control terminal" mode and enter your initial stock
 (this mode doesn't require a special keyboard)
-> runtill
+    runtill start
 
 Run in "cash register" mode, create stocklines, bind them to keys, put
 your stock on sale, and sell it:
-> runtill -c mainbar
+    runtill -c mainbar start
 
 Startup procedure
 -----------------
@@ -98,7 +98,7 @@ Startup procedure
    throughout the library (mostly in tillconfig, but some in eg. printer)
  - main() runs the command that was specified on the command line
 
-Assuming the command was "runtill":
+Assuming the command was "start":
 
  - quicktill.till.runtill() initialises the database engine
  - runtill() copies keyboard caps from the database to the keyboard driver
@@ -113,14 +113,14 @@ python interpreter with a database connection already set up, a
 session started, and the td module and models.* already imported.  So
 for example, to get a list of departments:
 
->>> td.s.query(Department).all()
+    >>> td.s.query(Department).all()
 
 A list of transactions in the current session:
 
->>> Session.current(td.s).transactions
+    >>> Session.current(td.s).transactions
 
 A list of sessions and their totals (in a single round-trip to the
 database):
 
->>> from sqlalchemy.orm import undefer
->>> [(x,x.total) for x in td.s.query(Session).options(undefer('total')).all()]
+    >>> from sqlalchemy.orm import undefer
+    >>> [(x,x.total) for x in td.s.query(Session).options(undefer('total')).all()]
