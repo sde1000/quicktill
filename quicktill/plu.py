@@ -28,23 +28,20 @@ def popup(prompt=None):
 def plu_window(kb):
     td.s.add(kb)
     sos=kb.stockline.stockonsale
-    if len(sos)==1:
-        stock.stockinfo_popup(sos[0].id,plu_keymap)
-    elif len(sos)>1:
-        lines=ui.table([("%d"%x.id,
-                         x.stocktype.format().ljust(40),
-                         "%d"%max(x.displayqty_or_zero-x.used,0),
-                         "%d"%(x.stockunit.size-max(x.displayqty_or_zero,x.used)))
-                        for x in sos]).format(' r l r+l ')
-        sl=[(x,stock.stockinfo_popup,(y.id,plu_keymap))
-            for x,y in zip(lines,sos)]
+    if len(sos)==0:
+        ui.infopopup(["There is no stock on '%s'.  "
+                      "Press another line key."%kb.stockline.name],
+                     title="Price Check",dismiss=keyboard.K_CASH,
+                     colour=ui.colour_info,keymap=plu_keymap)
+        return
+    if kb.stockline.capacity:
+        f=ui.tableformatter(' r l r+l ')
+        sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.ondisplay,x.instock)),
+             stock.stockinfo_popup,(x.id,plu_keymap)) for x in sos]
         ui.menu(sl,title="%s (%s) - display capacity %d"%
                 (kb.stockline.name,kb.stockline.location,kb.stockline.capacity),
                 blurb=("Choose a stock item for more information, or "
                        "press another line key."),
                 keymap=plu_keymap, colour=ui.colour_info)
     else:
-        ui.infopopup(["There is no stock on '%s'.  "
-                      "Press another line key."%kb.stockline.name],
-                     title="Price Check",dismiss=keyboard.K_CASH,
-                     colour=ui.colour_info,keymap=plu_keymap)
+        stock.stockinfo_popup(sos[0].id,plu_keymap)
