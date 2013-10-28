@@ -59,13 +59,10 @@ def line_chosen(line):
         # Several stock items are listed; stock can be taken from any of them.
         # We need a window with a list of the current stock items, and
         # a blurb that says:
-        lines=ui.table([("%d"%x.stockid,
-                         x.stocktype.format(maxw=39).ljust(40),
-                         "%d"%x.ondisplay,
-                         "%d"%x.instock)
-                        for x in sl]).format(' r l r+l ')
-        sl=[(x,select_stockitem,(line,y))
-            for x,y in zip(lines,sl)]
+        f=ui.tableformatter(' r l r+l ')
+        sl=[(ui.tableline(
+                    f,(x.id,x.stocktype.format(),x.ondisplay,x.instock)),
+             select_stockitem,(line,x)) for x in sl]
         newstockblurb="Pick a stock item to add to %s."%line.name
         ui.menu(sl,title="%s (%s) - display capacity %d"%
                 (line.name,line.location,line.capacity),
@@ -97,7 +94,7 @@ def finish_stock(line):
         sfl=td.s.query(FinishCode).all()
         fl=fl+[(x.description,finish_reason,(line,item.id,x.id)) for x in sfl]
         blurb=blurb+"Please indicate why you're replacing it:"
-    ui.menu(fl,blurb=blurb,title="Finish Stock",w=60)
+    ui.menu(fl,blurb=blurb,title="Finish Stock")
 
 def finish_disconnect(line,sn):
     td.s.add(line)
@@ -143,15 +140,14 @@ def pick_new_stock(line,blurb=""):
     # is:
     #    order="(s.stocktype IN (SELECT stocktype FROM stockline_stocktype_log stl WHERE stl.stocklineid=%d)) DESC,s.stockid"%stockline
 
-    lines=ui.table([("%d"%x.id,x.stocktype.format(),
-                     "%.0f %ss"%(x.remaining,x.stocktype.unit.name),
-                     ui.formatdate(x.bestbefore))
-                    for x in sinfo]).format(' r l l l ')
     nextfunc=(
         check_checkdigits if tillconfig.checkdigit_on_usestock
         and line.capacity is None
         else put_on_sale)
-    sl=[(x,nextfunc,(line,y.id)) for x,y in zip(lines,sinfo)]
+    f=ui.tableformatter(' r l l l ')
+    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units,
+                         ui.formatdate(x.bestbefore))),
+         nextfunc,(line,x.id)) for x in sinfo]
     ui.menu(sl,title="Select Stock Item",blurb=blurb)
 
 class check_checkdigits(ui.dismisspopup):

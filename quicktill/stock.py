@@ -295,10 +295,9 @@ class annotate(ui.dismisspopup):
             filter(StockType.dept_id==dept).\
             order_by(StockItem.id).\
             all()
-        lines=ui.table([("%d"%x.id,x.stocktype.format(maxw=40))
-                        for x in sinfo]).format(' r l ')
-        sl=[(x,self.stock_item_selected,(y.id,))
-            for x,y in zip(lines,sinfo)]
+        f=ui.tableformatter(' r l ')
+        sl=[(ui.tableline(f,(x.id,x.stocktype.format())),
+             self.stock_item_selected,(x.id,)) for x in sinfo]
         ui.menu(sl,title="Select Item",blurb="Select a stock item and press "
                 "Cash/Enter.")
     def stock_item_selected(self,stockid):

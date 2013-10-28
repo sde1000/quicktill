@@ -1211,12 +1211,10 @@ class page(ui.basicpage):
                           "be paid for at the time it is ordered."],
                          title="Error")
             return
-        tl=sc.transactions
-        def transsummary(t):
-            return ("%d"%t.id,('open','closed')[t.closed],
-                    tillconfig.fc(t.total),t.notes if t.notes else u'')
-        lines=ui.table([transsummary(x) for x in tl]).format(' r l r l ')
-        sl=[(x,self.recalltrans,(t.id,)) for x,t in zip(lines,tl)]
+        f=ui.tableformatter(' r l r l ')
+        sl=[(ui.tableline(f,(x.id,('open','closed')[x.closed],
+                             tillconfig.fc(x.total),x.notes)),
+             self.recalltrans,(x.id,)) for x in sc.transactions]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
@@ -1226,10 +1224,9 @@ class page(ui.basicpage):
         if sc is None: return
         tl=[t for t in sc.transactions if not t.closed]
         if len(tl)<1: return
-        lines=ui.table([("%d"%t.id,tillconfig.fc(t.total),
-                         t.notes if t.notes else u'')
-                         for t in tl]).format(' r r l ')
-        sl=[(x,self.recalltrans,(t.id,)) for x,t in zip(lines,tl)]
+        f=ui.tableformatter(' r r l ')
+        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes)),
+             self.recalltrans,(x.id,)) for x in tl]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Open Transactions",
                 blurb="There are some transactions already open.  Choose one "
@@ -1282,11 +1279,9 @@ class page(ui.basicpage):
         sc=Session.current(td.s)
         log.info("Register: mergetrans")
         tl=[t for t in sc.transactions if not t.closed]
-        def transsummary(t):
-            return ("%d"%t.id,tillconfig.fc(t.total),t.notes if t.notes else u'')
-        lines=ui.table([transsummary(x) for x in tl]).format(' r r l ')
-        sl=[(x,self.mergetrans,(transid,t.id)) for x,t in zip(lines,tl)
-            if t.id!=transid]
+        f=ui.tableformatter(' r r l ')
+        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes)),
+            self.mergetrans,(transid,x.id)) for x in tl if x.id!=transid]
         ui.menu(sl,
                 title="Merge with transaction",
                 blurb="Select a transaction to merge this one into, "

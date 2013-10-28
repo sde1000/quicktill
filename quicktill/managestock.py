@@ -68,8 +68,7 @@ def stockdetail(sinfo):
     if len(sinfo)==1:
         return stock.stockinfo_popup(sinfo[0].id)
     f=ui.tableformatter(' r l l ')
-    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),"%.0f %ss"%(
-                        x.remaining,x.stocktype.unit.name))),
+    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units)),
          stock.stockinfo_popup,(x.id,)) for x in sinfo]
     ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
             "Cash/Enter for more information.",
@@ -129,8 +128,7 @@ def stockhistory(dept=None):
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
     f=ui.tableformatter(' r l l ')
-    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),"%.0f %ss"%(
-                        x.remaining,x.stocktype.unit.name))),
+    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units)),
          stock.stockinfo_popup,(x.id,)) for x in sinfo]
     title=("Stock History" if dept is None
            else "Stock History department %d"%dept)
