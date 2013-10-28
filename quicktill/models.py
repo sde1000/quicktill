@@ -826,6 +826,16 @@ class StockItem(Base):
             group_by(RemoveCode).\
             all()
     @property
+    def remaining_units(self):
+        """
+        Quantity remaining as a string with the unit name (eg. 2
+        pints, 1 pint)
+
+        """
+        return u"%s %s%s"%(
+            self.remaining,self.stocktype.unit.name,
+            "s" if self.remaining!=Decimal(1) else "")
+    @property
     def tillweb_url(self):
         return "stock/%d/"%self.id
     def __repr__(self):
