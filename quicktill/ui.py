@@ -101,10 +101,14 @@ class basicwin(object):
         self.parent=basicwin._focus
         log.debug("New %s with parent %s",self,self.parent)
     def addstr(self,y,x,s,attr=None):
-        if attr is None:
-            self.win.addstr(y,x,s.encode(c))
-        else:
-            self.win.addstr(y,x,s.encode(c),attr)
+        try:
+            if attr is None:
+                self.win.addstr(y,x,s.encode(c))
+            else:
+                self.win.addstr(y,x,s.encode(c),attr)
+        except:
+            log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
+            raise
     @property
     def focused(self):
         """
@@ -377,7 +381,7 @@ class menu(listpopup):
         self.itemlist=itemlist
         self.dismiss_on_select=dismiss_on_select
         dl=[x[0] for x in itemlist]
-        if isinstance(blurb,str): blurb=[blurb]
+        if not isinstance(blurb,list): blurb=[blurb]
         listpopup.__init__(self,dl,default=default,
                            header=blurb,title=title,
                            colour=colour,w=w,keymap=keymap)
