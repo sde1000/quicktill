@@ -251,8 +251,9 @@ class create(ui.dismisspopup):
                      capacity=cap,pullthru=pullthru)
         td.s.add(sl)
         try:
-            td.s.commit()
+            td.s.flush()
         except td.IntegrityError:
+            td.s.rollback()
             ui.infopopup(["Could not create display space '%s'; there is "
                           "a display space with that name already."%(
                         self.namefield.f,)],
@@ -263,6 +264,7 @@ class create(ui.dismisspopup):
 
 class modify(ui.dismisspopup):
     def __init__(self,stockline):
+        td.s.add(stockline)
         self.stockline=stockline
         ui.dismisspopup.__init__(self,8,63,title="Modify Stock Line",
                                  colour=ui.colour_input,
@@ -294,6 +296,7 @@ class modify(ui.dismisspopup):
         ui.map_fieldlist(fl)
         self.namefield.focus()
     def enter(self):
+        td.s.add(self.stockline)
         if (self.namefield.f=='' or self.locfield.f==''):
             ui.infopopup(["You may not make either of the first two fields"
                           "blank."],
@@ -316,13 +319,12 @@ class modify(ui.dismisspopup):
         capmsg=("  The change in display capacity will take effect next "
                 "time the line is re-stocked." if cap!=self.stockline.capacity
                 else "")
-        self.stockline=td.s.merge(self.stockline)
         self.stockline.name=self.namefield.f
         self.stockline.location=self.locfield.f
         self.stockline.capacity=cap
         self.stockline.pullthru=pullthru
         try:
-            td.s.commit()
+            td.s.flush()
         except:
             ui.infopopup(["Could not update stock line '%s'."%(
                         self.stockline.name,)],title="Error")
@@ -529,9 +531,9 @@ def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
     if caponly: q=q.filter(StockLine.capacity!=None)
     if exccap: q=q.filter(StockLine.capacity==None)
     stocklines=q.all()
-    mlines=ui.table([(x.name,x.location,"%d"%x.dept_id)
-                     for x in stocklines]).format(' l l l ')
-    ml=[(x,func,(y,)) for x,y in zip(mlines,stocklines)]
+    f=ui.tableformatter(' l l l ')
+    ml=[(ui.tableline(f,(x.name,x.location,x.dept_id)),func,(x,))
+        for x in stocklines]
     km={}
     for i in keyboard.lines:
         km[i]=(linemenu,(i,translate_keyline_to_stockline(func).linekey),True)
