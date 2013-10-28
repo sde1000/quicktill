@@ -250,9 +250,10 @@ def stockinfo_popup(sn,keymap={}):
     keymap=keymap.copy()
     # Not sure what this is doing here!  Was it for testing?
     keymap[ord('l')]=(annotate_location,(sn,),False)
-    ui.linepopup(stockinfo_linelist(sn),
+    ui.listpopup(stockinfo_linelist(sn),
                  title="Stock Item %d"%sn,
                  dismiss=keyboard.K_CASH,
+                 show_cursor=False,
                  colour=ui.colour_info,keymap=keymap)
 
 class annotate(ui.dismisspopup):

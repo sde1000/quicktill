@@ -101,18 +101,18 @@ def stockcheck(dept=None):
     # We want to show name, remaining, items in each line
     # and when a line is selected we want to pop up the list of individual
     # items.
-    lines=[]
-    details=[]
+    sl=[]
+    f=ui.tableformatter(' l l l ')
     for i in st:
         name=i[0].stocktype.format(maxw=40)
         remaining=reduce(lambda x,y:x+y,[x.remaining for x in i])
         items=len(i)
         unit=i[0].stocktype.unit.name
-        lines.append((name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
-            items,("s","")[items==1])))
-        details.append(i)
-    lines=ui.table(lines).format(' l l l ')
-    sl=[(x,stockdetail,(y,)) for x,y in zip(lines,details)]
+        sl.append(
+            (ui.tableline(
+                    f,(name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
+                            items,("s","")[items==1]))),
+             stockdetail,(i,)))
     title="Stock Check" if dept is None else "Stock Check department %d"%dept
     ui.menu(sl,title=title,blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
@@ -173,14 +173,16 @@ class stocklevelcheck(ui.dismisspopup):
         if dept: td.s.add(dept)
         self.dismiss()
         r=td.stocklevel_check(dept,'%d weeks'%weeks)
-        r=[(st.format(maxw=40),str(sold),str(st.instock),str(sold-st.instock))
-           for (st,sold) in r]
-        r=[('Name','Sold','In stock','Buy')]+r
-        lines=ui.table(r).format(' l r  r  r ')
-        header=["Do not order any stock if the 'Buy' amount",
-               "is negative!",""]
-        ui.linepopup(header+lines,title="Stock level check - %d weeks"%weeks,
-                     colour=ui.colour_info,headerlines=len(header)+1,
+        f=ui.tableformatter(' l r  r  r ')
+        lines=[ui.tableline(f,(st.format(),sold,st.instock,sold-st.instock))
+               for st,sold in r]
+        header=[ui.lrline("Do not order any stock if the 'Buy' amount "
+                          "is negative!"),
+                ui.emptyline(),
+                ui.tableline(f,('Name','Sold','In stock','Buy'))]
+        ui.listpopup(lines,header=header,
+                     title="Stock level check - %d weeks"%weeks,
+                     colour=ui.colour_info,show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
 def maintenance():

@@ -329,7 +329,8 @@ class listpopup(dismisspopup):
 
     """
     def __init__(self,linelist,default=0,header=None,title=None,
-                 colour=colour_input,w=None,keymap={}):
+                 show_cursor=True,dismiss=keyboard.K_CLEAR,
+                 cleartext=None,colour=colour_input,w=None,keymap={}):
         dl=[x if isinstance(x,emptyline) else line(x) for x in linelist]
         hl=[x if isinstance(x,emptyline) else marginline(lrline(x),margin=1)
             for x in header] if header else []
@@ -340,7 +341,8 @@ class listpopup(dismisspopup):
             w=max(len(title)+3,w)
         hh=sum([len(x.display(w-2)) for x in hl],0)
         h=len(linelist)+hh+2
-        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap)
+        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
+                              dismiss=dismiss,cleartext=cleartext)
         (h,w)=self.win.getmaxyx()
         y=1
         for hd in hl:
@@ -356,7 +358,7 @@ class listpopup(dismisspopup):
         # scrollable directly.  If there's no scrollable this will fail!
         if len(linelist)>0:
             log.debug("listpopup scrollable %d %d %d %d",y,1,w-2,h-y-1)
-            self.s=scrollable(y,1,w-2,h-y-1,dl)
+            self.s=scrollable(y,1,w-2,h-y-1,dl,show_cursor=show_cursor)
             self.s.cursor=default if default is not None else 0
             self.s.focus()
         else:
@@ -397,46 +399,16 @@ class menu(listpopup):
         else:
             listpopup.keypress(self,k)
 
-class linepopup(dismisspopup):
+class infopopup(listpopup):
     """
-    A popup window with an initial non-scrolling header, and then a
-    scrollable section.  Items in the list and header can be strings,
-    or any subclass of emptyline().  If they are strings, they are
-    indented on each side by one character for compatibility with
-    legacy callers.
+    A pop-up box that formats and displays text.  The text parameter is
+    a list of paragraphs.
 
     """
-    def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
-                 cleartext=None,colour=colour_error,keymap={},
-                 headerlines=0,w=None):
-        (mh,mw)=stdwin.getmaxyx()
-        dl=[x if isinstance(x,emptyline) else marginline(line(x),margin=1)
-            for x in lines]
-        if w is None:
-            w=max((x.idealwidth() for x in dl))+2 if len(dl)>0 else 0
-            w=max(25,w)
-        if title is not None:
-            w=max(len(title)+3,w)
-        w=min(w,mw)
-        h=min(len(lines)+2,mh)
-        dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,keymap)
-        y=1
-        for hd in dl[:headerlines]:
-            l=hd.display(w-2)
-            for i in l:
-                self.addstr(y,1,i)
-                y=y+1
-                h=h-1
-        self.s=scrollable(y,1,w-2,h-2,dl[headerlines:],show_cursor=False)
-        self.s.focus()
-
-class infopopup(linepopup):
-    """A pop-up box that formats and displays text.  The text parameter is
-    a list of paragraphs."""
     # Implementation note: we _could_ use a scrollable with a list of
     # lrlines; however, we have to work out how big to make the window
     # anyway, and once we've done that we already have a list of lines
-    # suitable to pass to linepopup.__init__()
+    # suitable to pass to listpopup.__init__()
     def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={}):
         cleartext=self.get_cleartext(cleartext,dismiss)
@@ -460,11 +432,10 @@ class infopopup(linepopup):
         while len(t)>maxh and w<maxw:
             w=w+1
             t=formatat(w)
-        # The first line of spaces is necessary because linepopup shrinks
-        # the window to fit the longest line of text
-        padding=" "*w
-        t=[padding]+t+[""]
-        linepopup.__init__(self,t,title,dismiss,cleartext,colour,keymap)
+        t=[emptyline()]+[marginline(line(x),margin=1) for x in t]+[emptyline()]
+        listpopup.__init__(self,t,title=title,dismiss=dismiss,
+                           cleartext=cleartext,colour=colour,keymap=keymap,
+                           show_cursor=False,w=w+2)
 
 class alarmpopup(infopopup):
     """This is like an infopopup, but goes "beep" every second until
@@ -1214,44 +1185,6 @@ def map_fieldlist(fl):
         fl[i].nextfield=next
         fl[i].prevfield=prev
 
-class table(object):
-    """A 2d table.  Can be turned into a list of strings of identical
-    length, with the columns lined up and justified.
-
-    """
-    def __init__(self,rows=[]):
-        self.rows=rows
-    def append(self,row):
-        self.rows.append(row)
-    def format(self,cols):
-        """cols is a format string; all characters are passed through except
-        'l','c','r' which left-, center- or right-align a column.  This
-        function returns a list of strings.
-
-        """
-        if len(self.rows)==0: return []
-        numcols=len(self.rows[0])
-        colw=[0]*numcols
-        for i in self.rows:
-            colw=[max(a,len(b)) for a,b in zip(colw,i)]
-        def formatline(c):
-            r=[]
-            n=0
-            for i in cols:
-                if i=='l':
-                    r.append(c[n].ljust(colw[n]))
-                    n=n+1
-                elif i=='c':
-                    r.append(c[n].center(colw[n]))
-                    n=n+1
-                elif i=='r':
-                    r.append(c[n].rjust(colw[n]))
-                    n=n+1
-                else:
-                    r.append(i)
-            return ''.join(r)
-        return [ formatline(x) for x in self.rows ]
-                
 def popup_exception(title):
     e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
                                  sys.exc_info()[2])

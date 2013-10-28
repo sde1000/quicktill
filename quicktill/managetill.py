@@ -286,9 +286,10 @@ def totalpopup(s):
     keymap={
         keyboard.K_PRINT:(printer.print_sessiontotals,(s,),False),
         }
-    ui.linepopup(l,title="Session number %d"%s.id,
+    ui.listpopup([ui.marginline(ui.line(x),margin=1) for x in l],
+                 title="Session number %d"%s.id,
                  colour=ui.colour_info,keymap=keymap,
-                 dismiss=keyboard.K_CASH)
+                 dismiss=keyboard.K_CASH,show_cursor=False)
 
 def transrestore():
     log.info("Restore deferred transactions")

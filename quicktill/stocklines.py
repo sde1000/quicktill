@@ -375,7 +375,7 @@ def editbindings(stockline):
         kb[i]=(addbinding,(stockline,i),True)
     ui.menu(menu,blurb=blurb,title="Edit keyboard bindings",keymap=kb)
 
-class addbinding(ui.linepopup):
+class addbinding(ui.listpopup):
     def __init__(self,stockline,keycode):
         td.s.add(stockline)
         self.stocklineid=stockline.id
@@ -409,8 +409,8 @@ class addbinding(ui.linepopup):
         for kb in existing:
             lines.append("%s: %s"%(kb.menukey,kb.stockline.name))
             self.exdict[kb.menukey]=kb.stockline.name
-        ui.linepopup.__init__(self,lines,title="Add keyboard binding",
-                              colour=ui.colour_input)
+        ui.listpopup.__init__(self,lines,title="Add keyboard binding",
+                              colour=ui.colour_input,show_cursor=False)
     def keypress(self,k):
         if k==keyboard.K_CLEAR:
             self.dismiss()
