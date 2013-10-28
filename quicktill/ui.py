@@ -398,24 +398,36 @@ class menu(listpopup):
             listpopup.keypress(self,k)
 
 class linepopup(dismisspopup):
+    """
+    A popup window with an initial non-scrolling header, and then a
+    scrollable section.  Items in the list and header can be strings,
+    or any subclass of emptyline().  If they are strings, they are
+    indented on each side by one character for compatibility with
+    legacy callers.
+
+    """
     def __init__(self,lines=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={},
-                 headerlines=0):
+                 headerlines=0,w=None):
         (mh,mw)=stdwin.getmaxyx()
-        w=max(len(i) for i in lines)
-        w=min(w+4,mw)
+        dl=[x if isinstance(x,emptyline) else marginline(line(x),margin=1)
+            for x in lines]
+        if w is None:
+            w=max((x.idealwidth() for x in dl))+2 if len(dl)>0 else 0
+            w=max(25,w)
+        if title is not None:
+            w=max(len(title)+3,w)
+        w=min(w,mw)
         h=min(len(lines)+2,mh)
-        dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,
-                              keymap)
+        dismisspopup.__init__(self,h,w,title,cleartext,colour,dismiss,keymap)
         y=1
-        while headerlines>0 and len(lines)>0:
-            self.addstr(y,2,lines[0][:w-4])
-            del lines[0]
-            y=y+1
-            h=h-1
-            headerlines=headerlines-1
-        dl=[line(i) for i in lines]
-        self.s=scrollable(y,2,w-4,h-2,dl,show_cursor=False)
+        for hd in dl[:headerlines]:
+            l=hd.display(w-2)
+            for i in l:
+                self.addstr(y,1,i)
+                y=y+1
+                h=h-1
+        self.s=scrollable(y,1,w-2,h-2,dl[headerlines:],show_cursor=False)
         self.s.focus()
 
 class infopopup(linepopup):
