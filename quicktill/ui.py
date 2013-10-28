@@ -996,10 +996,6 @@ class editfield(field):
         elif k==keyboard.K_CLEAR and self.f!="" and not self.readonly:
             self.clear()
         else:
-            if k==keyboard.K_CASH:
-                # Invoke the 'set' hook, and then do whatever Cash would
-                # have done anyway
-                field.set(self)
             field.keypress(self,k)
 
 class datefield(editfield):
