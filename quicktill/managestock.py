@@ -49,11 +49,6 @@ def finishstock(dept=None):
     ui.menu(sl,title="Finish stock not currently on sale",
             blurb=["Choose a stock item to finish.",header])
 
-def format_stockmenuline(stockitem):
-    return ("%d"%stockitem.id,
-            stockitem.stocktype.format(maxw=40),
-            "%.0f %ss"%(stockitem.remaining,stockitem.stocktype.unit.name))
-
 def print_stocklist_menu(sinfo,title):
     td.s.add_all(sinfo)
     if printer.labeldriver is not None:
@@ -72,14 +67,15 @@ def stockdetail(sinfo):
     td.s.add_all(sinfo)
     if len(sinfo)==1:
         return stock.stockinfo_popup(sinfo[0].id)
-    lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
-    sl=[(x,stock.stockinfo_popup,(y.id,))
-        for x,y in zip(lines,sinfo)]
-    print_title="Stock Check"
+    f=ui.tableformatter(' r l l ')
+    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),"%.0f %ss"%(
+                        x.remaining,x.stocktype.unit.name))),
+         stock.stockinfo_popup,(x.id,)) for x in sinfo]
     ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
             "Cash/Enter for more information.",
             dismiss_on_select=False,keymap={
-            keyboard.K_PRINT: (print_stocklist_menu,(sinfo,print_title),False)},
+            keyboard.K_PRINT: (
+                print_stocklist_menu,(sinfo,"Stock Check"),False)},
             colour=ui.colour_confirm)
 
 def stockcheck(dept=None):
@@ -132,9 +128,10 @@ def stockhistory(dept=None):
         order_by(StockItem.id.desc())
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
-    lines=ui.table([format_stockmenuline(x) for x in sinfo]).format(' r l l ')
-    sl=[(x,stock.stockinfo_popup,(y.id,))
-        for x,y in zip(lines,sinfo)]
+    f=ui.tableformatter(' r l l ')
+    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),"%.0f %ss"%(
+                        x.remaining,x.stocktype.unit.name))),
+         stock.stockinfo_popup,(x.id,)) for x in sinfo]
     title=("Stock History" if dept is None
            else "Stock History department %d"%dept)
     ui.menu(sl,title=title,blurb="Select a stock item and press "
