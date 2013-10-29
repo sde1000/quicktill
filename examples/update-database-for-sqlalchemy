@@ -145,3 +145,13 @@ UPDATE stocktypes st SET saleprice=(
   WHERE stock.stocktype=st.stocktype);
 
 ALTER TABLE stock DROP COLUMN saleprice;
+
+/* Keyboard bindings need a foreign key constraint on stocklines */
+ALTER TABLE keyboard
+  ADD CONSTRAINT keyboard_stocklineid_fkey
+  FOREIGN KEY (stocklineid) REFERENCES stocklines(stocklineid)
+  ON DELETE CASCADE;
+
+/* The quantity in keyboard bindings should have a single decimal place */
+ALTER TABLE keyboard
+  ALTER COLUMN qty SET DATA TYPE NUMERIC(5,1);

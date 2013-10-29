@@ -969,7 +969,7 @@ class KeyboardBinding(Base):
     menukey=Column(String(20),nullable=False,primary_key=True)
     stocklineid=Column(Integer,ForeignKey(
             'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
-    qty=Column(Numeric(5,2),nullable=False)
+    qty=Column(Numeric(5,1),nullable=False)
     stockline=relationship(StockLine,backref=backref('keyboard_bindings',cascade='all'))
     def __repr__(self):
         return "<KeyboardBinding(%s,'%s','%s',%s)>"%(
