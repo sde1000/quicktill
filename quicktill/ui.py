@@ -339,8 +339,7 @@ class listpopup(dismisspopup):
             w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
-        hh=sum([len(x.display(w-2)) for x in hl],0)
-        h=len(linelist)+hh+2
+        h=sum([len(x.display(w-2)) for x in hl+dl],0)+2
         dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
                               dismiss=dismiss,cleartext=cleartext)
         (h,w)=self.win.getmaxyx()
@@ -435,7 +434,7 @@ class infopopup(listpopup):
         t=[emptyline()]+[marginline(line(x),margin=1) for x in t]+[emptyline()]
         listpopup.__init__(self,t,title=title,dismiss=dismiss,
                            cleartext=cleartext,colour=colour,keymap=keymap,
-                           show_cursor=False,w=w+2)
+                           show_cursor=False,w=w+3)
 
 class alarmpopup(infopopup):
     """This is like an infopopup, but goes "beep" every second until
