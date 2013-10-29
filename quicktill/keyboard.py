@@ -63,4 +63,6 @@ numberkeys=(
     K_SIX, K_SEVEN, K_EIGHT, K_NINE, K_ZERO,
     K_ZEROZERO, K_POINT)
 
+cursorkeys=(K_LEFT, K_RIGHT, K_UP, K_DOWN)
+
 del numdepts,numlines,i,kc,fixed_keycodes,add_keycode
