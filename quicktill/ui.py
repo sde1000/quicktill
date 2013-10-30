@@ -434,7 +434,7 @@ class infopopup(listpopup):
         t=[emptyline()]+[marginline(line(x),margin=1) for x in t]+[emptyline()]
         listpopup.__init__(self,t,title=title,dismiss=dismiss,
                            cleartext=cleartext,colour=colour,keymap=keymap,
-                           show_cursor=False,w=w+3)
+                           show_cursor=False,w=w+4)
 
 class alarmpopup(infopopup):
     """This is like an infopopup, but goes "beep" every second until
