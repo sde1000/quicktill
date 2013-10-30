@@ -1,7 +1,7 @@
 import string
 from . import ui
 
-class magstripe:
+class magstripe(object):
     def __init__(self):
         self.t=[[],[],[]]
         self.i=None

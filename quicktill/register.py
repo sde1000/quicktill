@@ -965,7 +965,7 @@ class page(ui.basicpage):
         self.update_bufferline()
         self.redraw()
     def modkey(self,k):
-        self.mod=ui.kb.keycap(k)
+        self.mod=k.keycap
         self.cursor_off()
         self.update_bufferline()
         self.redraw()
@@ -1369,8 +1369,8 @@ class page(ui.basicpage):
         self.repeat=None
         if k in keyboard.notes:
             return self.notekey(keyboard.notes[k])
-        if k in keyboard.numberkeys or k==keyboard.K_ZEROZERO:
-            return self.numkey(ui.kb.keycap(k))
+        if k in keyboard.numberkeys:
+            return self.numkey(k.keycap)
         keys={
             keyboard.K_CASH: self.cashkey,
             keyboard.K_CARD: self.cardkey,
@@ -1384,7 +1384,7 @@ class page(ui.basicpage):
             }
         if k in keys: return keys[k]()
         if k in self.hotkeys: return self.hotkeys[k]()
-        if k in [keyboard.K_4JUG,keyboard.K_DOUBLE,keyboard.K_HALF]:
+        if k in keyboard.modkeys:
             return self.modkey(k)
         if k==keyboard.K_FOODORDER:
             trans=self.gettrans()

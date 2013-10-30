@@ -643,7 +643,7 @@ def linemenu(keycode,func):
     """
     # Find the keyboard bindings associated with this keycode
     kb=td.s.query(KeyboardBinding).\
-        filter(KeyboardBinding.keycode==keyboard.kcnames[keycode]).\
+        filter(KeyboardBinding.keycode==keycode.name).\
         filter(KeyboardBinding.layout==tillconfig.kbtype).\
         all()
 

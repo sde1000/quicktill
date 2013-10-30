@@ -83,7 +83,17 @@ def formatdate(ts):
     return ts.strftime("%Y-%m-%d")
 
 def handle_keyboard_input(k):
-    log.debug("Keypress %s",kb.keycap(k))
+    """
+    We can be passed a variety of things as keyboard input:
+
+    keycode objects from keyboard.py
+    magstripe objects from magcard.py
+    integers from curses (eg. ord('t'))
+
+    They don't always have a 'keycap' method - check the type first!
+
+    """
+    log.debug("Keypress %s",k)
     if k in tillconfig.hotkeys:
         tillconfig.hotkeys[k]()
     else:
@@ -281,7 +291,7 @@ class dismisspopup(basicpopup):
             elif dismiss is None:
                 return None
             else:
-                return "Press %s to dismiss"%kb.keycap(dismiss)
+                return "Press %s to dismiss"%dismiss.keycap
         return cleartext
     def keypress(self,k):
         if self.dismisskey is not None and k==self.dismisskey:
@@ -295,7 +305,7 @@ class keymenu(dismisspopup):
         pw=0 ; tw=0
         km={}
         for keycode,desc,func,args in itemlist:
-            promptwidth=len(kb.keycap(keycode))
+            promptwidth=len(keycode.keycap)
             textwidth=len(desc)
             if promptwidth>pw: pw=promptwidth
             if textwidth>tw: tw=textwidth
@@ -306,7 +316,7 @@ class keymenu(dismisspopup):
         (h,w)=self.win.getmaxyx()
         y=2
         for keycode,desc,func,args in itemlist:
-            self.addstr(y,2,"%s."%kb.keycap(keycode))
+            self.addstr(y,2,"%s."%keycode.keycap)
             self.addstr(y,pw+4,desc)
             y=y+1
         self.win.move(h-1,w-1)
@@ -958,7 +968,7 @@ class editfield(field):
         # Valid keys are numbers, point, any letter or number from the
         # normal keypad
         if k in keyboard.numberkeys:
-            self.insert(kb.keycap(k))
+            self.insert(k.keycap)
         elif curses.ascii.isprint(k):
             self.insert(chr(k))
         elif k==curses.KEY_BACKSPACE:
@@ -1190,7 +1200,7 @@ def popup_exception(title):
     infopopup(e,title=title)
 
 def init(w):
-    global stdwin,kb,header
+    global stdwin,header
     stdwin=w
     (my,mx)=stdwin.getmaxyx()
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
@@ -1202,6 +1212,5 @@ def init(w):
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
-    kb.initUI(handle_keyboard_input,stdwin)
 
 beep=curses.beep

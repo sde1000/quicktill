@@ -22,7 +22,7 @@ class intropage(ui.basicpage):
             self.win.addstr(3,1,"To continue, press one of these keys:")
             y=5
             for k in tillconfig.hotkeys:
-               self.win.addstr(y,3,ui.kb.keycap(k))
+               self.win.addstr(y,3,k.keycap)
                y=y+1
         self.win.move(0,0)
 
@@ -37,6 +37,8 @@ def start(stdwin):
     """
 
     stdwin.nodelay(1) # Make getch() non-blocking
+
+    tillconfig.kb.curses_init(stdwin)
 
     # Some of the init functions may make use of the database.
     td.start_session()
@@ -87,18 +89,18 @@ class runtill(command):
         log.info("Starting version %s"%version)
         try:
             td.init(tillconfig.database)
-            td.start_session()
+            #td.start_session()
             # Copy keycaps from database to keyboard driver
-            caps=td.s.query(KeyCap).\
-                filter(KeyCap.layout==tillconfig.kbtype).all()
-            for key in caps:
-                if ui.kb.setkeycap(keyboard.keycodes[key.keycode],
-                                   key.keycap)==False:
-                    log.info("Deleting stale keycap for layout %d keycode %s"%(
-                            tillconfig.kbtype,key.keycode))
-                    td.s.delete(key)
-            td.s.flush()
-            td.end_session()
+            #caps=td.s.query(KeyCap).\
+            #    filter(KeyCap.layout==tillconfig.kbtype).all()
+            #for key in caps:
+            #    if ui.kb.setkeycap(keyboard.keycodes[key.keycode],
+            #                       key.keycap)==False:
+            #        log.info("Deleting stale keycap for layout %d keycode %s"%(
+            #                tillconfig.kbtype,key.keycode))
+            #        td.s.delete(key)
+            #td.s.flush()
+            #td.end_session()
             curses.wrapper(start)
         except:
             log.exception("Exception caught at top level")
@@ -319,7 +321,7 @@ def main():
             *config['labelprinter'][1])
     tillconfig.database=config.get('database')
     if args.database is not None: tillconfig.database=args.database
-    ui.kb=config['kbdriver']
+    tillconfig.kb=config['kbdriver']
     tillconfig.kbtype=config['kbtype']
     foodorder.kitchenprinter=config.get('kitchenprinter')
     foodorder.menuurl=config.get('menuurl')

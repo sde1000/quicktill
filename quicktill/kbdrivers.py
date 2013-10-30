@@ -10,9 +10,9 @@
 # This is supplied using the initUI method.
 
 import sys,string,curses
-from . import keyboard,magcard,event,td
+from . import keyboard,magcard,event,td,ui
 
-class curseskeyboard:
+class curseskeyboard(object):
     # curses codes and their till keycode equivalents
     kbcodes={
         curses.KEY_LEFT: keyboard.K_LEFT,
@@ -82,9 +82,8 @@ class curseskeyboard:
     def __init__(self):
         self.stdwin=None
         self.callback=None
-    def initUI(self,callback,stdwin):
+    def curses_init(self,stdwin):
         event.rdlist.append(self)
-        self.callback=callback
         self.stdwin=stdwin
     def fileno(self):
         return sys.stdin.fileno()
@@ -95,38 +94,40 @@ class curseskeyboard:
         # We ensure a database session exists for each keypress that
         # is processed.
         td.start_session()
-        self.callback(i)
+        ui.handle_keyboard_input(i)
         td.end_session()
-    def keycap(self,k):
-        if k in self.keycaps: return self.keycaps[k]
-        return curses.keyname(k)
+#    def keycap(self,k):
+#        if k in self.keycaps: return self.keycaps[k]
+#        return curses.keyname(k)
 
 class prehkeyboard(curseskeyboard):
-    def __init__(self,kblayout):
+    def __init__(self,kblayout,magstripe={}):
         curseskeyboard.__init__(self)
         self.ibuf=[]
         self.decode=False
         self.card=None
         self.inputs={}
-        self.codes={}
-        for loc,cap,code in kblayout:
-            x=[loc,cap,code]
-            self.inputs[loc]=x
-            self.codes[code]=x
-    def setkeycap(self,code,cap):
-        """Tries to update the keycap for the specified key.  Returns
-        True if successful, or False if the key does not exist.
-
-        """
-        try:
-            self.codes[code][1]=cap
-            return True
-        except:
-            return False
-    def keycap(self,k):
-        if isinstance(k,magcard.magstripe): return str(k)
-        if k in self.codes: return self.codes[k][1]
-        return curseskeyboard.keycap(self,k)
+        for loc,code in kblayout:
+            self.inputs[loc]=code
+        for track in magstripe:
+            start,end=magstripe[track]
+            # Should be calls to magstripe input handler
+            self.inputs[start]=None
+            self.inputs[end]=None
+#    def setkeycap(self,code,cap):
+#        """Tries to update the keycap for the specified key.  Returns
+#        True if successful, or False if the key does not exist.
+#
+#        """
+#        try:
+#            self.codes[code][1]=cap
+#            return True
+#        except:
+#            return False
+#    def keycap(self,k):
+#        if isinstance(k,magcard.magstripe): return str(k)
+#        if k in self.codes: return self.codes[k][1]
+#        return curseskeyboard.keycap(self,k)
     def doread(self):
         def pass_on_buffer():
             self.handle_input(ord('['))
@@ -140,7 +141,7 @@ class prehkeyboard(curseskeyboard):
             if i==ord(']'):
                 s=string.join([chr(x) for x in self.ibuf],'')
                 if s in self.inputs:
-                    self.handle_input(self.inputs[s][2])
+                    self.handle_input(self.inputs[s])
                     self.decode=False
                     self.ibuf=[]
                 else:
@@ -155,30 +156,31 @@ class prehkeyboard(curseskeyboard):
         else:
             self.handle_input(i)
     def handle_input(self,k):
-        if k==keyboard.K_M1H:
-            self.card=magcard.magstripe()
-            self.card.start_track(1)
+        if k is None:
+            # XXX temp ignore magstripe
             return
-        if self.card:
-            if k==keyboard.K_M1T:
-                self.card.end_track(1)
-            elif k==keyboard.K_M2H:
-                self.card.start_track(2)
-            elif k==keyboard.K_M2T:
-                self.card.end_track(2)
-            elif k==keyboard.K_M3H:
-                self.card.start_track(3)
-            elif k==keyboard.K_M3T:
-                self.card.end_track(3)
-                td.start_session()
-                self.callback(self.card)
-                td.end_session()
-                self.card=None
-            else:
-                self.card.handle_input(k)
-            return
-        if k in self.kbcodes: k=self.kbcodes[k]
+#        if k==keyboard.K_M1H:
+#            self.card=magcard.magstripe()
+#            self.card.start_track(1)
+#            return
+#        if self.card:
+#            if k==keyboard.K_M1T:
+#                self.card.end_track(1)
+#            elif k==keyboard.K_M2H:
+#                self.card.start_track(2)
+#            elif k==keyboard.K_M2T:
+#                self.card.end_track(2)
+#            elif k==keyboard.K_M3H:
+#                self.card.start_track(3)
+#            elif k==keyboard.K_M3T:
+#                self.card.end_track(3)
+#                td.start_session()
+#                ui.handle_keyboard_input(self.card)
+#                td.end_session()
+#                self.card=None
+#            else:
+#                self.card.handle_input(k)
+#            return
         td.start_session()
-        self.callback(k)
+        ui.handle_keyboard_input(k)
         td.end_session()
-
