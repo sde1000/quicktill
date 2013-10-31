@@ -1,13 +1,11 @@
 from . import keyboard,ui,td,tillconfig
 from .models import KeyCap
 
-# User interface for checking and editing the keyboard.  This really
-# only supports modification of keycaps of line keys; binding of keys
-# to stock lines is done from the stock lines management menu.
-
 class popup(ui.dismisspopup):
-    """This popup window enables keycaps to be edited, as long as the keycode
-    is in keyboard.lines."""
+    """
+    This popup window enables the keycaps of line keys to be edited.
+
+    """
     def __init__(self):
         ui.dismisspopup.__init__(self,8,60,title="Edit Keycaps",
                                  colour=ui.colour_input)
@@ -19,22 +17,21 @@ class popup(ui.dismisspopup):
         self.kcfield=ui.editfield(5,11,46,keymap={
                 keyboard.K_CASH: (self.setcap,None)})
         self.kcfield.focus()
-    def selectline(self,line):
+    def selectline(self,linekey):
         self.addstr(4,11," "*20)
-        self.addstr(4,11,"%s"%keyboard.kcnames[line])
-        self.kcfield.set(ui.kb.keycap(line))
-        self.keycode=line
+        self.addstr(4,11,"%s"%linekey.name)
+        self.kcfield.set(linekey.keycap)
+        self.keycode=linekey
     def setcap(self):
         if self.keycode is None: return
         if self.kcfield.f=="": return
         newcap=KeyCap(layout=tillconfig.kbtype,
-                      keycode=keyboard.kcnames[self.keycode],
+                      keycode=self.keycode.name,
                       keycap=self.kcfield.f)
         td.s.merge(newcap)
         td.s.flush()
-        ui.kb.setkeycap(self.keycode,self.kcfield.f)
     def keypress(self,k):
-        if k in keyboard.lines:
+        if hasattr(k,'line'):
             self.selectline(k)
         else:
             ui.dismisspopup.keypress(self,k)

@@ -74,7 +74,7 @@ class bufferline(ui.lrline):
     def update_buffer(self,prompt,qty,mod,buf,balance):
         if qty is not None: m="%d of "%qty
         else: m=""
-        if mod is not None: m="%s%s "%(m,mod)
+        if mod is not None: m="%s%s "%(m,mod.keycap)
         if buf is not None: m="%s%s"%(m,buf)
         if len(m)>0:
             self.ltext=m
@@ -334,7 +334,7 @@ class page(ui.basicpage):
     def clearbuffer(self):
         self.buf=None # Input buffer
         self.qty=None # Quantity (integer)
-        self.mod=None # Modifier (string)
+        self.mod=None # Modifier (modkey object)
         self.update_bufferline()
     def clear(self):
         """
@@ -405,6 +405,9 @@ class page(ui.basicpage):
                 self.trans.closed=True
                 td.s.flush()
     def linekey(self,kb): # We are passed the keyboard binding
+        # XXX there is something strange going on here with qty
+        # - are we getting confused between qty from the keyboard binding
+        # and 'Quantity' as in number of items?
         td.s.add(kb)
         name=kb.stockline.name
         qty=kb.qty
@@ -439,7 +442,8 @@ class page(ui.basicpage):
         mod=self.mod
         self.mod=None
         if mod is not None:
-            (qty,checkdept)=tillconfig.modkeyinfo.get(mod,(None,None))
+            qty=mod.qty
+            checkdept=mod.depts
         else:
             repeatcandidate=True
         # We redraw because we might bail if there is an error.
@@ -470,7 +474,7 @@ class page(ui.basicpage):
                 dept=stockitem.stocktype.dept_id
                 if dept not in checkdept:
                     ui.infopopup(["You can't use the '%s' modifier with "
-                                  "stock in department %d."%(mod,dept)],
+                                  "stock in department %d."%(mod.keycap,dept)],
                                  title="Error")
                     return
         # At this point we have a list of (stockitem,amount) that corresponds
@@ -587,7 +591,7 @@ class page(ui.basicpage):
             return
         if self.mod is not None:
             ui.infopopup(["You can't use the '%s' modifier with a "
-                          "department key."%self.mod],title="Error")
+                          "department key."%self.mod.keycap],title="Error")
             return
         if self.qty: items=self.qty
         else: items=1
@@ -965,7 +969,7 @@ class page(ui.basicpage):
         self.update_bufferline()
         self.redraw()
     def modkey(self,k):
-        self.mod=k.keycap
+        self.mod=k
         self.cursor_off()
         self.update_bufferline()
         self.redraw()
@@ -1361,14 +1365,14 @@ class page(ui.basicpage):
         self.refresh_trans()
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
-        if k in keyboard.lines:
+        if hasattr(k,'line'):
             stocklines.linemenu(k,self.linekey)
             return
-        if k in keyboard.depts:
-            return self.deptkey(keyboard.depts[k])
+        if hasattr(k,'department'):
+            return self.deptkey(k.department)
         self.repeat=None
-        if k in keyboard.notes:
-            return self.notekey(keyboard.notes[k])
+        if hasattr(k,'notevalue'):
+            return self.notekey(k.notevalue)
         if k in keyboard.numberkeys:
             return self.numkey(k.keycap)
         keys={
@@ -1384,7 +1388,7 @@ class page(ui.basicpage):
             }
         if k in keys: return keys[k]()
         if k in self.hotkeys: return self.hotkeys[k]()
-        if k in keyboard.modkeys:
+        if hasattr(k,'qty') and hasattr(k,'depts'):
             return self.modkey(k)
         if k==keyboard.K_FOODORDER:
             trans=self.gettrans()

@@ -212,10 +212,11 @@ class create(ui.dismisspopup):
     Create a new stockline.
 
     """
-    def __init__(self):
+    def __init__(self,func):
         ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
+        self.func=func
         depts=td.s.query(Department).order_by(Department.id).all()
         self.addstr(2,2,"    Stock line name:")
         self.addstr(3,2,"           Location:")
@@ -265,7 +266,7 @@ class create(ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        modify(sl)
+        self.func(sl)
 
 class modify(ui.dismisspopup):
     """
@@ -319,8 +320,8 @@ class modify(ui.dismisspopup):
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
         self.addstr(13,2,"below and press Enter or Cancel.")
         f=ui.tableformatter(' l   c   r ')
-        kbl=[ui.tableline(f,(ui.kb.keycap(keyboard.keycodes[x.keycode]),
-                             ui.kb.keycap(keyboard.keycodes[x.menukey]),
+        kbl=[ui.tableline(f,(keyboard.__dict__[x.keycode].keycap,
+                             keyboard.__dict__[x.menukey].keycap,
                              x.qty),userdata=x)
              for x in self.stockline.keyboard_bindings
              if x.layout==tillconfig.kbtype]
@@ -337,7 +338,7 @@ class modify(ui.dismisspopup):
         if k==keyboard.K_USESTOCK:
             from . import usestock
             usestock.line_chosen(self.stockline)
-        elif k in keyboard.lines:
+        elif hasattr(k,'line'):
             self.dismiss()
             addbinding(self.stockline,k,func=lambda:modify(self.stockline))
     def save(self):
@@ -422,10 +423,10 @@ class addbinding(ui.listpopup):
         self.func=func
         td.s.add(stockline)
         self.stocklineid=stockline.id
-        self.keycode=keyboard.kcnames[keycode]
+        self.keycode=keycode
         existing=td.s.query(KeyboardBinding).\
             filter(KeyboardBinding.layout==tillconfig.kbtype).\
-            filter(KeyboardBinding.keycode==self.keycode).\
+            filter(KeyboardBinding.keycode==self.keycode.name).\
             all()
         self.exdict={}
         lines=[]
@@ -435,7 +436,7 @@ class addbinding(ui.listpopup):
                 ui.emptyline(),
                 ui.lrline("The line key '%s' already has some other "
                           "stock lines associated with it; they are "
-                          "listed below."%ui.kb.keycap(keycode)),
+                          "listed below."%keycode.keycap),
                 ui.emptyline(),
                 ui.lrline("When the key is pressed, a menu will be displayed "
                           "enabling the till user to choose between them.  "
@@ -459,7 +460,7 @@ class addbinding(ui.listpopup):
                 ]
         for kb in existing:
             lines.append(ui.tableline(f,(
-                        ui.kb.keycap(keyboard.keycodes[kb.menukey]),
+                        keyboard.__dict__[kb.menukey].keycap,
                         '->',kb.stockline.name,kb.qty)))
             self.exdict[kb.menukey]=kb.stockline.name
         lines.append(ui.emptyline())
@@ -521,83 +522,86 @@ class changebinding(ui.dismisspopup):
         self.dismiss()
         self.func()
 
-def listunbound():
-    """Pop up a list of stock lines with no key bindings on any keyboard.
+class listunbound(ui.listpopup):
+    """
+    Pop up a list of stock lines with no key bindings on any keyboard.
 
     """
-    l=td.s.query(StockLine).outerjoin(KeyboardBinding).\
-        filter(KeyboardBinding.stocklineid==None).\
-        all()
-    if len(l)==0:
-        ui.infopopup(["There are no stock lines that lack key bindings.",
-                      "","Note that other tills may have key bindings to "
-                      "a stock line even if this till doesn't."],
-                     title="Unbound stock lines",colour=ui.colour_info,
-                     dismiss=keyboard.K_CASH)
-    else:
+    def __init__(self):
+        l=td.s.query(StockLine).outerjoin(KeyboardBinding).\
+            filter(KeyboardBinding.stocklineid==None).\
+            all()
+        if len(l)==0:
+            ui.infopopup(
+                ["There are no stock lines that lack key bindings.",
+                 "","Note that other tills may have key bindings to "
+                 "a stock line even if this till doesn't."],
+                title="Unbound stock lines",colour=ui.colour_info,
+                dismiss=keyboard.K_CASH)
+            return
         f=ui.tableformatter(' l l l l ')
         headerline=ui.tableline(f,["Name","Location","Department","Stock"])
-        ll=[ui.tableline(f,(x.name,x.location,x.department.description,
-                            "Yes" if len(x.stockonsale)>0 else "No"))
-            for x in l]
-        # Items in this list are selectable but doing so currently
-        # does nothing.  At some point the "edit" and "delete"
-        # stockline menu options should be merged into a single
-        # stockline editor, and selecting a line here should open the
-        # editor.
-        ui.listpopup(ll,title="Unbound stock lines",colour=ui.colour_info,
-                     header=[headerline])
+        self.ll=[ui.tableline(f,(x.name,x.location,x.department.description,
+                                 "Yes" if len(x.stockonsale)>0 else "No"),
+                              userdata=x) for x in l]
+        ui.listpopup.__init__(self,self.ll,title="Unbound stock lines",
+                              colour=ui.colour_info,header=[headerline])
+    def keypress(self,k):
+        if k==keyboard.K_CASH:
+            self.dismiss()
+            modify(self.ll[self.s.cursor].userdata)
+        else:
+            ui.listpopup.keypress(self,k)
 
-class translate_keyline_to_stockline(object):
-    def __init__(self,func):
-        self.func=func
-    def linekey(self,kb):
-        td.s.add(kb)
-        self.func(kb.stockline)
-
-def selectline(func,title="Stock Lines",blurb=None,caponly=False,exccap=False):
+class selectline(ui.listpopup):
     """
     A pop-up menu of stocklines, sorted by department, location and
     name.  Optionally can remove stocklines that have no capacities.
-    Stocklines with key bindings to the current keyboard can be
-    selected through that binding.
+    Stocklines with key bindings can be selected through that binding.
 
     """
-    q=td.s.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
-                                     StockLine.name)
-    if caponly: q=q.filter(StockLine.capacity!=None)
-    if exccap: q=q.filter(StockLine.capacity==None)
-    stocklines=q.all()
-    f=ui.tableformatter(' l l l ')
-    ml=[(ui.tableline(f,(x.name,x.location,x.dept_id)),func,(x,))
-        for x in stocklines]
-    km={}
-    for i in keyboard.lines:
-        km[i]=(linemenu,(i,translate_keyline_to_stockline(func).linekey),True)
-    ui.menu(ml,title=title,blurb=blurb,keymap=km)
+    def __init__(self,func,title="Stock Lines",blurb=None,caponly=False,
+                 exccap=False,keymap={},create_new=False):
+        self.func=func
+        q=td.s.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
+                                         StockLine.name)
+        if caponly: q=q.filter(StockLine.capacity!=None)
+        if exccap: q=q.filter(StockLine.capacity==None)
+        stocklines=q.all()
+        f=ui.tableformatter(' l l c ')
+        self.sl=[ui.tableline(f,(x.name,x.location,x.dept_id),userdata=x)
+                 for x in stocklines]
+        if create_new:
+            self.sl=[ui.line(" New stockline")]+self.sl
+        hl=[ui.tableline(f,("Name","Location","Dept"))]
+        if blurb:
+            hl=[ui.lrline(blurb),ui.emptyline()]+hl
+        ui.listpopup.__init__(self,self.sl,title=title,header=hl,keymap=keymap)
+    def line_selected(self,kb):
+        self.dismiss()
+        td.s.add(kb)
+        self.func(kb.stockline)
+    def keypress(self,k):
+        log.debug("selectline keypress %s",k)
+        if hasattr(k,'line'):
+            linemenu(k,self.line_selected)
+        elif k==keyboard.K_CASH and len(self.sl)>0:
+            self.dismiss()
+            line=self.sl[self.s.cursor]
+            if line.userdata: self.func(line.userdata)
+            else: create(self.func)
+        else:
+            ui.listpopup.keypress(self,k)
 
 def stocklinemenu():
     """
     Menu allowing stocklines to be created, modified and deleted.
 
     """
-    stocklines=td.s.query(StockLine).\
-        order_by(StockLine.dept_id,StockLine.location,StockLine.name).\
-        all()
-    f=ui.tableformatter(' l l l ')
-    ml=[(ui.tableline(f,(x.name,x.location,x.dept_id)),modify,(x,))
-        for x in stocklines]
-    km={}
-    for i in keyboard.lines:
-        km[i]=(linemenu,(i,translate_keyline_to_stockline(modify).linekey),True)
-    ml=[(ui.line(" New stockline"),create,None)]+ml
-    ui.menu(ml,title="Stock lines",blurb=[
-            ui.lrline("Choose a stock line to modify from the list below, "
-                      "or press a line key that is already bound to the "
-                      "stock line."),
-            ui.emptyline(),
-            ui.tableline(f,('Name','Location','Dept'))],
-            keymap=km)
+    selectline(
+        modify,blurb="Choose a stock line to modify from the list below, "
+        "or press a line key that is already bound to the "
+        "stock line.",create_new=True)
 
 def selectlocation(func,title="Stock Locations",blurb="Choose a location",
                    caponly=False):
@@ -649,7 +653,7 @@ def linemenu(keycode,func):
 
     if len(kb)==1: func(kb[0])
     elif len(kb)>1:
-        il=sorted([(keyboard.keycodes[x.menukey],x.stockline.name,func,(x,))
-                   for x in kb])
+        il=sorted([(keyboard.__dict__[x.menukey],x.stockline.name,func,(x,))
+                   for x in kb],key=lambda x:x[0].keycap)
         ui.keymenu(il,title="Choose an item",colour=ui.colour_line)
     return len(kb)

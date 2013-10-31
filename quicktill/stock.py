@@ -270,6 +270,8 @@ class annotate(ui.dismisspopup):
         self.addstr(3,2,"       Stock item:")
         stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),
                        keyboard.K_CASH: (self.stock_enter_key,None)}
+        # XXX this requires updating after the keyboard change.
+        # Suggest a new type of field for choosing a stock item.
         for i in keyboard.lines:
             stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line))
         self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int,

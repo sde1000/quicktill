@@ -16,8 +16,9 @@ def plu_keypress(key):
               "line key."%keyboard.kcnames[key])
 
 plu_keymap={}
-for i in keyboard.lines:
-    plu_keymap[i]=(plu_keypress,(i,),True)
+# XXX PLU will not work until re-written to override the keypress method
+#for i in keyboard.lines:
+#    plu_keymap[i]=(plu_keypress,(i,),True)
 
 def popup(prompt=None):
     if prompt is None: prompt="Press a line key."

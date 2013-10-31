@@ -39,7 +39,7 @@ class popup(ui.infopopup):
         td.s.add(kb)
         line_chosen(kb.stockline)
     def keypress(self,k):
-        if k in keyboard.lines:
+        if hasattr(k,'line'):
             stocklines.linemenu(k,self.line_chosen)
         else:
             ui.infopopup.keypress(self,k)

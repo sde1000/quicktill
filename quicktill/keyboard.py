@@ -1,41 +1,30 @@
-# -*- coding: utf-8 -*-
-
-from . import td,models
-
-__all__=["keycode","deptkey","linekey","numberkeys","cursorkeys","notes"]
-
 class keycode(object):
-    def __new__(cls,name,keycap,group=None):
+    def __new__(cls,name,keycap,*args,**kwargs):
         # If a keycode of this name already exists, return it instead
         existing=globals().get(name)
         if existing: return existing
         self=object.__new__(cls)
         self.name=name
         self.keycap=keycap
-        self.group=group
         self._register()
         return self
     def __init__(self,*args,**kwargs):
         pass
     def _register(self):
-        # Register this keycode in globals and in its group if necessary
-        # Don't call this from anywhere other than __new__
-        global __all__
         globals()[self.name]=self
-        __all__.append(self.name)
-        if self.group:
-            g=globals().get(self.group)
-            if not g:
-                g=[]
-                globals()[self.group]=g
-                __all__.append(self.group)
-            g.append(self)
     def __unicode__(self):
         return self.name
     def __repr__(self):
-        if self.group: return 'keycode("%s","%s",group="%s")'%(
-            self.name,self.keycap,self.group)
-        return 'keycode("%s","%s")'%(self.name,self.keycap)
+        return '%s("%s","%s")'%(self.__class__.__name__,self.name,self.keycap)
+
+class notekey(keycode):
+    def __init__(self,name,keycap,notevalue):
+        self.notevalue=notevalue
+
+class modkey(keycode):
+    def __init__(self,name,keycap,qty,depts):
+        self.qty=qty
+        self.depts=depts
 
 class deptkey(keycode):
     def __new__(cls,dept):
@@ -52,11 +41,10 @@ class deptkey(keycode):
         return "K_DEPT%d"%self._dept
     @property
     def keycap(self):
+        from . import td,models
         dept=td.s.query(models.Department).get(self._dept)
         if dept: return dept.description
         return "Department %d"%self._dept
-    @property
-    def group(self): return "depts"
     @property
     def department(self):
         return self._dept
@@ -78,35 +66,18 @@ class linekey(keycode):
         return "K_LINE%d"%self._line
     @property
     def keycap(self):
-        cap=td.s.query(models.KepCap).get((tillconfig.kblayout,self.name))
+        from . import td,models,tillconfig
+        cap=td.s.query(models.KeyCap).get((tillconfig.kbtype,self.name))
         if cap: return cap.keycap
         return "Line %d"%self._line
     @property
-    def group(self): return "lines"
+    def line(self):
+        return self._line
     def __repr__(self):
         return "linekey(%d)"%self._line
 
-# Some keycode definitions are included here for backward
-# compatibility with old configuration files.  They will eventually be
-# removed.  The only keycodes that need to be defined here are those
-# referred to explicitly in the till code.
-
-# Pages - will eventually be defined in the configuration file
-keycode("K_ALICE","Alice")
-keycode("K_BOB","Bob")
-keycode("K_CHARLIE","Charlie")
-keycode("K_DORIS","Doris")
-keycode("K_EDDIE","Eddie")
-keycode("K_FRANK","Frank")
-keycode("K_GILES","Giles")
-keycode("K_HELEN","Helen")
-keycode("K_IAN","Ian")
-keycode("K_JANE","Jane")
-keycode("K_KATE","Kate")
-keycode("K_LIZ","Liz")
-keycode("K_MALLORY","Mallory")
-keycode("K_NIGEL","Nigel")
-keycode("K_OEDIPUS","Oedipus")
+# The only keycodes that need to be defined here are those referred to
+# explicitly in the till code.
 
 # Till management keys
 keycode("K_USESTOCK","Use Stock")
@@ -126,16 +97,12 @@ keycode("K_EXTRAS","Extras")
 keycode("K_PANIC","Panic")
 keycode("K_APPS","Apps")
 keycode("K_LOCK","Lock")
-keycode("K_HALF","Half","modkeys")
-keycode("K_DOUBLE","Double","modkeys")
-keycode("K_4JUG","4pt Jug","modkeys")
 
 # Tendering keys
 keycode("K_CASH","Cash / Enter")
 keycode("K_CARD","Card")
 keycode("K_DRINKIN","Drink 'In'")
 
-# It would be ugly to use a group here!
 numberkeys=[
     keycode("K_ONE","1"),
     keycode("K_TWO","2"),
@@ -156,14 +123,3 @@ cursorkeys=[
     keycode("K_UP","Up"),
     keycode("K_DOWN","Down"),
     ]
-notes={
-    keycode("K_FIVER","£5"): 500,
-    keycode("K_TENNER","£10"): 1000,
-    keycode("K_TWENTY","£20"): 2000,
-    keycode("K_FIFTY","£50"): 5000,
-    }
-
-for d in range(1,21):
-    deptkey(d)
-for l in range(1,101):
-    linekey(l)

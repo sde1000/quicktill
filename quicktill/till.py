@@ -89,18 +89,6 @@ class runtill(command):
         log.info("Starting version %s"%version)
         try:
             td.init(tillconfig.database)
-            #td.start_session()
-            # Copy keycaps from database to keyboard driver
-            #caps=td.s.query(KeyCap).\
-            #    filter(KeyCap.layout==tillconfig.kbtype).all()
-            #for key in caps:
-            #    if ui.kb.setkeycap(keyboard.keycodes[key.keycode],
-            #                       key.keycap)==False:
-            #        log.info("Deleting stale keycap for layout %d keycode %s"%(
-            #                tillconfig.kbtype,key.keycode))
-            #        td.s.delete(key)
-            #td.s.flush()
-            #td.end_session()
             curses.wrapper(start)
         except:
             log.exception("Exception caught at top level")
@@ -340,8 +328,6 @@ def main():
         tillconfig.priceguess=config['priceguess']
     if 'deptkeycheck' in config:
         tillconfig.deptkeycheck=config['deptkeycheck']
-    if 'modkeyinfo' in config:
-        tillconfig.modkeyinfo=config['modkeyinfo']
     if 'nosale' in config:
         tillconfig.nosale=config['nosale']
     if 'checkdigit_print' in config:

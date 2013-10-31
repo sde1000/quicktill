@@ -406,6 +406,7 @@ class Transline(Base):
             stockout=self.stockref
             qty=stockout.qty/self.items
             unitname=stockout.stockitem.stocktype.unit.name
+            qty=qty.quantize(Decimal("0.1"))
             if qty==Decimal("1.0"):
                 qtys=unitname
             elif qty==Decimal("0.5"):
@@ -413,8 +414,8 @@ class Transline(Base):
             else:
                 qtys=u"%s %s"%(qty,unitname)
             if qtys==u'4.0 pint': qtys=u'4pt jug'
-            if qtys==u'2.0 25ml': qtys=u'double'
-            if qtys==u'2.0 50ml': qtys=u'double'
+            if qtys==u'2.0 25ml': qtys=u'double 25ml'
+            if qtys==u'2.0 50ml': qtys=u'double 50ml'
             return u"%s %s"%(stockout.stockitem.stocktype.format(),qtys)
         return self.department.description
     def regtotal(self,currency):

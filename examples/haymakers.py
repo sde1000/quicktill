@@ -22,6 +22,12 @@ import socket,struct
 import logging
 log=logging.getLogger('config')
 
+# Keys that we refer to in this config file
+K_ALICE=keycode('K_ALICE','Alice')
+K_BOB=keycode('K_BOB','Bob')
+K_CHARLIE=keycode('K_CHARLIE','Charlie')
+K_DORIS=keycode('K_DORIS','Doris')
+
 def haymakers_deptkeycheck(dept,price):
     """Check that the price entered when a department key is pressed is
     appropriate for that department.  Returns either None (no problem
@@ -45,8 +51,8 @@ def haymakers_deptkeycheck(dept,price):
 def haymakers_pricepolicy(item,qty):
     # Start with the standard price
     price=item.stocktype.saleprice*qty
-    if item.stocktype.dept_id==4 and qty==2.0: price=price-0.50
-    if item.stocktype.dept_id==1 and qty==4.0: price=price-1.00
+    if item.stocktype.dept_id==4 and qty==2.0: price=price-Decimal("0.50")
+    if item.stocktype.dept_id==1 and qty==4.0: price=price-Decimal("1.00")
     return price
 
 # Suggested sale price algorithm
@@ -196,12 +202,6 @@ register_hotkeys={
     ord('M'): managetill,
     }
 
-modkeyinfo={
-    'Half': (0.5, [1,2,3]), # Half pint must be ale, keg or cider
-    'Double': (2.0, [4]), # Double must be spirits
-    '4pt Jug': (4.0, [1,2,3]), # 4pt Jug must be ale, keg or cider
-}
-
 std={
     'pubname':"The Haymakers",
     'pubnumber':"01223 311077",
@@ -212,7 +212,6 @@ std={
     'pricepolicy':haymakers_pricepolicy,
     'priceguess':haymakers_priceguess,
     'deptkeycheck':haymakers_deptkeycheck,
-    'modkeyinfo':modkeyinfo,
     'database':'dbname=haymakers',
     'allow_tabs':True,
     'nosale':True,
@@ -250,6 +249,24 @@ staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
 labelprinter={
     'labelprinter': (pdflabel,["lpr -o MediaType=Labels %s"]+staples_3by6),
     }
+
+# Hey, I've had a bright idea!
+# We don't need the tillconfig.kbtype setting any more.
+
+# If we have multiple layouts of keyboards with different sets of
+# lines, just define them here with different line numbers!
+
+# We can remove the 'layout' column from the KeyboardBinding and
+# KeyCap models.
+
+# The stockline editing window will then show bindings from all
+# keyboards - the only question is then which keys are on which
+# keyboards.  Any set of keys can appear on any set of keyboards.
+
+# Oh, and let's let line keys be named with things other than integers
+# (although allow integers for backwards compatibility).  Strings
+# would do, they could be nice and descriptive although may not
+# contain characters that are invalid in Python identifiers.
 
 kb1={
     # (location, legend, keycode)
@@ -293,95 +310,95 @@ kb1={
             ("B15",K_CASH),
             ("C15",K_CARD),
             ("D15",K_LOCK),
-            ("C14",K_TWENTY),
-            ("B14",K_TENNER),
-            ("A14",K_FIVER),
+            ("C14",notekey('K_TWENTY','£20',2000)),
+            ("B14",notekey('K_TENNER','£10',1000)),
+            ("A14",notekey('K_FIVER','£5',500)),
             ("E13",K_QUANTITY),
-            ("E12",K_DOUBLE),
-            ("A02",K_4JUG),
+            ("E12",modkey('K_DOUBLE','Double',Decimal(2),[4])),
+            ("A02",modkey('K_4JUG','4pt jug',Decimal(4),[1,2,3])),
             # Departments
-            ("H12",K_DEPT8),
-            ("H13",K_DEPT11),
+            ("H12",deptkey(8)),
+            ("H13",deptkey(11)),
             ("G12",K_DRINKIN), # Not a department!
-            ("G13",K_DEPT9),
-            ("F12",K_DEPT7),
-            ("F13",K_DEPT10),
+            ("G13",deptkey(9)),
+            ("F12",deptkey(7)),
+            ("F13",deptkey(10)),
             # All line keys
-            ("H03",K_LINE1),
-            ("H04",K_LINE2),
-            ("H05",K_LINE3),
-            ("H06",K_LINE4),
-            ("H07",K_LINE5),
-            ("H08",K_LINE6),
-            ("H09",K_LINE7),
-            ("H10",K_LINE8),
-            ("H11",K_LINE9),
-            ("G03",K_LINE10),
-            ("G04",K_LINE11),
-            ("G05",K_LINE12),
-            ("G06",K_LINE13),
-            ("G07",K_LINE14),
-            ("G08",K_LINE15),
-            ("G09",K_LINE16),
-            ("G10",K_LINE17),
-            ("G11",K_LINE18),
-            ("F03",K_LINE19),
-            ("F04",K_LINE20),
-            ("F05",K_LINE21),
-            ("F06",K_LINE22),
-            ("F07",K_LINE23),
-            ("F08",K_LINE24),
-            ("F09",K_LINE25),
-            ("F10",K_LINE26),
-            ("F11",K_LINE27),
-            ("E03",K_LINE28),
-            ("E04",K_LINE29),
-            ("E05",K_LINE30),
-            ("E06",K_LINE31),
-            ("E07",K_LINE32),
-            ("E08",K_LINE33),
-            ("E09",K_LINE34),
-            ("E10",K_LINE35),
-            ("E11",K_LINE36),
-            ("D03",K_LINE37),
-            ("D04",K_LINE38),
-            ("D05",K_LINE39),
-            ("D06",K_LINE40),
-            ("D07",K_LINE41),
-            ("D08",K_LINE42),
-            ("D09",K_LINE43),
-            ("D10",K_LINE44),
-            ("D11",K_LINE45),
-            ("C03",K_LINE46),
-            ("C04",K_LINE47),
-            ("C05",K_LINE48),
-            ("C06",K_LINE49),
-            ("C07",K_LINE50),
-            ("C08",K_LINE51),
-            ("C09",K_LINE52),
-            ("C10",K_LINE53),
-            ("B03",K_LINE55),
-            ("B04",K_LINE56),
-            ("B05",K_LINE57),
-            ("B06",K_LINE58),
-            ("B07",K_LINE59),
-            ("B08",K_LINE60),
-            ("B09",K_LINE61),
-            ("B10",K_LINE62),
-            ("B11",K_LINE63),
-            ("B12",K_LINE64),
-            ("B13",K_LINE65),
-            ("A03",K_LINE67),
-            ("A04",K_LINE68),
-            ("A05",K_LINE69),
-            ("A06",K_LINE70),
-            ("A07",K_LINE71),
-            ("A08",K_LINE72),
-            ("A09",K_LINE73),
-            ("A10",K_LINE74),
-            ("A11",K_LINE75),
-            ("A12",K_LINE76),
-            ("A13",K_LINE77),
+            ("H03",linekey(1)),
+            ("H04",linekey(2)),
+            ("H05",linekey(3)),
+            ("H06",linekey(4)),
+            ("H07",linekey(5)),
+            ("H08",linekey(6)),
+            ("H09",linekey(7)),
+            ("H10",linekey(8)),
+            ("H11",linekey(9)),
+            ("G03",linekey(10)),
+            ("G04",linekey(11)),
+            ("G05",linekey(12)),
+            ("G06",linekey(13)),
+            ("G07",linekey(14)),
+            ("G08",linekey(15)),
+            ("G09",linekey(16)),
+            ("G10",linekey(17)),
+            ("G11",linekey(18)),
+            ("F03",linekey(19)),
+            ("F04",linekey(20)),
+            ("F05",linekey(21)),
+            ("F06",linekey(22)),
+            ("F07",linekey(23)),
+            ("F08",linekey(24)),
+            ("F09",linekey(25)),
+            ("F10",linekey(26)),
+            ("F11",linekey(27)),
+            ("E03",linekey(28)),
+            ("E04",linekey(29)),
+            ("E05",linekey(30)),
+            ("E06",linekey(31)),
+            ("E07",linekey(32)),
+            ("E08",linekey(33)),
+            ("E09",linekey(34)),
+            ("E10",linekey(35)),
+            ("E11",linekey(36)),
+            ("D03",linekey(37)),
+            ("D04",linekey(38)),
+            ("D05",linekey(39)),
+            ("D06",linekey(40)),
+            ("D07",linekey(41)),
+            ("D08",linekey(42)),
+            ("D09",linekey(43)),
+            ("D10",linekey(44)),
+            ("D11",linekey(45)),
+            ("C03",linekey(46)),
+            ("C04",linekey(47)),
+            ("C05",linekey(48)),
+            ("C06",linekey(49)),
+            ("C07",linekey(50)),
+            ("C08",linekey(51)),
+            ("C09",linekey(52)),
+            ("C10",linekey(53)),
+            ("B03",linekey(55)),
+            ("B04",linekey(56)),
+            ("B05",linekey(57)),
+            ("B06",linekey(58)),
+            ("B07",linekey(59)),
+            ("B08",linekey(60)),
+            ("B09",linekey(61)),
+            ("B10",linekey(62)),
+            ("B11",linekey(63)),
+            ("B12",linekey(64)),
+            ("B13",linekey(65)),
+            ("A03",linekey(67)),
+            ("A04",linekey(68)),
+            ("A05",linekey(69)),
+            ("A06",linekey(70)),
+            ("A07",linekey(71)),
+            ("A08",linekey(72)),
+            ("A09",linekey(73)),
+            ("A10",linekey(74)),
+            ("A11",linekey(75)),
+            ("A12",linekey(76)),
+            ("A13",linekey(77)),
             ],
         magstripe={
             1: ("M1H","M1T"),
@@ -450,7 +467,7 @@ config3={'description':"Test menu file 'testmenu.py' in current directory",
 #         'menuurl':'http://localhost:8080/foodmenu.py',
          'menuurl':"file:testmenu.py",
          'kitchenprinter':nullprinter(),
-         'pages':[(foodcheck.page,keyboard.K_ALICE,([],))],
+         'firstpage': lambda: foodcheck.page([]),
          }
 config3.update(std)
 config3.update(xpdfprinter)

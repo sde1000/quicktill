@@ -10,7 +10,7 @@
 # This is supplied using the initUI method.
 
 import sys,string,curses
-from . import keyboard,magcard,event,td,ui
+from . import keyboard,magcard,event,ui
 
 class curseskeyboard(object):
     # curses codes and their till keycode equivalents
@@ -38,47 +38,6 @@ class curseskeyboard(object):
         25: keyboard.K_CANCEL,
         24: keyboard.K_CLEAR,
         }
-    # The values returned by curses.keyname() aren't always suitable for
-    # display.  We have some overrides here for keys that we actually use.
-    keycaps={
-        keyboard.K_CASH: 'Cash/Enter',
-        keyboard.K_CLEAR: 'Clear',
-        keyboard.K_CANCEL: 'Cancel',
-        keyboard.K_PRINT: 'Print',
-        keyboard.K_UP: 'Up',
-        keyboard.K_DOWN: 'Down',
-        keyboard.K_LEFT: 'Left',
-        keyboard.K_RIGHT: 'Right',
-        keyboard.K_ZERO: '0',
-        keyboard.K_ONE: '1',
-        keyboard.K_TWO: '2',
-        keyboard.K_THREE: '3',
-        keyboard.K_FOUR: '4',
-        keyboard.K_FIVE: '5',
-        keyboard.K_SIX: '6',
-        keyboard.K_SEVEN: '7',
-        keyboard.K_EIGHT: '8',
-        keyboard.K_NINE: '9',
-        keyboard.K_POINT: '.',
-        curses.KEY_PPAGE: 'Page Up',
-        curses.KEY_NPAGE: 'Page Down',
-        curses.KEY_DC: 'Del',
-        curses.KEY_BACKSPACE: 'Backspace',
-        curses.KEY_F1: 'F1',
-        curses.KEY_F2: 'F2',
-        curses.KEY_F3: 'F3',
-        curses.KEY_F4: 'F4',
-        curses.KEY_F5: 'F5',
-        curses.KEY_F6: 'F6',
-        curses.KEY_F7: 'F7',
-        curses.KEY_F8: 'F8',
-        curses.KEY_F9: 'F9',
-        curses.KEY_F10: 'F10',
-        curses.KEY_F11: 'F11',
-        curses.KEY_F12: 'F12',
-        curses.KEY_IC: 'Insert',
-        9: 'Tab',
-        }
     def __init__(self):
         self.stdwin=None
         self.callback=None
@@ -91,14 +50,7 @@ class curseskeyboard(object):
         i=self.stdwin.getch()
         if i==-1: return
         if i in self.kbcodes: i=self.kbcodes[i]
-        # We ensure a database session exists for each keypress that
-        # is processed.
-        td.start_session()
         ui.handle_keyboard_input(i)
-        td.end_session()
-#    def keycap(self,k):
-#        if k in self.keycaps: return self.keycaps[k]
-#        return curses.keyname(k)
 
 class prehkeyboard(curseskeyboard):
     def __init__(self,kblayout,magstripe={}):
@@ -111,23 +63,9 @@ class prehkeyboard(curseskeyboard):
             self.inputs[loc]=code
         for track in magstripe:
             start,end=magstripe[track]
-            # Should be calls to magstripe input handler
+            # XXX Should be calls to magstripe input handler
             self.inputs[start]=None
             self.inputs[end]=None
-#    def setkeycap(self,code,cap):
-#        """Tries to update the keycap for the specified key.  Returns
-#        True if successful, or False if the key does not exist.
-#
-#        """
-#        try:
-#            self.codes[code][1]=cap
-#            return True
-#        except:
-#            return False
-#    def keycap(self,k):
-#        if isinstance(k,magcard.magstripe): return str(k)
-#        if k in self.codes: return self.codes[k][1]
-#        return curseskeyboard.keycap(self,k)
     def doread(self):
         def pass_on_buffer():
             self.handle_input(ord('['))
@@ -153,6 +91,8 @@ class prehkeyboard(curseskeyboard):
                     pass_on_buffer()
         elif i==ord('['):
             self.decode=True
+        elif i in self.kbcodes:
+            self.handle_input(self.kbcodes[i])
         else:
             self.handle_input(i)
     def handle_input(self,k):
@@ -174,13 +114,9 @@ class prehkeyboard(curseskeyboard):
 #                self.card.start_track(3)
 #            elif k==keyboard.K_M3T:
 #                self.card.end_track(3)
-#                td.start_session()
 #                ui.handle_keyboard_input(self.card)
-#                td.end_session()
 #                self.card=None
 #            else:
 #                self.card.handle_input(k)
 #            return
-        td.start_session()
         ui.handle_keyboard_input(k)
-        td.end_session()
