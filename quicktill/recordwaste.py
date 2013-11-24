@@ -1,30 +1,60 @@
+"""
+Record waste against a stock item or stock line.
+
+"""
+
 from . import ui,td,keyboard,stock,stocklines,department
 from .models import StockItem,StockType,RemoveCode,StockOut
 from decimal import Decimal
 
-class popup(ui.dismisspopup):
-    """This popup talks the user through the process of recording
-    waste against a stock item or a stock line.  If a stock item is
-    chosen then waste is recorded against the amount still in stock in
-    that particular item; if a stock line is chosen then waste is
-    recorded against the stock on display for that line.  A series of
-    prompts are issued; the Clear key will kill the whole window and
-    will not allow backtracking.
+# There are two types of thing against which waste can be recorded:
+# 
+# 1. A stock item
+# 
+# 2. A stock line - this can be either a "regular" stockline or a
+# "display" stockline.  If it's regular, we record waste against the
+# stock item on it (if there is one), as in (1).  If it's display, we
+# record waste against the stock on display.
+
+def popup():
+    stocklines.selectline(
+        stockline_chosen,blurb="Choose a stock line to record waste against "
+        "from the list below, or press a line key.",
+        select_none="Choose a stock item instead")
+
+def stockline_chosen(stockline):
+    if stockline is None:
+        record_item_waste()
+    else:
+        td.s.add(stockline)
+        if stockline.capacity:
+            record_line_waste(stockline)
+        else:
+            if len(stockline.stockonsale)>0:
+                record_item_waste(stockline.stockonsale[0])
+            else:
+                ui.infopopup(["There is nothing on sale on %s."%stockline.name],
+                             title="Error")
+
+class record_item_waste(ui.dismisspopup):
+    """
+    This popup talks the user through the process of recording waste
+    against a stock item.  If the stock item is on sale on a "display"
+    type stockline, waste is recorded against the amount still in
+    stock in that particular item; otherwise it is recorded against
+    the item as a whole.  A series of prompts are issued; the Clear
+    key will kill the whole window and will not allow backtracking.
 
     """
-    def __init__(self):
+    def __init__(self,stockitem=None):
         ui.dismisspopup.__init__(self,10,70,title="Record Waste",
                                  colour=ui.colour_input)
         self.addstr(2,2,"Press stock line key or enter stock number.")
         self.addstr(3,2,"       Stock item:")
         stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),
                        keyboard.K_CASH: (self.stock_enter_key,None)}
-        # XXX this requires updating after the keyboard change
-        # Suggest a new type of field for choosing stock items and stock lines
-        for i in keyboard.lines:
-            stockfield_km[i]=(stocklines.linemenu,(i,self.stock_line),False)
-        self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int,
-                                     keymap=stockfield_km)
+        self.stockfield=ui.editfield(3,21,30,validate=ui.validate_int)
+        if stockitem: self.stockfield.set(stockitem.id)
         self.stockfield.focus()
     def stock_line(self,kb):
         td.s.add(kb)
@@ -166,3 +196,15 @@ class popup(ui.dismisspopup):
                 self.sd.stocktype.format())],
                          title="Waste Recorded",dismiss=keyboard.K_CASH,
                          colour=ui.colour_info)
+
+class record_line_waste(ui.dismisspopup):
+    """
+    This popup talks the user through the process of recording waste
+    against a "display" stock line.  Waste is recorded against the
+    amount on display on the line.  A series of prompts are issued;
+    the Clear key will kill the whole window and will not allow
+    backtracking.
+
+    """
+    def __init__(self,stockline):
+        pass

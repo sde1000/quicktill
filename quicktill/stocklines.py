@@ -559,9 +559,17 @@ class selectline(ui.listpopup):
     name.  Optionally can remove stocklines that have no capacities.
     Stocklines with key bindings can be selected through that binding.
 
+    Optional arguments:
+      blurb - text for the top of the window
+      caponly - only list "display" stocklines
+      exccap - don't list "display" stocklines
+      create_new - allow a new stockline to be created
+      select_none - a string for a menu item which will result in a call
+        to func(None)
+
     """
     def __init__(self,func,title="Stock Lines",blurb=None,caponly=False,
-                 exccap=False,keymap={},create_new=False):
+                 exccap=False,keymap={},create_new=False,select_none=None):
         self.func=func
         q=td.s.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
                                          StockLine.name)
@@ -571,8 +579,11 @@ class selectline(ui.listpopup):
         f=ui.tableformatter(' l l c ')
         self.sl=[ui.tableline(f,(x.name,x.location,x.dept_id),userdata=x)
                  for x in stocklines]
+        self.create_new=create_new
         if create_new:
             self.sl=[ui.line(" New stockline")]+self.sl
+        elif select_none:
+            self.sl=[ui.line(" %s"%select_none)]+self.sl
         hl=[ui.tableline(f,("Name","Location","Dept"))]
         if blurb:
             hl=[ui.lrline(blurb),ui.emptyline()]+hl
@@ -589,7 +600,9 @@ class selectline(ui.listpopup):
             self.dismiss()
             line=self.sl[self.s.cursor]
             if line.userdata: self.func(line.userdata)
-            else: create(self.func)
+            else:
+                if self.create_new: create(self.func)
+                else: self.func(None)
         else:
             ui.listpopup.keypress(self,k)
 
