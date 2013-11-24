@@ -9,4 +9,4 @@ __all__=['delivery','department','event','extras','foodcheck',
          'foodorder','kbdrivers','keyboard','magcard','managekeyboard',
          'managestock','managetill','models','pdrivers','plu','printer',
          'recordwaste','register','stocklines','stock','stockterminal',
-         'td','tillconfig','till','ui','usestock','version']
+         'stocktype','td','tillconfig','till','ui','usestock','version']

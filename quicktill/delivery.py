@@ -1,5 +1,5 @@
 import curses.ascii
-from . import ui,stock,td,keyboard,printer,tillconfig,stocklines
+from . import ui,stock,td,keyboard,printer,tillconfig,stocklines,stocktype
 from decimal import Decimal
 from .models import Delivery,Supplier,StockUnit,StockItem,desc
 from .models import penny
@@ -318,7 +318,7 @@ class stockitem(ui.basicpopup):
                                        validate=ui.validate_positive_int)
             self.qtyfield.sethook=self.update_suggested_price
         self.typefield=ui.popupfield(
-            3,24,52,stock.stocktype,lambda si:si.format(),
+            3,24,52,stocktype.choose_stocktype,lambda si:si.format(),
             keymap={keyboard.K_CLEAR: (self.dismiss,None)})
         self.typefield.sethook=self.typefield_changed
         self.unitfield=ui.listfield(4,24,30,[],lambda x:x.name)

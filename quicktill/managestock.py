@@ -2,7 +2,7 @@
 
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
-from . import stock,delivery,department,stocklines
+from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType
 from .models import StockItem
 import datetime
@@ -197,7 +197,7 @@ def maintenance():
          stocklines.stockline_associations,None),
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
         (keyboard.K_SIX,"Re-price stock",
-         stock.stocktype,(stock.reprice_stocktype,None,1,False)),
+         stocktype.choose_stocktype,(stocktype.reprice_stocktype,None,1,False)),
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
          td.stock_purge,None),
         ]
