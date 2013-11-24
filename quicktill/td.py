@@ -50,7 +50,12 @@ class orm_session(object):
         """
         global s
         if s is None: raise SessionLifecycleError()
-        s.commit()
+        if value is None:
+            s.commit()
+        else:
+            # An exception happened - roll back the database session
+            log.debug("Session rollback")
+            s.rollback()
         s.close()
         s=None
         log.debug("End session")
