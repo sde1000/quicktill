@@ -29,28 +29,31 @@ s=None
 sm=None
 class SessionLifecycleError(Exception):
     pass
-def start_session():
-    """
-    Change td.s from None to an active session object, or raise an
-    exception if td.s is not None.
-
-    """
-    global s,sm
-    if s is not None: raise SessionLifecycleError()
-    s=sm()
-    log.debug("Start session")
-def end_session():
-    """
-    Change td.s from an active session object to None, or raise an
-    exception if td.s is already None.  Calls s.close().
-
-    """
-    global s
-    if s is None: raise SessionLifecycleError()
-    s.commit()
-    s.close()
-    s=None
-    log.debug("End session")
+class orm_session(object):
+    @staticmethod
+    def __enter__():
+        """
+        Change td.s from None to an active session object, or raise an
+        exception if td.s is not None.
+        
+        """
+        global s,sm
+        if s is not None: raise SessionLifecycleError()
+        s=sm()
+        log.debug("Start session")
+    @staticmethod
+    def __exit__(type,value,traceback):
+        """
+        Change td.s from an active session object to None, or raise an
+        exception if td.s is already None.  Calls s.close().
+        
+        """
+        global s
+        if s is None: raise SessionLifecycleError()
+        s.commit()
+        s.close()
+        s=None
+        log.debug("End session")
 
 ### Convenience functions
 

@@ -41,14 +41,13 @@ def start(stdwin):
     tillconfig.kb.curses_init(stdwin)
 
     # Some of the init functions may make use of the database.
-    td.start_session()
-    ui.init(stdwin)
+    with td.orm_session():
+        ui.init(stdwin)
 
-    if tillconfig.firstpage:
-        tillconfig.firstpage()
-    else:
-        intropage()
-    td.end_session()
+        if tillconfig.firstpage:
+            tillconfig.firstpage()
+        else:
+            intropage()
 
     # Enter main event loop
     event.eventloop()

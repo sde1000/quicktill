@@ -94,12 +94,10 @@ def handle_keyboard_input(k):
 
     """
     log.debug("Keypress %s",k)
-    td.start_session()
     if k in tillconfig.hotkeys:
         tillconfig.hotkeys[k]()
     else:
         basicwin._focus.keypress(k)
-    td.end_session()
 
 class basicwin(object):
     """Container for all pages, popup windows and fields.

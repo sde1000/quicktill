@@ -10,7 +10,7 @@
 # This is supplied using the initUI method.
 
 import sys,string,curses
-from . import keyboard,magcard,event,ui
+from . import keyboard,magcard,event,ui,td
 
 class curseskeyboard(object):
     # curses codes and their till keycode equivalents
@@ -50,7 +50,8 @@ class curseskeyboard(object):
         i=self.stdwin.getch()
         if i==-1: return
         if i in self.kbcodes: i=self.kbcodes[i]
-        ui.handle_keyboard_input(i)
+        with td.orm_session():
+            ui.handle_keyboard_input(i)
 
 class prehkeyboard(curseskeyboard):
     def __init__(self,kblayout,magstripe={}):
@@ -119,4 +120,5 @@ class prehkeyboard(curseskeyboard):
 #            else:
 #                self.card.handle_input(k)
 #            return
-        ui.handle_keyboard_input(k)
+        with td.orm_session():
+            ui.handle_keyboard_input(k)
