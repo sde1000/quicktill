@@ -10,10 +10,6 @@ from .models import Department,UnitType,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,penny,func,lazyload
 log=logging.getLogger(__name__)
 
-def abvstr(abv):
-    if abv is None: return ""
-    return " (%0.1f%% ABV)"%abv
-
 class stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
 
