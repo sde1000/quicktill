@@ -166,7 +166,7 @@ class flushdb(command):
         td.end_session()
         if sessions>2 and not args.really:
             print("You have more than two sessions in the database!  Try again "
-                  "as 'flushdb -- really' if you definitely want to remove all "
+                  "as 'flushdb --really' if you definitely want to remove all "
                   "the data and tables from the database.")
             return 1
         if sessions>0:
