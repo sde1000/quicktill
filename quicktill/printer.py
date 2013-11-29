@@ -12,8 +12,7 @@ labeldriver=None
 
 # All of these functions assume there's a database session in td.s
 # This should be the case if called during a keypress!  If being used
-# in any other context, create one using td.start_session() and then
-# remove it afterwards with td.end_session()
+# in any other context, use with td.orm_session(): around the call.
 
 def print_receipt(transid):
     trans=td.s.query(Transaction).get(transid)

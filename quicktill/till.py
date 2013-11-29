@@ -113,12 +113,11 @@ class dbshell(command):
         import code
         import readline
         td.init(tillconfig.database)
-        td.start_session()
         console=code.InteractiveConsole()
         console.push("import quicktill.td as td")
         console.push("from quicktill.models import *")
-        console.interact()
-        td.end_session()
+        with td.orm_session():
+            console.interact()
 
 class syncdb(command):
     """
@@ -161,9 +160,8 @@ class flushdb(command):
     @staticmethod
     def run(args):
         td.init(tillconfig.database)
-        td.start_session()
-        sessions=td.s.query(Session).count()
-        td.end_session()
+        with td.orm_session():
+            sessions=td.s.query(Session).count()
         if sessions>2 and not args.really:
             print("You have more than two sessions in the database!  Try again "
                   "as 'flushdb --really' if you definitely want to remove all "
@@ -200,9 +198,8 @@ class dbsetup(command):
             print(template)
         else:
             td.init(tillconfig.database)
-            td.start_session()
-            setup(args.dbfile)
-            td.end_session()
+            with td.orm_session():
+                setup(args.dbfile)
 
 def main():
     """Usual main entry point for the till software, unless you are doing

@@ -68,9 +68,10 @@ class page(ui.basicpage):
         if self.display>1: self.display=0
         # There won't be a database session set up when we're called
         # by the timer expiring.
-        if need_new_session: td.start_session()
-        self.redraw()
-        if need_new_session: td.end_session()
+        if need_new_session:
+            with td.orm_session():
+                self.redraw()
+        else: self.redraw()
     def keypress(self,k):
         if k in self.hotkeys: return self.hotkeys[k]()
         elif k==keyboard.K_CASH:
