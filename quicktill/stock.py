@@ -183,7 +183,7 @@ class stockfilter(object):
         if item.stocklineid is not None and not self.allow_on_sale:
             return u"already on sale on %s"%item.stockline.name
         if item.finished is not None and not self.allow_finished:
-            return u"finished at %s"%item.finished
+            return u"finished at %s"%ui.formattime(item.finished)
 
 class stockpicker(ui.dismisspopup):
     """
@@ -274,6 +274,7 @@ class stockpicker(ui.dismisspopup):
     def item_chosen(self,stockid):
         # An item has been chosen from the popup menu
         self.numfield.set(str(stockid))
+        if self.check: self.checkfield.set("")
         self.numfield_enter()
     def checkfield_enter(self):
         stockid=int(self.numfield.f)
