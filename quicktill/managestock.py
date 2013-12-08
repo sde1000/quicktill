@@ -15,39 +15,33 @@ def deliverymenu():
     log.info("Delivery menu")
     delivery.deliverymenu()
 
-def finish_reason(sn,reason):
-    stockitem=td.s.query(StockItem).get(sn)
+def finish_reason(item,reason):
+    stockitem=td.s.merge(item)
     stockitem.finished=datetime.datetime.now()
     stockitem.finishcode_id=reason
     stockitem.displayqty=None
     stockitem.stocklineid=None
     td.s.flush()
-    log.info("Stock: finished item %d reason %s"%(sn,reason))
-    ui.infopopup(["Stock item %d is now finished."%sn],dismiss=keyboard.K_CASH,
-                  title="Stock Finished",colour=ui.colour_info)
+    log.info("Stock: finished item %d reason %s"%(stockitem.id,reason))
+    ui.infopopup(["Stock item %d is now finished."%stockitem.id],
+                 dismiss=keyboard.K_CASH,
+                 title="Stock Finished",colour=ui.colour_info)
 
-def finish_item(sn):
+def finish_item(item):
     sfl=td.s.query(FinishCode).all()
-    fl=[(x.description,finish_reason,(sn,x.id)) for x in sfl]
+    fl=[(x.description,finish_reason,(item,x.id)) for x in sfl]
     ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
-            sn,title="Finish Stock",w=60)
+            item.id,title="Finish Stock",w=60)
 
 def finishstock(dept=None):
-    log.info("Finish stock")
-    sq=td.s.query(StockItem).join(StockItem.stocktype).\
-        filter(StockItem.finished==None).\
-        filter(StockItem.stockline==None).\
-        order_by(StockItem.id)
-    if dept: sq=sq.filter(StockType.dept_id==dept)
-    si=sq.all()
-    f=ui.tableformatter(' r l c ')
-    sl=[(ui.tableline(f,(s.id,s.stocktype.format(),"%s %ss"%(
-                        s.remaining,s.stockunit.unit.name))),
-         finish_item,(s.id,))
-        for s in si]
-    header=ui.tableline(f,["StockID","Description","Remaining"])
-    ui.menu(sl,title="Finish stock not currently on sale",
-            blurb=["Choose a stock item to finish.",header])
+    """
+    Finish stock not currently on sale."
+
+    """
+    log.info("Finish stock not currently on sale")
+    stock.stockpicker(finish_item,title="Finish stock not currently on sale",
+                      filter=stock.stockfilter(allow_on_sale=False),
+                      check_checkdigits=False)
 
 def print_stocklist_menu(sinfo,title):
     td.s.add_all(sinfo)
@@ -209,7 +203,7 @@ def popup():
     menu=[
         (keyboard.K_ONE,"Deliveries",deliverymenu,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
-         department.menu,(finishstock,"Finish Stock",False)),
+         finishstock,None),
         (keyboard.K_FIVE,"Stock check (unfinished stock)",
          department.menu,(stockcheck,"Stock Check",True)),
         (keyboard.K_SIX,"Stock history (finished stock)",
