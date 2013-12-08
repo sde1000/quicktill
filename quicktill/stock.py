@@ -281,6 +281,26 @@ class stockpicker(ui.dismisspopup):
         if self.checkfield.f==item.checkdigits:
             self.dismiss()
             self.func(item)
+    def linekey(self,kb):
+        td.s.add(kb)
+        line=kb.stockline
+        if len(line.stockonsale)==0: return
+        if len(line.stockonsale)==1:
+            item=line.stockonsale[0]
+            problem=self.filter.item_problem(item)
+            if problem:
+                ui.infopopup(["You can't choose %s: %s"%(
+                            item.stocktype.format(),problem)],title="Error")
+                return
+            self.item_chosen(item.id)
+        else:
+            ui.infopopup(["There's more than one stock item on sale on %s"%
+                          line.name],title="Error")
+    def keypress(self,k):
+        if hasattr(k,'line'):
+            stocklines.linemenu(k,self.linekey)
+        else:
+            ui.dismisspopup.keypress(self,k)
 
 class stockfield(ui.popupfield):
     """
@@ -310,10 +330,27 @@ class stockfield(ui.popupfield):
             stockpicker(self.setf,filter=self.filter,
                         check_checkdigits=self.check_checkdigits,
                         title=self.title)
+    def linekey(self,kb):
+        td.s.add(kb)
+        line=kb.stockline
+        if len(line.stockonsale)==0: return
+        if len(line.stockonsale)==1:
+            item=line.stockonsale[0]
+            problem=self.filter.item_problem(item)
+            if problem:
+                ui.infopopup(["You can't choose %s: %s"%(
+                            item.stocktype.format(),problem)],title="Error")
+                return
+            self.setf(item)
+        else:
+            ui.infopopup(["There's more than one stock item on sale on %s"%
+                          line.name],title="Error")
     def keypress(self,k):
         if k in keyboard.numberkeys and not self.readonly:
             # Pass on the keypress to the stocknumber entry popup
             self.popup()
             ui.handle_keyboard_input(k)
+        if hasattr(k,'line'):
+            stocklines.linemenu(k,self.linekey)
         else:
             ui.popupfield.keypress(self,k)
