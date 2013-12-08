@@ -216,7 +216,7 @@ std={
     'allow_tabs':True,
     'nosale':True,
     'checkdigit_print':True,
-    'checkdigit_on_usestock':False,
+    'checkdigit_on_usestock':True,
     'usestock_hook':usestock_hook,
     'btcmerch':btcmerch.Api(
         "haymakers","not-a-password","haymakers",
@@ -250,21 +250,8 @@ labelprinter={
     'labelprinter': (pdflabel,["lpr -o MediaType=Labels %s"]+staples_3by6),
     }
 
-# Hey, I've had a bright idea!
-# We don't need the tillconfig.kbtype setting any more.
-
-# If we have multiple layouts of keyboards with different sets of
-# lines, just define them here with different line numbers!
-
-# We can remove the 'layout' column from the KeyboardBinding and
-# KeyCap models.
-
-# The stockline editing window will then show bindings from all
-# keyboards - the only question is then which keys are on which
-# keyboards.  Any set of keys can appear on any set of keyboards.
-
-# Oh, and let's let line keys be named with things other than integers
-# (although allow integers for backwards compatibility).  Strings
+# Should we let line keys be named with things other than integers
+# (although allow integers for backwards compatibility)?  Strings
 # would do, they could be nice and descriptive although may not
 # contain characters that are invalid in Python identifiers.
 
@@ -405,7 +392,6 @@ kb1={
             2: ("M2H","M2T"),
             3: ("M3H","M3T"),
             }),
-    'kbtype':1,
     'firstpage': lambda: register.select_page("Alice", register_hotkeys).\
         list_open_transactions(),
     }
@@ -433,7 +419,6 @@ global_hotkeys={
 
 stockcontrol={
     'kbdriver':kbdrivers.curseskeyboard(),
-    'kbtype':0,
     'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"]),
 }    
 
@@ -463,7 +448,6 @@ config1['hotkeys']=global_hotkeys
 
 config3={'description':"Test menu file 'testmenu.py' in current directory",
          'kbdriver':kbdrivers.curseskeyboard(),
-         'kbtype':0,
 #         'menuurl':'http://localhost:8080/foodmenu.py',
          'menuurl':"file:testmenu.py",
          'kitchenprinter':nullprinter(),
@@ -475,7 +459,6 @@ config3.update(xpdfprinter)
 # Things to define:
 #  description - summary of the configuration
 #  kbdriver - keyboard driver
-#  kbtype - keyboard type
 #  printer - (driver,args)
 #  labelprinter - (driver,args)
 #  pages - available pages

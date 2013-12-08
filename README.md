@@ -105,7 +105,6 @@ Startup procedure
 Assuming the command was "start":
 
  - quicktill.till.runtill() initialises the database engine
- - runtill() copies keyboard caps from the database to the keyboard driver
  - runtill() invokes quicktill.till.start() via the curses wrapper that catches exceptions
    and returns the display to a sane state on exit
  - start() invokes ui.init() with the root window, which sets up colours and the clock/header
