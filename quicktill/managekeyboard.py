@@ -25,8 +25,7 @@ class popup(ui.dismisspopup):
     def setcap(self):
         if self.keycode is None: return
         if self.kcfield.f=="": return
-        newcap=KeyCap(layout=tillconfig.kbtype,
-                      keycode=self.keycode.name,
+        newcap=KeyCap(keycode=self.keycode.name,
                       keycap=self.kcfield.f)
         td.s.merge(newcap)
         td.s.flush()

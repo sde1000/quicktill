@@ -66,8 +66,8 @@ class linekey(keycode):
         return "K_LINE%d"%self._line
     @property
     def keycap(self):
-        from . import td,models,tillconfig
-        cap=td.s.query(models.KeyCap).get((tillconfig.kbtype,self.name))
+        from . import td,models
+        cap=td.s.query(models.KeyCap).get(self.name)
         if cap: return cap.keycap
         return "Line %d"%self._line
     @property

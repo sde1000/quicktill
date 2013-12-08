@@ -965,7 +965,6 @@ def location_summary(session,location):
 
 class KeyboardBinding(Base):
     __tablename__='keyboard'
-    layout=Column(Integer,nullable=False,primary_key=True)
     keycode=Column(String(20),nullable=False,primary_key=True)
     menukey=Column(String(20),nullable=False,primary_key=True)
     stocklineid=Column(Integer,ForeignKey(
@@ -973,16 +972,15 @@ class KeyboardBinding(Base):
     qty=Column(Numeric(5,1),nullable=False)
     stockline=relationship(StockLine,backref=backref('keyboard_bindings',cascade='all'))
     def __repr__(self):
-        return "<KeyboardBinding(%s,'%s','%s',%s)>"%(
-            self.layout,self.keycode,self.menukey,self.stocklineid)
+        return "<KeyboardBinding('%s','%s',%s)>"%(
+            self.keycode,self.menukey,self.stocklineid)
 
 class KeyCap(Base):
     __tablename__='keycaps'
-    layout=Column(Integer,nullable=False,primary_key=True)
     keycode=Column(String(20),nullable=False,primary_key=True)
     keycap=Column(String(30))
     def __repr__(self):
-        return "<KeyCap(%s,'%s','%s')>"%(self.layout,self.keycode,self.keycap)
+        return "<KeyCap('%s','%s')>"%(self.keycode,self.keycap)
 
 # This is the association table for stocklines to stocktypes.
 class StockLineTypeLog(Base):

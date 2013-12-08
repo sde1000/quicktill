@@ -323,8 +323,7 @@ class modify(ui.dismisspopup):
         kbl=[ui.tableline(f,(keyboard.__dict__[x.keycode].keycap,
                              keyboard.__dict__[x.menukey].keycap,
                              x.qty),userdata=x)
-             for x in self.stockline.keyboard_bindings
-             if x.layout==tillconfig.kbtype]
+             for x in self.stockline.keyboard_bindings]
         self.addstr(15,1,ui.tableline(
                 f,("Line key","Menu key","Quantity")).display(61)[0])
         self.kbs=ui.scrollable(16,1,56,4,kbl,keymap={
@@ -425,7 +424,6 @@ class addbinding(ui.listpopup):
         self.stocklineid=stockline.id
         self.keycode=keycode
         existing=td.s.query(KeyboardBinding).\
-            filter(KeyboardBinding.layout==tillconfig.kbtype).\
             filter(KeyboardBinding.keycode==self.keycode.name).\
             all()
         self.exdict={}
@@ -476,7 +474,7 @@ class addbinding(ui.listpopup):
             return ui.listpopup.keypress(self,k)
         name=keyboard.kcnames[k]
         if name in self.exdict: return
-        binding=KeyboardBinding(layout=tillconfig.kbtype,keycode=self.keycode,
+        binding=KeyboardBinding(keycode=self.keycode,
                                 menukey=name,stocklineid=self.stocklineid,
                                 qty=1)
         td.s.add(binding)
@@ -661,7 +659,6 @@ def linemenu(keycode,func):
     # Find the keyboard bindings associated with this keycode
     kb=td.s.query(KeyboardBinding).\
         filter(KeyboardBinding.keycode==keycode.name).\
-        filter(KeyboardBinding.layout==tillconfig.kbtype).\
         all()
 
     if len(kb)==1: func(kb[0])

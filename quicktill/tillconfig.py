@@ -17,7 +17,6 @@ pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")
 # Test multi-character currency name... monopoly money!
 currency="MPL"
 
-kbtype=1
 hotkeys={}
 
 cashback_limit=50.0

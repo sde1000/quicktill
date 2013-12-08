@@ -155,3 +155,16 @@ ALTER TABLE keyboard
 /* The quantity in keyboard bindings should have a single decimal place */
 ALTER TABLE keyboard
   ALTER COLUMN qty SET DATA TYPE NUMERIC(5,1);
+
+
+/* We are getting rid of the idea of different keyboard layouts in the
+   database.  Installations with multiple keyboards will use different
+   line numbers.  Make sure the primary keyboard is set to layout
+   number 1! */
+
+DELETE FROM keyboard WHERE layout!=1;
+ALTER TABLE keyboard DROP COLUMN layout; /* Drops primary key */
+ALTER TABLE keyboard ADD PRIMARY KEY (keycode,menukey);
+DELETE FROM keycaps WHERE layout!=1;
+ALTER TABLE keycaps DROP COLUMN layout; /* Drops primary key */
+ALTER TABLE keycaps ADD PRIMARY KEY (keycode);
