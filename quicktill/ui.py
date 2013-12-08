@@ -96,6 +96,16 @@ def handle_keyboard_input(k):
     log.debug("Keypress %s",k)
     basicwin._focus.hotkeypress(k)
 
+def current_user():
+    """
+    Look up the focus stack and return the first user information
+    found, or None if there is none.
+
+    """
+    stack=basicwin._focus.parents()
+    for i in stack:
+        if hasattr(i,'user'): return i.user
+
 class basicwin(object):
     """Container for all pages, popup windows and fields.
 
