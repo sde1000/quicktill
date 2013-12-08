@@ -94,10 +94,7 @@ def handle_keyboard_input(k):
 
     """
     log.debug("Keypress %s",k)
-    if k in tillconfig.hotkeys:
-        tillconfig.hotkeys[k]()
-    else:
-        basicwin._focus.keypress(k)
+    basicwin._focus.hotkeypress(k)
 
 class basicwin(object):
     """Container for all pages, popup windows and fields.
@@ -147,6 +144,14 @@ class basicwin(object):
         return [self]+self.parent.parents()
     def keypress(self,k):
         pass
+    def hotkeypress(self,k):
+        """
+        We get to look at keypress events before anything else does.
+        If we don't do anything with this keypress we are required to
+        pass it on to our parent.
+
+        """
+        self.parent.hotkeypress(k)
 
 class basicpage(basicwin):
     _pagelist=[]
@@ -231,7 +236,19 @@ class basicpage(basicwin):
                 ps=i.pagesummary()
                 if ps: s=s+i.pagesummary()+' '
         header.update(m,s)
+    def hotkeypress(self,k):
+        """
+        Since this is a page, it is always at the base of the stack of
+        windows - it does not have a parent to pass keypresses on to.
+        By default we look at the configured hotkeys and call if
+        found; otherwise we pass the keypress on to the current input
+        focus for regular keypress processing.
 
+        """
+        if k in tillconfig.hotkeys:
+            tillconfig.hotkeys[k]()
+        else:
+            basicwin._focus.keypress(k)
 
 class basicpopup(basicwin):
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
