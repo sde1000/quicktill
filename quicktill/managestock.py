@@ -4,7 +4,7 @@ import curses,curses.ascii,time
 from . import ui,td,keyboard,printer
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType
-from .models import StockItem
+from .models import StockItem,Delivery
 import datetime
 
 import logging
@@ -75,7 +75,9 @@ def stockcheck(dept=None):
     # Build a list of all not-finished stock items.
     log.info("Stock check")
     sq=td.s.query(StockItem).join(StockItem.stocktype).\
+        join(Delivery).\
         filter(StockItem.finished==None).\
+        filter(Delivery.checked==True).\
         order_by(StockItem.id)
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
