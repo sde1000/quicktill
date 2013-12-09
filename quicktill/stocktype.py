@@ -6,7 +6,7 @@ Create and modify stocktypes.
 import logging
 log=logging.getLogger(__name__)
 from . import ui,td,keyboard,stocklines,tillconfig
-from .models import Department,UnitType,StockType,StockItem,penny
+from .models import Department,UnitType,StockType,StockItem,Delivery,penny
 from decimal import Decimal
 import datetime
 
@@ -233,6 +233,7 @@ class reprice_stocktype(ui.dismisspopup):
         td.s.add(st)
         name=st.format()
         sl=td.s.query(StockItem).filter(StockItem.stocktype==st).\
+            join(Delivery).filter(Delivery.checked==True).\
             filter(StockItem.finished==None).order_by(StockItem.id).all()
 
         # The height includes 2 lines for top and bottom borders, 3
