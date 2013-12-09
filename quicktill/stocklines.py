@@ -274,7 +274,7 @@ class modify(ui.dismisspopup):
     pull-through amount or display capacity to be edited.
 
     Buttons:
-      Save    Delete
+      Save    Delete    Use Stock
 
     List of current keyboard bindings; when one of these is
     highlighted, you can press Enter to edit the quantity or Cancel to
@@ -313,8 +313,14 @@ class modify(ui.dismisspopup):
                 keyboard.K_CASH: (self.save,None)})
         self.deletebutton=ui.buttonfield(7,14,10,"Delete",keymap={
                 keyboard.K_CASH: (self.delete,None)})
+        # Stock control terminals won't have a dedicated "Use Stock"
+        # button.  This button fakes that keypress.
+        self.usestockbutton=ui.buttonfield(7,28,13,"Use Stock",keymap={
+                keyboard.K_CASH: (
+                    lambda:ui.handle_keyboard_input(keyboard.K_USESTOCK),None)})
         fl.append(self.savebutton)
         fl.append(self.deletebutton)
+        fl.append(self.usestockbutton)
         self.addstr(9,2,'Press "Use Stock" to add or remove stock.')
         self.addstr(11,2,"To add a keyboard binding, press a line key now.")
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
