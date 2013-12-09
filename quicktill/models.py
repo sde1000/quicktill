@@ -941,7 +941,9 @@ StockType.instock=column_property(
                            ).as_scalar()
                     ),text("0.0"))],
            and_(StockItem.stocktype_id==StockType.id,
-                StockItem.finished==None)).\
+                StockItem.finished==None,
+                Delivery.id==StockItem.deliveryid,
+                Delivery.checked==True)).\
         correlate(StockType.__table__).\
         label('instock'),
     deferred=True,
