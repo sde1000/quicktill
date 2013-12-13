@@ -19,6 +19,8 @@ currency="MPL"
 
 hotkeys={}
 
+payment_methods=[]
+
 cashback_limit=50.0
 
 def pricepolicy(si,qty):
@@ -73,8 +75,6 @@ def usestock_hook(stock,line):
     pass
 
 transaction_to_free_drinks_function=False
-
-btcmerch_api=None
 
 database=None
 

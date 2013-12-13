@@ -3,7 +3,7 @@
 """
 
 import sys,math,curses,os
-from . import ui,keyboard,td,printer,btcmerch
+from . import ui,keyboard,td,printer
 from . import register,tillconfig,managekeyboard,stocklines,event
 from .version import version
 import datetime
@@ -149,6 +149,8 @@ class recordsession(ui.dismisspopup):
                 field=ui.editfield(y,29,10,validate=ui.validate_float,
                                    f="%0.2f"%pt,readonly=True)
             elif i.paytype=='BTC':
+                # XXX this will be moved to the BitcoinPayment class
+                # as part of the payments reorganisation
                 btcval=Decimal("0.00")
                 if pt>Decimal("0.00"):
                     try:
@@ -331,22 +333,6 @@ class receiptprint(ui.dismisspopup):
         printer.print_receipt(rn)
         self.dismiss()
 
-def bitcoincheck():
-    log.info("Bitcoin service check")
-    if tillconfig.btcmerch_api is None:
-        return ui.infopopup(
-            ["Bitcoin service is not configured for this till."],
-            title="Bitcoin info",dismiss=keyboard.K_CASH)
-    try:
-        rv=tillconfig.btcmerch_api.test_connection()
-    except btcmerch.BTCMerchError as e:
-        return ui.infopopup([str(e)],title="Bitcoin error")
-    return ui.infopopup(
-        ["Bitcoin service ok; it reports it owes us %s for the current "
-         "session."%rv[u'total']],
-        title="Bitcoin info",dismiss=keyboard.K_CASH,
-        colour=ui.colour_info)
-
 def versioninfo():
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
@@ -391,7 +377,6 @@ def popup():
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
-        (keyboard.K_SEVEN,"Check Bitcoin service connection",bitcoincheck,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]

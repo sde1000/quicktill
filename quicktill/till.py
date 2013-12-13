@@ -313,6 +313,7 @@ def main():
     tillconfig.pubaddr=config['pubaddr']
     tillconfig.currency=config['currency']
     tillconfig.cashback_limit=config['cashback_limit']
+    tillconfig.payment_methods=config['payment_methods']
     if 'cashback_first' in config:
         tillconfig.cashback_first=config['cashback_first']
     if 'pricepolicy' in config:
@@ -335,8 +336,6 @@ def main():
         tillconfig.transaction_notes=config['transaction_notes']
     if 'usestock_hook' in config:
         tillconfig.usestock_hook=config['usestock_hook']
-    if 'btcmerch' in config:
-        tillconfig.btcmerch_api=config['btcmerch']
     if 'hotkeys' in config:
         tillconfig.hotkeys=config['hotkeys']
     if 'firstpage' in config:

@@ -14,6 +14,8 @@ from quicktill.recordwaste import popup as recordwaste
 from quicktill.lockscreen import popup as lockscreen
 from quicktill.stock import annotate
 from quicktill import timesheets,btcmerch
+from quicktill.cash import CashPayment
+from quicktill.card import CardPayment
 from decimal import Decimal,ROUND_UP
 import math
 import os
@@ -103,6 +105,17 @@ def markup(stocktype,stockunit,cost,markup):
     return stocktype.department.vat.current.exc_to_inc(
         cost*markup/stockunit.size).\
         quantize(Decimal("0.1"),rounding=ROUND_UP)
+
+# Payment methods.  Here we create instances of payment methods that
+# we accept.
+cash=CashPayment('CASH','Cash',drawers=2)
+card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
+                 max_cashback=Decimal("50.00"))
+bitcoin=btcmerch.BitcoinPayment(
+    'BTC','Bitcoin',site='haymakers',username='haymakers',
+    base_url='http://www.individualpubs.co.uk/merchantservice/',
+    password='not-a-valid-password')
+payment_methods=[cash,card,bitcoin]
 
 tapi=extras.twitter_api(
     token='not-a-valid-token',
@@ -207,6 +220,7 @@ std={
     'pubnumber':"01223 311077",
     'pubaddr':("54 High Street, Chesterton","Cambridge CB4 1NG"),
     'currency':u"£",
+    'payment_methods':payment_methods,
     'cashback_limit':50.0,
     'cashback_first':True,
     'pricepolicy':haymakers_pricepolicy,
@@ -218,9 +232,6 @@ std={
     'checkdigit_print':True,
     'checkdigit_on_usestock':True,
     'usestock_hook':usestock_hook,
-    'btcmerch':btcmerch.Api(
-        "haymakers","not-a-password","haymakers",
-        "http://www.individualpubs.co.uk/merchantservice/"), # Not valid address
 }
 
 kitchen={

@@ -87,12 +87,6 @@ template=r"""
 - {model: Department, id: 10, vatband: B, description: Food}
 - {model: Department, id: 11, vatband: A, description: Hot Drinks}
 
-# Payment types.
-
-- {model: PayType, paytype: CASH, description: Cash}
-- {model: PayType, paytype: CARD, description: Card}
-#- {model: PayType, paytype: BTC, description: Bitcoin}
-
 - {model: UnitType, id: pt, name: pint}
 - {model: UnitType, id: pkt, name: packet}
 - {model: UnitType, id: cap, name: capsule}

@@ -5,9 +5,11 @@ control system user interfaces with a PostgreSQL back-end.
 
 """
 
-__all__=['btcmerch','dbsetup','delivery','department','event','extras',
+__all__=['btcmerch','card','cash','dbsetup','delivery','department',
+         'event','extras',
          'foodcheck','foodorder','kbdrivers','keyboard','lockscreen',
          'magcard','managekeyboard','managestock','managetill','models',
+         'payment',
          'pdrivers','plu','printer','recordwaste','register','stocklines',
          'stock','stockterminal','stocktype','td','tillconfig','till',
          'timesheets','ui','usestock','version']
