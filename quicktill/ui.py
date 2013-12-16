@@ -734,7 +734,7 @@ class emptyline(object):
     """
     def __init__(self,colour=None,userdata=None):
         if colour is None: colour=curses.color_pair(0)
-        self.colour=colour
+        self.colour=curses.color_pair(colour)
         self.cursor_colour=self.colour|curses.A_REVERSE
         self.userdata=userdata
     def update(self):
