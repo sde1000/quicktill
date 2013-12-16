@@ -17,8 +17,13 @@ class keycode(object):
     def __repr__(self):
         return '%s("%s","%s")'%(self.__class__.__name__,self.name,self.keycap)
 
-class notekey(keycode):
-    def __init__(self,name,keycap,notevalue):
+class paymentkey(keycode):
+    def __init__(self,name,keycap,method):
+        self.paymentmethod=method
+
+class notekey(paymentkey):
+    def __init__(self,name,keycap,method,notevalue):
+        paymentkey.__init__(self,name,keycap,method)
         self.notevalue=notevalue
 
 class modkey(keycode):
@@ -98,9 +103,8 @@ keycode("K_PANIC","Panic")
 keycode("K_APPS","Apps")
 keycode("K_LOCK","Lock")
 
-# Tendering keys
+# Tendering keys referred to in the code
 keycode("K_CASH","Cash / Enter")
-keycode("K_CARD","Card")
 keycode("K_DRINKIN","Drink 'In'")
 
 numberkeys=[

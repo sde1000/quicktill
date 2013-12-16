@@ -1,4 +1,4 @@
-from . import ui,tillconfig
+from . import ui,tillconfig,td
 from models import PayType,Payment,zero
 
 class DuplicatePayType(Exception):
@@ -15,7 +15,7 @@ class PaymentMethodRegistry(dict):
 
 methods=PaymentMethodRegistry()
 
-class pline(ui.emptyline):
+class pline(ui.line):
     """
     A payment in a transaction, suitable for inclusion in the display
     list of a register.
@@ -24,17 +24,17 @@ class pline(ui.emptyline):
     def __init__(self,payment,method=None):
         self.payment=payment
         amount=payment.amount
-        if method is None: method=methods[payment.paytype]
+        if method is None: method=methods[payment.paytype_id]
         self.method=method
-        ui.emptyline.__init__(self,colour=ui.colour_cashline if amount>=zero
-                              else ui.colour_changeline)
+        ui.line.__init__(self,colour=ui.colour_cashline if amount>=zero
+                         else ui.colour_changeline)
         self.update()
     def update(self):
-        self.text=u"%s %s"%(self.method.describe_payment(payment),
-                            tillconfig.fc(amount))
+        self.text=u"%s %s"%(self.method.describe_payment(self.payment),
+                            tillconfig.fc(self.payment.amount))
         self.cursor=(0,0)
     def display(self,width):
-        return ' '*(width-len(self.text))+self.text
+        return [' '*(width-len(self.text))+self.text]
 
 class PaymentMethod(object):
     change_given=False

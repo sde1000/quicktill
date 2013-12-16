@@ -1,4 +1,5 @@
-"""Cash register page.  Allows transaction entry, voiding of lines.
+"""
+Cash register page.  Allows transaction entry, voiding of lines.
 Also supports function keys to go to various popups: price lookup, management,
 etc."""
 
@@ -35,6 +36,7 @@ from . import magcard,tillconfig
 import curses,textwrap
 from . import td,ui,keyboard,printer
 from . import stock,stocklines
+from . import payment
 import logging
 import datetime
 log=logging.getLogger(__name__)
@@ -112,92 +114,6 @@ class tline(ui.lrline):
             self.colour=curses.color_pair(0)
         self.cursor_colour=self.colour|curses.A_REVERSE
 
-# Used for payments etc.
-class rline(ui.lrline):
-    def __init__(self,text,attr):
-        ui.lrline.__init__(self,"",text,curses.color_pair(attr))
-        # It would be very useful if the payments table had a unique ID
-        # per payment so that we could store a reference to it here.
-        # Unfortunately it doesn't - this makes cancelling payments
-        # rather difficult.
-
-def payline(p):
-    """
-    Convenience function for creating a payment line; chooses colour
-    and fills in description.
-
-    """
-    (amount,paytype,desc,ref)=p
-    if amount==None: amount=0.0
-    colour=ui.colour_cashline
-    if amount<0.0: colour=ui.colour_changeline
-    if paytype=='CASH':
-        return rline('%s %s'%(ref,tillconfig.fc(amount)),colour)
-    if ref is None:
-        return rline("%s %s"%(desc,tillconfig.fc(amount)),colour)
-    return rline("%s %s %s"%(desc,ref,tillconfig.fc(amount)),colour)
-
-class cardpopup(ui.dismisspopup):
-    """A window that pops up whenever a card payment is accepted.  It prompts
-    for the card receipt number (provided by the credit card terminal) and
-    whether there is any cashback on this transaction."""
-    def __init__(self,amount,func):
-        self.amount=amount
-        self.func=func
-        ui.dismisspopup.__init__(self,16,44,title="Card payment",
-                                 colour=ui.colour_input)
-        self.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
-        if tillconfig.cashback_first:
-            cbstart=4
-            rnstart=10
-        else:
-            cbstart=9
-            rnstart=4
-        self.addstr(rnstart,2,"Please enter the receipt number from the")
-        self.addstr(rnstart+1,2,"credit card receipt.")
-        self.addstr(rnstart+3,2," Receipt number:")
-        self.rnfield=ui.editfield(rnstart+3,19,16)
-        self.addstr(cbstart,2,"Is there any cashback?  Enter amount and")
-        self.addstr(cbstart+1,2,"press Cash/Enter.  Leave blank and press")
-        self.addstr(cbstart+2,2,"Cash/Enter if there is none.")
-        self.addstr(cbstart+4,2,"Cashback amount: %s"%tillconfig.currency)
-        self.cbfield=ui.editfield(cbstart+4,19+len(tillconfig.currency),6,
-                                  validate=ui.validate_float,
-                                  keymap={
-                keyboard.K_TWENTY: (self.note,(20.0,)),
-                keyboard.K_TENNER: (self.note,(10.0,)),
-                keyboard.K_FIVER: (self.note,(5.0,))})
-        if tillconfig.cashback_first:
-            firstfield=self.cbfield
-            lastfield=self.rnfield
-        else:
-            firstfield=self.rnfield
-            lastfield=self.cbfield
-        ui.map_fieldlist([self.rnfield,self.cbfield])
-        firstfield.keymap[keyboard.K_CLEAR]=(self.dismiss,None)
-        lastfield.keymap[keyboard.K_CASH]=(self.enter,None)
-        firstfield.focus()
-    def note(self,size):
-        self.cbfield.set("%0.2f"%size)
-        self.cbfield.keypress(keyboard.K_CASH)
-    def enter(self):
-        try:
-            cba=Decimal(self.cbfield.f).quantize(penny)
-        except:
-            cba=zero
-        if cba>tillconfig.cashback_limit:
-            self.cbfield.set("")
-            return ui.infopopup(["Cashback is limited to a maximum of %s per "
-                                 "transaction."%tillconfig.fc(
-                        tillconfig.cashback_limit)],title="Error")
-        total=self.amount+cba
-        receiptno=self.rnfield.f
-        if receiptno=="":
-            return ui.infopopup(["You must enter a receipt number."],
-                                title="Error")
-        self.dismiss()
-        self.func(total,receiptno,cba)
-
 class edittransnotes(ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
     def __init__(self,trans,func):
@@ -222,7 +138,7 @@ class edittransnotes(ui.dismisspopup):
 def strtoamount(s):
     if s.find('.')>=0:
         return Decimal(s).quantize(penny)
-    return (Decimal(s)/Decimal("100.00")).quantize(penny)
+    return Decimal(s)*penny
 
 class page(ui.basicpage):
     def __init__(self,name,hotkeys):
@@ -310,10 +226,10 @@ class page(ui.basicpage):
         self.update_bufferline()
         self.redraw()
     def close_if_balanced(self):
-        if self.trans and not self.trans.closed:
-            if self.trans.total==self.trans.payments_total:
-                self.trans.closed=True
-                td.s.flush()
+        if (self.trans and not self.trans.closed and self.trans.total>zero
+            and self.trans.total==self.trans.payments_total):
+            self.trans.closed=True
+            td.s.flush()
     def linekey(self,kb): # We are passed the keyboard binding
         # XXX there is something strange going on here with qty
         # - are we getting confused between qty from the keyboard binding
@@ -575,13 +491,16 @@ class page(ui.basicpage):
         self.updateheader()
         return self.trans
     def drinkinkey(self):
-        """The 'Drink In' key creates a negative entry in the
-        transaction's payments section; the intent is that staff who
-        are offered a drink that they don't want to pour immediately
-        can use this key to enable the till to add the cost of their
-        drink onto a transaction.  They can take the cash from the
-        till tray or make a note that it's in there, and use it later
-        to buy a drink.
+        """
+        The 'Drink In' key creates a negative entry in the
+        transaction's payments section using the default payment
+        method; the intent is that staff who are offered a drink that
+        they don't want to pour immediately can use this key to enable
+        the till to add the cost of their drink onto a transaction.
+        They can take the cash from the till tray or make a note that
+        it's in there, and use it later to buy a drink.
+
+        This only works if the default payment method supports change.
 
         """
         if self.qty is not None or self.mod is not None:
@@ -599,31 +518,35 @@ class page(ui.basicpage):
                           "that is already open."],title="Error")
             return
         self.clearbuffer()
-        payment=Payment(transaction=self.trans,paytype_id='CASH',
-                        amount=-amount,ref="Drink 'In'")
-        td.s.add(payment)
-        td.s.flush()
-        # XXX when we have a pline() function that takes a Payment, use it
-        # here instead
-        self.dl.append(rline("Drink 'In' %s"%tillconfig.fc(-amount),
-                             ui.colour_changeline))
+        if len(tillconfig.payment_methods)<1:
+            ui.infopopup(["There are no payment methods configured."],
+                         title="Error")
+            return
+        pm=tillconfig.payment_methods[0]
+        if not pm.change_given:
+            ui.infopopup(["The %s payment method doesn't support change."%
+                          pm.description],title="Error")
+            return
+        p=pm.add_change(self.trans,description="Drink 'In'",amount=-amount)
+        self.dl.append(p)
         self.cursor_off()
         self.update_balance() # Also redraws
-    def cashkey(self,confirmed=False):
-        # The CASH/ENTER key is also used to create a new "void" transaction
-        # from lines selected from a previous, closed transaction.  If any
-        # lines are selected, do that instead.
+    def cashkey(self):
+        """
+        The CASH/ENTER key is used to complete the "void" action and
+        "no sale" action as well as potentially as a payment method
+        key.  Check for those first.
+
+        """
         if self.ml!=set():
             return self.cancelmarked()
         if self.qty is not None:
-            log.info("Register: cashkey: payment with quantity not allowed")
-            ui.infopopup(["You can't enter a quantity before telling "
-                          "the till about a payment.  After dismissing "
+            log.info("Register: cash/enter with quantity not allowed")
+            ui.infopopup(["You can't enter a quantity before pressing "
+                          "Cash/Enter.  After dismissing "
                           "this message, press Clear and try again."],
                          title="Error")
             return
-        # We may have been entered from a dialog, bypassing the keypress method.
-        self.refresh_trans()
         if self.trans is None or self.trans.closed:
             if self.buf is None:
                 log.info("Register: cashkey: NO SALE")
@@ -652,61 +575,99 @@ class page(ui.basicpage):
             self.clear()
             self.redraw()
             return
+        # We now consider using the default payment method.  This is only
+        # possible if there is one!
+        if len(tillconfig.payment_methods)<1:
+            ui.infopopup(["There are no payment methods configured."],
+                          title="Error")
+            return
+        pm=tillconfig.payment_methods[0]
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
         # confirmation - one of the most common user errors is to
         # recall a transaction that's being used as a tab, add some
         # lines to it, and then automatically press 'cash'.
-        if self.keyguard and not confirmed:
-            ui.infopopup(["Are you sure you want to close this transaction "
-                          "with a cash payment?  If you are then press "
+        if self.keyguard:
+            ui.infopopup(["Are you sure you want to close this transaction?  "
+                          "If you are then press "
                           "Cash/Enter again.  If you pressed Cash/Enter by "
                           "mistake then press Clear now to go back."],
                          title="Confirm transaction close",
                          colour=ui.colour_confirm,keymap={
-                keyboard.K_CASH:(self.cashkey,(True,),True)})
+                keyboard.K_CASH:(self.paymentkey,(pm,),True)})
+            return
+        self.paymentkey(pm)
+    def paymentkey(self,method):
+        """
+        Deal with a keypress that might be a payment key.  We might be
+        entered directly rather than through our keypress method, so
+        refresh the transaction first.
+
+        """
+        # UI sanity checks first
+        if self.qty is not None:
+            log.info("Register: paymentkey: payment with quantity not allowed")
+            ui.infopopup(["You can't enter a quantity before telling "
+                          "the till about a payment.  After dismissing "
+                          "this message, press Clear and try again."],
+                         title="Error")
+            return
+        if self.mod is not None:
+            log.info("Register: paymentkey: payment with modifier not allowed")
+            ui.infopopup(["You can't press a modifier key before telling "
+                          "the till about a payment.  After dismissing "
+                          "this message, press Clear and try again."],
+                         title="Error")
+            return
+        self.refresh_trans()
+        if self.trans is None or self.trans.closed:
+            log.info("Register: paymentkey: closed or no transaction")
+            ui.infopopup(["There is no transaction in progress."],
+                         title="Error")
+            self.clearbuffer()
+            self.redraw()
             return
         self.prompt=self.defaultprompt
         if self.buf is None:
-            # Exact change, then, is it?
-            log.info("Register: cashkey: exact change")
-            amount=self.balance
+            # Exact amount
+            log.info("Register: paymentkey: exact amount")
+            amount=self.balance if self.balance else zero
         else:
             amount=strtoamount(self.buf)
         self.clearbuffer()
         self.redraw()
         if amount==zero:
-            log.info("Register: cashkey: payment of zero")
-            ui.infopopup(["You can't pay %s in cash!"%tillconfig.fc(zero),
-                          'If you meant "exact change" then please '
+            log.info("Register: paymentkey: payment of zero")
+            # A transaction that has been completely voided will have
+            # a balance of zero.  Simply close it here rather than
+            # attempting a zero payment.
+            if self.balance==zero:
+                self.close_if_balanced()
+                return
+            ui.infopopup(["You can't pay %s!"%tillconfig.fc(zero),
+                          'If you meant "exact amount" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
             return
-        # If we're closing a transaction that's been completely voided,
-        # permit payment of zero.
-        if amount is None: amount=zero
-        payment=Payment(transaction=self.trans,amount=amount,
-                        paytype_id='CASH',ref='Cash')
-        td.s.add(payment)
-        td.s.flush()
-        self.dl.append(
-            rline('Cash %s'%tillconfig.fc(amount),ui.colour_cashline))
-        remain=self.trans.total-self.trans.payments_total
-        if remain<zero:
-            # There's some change!
-            log.info("Register: cashkey: calculated change %s",remain)
-            payment=Payment(transaction=self.trans,amount=remain,
-                            paytype_id='CASH',ref='Change')
-            td.s.add(payment)
-            td.s.flush()
-            self.dl.append(rline('Change %s'%tillconfig.fc(remain),
-                                 ui.colour_changeline))
+        # We have a non-zero amount and we're happy to proceed.  Pass
+        # to the payment method.
+        method.start_payment(self,self.trans,amount,self.balance)
+    def add_payments(self,trans,payments):
+        """
+        Called by a payment method when payments have been added to a
+        transaction.  NB it might not be the current transaction if
+        the payment method completed in the background!  Multiple
+        payments might have been added, eg. for change.
+
+        """
+        if trans!=self.trans: return # XXX merge because pm might have done td.s.merge()
+        for p in payments:
+            self.dl.append(p)
         self.close_if_balanced()
         self.cursor_off()
         self.update_balance()
         self.updateheader()
-        printer.kickout()
-    def notekey(self,amount):
+    def notekey(self,k):
         if self.qty is not None or self.buf is not None:
             log.info("Register: notekey: error popup")
             ui.infopopup(["You can only press a note key when you "
@@ -714,116 +675,9 @@ class page(ui.basicpage):
                           "After dismissing this message, press Clear "
                           "and try again."],title="Error")
             return
-        self.buf=str(amount)
-        log.info("Register: notekey %d"%amount)
-        return self.cashkey()
-    def cardkey(self,amount=None,receiptno=None,cashback=None):
-        self.refresh_trans()
-        if self.qty is not None:
-            log.info("Register: cardkey: payment with quantity not allowed")
-            ui.infopopup(["You can't enter a quantity before telling "
-                          "the till about a payment.  After dismissing "
-                          "this message, press Clear and try again."],
-                         title="Error")
-            return
-        if self.trans is None or self.trans.closed:
-            log.info("Register: cardkey: closed or no transaction")
-            ui.infopopup(["There is no transaction in progress."],
-                         title="Error")
-            self.clearbuffer()
-            self.redraw()
-            return
-        self.prompt=self.defaultprompt
-        if amount is None:
-            if self.buf is None:
-                # Exact change, then, is it?
-                log.info("Register: cardkey: exact amount")
-                amount=self.balance
-            else:
-                amount=strtoamount(self.buf)
-            if amount is None: return # Empty transaction
-            return cardpopup(amount,self.cardkey)
-        else:
-            log.info("Register: cardkey: explicit amount specified in call")
-        if amount==zero:
-            log.info("Register: cardkey: payment of zero")
-            ui.infopopup(["You can't pay %s by card!"%tillconfig.fc(zero),
-                          'If you meant "exact amount" then please '
-                          'press Clear after dismissing this message, '
-                          'and try again.'],title="Error")
-            return
-        self.clearbuffer()
-        # We have a non-zero amount and a transaction. Pay it!
-        payment=Payment(transaction=self.trans,amount=amount,
-                        paytype_id='CARD',ref=receiptno)
-        td.s.add(payment)
-        self.dl.append(rline('Card %s %s'%(receiptno,tillconfig.fc(amount)),
-                             ui.colour_cashline))
-        if cashback:
-            payment=Payment(transaction=self.trans,amount=-cashback,
-                            paytype_id='CASH',ref='Cashback')
-            td.s.add(payment)
-            self.dl.append(rline('Cashback %s'%tillconfig.fc(cashback),
-                                 ui.colour_changeline))
-        self.close_if_balanced()
-        self.cursor_off()
-        self.update_balance()
-        self.updateheader()
-        printer.kickout()
-    def bitcoinkey(self):
-        """
-        Accept a Bitcoin payment.  This is currently quite primitive:
-        we only permit one payment per transaction (because we pass
-        the transaction number to the payment service provider to
-        allow for the transaction to be restarted if necessary), and
-        that payment must be for the whole outstanding balance of the
-        transaction.
-
-        In the future we will permit multiple payments per
-        transaction, but this will have to wait until we reorganise
-        the database layer to expose the paymentid so we can use that
-        as a reference instead.
-
-        """
-        if self.qty is not None:
-            ui.infopopup(["You can't enter a quantity before telling "
-                          "the till about a payment.  After dismissing "
-                          "this message, press Clear and try again."],
-                         title="Error")
-            return
-        if self.trans is None or self.trans.closed:
-            ui.infopopup(["There is no transaction in progress."],
-                         title="Error")
-            self.clearbuffer()
-            self.redraw()
-            return
-        self.prompt=self.defaultprompt
-        for p in self.trans.payments:
-            if p.paytype_id=='BTC':
-                ui.infopopup(["This transaction has already been paid by "
-                              "Bitcoin; no other Bitcoin payments can be "
-                              "accepted for it."],title="Error")
-                return
-        self.clearbuffer()
-        return btcpopup(self.bitcoin,self.trans.id,self.balance)
-    def bitcoin(self,amount,btcamount):
-        """
-        We've been paid by bitcoin!
-
-        """
-        self.refresh_trans()
-        payment=Payment(transaction=self.trans,amount=amount,
-                        paytype_id='BTC',ref=btcamount)
-        td.s.add(payment)
-        td.s.flush()
-        self.dl.append(rline('Bitcoin %s %s'%(btcamount,tillconfig.fc(amount)),
-                             ui.colour_cashline))
-        # Cashback should never arise; however, it is possible for the
-        # Bitcoin payment not to cover the whole transaction.
-        self.close_if_balanced()
-        self.cursor_off()
-        self.update_balance()
-        self.updateheader()
+        self.buf=str(k.notevalue)
+        log.info("Register: notekey %s"%k.notevalue)
+        return self.paymentkey(k.paymentmethod)
     def numkey(self,n):
         if (self.buf==None and self.qty==None and self.trans is not None and
             self.trans.closed):
@@ -901,7 +755,9 @@ class page(ui.basicpage):
             log.info("Register: printkey without transaction")
             ui.infopopup(["There is no transaction currently selected to "
                           "print.  You can recall old transactions using "
-                          "the 'Recall Trans' key."],title="Error")
+                          "the 'Recall Trans' key, or print any transaction "
+                          "if you have its number using the option under "
+                          "'Manage Till'."],title="Error")
             return
         log.info("Register: printing transaction %d"%self.trans.id)
         printer.print_receipt(self.trans.id)
@@ -1100,8 +956,8 @@ class page(ui.basicpage):
             for i in self.trans.lines:
                 self.dl.append(tline(i.id))
             for i in self.trans.payments:
-                self.dl.append(payline((i.amount,i.paytype_id,
-                                        i.paytype.description,i.ref)))
+                self.dl.append(payment.pline(i))
+            self.close_if_balanced()
             if not self.trans.closed:
                 age=self.trans.age
                 if age>2:
@@ -1272,19 +1128,20 @@ class page(ui.basicpage):
         self.refresh_trans()
         if isinstance(k,magcard.magstripe):
             return magcard.infopopup(k)
-        if hasattr(k,'line'):
+        elif hasattr(k,'line'):
             stocklines.linemenu(k,self.linekey)
             return
-        if hasattr(k,'department'):
+        elif hasattr(k,'department'):
             return self.deptkey(k.department)
         self.repeat=None
         if hasattr(k,'notevalue'):
-            return self.notekey(k.notevalue)
-        if k in keyboard.numberkeys:
+            return self.notekey(k)
+        elif hasattr(k,'paymentmethod'):
+            return self.paymentkey(k.paymentmethod)
+        elif k in keyboard.numberkeys:
             return self.numkey(k.keycap)
         keys={
             keyboard.K_CASH: self.cashkey,
-            keyboard.K_CARD: self.cardkey,
             keyboard.K_DRINKIN: self.drinkinkey,
             keyboard.K_QUANTITY: self.quantkey,
             keyboard.K_CLEAR: self.clearkey,

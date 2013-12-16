@@ -108,14 +108,15 @@ def markup(stocktype,stockunit,cost,markup):
 
 # Payment methods.  Here we create instances of payment methods that
 # we accept.
-cash=CashPayment('CASH','Cash',drawers=2)
+cash=CashPayment('CASH','Cash',change_description="Change",drawers=2)
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
                  max_cashback=Decimal("50.00"))
 bitcoin=btcmerch.BitcoinPayment(
     'BTC','Bitcoin',site='haymakers',username='haymakers',
     base_url='http://www.individualpubs.co.uk/merchantservice/',
     password='not-a-valid-password')
-payment_methods=[cash,card,bitcoin]
+all_payment_methods=[cash,card,bitcoin] # Used for session totals entry
+payment_methods=all_payment_methods # Used in register
 
 tapi=extras.twitter_api(
     token='not-a-valid-token',
@@ -220,6 +221,7 @@ std={
     'pubnumber':"01223 311077",
     'pubaddr':("54 High Street, Chesterton","Cambridge CB4 1NG"),
     'currency':u"£",
+    'all_payment_methods':all_payment_methods,
     'payment_methods':payment_methods,
     'cashback_limit':50.0,
     'cashback_first':True,
@@ -306,11 +308,11 @@ kb1={
             ("H15",K_EIGHT),
             ("H16",K_NINE),
             ("B15",K_CASH),
-            ("C15",K_CARD),
+            ("C15",paymentkey('K_CARD','Card',card)),
             ("D15",K_LOCK),
-            ("C14",notekey('K_TWENTY','£20',2000)),
-            ("B14",notekey('K_TENNER','£10',1000)),
-            ("A14",notekey('K_FIVER','£5',500)),
+            ("C14",notekey('K_TWENTY','£20',cash,Decimal("20.00"))),
+            ("B14",notekey('K_TENNER','£10',cash,Decimal("10.00"))),
+            ("A14",notekey('K_FIVER','£5',cash,Decimal("5.00"))),
             ("E13",K_QUANTITY),
             ("E12",modkey('K_DOUBLE','Double',Decimal(2),[4])),
             ("A02",modkey('K_4JUG','4pt jug',Decimal(4),[1,2,3])),

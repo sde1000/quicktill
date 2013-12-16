@@ -19,9 +19,8 @@ currency="MPL"
 
 hotkeys={}
 
+all_payment_methods=[]
 payment_methods=[]
-
-cashback_limit=50.0
 
 def pricepolicy(si,qty):
     """How much does qty of stock item sd cost? qty is a Decimal,
@@ -61,9 +60,6 @@ checkdigit_on_usestock=False
 
 # Do we allow transactions to be stored for use as tabs?
 allow_tabs=True
-
-# Does the card popup ask for cashback before receipt number?
-cashback_first=False
 
 # Pre-defined transaction notes
 transaction_notes=[

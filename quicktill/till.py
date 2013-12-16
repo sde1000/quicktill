@@ -312,10 +312,8 @@ def main():
     tillconfig.pubnumber=config['pubnumber']
     tillconfig.pubaddr=config['pubaddr']
     tillconfig.currency=config['currency']
-    tillconfig.cashback_limit=config['cashback_limit']
+    tillconfig.all_payment_methods=config['all_payment_methods']
     tillconfig.payment_methods=config['payment_methods']
-    if 'cashback_first' in config:
-        tillconfig.cashback_first=config['cashback_first']
     if 'pricepolicy' in config:
         tillconfig.pricepolicy=config['pricepolicy']
     if 'format_currency' in config:
