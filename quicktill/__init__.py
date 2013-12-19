@@ -10,6 +10,7 @@ __all__=['btcmerch','card','cash','dbsetup','delivery','department',
          'foodcheck','foodorder','kbdrivers','keyboard','lockscreen',
          'magcard','managekeyboard','managestock','managetill','models',
          'payment',
-         'pdrivers','plu','printer','recordwaste','register','stocklines',
+         'pdrivers','plu','printer','recordwaste','register',
+         'session','stocklines',
          'stock','stockterminal','stocktype','td','tillconfig','till',
          'timesheets','ui','usestock','version']
