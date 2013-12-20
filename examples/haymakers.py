@@ -108,7 +108,7 @@ def markup(stocktype,stockunit,cost,markup):
 
 # Payment methods.  Here we create instances of payment methods that
 # we accept.
-cash=CashPayment('CASH','Cash',change_description="Change",drawers=2)
+cash=CashPayment('CASH','Cash',change_description="Change",drawers=1)
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
                  max_cashback=Decimal("50.00"))
 bitcoin=btcmerch.BitcoinPayment(

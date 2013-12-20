@@ -1,12 +1,20 @@
-from . import payment,td,printer
+from . import payment,td,printer,ui
 from .models import Payment,PayType,zero
+from decimal import Decimal
 
 class CashPayment(payment.PaymentMethod):
     change_given=True
-    def __init__(self,paytype,description,change_description,drawers=1):
+    def __init__(self,paytype,description,change_description,drawers=1,
+                 countup=["50","20","10","5","2","1",
+                          "0.50","0.20","0.10",
+                          "0.05","0.02","0.01",
+                          "Bags","Misc","-Float"]):
         payment.PaymentMethod.__init__(self,paytype,description)
         self._change_description=change_description
         self._drawers=drawers
+        self._total_fields=[(u"Tray {t}".format(t=t+1),
+                             ui.validate_float,countup)
+                            for t in range(self._drawers)]
     def describe_payment(self,payment):
         # Cash payments use the 'ref' field to store a description,
         # because they can be for many purposes: cash, change,
@@ -32,3 +40,11 @@ class CashPayment(payment.PaymentMethod):
         td.s.flush()
         printer.kickout()
         reg.add_payments(trans,r)
+    @property
+    def total_fields(self):
+        return self._total_fields
+    def total(self,session,fields):
+        try:
+            return sum(Decimal(x) if len(x)>0 else zero for x in fields)
+        except:
+            return zero

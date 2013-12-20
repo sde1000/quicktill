@@ -50,3 +50,42 @@ class PaymentMethod(object):
     def get_paytype(self):
         pt=PayType(paytype=self.paytype,description=self.description)
         return td.s.merge(pt)
+    @property
+    def total_fields(self):
+        """
+        A list of input fields for end of day session totals.  The
+        list consists of tuples of (name,validator,print_fields) and
+        may be empty if the payment method does not require manual
+        entry of session totals.
+
+        If the list has a length greater than 1, name does not need to
+        be unique across all payment methods because it will always be
+        used in the context of the payment method's description.  If
+        the list has length 1 then name will be ignored and the
+        description will be used instead.
+
+        validator may be None or a field validator from the ui module
+
+        print_fields may be None or a list of strings to print on the
+        counting-up slip above the input field
+        (eg. "50","20","10",... for a cash drawer).
+
+        """
+        return []
+    def total(self,session,fields):
+        """
+        Given a Session and the contents of the fields defined in the
+        total_fields property, return the total that should be
+        recorded for this payment method.
+
+        """
+        return zero
+    def commit_total(self,session,amount):
+        """
+        Called when the total for a session is about to be committed
+        to the database.  If we return anything other than None then
+        the commit will be aborted and whatever we return will be
+        displayed.
+
+        """
+        return

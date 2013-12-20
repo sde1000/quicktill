@@ -130,6 +130,9 @@ class CardPayment(payment.PaymentMethod):
         self._max_cashback=max_cashback
         self._cashback_first=cashback_first
         self._kickout=kickout
+        self._total_fields=[(u"Terminal {t}".format(t=t+1),
+                             ui.validate_float,None)
+                            for t in range(self._machines)]
     def describe_payment(self,payment):
         # Card payments use the 'ref' field for the card receipt number
         return u"%s %s"%(self.description,payment.ref)
@@ -163,3 +166,8 @@ class CardPayment(payment.PaymentMethod):
         if cashback>zero or self._kickout: printer.kickout()
         td.s.flush()
         reg.add_payments(trans,r)
+    @property
+    def total_fields(self):
+        return self._total_fields
+    def total(self,session,fields):
+        return sum(Decimal(x) if len(x)>0 else zero for x in fields)

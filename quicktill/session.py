@@ -132,105 +132,168 @@ def sessionlist(cont,unpaidonly=False,closedonly=False):
         q=q.filter(Session.endtime!=None)
     return [(ss(x),cont,(x,)) for x in q.all()]
 
-class recordsession(ui.dismisspopup):
+class _PMWrapper(object):
+    """
+    Payment method wrapper for record session takings popup.
+    Remembers the total and where to put it when it's updated.
+
+    """
+    def __init__(self,pm,till_total,popup):
+        self.pm=pm
+        self.lines=1 if len(pm.total_fields)<=1 else len(pm.total_fields)+1
+        self.till_total=till_total
+        self.actual_total=pm.total(popup.session,[""]*len(pm.total_fields))
+        self.fields=[]
+        self.popup=popup
+    def display_total(self):
+        self.popup.addstr(
+            self.y,self.popup.atx,
+            self.popup.ff.format(tillconfig.fc(self.actual_total)))
+    def update_total(self):
+        # One of the fields has been changed; redraw the total
+        self.actual_total=self.pm.total(self.popup.session,
+                                        [f.f for f in self.fields])
+        self.display_total()
+        self.popup.update_total()
+
+class record(ui.dismisspopup):
+    """
+    Record the takings for a session.  This popup queries all the
+    payment methods to find out which fields need to be displayed.
+
+    Pass a Session object to this class.
+
+    """
+    ttx=30
+    atx=45
+    ff=u"{:>13}"
     def __init__(self,s):
         td.s.add(s)
         log.info("Record session takings popup: session %d",s.id)
         self.session=s
-        paytotals=dict(s.payment_totals)
-        paytypes=td.s.query(PayType).all()
-        ui.dismisspopup.__init__(self,7+len(paytypes),60,
-                                 title="Session %d"%s.id,
+        if not self.session_valid(): return
+        paytotals=dict([(x.paytype,y) for x,y in s.payment_totals])
+        self.pms=[_PMWrapper(pm,paytotals.get(pm.paytype,zero),self)
+                  for pm in tillconfig.all_payment_methods]
+        # XXX if paytotals includes payment types not included in the
+        # configured payment methods, add those here
+        self.till_total=s.total
+        # How tall does the window need to be?  Each payment type
+        # takes a minimum of one line; if len(pt.total_fields())>1
+        # then it takes len(pt.total_fields())+1 lines
+        h=sum(pm.lines for pm in self.pms)
+        # We also need the top border (2), a prompt and header at the
+        # top (3) and a total and button at the bottom (4) and the
+        # bottom border (2).
+        h=h+11
+        ui.dismisspopup.__init__(self,h,60,title="Session {0.id}".format(s),
                                  colour=ui.colour_input)
         self.addstr(2,2,"Please enter the actual takings for session %d."%
                     s.id)
-        self.addstr(4,13,"Till total:     Actual total:")
-        # Build a list of fields to be filled in
-        self.fl=[]
+        self.addstr(4,self.ttx,"  Till total:")
+        self.addstr(4,self.atx,"Actual total:")
         y=5
-        for i in paytypes:
-            self.addstr(y,2,"%s:"%i.description)
-            if i in paytotals:
-                pt=paytotals[i]
+        self.fl=[]
+        for pm in self.pms:
+            pm.y=y
+            self.addstr(y,self.ttx,self.ff.format(tillconfig.fc(pm.till_total)))
+            pm.display_total()
+            self.addstr(y,2,u"{}:".format(pm.pm.description))
+            if len(pm.pm.total_fields)==0:
+                # No data entry; just the description
+                pm.fields=[]
+            elif len(pm.pm.total_fields)==1:
+                # Single field using the description with no indent
+                field=pm.pm.total_fields[0]
+                f=ui.editfield(y,20,8,validate=field[1])
+                self.fl.append(f)
+                pm.fields.append(f)
+                f.sethook=pm.update_total
             else:
-                pt=Decimal("0.00")
-            self.addstr(y,15,tillconfig.fc(pt))
-            if i.paytype=='PPINT':
-                field=ui.editfield(y,29,10,validate=ui.validate_float,
-                                   f="%0.2f"%pt,readonly=True)
-            elif i.paytype=='BTC':
-                # XXX this will be moved to the BitcoinPayment class
-                # as part of the payments reorganisation
-                btcval=Decimal("0.00")
-                if pt>Decimal("0.00"):
-                    try:
-                        tl=td.session_bitcoin_translist(s.id)
-                        btcval=tillconfig.btcmerch_api.transactions_total(
-                            ["tx%d"%t for t in tl])[u"total"]
-                    except btcmerch.BTCMerchError:
-                        ui.infopopup(
-                            ["Could not retrieve Bitcoin total; please try "
-                             "again later."],title="Error")
-                field=ui.editfield(y,29,10,validate=ui.validate_float,
-                                   f="%0.2f"%btcval,readonly=True)
-            else:
-                field=ui.editfield(y,29,10,validate=ui.validate_float)
+                # Line with payment method description and totals, then
+                # one line per field with indent
+                for field in pm.pm.total_fields:
+                    y=y+1
+                    self.addstr(y,4,u"{}:".format(field[0]))
+                    f=ui.editfield(y,20,8,validate=field[1])
+                    self.fl.append(f)
+                    pm.fields.append(f)
+                    f.sethook=pm.update_total
             y=y+1
-            self.fl.append([i,field,pt])
-        ui.map_fieldlist([x[1] for x in self.fl])
+        y=y+1
+        self.total_y=y
+        self.update_total()
+        y=y+2
+        self.fl.append(ui.buttonfield(y,20,20,'Record'))
+        ui.map_fieldlist(self.fl)
         # Override key bindings for first/last fields
-        self.fl[0][1].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
-        self.fl[-1][1].keymap[keyboard.K_CASH]=(self.field_return,None)
-        self.fl[0][1].focus()
-    def field_return(self):
+        self.fl[0].keymap[keyboard.K_CLEAR]=(self.dismiss,None)
+        self.fl[-1].keymap[keyboard.K_CASH]=(self.finish,None)
+        self.fl[0].focus()
+    def update_total(self):
+        """
+        Called when one of the payment method wrappers has changed its
+        total.  Redraw the total line at the bottom of the window.
+
+        """
+        total=sum(pm.actual_total for pm in self.pms)
+        difference=self.till_total-total
+        description=u"Total (DOWN by {})"
+        if difference==zero: description=u"Total (correct)"
+        elif difference<zero:
+            difference=-difference
+            description=u"Total (UP by {})"
+        colour=ui.colour_error if difference>Decimal(20) else ui.colour_input
+        self.addstr(self.total_y,2,' '*28)
+        self.addstr(self.total_y,2,
+                    description.format(tillconfig.fc(difference)),
+                    ui.curses.color_pair(colour))
+        self.addstr(self.total_y,self.ttx,
+                    self.ff.format(tillconfig.fc(self.till_total)),
+                    ui.curses.color_pair(ui.colour_confirm))
+        self.addstr(self.total_y,self.atx,
+                    self.ff.format(tillconfig.fc(total)),
+                    ui.curses.color_pair(ui.colour_confirm))
+    def session_valid(self):
+        """
+        Check that the session is still eligible to have its totals
+        recorded.  The session object is assumed to be in the current
+        ORM session.
+
+        Returns True if the session is still valid, otherwise pops up
+        an error dialog and returns False.
+
+        """
+        if self.session.endtime is None:
+            ui.infopopup(["Session {s.id} is not finished.".format(
+                        s=self.session)],title="Error")
+            return False
+        if len(self.session.actual_totals)>0:
+            ui.infopopup(["Session {s.id} has already had totals "
+                          "recorded.".format(s=self.session)],title="Error")
+            return False
+        return True
+    def finish(self):
         td.s.add(self.session)
-        self.amounts={}
-        def guessamount(field,expected):
-            if field.f.find('.')>=0:
-                return Decimal(field.f).quantize(penny)
-            try:
-                trial=Decimal(field.f)
-            except:
-                trial=zero
-            # It might be an amount 100 times larger
-            diff1=math.fabs(trial-expected)
-            diff2=math.fabs((trial/Decimal("100.00"))-expected)
-            if diff2<diff1: trial=trial/Decimal(100)
-            return trial.quantize(penny)
-        for paytype,field,expected in self.fl:
-            td.s.add(paytype)
-            self.amounts[paytype]=guessamount(field,expected)
-        km={keyboard.K_CASH:
-            (self.confirm_recordsession,None,True)}
-        log.info("Record takings: asking for confirmation: session=%d",
-                 self.session.id)
-        ui.infopopup(["Press Cash/Enter to record the following as the "
-                      "amounts taken in session %d."%self.session.id]+
-                     ["%s: %s"%(paytype.description,tillconfig.fc(self.amounts[paytype]))
-                      for paytype,field,tilltotal in self.fl],
-                     title="Confirm Session Total",keymap=km,
-                     colour=ui.colour_confirm)
-    def confirm_recordsession(self):
-        td.s.add(self.session)
-        log.info("Record session takings: confirmed session %d",self.session.id)
-        for paytype,field,expected in self.fl:
-            td.s.add(paytype)
-            if self.amounts[paytype]==zero: continue
-            td.s.add(SessionTotal(session=self.session,paytype=paytype,
-                                  amount=self.amounts[paytype]))
+        if not self.session_valid(): return
+        for pm in self.pms:
+            if pm.actual_total!=zero:
+                td.s.add(SessionTotal(session=self.session,
+                                      paytype=pm.pm.get_paytype(),
+                                      amount=pm.actual_total))
         td.s.flush()
-        tl=td.session_bitcoin_translist(self.session.id)
-        if len(tl)>0:
-            try:
-                tillconfig.btcmerch_api.transactions_reconcile(
-                    str(self.session),["tx%d"%t for t in tl])
-            except:
-                pass
+        for pm in self.pms:
+            r=pm.pm.commit_total(self.session,pm.actual_total)
+            if r is not None:
+                td.s.rollback()
+                ui.infopopup([u"Totals not recorded: {}".format(r)],
+                             title="Error")
+                return
         printer.print_sessiontotals(self.session)
         self.dismiss()
 
 def recordtakings():
-    m=sessionlist(recordsession,unpaidonly=True,closedonly=True)
+    m=sessionlist(record,unpaidonly=True,closedonly=True)
     if len(m)==0:
         log.info("Record takings: no sessions available")
         ui.infopopup(["Every session has already had its takings "

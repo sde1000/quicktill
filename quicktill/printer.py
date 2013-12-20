@@ -105,22 +105,22 @@ def print_sessioncountup(s):
     for paytype,total in s.payment_totals:
         driver.printline("%s: %s"%(paytype.description,tillconfig.fc(total)))
     driver.printline()
-    for i in ("    50","    20","    10",
-              "     5","     2","     1",
-              "  0.50","  0.20","  0.10",
-              "  0.05","  0.02","  0.01",
-              "  Bags","  Misc","-Float"):
-        driver.printline("   %s"%i)
-        driver.printline()
-    driver.printline(underline=1)
-    driver.printline("Cash Total",colour=1,emph=1)
-    driver.printline()
-    driver.printline(underline=1)
-    for paytype,total in s.payment_totals:
-        if paytype.paytype=='CASH': continue
-        driver.printline("%s Total"%paytype.description,colour=1,emph=1)
-        driver.printline()
-        driver.printline(underline=1)
+    # Now go through the current payment methods printing out their
+    # input fields, with countup totals if necessary
+    driver.printline("underline",underline=1)
+    for pm in tillconfig.all_payment_methods:
+        for name,validator,print_fields in pm.total_fields:
+            for i in print_fields if print_fields else []:
+                driver.printline(u"{:>10}".format(i))
+                driver.printline()
+            if print_fields: driver.printline("underline",underline=1)
+            if len(pm.total_fields)>1:
+                driver.printline(u"{} {}".format(pm.description,name),
+                                 colour=1,emph=1)
+            else:
+                driver.printline(pm.description,colour=1,emph=1)
+            driver.printline()
+            driver.printline("underline",underline=1)
     driver.printline("Enter totals into till using")
     driver.printline("management menu option 1,3.")
     driver.end()
