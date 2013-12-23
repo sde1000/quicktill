@@ -168,3 +168,6 @@ ALTER TABLE keyboard ADD PRIMARY KEY (keycode,menukey);
 DELETE FROM keycaps WHERE layout!=1;
 ALTER TABLE keycaps DROP COLUMN layout; /* Drops primary key */
 ALTER TABLE keycaps ADD PRIMARY KEY (keycode);
+
+/* Move the old users table out of the way */
+ALTER TABLE users RENAME TO popup_lock_screen_users;

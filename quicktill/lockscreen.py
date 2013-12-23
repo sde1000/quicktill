@@ -1,8 +1,8 @@
 from . import ui,keyboard,td
-from .models import User
+from .models import PopupLockScreenUser
 
 def usersmenu(func):
-    users=td.s.query(User).order_by(User.code).all()
+    users=td.s.query(PopupLockScreenUser).order_by(PopupLockScreenUser.code).all()
     f=ui.tableformatter(' r l ')
     sl=[(ui.tableline(f,(u.code,u.name)),func,(u.code,)) for u in users]
     ui.menu(sl,title="Users",blurb="Choose a user and press Cash/Enter.")
@@ -28,7 +28,7 @@ class popup(ui.dismisspopup):
         self.codefield.focus()
     def enter_key(self):
         if self.codefield.f=='': usersmenu(self.user_selected)
-        user=td.s.query(User).get(self.codefield.f)
+        user=td.s.query(PopupLockScreenUser).get(self.codefield.f)
         if user:
             self.dismiss()
             UnlockPopup(user)
@@ -68,7 +68,7 @@ class editusers(ui.listpopup):
 
     """
     def __init__(self):
-        ulist=td.s.query(User).order_by(User.code).all()
+        ulist=td.s.query(PopupLockScreenUser).order_by(PopupLockScreenUser.code).all()
         f=ui.tableformatter(' l l ')
         headerline=ui.tableline(f,["Code","Name"])
         lines=[ui.tableline(f,(u.code,u.name),userdata=u.code)
@@ -82,7 +82,7 @@ class editusers(ui.listpopup):
         if k==keyboard.K_CANCEL and self.s and len(self.s.dl)>0:
             line=self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            u=td.s.query(User).get(line.userdata)
+            u=td.s.query(PopupLockScreenUser).get(line.userdata)
             td.s.delete(u)
         elif k==keyboard.K_CASH:
             self.dismiss()
@@ -109,8 +109,8 @@ class adduser(ui.dismisspopup):
         if len(self.namefield.f)<2:
             ui.infopopup(["You must provide a name."],title="Error")
             return
-        if td.s.query(User).get(self.codefield.f):
+        if td.s.query(PopupLockScreenUser).get(self.codefield.f):
             ui.infopopup(["That code is already in use."],title="Error")
             return
         self.dismiss()
-        td.s.add(User(code=self.codefield.f,name=self.namefield.f))
+        td.s.add(PopupLockScreenUser(code=self.codefield.f,name=self.namefield.f))
