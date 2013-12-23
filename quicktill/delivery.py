@@ -1,10 +1,12 @@
 import curses.ascii
 from . import ui,stock,td,keyboard,printer,tillconfig,stocklines,stocktype
+from . import user
 from decimal import Decimal
 from .models import Delivery,Supplier,StockUnit,StockItem,desc
 from .models import penny
 import datetime
 
+@user.permission_required('deliveries',"List deliveries")
 def deliverymenu():
     """
     Display a list of deliveries and call the edit function.
@@ -450,7 +452,9 @@ def selectsupplier(func,default=None,allow_new=True):
             title="Select Supplier")
 
 class editsupplier(ui.basicpopup):
+    @user.permission_required('edit-supplier',"Create or edit supplier details")
     def __init__(self,func,supplier=None):
+        if supplier: td.s.add(supplier)
         self.func=func
         self.sn=supplier.id if supplier else None
         ui.basicpopup.__init__(self,10,70,title="Supplier Details",

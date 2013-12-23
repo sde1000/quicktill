@@ -3,13 +3,15 @@
 """
 
 import sys,os
-from . import ui,keyboard,td,printer,session
+from . import ui,keyboard,td,printer,session,user
 from . import tillconfig,managekeyboard,stocklines,event
 from .version import version
 
 import logging
 log=logging.getLogger(__name__)
 
+@user.permission_required(
+    'restore-deferred','Restore deferred transactions to the current session')
 def transrestore():
     log.info("Restore deferred transactions")
     td.trans_restore()
@@ -18,6 +20,8 @@ def transrestore():
                  dismiss=keyboard.K_CASH)
 
 class receiptprint(ui.dismisspopup):
+    @user.permission_required('print-receipt-by-number',
+                              'Print any receipt given the transaction number')
     def __init__(self):
         ui.dismisspopup.__init__(self,5,30,title="Receipt print",
                                  dismiss=keyboard.K_CLEAR,
@@ -36,7 +40,12 @@ class receiptprint(ui.dismisspopup):
         printer.print_receipt(rn)
         self.dismiss()
 
+@user.permission_required('version','See version information')
 def versioninfo():
+    """
+    Display the till version information.
+
+    """
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
                   "(C) Copyright 2004-2013 Stephen Early",
@@ -52,6 +61,7 @@ def versioninfo():
 def exitoption(code):
     event.shutdowncode=code
 
+@user.permission_required('exit',"Exit the till software")
 def restartmenu():
     log.info("Restart menu")
     menu=[
@@ -60,6 +70,14 @@ def restartmenu():
         (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
         ]
     ui.keymenu(menu,"Exit / restart options")
+
+def userinfo():
+    log.info("User info")
+    u=ui.current_user()
+    if u: u.display_info()
+    else:
+        ui.infopopup(["There is no current user."],title="No user info",
+                     colour=ui.colour_info)
 
 def popup():
     log.info("Till management menu")
@@ -70,6 +88,7 @@ def popup():
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
+        (keyboard.K_SEVEN,"Display current user info",userinfo,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]

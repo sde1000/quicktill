@@ -13,4 +13,4 @@ __all__=['btcmerch','card','cash','dbsetup','delivery','department',
          'pdrivers','plu','printer','recordwaste','register',
          'session','stocklines',
          'stock','stockterminal','stocktype','td','tillconfig','till',
-         'timesheets','ui','usestock','version']
+         'timesheets','ui','user','usestock','version']

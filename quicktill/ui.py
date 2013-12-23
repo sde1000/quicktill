@@ -343,8 +343,11 @@ class keymenu(dismisspopup):
         (h,w)=self.win.getmaxyx()
         y=2
         for keycode,desc,func,args in itemlist:
+            line_colour=colour
+            if hasattr(func,"allowed"):
+                if not func.allowed(): line_colour=colour_error
             self.addstr(y,2,"%s."%keycode.keycap)
-            self.addstr(y,pw+4,desc)
+            self.addstr(y,pw+4,desc,curses.color_pair(line_colour))
             y=y+1
         self.win.move(h-1,w-1)
     def keypress(self,k):

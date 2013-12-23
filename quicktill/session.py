@@ -3,7 +3,7 @@ Starting, ending, and recording totals for sessions.
 
 """
 
-from . import ui,keyboard,td,register,printer,tillconfig
+from . import ui,keyboard,td,register,printer,tillconfig,user
 from .models import Session,SessionTotal,PayType,penny,zero
 from .td import undefer,func,desc,select
 from decimal import Decimal
@@ -52,6 +52,7 @@ class ssdialog(ui.dismisspopup):
                      title="Session started",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
+@user.permission_required("start-session","Start a session")
 def start():
     """
     Start a session if there is not already one in progress.
@@ -99,6 +100,7 @@ def confirmendsession():
     printer.kickout()
     td.stock_purge()
 
+@user.permission_required("end-session","End a session")
 def end():
     """
     End the current session if there is one.
@@ -292,6 +294,7 @@ class record(ui.dismisspopup):
         printer.print_sessiontotals(self.session)
         self.dismiss()
 
+@user.permission_required('record-takings',"Record takings for a session")
 def recordtakings():
     m=sessionlist(record,unpaidonly=True,closedonly=True)
     if len(m)==0:
@@ -367,6 +370,7 @@ def totalpopup(s):
                  colour=ui.colour_info,keymap=keymap,
                  dismiss=keyboard.K_CASH,show_cursor=False)
 
+@user.permission_required("session-summary","Display a summary for any session")
 def summary():
     log.info("Session summary popup")
     m=sessionlist(totalpopup)
@@ -374,6 +378,8 @@ def summary():
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
 
+@user.permission_required('current-session-summary',"Display a takings "
+                          "summary for the current session")
 def currentsummary():
     sc=Session.current(td.s)
     if sc is None:

@@ -5,7 +5,7 @@ import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
 from quicktill.keyboard import *
 from quicktill.pdrivers import nullprinter,Epson_TM_U220,Epson_TM_T20,pdf,pdflabel,A4
-from quicktill import register,ui,kbdrivers,stockterminal
+from quicktill import register,ui,kbdrivers,stockterminal,user
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
 from quicktill.plu import popup as plu
@@ -29,6 +29,32 @@ K_ALICE=keycode('K_ALICE','Alice')
 K_BOB=keycode('K_BOB','Bob')
 K_CHARLIE=keycode('K_CHARLIE','Charlie')
 K_DORIS=keycode('K_DORIS','Doris')
+
+# Pub managers should generally have the following permissions:
+managers=user.group('manager','Pub manager',[
+        "version", # Display software version
+        "print-receipt-by-number", # Print any old receipt
+        "restore-deferred", # Restore deferred transactions
+        "exit", # Exit or restart the software
+        "deliveries", # List existing deliveries
+        "edit-supplier", # Create or edit supplier details
+        "record-waste", # Record waste
+        "start-session", # Start a session
+        "end-session", # End a session
+        "record-takings", # Record takings for a session
+        "session-summary", # Display any session summary
+        "current-session-summary", # Display current session summary
+        ])
+
+basicusers=user.group('basicuser','Basic user',[
+        "version", # Display software version
+        "record-waste", # Record waste
+        "current-session-summary", # Display current session summary
+        ])
+
+user_alice=user.built_in_user("Alice (built-in)","A",["manager"])
+user_bob=user.built_in_user("Bob (built-in)","B",["basicuser"])
+user_charlie=user.built_in_user("Charlie (built-in)","C",[])
 
 def haymakers_deptkeycheck(dept,price):
     """Check that the price entered when a department key is pressed is
@@ -405,7 +431,7 @@ kb1={
             2: ("M2H","M2T"),
             3: ("M3H","M3T"),
             }),
-    'firstpage': lambda: register.select_page("Alice", register_hotkeys).\
+    'firstpage': lambda: register.select_page(user_alice, register_hotkeys).\
         list_open_transactions(),
     }
 
@@ -423,9 +449,9 @@ stock_hotkeys={
     }
 
 global_hotkeys={
-    K_ALICE: lambda: register.select_page("Alice", register_hotkeys),
-    K_BOB: lambda: register.select_page("Bob", register_hotkeys),
-    K_CHARLIE: lambda: register.select_page("Charlie", register_hotkeys),
+    K_ALICE: lambda: register.select_page(user_alice,register_hotkeys),
+    K_BOB: lambda: register.select_page(user_bob,register_hotkeys),
+    K_CHARLIE: lambda: register.select_page(user_charlie,register_hotkeys),
     K_DORIS: lambda: stockterminal.page(register_hotkeys,["Bar"]),
     K_LOCK: lockscreen,
 }

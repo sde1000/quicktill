@@ -3,7 +3,7 @@ Record waste against a stock item or stock line.
 
 """
 
-from . import ui,td,keyboard,stock,stocklines,department
+from . import ui,td,keyboard,stock,stocklines,department,user
 from .models import StockItem,StockType,RemoveCode,StockOut
 from decimal import Decimal
 
@@ -16,6 +16,7 @@ from decimal import Decimal
 # stock item on it (if there is one), as in (1).  If it's display, we
 # record waste against the stock on display.
 
+@user.permission_required('record-waste',"Record waste")
 def popup():
     stocklines.selectline(
         stockline_chosen,blurb="Choose a stock line to record waste against "

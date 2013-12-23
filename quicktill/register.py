@@ -141,11 +141,12 @@ def strtoamount(s):
     return Decimal(s)*penny
 
 class page(ui.basicpage):
-    def __init__(self,name,hotkeys):
+    def __init__(self,user,hotkeys):
         global registry
         # trans and name needed for "pagename" which is called in basicpage.__init__()
         self.trans=None
-        self.name=name
+        self.name=user.fullname
+        self.user=user
         ui.basicpage.__init__(self)
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.defaultprompt="Ready"
@@ -194,7 +195,7 @@ class page(ui.basicpage):
         if self.trans is None: return ""
         td.s.add(self.trans)
         if self.trans.closed: return ""
-        return "%s:%d"%(self.name[0],self.trans.id)
+        return "{0}:{1}".format(self.user.shortname,self.trans.id)
     def tnotify(self,name,trans):
         "Receive notification that another page has claimed this transaction"
         if self.trans: td.s.add(self.trans)
@@ -1162,15 +1163,16 @@ class page(ui.basicpage):
             return foodorder.cancel()
         curses.beep()
 
-def select_page(name,*args):
+def select_page(user,*args):
     """
-    If the named register page exists, select it.  If it doesn't, create it.
+    If a register page for the supplied user exists, select it.  If it
+    doesn't, create it.
 
     """
     for p in ui.basicpage._pagelist:
-        if isinstance(p,page) and p.name==name:
+        if isinstance(p,page) and p.user==user:
             p.select()
             return p
-    return page(name,*args)
+    return page(user,*args)
 
 registry=transnotify()
