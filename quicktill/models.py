@@ -1021,15 +1021,6 @@ class PopupLockScreenUser(Base):
     def __repr__(self):
         return "<PopupLockScreenUser('%s','%s')>"%(self.code,self.name)
 
-# stockinfo view definition here?  Probably don't need to use it, but
-# we might still want to emit the CREATE VIEW command sometimes.
-
-# stockqty view definition here?
-
-# businesstotals view definition
-
-# Lots of rule definitions here - see createdb
-
 # Add indexes here
 Index('translines_transid_key',Transline.transid)
 Index('payments_transid_key',Payment.transid)
