@@ -346,17 +346,6 @@ DROP TRIGGER no_modify_closed ON payments;
 DROP FUNCTION check_modify_closed_trans_payment();
 """)
 
-class PingapintPayment(Base):
-    __tablename__='pingapint'
-    id=Column('paymentid',Integer,ForeignKey('payments.paymentid'),
-              nullable=False,primary_key=True)
-    amount=Column(Numeric(10,2),nullable=False)
-    vid=Column(Integer,nullable=False)
-    json_data=Column(Text,nullable=False)
-    reimbursed=Column(Date)
-    def __repr__(self):
-        return "<PingapintPayment(%s,%s)>"%(self.id,self.amount)
-
 class Department(Base):
     __tablename__='departments'
     id=Column('dept',Integer,nullable=False,primary_key=True,
