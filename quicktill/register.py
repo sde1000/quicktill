@@ -341,7 +341,7 @@ class page(ui.basicpage):
                 transline=Transline(
                     transaction=self.trans,items=items,amount=unitprice,
                     department=stockitem.stocktype.department,
-                    source=self.name,transcode='S')
+                    transcode='S')
                 td.s.add(transline)
                 stockout=StockOut(
                     transline=transline,
@@ -436,7 +436,7 @@ class page(ui.basicpage):
         trans=self.gettrans()
         if trans is None: return
         tl=Transline(transaction=trans,dept_id=dept,items=items,amount=price,
-                     source=self.name,transcode='S')
+                     transcode='S')
         td.s.add(tl)
         td.s.flush()
         log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
@@ -461,7 +461,7 @@ class page(ui.basicpage):
         if trans is None: return "Transaction cannot be started."
         for dept,text,amount in lines:
             tl=Transline(transaction=trans,dept_id=dept,items=1,amount=amount,
-                         source=self.name,transcode='S',text=text)
+                         transcode='S',text=text)
             td.s.add(tl)
             td.s.flush()
             log.info("Register: deptlines: trans=%d,lid=%d,dept=%d,"
@@ -913,7 +913,7 @@ class page(ui.basicpage):
             ntl=Transline(
                 transaction=trans,items=-transline.items,
                 amount=transline.amount,department=transline.department,
-                source=self.name,transcode='V')
+                transcode='V')
             td.s.add(ntl)
             nso=StockOut(
                 transline=ntl,
@@ -925,7 +925,7 @@ class page(ui.basicpage):
             ntl=Transline(
                 transaction=trans,items=-transline.items,
                 amount=transline.amount,department=transline.department,
-                source=self.name,transcode='V',text=transline.text)
+                transcode='V',text=transline.text)
             td.s.add(ntl)
             td.s.flush()
         self.dl.append(tline(ntl.id))

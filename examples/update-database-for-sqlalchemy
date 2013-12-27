@@ -171,3 +171,19 @@ ALTER TABLE keycaps ADD PRIMARY KEY (keycode);
 
 /* Move the old users table out of the way */
 ALTER TABLE users RENAME TO popup_lock_screen_users;
+
+/* Create the new users table here - although it would be created by
+syncdb, we need to refer to it when we create the user foreign key
+relationship on translines and payments.  We don't need to create the
+permissions or permission grants tables here. */
+CREATE TABLE users (
+       id INTEGER NOT NULL PRIMARY KEY,
+       fullname VARCHAR NOT NULL,
+       shortname VARCHAR NOT NULL,
+       webuser VARCHAR UNIQUE,
+       enabled BOOLEAN NOT NULL,
+       superuser BOOLEAN NOT NULL );
+
+ALTER TABLE translines DROP COLUMN source;
+ALTER TABLE translines ADD COLUMN "user" INTEGER REFERENCES users(id);
+ALTER TABLE payments ADD COLUMN "user" INTEGER REFERENCES users(id);

@@ -44,6 +44,53 @@ class Business(Base):
     def __repr__(self):
         return "<Business('%s')>"%(self.name,)
 
+user_seq=Sequence('user_seq');
+class User(Base):
+    """
+    A till user.
+
+    When the web-based admin system is in use, the web server may
+    supply a username which can be correlated to 'webuser' here.  This
+    is optional.
+
+    """
+    __tablename__='users'
+    id=Column(Integer,user_seq,nullable=False,primary_key=True)
+    fullname=Column(String(),nullable=False,doc="Full name of the user")
+    shortname=Column(String(),nullable=False,doc="Abbreviated name of the user")
+    webuser=Column(String(),nullable=True,unique=True,
+                   doc="Username of this user on the web-based admin system")
+    enabled=Column(Boolean,nullable=False,default=False)
+    superuser=Column(Boolean,nullable=False,default=False)
+    permissions=relationship("Permission",secondary="permission_grants",
+                             backref="users")
+    def __repr__(self):
+        return "<User({0.id},'{0.fullname}')>".format(self)
+
+class Permission(Base):
+    """
+    Permission to perform an operation on the till or on the web
+    interface.  Permissions are identified by name; the description
+    here is just for convenience.  Permissions are defined in the code
+    and a record is created here the first time the permission is
+    referred to.  Permissions may also be groups; the list of
+    permissions held by a group is defined in the till configuration
+    file.
+
+    """
+    __tablename__='permissions'
+    id=Column(String(),nullable=False,primary_key=True,
+              doc="Name of the permission")
+    description=Column(String(),nullable=False,
+                       doc="Brief description of the permission")
+
+# There is no need to access this table directly; it is handled through
+# the relationships on User and Permission.
+permission_association_table=Table(
+    'permission_grants',Base.metadata,
+    Column('user',Integer,ForeignKey('users.id'),primary_key=True),
+    Column('permission',String(),ForeignKey('permissions.id'),primary_key=True))
+
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
 class Vat(object):
@@ -322,9 +369,12 @@ class Payment(Base):
                       nullable=False)
     ref=Column(String(16))
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
+    user_id=Column('user',Integer,ForeignKey('users.id'),nullable=True,
+                   doc="User who created this payment")
     transaction=relationship(Transaction,
                              backref=backref('payments',order_by=id))
     paytype=relationship(PayType)
+    user=relationship(User)
     def __repr__(self):
         return "<Payment(%s,%s,%s,'%s')>"%(self.id,self.transid,self.amount,
                                            self.paytype_id)
@@ -378,12 +428,14 @@ class Transline(Base):
     amount=Column(Numeric(10,2),nullable=False)
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
-    source=Column(String())
+    user_id=Column('user',Integer,ForeignKey('users.id'),nullable=True,
+                   doc="User who created this transaction line")
     transcode=Column(CHAR(1),ForeignKey('transcodes.transcode'),nullable=False)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     text=Column(Text)
     transaction=relationship(Transaction,backref=backref('lines',order_by=id))
     department=relationship(Department)
+    user=relationship(User)
     @hybrid_property
     def total(self): return self.items*self.amount
     def __repr__(self):
@@ -1021,53 +1073,6 @@ class PopupLockScreenUser(Base):
     def __repr__(self):
         return "<PopupLockScreenUser('%s','%s')>"%(self.code,self.name)
 
-user_seq=Sequence('user_seq');
-class User(Base):
-    """
-    A till user.
-
-    When the web-based admin system is in use, the web server may
-    supply a username which can be correlated to 'webuser' here.  This
-    is optional.
-
-    """
-    __tablename__='users'
-    id=Column(Integer,user_seq,nullable=False,primary_key=True)
-    fullname=Column(String(),nullable=False,doc="Full name of the user")
-    shortname=Column(String(),nullable=False,doc="Abbreviated name of the user")
-    webuser=Column(String(),nullable=True,unique=True,
-                   doc="Username of this user on the web-based admin system")
-    enabled=Column(Boolean,nullable=False,default=False)
-    superuser=Column(Boolean,nullable=False,default=False)
-    permissions=relationship("Permission",secondary="permission_grants",
-                             backref="users")
-    def __repr__(self):
-        return "<User({0.id},'{0.fullname}')>".format(self)
-
-class Permission(Base):
-    """
-    Permission to perform an operation on the till or on the web
-    interface.  Permissions are identified by name; the description
-    here is just for convenience.  Permissions are defined in the code
-    and a record is created here the first time the permission is
-    referred to.  Permissions may also be groups; the list of
-    permissions held by a group is defined in the till configuration
-    file.
-
-    """
-    __tablename__='permissions'
-    id=Column(String(),nullable=False,primary_key=True,
-              doc="Name of the permission")
-    description=Column(String(),nullable=False,
-                       doc="Brief description of the permission")
-
-# There is no need to access this table directly; it is handled through
-# the relationships on User and Permission.
-permission_association_table=Table(
-    'permission_grants',Base.metadata,
-    Column('user',Integer,ForeignKey('users.id'),primary_key=True),
-    Column('permission',String(),ForeignKey('permissions.id'),primary_key=True))
-
 # Add indexes here
 Index('translines_transid_key',Transline.transid)
 Index('payments_transid_key',Payment.transid)
@@ -1084,7 +1089,6 @@ add_ddl(StockOut.__table__,
         "CREATE INDEX stockout_date_key ON stockout ( (time::date) )",
         None)
 
-Index('stockout_translineid_key',StockOut.translineid)
 Index('translines_time_key',Transline.time)
 
 foodorder_seq=Sequence('foodorder_seq',metadata=metadata)
