@@ -12,10 +12,13 @@ The dictionary stores the first description it sees for each action;
 the assumption is that old descriptions loaded from the database will
 be superseded by descriptions from the code, which will be seen first.
 
+This module provides a class to derive from (permission_checked) and a
+function decorator (permission_required) for other modules to use to
+indicate restricted functionality.
+
 """
 
 from . import ui
-import functools
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self,key):
@@ -28,13 +31,63 @@ class ActionDescriptionRegistry(dict):
 
 action_descriptions=ActionDescriptionRegistry()
 
-# XXX at the moment we use this to decorate functions and class
-# methods.  When we decorate the __init__ method of a class, callers
-# that refer to the class don't see our 'allowed' method.  At some
-# point we should extend this to be a class decorator too.
-class permission_check(object):
+class _permission_checked_metaclass(type):
     """
-    Check that a user has permission to do something.
+    Metaclass for permission_checked classes.
+
+    """
+    def __new__(meta,name,bases,dct):
+        # Called when a permission_checked class is defined.  Look at
+        # the permission_required and register its action description.
+        pr=dct.get("permission_required")
+        if pr:
+            action_descriptions[pr[0]]=pr[1]
+        return type.__new__(meta,name,bases,dct)
+    def __call__(cls,*args,**kwargs):
+        # Called when a permission_checked class is about to be
+        # instantiated
+        u=ui.current_user()
+        if cls.allowed(u):
+            return type.__call__(cls,*args,**kwargs)
+        else:
+            if u:
+                ui.infopopup(
+                    ["{user} does not have the '{req}' permission "
+                     "which is required for this operation.".format(
+                            user=u.fullname, req=cls.permission_required[0])],
+                    title="Not allowed")
+            else:
+                ui.infopopup(
+                    ["This operation needs the '{req}' permission, "
+                     "but there is no current user.".format(
+                            req=cls.permission_required[0])],
+                    title="Not allowed")
+
+class permission_checked(object):
+    """
+    Inherit from this class if you want your class to check
+    permissions before allowing itself to be initialised.
+
+    Set permission_required=(action,description) in your class to
+    describe the permission required.
+
+    """
+    __metaclass__=_permission_checked_metaclass
+    @classmethod
+    def allowed(cls,user=None):
+        """
+        Can the specified user (or the current user if None) do this
+        thing?
+
+        """
+        user=user or ui.current_user()
+        if user is None: return False
+        return user.has_permission(cls.permission_required[0])
+
+class _permission_check(object):
+    """
+    Wrap a function to check that the current user has permission to
+    do something before permitting the function to be called.
 
     """
     def __init__(self,action,description=None,func=None):
@@ -44,7 +97,12 @@ class permission_check(object):
         if func:
             self.func_doc=func.func_doc
             self.func_name=func.func_name
+            self.__module__=func.__module__
+            self.func_defaults=func.func_defaults
+            self.func_code=func.func_code
+            self.func_globals=func.func_globals
             self.func_dict=func.func_dict
+            self.func_closure=func.func_closure
     def allowed(self,user=None):
         """
         Can the specified user (or the current user if None) do this
@@ -54,10 +112,8 @@ class permission_check(object):
         user=user or ui.current_user()
         if user is None: return False
         return user.has_permission(self._action)
-    # When a class method is decorated, we have to take part in the
-    # descriptor protocol to pass in the object instance
     def __get__(self,obj,objtype):
-        return functools.partial(self.__call__,obj)
+        self._func.__get__(obj,objtype)
     def __call__(self,*args,**kwargs):
         if not callable(self._func):
             raise TypeError("'permission_check' object is not callable")
@@ -77,6 +133,9 @@ class permission_check(object):
                      "but there is no current user.".format(
                             req=self._action)],
                     title="Not allowed")
+    def __repr__(self):
+        return "permission_required('{}') for {}".format(
+            self._action,repr(self._func))
 
 class permission_required(object):
     """
@@ -88,12 +147,16 @@ class permission_required(object):
     def do_test(...):
     pass
 
+    Don't use this on the __init__ method of classes; subclass
+    permission_checked and set the permission_required class attribute
+    instead.  It's ok to use this on other methods of classes.
+
     """
     def __init__(self,action,description=None):
         self._action=action
         self._description=description
     def __call__(self,function):
-        return permission_check(self._action,self._description,function)
+        return _permission_check(self._action,self._description,function)
 
 class group(object):
     """
@@ -160,3 +223,10 @@ class built_in_user(object):
                      pl_display(self._flat_permissions),
                      title="{} user information".format(self.fullname),
                      colour=ui.colour_info)
+
+class database_user(built_in_user):
+    def __init__(self,user):
+        self.userid=user.id
+        built_in_user.__init__(self,user.fullname,user.shortname,
+                               permissions=[p.id for p in user.permissions],
+                               is_superuser=user.superuser)

@@ -19,9 +19,9 @@ def transrestore():
                  title="Confirmation",colour=ui.colour_confirm,
                  dismiss=keyboard.K_CASH)
 
-class receiptprint(ui.dismisspopup):
-    @user.permission_required('print-receipt-by-number',
-                              'Print any receipt given the transaction number')
+class receiptprint(user.permission_checked,ui.dismisspopup):
+    permission_required=('print-receipt-by-number',
+                         'Print any receipt given the transaction number')
     def __init__(self):
         ui.dismisspopup.__init__(self,5,30,title="Receipt print",
                                  dismiss=keyboard.K_CLEAR,
@@ -72,6 +72,10 @@ def restartmenu():
     ui.keymenu(menu,"Exit / restart options")
 
 def userinfo():
+    """
+    Display current user information.
+
+    """
     log.info("User info")
     u=ui.current_user()
     if u: u.display_info()
