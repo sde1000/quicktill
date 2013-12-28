@@ -28,7 +28,7 @@ BEGIN
     AND (SELECT sum(amount*items) FROM translines
       WHERE transid=NEW.transid)!=
       (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
-  THEN RAISE EXCEPTION 'transaction %%d does not balance', NEW.transid;
+  THEN RAISE EXCEPTION 'transaction % does not balance', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -46,7 +46,7 @@ DROP RULE IF EXISTS no_add_to_closed ON payments;
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d payment', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction % payment', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -60,7 +60,7 @@ DROP RULE IF EXISTS no_add_to_closed ON translines;
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d line', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction % line', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -68,10 +68,6 @@ $$ LANGUAGE plpgsql;
 CREATE CONSTRAINT TRIGGER no_modify_closed
   AFTER INSERT OR UPDATE ON translines
   FOR EACH ROW EXECUTE PROCEDURE check_modify_closed_trans_line();
-
-/* Transline "source" column can now be an arbitrary length */
-
-ALTER TABLE translines ALTER COLUMN source TYPE VARCHAR;
 
 /* stockonsale table is now merged with stock */
 
@@ -176,13 +172,16 @@ ALTER TABLE users RENAME TO popup_lock_screen_users;
 syncdb, we need to refer to it when we create the user foreign key
 relationship on translines and payments.  We don't need to create the
 permissions or permission grants tables here. */
+CREATE SEQUENCE user_seq START WITH 1;
 CREATE TABLE users (
        id INTEGER NOT NULL PRIMARY KEY,
        fullname VARCHAR NOT NULL,
        shortname VARCHAR NOT NULL,
        webuser VARCHAR UNIQUE,
        enabled BOOLEAN NOT NULL,
-       superuser BOOLEAN NOT NULL );
+       superuser BOOLEAN NOT NULL,
+       transid INTEGER REFERENCES transactions(transid) ON DELETE SET NULL,
+       register VARCHAR );
 
 ALTER TABLE translines DROP COLUMN source;
 ALTER TABLE translines ADD COLUMN "user" INTEGER REFERENCES users(id);

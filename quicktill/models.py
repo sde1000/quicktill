@@ -44,53 +44,6 @@ class Business(Base):
     def __repr__(self):
         return "<Business('%s')>"%(self.name,)
 
-user_seq=Sequence('user_seq');
-class User(Base):
-    """
-    A till user.
-
-    When the web-based admin system is in use, the web server may
-    supply a username which can be correlated to 'webuser' here.  This
-    is optional.
-
-    """
-    __tablename__='users'
-    id=Column(Integer,user_seq,nullable=False,primary_key=True)
-    fullname=Column(String(),nullable=False,doc="Full name of the user")
-    shortname=Column(String(),nullable=False,doc="Abbreviated name of the user")
-    webuser=Column(String(),nullable=True,unique=True,
-                   doc="Username of this user on the web-based admin system")
-    enabled=Column(Boolean,nullable=False,default=False)
-    superuser=Column(Boolean,nullable=False,default=False)
-    permissions=relationship("Permission",secondary="permission_grants",
-                             backref="users")
-    def __repr__(self):
-        return "<User({0.id},'{0.fullname}')>".format(self)
-
-class Permission(Base):
-    """
-    Permission to perform an operation on the till or on the web
-    interface.  Permissions are identified by name; the description
-    here is just for convenience.  Permissions are defined in the code
-    and a record is created here the first time the permission is
-    referred to.  Permissions may also be groups; the list of
-    permissions held by a group is defined in the till configuration
-    file.
-
-    """
-    __tablename__='permissions'
-    id=Column(String(),nullable=False,primary_key=True,
-              doc="Name of the permission")
-    description=Column(String(),nullable=False,
-                       doc="Brief description of the permission")
-
-# There is no need to access this table directly; it is handled through
-# the relationships on User and Permission.
-permission_association_table=Table(
-    'permission_grants',Base.metadata,
-    Column('user',Integer,ForeignKey('users.id'),primary_key=True),
-    Column('permission',String(),ForeignKey('permissions.id'),primary_key=True))
-
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
 class Vat(object):
@@ -344,7 +297,7 @@ BEGIN
     AND (SELECT sum(amount*items) FROM translines
       WHERE transid=NEW.transid)!=
       (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
-  THEN RAISE EXCEPTION 'transaction %%d does not balance', NEW.transid;
+  THEN RAISE EXCEPTION 'transaction % does not balance', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -356,6 +309,76 @@ CREATE CONSTRAINT TRIGGER close_only_if_balanced
 DROP TRIGGER close_only_if_balanced ON transactions;
 DROP FUNCTION check_transaction_balances();
 """)
+
+user_seq=Sequence('user_seq')
+class User(Base):
+    """
+    A till user.
+
+    When the web-based admin system is in use, the web server may
+    supply a username which can be correlated to 'webuser' here.  This
+    is optional.
+
+    """
+    __tablename__='users'
+    id=Column(Integer,user_seq,nullable=False,primary_key=True)
+    fullname=Column(String(),nullable=False,doc="Full name of the user")
+    shortname=Column(String(),nullable=False,doc="Abbreviated name of the user")
+    webuser=Column(String(),nullable=True,unique=True,
+                   doc="Username of this user on the web-based admin system")
+    enabled=Column(Boolean,nullable=False,default=False)
+    superuser=Column(Boolean,nullable=False,default=False)
+    trans_id=Column('transid',Integer,ForeignKey('transactions.transid',
+                                                 ondelete='SET NULL'),
+                    nullable=True,unique=True,
+                    doc="Transaction being worked on by this user")
+    register=Column(String(),nullable=True,doc="Terminal most recently used "
+                    "by this user")
+    permissions=relationship("Permission",secondary="permission_grants",
+                             backref="users")
+    transaction=relationship(Transaction,backref=backref(
+            'user',uselist=False,cascade="all,delete"))
+    def __repr__(self):
+        return "<User({0.id},'{0.fullname}')>".format(self)
+
+class UserToken(Base):
+    """
+    A token used by a till user to identify themselves while logging
+    on.
+
+    These will typically be NFC cards or iButton tags.  This table
+    aims to be technology-neutral.
+
+    """
+    __tablename__='usertokens'
+    token=Column(String(),primary_key=True)
+    authdata=Column(String(),nullable=True)
+    user_id=Column('user',Integer,ForeignKey('users.id'),nullable=False)
+    user=relationship(User,backref='tokens')
+
+class Permission(Base):
+    """
+    Permission to perform an operation on the till or on the web
+    interface.  Permissions are identified by name; the description
+    here is just for convenience.  Permissions are defined in the code
+    and a record is created here the first time the permission is
+    referred to.  Permissions may also be groups; the list of
+    permissions held by a group is defined in the till configuration
+    file.
+
+    """
+    __tablename__='permissions'
+    id=Column(String(),nullable=False,primary_key=True,
+              doc="Name of the permission")
+    description=Column(String(),nullable=False,
+                       doc="Brief description of the permission")
+
+# There is no need to access this table directly; it is handled through
+# the relationships on User and Permission.
+permission_association_table=Table(
+    'permission_grants',Base.metadata,
+    Column('user',Integer,ForeignKey('users.id'),primary_key=True),
+    Column('permission',String(),ForeignKey('permissions.id'),primary_key=True))
 
 payments_seq=Sequence('payments_seq',start=1)
 class Payment(Base):
@@ -383,7 +406,7 @@ add_ddl(Payment.__table__,"""
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d payment', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction % payment', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -474,7 +497,7 @@ add_ddl(Transline.__table__,"""
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %%d line', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction % line', NEW.transid;
   END IF;
   RETURN NULL;
 END;
