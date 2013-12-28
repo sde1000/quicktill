@@ -75,3 +75,8 @@ transaction_to_free_drinks_function=False
 database=None
 
 firstpage=None
+
+# Called by ui code whenever a usertoken is processed by the default
+# page's hotkey handler
+def usertoken_handler(t):
+    pass

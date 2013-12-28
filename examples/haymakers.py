@@ -11,7 +11,7 @@ from quicktill.managestock import popup as managestock
 from quicktill.plu import popup as plu
 from quicktill.usestock import popup as usestock
 from quicktill.recordwaste import popup as recordwaste
-from quicktill.lockscreen import popup as lockscreen
+from quicktill import lockscreen
 from quicktill.stock import annotate
 from quicktill import timesheets,btcmerch
 from quicktill.cash import CashPayment
@@ -25,9 +25,6 @@ import logging
 log=logging.getLogger('config')
 
 # Keys that we refer to in this config file
-K_ALICE=keycode('K_ALICE','Alice')
-K_BOB=keycode('K_BOB','Bob')
-K_CHARLIE=keycode('K_CHARLIE','Charlie')
 K_DORIS=keycode('K_DORIS','Doris')
 
 # Pub managers should generally have the following permissions:
@@ -51,10 +48,6 @@ basicusers=user.group('basicuser','Basic user',[
         "record-waste", # Record waste
         "current-session-summary", # Display current session summary
         ])
-
-user_alice=user.built_in_user("Alice (built-in)","A",["manager"])
-user_bob=user.built_in_user("Bob (built-in)","B",["basicuser"])
-user_charlie=user.built_in_user("Charlie (built-in)","C",[])
 
 def haymakers_deptkeycheck(dept,price):
     """Check that the price entered when a department key is pressed is
@@ -299,9 +292,9 @@ kb1={
     'kbdriver':kbdrivers.prehkeyboard(
         [
             # control keys
-            ("H01",K_ALICE),
-            ("G01",K_BOB),
-            ("F01",K_CHARLIE),
+            ("H01",user.token('builtin:alice')),
+            ("G01",user.token('builtin:bob')),
+            ("F01",user.token('builtin:charlie')),
             ("E01",K_DORIS),
             ("H02",K_MANAGETILL),
             ("G02",K_MANAGESTOCK),
@@ -431,8 +424,8 @@ kb1={
             2: ("M2H","M2T"),
             3: ("M3H","M3T"),
             }),
-    'firstpage': lambda: register.select_page(user_alice, register_hotkeys).\
-        list_open_transactions(),
+    'firstpage': lambda: lockscreen.lockpage(),
+    'usertoken_handler': lambda t:register.handle_usertoken(t,register_hotkeys),
     }
 
 stock_hotkeys={
@@ -449,11 +442,8 @@ stock_hotkeys={
     }
 
 global_hotkeys={
-    K_ALICE: lambda: register.select_page(user_alice,register_hotkeys),
-    K_BOB: lambda: register.select_page(user_bob,register_hotkeys),
-    K_CHARLIE: lambda: register.select_page(user_charlie,register_hotkeys),
     K_DORIS: lambda: stockterminal.page(register_hotkeys,["Bar"]),
-    K_LOCK: lockscreen,
+    K_LOCK: lockscreen.lockpage,
 }
 
 stockcontrol={
@@ -494,26 +484,6 @@ config3={'description':"Test menu file 'testmenu.py' in current directory",
          }
 config3.update(std)
 config3.update(xpdfprinter)
-
-# Things to define:
-#  description - summary of the configuration
-#  kbdriver - keyboard driver
-#  printer - (driver,args)
-#  labelprinter - (driver,args)
-#  pages - available pages
-#  pubname
-#  pubnumber
-#  pubaddr
-#  companyaddr
-#  currency
-#  cashback_limit
-#  pricepolicy  (optional)
-#  priceguess  (optional)
-#  database  (only if database will be used in this configuration)
-#  pdriver
-#  kitchenprinter (only if food ordering configured)
-#  menuurl (only if food ordering configured)
-
 
 configurations={
     'default': config0,

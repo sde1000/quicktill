@@ -9,7 +9,7 @@ from __future__ import print_function
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
 from .version import version
-from .models import KeyCap,Session
+from .models import Session,User,UserToken
 log=logging.getLogger(__name__)
 
 configurlfile="/etc/quicktill/configurl"
@@ -201,6 +201,32 @@ class dbsetup(command):
             with td.orm_session():
                 setup(args.dbfile)
 
+class adduser(command):
+    """
+    Add a user.  This user will be a superuser.  This is necessary
+    during setup.
+
+    """
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'adduser',help="add a superuser to the database",
+            description=adduser.__doc__)
+        parser.set_defaults(command=adduser.run)
+        parser.add_argument("fullname", help="Full name of user")
+        parser.add_argument("shortname", help="Short name of user")
+        parser.add_argument("usertoken", help="User ID token")
+    @staticmethod
+    def run(args):
+        td.init(tillconfig.database)
+        with td.orm_session():
+            u=User(fullname=args.fullname,shortname=args.shortname,
+                   enabled=True,superuser=True)
+            t=UserToken(token=args.usertoken,user=u)
+            td.s.add(u,t)
+            td.s.flush()
+            print("User added.")
+
 def main():
     """Usual main entry point for the till software, unless you are doing
     something strange.  Reads the location of its global configuration,
@@ -338,6 +364,8 @@ def main():
         tillconfig.hotkeys=config['hotkeys']
     if 'firstpage' in config:
         tillconfig.firstpage=config['firstpage']
+    if 'usertoken_handler' in config:
+        tillconfig.usertoken_handler=config['usertoken_handler']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

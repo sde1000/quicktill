@@ -292,6 +292,8 @@ class basicpage(basicwin):
         """
         if k in tillconfig.hotkeys:
             tillconfig.hotkeys[k]()
+        elif hasattr(k,'usertoken'):
+            tillconfig.usertoken_handler(k)
         else:
             basicwin._focus.keypress(k)
 

@@ -18,7 +18,8 @@ indicate restricted functionality.
 
 """
 
-from . import ui
+from . import ui,td
+from .models import User,UserToken,Permission
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self,key):
@@ -215,18 +216,61 @@ class built_in_user(object):
         def pl_display(perm):
             pl=sorted(perm)
             return ["  {0} ({1})".format(x,action_descriptions[x]) for x in pl]
-        ui.infopopup(["Full name: {}".format(self.fullname),
-                      "Short name: {}".format(self.shortname),"",
-                      "Explicit permissions:"]+
-                     pl_display(self.permissions)+
-                     ["","All permissions:"]+
-                     pl_display(self._flat_permissions),
-                     title="{} user information".format(self.fullname),
+        info=["Full name: {}".format(self.fullname),
+                      "Short name: {}".format(self.shortname),""]
+        if self.is_superuser:
+            info.append("Has all permissions.")
+        else:
+            info=info+["Explicit permissions:"]+\
+                pl_display(self.permissions)+\
+                ["","All permissions:"]+\
+                pl_display(self._flat_permissions)
+        ui.infopopup(info,title="{} user information".format(self.fullname),
                      colour=ui.colour_info)
 
 class database_user(built_in_user):
+    """
+    A user loaded from the database.  register pages require these,
+    because they use the userid attribute to distinguish between
+    different users.
+
+    """
     def __init__(self,user):
         self.userid=user.id
+        self.dbuser=user
         built_in_user.__init__(self,user.fullname,user.shortname,
                                permissions=[p.id for p in user.permissions],
                                is_superuser=user.superuser)
+
+class token(object):
+    """
+    A token presented by a user at the terminal.  Usually passed to
+    ui.handle_keyboard_input()
+
+    """
+    def __init__(self,t):
+        self.usertoken=t
+    def __repr__(self):
+        return "token('{}')".format(self.usertoken)
+
+class tokeninfo(ui.ignore_hotkeys,ui.autodismiss,ui.infopopup):
+    autodismisstime=2
+
+def user_from_token(t):
+    """
+    Find a user given a token object.  Pops up a dialog box that
+    ignores hotkeys to explain if the user can't be found.  (Ignoring
+    hotkeys ensures the box can't pop up on top of itself.)
+
+    """
+    dbt=td.s.query(UserToken).get(t.usertoken)
+    if not dbt:
+        tokeninfo(["User token '{}' not recognised.".format(t.usertoken)],
+                   title="Unknown token")
+        return
+    u=dbt.user
+    if not u.enabled:
+        tokeninfo(["User '{}' is not active.".format(u.fullname)],
+                  title="User not active")
+        return
+    return database_user(u)

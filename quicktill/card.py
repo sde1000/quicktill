@@ -155,6 +155,11 @@ class CardPayment(payment.PaymentMethod):
                   self._cashback_first)
     def _finish_payment(self,reg,trans,amount,cashback,ref):
         td.s.add(trans)
+        if trans.closed:
+            ui.infopopup(["The transaction was closed before the payment "
+                          "could be recorded.  The payment has been "
+                          "ignored."],title="Transaction closed")
+            return
         total=amount+cashback
         p=Payment(transaction=trans,paytype=self.get_paytype(),
                   ref=ref,amount=total)
