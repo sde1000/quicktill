@@ -21,20 +21,24 @@ class CashPayment(payment.PaymentMethod):
         # cashback, etc.
         return payment.ref
     def add_change(self,transaction,description,amount):
+        user=ui.current_user().dbuser
+        td.s.add(user)
         p=Payment(transaction=transaction,paytype=self.get_paytype(),
-                  ref=description,amount=amount)
+                  ref=description,amount=amount,user=user)
         td.s.add(p)
         td.s.flush()
         return payment.pline(p,method=self)
     def start_payment(self,reg,trans,amount,outstanding):
+        user=ui.current_user().dbuser
+        td.s.add(user)
         p=Payment(transaction=trans,paytype=self.get_paytype(),
-                  ref=self.description,amount=amount)
+                  ref=self.description,amount=amount,user=user)
         td.s.add(p)
         r=[payment.pline(p,method=self)]
         change=outstanding-amount
         if change<zero:
             c=Payment(transaction=trans,paytype=self.get_paytype(),
-                      ref=self._change_description,amount=change)
+                      ref=self._change_description,amount=change,user=user)
             td.s.add(c)
             r.append(payment.pline(c,method=self))
         td.s.flush()
