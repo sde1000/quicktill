@@ -1,6 +1,5 @@
 from . import ui,keyboard,td
 from .models import PopupLockScreenUser
-from .version import version
 
 def usersmenu(func):
     users=td.s.query(PopupLockScreenUser).order_by(PopupLockScreenUser.code).all()
@@ -119,16 +118,20 @@ class adduser(ui.dismisspopup):
 class lockpage(ui.basicpage):
     def __init__(self):
         ui.basicpage.__init__(self)
-        self.win.addstr(1,1,"This is quicktill version %s"%version)
-        self.win.addstr(3,1,"This till is locked.")
-        self.win.move(0,0)
+        self.win.addstr(1,1,"This till is locked.")
         self.updateheader()
+        self.win.addstr(3,1,"The following pages are loaded:")
+        y=4
+        for p in ui.basicpage._pagelist:
+            self.win.addstr(y,3,p.pagename())
+            y=y+1
+        self.win.move(0,0)
     def keypress(self,k):
-        self.win.addstr(5,1,' '*30)
+        self.win.addstr(1,40,' '*30)
         if hasattr(k,'keycap'):
-            self.win.addstr(5,1,k.keycap)
+            self.win.addstr(1,40,k.keycap)
         else:
-            self.win.addstr(5,1,unicode(k))
+            self.win.addstr(1,40,unicode(k))
         self.win.move(0,0)
     def pagename(self):
         return "Lock"
