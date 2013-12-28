@@ -106,6 +106,41 @@ def current_user():
     for i in stack:
         if hasattr(i,'user'): return i.user
 
+class ignore_hotkeys(object):
+    """
+    Mixin class for UI elements that disables handling of hotkeys;
+    they are passed to the input focus like all other keypresses.
+
+    """
+    def hotkeypress(self,k):
+        basicwin._focus.keypress(k)
+
+class autodismiss(object):
+    """
+    Mixin class for UI elements that dismiss themselves after a
+    certain number of seconds if they still hold the input focus.
+
+    """
+    autodismisstime=10
+    def __init__(self,*args,**kwargs):
+        self.mainloopnexttime=None
+        self.nexttime=time.time()+self.autodismisstime
+        event.eventlist.append(self)
+        super(autodismiss,self).__init__(*args,**kwargs)
+    def alarm(self):
+        if self in event.eventlist:
+            del event.eventlist[event.eventlist.index(self)]
+        if self in basicwin._focus.parents():
+            # Changing the input focus may call code that accesses the
+            # database.  When our alarm method is called there's no
+            # database session active.  Make one!
+            with td.orm_session():
+                self.dismiss()
+    def dismiss(self):
+        if self in event.eventlist:
+            del event.eventlist[event.eventlist.index(self)]
+        super(autodismiss,self).dismiss()
+
 class basicwin(object):
     """Container for all pages, popup windows and fields.
 
