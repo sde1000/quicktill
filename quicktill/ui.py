@@ -931,6 +931,46 @@ class tableline(emptyline):
         self.cursor=(0,0)
         return self.formatter.format(self,width)
     
+class booleanfield(field):
+    """
+    A field that can be either True or False, displayed as Yes or No.
+    Also has an optional "blank" state which will be read back as
+    None.
+
+    """
+    def __init__(self,y,x,keymap={},f=None,readonly=False,allow_blank=True):
+        field.__init__(self,keymap)
+        self.y=y
+        self.x=x
+        self.readonly=readonly
+        self.allow_blank=allow_blank
+        self.set(f)
+    def focus(self):
+        field.focus(self)
+        self.draw()
+    def set(self,l):
+        self.f=l
+        if not self.allow_blank: self.f=not not self.f
+        self.sethook()
+        self.draw()
+    def draw(self):
+        pos=self.win.getyx()
+        if self.f is None: s="   "
+        else: s="Yes" if self.f else "No "
+        pos=self.win.getyx()
+        self.addstr(self.y,self.x,s,curses.A_REVERSE)
+        if self.focused: self.win.move(self.y,self.x)
+        else: self.win.move(*pos)
+    def keypress(self,k):
+        if k in (ord('y'),ord('Y')):
+            self.set(True)
+        elif k in (ord('n'),ord('N')):
+            self.set(False)
+        elif k==keyboard.K_CLEAR and self.allow_blank and self.f is not None:
+            self.set(None)
+        else:
+            field.keypress(self,k)
+                
 class editfield(field):
     """Accept input in a field.  Processes an implicit set of keycodes; when an
     unrecognised code is found processing moves to the standard keymap."""
