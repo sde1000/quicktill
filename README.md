@@ -36,15 +36,13 @@ problems, but is becoming difficult to maintain.  The rewrite has
 replaced lots of embedded SQL with the sqlalchemy ORM; this enables
 the code be rather more readable!  There is also a django-based
 reporting interface to the till database that makes use of the ORM
-models defined here in quicktill/models.py; that's in a separate
-repository (probably not yet published).
+models defined here in quicktill/models.py; it's included in
+quicktill/tillweb/ but is out of date.
 
 I intend to start using this branch in one of my pubs (probably the
-Pembury) sometime in late 2013 or early 2014, once the "members of
-staff have NFC ID cards to bring up their personal page on the
-register" feature has been implemented and I'm happy the whole thing
-is stable.  There might be some concept of till users and permissions
-by then, too.
+Pembury) in early 2014, once the "members of staff have NFC ID cards
+to bring up their personal page on the register" feature has been
+implemented and I'm happy the whole thing is stable.
 
 Getting started
 ---------------
@@ -77,6 +75,13 @@ Get a draft database setup file and edit it:
     runtill dbsetup >database-config
     (edit database-config)
     runtill dbsetup database-config
+
+Create initial users; these will be superusers that can do anything,
+you can use the user management interface once the till is running to
+restrict them once you have other users set up:
+
+    runtill adduser "Built-in Alice" Alice builtin:alice
+    runtill adduser "Built-in Bob" Bob builtin:bob
 
 Run in "stock control terminal" mode and enter your initial stock
 (this mode doesn't require a special keyboard)
