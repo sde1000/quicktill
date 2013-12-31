@@ -214,6 +214,9 @@ class built_in_user(object):
         """
         if self.is_superuser: return True
         return action in self._flat_permissions
+    @property
+    def all_permissions(self):
+        return list(self._flat_permissions)
     def display_info(self):
         def pl_display(perm):
             pl=sorted(perm)
@@ -291,7 +294,6 @@ def user_from_token(t):
                   title="User not active")
         return
     return database_user(u)
-
 
 # Here is the user interface for adding, editing and deleting users.
 class adduser(permission_checked,ui.dismisspopup):
@@ -398,6 +400,44 @@ class addtoken(ui.dismisspopup):
         td.s.flush()
         self.dismiss()
 
+def do_add_permission(userid,permission):
+    u=td.s.query(User).get(userid)
+    p=Permission(id=permission,description=action_descriptions[permission])
+    p=td.s.merge(p)
+    u.permissions.append(p)
+    td.s.flush()
+
+def addpermission(userid):
+    """
+    Add a permission to a user.  Displays a list of all available
+    permissions.
+
+    """
+    cu=ui.current_user()
+    if cu.is_superuser:
+        pl=action_descriptions.keys()
+    else:
+        pl=cu.all_permissions
+    # Add in groups if the list of permissions includes everything in that group
+    for g in group.all_groups:
+        for m in group.all_groups[g].members:
+            if m not in pl: break
+        else: # else on a for loop is skipped if the loop was exited with break
+            pl.append(g)
+    # Remove permissions the user already has
+    u=td.s.query(User).get(userid)
+    existing=[p.id for p in u.permissions]
+    pl=[p for p in pl if p not in existing]
+    # Generally most users will be given group permissions, so we want
+    # to sort the groups to the top of the list.
+    pl=sorted(pl)
+    pl=sorted(pl,key=lambda p:p not in group.all_groups)
+    f=ui.tableformatter(' l l ')
+    menu=[(ui.tableline(f,(p,action_descriptions[p])),
+           do_add_permission,(userid,p)) for p in pl]
+    ui.menu(menu,title="Give permission to {}".format(u.fullname),
+            blurb="Choose the permission to give to {}".format(u.fullname))
+
 class edituser(permission_checked,ui.basicpopup):
     permission_required=('edit-user','Edit a user')
     def __init__(self,userid):
@@ -451,8 +491,19 @@ class edituser(permission_checked,ui.basicpopup):
         tl.insert(0,("Add new token",addtoken,(self.userid,)))
         ui.menu(tl,title="Tokens for {}".format(u.fullname),
                 blurb="Select a token and press Cash/Enter to remove it.")
+    def removepermission(self,permission):
+        u=td.s.query(User).get(self.userid)
+        p=td.s.query(Permission).get(permission)
+        u.permissions.remove(p)
+        td.s.flush()
     def editpermissions(self):
-        pass
+        u=td.s.query(User).get(self.userid)
+        f=ui.tableformatter(' l l ')
+        pl=[(ui.tableline(f,(p.id,p.description)),
+             self.removepermission,(p.id,)) for p in u.permissions]
+        pl.insert(0,("Add permission",addpermission,(self.userid,)))
+        ui.menu(pl,title="Permissions for {}".format(u.fullname),
+                blurb="Select a permission and press Cash/Enter to remove it.")
     def save(self):
         fn=self.fnfield.f.strip()
         sn=self.snfield.f.strip()
@@ -468,6 +519,10 @@ class edituser(permission_checked,ui.basicpopup):
         u.enabled=self.actfield.f
         td.s.flush()
         self.dismiss()
+
+def display_info(userid):
+    u=td.s.query(User).get(userid)
+    database_user(u).display_info()
 
 # Permission descriptions for the users menu
 action_descriptions['list-users']="List till users"
@@ -504,7 +559,7 @@ def usersmenu(include_inactive=False):
         f=ui.tableformatter(' l l ')
         lines=[(ui.tableline(
                     f,(x.fullname,"(Active)" if x.enabled else "(Inactive")),
-                x.display_info,None) for x in ul]
+                display_info,(x.id,)) for x in ul]
     if not include_inactive:
         lines.insert(0,("Include inactive users",usersmenu,(True,)))
     if u.has_permission('edit-user'):

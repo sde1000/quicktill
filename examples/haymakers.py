@@ -28,7 +28,7 @@ log=logging.getLogger('config')
 K_DORIS=keycode('K_DORIS','Doris')
 
 # Pub managers should generally have the following permissions:
-managers=user.group('manager','Pub manager',[
+user.group('manager','Pub manager',[
         "version", # Display software version
         "print-receipt-by-number", # Print any old receipt
         "restore-deferred", # Restore deferred transactions
@@ -41,13 +41,18 @@ managers=user.group('manager','Pub manager',[
         "record-takings", # Record takings for a session
         "session-summary", # Display any session summary
         "current-session-summary", # Display current session summary
+        "nosale", # Pop open the till drawer
+        "edit-user", # Add and edit users
         ])
 
-basicusers=user.group('basicuser','Basic user',[
+user.group('basicuser','Basic user',[
         "version", # Display software version
         "record-waste", # Record waste
         "current-session-summary", # Display current session summary
         ])
+
+user.group('magic','Magic things',[
+        "wibble","wobble","version"])
 
 def haymakers_deptkeycheck(dept,price):
     """Check that the price entered when a department key is pressed is
