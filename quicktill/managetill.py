@@ -71,18 +71,6 @@ def restartmenu():
         ]
     ui.keymenu(menu,"Exit / restart options")
 
-def userinfo():
-    """
-    Display current user information.
-
-    """
-    log.info("User info")
-    u=ui.current_user()
-    if u: u.display_info()
-    else:
-        ui.infopopup(["There is no current user."],title="No user info",
-                     colour=ui.colour_info)
-
 def popup():
     log.info("Till management menu")
     menu=[
@@ -92,7 +80,7 @@ def popup():
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
-        (keyboard.K_SEVEN,"Display current user info",userinfo,None),
+        (keyboard.K_SEVEN,"Users",user.usersmenu,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]
