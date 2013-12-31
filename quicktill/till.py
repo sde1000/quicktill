@@ -227,7 +227,7 @@ class adduser(command):
         with td.orm_session():
             u=User(fullname=args.fullname,shortname=args.shortname,
                    enabled=True,superuser=True)
-            t=UserToken(token=args.usertoken,user=u)
+            t=UserToken(token=args.usertoken,user=u,description=args.fullname)
             td.s.add(u,t)
             td.s.flush()
             print("User added.")

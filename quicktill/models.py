@@ -353,6 +353,7 @@ class UserToken(Base):
     __tablename__='usertokens'
     token=Column(String(),primary_key=True)
     authdata=Column(String(),nullable=True)
+    description=Column(String())
     user_id=Column('user',Integer,ForeignKey('users.id'),nullable=False)
     user=relationship(User,backref='tokens')
 
