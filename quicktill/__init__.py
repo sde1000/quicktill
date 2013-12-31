@@ -8,7 +8,7 @@ control system user interfaces with a PostgreSQL back-end.
 __all__=['btcmerch','card','cash','dbsetup','delivery','department',
          'event','extras',
          'foodcheck','foodorder','kbdrivers','keyboard','lockscreen',
-         'magcard','managekeyboard','managestock','managetill','models',
+         'managekeyboard','managestock','managetill','models',
          'payment',
          'pdrivers','plu','printer','recordwaste','register',
          'session','stocklines',

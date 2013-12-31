@@ -1,16 +1,5 @@
-# A keyboard driver is a class that invokes a callback function every
-# time a keypress is detected.  It passes either a keycode defined in
-# the keyboard module, a keycode not defined in the keyboard module
-# (eg. a curses keycode), or a magstripe object.  For every value it
-# passes to the callback function it must be willing to return a
-# keycap string through the getKeycap function.
-
-# Some keyboard drivers need information to be supplied at UI
-# initialisation time (eg. stdwin for the curses keyboard driver).
-# This is supplied using the initUI method.
-
-import sys,string,curses
-from . import keyboard,magcard,event,ui,td
+import sys,string,curses,hashlib
+from . import keyboard,event,ui,td
 
 class curseskeyboard(object):
     # curses codes and their till keycode equivalents
@@ -100,25 +89,5 @@ class prehkeyboard(curseskeyboard):
         if k is None:
             # XXX temp ignore magstripe
             return
-#        if k==keyboard.K_M1H:
-#            self.card=magcard.magstripe()
-#            self.card.start_track(1)
-#            return
-#        if self.card:
-#            if k==keyboard.K_M1T:
-#                self.card.end_track(1)
-#            elif k==keyboard.K_M2H:
-#                self.card.start_track(2)
-#            elif k==keyboard.K_M2T:
-#                self.card.end_track(2)
-#            elif k==keyboard.K_M3H:
-#                self.card.start_track(3)
-#            elif k==keyboard.K_M3T:
-#                self.card.end_track(3)
-#                ui.handle_keyboard_input(self.card)
-#                self.card=None
-#            else:
-#                self.card.handle_input(k)
-#            return
         with td.orm_session():
             ui.handle_keyboard_input(k)
