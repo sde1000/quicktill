@@ -1,5 +1,6 @@
-import sys,string,curses,hashlib
-from . import keyboard,event,ui,td
+import sys,string,curses,hashlib,logging
+from . import keyboard,event,ui,td,user
+log=logging.getLogger(__name__)
 
 class curseskeyboard(object):
     # curses codes and their till keycode equivalents
@@ -42,8 +43,16 @@ class curseskeyboard(object):
         with td.orm_session():
             ui.handle_keyboard_input(i)
 
+class magstripecode(object):
+    """
+    A keycode used to indicate the start or end of a magstripe card track.
+
+    """
+    def __init__(self,code):
+        self.magstripe=code
+
 class prehkeyboard(curseskeyboard):
-    def __init__(self,kblayout,magstripe={}):
+    def __init__(self,kblayout,magstripe=None):
         curseskeyboard.__init__(self)
         self.ibuf=[]
         self.decode=False
@@ -51,11 +60,12 @@ class prehkeyboard(curseskeyboard):
         self.inputs={}
         for loc,code in kblayout:
             self.inputs[loc]=code
-        for track in magstripe:
-            start,end=magstripe[track]
-            # XXX Should be calls to magstripe input handler
-            self.inputs[start]=None
-            self.inputs[end]=None
+        if magstripe:
+            for start,end in magstripe:
+                self.inputs[start]=magstripecode(start)
+                self.inputs[end]=magstripecode(end)
+            self.finishmagstripe=end
+        self.magstripe=None # Magstripe read in progress if not-None
     def doread(self):
         def pass_on_buffer():
             self.handle_input(ord('['))
@@ -86,8 +96,20 @@ class prehkeyboard(curseskeyboard):
         else:
             self.handle_input(i)
     def handle_input(self,k):
-        if k is None:
-            # XXX temp ignore magstripe
-            return
-        with td.orm_session():
-            ui.handle_keyboard_input(k)
+        if hasattr(k,'magstripe'):
+            # It was one of the magstripe codes.
+            if self.magstripe is None: self.magstripe=""
+            if k.magstripe==self.finishmagstripe:
+                log.debug("Magstripe '%s'",self.magstripe)
+                if "BadRead" in self.magstripe:
+                    self.magstripe=None
+                    return
+                k=user.token("magstripe:"+
+                           hashlib.sha1(self.magstripe).hexdigest()[:16])
+                self.magstripe=None
+        if self.magstripe is None:
+            with td.orm_session():
+                ui.handle_keyboard_input(k)
+        else:
+            if curses.ascii.isprint(k):
+                self.magstripe=self.magstripe+chr(k)

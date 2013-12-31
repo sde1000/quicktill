@@ -32,7 +32,7 @@ Cash register page.  Allows transaction entry, voiding of lines.
 # list, you should call cursor_off() before calling redraw() to make
 # sure that we scroll to the end of the list.
 
-from . import magcard,tillconfig
+from . import tillconfig
 import curses,textwrap
 from . import td,ui,keyboard,printer
 from . import stock,stocklines
@@ -1256,9 +1256,7 @@ class page(ui.basicpage):
         # This is our main entry point.  We will have a new database session.
         # Update the transaction object before we do anything else!
         if not self.entry(): return
-        if isinstance(k,magcard.magstripe):
-            return magcard.infopopup(k)
-        elif hasattr(k,'line'):
+        if hasattr(k,'line'):
             stocklines.linemenu(k,self.linekey)
             return
         elif hasattr(k,'department'):

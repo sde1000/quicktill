@@ -87,8 +87,8 @@ def handle_keyboard_input(k):
     We can be passed a variety of things as keyboard input:
 
     keycode objects from keyboard.py
-    magstripe objects from magcard.py
     integers from curses (eg. ord('t'))
+    user tokens
 
     They don't always have a 'keycap' method - check the type first!
 

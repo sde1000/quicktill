@@ -418,11 +418,11 @@ kb1={
             ("A12",linekey(76)),
             ("A13",linekey(77)),
             ],
-        magstripe={
-            1: ("M1H","M1T"),
-            2: ("M2H","M2T"),
-            3: ("M3H","M3T"),
-            }),
+        magstripe=[
+            ("M1H","M1T"),
+            ("M2H","M2T"),
+            ("M3H","M3T"),
+            ]),
     'firstpage': lambda: lockscreen.lockpage(),
     'usertoken_handler': lambda t:register.handle_usertoken(t,register_hotkeys),
     'usertoken_listen': ('127.0.0.1',8455),
