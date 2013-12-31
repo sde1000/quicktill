@@ -18,8 +18,10 @@ indicate restricted functionality.
 
 """
 
-from . import ui,td
+from . import ui,td,event
 from .models import User,UserToken,Permission
+import socket,logging
+log=logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self,key):
@@ -252,6 +254,21 @@ class token(object):
         self.usertoken=t
     def __repr__(self):
         return "token('{}')".format(self.usertoken)
+
+class tokenlistener(object):
+    def __init__(self,address):
+        self.s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.bind(address)
+        self.s.setblocking(0)
+        event.rdlist.append(self)
+    def fileno(self):
+        return self.s.fileno()
+    def doread(self):
+        d=self.s.recv(1024).strip()
+        log.debug("Received: {}".format(repr(d)))
+        if d:
+            with td.orm_session():
+                ui.handle_keyboard_input(token(d))
 
 class tokeninfo(ui.ignore_hotkeys,ui.autodismiss,ui.infopopup):
     autodismisstime=2

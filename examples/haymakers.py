@@ -288,7 +288,6 @@ labelprinter={
 # contain characters that are invalid in Python identifiers.
 
 kb1={
-    # (location, legend, keycode)
     'kbdriver':kbdrivers.prehkeyboard(
         [
             # control keys
@@ -426,6 +425,7 @@ kb1={
             }),
     'firstpage': lambda: lockscreen.lockpage(),
     'usertoken_handler': lambda t:register.handle_usertoken(t,register_hotkeys),
+    'usertoken_listen': ('127.0.0.1',8455),
     }
 
 stock_hotkeys={

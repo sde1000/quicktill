@@ -7,7 +7,7 @@ module.
 
 from __future__ import print_function
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
-from . import ui,keyboard,event,td,printer,tillconfig,event,foodorder
+from . import ui,event,td,printer,tillconfig,foodorder,user
 from .version import version
 from .models import Session,User,UserToken
 log=logging.getLogger(__name__)
@@ -82,11 +82,16 @@ class runtill(command):
         parser=subparsers.add_parser(
             'start',help="run the till interactively",
             description=runtill.__doc__)
-        parser.set_defaults(command=runtill.run)
+        parser.add_argument("-n", "--nolisten", action="store_true",
+                            dest="nolisten",
+                            help="Disable listening socket for user tokens")
+        parser.set_defaults(command=runtill.run,nolisten=False)
     @staticmethod
     def run(args):
         log.info("Starting version %s"%version)
         try:
+            if tillconfig.usertoken_listen and not args.nolisten:
+                user.tokenlistener(tillconfig.usertoken_listen)
             td.init(tillconfig.database)
             curses.wrapper(start)
         except:
@@ -366,6 +371,8 @@ def main():
         tillconfig.firstpage=config['firstpage']
     if 'usertoken_handler' in config:
         tillconfig.usertoken_handler=config['usertoken_handler']
+    if 'usertoken_listen' in config:
+        tillconfig.usertoken_listen=config['usertoken_listen']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')

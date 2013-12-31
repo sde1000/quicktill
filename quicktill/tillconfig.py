@@ -80,3 +80,4 @@ firstpage=None
 # page's hotkey handler
 def usertoken_handler(t):
     pass
+usertoken_listen=None
