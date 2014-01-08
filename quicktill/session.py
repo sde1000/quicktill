@@ -3,7 +3,7 @@ Starting, ending, and recording totals for sessions.
 
 """
 
-from . import ui,keyboard,td,register,printer,tillconfig,user
+from . import ui,keyboard,td,printer,tillconfig,user
 from .models import Session,SessionTotal,PayType,penny,zero
 from .td import undefer,func,desc,select
 from decimal import Decimal
@@ -89,7 +89,6 @@ def confirmendsession():
     r=checkendsession()
     if r is None: return
     r.endtime=datetime.datetime.now()
-    register.registry.announce(None,0)
     log.info("End of session %d confirmed.",r.id)
     ui.infopopup(["Session %d has ended.  "
                   "Please count the cash in the drawer and enter the "
