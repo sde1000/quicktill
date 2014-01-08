@@ -478,10 +478,9 @@ class addbinding(ui.listpopup):
             return self.func()
         if k in keyboard.cursorkeys:
             return ui.listpopup.keypress(self,k)
-        name=keyboard.kcnames[k]
-        if name in self.exdict: return
-        binding=KeyboardBinding(keycode=self.keycode,
-                                menukey=name,stocklineid=self.stocklineid,
+        if k.name in self.exdict: return
+        binding=KeyboardBinding(keycode=self.keycode.name,
+                                menukey=k.name,stocklineid=self.stocklineid,
                                 qty=1)
         td.s.add(binding)
         td.s.flush()
