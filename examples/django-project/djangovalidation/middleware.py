@@ -191,7 +191,7 @@ class HTMLValidationMiddleware(object):
 <html lang="en">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>HTML validation error at {{ request.path_info|escape }}</title>
+  <title>HTML validation error at {% templatetag openvariable %} request.path_info|escape {% templatetag closevariable %}</title>
   <meta name="robots" content="NONE,NOARCHIVE">
   <style type="text/css">
     html * { padding: 0; margin: 0; }
@@ -219,12 +219,12 @@ class HTMLValidationMiddleware(object):
         might be the problem. Please fix the following:
     </p>
     <table class="meta">
-      {% for error in errors %}
+      {% templatetag openblock %} for error in errors {% templatetag closeblock %}
         <tr>
-          <th>Line: <a href="#line{{ error.line }}">{{ error.line }}</a></th>
-          <td>{{ error.message|escape }}</td>
+          <th>Line: <a href="#line{% templatetag openvariable %} error.line {% templatetag closevariable %}">{% templatetag openvariable %} error.line {% templatetag closevariable %}</a></th>
+          <td>{% templatetag openvariable %} error.message|escape {% templatetag closevariable %}</td>
         </tr>
-      {% endfor %}
+      {% templatetag openblock %} endfor {% templatetag closeblock %}
     </table>
     <p>
       If you want to bypass this warning, click <a href="?disable-validation">
@@ -234,16 +234,16 @@ class HTMLValidationMiddleware(object):
   </div>
   <div id="info">
     <table>
-      {% for line,error in lines %}
-        <tr{% if error %} class="error"{% endif %}>
-          <th id="line{{ forloop.counter }}">
-            {{ forloop.counter|stringformat:"03d" }}
+      {% templatetag openblock %} for line,error in lines {% templatetag closeblock %}
+        <tr{% templatetag openblock %} if error {% templatetag closeblock %} class="error"{% templatetag openblock %} endif {% templatetag closeblock %}>
+          <th id="line{% templatetag openvariable %} forloop.counter {% templatetag closevariable %}">
+            {% templatetag openvariable %} forloop.counter|stringformat:"03d" {% templatetag closevariable %}
           </th>
-          <td{% if error %} title="{{ error }}"{% endif %}>
-            <pre>{{ line }}</pre>
+          <td{% templatetag openblock %} if error {% templatetag closeblock %} title="{% templatetag openvariable %} error {% templatetag closevariable %}"{% templatetag openblock %} endif {% templatetag closeblock %}>
+            <pre>{% templatetag openvariable %} line {% templatetag closevariable %}</pre>
           </td>
         </tr>
-      {% endfor %}
+      {% templatetag openblock %} endfor {% templatetag closeblock %}
     </table>
   </div>
 
