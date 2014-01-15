@@ -1,5 +1,13 @@
 # Django settings for {{ project_name }} project.
 
+# This is a local web service for quicktill.  It makes use of the code
+# in the quicktill.tillweb module to provide an interface to a single
+# till database.  More complex deployments are possible
+# (eg. supporting multiple till databases) but start those from a
+# standard Django project template, not this one.
+
+# Built from the template in quicktill/examples/django-project
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -9,16 +17,29 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+# django and quicktill can use separate databases or the same
+# database; if they use the same database make sure django's table
+# names don't clash with those defined in quicktill/models.py
+django_database="django" # editme
+quicktill_database="quicktill" # editme
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': '',                      # Or path to database file if using sqlite3.
-        # The following settings are not used with sqlite3:
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': django_database,
         'USER': '',
         'PASSWORD': '',
         'HOST': '',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '',                      # Set to empty string for default.
     }
+}
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+SQLALCHEMY_SESSIONS = {
+    'default':
+        sessionmaker(bind=create_engine('postgresql+psycopg2:///{}'.format(
+                quicktill_database),pool_recycle=600,echo=True)),
 }
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -29,11 +50,11 @@ ALLOWED_HOSTS = []
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # In a Windows environment this must be set to your system time zone.
-TIME_ZONE = 'America/Chicago'
+TIME_ZONE = 'Europe/London'
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-GB'
 
 SITE_ID = 1
 
@@ -72,6 +93,7 @@ STATICFILES_DIRS = (
     # Put strings here, like "/home/html/static" or "C:/www/django/static".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
+    "{{ project_directory }}/static",
 )
 
 # List of finder classes that know how to find static files in
@@ -111,6 +133,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
+    "{{ project_directory }}/templates",
 )
 
 INSTALLED_APPS = (
@@ -120,10 +143,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
+    'django.contrib.admin',
+    'django.contrib.admindocs',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
