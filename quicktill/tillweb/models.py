@@ -36,7 +36,8 @@ PERMISSIONS=(
 class Access(models.Model):
     """
     Access to a till database by a particular user.  Also encodes the
-    type of access.
+    type of access they have if they don't exist in the till's user
+    database.
 
     """
     till=models.ForeignKey(Till)

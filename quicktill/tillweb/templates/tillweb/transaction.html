@@ -10,19 +10,27 @@
 <tr><td>ID</td><td>{{transaction.id}}</td></tr>
 <tr><td>Session</td><td><a href="{{u}}{{transaction.session.tillweb_url}}">{{transaction.session.id}}</a></td></tr>
 <tr><td>Date</td><td>{{transaction.session.date}}</td></tr>
-<tr><td>Closed?</td><td>{{transaction.closed}}</td></tr>
+<tr><td>Closed?</td><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 <tr><td>Notes</td><td>{{transaction.notes}}</td></tr>
 <tr><td>Total</td><td><span class="money">{{transaction.total}}</span></td></tr>
 </table>
 
+{% if transaction.lines %}
 <h2>Lines</h2>
 
 <table>
+<tr><th>ID</th><th>Value</th><th>Description</th><th>Code</th><th>Time</th></tr>
 {% for tl in transaction.lines %}
-<tr><td>{{tl.id}}</td><td>{{tl.items}}</td><td class="money">{{tl.amount}}</td>
-<td>{{tl.department}}</td><td>{{tl.description}}</td><td>{{tl.code}}</td><td>{{tl.time}}</td></tr>
+<tr><td>{{tl.id}}</td><td>{{tl.items}} @ £{{tl.amount}} = £{{tl.total}}</td>
+{% if tl.stockref %}
+<td><a href="{{u}}{{tl.stockref.stockitem.tillweb_url}}">{{tl.description}}</a></td>
+{% else %}
+<td>{{tl.description}} ({{tl.department}})</td>
+{% endif %}
+<td>{{tl.transcode}}</td><td>{{tl.time}}</td></tr>
 {% endfor %}
 </table>
+{% endif %}
 
 {% if transaction.payments %}
 <h2>Payments</h2>

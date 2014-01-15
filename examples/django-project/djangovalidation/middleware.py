@@ -149,7 +149,7 @@ class HTMLValidationMiddleware(object):
         if not errors:
             return response
 
-        context = self._get_context(response, errors)
+        context = self._get_context(request, response, errors)
 
         return HttpResponseServerError(self.template.render(context))
 
@@ -176,14 +176,15 @@ class HTMLValidationMiddleware(object):
     def _filter_errors(self, errors):
         return filter(lambda e: e.message not in self.ignore, errors)
 
-    def _get_context(self, response, errors):
+    def _get_context(self, request, response, errors):
         lines = []
         error_dict = dict(map(lambda e: (e.line, e.message), errors))
 
         for i, line in enumerate(response.content.split('\n')):
             lines.append((line, error_dict.get(i + 1, False)))
 
-        return Context({'errors': errors,
+        return Context({'request': request,
+                        'errors': errors,
                         'lines': lines,})
 
     HTML_VALIDATION_TEMPLATE = """

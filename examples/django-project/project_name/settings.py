@@ -21,7 +21,13 @@ MANAGERS = ADMINS
 # database; if they use the same database make sure django's table
 # names don't clash with those defined in quicktill/models.py
 django_database="django" # editme
-quicktill_database="quicktill" # editme
+quicktill_database="haymakers" # editme
+
+TILLWEB_SINGLE_SITE=True
+TILLWEB_DATABASE="default" # slug / database
+TILLWEB_PUBNAME="Haymakers" # name
+TILLWEB_LOGIN_REQUIRED=False
+TILLWEB_DEFAULT_ACCESS="R" # permission for user not in till user database
 
 DATABASES = {
     'default': {
@@ -120,6 +126,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'djangovalidation.middleware.HTMLValidationMiddleware',
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -145,7 +152,11 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.admin',
     'django.contrib.admindocs',
+    'quicktill.tillweb',
 )
+
+HTML_VALIDATION_URL_IGNORE = [r'^/admin/']
+INTERNAL_IPS = [ "127.0.0.1" ] # Needed for HTML validation
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
 

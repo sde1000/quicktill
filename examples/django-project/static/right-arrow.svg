@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.0" width="434" height="364" id="svg2">
+  <defs id="defs4"/>
+  <g id="layer1">
+    <g transform="matrix(-1,0,0,1,434.42519,0)" id="g4142">
+      <rect width="100" height="257.741" x="181.50136" y="-0.70613718" transform="matrix(1,0,-0.7061362,0.7080761,0,0)" style="fill:#000000;fill-opacity:1;stroke-width:80;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="rect4116"/>
+      <use transform="matrix(1,0,-2.660624e-8,-1,-4.5291225e-8,363.5)" id="use4120" x="0" y="0" width="434" height="364" xlink:href="#rect4116"/>
+      <rect width="367.69553" height="100" x="66.729935" y="132" style="fill:#000000;fill-opacity:1;stroke-width:80;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="rect4122"/>
+    </g>
+  </g>
+</svg>

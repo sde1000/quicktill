@@ -15,6 +15,7 @@
 {% endif %}
 <tr><td>Department</td><td>{{stocktype.department}}</td></tr>
 <tr><td>Unit</td><td>{{stocktype.unit}}</td></tr>
+<tr><td>Sale price</td><td><span class="money">{{stocktype.saleprice}}</span>/{{stockunit.unit.name}} (inc-VAT)</td></tr>
 </table>
 
 {% endblock %}

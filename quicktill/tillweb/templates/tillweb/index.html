@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load url from future %}
 
 {% block title %}{{till}}{% endblock %}
 
@@ -21,23 +22,9 @@
 
 <h2>On the bar</h2>
 
-<table>
-<tr><th>Line</th><th>Product</th><th>ABV</th><th>Price</th>
-<th>Started</th><th>Used</th><th>Remaining</th></tr>
-{% for line,item in barsummary %}
-<tr class="{% cycle 'even' 'odd' %}">
-<td><a href="{{u}}{{line.tillweb_url}}">
-{{line.name}}</a></td>
-<td><a href="{{u}}{{item.tillweb_url}}">
-{{item.stocktype.fullname}}</a></td>
-<td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
-<td>£{{item.saleprice}}/{{item.stocktype.unit.name}}</td>
-<td>{{item.onsale}}</td>
-<td>{{item.used}} {{item.stocktype.unit.name}}s</td>
-<td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
-</tr>
-{% endfor %}
-</table>
+{% include "tillweb/linelist.html" %}
+
+<p><a href="{{u}}location/">Other locations</a></p>
 
 <h2>On the stillage</h2>
 

@@ -1,0 +1,25 @@
+<table>
+<tr><th>Line</th><th>StockID</th><th>Product</th><th>ABV</th><th>Price</th>
+<th>Started</th><th>Used</th><th>Remaining</th></tr>
+{% for line in lines %}
+{% for item in line.stockonsale %}
+<tr class="{% cycle 'even' 'odd' as barzebra %}">
+<td>{% ifchanged %}<a href="{{u}}{{line.tillweb_url}}">
+{{line.name}}</a>{% endifchanged %}</td>
+<td><a href="{{u}}{{item.tillweb_url}}">{{item.id}}</a></td>
+<td><a href="{{u}}{{item.tillweb_url}}">
+{{item.stocktype.fullname}}</a></td>
+<td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
+<td>£{{item.stocktype.saleprice}}/{{item.stocktype.unit.name}}</td>
+<td>{{item.onsale}}</td>
+<td>{{item.used}} {{item.stocktype.unit.name}}s</td>
+<td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
+</tr>
+{% empty %}
+<tr class="{% cycle barzebra %}">
+<td><a href="{{u}}{{line.tillweb_url}}">
+{{line.name}}</a></td><td></td><td></td><td></td><td></td><td></td>
+<td></td><td></td></tr>
+{% endfor %}
+{% endfor %}
+</table>

@@ -4,8 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>{% block title %}quicktill{% endblock %}</title>
-{% block style %}<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}styl
-e.css" />{% endblock %}
+{% block style %}<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}style.css" />{% endblock %}
 </head>
 <body>
 <div id="Header">{% block heading %}Base heading{% endblock %}
@@ -14,8 +13,9 @@ e.css" />{% endblock %}
 
 {% if user.is_authenticated %}
 <div id="Userinfo">
-<p>Logged in as <a href="{% url "ipladmin.views.userprofile" %}">{{ user.get_full_name }}</a>.  <a href="/accounts/logout/">Log out.</a>{% if admin_url and user.is_staff %}<a href="{{admin_url}}">  Edit in admin</a>.{% endif %}{% if user.is_staff %}<a href="{% url "admin:index" %}">  Go to admin.</a>{% endif %}</p>
+<p>Logged in as {{ user.get_full_name }}.  {% if user.is_staff %}<a href="{% url "admin:index" %}">  Go to admin.</a>{% endif %}</p>
 </div>
+{% endif %}
 <div id="Navbar">
 {% if nextlink %}
 <div class="navarrow">
@@ -27,6 +27,7 @@ e.css" />{% endblock %}
 <a href="{{prevlink}}"><img src="{{STATIC_URL}}left-arrow.svg" width="40" alt="Prev" />
 </a></div>
 {% endif %}
+</div>
 {% if messages %}
 <div id="Messages">
 <ul>

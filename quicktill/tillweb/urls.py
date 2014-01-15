@@ -1,22 +1,26 @@
-from django.conf.urls.defaults import *
-from django.views.generic.simple import direct_to_template
-from django.views.generic import list_detail
+try:
+    from django.conf.urls import patterns, include, url
+except ImportError:
+    from django.conf.urls.defaults import *
 
 tillurls=patterns(
     'quicktill.tillweb.views',
 
     # Root pub page
-    (r'^$','pubroot'),
+    url(r'^$','pubroot'),
 
     # Item detail pages
-    (r'^session/(?P<sessionid>\d+)/$','session'),
-    (r'^session/(?P<sessionid>\d+)/dept(?P<dept>\d+)/$','sessiondept'),
-    (r'^transaction/(?P<transid>\d+)/$','transaction'),
-    (r'^supplier/(?P<supplierid>\d+)/$','supplier'),
-    (r'^delivery/(?P<deliveryid>\d+)/$','delivery'),
-    (r'^stocktype/(?P<stocktype_id>\d+)/$','stocktype'),
-    (r'^stock/(?P<stockid>\d+)/$','stock'),
-    (r'^stockline/(?P<stocklineid>\d+)/$','stockline'),
+    url(r'^session/(?P<sessionid>\d+)/$','session'),
+    url(r'^session/(?P<sessionid>\d+)/dept(?P<dept>\d+)/$','sessiondept',
+        name="sessiondept"),
+    url(r'^transaction/(?P<transid>\d+)/$','transaction'),
+    url(r'^supplier/(?P<supplierid>\d+)/$','supplier'),
+    url(r'^delivery/(?P<deliveryid>\d+)/$','delivery'),
+    url(r'^stocktype/(?P<stocktype_id>\d+)/$','stocktype'),
+    url(r'^stock/(?P<stockid>\d+)/$','stock'),
+    url(r'^stockline/(?P<stocklineid>\d+)/$','stockline'),
+    url(r'^location/$','locationlist'),
+    url(r'^location/(?P<location>[\w\- ]+)/$','location'),
 
     # Search pages
     # location (location summary page)
@@ -34,7 +38,6 @@ tillurls=patterns(
 urls=patterns(
     'quicktill.tillweb.views',
     # Index page
-    (r'^$','publist'),
-    (r'^(?P<pubname>[\w\-]+)/',
-     include(tillurls)),
+    url(r'^$','publist',name="publist"),
+    url(r'^(?P<pubname>[\w\-]+)/',include(tillurls)),
 )

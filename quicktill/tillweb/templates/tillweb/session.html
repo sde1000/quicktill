@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load url from future %}
 
 {% block title %}{{till}} — Session {{session.id}}{% endblock %}
 
@@ -38,7 +39,7 @@
 {% for d,t in session.dept_totals %}
 <tr class="{% cycle 'even' 'odd' %}">
 <td>{{d.id}}</td>
-<td><a href="{% url tillweb.views.sessiondept object.slug session.id d.id %}">{{d.description}}</a></td>
+<td><a href="{% url "sessiondept" pubname session.id d.id %}">{{d.description}}</a></td>
 <td class="money">{{t}}</td>
 </tr>
 {% endfor %}
@@ -61,7 +62,7 @@
 <tr><th>Transaction</th><th>Amount</th><th>Closed</th><th>Note</th></tr>
 {% for t in session.transactions %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{object.get_absolute_url}}{{t.tillweb_url}}">{{t.id}}</a></td>
+<td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
 <td class="money">{{t.total}}</td><td>{{t.closed}}</td>
 <td>{{t.notes}}</td></tr>
 {% endfor %}

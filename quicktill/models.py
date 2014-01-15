@@ -1014,22 +1014,6 @@ StockType.instock=column_property(
     deferred=True,
     doc="Amount remaining in stock")
 
-def location_summary(session,location):
-    """Return a list of (StockLine,StockItem) tuples corresponding to
-    the requested location.  (Note that, since there may be multiple
-    stock items on a line, some StockLine objects may be returned more
-    than once.)  Does not return StockLines that have no stock on
-    sale.
-
-    """
-    return session.query(StockLine,StockItem).\
-        join(StockItem).\
-        filter(StockLine.location==location).\
-        order_by(StockLine.dept_id,StockLine.name).\
-        options(joinedload('stockitem')).\
-        options(joinedload('stockitem.stocktype')).\
-        all()
-
 class KeyboardBinding(Base):
     __tablename__='keyboard'
     keycode=Column(String(20),nullable=False,primary_key=True)

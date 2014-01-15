@@ -3,16 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
 from django.template import RequestContext,Context
 from django.template.loader import get_template
-from django.views.generic import list_detail
 from django.conf import settings
 from models import *
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import desc
-from sqlalchemy.sql.expression import tuple_
+from sqlalchemy.sql.expression import tuple_,func,null
+from sqlalchemy import distinct
 from quicktill.models import *
 
+# This view is only used when the tillweb is integrated into another
+# django-based website.
 @login_required
 def publist(request):
     access=Access.objects.filter(user=request.user)
@@ -20,13 +22,31 @@ def publist(request):
                               {'access':access,},
                               context_instance=RequestContext(request))
 
-# A lot of the view functions in this file follow a similar pattern.
-# They are kept separate rather than implemented as a generic view so
-# that page-specific optimisations (the ".options()" clauses in the
-# queries) can be added.  The common operations have been moved into
-# the @tillweb_view decorator.
+# The remainder of the view functions in this file follow a similar
+# pattern.  They are kept separate rather than implemented as a
+# generic view so that page-specific optimisations (the ".options()"
+# clauses in the queries) can be added.  The common operations have
+# been moved into the @tillweb_view decorator.
 
-def tillweb_view(view):
+# This app can be deployed in one of two ways:
+
+# 1. Integrated into a complete django-based website, with its own
+# users and access controls.  In this case, information about which
+# database to connect to and what users are permitted to do is fetched
+# from the Till and Access models.  This case is used when the
+# TILLWEB_SINGLE_SITE setting is absent or False.
+
+# 2. As a standalone website, possibly with no concept of users and
+# access controls.  In this case, the database, pubname and default
+# access permission are read from the rest of the TILLWEB_ settings.
+
+# Views are passed the following parameters:
+# request - the Django http request object
+# base - the base URL for the till's website
+# user - the quicktill.models.User object if available, or 'R','M','F'
+# session - sqlalchemy database session
+
+def tillweb_view_integrated(view):
     @login_required
     def new_view(request,pubname,*args,**kwargs):
         try:
@@ -44,9 +64,15 @@ def tillweb_view(view):
             # The database doesn't exist
             raise Http404
         try:
-            t,d=view(request,till,access,session,*args,**kwargs)
-            defaults={'object':till,'till':till,'access':access,
-                      'u':till.get_absolute_url()}
+            t,d=view(request,till.get_absolute_url(),access,
+                     session,*args,**kwargs)
+            # pubname is used in the url;
+            # object is the Till object, possibly used for a nav menu
+            # till is the name of the till
+            # access is 'R','M','F'
+            # u is the base URL for the till website including trailing /
+            defaults={'pubname':pubname,'object':till,'till':till.name,
+                      'access':access.permission,'u':till.get_absolute_url()}
             defaults.update(d)
             return render_to_response(
                 'tillweb/'+t,defaults,
@@ -61,31 +87,84 @@ def tillweb_view(view):
             session.close()
     return new_view
 
+def tillweb_view_single(view):
+    def new_view(request,pubname,*args,**kwargs):
+        try:
+            session=settings.SQLALCHEMY_SESSIONS[settings.TILLWEB_DATABASE]()
+        except ValueError:
+            # The database doesn't exist
+            raise Http404
+        till=settings.TILLWEB_PUBNAME
+        access=settings.TILLWEB_DEFAULT_ACCESS
+        try:
+            t,d=view(request,"/",access,session,*args,**kwargs)
+            defaults={'pubname': "",'till':till,'access':access,
+                      'u':"/"} # XXX fetch base URL properly!
+            defaults.update(d)
+            return render_to_response(
+                'tillweb/'+t,defaults,
+                context_instance=RequestContext(request))
+        except OperationalError as oe:
+            t=get_template('tillweb/operationalerror.html')
+            return HttpResponse(
+                t.render(RequestContext(
+                        request,{'object':till,'access':access,'error':oe})),
+                status=503)
+        finally:
+            session.close()
+    if settings.TILLWEB_LOGIN_REQUIRED:
+        new_view=login_required(new_view)
+    return new_view
+
+tillweb_view=(
+    tillweb_view_single if settings.TILLWEB_SINGLE_SITE
+    else tillweb_view_integrated)
+
 @tillweb_view
-def pubroot(request,till,access,session):
+def pubroot(request,base,access,session):
     currentsession=Session.current(session)
-    barsummary=location_summary(session,"Bar")
+    barsummary=session.query(StockLine).\
+        filter(StockLine.location=="Bar").\
+        order_by(StockLine.dept_id,StockLine.name).\
+        options(joinedload('stockonsale')).\
+        options(joinedload('stockonsale.stocktype')).\
+        all()
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
+        outerjoin(StockLine).\
         filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
             select([StockAnnotation.text,func.max(StockAnnotation.time)],
                    StockAnnotation.atype=='location').\
                 group_by(StockAnnotation.text))).\
         filter(StockItem.finished==None).\
-        order_by(StockAnnotation.text).\
+        order_by(StockLine.name!=null(),StockAnnotation.time).\
         options(joinedload('stockitem')).\
         options(joinedload('stockitem.stocktype')).\
-        options(joinedload('stockitem.stockonsale')).\
-        options(joinedload('stockitem.stockonsale.stockline')).\
+        options(joinedload('stockitem.stockline')).\
         all()
     return ('index.html',
             {'currentsession':currentsession,
-             'barsummary':barsummary,
+             'lines':barsummary,
              'stillage':stillage,
              })
 
 @tillweb_view
-def session(request,till,access,session,sessionid):
+def locationlist(request,base,access,session):
+    locations=[x[0] for x in session.query(distinct(StockLine.location))]
+    return ('locations.html',{'locations':locations})
+
+@tillweb_view
+def location(request,base,access,session,location):
+    lines=session.query(StockLine).\
+        filter(StockLine.location==location).\
+        order_by(StockLine.dept_id,StockLine.name).\
+        options(joinedload('stockonsale')).\
+        options(joinedload('stockonsale.stocktype')).\
+        all()
+    return ('location.html',{'location':location,'lines':lines})
+
+@tillweb_view
+def session(request,base,access,session,sessionid):
     try:
         # The subqueryload_all() significantly improves the speed of loading
         # the transaction totals
@@ -99,21 +178,17 @@ def session(request,till,access,session,sessionid):
         filter(Session.id>s.id).\
         order_by(Session.id).\
         first()
-    nextlink=(
-        till.get_absolute_url()+nextsession.tillweb_url if nextsession
-        else None)
+    nextlink=base+nextsession.tillweb_url if nextsession else None
     prevsession=session.query(Session).\
         filter(Session.id<s.id).\
         order_by(desc(Session.id)).\
         first()
-    prevlink=(
-        till.get_absolute_url()+prevsession.tillweb_url if prevsession
-        else None)
+    prevlink=base+prevsession.tillweb_url if prevsession else None
     return ('session.html',{'session':s,'nextlink':nextlink,
                             'prevlink':prevlink})
 
 @tillweb_view
-def sessiondept(request,till,access,session,sessionid,dept):
+def sessiondept(request,base,access,session,sessionid,dept):
     try:
         s=session.query(Session).filter_by(id=int(sessionid)).one()
     except NoResultFound:
@@ -139,7 +214,7 @@ def sessiondept(request,till,access,session,sessionid,dept):
                                 'translines':translines})
 
 @tillweb_view
-def transaction(request,till,access,session,transid):
+def transaction(request,base,access,session,transid):
     try:
         t=session.query(Transaction).\
             filter_by(id=int(transid)).\
@@ -151,7 +226,7 @@ def transaction(request,till,access,session,transid):
     return ('transaction.html',{'transaction':t,})
 
 @tillweb_view
-def supplier(request,till,access,session,supplierid):
+def supplier(request,base,access,session,supplierid):
     try:
         s=session.query(Supplier).\
             filter_by(id=int(supplierid)).\
@@ -161,7 +236,7 @@ def supplier(request,till,access,session,supplierid):
     return ('supplier.html',{'supplier':s,})
 
 @tillweb_view
-def delivery(request,till,access,session,deliveryid):
+def delivery(request,base,access,session,deliveryid):
     try:
         d=session.query(Delivery).\
             filter_by(id=int(deliveryid)).\
@@ -171,7 +246,7 @@ def delivery(request,till,access,session,deliveryid):
     return ('delivery.html',{'delivery':d,})
 
 @tillweb_view
-def stocktype(request,till,access,session,stocktype_id):
+def stocktype(request,base,access,session,stocktype_id):
     try:
         s=session.query(StockType).\
             filter_by(id=int(stocktype_id)).\
@@ -181,7 +256,7 @@ def stocktype(request,till,access,session,stocktype_id):
     return ('stocktype.html',{'stocktype':s,})
 
 @tillweb_view
-def stock(request,till,access,session,stockid):
+def stock(request,base,access,session,stockid):
     try:
         s=session.query(StockItem).\
             filter_by(id=int(stockid)).\
@@ -200,7 +275,7 @@ def stock(request,till,access,session,stockid):
     return ('stock.html',{'stock':s,})
 
 @tillweb_view
-def stockline(request,till,access,session,stocklineid):
+def stockline(request,base,access,session,stocklineid):
     try:
         s=session.query(StockLine).\
             filter_by(id=int(stocklineid)).\

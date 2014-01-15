@@ -1,21 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}{{till}} — stock line {{stockline.name}}{% endblock %}
+{% block title %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
 
-{% block heading %}{{till}} — stock line {{stockline.name}}{% endblock %}
+{% block heading %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
 
 {% block content %}
 
 <table>
 <tr><td>Name</td><td>{{stockline.name}}</td></tr>
-<tr><td>Location</td><td>{{stockline.location}}</td></tr>
+<tr><td>Location</td><td><a href="{{u}}location/{{stockline.location|urlencode}}/">{{stockline.location}}</a></td></tr>
 <tr><td>Capacity</td><td>{{stockline.capacity}}</td></tr>
 <tr><td>Department</td><td>{{stockline.department}}</td></tr>
 <tr><td>Pullthru</td><td>{{stockline.pullthru}}</td></tr>
 </table>
 
-{% comment %}
-Stock items here
-{% endcomment %}
+<h2>Items on sale</h2>
+
+<table>
+<tr><th>StockID</th><th>Product</th><th>ABV</th><th>Price</th>
+<th>Started</th><th>Used</th><th>Remaining</th></tr>
+{% for item in stockline.stockonsale %}
+<tr class="{% cycle 'even' 'odd' as barzebra %}">
+<td><a href="{{u}}{{item.tillweb_url}}">{{item.id}}</a></td>
+<td><a href="{{u}}{{item.tillweb_url}}">
+{{item.stocktype.fullname}}</a></td>
+<td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
+<td>£{{item.stocktype.saleprice}}/{{item.stocktype.unit.name}}</td>
+<td>{{item.onsale}}</td>
+<td>{{item.used}} {{item.stocktype.unit.name}}s</td>
+<td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
+</tr>
+{% endfor %}
+</table>
 
 {% endblock %}
