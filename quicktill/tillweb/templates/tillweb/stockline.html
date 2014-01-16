@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 
 {% block title %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
 
 {% block heading %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 <table>
 <tr><td>Name</td><td>{{stockline.name}}</td></tr>
@@ -14,23 +14,59 @@
 <tr><td>Pullthru</td><td>{{stockline.pullthru}}</td></tr>
 </table>
 
+{% if stockline.stockonsale %}
 <h2>Items on sale</h2>
 
-<table>
+<table id="onsale">
+<thead>
 <tr><th>StockID</th><th>Product</th><th>ABV</th><th>Price</th>
 <th>Started</th><th>Used</th><th>Remaining</th></tr>
+</thead>
+<tbody>
 {% for item in stockline.stockonsale %}
-<tr class="{% cycle 'even' 'odd' as barzebra %}">
+<tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{item.tillweb_url}}">{{item.id}}</a></td>
-<td><a href="{{u}}{{item.tillweb_url}}">
+<td><a href="{{u}}{{item.stocktype.tillweb_url}}">
 {{item.stocktype.fullname}}</a></td>
 <td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
 <td>£{{item.stocktype.saleprice}}/{{item.stocktype.unit.name}}</td>
-<td>{{item.onsale}}</td>
+<td>{{item.onsale|date:dtf}}</td>
 <td>{{item.used}} {{item.stocktype.unit.name}}s</td>
 <td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
 </tr>
 {% endfor %}
+</tbody>
 </table>
+{% else %}
+<p>There is nothing on sale on this stockline.</p>
+{% endif %}
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#onsale").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% if stockline.stocktype_log %}
+<h2>Stock types</h2>
+
+<p>These types of stock have been on sale on this line:</p>
+
+<ul>
+{% for stl in stockline.stocktype_log %}
+<li><a href="{{u}}{{stl.stocktype.tillweb_url}}">{{stl.stocktype}}</a></li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if stockline.keyboard_bindings %}
+<h2>Keyboard bindings</h2>
+<table>
+<tr><th>Keycode</th><th>Menu key</th><th>Quantity</th></tr>
+{% for kb in stockline.keyboard_bindings %}
+<tr><td>{{kb.keycode}}</td><td>{{kb.menukey}}</td><td>{{kb.qty}}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
 
 {% endblock %}

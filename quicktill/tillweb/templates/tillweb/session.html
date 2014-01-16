@@ -1,13 +1,17 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 {% load url from future %}
 
 {% block title %}{{till}} — Session {{session.id}}{% endblock %}
 
 {% block heading %}{{till}} — Session {{session.id}} ({{session.date}}){% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
+{% if session.endtime %}
 <p>{{session.starttime}}–{{session.endtime}}</p>
+{% else %}
+<p>Started {{session.starttime}}</p>
+{% endif %}
 
 {% if session.endtime %}
 {% if session.actual_totals %}
@@ -32,40 +36,89 @@
 {% endif %}
 {% endif %}
 
-<h2>Departments</h2>
+<h2>Takings by department</h2>
+{% if not session.endtime %}
+<p>May include transactions that have not been closed.</p>
+{% endif %}
 
-<table>
+<table id="depttakings">
+<thead>
 <tr><th>Dept</th><th>Description</th><th>Total</th></tr>
+</thead>
+<tbody>
 {% for d,t in session.dept_totals %}
-<tr class="{% cycle 'even' 'odd' %}">
+<tr class="{% cycle 'odd' 'even' %}">
 <td>{{d.id}}</td>
 <td><a href="{% url "sessiondept" pubname session.id d.id %}">{{d.description}}</a></td>
 <td class="money">{{t}}</td>
 </tr>
 {% endfor %}
+</tbody>
+<tfoot>
 <tr><td></td><td>Total</td><td class="money">{{session.total}}</td></tr>
+</tfoot>
 </table>
 
-<h2>Stock sold in this session</h2>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#depttakings").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% if not session.endtime %}
+<h2>Takings by payment type</h2>
+<p>Takings recorded so far this session.  May include part-paid
+transactions.</p>
 <table>
+<tr><th>Type</th><th>Amount</th></tr>
+{% for type,amount in session.payment_totals %}
+<tr><td>{{type}}</td><td>£{{amount}}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<h2>Stock sold in this session</h2>
+<table id="stocksold">
+<thead>
+<tr><th>Type</th><th>Quantity</th></tr>
+</thead>
+<tbody>
 {% for st,q in session.stock_sold %}
 <tr><td><a href="{{u}}{{st.tillweb_url}}">{{st.shortname}}</a></td>
 <td>{{q}} {{st.unit.name}}s</td></tr>
 {% empty %}
 <tr><td>None</td></tr>
 {% endfor %}
+</tbody>
 </table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stocksold").tablesorter({widgets:["zebra"]});
+});
+</script>
 
 <h2>Transactions</h2>
 
-<table>
+<table id="transactions">
+<thead>
 <tr><th>Transaction</th><th>Amount</th><th>Closed</th><th>Note</th></tr>
+</thead>
+<tbody>
 {% for t in session.transactions %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
-<td class="money">{{t.total}}</td><td>{{t.closed}}</td>
-<td>{{t.notes}}</td></tr>
+<td class="money">{{t.total}}</td><td>{{t.closed|yesno:"Yes,No"}}</td>
+<td>{% if t.notes %}{{t.notes}}{% endif %}</td></tr>
 {% endfor %}
+</tbody>
 </table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#transactions").tablesorter({widgets:["zebra"]});
+});
+</script>
+
 
 {% endblock %}

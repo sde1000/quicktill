@@ -1,11 +1,11 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 {% load url from future %}
 
 {% block title %}{{till}} — Location {{location}}{% endblock %}
 
 {% block heading %}{{till}} — Location {{location}}{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 {% include "tillweb/linelist.html" %}
 

@@ -13,6 +13,10 @@ from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy import distinct
 from quicktill.models import *
 
+# We use this date format in templates - defined here so we don't have
+# to keep repeating it.  It's available in templates as 'dtf'
+dtf="Y-m-d H:i"
+
 # This view is only used when the tillweb is integrated into another
 # django-based website.
 @login_required
@@ -64,6 +68,7 @@ def tillweb_view_integrated(view):
             # The database doesn't exist
             raise Http404
         try:
+            depts=session.query(Department).order_by(Department.id).all()
             t,d=view(request,till.get_absolute_url(),access,
                      session,*args,**kwargs)
             # pubname is used in the url;
@@ -72,7 +77,8 @@ def tillweb_view_integrated(view):
             # access is 'R','M','F'
             # u is the base URL for the till website including trailing /
             defaults={'pubname':pubname,'object':till,'till':till.name,
-                      'access':access.permission,'u':till.get_absolute_url()}
+                      'access':access.permission,'u':till.get_absolute_url(),
+                      'depts':depts,'dtf':dtf}
             defaults.update(d)
             return render_to_response(
                 'tillweb/'+t,defaults,
@@ -97,8 +103,10 @@ def tillweb_view_single(view):
         till=settings.TILLWEB_PUBNAME
         access=settings.TILLWEB_DEFAULT_ACCESS
         try:
+            depts=session.query(Department).order_by(Department.id).all()
             t,d=view(request,"/",access,session,*args,**kwargs)
             defaults={'pubname': "",'till':till,'access':access,
+                      'depts':depts,'dtf':dtf,
                       'u':"/"} # XXX fetch base URL properly!
             defaults.update(d)
             return render_to_response(
@@ -144,13 +152,14 @@ def pubroot(request,base,access,session):
         all()
     return ('index.html',
             {'currentsession':currentsession,
-             'lines':barsummary,
+             'barsummary':barsummary,
              'stillage':stillage,
              })
 
 @tillweb_view
 def locationlist(request,base,access,session):
-    locations=[x[0] for x in session.query(distinct(StockLine.location))]
+    locations=[x[0] for x in session.query(distinct(StockLine.location)).\
+                   order_by(StockLine.location).all()]
     return ('locations.html',{'locations':locations})
 
 @tillweb_view
@@ -253,7 +262,15 @@ def stocktype(request,base,access,session,stocktype_id):
             one()
     except NoResultFound:
         raise Http404
-    return ('stocktype.html',{'stocktype':s,})
+    include_finished=request.GET.get("show_finished","false")=="true"
+    items=session.query(StockItem).\
+        filter(StockItem.stocktype==s).\
+        order_by(desc(StockItem.id))
+    if not include_finished:
+        items=items.filter(StockItem.finished==None)
+    items=items.all()
+    return ('stocktype.html',{'stocktype':s,'items':items,
+                              'include_finished':include_finished})
 
 @tillweb_view
 def stock(request,base,access,session,stockid):

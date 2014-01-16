@@ -1,0 +1,27 @@
+<table id="stocklist">
+<thead>
+<tr><th>Stock ID</th><th>Manufacturer</th><th>Name</th><th>ABV</th>
+<th>Used</th><th>Sold</th><th>Remaining</th><th>State</th></tr>
+</thead>
+<tbody>
+{% for s in stocklist %}
+<tr class="{% cycle 'even' 'odd' %}">
+<td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
+<td>{{s.stocktype.manufacturer}}</td>
+<td><a href="{{u}}{{s.stocktype.tillweb_url}}">{{s.stocktype.name}}</a></td>
+<td>{{s.stocktype.abvstr}}</td>
+<td>{{s.used}} {{s.stocktype.unit.name}}s</td>
+<td>{{s.sold}} {{s.stocktype.unit.name}}s</td>
+<td>{{s.remaining}} {{s.stocktype.unit.name}}s</td>
+<td>{% if s.finished %}{{s.finishcode}} ({{s.finished|date:dtf}}){% endif %}
+{% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale: {{s.stockline.name}}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stocklist").tablesorter({widgets:["zebra"]});
+});
+</script>

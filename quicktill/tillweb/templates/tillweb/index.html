@@ -1,11 +1,11 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 {% load url from future %}
 
 {% block title %}{{till}}{% endblock %}
 
 {% block heading %}{{till}}{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 <table class="bordered">
 <tr><th>Current session</th><th>Current week</th><th>Last week</th></tr>
@@ -22,23 +22,36 @@
 
 <h2>On the bar</h2>
 
+{% with barsummary as lines %}
 {% include "tillweb/linelist.html" %}
+{% endwith %}
 
 <p><a href="{{u}}location/">Other locations</a></p>
 
 <h2>On the stillage</h2>
 
-<table>
+<table id="stillage">
+<thead>
 <tr><th>Location</th><th>Time</th><th>Cask</th>
 <th>Used</th><th>Remaining</th><th>Line</th></tr>
+</thead>
+<tbody>
 {% for s in stillage %}
-<tr><td>{{s.text}}</td><td>{{s.time}}</td>
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{s.text}}</td><td>{{s.time|date:dtf}}</td>
 <td><a href="{{u}}{{s.stockitem.tillweb_url}}">
 {{s.stockitem.stocktype.fullname}}</a></td>
 <td>{{s.stockitem.used}} {{s.stockitem.stocktype.unit.name}}s</td>
 <td>{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
-<td>{% if s.stockitem.stockonsale %}<a href="{{u}}{{s.stockitem.stockonsale.stockline.tillweb_url}}">{{s.stockitem.stockonsale.stockline.name}}</a>{% endif %}</td></tr>
+<td>{% if s.stockitem.stockline %}<a href="{{u}}{{s.stockitem.stockline.tillweb_url}}">{{s.stockitem.stockline.name}}</a>{% endif %}</td></tr>
 {% endfor %}
+</tbody>
 </table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stillage").tablesorter({widgets:["zebra"]});
+});
+</script>
 
 {% endblock %}

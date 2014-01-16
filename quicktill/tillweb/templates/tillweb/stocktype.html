@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 
 {% block title %}{{till}} — {{stocktype.fullname}}{% endblock %}
 
 {% block heading %}{{till}} — {{stocktype.fullname}}{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 <table>
 <tr><td>Manufacturer</td><td>{{stocktype.manufacturer}}</td></tr>
@@ -15,7 +15,20 @@
 {% endif %}
 <tr><td>Department</td><td>{{stocktype.department}}</td></tr>
 <tr><td>Unit</td><td>{{stocktype.unit}}</td></tr>
-<tr><td>Sale price</td><td><span class="money">{{stocktype.saleprice}}</span>/{{stockunit.unit.name}} (inc-VAT)</td></tr>
+<tr><td>Sale price</td><td><span class="money">{{stocktype.saleprice}}</span>/{{stocktype.unit.name}} (inc-VAT)</td></tr>
 </table>
+
+<h2>Stock of this type</h2>
+{% if items %}
+{% with items as stocklist %}
+{% include "tillweb/stocklist.html" %}
+{% endwith %}
+{% else %}
+<p>There are no stock items of this type.</p>
+{% endif %}
+
+{% if not include_finished %}
+<p><a href="?show_finished=true">Include finished items</a></p>
+{% endif %}
 
 {% endblock %}

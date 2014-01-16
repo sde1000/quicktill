@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{STATIC_URL}}tillweb/jquery.js"></script>
+<script type="text/javascript" src="{{STATIC_URL}}tillweb/jquery.tablesorter.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="tillcontent">
+{% block tillcontent %}
+<p>Till content here</p>
+{% endblock %}
+</div>
+
+<div class="tillnav">
+<ul>
+<li><a href="{{u}}">Main Menu</a></li>
+<li><a href="{{u}}stock/">Stock</a>
+<ul>
+{% for d in depts %}
+<li><a href="{{u}}stock/dept{{d.id}}/">{{d.description}}</a></li>
+{% endfor %}
+</ul></li>
+</ul>
+</div>
+
+{% endblock %}

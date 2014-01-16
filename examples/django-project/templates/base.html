@@ -5,18 +5,11 @@
 <head>
 <title>{% block title %}quicktill{% endblock %}</title>
 {% block style %}<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}style.css" />{% endblock %}
+{% block scripts %}{% endblock %}
 </head>
 <body>
 <div id="Header">{% block heading %}Base heading{% endblock %}
 {% if is_paginated %} — page {{ page }} of {{ pages }}{% endif %}
-</div>
-
-{% if user.is_authenticated %}
-<div id="Userinfo">
-<p>Logged in as {{ user.get_full_name }}.  {% if user.is_staff %}<a href="{% url "admin:index" %}">  Go to admin.</a>{% endif %}</p>
-</div>
-{% endif %}
-<div id="Navbar">
 {% if nextlink %}
 <div class="navarrow">
 <a href="{{nextlink}}"><img src="{{STATIC_URL}}right-arrow.svg" width="40" alt="Next" />
@@ -28,6 +21,12 @@
 </a></div>
 {% endif %}
 </div>
+
+{% if user.is_authenticated %}
+<div id="Userinfo">
+<p>Logged in as {{ user.get_full_name }}.  {% if user.is_staff %}<a href="{% url "admin:index" %}">  Go to admin.</a>{% endif %}</p>
+</div>
+{% endif %}
 {% if messages %}
 <div id="Messages">
 <ul>

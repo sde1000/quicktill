@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 
 {% block title %}{{till}} — transaction {{transaction.id}}{% endblock %}
 
 {% block heading %}{{till}} — transaction {{transaction.id}}{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 <table>
 <tr><td>ID</td><td>{{transaction.id}}</td></tr>
@@ -18,19 +18,30 @@
 {% if transaction.lines %}
 <h2>Lines</h2>
 
-<table>
-<tr><th>ID</th><th>Value</th><th>Description</th><th>Code</th><th>Time</th></tr>
+<table id="translines">
+<thead>
+<tr><th>ID</th><th>Description</th><th>Code</th>
+<th class="sorter-false">Value</th><th>Time</th></tr>
+</thead>
 {% for tl in transaction.lines %}
-<tr><td>{{tl.id}}</td><td>{{tl.items}} @ £{{tl.amount}} = £{{tl.total}}</td>
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{tl.id}}</td>
 {% if tl.stockref %}
 <td><a href="{{u}}{{tl.stockref.stockitem.tillweb_url}}">{{tl.description}}</a></td>
 {% else %}
 <td>{{tl.description}} ({{tl.department}})</td>
 {% endif %}
-<td>{{tl.transcode}}</td><td>{{tl.time}}</td></tr>
+<td>{{tl.transcode}}</td>
+<td>{{tl.items}} @ £{{tl.amount}} = £{{tl.total}}</td>
+<td>{{tl.time|date:dtf}}</td></tr>
 {% endfor %}
 </table>
 {% endif %}
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#translines").tablesorter({widgets:["zebra"]});
+});
+</script>
 
 {% if transaction.payments %}
 <h2>Payments</h2>

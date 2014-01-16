@@ -55,27 +55,6 @@ a:hover {color:#e00;}
     height: 25px;
 }
 
-#Navbar {
-    padding: 10px;
-    border-style: solid;
-    border-color: black;
-    border-width: 0px 0px 1px 0px;
-    background-color: #eff;
-    font-size: 14px;
-}
-
-#Navbar ul {
-    list-style: none;
-}
-
-#Navbar ul li {
-    display: inline;
-}
-
-#Navbar ul li:before {
-    content: "» ";
-}
-
 .navarrow {
     float: right;
     padding: 3px;
@@ -103,10 +82,14 @@ a:hover {color:#e00;}
     width: 100px;
 }
 
-#Menu {
+#Content {
+    position: relative;
+}
+
+.tillnav {
     position:absolute;
-    top:84px;
-    left:20px;
+    top:10px;
+    left:0px;
     width:100px;
     padding:10px;
     background-color:#eee;
@@ -114,18 +97,18 @@ a:hover {color:#e00;}
     line-height:20px;
 }
 
-#Menu ul {
+.tillnav ul {
     margin: 0;
     padding: 0;
     list-style: none;
     width: 100px;
 }
 
-#Menu ul li {
+.tillnav ul li {
     position: relative;
 }
 
-#Menu ul li ul {
+.tillnav ul li ul {
     position: absolute;
     left: 99px;
     top: 0;
@@ -137,7 +120,15 @@ a:hover {color:#e00;}
     line-height: 20px;
 }
 
-#Menu ul li:hover ul { display: block; }
+.tillnav ul li:hover ul { display: block; }
+
+.tillcontent {
+    position: absolute;
+    top: 0;
+    left: 150px;
+#    margin:0px 0px 0px 150px;
+    padding:10px;
+}
 
 .kvtable td + td { text-align: left; }
 

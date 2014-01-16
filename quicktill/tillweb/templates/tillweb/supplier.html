@@ -1,16 +1,37 @@
-{% extends "base.html" %}
+{% extends "tillweb/tillweb.html" %}
 
 {% block title %}{{till}} — supplier {{supplier.name}}{% endblock %}
 
 {% block heading %}{{till}} — supplier {{supplier.name}}{% endblock %}
 
-{% block content %}
+{% block tillcontent %}
 
 <table>
 <tr><td>Name</td><td>{{supplier.name}}</td></tr>
 <tr><td>Telephone</td><td>{{supplier.tel}}</td></tr>
 <tr><td>Email</td><td>{{supplier.email}}</td></tr>
 </table>
-{% comment %}List of deliveries{% endcomment %}
+
+<h2>Deliveries</h2>
+
+<table id="deliveries">
+<thead>
+<tr><th>Date</th><th>Document</th><th>Confirmed?</th></tr>
+</thead>
+<tbody>
+{% for d in supplier.deliveries %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.date}}</a></td>
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.docnumber}}</a></td>
+<td>{{d.checked|yesno:"Yes,No"}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#deliveries").tablesorter({widgets:["zebra"]});
+});
+</script>
 
 {% endblock %}

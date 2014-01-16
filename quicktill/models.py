@@ -667,7 +667,7 @@ class Delivery(Base):
     docnumber=Column(String(40))
     date=Column(Date,nullable=False,server_default=func.current_timestamp())
     checked=Column(Boolean,nullable=False,server_default=text('false'))
-    supplier=relationship(Supplier,backref=backref('deliveries',order_by=id),
+    supplier=relationship(Supplier,backref=backref('deliveries',order_by=desc(id)),
                           lazy="joined")
     @property
     def tillweb_url(self):
@@ -723,6 +723,10 @@ class StockType(Base):
         return u"%s %s"%(self.manufacturer,self.name)
     def __repr__(self):
         return "<StockType(%s,'%s','%s')>"%(self.id,self.manufacturer,self.name)
+    @property
+    def abvstr(self):
+        if self.abv: return "{}%".format(self.abv)
+        else: return ""
     @property
     def descriptions(self):
         """Various possible descriptions of this stocktype, returned in
