@@ -17,10 +17,11 @@
 <div class="tillnav">
 <ul>
 <li><a href="{{u}}">Main Menu</a></li>
+<li><a href="{{u}}session/">Sessions</a></li>
 <li><a href="{{u}}stock/">Stock</a>
 <ul>
 {% for d in depts %}
-<li><a href="{{u}}stock/dept{{d.id}}/">{{d.description}}</a></li>
+<li><a href="{{u}}{{d.tillweb_url}}">{{d.description}}</a></li>
 {% endfor %}
 </ul></li>
 </ul>

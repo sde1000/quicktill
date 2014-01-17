@@ -10,6 +10,7 @@ tillurls=patterns(
     url(r'^$','pubroot'),
 
     # Item detail pages
+    url(r'^session/$','sessionfinder'),
     url(r'^session/(?P<sessionid>\d+)/$','session'),
     url(r'^session/(?P<sessionid>\d+)/dept(?P<dept>\d+)/$','sessiondept',
         name="sessiondept"),
@@ -21,6 +22,8 @@ tillurls=patterns(
     url(r'^stockline/(?P<stocklineid>\d+)/$','stockline'),
     url(r'^location/$','locationlist'),
     url(r'^location/(?P<location>[\w\- ]+)/$','location'),
+    url(r'^department/$','departmentlist'),
+    url(r'^department/(?P<departmentid>\d+)/$','department'),
 
     # Search pages
     # location (location summary page)

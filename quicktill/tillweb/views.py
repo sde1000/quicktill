@@ -1,9 +1,11 @@
-from django.http import HttpResponse,Http404
+from django.http import HttpResponse,Http404,HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
 from django.template import RequestContext,Context
 from django.template.loader import get_template
 from django.conf import settings
+from django import forms
+from django.forms.util import ErrorList
 from models import *
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
@@ -69,8 +71,10 @@ def tillweb_view_integrated(view):
             raise Http404
         try:
             depts=session.query(Department).order_by(Department.id).all()
-            t,d=view(request,till.get_absolute_url(),access,
-                     session,*args,**kwargs)
+            result=view(request,till.get_absolute_url(),access,
+                        session,*args,**kwargs)
+            if isinstance(result,HttpResponse): return result
+            t,d=result
             # pubname is used in the url;
             # object is the Till object, possibly used for a nav menu
             # till is the name of the till
@@ -104,7 +108,9 @@ def tillweb_view_single(view):
         access=settings.TILLWEB_DEFAULT_ACCESS
         try:
             depts=session.query(Department).order_by(Department.id).all()
-            t,d=view(request,"/",access,session,*args,**kwargs)
+            result=view(request,"/",access,session,*args,**kwargs)
+            if isinstance(result,HttpResponse): return result
+            t,d=result
             defaults={'pubname': "",'till':till,'access':access,
                       'depts':depts,'dtf':dtf,
                       'u':"/"} # XXX fetch base URL properly!
@@ -171,6 +177,24 @@ def location(request,base,access,session,location):
         options(joinedload('stockonsale.stocktype')).\
         all()
     return ('location.html',{'location':location,'lines':lines})
+
+class SessionFinderForm(forms.Form):
+    session=forms.IntegerField()
+
+@tillweb_view
+def sessionfinder(request,base,access,session):
+    if request.method=='POST':
+        form=SessionFinderForm(request.POST)
+        if form.is_valid():
+            s=session.query(Session).get(form.cleaned_data['session'])
+            if s:
+                return HttpResponseRedirect(base+s.tillweb_url)
+            errors=form._errors.setdefault("session",ErrorList())
+            errors.append(u"This session does not exist.")
+    else:
+        form=SessionFinderForm()
+    recent=session.query(Session).order_by(desc(Session.id))[:30]
+    return ('sessions.html',{'recent':recent,'form':form})
 
 @tillweb_view
 def session(request,base,access,session,sessionid):
@@ -300,3 +324,23 @@ def stockline(request,base,access,session,stocklineid):
     except NoResultFound:
         raise Http404
     return ('stockline.html',{'stockline':s,})
+
+@tillweb_view
+def departmentlist(request,base,access,session):
+    # depts are included in template context anyway
+    return ('departmentlist.html',{})
+
+@tillweb_view
+def department(request,base,access,session,departmentid):
+    d=session.query(Department).get(int(departmentid))
+    if d is None: raise Http404
+    include_finished=request.GET.get("show_finished","false")=="true"
+    items=session.query(StockItem).\
+        join(StockType).\
+        filter(StockType.department==d).\
+        order_by(desc(StockItem.id))
+    if not include_finished:
+        items=items.filter(StockItem.finished==None)
+    items=items.all()
+    return ('department.html',{'department':d,'items':items,
+                               'include_finished':include_finished})

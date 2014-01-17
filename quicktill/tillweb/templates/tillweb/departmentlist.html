@@ -1,0 +1,28 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Departments{% endblock %}
+
+{% block heading %}{{till}} — Departments{% endblock %}
+
+{% block tillcontent %}
+
+<table id="departments">
+<thead>
+<tr><th>Number</th><th>Description</th></tr>
+</thead>
+<tbody>
+{% for d in depts %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.id}}</a></td>
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.description}}</a></td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#departments").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endblock %}

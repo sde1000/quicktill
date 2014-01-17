@@ -1,0 +1,21 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — {{department.description}}{% endblock %}
+
+{% block heading %}{{till}} — {{department.description}}{% endblock %}
+
+{% block tillcontent %}
+
+{% if items %}
+{% with items as stocklist %}
+{% include "tillweb/stocklist.html" %}
+{% endwith %}
+{% else %}
+<p>There are no stock items in this department.</p>
+{% endif %}
+
+{% if not include_finished %}
+<p><a href="?show_finished=true">Include finished items</a></p>
+{% endif %}
+
+{% endblock %}

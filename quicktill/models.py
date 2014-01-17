@@ -431,6 +431,9 @@ class Department(Base):
         return u"%s"%(self.description,)
     def __repr__(self):
         return "<Department(%s,'%s')>"%(self.id,self.description)
+    @property
+    def tillweb_url(self):
+        return "department/{}/".format(self.id)
 
 class TransCode(Base):
     __tablename__='transcodes'
