@@ -166,7 +166,7 @@ class HTMLValidationMiddleware(object):
                 not request.is_ajax() and
                 (not self.ignore_regexp or 
                  not self.ignore_regexp.search(request.path)) and
-                request.META['REMOTE_ADDR'] in settings.INTERNAL_IPS and
+                request.META.get('REMOTE_ADDR',None) in settings.INTERNAL_IPS and
                 type(response) == HttpResponse)
 
     def _validate(self, response):
