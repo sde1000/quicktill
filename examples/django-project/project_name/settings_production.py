@@ -15,8 +15,6 @@ TEMPLATE_DEBUG=DEBUG
 
 # STATIC_ROOT=""
 
-SQLALCHEMY_SESSIONS={
-    'default':
-        sessionmaker(bind=create_engine('postgresql+psycopg2:///{}'.format(
-                quicktill_database),pool_recycle=600)),
-}
+TILLWEB_DATABASE=sessionmaker(bind=create_engine(
+        'postgresql+psycopg2:///{}'.format(
+            quicktill_database),pool_recycle=600))

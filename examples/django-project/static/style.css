@@ -130,7 +130,11 @@ a:hover {color:#e00;}
     padding:10px;
 }
 
-.kvtable td + td { text-align: left; }
+/* A table with keys in the first column and values in the second */
+table.kvtable th { text-align: left; }
+table.kvtable th:after { content: ":"; }
+table.kvtable table th { text-align: center; }
+table.kvtable table th:after { content: ""; }
 
 table td {
     padding-left: 5px;

@@ -16,12 +16,22 @@
 
 <table id="recentsessions">
 <thead>
-<tr><th>ID</th><th>Date</th></tr>
+<tr><th>ID</th><th>Date</th><th>Day</th>
+<th>Till Total</th><th>Actual Total</th></tr>
 </thead>
 <tbody>
 {% for s in recent %}
-<tr><td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
-<td><a href="{{u}}{{s.tillweb_url}}">{{s.date}}</a></td></tr>
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
+<td><a href="{{u}}{{s.tillweb_url}}">{{s.date}}</a></td>
+<td>{{s.date|date:"l"}}</td>
+<td class="money">{{s.total}}</td>
+{% if s.actual_total %}
+<td class="money">{{s.actual_total}}</td>
+{% else %}
+<td></td>
+{% endif %}
+</tr>
 {% endfor %}
 </tbody>
 </table>

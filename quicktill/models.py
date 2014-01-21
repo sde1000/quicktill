@@ -53,9 +53,6 @@ class Vat(object):
     @declared_attr
     def businessid(cls):
         return Column('business',Integer,ForeignKey('businesses.business'))
-    @declared_attr
-    def business(cls):
-        return relationship(Business)
     @property
     def rate_fraction(self):
         return self.rate/Decimal(100)
@@ -92,13 +89,19 @@ class Vat(object):
 class VatBand(Base,Vat):
     __tablename__='vat'
     band=Column(CHAR(1),primary_key=True)
+    business=relationship(Business,backref='vatbands')
     def __repr__(self):
         return "<VatBand('%s')>"%(self.band,)
 
+# Note that the tillweb index page code ignores the 'business' field
+# in VatRate and only uses VatBand.  Until this is fixed you should
+# not use a VatRate entry to change the business for a VatBand -
+# create a new department instead.
 class VatRate(Base,Vat):
     __tablename__='vatrates'
     band=Column(CHAR(1),ForeignKey('vat.band'),primary_key=True)
     active=Column(Date,nullable=False,primary_key=True)
+    business=relationship(Business,backref='vatrates')
     def __repr__(self):
         return "<VatRate('%s',%s,'%s')>"%(self.band,self.rate,self.active)
 
@@ -160,12 +163,8 @@ class Session(Base):
             filter(Session.id==self.id).\
             join(Transaction,Payment,PayType).\
             group_by(PayType).all()
-    # total property has been converted to a deferred column_property
-    # and is now declared after Transline
-    @property
-    def actual_total(self):
-        "Total of all payments."
-        return sum(at.amount for at in self.actual_totals)
+    # total is declared after Transline
+    # actual_total is declared after SessionTotal
     @property
     def error(self):
         "Difference between actual total and transaction line total."
@@ -243,6 +242,14 @@ class SessionTotal(Base):
     def __repr__(self):
         return "<SessionTotal(%s,'%s','%s')>"%(
             self.sessionid,self.paytype,self.amount)
+
+Session.actual_total=column_property(
+    select([func.sum(SessionTotal.amount)],
+           whereclause=and_(SessionTotal.sessionid==Session.id)).\
+        correlate(Session.__table__).\
+        label('actual_total'),
+    deferred=True,
+    doc="Actual recorded total")
 
 transactions_seq=Sequence('transactions_seq')
 class Transaction(Base):
@@ -338,6 +345,9 @@ class User(Base):
                              backref="users")
     transaction=relationship(Transaction,backref=backref(
             'user',uselist=False,cascade="all,delete"))
+    @property
+    def tillweb_url(self):
+        return "user/{}/".format(self.id)
     def __repr__(self):
         return "<User({0.id},'{0.fullname}')>".format(self)
 
@@ -897,6 +907,7 @@ class StockItem(Base):
             join(RemoveCode).\
             filter(StockOut.stockid==self.id).\
             group_by(RemoveCode).\
+            order_by(desc(func.sum(StockOut.qty))).\
             all()
     @property
     def remaining_units(self):
@@ -1032,6 +1043,17 @@ class KeyboardBinding(Base):
     def __repr__(self):
         return "<KeyboardBinding('%s','%s',%s)>"%(
             self.keycode,self.menukey,self.stocklineid)
+    @property
+    def keycap(self):
+        """
+        Look up the keycap corresponding to the keycode of this binding.
+
+        This is intended for use in the web interface, not in the main
+        part of the till software; that should be looking at the
+        keycap attribute of the keyboard.linekey object.
+
+        """
+        return object_session(self).query(KeyCap).get(self.keycode)
 
 class KeyCap(Base):
     __tablename__='keycaps'

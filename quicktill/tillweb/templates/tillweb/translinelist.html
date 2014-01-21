@@ -1,0 +1,37 @@
+{% if translines %}
+<table id="translines">
+<thead>
+<tr>
+{% if exclude_column != "transaction" %}<th>Transaction</th>{% endif %}
+<th>ID</th><th>Description</th><th>Code</th>
+<th class="sorter-false">Value</th><th>Time</th>
+{% if exclude_column != "user" %}<th>User</th>{% endif %}
+</tr>
+</thead>
+<tbody>
+{% for tl in translines %}
+<tr class="{% cycle 'odd' 'even' %}">
+{% if exclude_column != "transaction" %}
+<td><a href="{{u}}{{tl.transaction.tillweb_url}}">{{tl.transaction.id}}</a></td>
+{% endif %}
+<td>{{tl.id}}</td>
+{% if tl.stockref %}
+<td><a href="{{u}}{{tl.stockref.stockitem.tillweb_url}}">{{tl.description}}</a></td>
+{% else %}
+<td>{{tl.description}} ({{tl.department}})</td>
+{% endif %}
+<td>{{tl.transcode}}</td>
+<td>{{tl.items}} @ <span class="money">{{tl.amount}}</span> = <span class="money">{{tl.total}}</span></td>
+<td>{{tl.time|date:dtf}}</td>
+{% if exclude_column != "user" %}
+<td>{% if tl.user %}<a href="{{u}}{{tl.user.tillweb_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#translines").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% endif %}

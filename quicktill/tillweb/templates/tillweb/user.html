@@ -1,0 +1,89 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — User "{{user.fullname}}"{% endblock %}
+
+{% block heading %}{{till}} — User "{{user.fullname}}"{% endblock %}
+
+{% block tillcontent %}
+
+<table>
+<tr><th>Full name:</th><td>{{user.fullname}}</td></tr>
+<tr><th>Short name:</th><td>{{user.shortname}}</td></tr>
+{% if user.webuser %}
+<tr><th>Web username:</th><td>{{user.webuser}}</td></tr>
+{% endif %}
+</table>
+{% if not user.enabled %}
+<p>This user is marked as inactive and cannot use the till.</p>
+{% endif %}
+
+<h2>Permissions</h2>
+
+{% if user.superuser %}
+<p>This user can do anything that needs permissions without explicitly
+having the appropriate permission.  Any permissions shown below are
+irrelevant until the user's "superuser" status is revoked.</p>
+{% endif %}
+
+{% if user.permissions %}
+<table id="permissionlist">
+<thead>
+<tr><th>Name</th><th>Description</th></tr>
+</thead>
+<tbody>
+{% for p in user.permissions %}
+<tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#permissionlist").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% else %}
+<p>This user does not have any permissions defined.</p>
+{% endif %}
+
+<h2>Access tokens</h2>
+
+{% if user.tokens %}
+<table id="tokenlist">
+<thead>
+<tr><th>Description</th><th>Value</th></tr>
+</thead>
+<tbody>
+{% for t in user.tokens %}
+<tr><td>{{t.description}}</td><td>{{t.token}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#tokenlist").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% else %}
+<p>This user does not have any access tokens defined, so they cannot
+use the till.  You can add tokens using the user management interface
+on the till while signed in as any user with the "edit-user"
+permission.</p>
+{% endif %}
+
+<h2>Recent activity</h2>
+{% if sales %}
+<h3>Items sold</h3>
+{% with translines=sales exclude_column="user" %}
+{% include "tillweb/translinelist.html" %}
+{% endwith %}
+{% endif %}
+
+{% if payments %}
+<h3>Payments handled</h3>
+
+{% with excluded_column="user" %}
+{% include "tillweb/paymentlist.html" %}
+{% endwith %}
+{% endif %}
+
+{% endblock %}

@@ -6,66 +6,100 @@
 
 {% block tillcontent %}
 
-<table>
-<tr><td>Stock ID</td><td>{{stock.id}}</td></tr>
-<tr><td>Check digits</td><td>{{stock.checkdigits}}</td></tr>
-<tr><td>Manufacturer</td><td>{{stock.stocktype.manufacturer}}</td></tr>
-<tr><td>Name</td><td>{{stock.stocktype.name}}</td></tr>
-<tr><td>Short name</td><td>{{stock.stocktype.shortname}}</td></tr>
-<tr><td>ABV</td>
-{% if stock.stocktype.abv %}<td>{{stock.stocktype.abv}}%</td>
-{% else %}<td></td>{% endif %}</tr>
-<tr><td>Supplier</td><td><a href="{{u}}{{stock.delivery.supplier.tillweb_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
-<tr><td>Delivery date</td><td>{{stock.delivery.date}}</td></tr>
-<tr><td>Delivery ID</td><td><a href="{{u}}{{stock.delivery.tillweb_url}}">{{stock.delivery.id}}</a></td></tr>
-<tr><td>Department</td><td>{{stock.stocktype.department.description}}</td></tr>
-<tr><td>Stock unit</td><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
-<tr><td>Cost price</td>
+<table class="kvtable">
+<tr><th>Stock ID</th><td>{{stock.id}}</td></tr>
+<tr><th>Check digits</th><td>{{stock.checkdigits}}</td></tr>
+<tr><th>Manufacturer</th><td><a href="{{u}}stocktype/?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
+<tr><th>Name</th><td><a href="{{u}}{{stock.stocktype.tillweb_url}}">{{stock.stocktype.name}}</a></td></tr>
+<tr><th>Short name</th><td><a href="{{u}}{{stock.stocktype.tillweb_url}}">{{stock.stocktype.shortname}}</a></td></tr>
+<tr><th>ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
+<tr><th>Supplier</th><td><a href="{{u}}{{stock.delivery.supplier.tillweb_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
+<tr><th>Delivery date</th><td>{{stock.delivery.date}}</td></tr>
+<tr><th>Delivery ID</th><td><a href="{{u}}{{stock.delivery.tillweb_url}}">{{stock.delivery.id}}</a></td></tr>
+<tr><th>Department</th><td><a href="{{u}}{{stock.stocktype.department.tillweb_url}}">{{stock.stocktype.department.description}}</a></td></tr>
+<tr><th>Stock unit</th><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
+<tr><th>Cost price</th>
 {% if stock.costprice %}
 <td><span class="money">{{stock.costprice}}</span> (ex-VAT)</td>
 {% else %}<td>Unknown</td>{% endif %}</tr>
-<tr><td>Sale price</td><td><span class="money">{{stock.stocktype.saleprice}}</span>/{{stock.stockunit.unit.name}} (inc-VAT)</td></tr>
+<tr><th>Sale price</th><td><span class="money">{{stock.stocktype.saleprice}}</span>/{{stock.stockunit.unit.name}} (inc-VAT)</td></tr>
 {% if stock.onsale %}
-<tr><td>Put on sale</td><td>{{stock.onsale}}
+<tr><th>Put on sale</th><td>{{stock.onsale}}
 {% if stock.stockonsale %} on line <a href="{{u}}{{stock.stockonsale.stockline.tillweb_url}}">{{stock.stockonsale.stockline.name}}</a>
 {% endif %}
 </td></tr>
 {% endif %}
 {% if stock.finished %}
-<tr><td>Finished</td><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
+<tr><th>Finished</th><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
 {% endif %}
 {% if stock.bestbefore %}
-<tr><td>Best before</td><td>{{stock.bestbefore}}</td></tr>
+<tr><th>Best before</th><td>{{stock.bestbefore}}</td></tr>
 {% endif %}
-<tr><td>Amount used</td><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
-{% comment %}Insert breakdown of how it was used here!{% endcomment %}
-<tr><td>Amount remaining</td><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th>Amount used</th><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th>Amount remaining</th><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
+{% if stock.annotations %}
+<tr><th>Notes</th><td>
+<table id="annotations">
+<thead>
+<tr><th>Time</th><th>Type</th><th>Details</th></tr>
+</thead>
+<tbody>
+{% for a in stock.annotations %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{a.time|date:dtf}}</td><td>{{a.type}}</td><td>{{a.text}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#annotations").tablesorter({widgets:["zebra"]});
+});
+</script>
+</td></tr>{% endif %}
 </table>
 
-<table>
-{% for a in stock.annotations %}
-<tr><td>{{a.time}}</td><td>{{a.type}}</td><td>{{a.text}}</td></tr>
-{% empty %}
-<tr><td>None</td></tr>
+{% if stock.out %}
+<h2>Usage summary</h2>
+<table class="kvtable">
+{% for rc,qty in stock.removed %}
+<tr><th>{{rc.reason}}</th><td>{{qty}} {{stock.stockunit.unit.name}}s</td></tr>
 {% endfor %}
 </table>
 
-<table>
-<tr><th>Code</th><th>Quantity</th><th>Time</th></tr>
+<h2>Quantities used</h2>
+
+<table id="stockout">
+<thead>
+<tr><th>Time</th><th>Description</th><th>Quantity</th></tr>
+</thead>
+<tbody>
 {% for so in stock.out %}
-<tr class="{% cycle 'even' 'odd' %}">
-<td>{% if so.removecode_id == 'sold' %}<a href="{{u}}{{so.transline.transaction.tillweb_url}}">Sold {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td><td>{{so.qty}}</td><td>{{so.time}}</td>
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{so.time|date:dtf}}</td>
+<td>{% if so.removecode_id == 'sold' %}<a href="{{u}}{{so.transline.transaction.tillweb_url}}">Sold for <span class="money">{{so.transline.total}}</span> in transaction {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td>
+<td>{{so.qty}} {{stock.stockunit.unit.name}}s</td>
 </tr>
 {% endfor %}
+</tbody>
+<tfoot>
+<tr><th colspan="2" style="text-align: right;">Total:</th>
+<td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
+</tfoot>
 </table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stockout").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% endif %}
 
-<p>Associated stocklines:</p>
+{% if stock.stocktype.stockline_log %}
+<h2>Associated stocklines</h2>
 <ul>
 {% for sl in stock.stocktype.stockline_log %}
 <li><a href="{{u}}{{sl.stockline.tillweb_url}}">{{sl.stockline.name}}</a></li>
-{% empty %}
-<li>None</li>
 {% endfor %}
 </ul>
+{% endif %}
 
 {% endblock %}

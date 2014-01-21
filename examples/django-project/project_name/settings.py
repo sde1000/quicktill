@@ -23,9 +23,14 @@ MANAGERS = ADMINS
 django_database="django" # editme
 quicktill_database="haymakers" # editme
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 TILLWEB_SINGLE_SITE=True
-TILLWEB_DATABASE="default" # slug / database
-TILLWEB_PUBNAME="Haymakers" # name
+TILLWEB_DATABASE=sessionmaker(bind=create_engine(
+        'postgresql+psycopg2:///{}'.format(
+            quicktill_database),pool_recycle=600,echo=True))
+TILLWEB_PUBNAME="Haymakers" # editme
 TILLWEB_LOGIN_REQUIRED=False
 TILLWEB_DEFAULT_ACCESS="R" # permission for user not in till user database
 
@@ -38,14 +43,6 @@ DATABASES = {
         'HOST': '',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '',                      # Set to empty string for default.
     }
-}
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-SQLALCHEMY_SESSIONS = {
-    'default':
-        sessionmaker(bind=create_engine('postgresql+psycopg2:///{}'.format(
-                quicktill_database),pool_recycle=600,echo=True)),
 }
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False

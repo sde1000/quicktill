@@ -7,43 +7,7 @@
 {% block tillcontent %}
 
 {% if translines %}
-<table id="translines">
-<thead>
-<tr>
-<th>Transaction</th>
-<th>Ref</th>
-<th>Description</th>
-<th>Items</th>
-<th>Price</th>
-<th>Code</th>
-<th>Time</th>
-</tr>
-</thead>
-<tbody>
-{% for tl in translines %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{tl.transaction.tillweb_url}}">{{tl.transid}}</a></td>
-<td>{{tl.id}}</td>
-{% if tl.stockref %}
-<td><a href="{{u}}{{tl.stockref.stockitem.tillweb_url}}">{{tl.description}}</a></td>
-{% else %}
-<td>{{tl.description}}</td>
-{% endif %}
-<td>{{tl.items}}</td>
-<td class="money">{{tl.amount}}</td>
-<td>{{tl.transcode}}</td>
-<td>{{tl.time|date:dtf}}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#translines").tablesorter({widgets:["zebra"]});
-});
-</script>
-
+{% include "tillweb/translinelist.html" %}
 {% else %}
 <p>There are no transactions for the {{department.description}}
 department in session {{session.id}}.</p>

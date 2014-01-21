@@ -8,7 +8,10 @@
 {% block tillcontent %}
 
 <table class="bordered">
-<tr><th>Current session</th><th>Current week</th><th>Last week</th></tr>
+<tr><th>Current session</th>
+{% for desc,start,end,totals in weeks %}
+<th>{{desc}}</th>
+{% endfor %}</tr>
 <tr><td>
 {% if currentsession %}
 <a href="{{u}}{{currentsession.tillweb_url}}">
@@ -17,7 +20,15 @@
 {{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
 {% endfor %}</a>
 {% else %}No current session{% endif %}
-</td><td>TODO</td><td>TODO</td></tr>
+</td>
+{% for desc,start,end,totals in weeks %}
+<td>{{start}}–{{end}}<br />
+{% for business,total in totals %}
+{% if total %}{{business.abbrev}}: <span class="money">{{total}}</span><br />{% endif %}
+{% endfor %}
+</td>
+{% endfor %}</tr>
+
 </table>
 
 <h2>On the bar</h2>

@@ -6,16 +6,16 @@
 
 {% block tillcontent %}
 
-<table>
-<tr><td>Manufacturer</td><td>{{stocktype.manufacturer}}</td></tr>
-<tr><td>Name</td><td>{{stocktype.name}}</td></tr>
-<tr><td>Short name</td><td>{{stocktype.shortname}}</td></tr>
+<table class="kvtable">
+<tr><th>Manufacturer</th><td><a href="{{u}}stocktype/?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td></tr>
+<tr><th>Name</th><td>{{stocktype.name}}</td></tr>
+<tr><th>Short name</th><td>{{stocktype.shortname}}</td></tr>
 {% if stocktype.abv %}
-<tr><td>ABV</td><td>{{stocktype.abv}}%</td></tr>
+<tr><th>ABV</th><td>{{stocktype.abv}}%</td></tr>
 {% endif %}
-<tr><td>Department</td><td>{{stocktype.department}}</td></tr>
-<tr><td>Unit</td><td>{{stocktype.unit}}</td></tr>
-<tr><td>Sale price</td><td><span class="money">{{stocktype.saleprice}}</span>/{{stocktype.unit.name}} (inc-VAT)</td></tr>
+<tr><th>Department</th><td><a href="{{u}}{{stocktype.department.tillweb_url}}">{{stocktype.department}}</a></td></tr>
+<tr><th>Unit</th><td>{{stocktype.unit}}</td></tr>
+<tr><th>Sale price</th><td><span class="money">{{stocktype.saleprice}}</span>/{{stocktype.unit.name}} (inc-VAT)</td></tr>
 </table>
 
 <h2>Stock of this type</h2>
@@ -28,7 +28,7 @@
 {% endif %}
 
 {% if not include_finished %}
-<p><a href="?show_finished=true">Include finished items</a></p>
+<p><a href="?show_finished=on">Include finished items</a></p>
 {% endif %}
 
 {% endblock %}

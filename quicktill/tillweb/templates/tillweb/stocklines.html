@@ -1,0 +1,33 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock Lines{% endblock %}
+
+{% block heading %}{{till}} — Stock Lines{% endblock %}
+
+{% block tillcontent %}
+
+<table id="stocklinelist">
+<thead>
+<tr><th>Name</th><th>Location</th><th>Department</th>
+<th>Capacity</th><th>Pullthru?</th></tr>
+</thead>
+<tbody>
+{% for line in lines %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
+<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
+<td><a href="{{u}}{{line.department.tillweb_url}}">{{line.department}}</a></td>
+<td>{% if line.capacity %}{{line.capacity}}{% endif %}</td>
+<td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stocklinelist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endblock %}

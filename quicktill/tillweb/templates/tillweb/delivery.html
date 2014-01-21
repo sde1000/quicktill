@@ -6,13 +6,13 @@
 
 {% block tillcontent %}
 
-<table>
-<tr><td>ID</td><td>{{delivery.id}}</td></tr>
-<tr><td>Supplier</td><td><a href="{{u}}{{delivery.supplier.tillweb_url}}">
+<table class="kvtable">
+<tr><th>ID</th><td>{{delivery.id}}</td></tr>
+<tr><th>Supplier</th><td><a href="{{u}}{{delivery.supplier.tillweb_url}}">
 {{delivery.supplier}}</a></td></tr>
-<tr><td>Document number</td><td>{{delivery.docnumber}}</td></tr>
-<tr><td>Date</td><td>{{delivery.date}}</td></tr>
-<tr><td>Confirmed?</td><td>{{delivery.checked}}</td></tr>
+<tr><th>Document number</th><td>{{delivery.docnumber}}</td></tr>
+<tr><th>Date</th><td>{{delivery.date}}</td></tr>
+<tr><th>Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
 </table>
 
 {% if delivery.items %}

@@ -8,7 +8,9 @@ from django import forms
 from django.forms.util import ErrorList
 from models import *
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload
+from sqlalchemy.orm import subqueryload,subqueryload_all
+from sqlalchemy.orm import joinedload,joinedload_all
+from sqlalchemy.orm import undefer
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import desc
 from sqlalchemy.sql.expression import tuple_,func,null
@@ -52,36 +54,44 @@ def publist(request):
 # user - the quicktill.models.User object if available, or 'R','M','F'
 # session - sqlalchemy database session
 
-def tillweb_view_integrated(view):
-    @login_required
+def tillweb_view(view):
+    single_site=getattr(settings,'TILLWEB_SINGLE_SITE',False)
     def new_view(request,pubname,*args,**kwargs):
-        try:
-            till=Till.objects.get(slug=pubname)
-        except Till.DoesNotExist:
-            raise Http404
-        try:
-            access=Access.objects.get(user=request.user,till=till)
-        except Access.DoesNotExist:
-            # Pretend it doesn't exist!
-            raise Http404
-        try:
-            session=settings.SQLALCHEMY_SESSIONS[till.database]()
-        except ValueError:
-            # The database doesn't exist
-            raise Http404
+        if single_site:
+            tillname=settings.TILLWEB_PUBNAME
+            access=settings.TILLWEB_DEFAULT_ACCESS
+            session=settings.TILLWEB_DATABASE()
+            base='/'
+        else:
+            try:
+                till=Till.objects.get(slug=pubname)
+            except Till.DoesNotExist:
+                raise Http404
+            try:
+                access=Access.objects.get(user=request.user,till=till)
+            except Access.DoesNotExist:
+                # Pretend it doesn't exist!
+                raise Http404
+            try:
+                session=settings.SQLALCHEMY_SESSIONS[till.database]()
+            except ValueError:
+                # The database doesn't exist
+                raise Http404
+            base=till.get_absolute_url()
+            tillname=till.name
+            access=access.permission
         try:
             depts=session.query(Department).order_by(Department.id).all()
-            result=view(request,till.get_absolute_url(),access,
-                        session,*args,**kwargs)
+            result=view(request,base,access,session,*args,**kwargs)
             if isinstance(result,HttpResponse): return result
             t,d=result
-            # pubname is used in the url;
             # object is the Till object, possibly used for a nav menu
+            # (it's None if we are set up for a single site)
             # till is the name of the till
             # access is 'R','M','F'
             # u is the base URL for the till website including trailing /
-            defaults={'pubname':pubname,'object':till,'till':till.name,
-                      'access':access.permission,'u':till.get_absolute_url(),
+            defaults={'object':None if settings.TILLWEB_SINGLE_SITE else till,
+                      'till':tillname,'access':access,'u':base,
                       'depts':depts,'dtf':dtf}
             defaults.update(d)
             return render_to_response(
@@ -95,53 +105,50 @@ def tillweb_view_integrated(view):
                 status=503)
         finally:
             session.close()
-    return new_view
-
-def tillweb_view_single(view):
-    def new_view(request,pubname,*args,**kwargs):
-        try:
-            session=settings.SQLALCHEMY_SESSIONS[settings.TILLWEB_DATABASE]()
-        except ValueError:
-            # The database doesn't exist
-            raise Http404
-        till=settings.TILLWEB_PUBNAME
-        access=settings.TILLWEB_DEFAULT_ACCESS
-        try:
-            depts=session.query(Department).order_by(Department.id).all()
-            result=view(request,"/",access,session,*args,**kwargs)
-            if isinstance(result,HttpResponse): return result
-            t,d=result
-            defaults={'pubname': "",'till':till,'access':access,
-                      'depts':depts,'dtf':dtf,
-                      'u':"/"} # XXX fetch base URL properly!
-            defaults.update(d)
-            return render_to_response(
-                'tillweb/'+t,defaults,
-                context_instance=RequestContext(request))
-        except OperationalError as oe:
-            t=get_template('tillweb/operationalerror.html')
-            return HttpResponse(
-                t.render(RequestContext(
-                        request,{'object':till,'access':access,'error':oe})),
-                status=503)
-        finally:
-            session.close()
-    if settings.TILLWEB_LOGIN_REQUIRED:
+    if single_site and settings.TILLWEB_LOGIN_REQUIRED:
         new_view=login_required(new_view)
     return new_view
 
-tillweb_view=(
-    tillweb_view_single if settings.TILLWEB_SINGLE_SITE
-    else tillweb_view_integrated)
+def business_totals(session,firstday,lastday):
+    # This query is wrong in that it ignores the 'business' field in
+    # VatRate objects.  Fixes that don't involve a database round-trip
+    # per session are welcome!
+    return session.query(Business,func.sum(Transline.items*Transline.amount)).\
+        join(VatBand).\
+        join(Department).\
+        join(Transline).\
+        join(Transaction).\
+        join(Session).\
+        filter(Session.date<=lastday).\
+        filter(Session.date>=firstday).\
+        group_by(Business).\
+        all()
 
 @tillweb_view
 def pubroot(request,base,access,session):
+    date=datetime.date.today()
+    # If it's the early hours of the morning, it's more useful for us
+    # to consider it still to be yesterday.
+    if datetime.datetime.now().hour<4: date=date-datetime.timedelta(1)
+    thisweek_start=date-datetime.timedelta(date.weekday())
+    thisweek_end=thisweek_start+datetime.timedelta(6)
+    lastweek_start=thisweek_start-datetime.timedelta(7)
+    lastweek_end=thisweek_end-datetime.timedelta(7)
+    weekbefore_start=lastweek_start-datetime.timedelta(7)
+    weekbefore_end=lastweek_end-datetime.timedelta(7)
+
+    weeks=[("Current week",thisweek_start,thisweek_end,
+            business_totals(session,thisweek_start,thisweek_end)),
+           ("Last week",lastweek_start,lastweek_end,
+            business_totals(session,lastweek_start,lastweek_end)),
+           ("The week before last",weekbefore_start,weekbefore_end,
+            business_totals(session,weekbefore_start,weekbefore_end))]
+
     currentsession=Session.current(session)
     barsummary=session.query(StockLine).\
         filter(StockLine.location=="Bar").\
         order_by(StockLine.dept_id,StockLine.name).\
-        options(joinedload('stockonsale')).\
-        options(joinedload('stockonsale.stocktype')).\
+        options(joinedload_all('stockonsale.stocktype')).\
         all()
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
@@ -152,14 +159,14 @@ def pubroot(request,base,access,session):
                 group_by(StockAnnotation.text))).\
         filter(StockItem.finished==None).\
         order_by(StockLine.name!=null(),StockAnnotation.time).\
-        options(joinedload('stockitem')).\
-        options(joinedload('stockitem.stocktype')).\
-        options(joinedload('stockitem.stockline')).\
+        options(joinedload_all('stockitem.stocktype')).\
+        options(joinedload_all('stockitem.stockline')).\
         all()
     return ('index.html',
             {'currentsession':currentsession,
              'barsummary':barsummary,
              'stillage':stillage,
+             'weeks':weeks,
              })
 
 @tillweb_view
@@ -179,7 +186,7 @@ def location(request,base,access,session,location):
     return ('location.html',{'location':location,'lines':lines})
 
 class SessionFinderForm(forms.Form):
-    session=forms.IntegerField()
+    session=forms.IntegerField(label="Session ID")
 
 @tillweb_view
 def sessionfinder(request,base,access,session):
@@ -193,7 +200,10 @@ def sessionfinder(request,base,access,session):
             errors.append(u"This session does not exist.")
     else:
         form=SessionFinderForm()
-    recent=session.query(Session).order_by(desc(Session.id))[:30]
+    recent=session.query(Session).\
+        options(undefer('total')).\
+        options(undefer('actual_total')).\
+        order_by(desc(Session.id))[:30]
     return ('sessions.html',{'recent':recent,'form':form})
 
 @tillweb_view
@@ -232,17 +242,12 @@ def sessiondept(request,base,access,session,sessionid,dept):
         raise Http404
     translines=session.query(Transline).\
         join(Transaction).\
+        options(joinedload('transaction')).\
+        options(joinedload_all('stockref.stockitem.stocktype')).\
         filter(Transaction.sessionid==s.id).\
         filter(Transline.dept_id==dept.id).\
         order_by(Transline.time).\
         all()
-    # XXX really need to joinedload stockout and related tables, but
-    # there's no relation for that in the model at the moment.  Need
-    # to resolve that circular dependency for creating stockout and
-    # transline that mutually refer to each other.
-    
-    # Short version: this adds a database round-trip for every line in
-    # the output.  Ick!
     return ('sessiondept.html',{'session':s,'department':dept,
                                 'translines':translines})
 
@@ -251,8 +256,8 @@ def transaction(request,base,access,session,transid):
     try:
         t=session.query(Transaction).\
             filter_by(id=int(transid)).\
-            options(subqueryload_all('lines')).\
             options(subqueryload_all('payments')).\
+            options(joinedload_all('lines.stockref.stockitem.stocktype')).\
             one()
     except NoResultFound:
         raise Http404
@@ -278,6 +283,35 @@ def delivery(request,base,access,session,deliveryid):
         raise Http404
     return ('delivery.html',{'delivery':d,})
 
+class StockTypeForm(forms.Form):
+    manufacturer=forms.CharField(required=False)
+    name=forms.CharField(required=False)
+    shortname=forms.CharField(required=False)
+    def is_filled_in(self):
+        cd=self.cleaned_data
+        return cd['manufacturer'] or cd['name'] or cd['shortname']
+    def filter(self,q):
+        cd=self.cleaned_data
+        if cd['manufacturer']:
+            q=q.filter(StockType.manufacturer.ilike("%{}%".format(cd['manufacturer'])))
+        if cd['name']:
+            q=q.filter(StockType.name.ilike("%{}%".format(cd['name'])))
+        if cd['shortname']:
+            q=q.filter(StockType.shortname.ilike("%{}%".format(cd['shortname'])))
+        return q
+
+@tillweb_view
+def stocktypesearch(request,base,access,session):
+    form=StockTypeForm(request.GET)
+    result=[]
+    q=session.query(StockType).order_by(
+        StockType.dept_id,StockType.manufacturer,StockType.name)
+    if form.is_valid():
+        if form.is_filled_in():
+            q=form.filter(q)
+            result=q.all()
+    return ('stocktypesearch.html',{'form':form,'stocktypes':result})
+
 @tillweb_view
 def stocktype(request,base,access,session,stocktype_id):
     try:
@@ -286,7 +320,7 @@ def stocktype(request,base,access,session,stocktype_id):
             one()
     except NoResultFound:
         raise Http404
-    include_finished=request.GET.get("show_finished","false")=="true"
+    include_finished=request.GET.get("show_finished","off")=="on"
     items=session.query(StockItem).\
         filter(StockItem.stocktype==s).\
         order_by(desc(StockItem.id))
@@ -295,6 +329,23 @@ def stocktype(request,base,access,session,stocktype_id):
     items=items.all()
     return ('stocktype.html',{'stocktype':s,'items':items,
                               'include_finished':include_finished})
+
+class StockForm(StockTypeForm):
+    include_finished=forms.BooleanField(
+        required=False,label="Include finished items")
+
+@tillweb_view
+def stocksearch(request,base,access,session):
+    form=StockForm(request.GET)
+    result=[]
+    q=session.query(StockItem).join(StockType).order_by(StockItem.id)
+    if form.is_valid():
+        if form.is_filled_in():
+            q=form.filter(q)
+            if not form.cleaned_data['include_finished']:
+                q=q.filter(StockItem.finished==None)
+            result=q.all()
+    return ('stocksearch.html',{'form':form,'stocklist':result})
 
 @tillweb_view
 def stock(request,base,access,session,stockid):
@@ -316,6 +367,13 @@ def stock(request,base,access,session,stockid):
     return ('stock.html',{'stock':s,})
 
 @tillweb_view
+def stocklinelist(request,base,access,session):
+    lines=session.query(StockLine).\
+        order_by(StockLine.dept_id,StockLine.name).\
+        all()
+    return ('stocklines.html',{'lines':lines,})
+
+@tillweb_view
 def stockline(request,base,access,session,stocklineid):
     try:
         s=session.query(StockLine).\
@@ -334,7 +392,7 @@ def departmentlist(request,base,access,session):
 def department(request,base,access,session,departmentid):
     d=session.query(Department).get(int(departmentid))
     if d is None: raise Http404
-    include_finished=request.GET.get("show_finished","false")=="true"
+    include_finished=request.GET.get("show_finished","off")=="on"
     items=session.query(StockItem).\
         join(StockType).\
         filter(StockType.department==d).\
@@ -344,3 +402,24 @@ def department(request,base,access,session,departmentid):
     items=items.all()
     return ('department.html',{'department':d,'items':items,
                                'include_finished':include_finished})
+
+@tillweb_view
+def userlist(request,base,access,session):
+    q=session.query(User).order_by(User.fullname)
+    include_inactive=request.GET.get("include_inactive","off")=="on"
+    if not include_inactive:
+        q=q.filter(User.enabled==True)
+    users=q.all()
+    return ('userlist.html',{'users':users,'include_inactive':include_inactive})
+
+@tillweb_view
+def user(request,base,access,session,userid):
+    try:
+        u=session.query(User).get(int(userid))
+    except NoResultFound:
+        raise Http404
+    sales=session.query(Transline).filter(Transline.user==u).\
+        order_by(desc(Transline.time))[:50]
+    payments=session.query(Payment).filter(Payment.user==u).\
+        order_by(desc(Payment.time))[:50]
+    return ('user.html',{'user':u,'sales':sales,'payments':payments})

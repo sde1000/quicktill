@@ -12,7 +12,7 @@
 <td><a href="{{u}}{{item.stocktype.tillweb_url}}">
 {{item.stocktype.fullname}}</a></td>
 <td>{{item.stocktype.abvstr}}</td>
-<td>£{{item.stocktype.saleprice}}/{{item.stocktype.unit.name}}</td>
+<td><span class="money">{{item.stocktype.saleprice}}</span>/{{item.stocktype.unit.name}}</td>
 <td>{{item.onsale|date:dtf}}</td>
 {% if item.ondisplay == None %}
 <td>{{item.used}} {{item.stocktype.unit.name}}s used</td>

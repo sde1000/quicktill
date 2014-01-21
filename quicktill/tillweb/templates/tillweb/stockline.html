@@ -29,7 +29,7 @@
 <td><a href="{{u}}{{item.stocktype.tillweb_url}}">
 {{item.stocktype.fullname}}</a></td>
 <td>{% if item.stocktype.abv %}{{item.stocktype.abv}}%{% endif %}</td>
-<td>£{{item.stocktype.saleprice}}/{{item.stocktype.unit.name}}</td>
+<td><span class="money">{{item.stocktype.saleprice}}</span>/{{item.stocktype.unit.name}}</td>
 <td>{{item.onsale|date:dtf}}</td>
 <td>{{item.used}} {{item.stocktype.unit.name}}s</td>
 <td>{{item.remaining}} {{item.stocktype.unit.name}}s</td>
@@ -64,7 +64,8 @@ $(document).ready(function(){
 <table>
 <tr><th>Keycode</th><th>Menu key</th><th>Quantity</th></tr>
 {% for kb in stockline.keyboard_bindings %}
-<tr><td>{{kb.keycode}}</td><td>{{kb.menukey}}</td><td>{{kb.qty}}</td></tr>
+<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
+<td>{{kb.menukey}}</td><td>{{kb.qty}}</td></tr>
 {% endfor %}
 </table>
 {% endif %}

@@ -18,15 +18,15 @@
 <table>
 <tr>
 {% for p in session.actual_totals %}
-<td><strong>{{p.paytype.description}}</strong><br />£{{p.amount}}</td>
+<td><strong>{{p.paytype.description}}</strong><br /><span class="money">{{p.amount}}</span></td>
 {% endfor %}
-<td><strong>Error</strong><br />£{{session.error}}</td>
+<td><strong>Error</strong><br /><span class="money">{{session.error}}</span></td>
 {% for vb,t,ex,vat in session.vatband_totals %}
 {% if vb.business.abbrev == "IPL" %}
-<td><strong>{{vb.business}} ex-VAT</strong><br />£{{ex}}</td>
-<td><strong>{{vb.business}} VAT</strong><br />£{{vat}}</td>
+<td><strong>{{vb.business}} ex-VAT</strong><br /><span class="money">{{ex}}</span></td>
+<td><strong>{{vb.business}} VAT</strong><br /><span class="money">{{vat}}</span></td>
 {% else %}
-<td><strong>{{vb.business}}</strong><br />£{{t}}</td>
+<td><strong>{{vb.business}}</strong><br /><span class="money">{{t}}</span></td>
 {% endif %}
 {% endfor %}
 </tr>
@@ -72,7 +72,7 @@ transactions.</p>
 <table>
 <tr><th>Type</th><th>Amount</th></tr>
 {% for type,amount in session.payment_totals %}
-<tr><td>{{type}}</td><td>£{{amount}}</td></tr>
+<tr><td>{{type}}</td><td class="money">{{amount}}</td></tr>
 {% endfor %}
 </table>
 {% endif %}

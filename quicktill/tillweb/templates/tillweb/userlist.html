@@ -1,0 +1,45 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Users{% endblock %}
+
+{% block heading %}{{till}} — Users{% endblock %}
+
+{% block tillcontent %}
+
+{% if users %}
+<table id="userlist">
+<thead>
+<tr><th>Name</th><th>Short name</th><th>Web username</th></tr>
+</thead>
+<tbody>
+{% for user in users %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
+<td><a href="{{u}}{{user.tillweb_url}}">{{user.shortname}}</a></td>
+<td>{% if user.webuser %}<a href="{{u}}{{user.tillweb_url}}">{{user.webuser}}</a>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#userlist").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% else %}
+<p>No users have been defined.  You will have to create at least one
+superuser using the command line and then use the user management
+interface on the till to set up your real users.</p>
+
+<p>A suitable command for creating a user accessible using the key on
+the keyboard that produces the "builtin:alice" user token is:</p>
+
+<pre>runtill adduser root root builtin:alice</pre>
+
+{% endif %}
+{% if not include_inactive %}
+<p><a href="?include_inactive=on">Include inactive users</a></p>
+{% endif %}
+
+{% endblock %}

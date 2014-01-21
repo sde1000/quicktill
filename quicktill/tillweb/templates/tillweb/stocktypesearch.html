@@ -1,0 +1,43 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock Types{% endblock %}
+
+{% block heading %}{{till}} — Stock Types{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="get">
+{{ form.as_p }}
+<input type="submit" value="Find" />
+</form>
+
+{% if stocktypes %}
+<table id="stocktypelist">
+<thead>
+<tr><th>Manufacturer</th><th>Name</th><th>Short name</th><th>ABV</th>
+<th>Department</th><th>Unit</th><th>Sale price</th></tr>
+</thead>
+<tbody>
+{% for t in stocktypes %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="?manufacturer={{t.manufacturer|urlencode}}">{{t.manufacturer}}</a></td>
+<td><a href="{{u}}{{t.tillweb_url}}">{{t.name}}</a></td>
+<td><a href="{{u}}{{t.tillweb_url}}">{{t.shortname}}</a></td>
+<td>{{t.abvstr}}</td>
+<td><a href="{{u}}{{t.department.tillweb_url}}">{{t.department}}</a></td>
+<td>{{t.unit.name}}</td>
+{% if t.saleprice %}<td class="money">{{t.saleprice}}</td>
+{% else %}<td></td>{% endif %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stocktypelist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endif %}
+
+{% endblock %}

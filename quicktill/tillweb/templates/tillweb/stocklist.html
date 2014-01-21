@@ -7,7 +7,7 @@
 {% for s in stocklist %}
 <tr class="{% cycle 'even' 'odd' %}">
 <td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
-<td>{{s.stocktype.manufacturer}}</td>
+<td><a href="{{u}}stocktype/?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
 <td><a href="{{u}}{{s.stocktype.tillweb_url}}">{{s.stocktype.name}}</a></td>
 <td>{{s.stocktype.abvstr}}</td>
 <td>{{s.used}} {{s.stocktype.unit.name}}s</td>

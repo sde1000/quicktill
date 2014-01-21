@@ -1,0 +1,18 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock Search{% endblock %}
+
+{% block heading %}{{till}} — Stock Search{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="get">
+{{ form.as_p }}
+<input type="submit" value="Find" />
+</form>
+
+{% if stocklist %}
+{% include "tillweb/stocklist.html" %}
+{% endif %}
+
+{% endblock %}
