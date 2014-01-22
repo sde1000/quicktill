@@ -5,15 +5,7 @@ from settings import *
 DEBUG=False
 TEMPLATE_DEBUG=DEBUG
 
-# MEDIA_ROOT=
-
-# MEDIA_URL=
-
-# TEMPLATE_DIRS=()
-
-# STATICFILES_DIRS=()
-
-# STATIC_ROOT=""
+STATIC_ROOT="{{project_directory}}/static"
 
 TILLWEB_DATABASE=sessionmaker(bind=create_engine(
         'postgresql+psycopg2:///{}'.format(

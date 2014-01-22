@@ -4,7 +4,7 @@ quicktill - cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004-2013 Stephen Early <sde@individualpubs.co.uk>
+quicktill is Copyright (C) 2004-2014 Stephen Early <sde@individualpubs.co.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -40,9 +40,7 @@ models defined here in quicktill/models.py; it's included in
 quicktill/tillweb/ but is out of date.
 
 I intend to start using this branch in one of my pubs (probably the
-Pembury) in early 2014, once the "members of staff have NFC ID cards
-to bring up their personal page on the register" feature has been
-implemented and I'm happy the whole thing is stable.
+Pembury) in early 2014, once I'm happy the whole thing is stable.
 
 Getting started
 ---------------
@@ -92,6 +90,19 @@ Run in "cash register" mode, create stocklines, bind them to keys, put
 your stock on sale, and sell it:
 
     runtill -c mainbar start
+
+Set up the built-in web server: install nginx and uwsgi, then create
+the django project:
+
+    apt-get install nginx-full uwsgi-plugin-python python-django
+    django-admin startproject --template=quicktill/examples/django-project tillweb
+
+Edit the created tillweb/tillweb/tillweb/settings.py file for your
+pubname and database, then start the server:
+
+    tillweb/start-daemon
+
+Put tillweb/start-daemon in crontab to start on reboot.
 
 Startup procedure
 -----------------
