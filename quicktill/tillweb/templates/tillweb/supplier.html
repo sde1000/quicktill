@@ -6,32 +6,20 @@
 
 {% block tillcontent %}
 
-<table>
-<tr><td>Name</td><td>{{supplier.name}}</td></tr>
-<tr><td>Telephone</td><td>{{supplier.tel}}</td></tr>
-<tr><td>Email</td><td>{{supplier.email}}</td></tr>
+<table class="kvtable">
+<tr><th>Name</th><td>{{supplier.name}}</td></tr>
+<tr><th>Telephone</th><td>{{supplier.tel}}</td></tr>
+<tr><th>Email</th><td>{{supplier.email}}</td></tr>
 </table>
 
 <h2>Deliveries</h2>
 
-<table id="deliveries">
-<thead>
-<tr><th>Date</th><th>Document</th><th>Confirmed?</th></tr>
-</thead>
-<tbody>
-{% for d in supplier.deliveries %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{d.tillweb_url}}">{{d.date}}</a></td>
-<td><a href="{{u}}{{d.tillweb_url}}">{{d.docnumber}}</a></td>
-<td>{{d.checked|yesno:"Yes,No"}}</td></tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#deliveries").tablesorter({widgets:["zebra"]});
-});
-</script>
+{% with deliveries=supplier.deliveries exclude_column="supplier" %}
+{% if deliveries %}
+{% include "tillweb/deliverylist.html" %}
+{% else %}
+<p>There have not been any deliveries from this supplier.</p>
+{% endif %}
+{% endwith %}
 
 {% endblock %}

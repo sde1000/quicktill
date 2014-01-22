@@ -1,0 +1,26 @@
+{% if deliveries %}
+<table id="deliveries">
+<thead>
+<tr><th>ID</th><th>Date</th>
+{% if exclude_column != "supplier" %}<th>Supplier</th>{% endif %}
+<th>Document</th><th>Confirmed?</th></tr>
+</thead>
+<tbody>
+{% for d in deliveries %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.id}}</a></td>
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.date}}</a></td>
+{% if exclude_column != "supplier" %}
+<td><a href="{{u}}{{d.supplier.tillweb_url}}">{{d.supplier.name}}</a></td>
+{% endif %}
+<td>{{d.docnumber}}</td>
+<td>{{d.checked|yesno:"Yes,No"}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#deliveries").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% endif %}

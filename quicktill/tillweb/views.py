@@ -264,6 +264,11 @@ def transaction(request,base,access,session,transid):
     return ('transaction.html',{'transaction':t,})
 
 @tillweb_view
+def supplierlist(request,base,access,session):
+    sl=session.query(Supplier).order_by(Supplier.name).all()
+    return ('suppliers.html',{'suppliers':sl})
+
+@tillweb_view
 def supplier(request,base,access,session,supplierid):
     try:
         s=session.query(Supplier).\
@@ -272,6 +277,11 @@ def supplier(request,base,access,session,supplierid):
     except NoResultFound:
         raise Http404
     return ('supplier.html',{'supplier':s,})
+
+@tillweb_view
+def deliverylist(request,base,access,session):
+    dl=session.query(Delivery).order_by(desc(Delivery.id)).all()
+    return ('deliveries.html',{'deliveries':dl})
 
 @tillweb_view
 def delivery(request,base,access,session,deliveryid):

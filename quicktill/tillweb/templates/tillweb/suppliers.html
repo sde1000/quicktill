@@ -1,0 +1,29 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Suppliers{% endblock %}
+
+{% block heading %}{{till}} — Suppliers{% endblock %}
+
+{% block tillcontent %}
+
+<table id="suppliers">
+<thead>
+<tr><th>Name</th><th>Telephone</th><th>Email</th></tr>
+</thead>
+<tbody>
+{% for s in suppliers %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{s.tillweb_url}}">{{s.name}}</a></td>
+<td>{{s.tel}}</td>
+<td>{% if s.email %}<a href="mailto:{{s.email|urlencode}}">{{s.email}}</a>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#suppliers").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endblock %}
