@@ -962,9 +962,9 @@ class booleanfield(field):
         if self.focused: self.win.move(self.y,self.x)
         else: self.win.move(*pos)
     def keypress(self,k):
-        if k in (ord('y'),ord('Y')):
+        if k in (ord('y'),ord('Y'),keyboard.K_ONE):
             self.set(True)
-        elif k in (ord('n'),ord('N')):
+        elif k in (ord('n'),ord('N'),keyboard.K_ZERO,keyboard.K_ZEROZERO):
             self.set(False)
         elif k==keyboard.K_CLEAR and self.allow_blank and self.f is not None:
             self.set(None)
