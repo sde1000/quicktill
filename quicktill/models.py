@@ -443,6 +443,12 @@ class Department(Base):
               autoincrement=False)
     description=Column(String(20),nullable=False)
     vatband=Column(CHAR(1),ForeignKey('vat.band'),nullable=False)
+    notes=Column(Text,nullable=True,doc="Information on this department "
+                 "for printing on price lists.")
+    minprice=Column(Numeric(5,2),nullable=True,doc="Minimum price of a "
+                    "single unit of stock in this department.")
+    maxprice=Column(Numeric(5,2),nullable=True,doc="Maximum price of a "
+                    "single unit of stock in this department.")
     vat=relationship(VatBand)
     def __unicode__(self):
         return u"%s"%(self.description,)

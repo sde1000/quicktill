@@ -6,6 +6,17 @@
 
 {% block tillcontent %}
 
+{% if department.minprice or department.maxprice %}
+<table class="kvtable">
+{% if department.minprice %}<tr><th>Minimum price per item</th>
+<td class="money">{{department.minprice}}</td></tr>{% endif %}
+{% if department.maxprice %}<tr><th>Maximum price per item</th>
+<td class="money">{{department.maxprice}}</td></tr>{% endif %}
+</table>
+{% endif %}
+
+{% if department.notes %}<p>{{department.notes}}</p>{% endif %}
+
 {% if items %}
 {% with items as stocklist %}
 {% include "tillweb/stocklist.html" %}

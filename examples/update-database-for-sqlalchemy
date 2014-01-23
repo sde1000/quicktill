@@ -186,3 +186,8 @@ CREATE TABLE users (
 ALTER TABLE translines DROP COLUMN source;
 ALTER TABLE translines ADD COLUMN "user" INTEGER REFERENCES users(id);
 ALTER TABLE payments ADD COLUMN "user" INTEGER REFERENCES users(id);
+
+/* Add the new fields to the Department table */
+ALTER TABLE departments ADD COLUMN notes TEXT;
+ALTER TABLE departments ADD COLUMN minprice NUMERIC(5,2);
+ALTER TABLE departments ADD COLUMN maxprice NUMERIC(5,2);
