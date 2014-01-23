@@ -276,6 +276,13 @@ class Transaction(Base):
         """
         return sum((p.amount for p in self.payments),zero)
     @property
+    def balance(self):
+        """
+        Transaction balance
+
+        """
+        return self.total-self.payments_total
+    @property
     def tillweb_url(self):
         return "transaction/%d/"%self.id
     @property
