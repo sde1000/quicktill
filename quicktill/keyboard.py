@@ -1,3 +1,11 @@
+"""
+This module defines classes whose instances are typically sent to
+ui.handle_keyboard_input() by the keyboard driver.
+
+Till configurations can define as many new keycodes as they need.
+
+"""
+
 class keycode(object):
     def __new__(cls,name,keycap,*args,**kwargs):
         # If a keycode of this name already exists, return it instead
@@ -82,26 +90,21 @@ class linekey(keycode):
         return "linekey(%d)"%self._line
 
 # The only keycodes that need to be defined here are those referred to
-# explicitly in the till code.
+# explicitly in the till code.  All other keycodes are defined in the
+# till configuration module.
 
 # Till management keys
 keycode("K_USESTOCK","Use Stock")
-keycode("K_MANAGESTOCK","Manage Stock")
 keycode("K_WASTE","Record Waste")
 keycode("K_MANAGETILL","Manage Till")
 keycode("K_CANCEL","Cancel")
 keycode("K_CLEAR","Clear")
-keycode("K_PRICECHECK","Price Check")
 keycode("K_PRINT","Print")
 keycode("K_RECALLTRANS","Recall Transaction")
 keycode("K_MANAGETRANS","Manage Transaction")
 keycode("K_QUANTITY","Quantity")
 keycode("K_FOODORDER","Order Food")
 keycode("K_CANCELFOOD","Cancel Food")
-keycode("K_EXTRAS","Extras")
-keycode("K_PANIC","Panic")
-keycode("K_APPS","Apps")
-keycode("K_LOCK","Lock")
 
 # Tendering keys referred to in the code
 keycode("K_CASH","Cash / Enter")

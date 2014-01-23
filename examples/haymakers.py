@@ -25,7 +25,12 @@ import logging
 log=logging.getLogger('config')
 
 # Keys that we refer to in this config file
-K_DORIS=keycode('K_DORIS','Doris')
+K_MANAGESTOCK=keycode("K_MANAGESTOCK","Manage Stock")
+K_PRICECHECK=keycode("K_PRICECHECK","Price Check")
+K_STOCKINFO=keycode("K_STOCKINFO","Stock Info")
+K_PANIC=keycode("K_PANIC","Panic")
+K_APPS=keycode("K_APPS","Apps")
+K_LOCK=keycode("K_LOCK","Lock")
 
 # Pub managers should generally have the following permissions:
 user.group('manager','Pub manager',[
@@ -299,7 +304,7 @@ kb1={
             ("H01",user.token('builtin:alice')),
             ("G01",user.token('builtin:bob')),
             ("F01",user.token('builtin:charlie')),
-            ("E01",K_DORIS),
+            ("E01",K_STOCKINFO),
             ("H02",K_MANAGETILL),
             ("G02",K_MANAGESTOCK),
             ("F02",K_USESTOCK),
@@ -447,7 +452,7 @@ stock_hotkeys={
     }
 
 global_hotkeys={
-    K_DORIS: lambda: stockterminal.page(register_hotkeys,["Bar"]),
+    K_STOCKINFO: lambda: stockterminal.page(register_hotkeys,["Bar"]),
     K_LOCK: lockscreen.lockpage,
 }
 
