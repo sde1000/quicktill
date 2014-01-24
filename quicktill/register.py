@@ -344,7 +344,8 @@ class page(ui.basicpage):
                  "If you have recently put more stock on display you "
                  "must tell the till about it using the 'Use Stock' "
                  "button after dismissing this message.".format(
-                        items,name)],title="Not enough stock on display")
+                        items,stockline.name)],
+                title="Not enough stock on display")
             return
         if len(sell)==0:
             log.info("Register: linekey: no stock in use for %s",name)
@@ -500,6 +501,7 @@ class page(ui.basicpage):
                     transline.items=transline.items+1
                     transline.stockref.qty=orig_stockqty*transline.items
                     td.s.flush()
+                    td.s.expire(stockitem,['used','sold','remaining'])
                     log.info("linekey: updated transline %d and stockout %d",
                              transline.id,transline.stockref.id)
                     self.dl[-1].update()
@@ -526,6 +528,8 @@ class page(ui.basicpage):
                 qty=stockqty*items_to_sell,removecode_id='sold')
             td.s.add(stockout)
             td.s.flush()
+            td.s.expire(stockitem,['used','sold','remaining','firstsale','lastsale'])
+            td.s.refresh(transline,['time']) # load time from database
             self.dl.append(tline(transline.id))
             log.info(
                 "linekey: trans=%d,lid=%d,sn=%d,items=%d,qty=%s",
