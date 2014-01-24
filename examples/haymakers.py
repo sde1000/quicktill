@@ -96,8 +96,6 @@ def haymakers_pricepolicy(item,qty):
 def haymakers_priceguess(stocktype,stockunit,cost):
     if stocktype.dept_id==1:
         return guessbeer(stocktype,stockunit,cost)
-    if stocktype.dept_id==2:
-        return Decimal("3.10") # It's Moravka.  It's all we do.
     if stocktype.dept_id==3:
         return markup(stocktype,stockunit,cost,Decimal("2.6"))
     if stocktype.dept_id==4:

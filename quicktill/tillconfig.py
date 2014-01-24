@@ -34,10 +34,11 @@ def fc(a):
     if a is None: return "None"
     return "%s%s"%(currency,a.quantize(penny))
 
-def priceguess(dept,cost,abv):
-    """Guess a suitable selling price for a new stock item.  Return a
+def priceguess(stocktype,stockunit,cost):
+    """
+    Guess a suitable selling price for a new stock item.  Return a
     price, or None if there is no suitable guess available.  'cost' is
-    the cost price _per unit_, eg. per pint for beer.
+    the cost price _per stockunit_, eg. per cask for beer.
 
     """
     return None
