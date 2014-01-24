@@ -442,20 +442,19 @@ class page(ui.basicpage):
                     no_saleprice_popup(self.user,item)
                     return
 
-        repeatinfo=None
-        if self.repeat and hasattr(self.repeat,'stocklineid') and \
-                self.repeat.stocklineid==stockline.id and \
-                self.repeat.qty==kb.qty:
-            log.info("Register: linekey: might sell more on line %s",
-                     stockline.name)
-            repeatinfo=self.repeat
-        self.repeat=repeat(stocklineid=stockline.id,qty=kb.qty)
-
         # At this point we have a list of (stockitem,amount) that
         # corresponds to the quantity requested.  We can go ahead and
         # add them to the transaction.
         trans=self.gettrans()
         if trans is None: return # Will already be displaying an error.
+
+        # NB gettrans() may call _clear() and will zap self.repeat when
+        # it creates a new transaction!
+
+        may_repeat=self.repeat and hasattr(self.repeat,'stocklineid') and \
+            self.repeat.stocklineid==stockline.id and \
+            self.repeat.qty==kb.qty
+        self.repeat=repeat(stocklineid=stockline.id,qty=kb.qty)
 
         if stockline.linetype=="regular" and stockline.pullthru:
             # Check first to see whether we may need to record a pullthrough.
@@ -481,17 +480,16 @@ class page(ui.basicpage):
 
         # By this point we're committed to trying to sell the items.
         for stockitem,items_to_sell in sell:
-            # If we have repeatinfo then the user has pressed the same
-            # line key again.  If the stock number matches the most
-            # recent transline then we can add to it instead of
-            # creating a new one.  Pressing a key again only ever adds
-            # 1 to the number of items - anything else would be
-            # horribly confusing!  Eg. 4 qty half-cider half-cider
-            # sells five halves of cider, i.e. 2.5 pints.  We ignore
-            # both items_to_sell and stockqty in this case.
-            if repeatinfo and len(self.dl)>0 and \
+            # If we may_repeat then the user has pressed the same line
+            # key again.  If the stock number matches the most recent
+            # transline then we can add to it instead of creating a
+            # new one.  Pressing a key again only ever adds 1 to the
+            # number of items - anything else would be horribly
+            # confusing!  Eg. 4 qty half-cider half-cider sells five
+            # halves of cider, i.e. 2.5 pints.  We ignore both
+            # items_to_sell and stockqty in this case.
+            if may_repeat and len(self.dl)>0 and \
                     self.dl[-1].age()<max_transline_modify_age:
-                repeatinfo=None
                 transline=td.s.query(Transline).get(self.dl[-1].transline)
                 if transline.stockref and \
                         transline.stockref.stockitem==stockitem:
