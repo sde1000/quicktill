@@ -50,6 +50,7 @@ user.group('manager','Pub manager',[
         "edit-user", # Add and edit users
         "override-price",
         "reprice-stock",
+        "drink-in",
         ])
 
 user.group('basicuser','Basic user',[

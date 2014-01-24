@@ -20,6 +20,7 @@ indicate restricted functionality.
 
 from . import ui,td,event,keyboard
 from .models import User,UserToken,Permission
+import types
 import socket,logging
 log=logging.getLogger(__name__)
 
@@ -115,8 +116,8 @@ class _permission_check(object):
         user=user or ui.current_user()
         if user is None: return False
         return user.has_permission(self._action)
-    def __get__(self,obj,objtype):
-        self._func.__get__(obj,objtype)
+    def __get__(self,obj,objtype=None):
+        return types.MethodType(self.__call__,obj,objtype)
     def __call__(self,*args,**kwargs):
         if not callable(self._func):
             raise TypeError("'permission_check' object is not callable")

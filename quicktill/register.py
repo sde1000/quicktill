@@ -684,6 +684,7 @@ class page(ui.basicpage):
             td.s.flush()
         self._redraw()
         return self.trans
+    @user.permission_required('drink-in','Use the "Drink In" function')
     def drinkinkey(self):
         """
         The 'Drink In' key creates a negative entry in the
@@ -697,7 +698,7 @@ class page(ui.basicpage):
         This only works if the default payment method supports change.
 
         """
-        if self.qty is not None or self.mod is not None:
+        if self.qty or self.mod:
             ui.infopopup(["You can't enter a quantity or use a modifier key "
                           "before pressing 'Drink In'."],title="Error")
             return
@@ -713,11 +714,13 @@ class page(ui.basicpage):
             return
         self.clearbuffer()
         if len(tillconfig.payment_methods)<1:
+            self._redraw()
             ui.infopopup(["There are no payment methods configured."],
                          title="Error")
             return
         pm=tillconfig.payment_methods[0]
         if not pm.change_given:
+            self._redraw()
             ui.infopopup(["The %s payment method doesn't support change."%
                           pm.description],title="Error")
             return
