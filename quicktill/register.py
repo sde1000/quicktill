@@ -557,7 +557,7 @@ class page(ui.basicpage):
                              title="Warning",dismiss=keyboard.K_USESTOCK)
         elif stockline.linetype=="display":
             self.prompt="{}: {} left on display; {} in stock".format(
-                stockline.name,stockremain[0],stockremain[1])
+                stockline.name,stockremain[0],int(stockremain[1]))
         self.update_balance()
         self.cursor_off()
         self._redraw()
