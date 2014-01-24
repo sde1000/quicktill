@@ -351,7 +351,7 @@ class User(Base):
     permissions=relationship("Permission",secondary="permission_grants",
                              backref="users")
     transaction=relationship(Transaction,backref=backref(
-            'user',uselist=False,cascade="all,delete"))
+            'user',uselist=False))
     @property
     def tillweb_url(self):
         return "user/{}/".format(self.id)
@@ -497,7 +497,7 @@ class Transline(Base):
             stockout=self.stockref
             qty=stockout.qty/self.items
             unitname=stockout.stockitem.stocktype.unit.name
-            qty=qty.quantize(Decimal("0.1"))
+            qty=Decimal(qty).quantize(Decimal("0.1"))
             if qty==Decimal("1.0"):
                 qtys=unitname
             elif qty==Decimal("0.5"):
