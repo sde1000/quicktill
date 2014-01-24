@@ -1120,20 +1120,6 @@ CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
 DROP RULE log_stocktype ON stock
 """)
 
-class PopupLockScreenUser(Base):
-    """
-    Before the till had any concept of users and permissions it had a
-    simple lock popup window that could be used in the middle of a
-    transaction to indicate the transaction was being handled by a
-    particular person.  This table lists users for that window.
-
-    """
-    __tablename__='popup_lock_screen_users'
-    code=Column(CHAR(2),nullable=False,primary_key=True)
-    name=Column(String(30),nullable=False)
-    def __repr__(self):
-        return "<PopupLockScreenUser('%s','%s')>"%(self.code,self.name)
-
 # Add indexes here
 Index('translines_transid_key',Transline.transid)
 Index('payments_transid_key',Payment.transid)

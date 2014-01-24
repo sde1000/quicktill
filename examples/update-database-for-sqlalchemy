@@ -166,7 +166,7 @@ ALTER TABLE keycaps DROP COLUMN layout; /* Drops primary key */
 ALTER TABLE keycaps ADD PRIMARY KEY (keycode);
 
 /* Move the old users table out of the way */
-ALTER TABLE users RENAME TO popup_lock_screen_users;
+DROP TABLE users;
 
 /* Create the new users table here - although it would be created by
 syncdb, we need to refer to it when we create the user foreign key
