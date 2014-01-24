@@ -1161,20 +1161,6 @@ class page(ui.basicpage):
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
-    def list_open_transactions(self):
-        sc=Session.current(td.s)
-        if sc is None: return
-        tl=[t for t in sc.transactions if not t.closed]
-        if len(tl)<1: return
-        f=ui.tableformatter(' r r l ')
-        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes)),
-             self.recalltrans,(x.id,)) for x in tl]
-        ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
-                title="Open Transactions",
-                blurb="There are some transactions already open.  Choose one "
-                "from the list below to continue with it.  You can get back "
-                "to this list by pressing the 'Recall Transaction' button.",
-                colour=ui.colour_input)
     def defertrans(self,transid):
         trans=td.s.query(Transaction).get(transid)
         if trans.closed:
