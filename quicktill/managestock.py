@@ -189,6 +189,14 @@ class stocklevelcheck(user.permission_checked,ui.dismisspopup):
 def purge_finished_stock():
     td.stock_purge()
 
+@user.permission_required(
+    'alter-stocktype',
+    'Alter an existing stock type to make minor corrections')
+def correct_stocktype():
+    stocktype.choose_stocktype(
+        lambda x:stocktype.choose_stocktype(lambda:None,default=x,mode=2),
+        allownew=False)
+
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
@@ -202,6 +210,8 @@ def maintenance():
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
         (keyboard.K_SIX,"Re-price stock",
          stocktype.choose_stocktype,(stocktype.reprice_stocktype,None,1,False)),
+        (keyboard.K_SEVEN,"Correct a stock type record",
+         correct_stocktype,None),
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
          purge_finished_stock,None),
         ]
@@ -221,7 +231,5 @@ def popup():
         (keyboard.K_SEVEN,"Maintenance submenu",maintenance,None),
         (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
         (keyboard.K_NINE,"Check stock levels",stocklevelcheck,None),
-#        (keyboard.K_ZEROZERO,"Correct a stock type record",selectstocktype,
-#         (lambda x:selectstocktype(lambda:None,default=x,mode=2),)),
         ]
     ui.keymenu(menu,"Stock Management options")

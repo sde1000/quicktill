@@ -76,6 +76,7 @@ user.group('manager','Pub manager [group]',[
         "stock-history",
         "update-supplier",
         "purge-finished-stock",
+        "alter-stocktype",
         ])
 
 user.group('magic','Magic things',[

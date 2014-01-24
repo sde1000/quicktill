@@ -41,8 +41,8 @@ class choose_stocktype(ui.dismisspopup):
         elif mode==2:
             prompt="Save Changes"
             title="Edit Stock Type"
-            blurb1="NOTE: this is the wrong mode for"
-            blurb2="creating new stock types!"
+            blurb1="NOTE: make minor corrections only; changes"
+            blurb2="affect all stock items of this type!"
         else:
             raise Exception("Bad mode")
         self.st=td.s.merge(default) if default else None
@@ -57,7 +57,7 @@ class choose_stocktype(ui.dismisspopup):
         self.addstr(8,2,"  Department:")
         self.addstr(8,38,"ABV:")
         self.addstr(9,2,"        Unit:")
-        self.addstr(13,2,"Note: 'Short Name' may be printed on receipts.")
+        self.addstr(13,2,"'Short Name' may be printed on receipts.")
         self.manufield=ui.editfield(
             5,16,30,validate=self.validate_manufacturer,
             keymap={keyboard.K_CLEAR: (self.dismiss,None)})
