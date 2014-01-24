@@ -1,5 +1,5 @@
 from __future__ import print_function
-from . import ui,keyboard,printer,tillconfig,event,td
+from . import ui,keyboard,printer,tillconfig,event,td,user
 from . import twitter
 from .models import VatBand
 import traceback,sys,os,time,datetime
@@ -277,7 +277,8 @@ class Tweet(ui.lrline):
                            rtext="(@%s %s)"%(
                 status.user.screen_name,status.relative_created_at))
 
-class twitter_client(ui.dismisspopup):
+class twitter_client(user.permission_checked,ui.dismisspopup):
+    permission_required=("twitter","Use the Twitter client")
     def __init__(self,tapi):
         (mh,mw)=ui.stdwin.getmaxyx()
         # We want to make our window very-nearly full screen

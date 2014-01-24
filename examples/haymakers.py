@@ -52,6 +52,7 @@ user.group('skilled-user','Skilled user [group]',[
         "merge-trans",
         "stock-check",
         "stock-level-check",
+        "twitter",
         ])
 
 # Pub managers should generally have the following permissions:
