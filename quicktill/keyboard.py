@@ -35,9 +35,9 @@ class notekey(paymentkey):
         self.notevalue=notevalue
 
 class modkey(keycode):
-    def __init__(self,name,keycap,qty,depts):
+    def __init__(self,name,keycap,qty,unittypes):
         self.qty=qty
-        self.depts=depts
+        self.unittypes=unittypes
 
 class deptkey(keycode):
     def __new__(cls,dept):

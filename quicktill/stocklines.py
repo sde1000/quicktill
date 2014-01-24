@@ -23,7 +23,7 @@ def calculate_sale(stocklineid,items):
     # error message If the stockline has no capacity mentioned
     # ("capacity is None") then bypass this and just sell the
     # appropriate number of items from the only stockitem in the list!
-    if stockline.capacity is None:
+    if stockline.linetype=="regular":
         return ([(stocklist[0],items)],0,None)
     unallocated=items
     leftondisplay=0

@@ -581,6 +581,10 @@ class StockLine(Base):
     starts; for example, the bottles on display in a fridge may come
     from several different stock items.
 
+    Code that needs to know the type should use the "linetype"
+    property; this will enable new types to be added in the future
+    without disturbing existing code.
+
     """
     __tablename__='stocklines'
     id=Column('stocklineid',Integer,stocklines_seq,
@@ -606,6 +610,13 @@ class StockLine(Base):
         CheckConstraint(
             "capacity IS NULL OR pullthru IS NULL",
             name="line_type_constraint"),)
+    @property
+    def linetype(self):
+        """
+        Return the type of the stockline as a string.
+
+        """
+        return "display" if self.capacity else "regular"
     @property
     def tillweb_url(self):
         return "stockline/%d/"%self.id

@@ -48,6 +48,8 @@ user.group('manager','Pub manager',[
         "current-session-summary", # Display current session summary
         "nosale", # Pop open the till drawer
         "edit-user", # Add and edit users
+        "override-price",
+        "reprice-stock",
         ])
 
 user.group('basicuser','Basic user',[
@@ -342,8 +344,8 @@ kb1={
             ("B14",notekey('K_TENNER','£10',cash,Decimal("10.00"))),
             ("A14",notekey('K_FIVER','£5',cash,Decimal("5.00"))),
             ("E13",K_QUANTITY),
-            ("E12",modkey('K_DOUBLE','Double',Decimal(2),[4])),
-            ("A02",modkey('K_4JUG','4pt jug',Decimal(4),[1,2,3])),
+            ("E12",modkey('K_DOUBLE','Double',Decimal(2),['25ml','50ml'])),
+            ("A02",modkey('K_4JUG','4pt jug',Decimal(4),['pt'])),
             # Departments
             ("H12",deptkey(8)),
             ("H13",deptkey(11)),

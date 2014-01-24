@@ -5,7 +5,7 @@ Create and modify stocktypes.
 
 import logging
 log=logging.getLogger(__name__)
-from . import ui,td,keyboard,stocklines,tillconfig
+from . import ui,td,keyboard,stocklines,tillconfig,user
 from .models import Department,UnitType,StockType,StockItem,Delivery,penny
 from decimal import Decimal
 import datetime
@@ -215,7 +215,7 @@ class choose_stocktype(ui.dismisspopup):
             self.st=td.s.merge(self.st)
             self.update_model(self.st)
 
-class reprice_stocktype(ui.dismisspopup):
+class reprice_stocktype(user.permission_checked,ui.dismisspopup):
     """
     Allow the sale price to be changed on a particular StockType.
 
@@ -223,6 +223,8 @@ class reprice_stocktype(ui.dismisspopup):
     suggested sale prices, worked out from their cost prices.
 
     """
+    permission_required=('reprice-stock','Change the sale price of stock')
+    # The code in register.py mentions this permission explicitly.
     def __init__(self,st):
         """
         We are passed a StockType that may not be in the current session.
