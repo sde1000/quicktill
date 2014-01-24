@@ -308,6 +308,7 @@ class page(ui.basicpage):
             and self.trans.total==self.trans.payments_total):
             self.trans.closed=True
             td.s.flush()
+    @user.permission_required('sell-stock','Sell stock from a stockline')
     def linekey(self,kb): # We are passed the keyboard binding
         # We may be being called back from a stocklinemenu here, so
         # repeat the entry() procedure to make sure we still have the
@@ -561,6 +562,7 @@ class page(ui.basicpage):
         self.update_balance()
         self.cursor_off()
         self._redraw()
+    @user.permission_required("sell-dept","Sell items using a department key")
     def deptkey(self,dept): # we are passed the department number
         if self.repeat and hasattr(self.repeat,'dept') and \
                 self.repeat.dept==dept \
@@ -795,6 +797,7 @@ class page(ui.basicpage):
                 keyboard.K_CASH:(self.paymentkey,(pm,),True)})
             return
         self.paymentkey(pm)
+    @user.permission_required("take-payment","Take a payment")
     def paymentkey(self,method):
         """
         Deal with a keypress that might be a payment key.  We might be
@@ -945,6 +948,7 @@ class page(ui.basicpage):
             self.cursor_off()
             self.clearbuffer()
         self._redraw()
+    @user.permission_required("print-receipt","Print a receipt")
     def printkey(self):
         if self.trans is None:
             log.info("Register: printkey without transaction")
@@ -1165,6 +1169,8 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
         self._redraw()
+    @user.permission_required("recall-trans","Change to a different "
+                              "transaction")
     def recalltranskey(self):
         sc=Session.current(td.s)
         if sc is None:
@@ -1173,7 +1179,7 @@ class page(ui.basicpage):
                           "only recall transactions that belong to the "
                           "current session."],title="Error")
             return
-        log.info("Register: recalltrans")
+        log.info("recalltrans")
         if (tillconfig.allow_tabs is False and self.keyguard is False and
             not (self.trans is None or self.trans.closed)):
             ui.infopopup(["We do not run tabs.  Food and drink must "
@@ -1188,6 +1194,8 @@ class page(ui.basicpage):
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
+    @user.permission_required("defer-trans","Defer a transaction to a "
+                              "later session")
     def defertrans(self,transid):
         trans=td.s.query(Transaction).get(transid)
         if trans.closed:
@@ -1230,6 +1238,7 @@ class page(ui.basicpage):
         #ui.infopopup(["Transaction %d has been converted to free drinks."%
         #              transid],title="Free Drinks",colour=ui.colour_confirm,
         #             dismiss=keyboard.K_CASH)
+    @user.permission_required("merge-trans","Merge two transactions")
     def mergetransmenu(self,transid):
         sc=Session.current(td.s)
         log.info("Register: mergetrans")
