@@ -261,7 +261,6 @@ std={
     'deptkeycheck':haymakers_deptkeycheck,
     'database':'dbname=haymakers',
     'allow_tabs':True,
-    'nosale':True,
     'checkdigit_print':True,
     'checkdigit_on_usestock':True,
     'usestock_hook':usestock_hook,

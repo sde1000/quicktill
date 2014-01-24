@@ -50,9 +50,6 @@ def deptkeycheck(dept,price):
     """
     return None
 
-# Is the "No Sale" function enabled?
-nosale=True
-
 # Do we print check digits on stock labels?
 checkdigit_print=False
 # Do we ask the user to input check digits when using stock?

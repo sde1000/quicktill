@@ -353,8 +353,6 @@ def main():
         tillconfig.priceguess=config['priceguess']
     if 'deptkeycheck' in config:
         tillconfig.deptkeycheck=config['deptkeycheck']
-    if 'nosale' in config:
-        tillconfig.nosale=config['nosale']
     if 'checkdigit_print' in config:
         tillconfig.checkdigit_print=config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
