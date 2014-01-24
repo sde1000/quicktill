@@ -1,7 +1,7 @@
 """Implements the 'Manage Stock' menu."""
 
 import curses,curses.ascii,time
-from . import ui,td,keyboard,printer
+from . import ui,td,keyboard,printer,user
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType
 from .models import StockItem,Delivery
@@ -10,10 +10,6 @@ import datetime
 import logging
 log=logging.getLogger(__name__)
 from functools import reduce
-
-def deliverymenu():
-    log.info("Delivery menu")
-    delivery.deliverymenu()
 
 def finish_reason(item,reason):
     stockitem=td.s.merge(item)
@@ -33,6 +29,8 @@ def finish_item(item):
     ui.menu(fl,blurb="Please indicate why you are finishing stock number %d:"%
             item.id,title="Finish Stock",w=60)
 
+@user.permission_required('finish-unconnected-stock',
+                          'Finish stock not currently on sale')
 def finishstock(dept=None):
     """
     Finish stock not currently on sale."
@@ -71,6 +69,7 @@ def stockdetail(sinfo):
                 print_stocklist_menu,(sinfo,"Stock Check"),False)},
             colour=ui.colour_confirm)
 
+@user.permission_required('stock-check','List unfinished stock items')
 def stockcheck(dept=None):
     # Build a list of all not-finished stock items.
     log.info("Stock check")
@@ -115,6 +114,7 @@ def stockcheck(dept=None):
             dismiss_on_select=False,keymap={
             keyboard.K_PRINT: (print_stocklist_menu,(sinfo,title),False)})
 
+@user.permission_required('stock-history','List finished stock')
 def stockhistory(dept=None):
     # Build a list of all finished stock items.  Things we want to show:
     log.info("Stock history")
@@ -134,12 +134,14 @@ def stockhistory(dept=None):
             keymap={
             keyboard.K_PRINT: (printer.print_stocklist,(sinfo,title),False)})
 
+@user.permission_required('update-supplier','Update supplier details')
 def updatesupplier():
     log.info("Update supplier")
     delivery.selectsupplier(
         lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
 
-class stocklevelcheck(ui.dismisspopup):
+class stocklevelcheck(user.permission_checked,ui.dismisspopup):
+    permission_required=('stock-level-check','Check stock levels')
     def __init__(self):
         depts=td.s.query(Department).all()
         ui.dismisspopup.__init__(self,10,50,title="Stock level check",
@@ -181,6 +183,12 @@ class stocklevelcheck(ui.dismisspopup):
                      colour=ui.colour_info,show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
+@user.permission_required(
+    'purge-finished-stock',
+    "Mark empty stock items on display stocklines as finished")
+def purge_finished_stock():
+    td.stock_purge()
+
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
@@ -195,7 +203,7 @@ def maintenance():
         (keyboard.K_SIX,"Re-price stock",
          stocktype.choose_stocktype,(stocktype.reprice_stocktype,None,1,False)),
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
-         td.stock_purge,None),
+         purge_finished_stock,None),
         ]
     ui.keymenu(menu,"Stock Maintenance options")
 
@@ -203,7 +211,7 @@ def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
     menu=[
-        (keyboard.K_ONE,"Deliveries",deliverymenu,None),
+        (keyboard.K_ONE,"Deliveries",delivery.deliverymenu,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
          finishstock,None),
         (keyboard.K_FIVE,"Stock check (unfinished stock)",

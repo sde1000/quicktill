@@ -50,6 +50,8 @@ user.group('skilled-user','Skilled user [group]',[
         "nosale",
         "recall-trans",
         "merge-trans",
+        "stock-check",
+        "stock-level-check",
         ])
 
 # Pub managers should generally have the following permissions:
@@ -70,6 +72,10 @@ user.group('manager','Pub manager [group]',[
         "reprice-stock",
         "defer-trans",
         "edit-keycaps",
+        "finish-unconnected-stock",
+        "stock-history",
+        "update-supplier",
+        "purge-finished-stock",
         ])
 
 user.group('magic','Magic things',[
