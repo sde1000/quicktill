@@ -43,10 +43,13 @@ def priceguess(stocktype,stockunit,cost):
     """
     return None
 
-def deptkeycheck(dept,price):
-    """Check that the price entered when a department key is pressed is
+def deptkeycheck(department,price):
+    """
+    Check that the price entered when a department key is pressed is
     appropriate for that department.  Returns either None (no problem
     found), a string or a list of strings to display to the user.
+
+    "department" is a models.Department object.
 
     """
     return None

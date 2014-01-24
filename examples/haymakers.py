@@ -62,22 +62,25 @@ user.group('magic','Magic things',[
         "wibble","wobble","version"])
 
 def haymakers_deptkeycheck(dept,price):
-    """Check that the price entered when a department key is pressed is
+    """
+    Check that the price entered when a department key is pressed is
     appropriate for that department.  Returns either None (no problem
     found), a string or a list of strings to display to the user.
 
+    "dept" is a models.Department object.
+
     """
-    if dept==7: # Soft drinks
+    if dept.id==7: # Soft drinks
         if price not in [0.50,1.00,2.00]:
             return (u"Soft drinks are 50p for a mixer, £1.00 for a half, "
                     u"and £2.00 for a pint.  If you're selling a bottle, "
                     u"you must press the appropriate button for that bottle.")
-    if dept==9: # Wine
+    if dept.id==9: # Wine
         if price not in [2.50,3.70,4.80,14.00]:
             return ([u"£2.50 for a small glass, "
                      u"£3.70 for a medium glass, "
                      u"£4.80 for a large glass, and £14.00 for a bottle."])
-    if dept==8: # Misc
+    if dept.id==8: # Misc
         return u"We do not use the Misc button."
 
 # Price policy function

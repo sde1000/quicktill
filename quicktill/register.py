@@ -42,7 +42,7 @@ import datetime
 log=logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
-from .models import Payment,zero,User
+from .models import Payment,zero,User,Department
 from decimal import Decimal
 import uuid
 
@@ -320,7 +320,7 @@ class page(ui.basicpage):
 
         # Note that stockqty is separate from self.qty which is the
         # number of these units that we sell.
-        items=self.qty if self.qty is not None else 1
+        items=self.qty or 1
 
         # Cache the bufferline contents, clear it and redraw - this
         # saves us having to do so explicitly when we bail with an
@@ -475,8 +475,8 @@ class page(ui.basicpage):
                     title="Pull through?",colour=ui.colour_input,
                     keymap={
                         keyboard.K_WASTE:
-                            (lambda:record_pullthru(
-                                stockitem.id,stockline.pullthru),None,True)})
+                            (record_pullthru,(item.id,stockline.pullthru),
+                             True)})
 
         # By this point we're committed to trying to sell the items.
         for stockitem,items_to_sell in sell:
@@ -561,19 +561,23 @@ class page(ui.basicpage):
         self.update_balance()
         self.cursor_off()
         self._redraw()
-    def deptkey(self,dept):
-        if (self.repeat and self.repeat[0]==dept
-            and self.dl[-1].age()<max_transline_modify_age):
-            # Increase the quantity of the most recent entry
-            log.info("Register: deptkey: adding to lid=%d"%self.repeat[1])
-            tl=td.s.query(Transline).get(self.repeat[1])
-            tl.items=tl.items+1
-            td.s.flush()
-            self.dl[-1].update()
-            self.update_balance()
-            self.cursor_off()
-            self._redraw()
-            return
+    def deptkey(self,dept): # we are passed the department number
+        if self.repeat and hasattr(self.repeat,'dept') and \
+                self.repeat.dept==dept \
+                and self.dl[-1].age()<max_transline_modify_age:
+            # Increase the number of items of the most recent entry
+            tl=td.s.query(Transline).get(self.dl[-1].transline)
+            # The transline must be for the correct department and
+            # have no stockref
+            if tl.dept_id==dept and not tl.stockref:
+                log.info("deptkey: adding to transline %d",tl.id)
+                tl.items=tl.items+1
+                td.s.flush()
+                self.dl[-1].update()
+                self.update_balance()
+                self.cursor_off()
+                self._redraw()
+                return
         if not self.buf:
             log.info("Register: deptkey: no amount entered")
             ui.infopopup(["You must enter the amount before pressing "
@@ -583,22 +587,41 @@ class page(ui.basicpage):
                           "price of a single item before pressing the "
                           "department button."],title="Error")
             return
-        if self.mod is not None:
-            ui.infopopup(["You can't use the '%s' modifier with a "
-                          "department key."%self.mod.keycap],title="Error")
-            return
-        if self.qty: items=self.qty
-        else: items=1
         price=strtoamount(self.buf)
+        if self.mod:
+            ui.infopopup(["You can't use the '{}' modifier with a "
+                          "department button.".format(self.mod.keycap)],
+                         title="Error")
+            return
+        items=self.qty or 1
+        department=td.s.query(Department).get(dept)
+        if not department:
+            ui.infopopup(["Department {} does not exist!".format(dept)],
+                         title="Configuration error")
+            return
         self.prompt=self.defaultprompt
         self.clearbuffer()
-        priceproblem=tillconfig.deptkeycheck(dept,price)
-        if priceproblem is not None:
-            self.cursor_off()
+        self.cursor_off()
+        priceproblem=tillconfig.deptkeycheck(department,price)
+        if priceproblem:
             self._redraw()
             if not isinstance(priceproblem,list):
                 priceproblem=[priceproblem]
             ui.infopopup(priceproblem,title="Error")
+            return
+        if department.minprice and price<department.minprice:
+            self._redraw()
+            ui.infopopup([u"The minimum price for {} is {}.".format(
+                        department.description,
+                        tillconfig.fc(department.minprice))],
+                         title="Price too low")
+            return
+        if department.maxprice and price>department.maxprice:
+            self._redraw()
+            ui.infopopup([u"The maximum price for {} is {}.".format(
+                        department.description,
+                        tillconfig.fc(department.maxprice))],
+                         title="Price too high")
             return
         trans=self.gettrans()
         if trans is None: return
@@ -606,13 +629,14 @@ class page(ui.basicpage):
                      transcode='S',user=self.user.dbuser)
         td.s.add(tl)
         td.s.flush()
-        log.info("Register: deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
-                 "price=%f"%(trans.id,tl.id,dept,items,price))
-        self.repeat=(dept,tl.id)
+        td.s.expire(tl,['time'])
+        log.info("deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
+                 "price=%f",trans.id,tl.id,dept,items,price)
         self.dl.append(tline(tl.id))
         self.update_balance()
         self.cursor_off()
         self._redraw()
+        self.repeat=repeat(dept=dept)
     def deptlines(self,lines):
         """Accept multiple transaction lines from an external source.
 
