@@ -143,7 +143,7 @@ def updatesupplier():
 class stocklevelcheck(user.permission_checked,ui.dismisspopup):
     permission_required=('stock-level-check','Check stock levels')
     def __init__(self):
-        depts=td.s.query(Department).all()
+        depts=td.s.query(Department).order_by(Department.id).all()
         ui.dismisspopup.__init__(self,10,50,title="Stock level check",
                                  colour=ui.colour_input)
         self.addstr(2,2,'Department:')
