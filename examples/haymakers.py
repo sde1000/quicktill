@@ -69,6 +69,7 @@ user.group('manager','Pub manager [group]',[
         "override-price",
         "reprice-stock",
         "defer-trans",
+        "edit-keycaps",
         ])
 
 user.group('magic','Magic things',[

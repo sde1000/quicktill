@@ -1,11 +1,13 @@
-from . import keyboard,ui,td,tillconfig
+from . import keyboard,ui,td,user
 from .models import KeyCap
 
-class popup(ui.dismisspopup):
+class popup(user.permission_checked,ui.dismisspopup):
     """
     This popup window enables the keycaps of line keys to be edited.
 
     """
+    permission_required=('edit-keycaps',
+                         'Change the names of keys on the keyboard')
     def __init__(self):
         ui.dismisspopup.__init__(self,8,60,title="Edit Keycaps",
                                  colour=ui.colour_input)
@@ -19,7 +21,7 @@ class popup(ui.dismisspopup):
         self.kcfield.focus()
     def selectline(self,linekey):
         self.addstr(4,11," "*20)
-        self.addstr(4,11,"%s"%linekey.name)
+        self.addstr(4,11,linekey.name)
         self.kcfield.set(linekey.keycap)
         self.keycode=linekey
     def setcap(self):
