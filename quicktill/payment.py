@@ -42,9 +42,10 @@ class PaymentMethod(object):
         self.paytype=paytype
         self.description=description
         methods[paytype]=self
-    def new_payment(self,register,transaction,amount=None):
+    def start_payment(self,register,transaction,amount,outstanding):
         # We don't permit new payments of the default type
-        pass
+        ui.infopopup(["New {} payments are not supported.".format(
+                    self.description)],title="Payment type not supported")
     def describe_payment(self,payment):
         return payment.paytype.description
     def get_paytype(self):
