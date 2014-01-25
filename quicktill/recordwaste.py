@@ -4,7 +4,7 @@ Record waste against a stock item or stock line.
 """
 
 from . import ui,td,keyboard,stock,stocklines,department,user
-from .models import StockItem,StockType,RemoveCode,StockOut
+from .models import StockItem,StockType,RemoveCode,StockOut,StockLine
 from decimal import Decimal
 
 # There are two types of thing against which waste can be recorded:
@@ -28,14 +28,14 @@ def stockline_chosen(stockline):
         record_item_waste()
     else:
         td.s.add(stockline)
-        if stockline.capacity:
+        if stockline.linetype=="display":
             record_line_waste(stockline)
-        else:
+        elif stockline.linetype=="regular":
             if len(stockline.stockonsale)>0:
                 record_item_waste(stockline.stockonsale[0])
             else:
-                ui.infopopup(["There is nothing on sale on %s."%stockline.name],
-                             title="Error")
+                ui.infopopup([u"There is nothing on sale on {}.".format(
+                            stockline.name)],title="Error")
 
 class record_item_waste(ui.dismisspopup):
     """
@@ -106,10 +106,54 @@ class record_line_waste(ui.dismisspopup):
     """
     This popup talks the user through the process of recording waste
     against a "display" stock line.  Waste is recorded against the
-    amount on display on the line.  A series of prompts are issued;
-    the Clear key will kill the whole window and will not allow
-    backtracking.
+    amount on display on the line.
 
     """
     def __init__(self,stockline):
-        pass
+        self.stocklineid=stockline.id
+        ui.dismisspopup.__init__(self,9,70,title="Record Waste",
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"       Stock line: {}".format(stockline.name))
+        self.addstr(3,2,"Amount on display: {} items".format(
+                stockline.ondisplay))
+        self.addstr(5,2,"Waste description:")
+        self.addstr(6,2,"    Amount wasted:")
+        wastelist=td.s.query(RemoveCode).filter(RemoveCode.id!='sold').all()
+        self.wastedescfield=ui.listfield(
+            5,21,30,wastelist,lambda rc:rc.reason,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None),})
+        self.amountfield=ui.editfield(
+            6,21,4,validate=ui.validate_int,
+            keymap={keyboard.K_CASH: (self.finish,None)})
+        ui.map_fieldlist([self.wastedescfield,self.amountfield])
+        self.wastedescfield.focus()
+    def finish(self):
+        stockline=td.s.query(StockLine).get(self.stocklineid)
+        waste=self.wastedescfield.read()
+        if waste is None or waste=="":
+            ui.infopopup(["You must enter a waste description!"],title="Error")
+            return
+        if self.amountfield.f=="":
+            ui.infopopup(["You must enter an amount!"],title="Error")
+            return
+        amount=int(self.amountfield.f)
+        if amount==0:
+            ui.infopopup(["You must enter an amount other than zero!"],
+                         title='Error')
+            self.amountfield.set("")
+            return
+        sell,unallocated,stockremain=stocklines.calculate_sale(
+            stockline.id,amount)
+        if unallocated>0:
+            ui.infopopup(["There are less than {} items on display.".format(
+                        amount)],title="Error")
+            self.amountfield.set("")
+            return
+        for item,qty in sell:
+            td.s.add(StockOut(stockitem=item,removecode=waste,qty=qty))
+        td.s.flush()
+        self.dismiss()
+        ui.infopopup(["Recorded {} items against stock line {}.".format(
+                    amount,stockline.name)],
+                     title="Waste Recorded",dismiss=keyboard.K_CASH,
+                     colour=ui.colour_info)
