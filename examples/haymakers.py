@@ -13,9 +13,10 @@ from quicktill.usestock import popup as usestock
 from quicktill.recordwaste import popup as recordwaste
 from quicktill import lockscreen
 from quicktill.stock import annotate
-from quicktill import timesheets,btcmerch
+from quicktill import timesheets
 from quicktill.cash import CashPayment
 from quicktill.card import CardPayment
+from quicktill.bitcoin import BitcoinPayment
 from decimal import Decimal,ROUND_UP
 import math
 import os
@@ -165,7 +166,7 @@ def markup(stocktype,stockunit,cost,markup):
 cash=CashPayment('CASH','Cash',change_description="Change",drawers=1)
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
                  max_cashback=Decimal("50.00"))
-bitcoin=btcmerch.BitcoinPayment(
+bitcoin=BitcoinPayment(
     'BTC','Bitcoin',site='haymakers',username='haymakers',
     base_url='http://www.individualpubs.co.uk/merchantservice/',
     password='not-a-valid-password')

@@ -5,7 +5,7 @@ control system user interfaces with a PostgreSQL back-end.
 
 """
 
-__all__=['btcmerch','card','cash','dbsetup','delivery','department',
+__all__=['bitcoin','card','cash','dbsetup','delivery','department',
          'event','extras',
          'foodcheck','foodorder','kbdrivers','keyboard','lockscreen',
          'managekeyboard','managestock','managetill','models',
