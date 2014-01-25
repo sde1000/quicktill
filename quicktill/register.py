@@ -116,23 +116,20 @@ class tline(ui.lrline):
 class edittransnotes(ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
     def __init__(self,trans,func):
-        self.trans=trans
+        td.s.add(trans)
+        self.transid=trans.id
         self.func=func
-        ui.dismisspopup.__init__(self,5,60,
-                                 title="Notes for transaction %d"%trans,
-                                 colour=ui.colour_input)
-        t=td.s.query(Transaction).get(trans)
-        notes=t.notes if t.notes else u''
+        ui.dismisspopup.__init__(
+            self,5,60,title="Notes for transaction {}".format(trans.id),
+            colour=ui.colour_input)
+        notes=trans.notes if trans.notes else u''
         self.notesfield=ui.editfield(2,2,56,f=notes,flen=60,keymap={
                 keyboard.K_CASH:(self.enter,None)})
         self.notesfield.focus()
     def enter(self):
         notes=self.notesfield.f
-        if notes=="": notes=None
-        t=td.s.query(Transaction).get(self.trans)
-        t.notes=notes
-        self.func()
         self.dismiss()
+        self.func(notes)
 
 def strtoamount(s):
     if s.find('.')>=0:
@@ -271,6 +268,7 @@ class page(ui.basicpage):
         self.clearbuffer()
         self.cursor_off()
         td.s.flush()
+        self._redraw()
     def pagename(self):
         if self.trans is None: return self.user.shortname
         td.s.add(self.trans)
@@ -293,8 +291,9 @@ class page(ui.basicpage):
         note=self.trans.notes if self.trans is not None else None
         if note is None: note=u""
         note=note+u" "*(self.w-len(note))
+        c=self.win.getyx()
         self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
-        # Note - moves the cursor
+        self.win.move(*c)
     def cursor_off(self):
         # Returns the cursor to the buffer line.  Does not redraw (because
         # the caller is almost certainly going to do other things first).
@@ -1196,22 +1195,26 @@ class page(ui.basicpage):
                 colour=ui.colour_input)
     @user.permission_required("defer-trans","Defer a transaction to a "
                               "later session")
-    def defertrans(self,transid):
-        trans=td.s.query(Transaction).get(transid)
-        if trans.closed:
+    def defertrans(self):
+        if not self.entry(): return
+        if not self.trans: return
+        if self.trans.closed:
             ui.infopopup(["Transaction %d has been closed, and cannot now "
                           "be deferred."%trans.id],title="Error")
             return
+        transid=self.trans.id
+        self.trans.session=None
+        td.s.flush()
         self._clear()
         self._redraw()
-        trans.session=None
-        td.s.flush()
         ui.infopopup(["Transaction %d has been deferred to the next "
                       "session.  Make sure you keep a note of the "
                       "transaction number and the name of the person "
                       "responsible for paying it!"%transid],
                      title="Transaction defer confirmed",
                      colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
+    @user.permission_required("convert-to-free-drinks",
+                              "Convert a transaction to free drinks")
     def freedrinktrans(self,transid):
         # Temporarily disable this function - SDE 5/6/09
         ui.infopopup(["This function is no longer available.  Instead you "
@@ -1238,31 +1241,43 @@ class page(ui.basicpage):
         #ui.infopopup(["Transaction %d has been converted to free drinks."%
         #              transid],title="Free Drinks",colour=ui.colour_confirm,
         #             dismiss=keyboard.K_CASH)
-    @user.permission_required("merge-trans","Merge two transactions")
-    def mergetransmenu(self,transid):
+    def _check_session_and_open_transaction(self):
+        # For transaction merging
+        if not self.entry(): return False
         sc=Session.current(td.s)
-        log.info("Register: mergetrans")
+        if not sc:
+            ui.infopopup(["There is no session active."],title="Error")
+            return False
+        if not self.trans:
+            ui.infopopup(["There is no current transaction."],title="Error")
+            return False
+        if self.trans.closed:
+            ui.infopopup(["The current transaction is closed and can't "
+                          "be merged with another transaction."],
+                         title="Error")
+            return False
+        return sc
+    @user.permission_required("merge-trans","Merge two transactions")
+    def mergetransmenu(self):
+        sc=self._check_session_and_open_transaction()
+        if not sc: return
         tl=[t for t in sc.transactions if not t.closed]
         f=ui.tableformatter(' r r l ')
-        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes)),
-            self.mergetrans,(transid,x.id)) for x in tl if x.id!=transid]
+        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes or "")),
+            self._mergetrans,(x.id,)) for x in tl if x!=self.trans]
         ui.menu(sl,
                 title="Merge with transaction",
                 blurb="Select a transaction to merge this one into, "
                 "and press Cash/Enter.",
                 colour=ui.colour_input)
-    def mergetrans(self,transid,othertransid):
-        trans=td.s.query(Transaction).get(transid)
+    def _mergetrans(self,othertransid):
+        sc=self._check_session_and_open_transaction()
+        if not sc: return
         othertrans=td.s.query(Transaction).get(othertransid)
-        if trans.closed:
-            ui.infopopup(["Transaction %d has been closed, and cannot now "
-                          "be merged with another transaction."%transid],
-                         title="Error")
-            return
-        if len(trans.payments)>0:
+        if len(self.trans.payments)>0:
             ui.infopopup(["Some payments have already been entered against "
-                          "transaction %d, so it can't be merged with another "
-                          "transaction."%transid],
+                          "transaction {}, so it can't be merged with another "
+                          "transaction.".format(self.trans.id)],
                          title="Error")
             return
         if othertrans.closed:
@@ -1270,48 +1285,43 @@ class page(ui.basicpage):
                           "merge this transaction into it."%othertrans.id],
                          title="Error")
             return
-        for line in trans.lines:
+        for line in self.trans.lines:
             line.transid=othertrans.id
         td.s.flush()
         # At this point the ORM still believes the translines belong
         # to the original transaction, and will attempt to set their transid
         # fields to NULL when we delete it.  Refresh here!
         # XXX is it possible to get the ORM to update this automatically?
-        td.s.refresh(trans)
-        td.s.delete(trans)
+        td.s.refresh(self.trans)
+        td.s.delete(self.trans)
         td.s.flush()
-        self.recalltrans(othertransid)
-    def settransnote(self,trans,notes):
-        self.entry() # XXX don't ignore return value
+        td.s.expire(othertrans)
+        self._loadtrans(othertrans)
+    def settransnote(self,notes):
+        if not self.entry(): return
+        if not self.trans or self.trans.closed: return
         if notes=="": notes=None
-        t=td.s.query(Transaction).get(trans)
-        t.notes=notes
+        self.trans.notes=notes
         self.update_note()
-        self._redraw()
-    def settransnotes_menu(self,trans):
-        sl=[(x,self.settransnote,(trans,x))
-            for x in tillconfig.transaction_notes]
-        ui.menu(sl,
-                title="Notes for transaction %d"%trans,
-                blurb="Choose the new transaction note and press Cash/Enter.",
-                colour=ui.colour_input)
     def managetranskey(self):
         if self.trans is None or self.trans.closed:
             ui.infopopup(["You can only modify an open transaction."],
                          title="Error")
             return
-        menu=[(keyboard.K_ONE,"Defer transaction to next session",
-               self.defertrans,(self.trans.id,))]
-        if tillconfig.transaction_to_free_drinks_function:
-            menu=menu+[(keyboard.K_TWO,"Convert transaction to free drinks",
-                        self.freedrinktrans,(self.trans.id,))]
-        menu=menu+[(keyboard.K_THREE,"Merge this transaction with another "
-                    "open transaction",self.mergetransmenu,(self.trans.id,)),
-                   (keyboard.K_FOUR,"Set this transaction's notes "
-                    "(from menu)",self.settransnotes_menu,(self.trans.id,)),
-                   (keyboard.K_FIVE,"Change this transaction's notes "
-                    "(free text entry)",
-                    edittransnotes,(self.trans,self.update_note))]
+        menu=[
+            (keyboard.K_ONE,"Defer transaction to next session",
+             self.defertrans,None),
+            (keyboard.K_TWO,"Convert transaction to free drinks",
+             self.freedrinktrans,None),
+            (keyboard.K_THREE,"Merge this transaction with another "
+             "open transaction",self.mergetransmenu,None),
+            (keyboard.K_FOUR,"Set this transaction's note to '{}'".format(
+                    self.user.fullname),
+             self.settransnote,(self.user.fullname,)),
+            (keyboard.K_FIVE,"Change this transaction's notes "
+             "(free text entry)",
+             edittransnotes,(self.trans,self.settransnote)),
+            ]
         ui.keymenu(menu,title="Transaction %d"%self.trans.id)
     def entry(self):
         """
@@ -1332,8 +1342,9 @@ class page(ui.basicpage):
         self.user.dbuser=td.s.query(User).get(self.user.userid)
 
         register_matches=self.user.dbuser.register==register_instance
-        self.user.dbuser.register=register_instance
-        td.s.flush()
+        if not register_matches:
+            self.user.dbuser.register=register_instance
+            td.s.flush()
 
         if self.user.dbuser.transaction is None and self.trans is None:
             # We're all good.

@@ -62,16 +62,10 @@ checkdigit_on_usestock=False
 # Do we allow transactions to be stored for use as tabs?
 allow_tabs=True
 
-# Pre-defined transaction notes
-transaction_notes=[
-    "","Kitchen tab","Staff tab","Party tab","Brewery tab","Festival staff tab"]
-
 # Hook that is called whenever an item of stock is put on sale, with
 # a StockItem and StockLine as the arguments
 def usestock_hook(stock,line):
     pass
-
-transaction_to_free_drinks_function=False
 
 database=None
 
