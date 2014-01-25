@@ -796,6 +796,15 @@ class page(ui.basicpage):
                 keyboard.K_CASH:(self.paymentkey,(pm,),True)})
             return
         self.paymentkey(pm)
+    def payment_method_menu(self):
+        possible_keys=[
+            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
+            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
+            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
+            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+        ui.keymenu([(possible_keys.pop(0),m.description,self.paymentkey,(m,))
+                    for m in tillconfig.payment_methods],
+                   title="Payment methods")
     @user.permission_required("take-payment","Take a payment")
     def paymentkey(self,method):
         """
@@ -1321,6 +1330,8 @@ class page(ui.basicpage):
             (keyboard.K_FIVE,"Change this transaction's notes "
              "(free text entry)",
              edittransnotes,(self.trans,self.settransnote)),
+            (keyboard.K_SIX,"Choose payment method",
+             self.payment_method_menu,None),
             ]
         ui.keymenu(menu,title="Transaction %d"%self.trans.id)
     def entry(self):
