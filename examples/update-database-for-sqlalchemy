@@ -191,3 +191,5 @@ ALTER TABLE payments ADD COLUMN "user" INTEGER REFERENCES users(id);
 ALTER TABLE departments ADD COLUMN notes TEXT;
 ALTER TABLE departments ADD COLUMN minprice NUMERIC(5,2);
 ALTER TABLE departments ADD COLUMN maxprice NUMERIC(5,2);
+
+ALTER TABLE stock_annotations ADD COLUMN "user" INTEGER REFERENCES users(id);

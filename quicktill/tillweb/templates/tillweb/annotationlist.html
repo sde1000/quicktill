@@ -1,0 +1,27 @@
+<table id="annotations">
+<thead>
+<tr>
+{% if excluded_column != "stock" %}<th>Stock item</th>{% endif %}
+<th>Time</th>
+{% if excluded_column != "user" %}<th>User</th>{% endif %}
+<th>Type</th><th>Details</th></tr>
+</thead>
+<tbody>
+{% for a in annotationlist %}
+<tr class="{% cycle 'odd' 'even' %}">
+{% if excluded_column != "stock" %}
+<td><a href="{{u}}{{a.stockitem.tillweb_url}}">{{a.stockitem.id}} {{a.stockitem.stocktype.format}}</a></td>
+{% endif %}
+<td>{{a.time|date:dtf}}</td>
+{% if excluded_column != "user" %}
+<td>{% if a.user %}<a href="{{u}}{{a.user.tillweb_url}}">{{a.user.fullname}}</a>{% endif %}</td>
+{% endif %}
+<td>{{a.type}}</td><td>{{a.text}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#annotations").tablesorter({widgets:["zebra"]});
+});
+</script>

@@ -83,8 +83,10 @@ class annotate(ui.dismisspopup):
             ui.infopopup(["You must choose an annotation type!"],title="Error")
             return
         annotation=self.annfield.f or ""
-        td.s.add(
-            StockAnnotation(stockitem=item,type=anntype,text=annotation))
+        cu=ui.current_user()
+        user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
+        td.s.add(StockAnnotation(stockitem=item,type=anntype,text=annotation,
+                                 user=user))
         td.s.flush()
         self.dismiss()
         ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
@@ -120,9 +122,11 @@ class annotate_location(ui.dismisspopup):
             keyboard.K_CLEAR: (self.dismiss,None)})
         self.locfield.focus()
     def finish(self):
+        cu=ui.current_user()
+        user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
         td.s.add(self.sd)
-        td.s.add(StockAnnotation(
-                stockitem=self.sd,atype='location',text=self.locfield.f))
+        td.s.add(StockAnnotation(stockitem=self.sd,atype='location',
+                                 text=self.locfield.f,user=user))
         td.s.flush()
         self.dismiss()
 

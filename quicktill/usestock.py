@@ -180,7 +180,10 @@ def put_on_sale(line,sn):
     si=td.s.query(StockItem).get(sn)
     si.onsale=datetime.datetime.now()
     si.stockline=line
-    td.s.add(StockAnnotation(stockitem=si,atype='start',text=line.name))
+    cu=ui.current_user()
+    user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
+    td.s.add(StockAnnotation(stockitem=si,atype='start',text=line.name,
+                             user=user))
     td.s.flush()
     log.info("Use Stock: item %d (%s) put on sale as %s"%(
             si.id,si.stocktype.format(),line.name))

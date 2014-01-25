@@ -965,10 +965,13 @@ class StockAnnotation(Base):
     stockid=Column(Integer,ForeignKey('stock.stockid'),nullable=False)
     atype=Column(String(8),ForeignKey('annotation_types.atype'),nullable=False)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
+    text=Column(String(60),nullable=False)
+    user_id=Column('user',Integer,ForeignKey('users.id'),nullable=True,
+                   doc="User who created this annotation")
     stockitem=relationship(StockItem,backref=backref(
             'annotations',order_by=time))
-    text=Column(String(60),nullable=False)
     type=relationship(AnnotationType)
+    user=relationship(User,backref=backref("annotations",order_by=time))
     def __repr__(self):
         return "<StockAnnotation(%s,%s,'%s','%s')>"%(
             self.id,self.stockitem,self.atype,self.text)

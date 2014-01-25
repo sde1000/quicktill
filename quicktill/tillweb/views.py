@@ -432,4 +432,8 @@ def user(request,base,access,session,userid):
         order_by(desc(Transline.time))[:50]
     payments=session.query(Payment).filter(Payment.user==u).\
         order_by(desc(Payment.time))[:50]
-    return ('user.html',{'user':u,'sales':sales,'payments':payments})
+    annotations=session.query(StockAnnotation).\
+        filter(StockAnnotation.user==u).\
+        order_by(desc(StockAnnotation.time))[:50]
+    return ('user.html',{'user':u,'sales':sales,'payments':payments,
+                         'annotations':annotations})

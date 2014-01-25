@@ -39,22 +39,9 @@
 <tr><th>Amount remaining</th><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
 {% if stock.annotations %}
 <tr><th>Notes</th><td>
-<table id="annotations">
-<thead>
-<tr><th>Time</th><th>Type</th><th>Details</th></tr>
-</thead>
-<tbody>
-{% for a in stock.annotations %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td>{{a.time|date:dtf}}</td><td>{{a.type}}</td><td>{{a.text}}</td></tr>
-{% endfor %}
-</tbody>
-</table>
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#annotations").tablesorter({widgets:["zebra"]});
-});
-</script>
+{% with annotationlist=stock.annotations excluded_column="stock" %}
+{% include "tillweb/annotationlist.html" %}
+{% endwith %}
 </td></tr>{% endif %}
 </table>
 

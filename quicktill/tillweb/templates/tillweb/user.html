@@ -86,4 +86,12 @@ permission.</p>
 {% endwith %}
 {% endif %}
 
+{% if annotations %}
+<h3>Stock annotations</h3>
+
+{% with annotationlist=annotations excluded_column="user" %}
+{% include "tillweb/annotationlist.html" %}
+{% endwith %}
+{% endif %}
+
 {% endblock %}
