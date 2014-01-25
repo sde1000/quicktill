@@ -1,5 +1,7 @@
 import urllib,imp,textwrap,curses,sys,traceback,math
 from . import ui,keyboard,td,printer,tillconfig
+from .models import zero,penny
+from decimal import Decimal
 
 kitchenprinter=None
 menuurl=None
@@ -9,9 +11,9 @@ class fooditem(ui.lrline):
         self.update(name,price)
     def update(self,name,price):
         self.name=name
-        self.price=price
+        self.price=Decimal(price).quantize(penny)
         ui.lrline.__init__(self,name,tillconfig.fc(self.price)
-                           if self.price!=0.0 else "")
+                           if self.price!=zero else "")
     def copy(self):
         return fooditem(self.name,self.price)
 
@@ -23,10 +25,10 @@ class fooditem(ui.lrline):
 # Default staff discount policy.  Returns the amount to be taken off
 # the price of each line of an order.
 def default_staffdiscount(tablenumber,item):
-    if tablenumber!=0: return 0.00
-    discount=item.price*0.4
-    if discount>3.00: discount=3.00
-    discount=math.floor(discount*20.0)/20.0
+    if tablenumber!=0: return zero
+    discount=item.price*Decimal("0.4")
+    if discount>Decimal("3.00"): discount=Decimal("3.00")
+    discount=discount.quantize("0.05")
     return discount
 
 default_footer=("Please make sure your table number is displayed "
@@ -34,7 +36,7 @@ default_footer=("Please make sure your table number is displayed "
 
 default_dept=10
 
-class menuchoice:
+class menuchoice(object):
     def __init__(self,options):
         """
         options is a list of (name,action) tuples
@@ -62,18 +64,17 @@ class menuchoice:
         """
         if k in self.optionkeys:
             option=self.optionkeys[k][1]
-            # If it's a float then we return the fooditem immediately -
-            # it's a simple one.  If not, we assume it's an object
-            # and invoke its display_menu method.
-            if isinstance(option[1],float):
+            # If it has a display_menu method we invoke it; otherwise
+            # we assume it's a food item with a price.
+            if hasattr(option[1],'display_menu'):
+                try:
+                    option[1].display_menu(itemfunc)
+                except:
+                    e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
+                                                 sys.exc_info()[2])
+                    ui.infopopup(e,title="There is a problem with the menu")
+            else:
                 itemfunc(fooditem(option[0],option[1]))
-                return True
-            try:
-                option[1].display_menu(itemfunc)
-            except:
-                e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
-                                             sys.exc_info()[2])
-                ui.infopopup(e,title="There is a problem with the menu")
             return True
         return False
 
@@ -89,7 +90,7 @@ class simplemenu(menuchoice):
             for key,opt in self.options]
         ui.keymenu(il,colour=ui.colour_line,title=self.title)
 
-class subopts:
+class subopts(object):
     """
     A menu item which can have an arbitrary number of suboptions.
     Suboptions can have a price associated with them.  It's possible
@@ -363,10 +364,10 @@ class popup(ui.basicpopup):
             return
         tablenumber(self.finish)
     def finish(self,tablenumber):
-        discount=sum([self.staffdiscount(tablenumber,x) for x in self.ml],0.0)
-        if discount>0.0:
-            self.ml.append(fooditem("Staff discount",0.0-discount))
-        tot=sum([x.price for x in self.ml],0.0)
+        discount=sum([self.staffdiscount(tablenumber,x) for x in self.ml],zero)
+        if discount>zero:
+            self.ml.append(fooditem("Staff discount",zero-discount))
+        tot=sum([x.price for x in self.ml],zero)
         number=self.ordernumberfunc()
         # We need to prepare a list of (dept,text,amount) tuples for
         # the register. We enter these into the register before
@@ -375,9 +376,9 @@ class popup(ui.basicpopup):
         rl=[(self.dept,x.name,x.price) for x in self.ml]
         if tablenumber is not None:
             rl.insert(0,(self.dept,"Food order %d (table %s):"%
-                         (number,tablenumber),0.00))
+                         (number,tablenumber),zero))
         else:
-            rl.insert(0,(self.dept,"Food order %d:"%number,0.00))
+            rl.insert(0,(self.dept,"Food order %d:"%number,zero))
         r=self.func(rl)
         if r==True:
             printer.print_food_order(printer.driver,number,self.ml,

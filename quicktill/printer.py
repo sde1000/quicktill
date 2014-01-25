@@ -310,7 +310,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
     driver.printline()
     driver.printline("\t%s"%ui.formattime(now()))
     driver.printline()
-    tot=0.0
+    tot=zero
     for item in ol:
         driver.printline("%s\t\t%s"%(item.ltext,item.rtext))
         tot+=item.price
