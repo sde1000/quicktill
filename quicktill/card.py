@@ -166,6 +166,7 @@ class CardPayment(payment.PaymentMethod):
         p=Payment(transaction=trans,paytype=self.get_paytype(),
                   ref=ref,amount=total,user=user)
         td.s.add(p)
+        td.s.flush()
         r=[payment.pline(p,method=self)]
         if cashback>zero:
             r.append(self._cashback_method.add_change(

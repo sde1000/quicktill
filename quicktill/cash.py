@@ -34,14 +34,15 @@ class CashPayment(payment.PaymentMethod):
         p=Payment(transaction=trans,paytype=self.get_paytype(),
                   ref=self.description,amount=amount,user=user)
         td.s.add(p)
-        r=[payment.pline(p,method=self)]
         change=outstanding-amount
+        c=None
         if change<zero:
             c=Payment(transaction=trans,paytype=self.get_paytype(),
                       ref=self._change_description,amount=change,user=user)
             td.s.add(c)
-            r.append(payment.pline(c,method=self))
         td.s.flush()
+        r=[payment.pline(p,method=self)]
+        if c: r.append(payment.pline(c,method=self))
         printer.kickout()
         reg.add_payments(trans,r)
     @property

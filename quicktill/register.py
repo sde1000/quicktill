@@ -878,6 +878,23 @@ class page(ui.basicpage):
         self.update_balance()
         self.cursor_off()
         self._redraw()
+    def payments_update(self):
+        """
+        Called by a payment method when payments have been updated.
+
+        """
+        if not self.entry(): return
+        if not self.trans or self.trans.closed: return
+        # Expire the transaction because the wrong balance may have
+        # been cached.
+        td.s.expire(self.trans)
+        # Update all the payment lines in our display list
+        for d in self.dl:
+            if isinstance(d,payment.pline): d.update()
+        self.update_balance()
+        self.close_if_balanced()
+        self.cursor_off()
+        self._redraw()
     def notekey(self,k):
         if self.qty is not None or self.buf:
             log.info("Register: notekey: error popup")

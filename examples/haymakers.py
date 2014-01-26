@@ -167,9 +167,9 @@ cash=CashPayment('CASH','Cash',change_description="Change",drawers=1)
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
                  max_cashback=Decimal("50.00"))
 bitcoin=BitcoinPayment(
-    'BTC','Bitcoin',site='haymakers',username='haymakers',
-    base_url='http://www.individualpubs.co.uk/merchantservice/',
-    password='not-a-valid-password')
+    'BTC','Bitcoin',site='test',username='test',
+    base_url='http://btcmerch.i.individualpubs.co.uk/merchantservice/',
+    password='testpasswd')
 all_payment_methods=[cash,card,bitcoin] # Used for session totals entry
 payment_methods=all_payment_methods # Used in register
 

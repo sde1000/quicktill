@@ -22,7 +22,7 @@ class pline(ui.line):
 
     """
     def __init__(self,payment,method=None):
-        self.payment=payment
+        self.payment_id=payment.id
         amount=payment.amount
         if method is None: method=methods[payment.paytype_id]
         self.method=method
@@ -30,8 +30,9 @@ class pline(ui.line):
                          else ui.colour_changeline)
         self.update()
     def update(self):
-        self.text=u"%s %s"%(self.method.describe_payment(self.payment),
-                            tillconfig.fc(self.payment.amount))
+        payment=td.s.query(Payment).get(self.payment_id)
+        self.text=u"%s %s"%(self.method.describe_payment(payment),
+                            tillconfig.fc(payment.amount))
         self.cursor=(0,0)
     def display(self,width):
         return [' '*(width-len(self.text))+self.text]

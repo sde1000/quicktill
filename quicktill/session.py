@@ -287,7 +287,8 @@ class record(ui.dismisspopup):
             r=pm.pm.commit_total(self.session,pm.actual_total)
             if r is not None:
                 td.s.rollback()
-                ui.infopopup([u"Totals not recorded: {}".format(r)],
+                ui.infopopup([u"Totals not recorded: {} payment method "
+                              "says {}".format(pm.pm.description,r)],
                              title="Error")
                 return
         printer.print_sessiontotals(self.session)

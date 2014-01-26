@@ -1,11 +1,16 @@
+from __future__ import unicode_literals
 import json
 import httplib
 import urllib
 import urllib2
 import ssl
 import socket
-import decimal
-from . import payment,ui
+from decimal import Decimal
+from . import payment,ui,tillconfig,printer,td,keyboard
+from .models import zero,penny,Payment,Transaction
+import qrcode
+import logging
+log=logging.getLogger(__name__)
 
 APIVersion="1.0"
 
@@ -84,55 +89,52 @@ class Api(object):
                                    ref=str(ref),description=description,
                                    amount=str(amount))
         try:
-            return json.loads(response,parse_float=decimal.Decimal)
+            return json.loads(response,parse_float=Decimal)
         except ValueError:
             raise JSONError
     def transactions_total(self,translist):
         response=self._sendrequest("totals.json",transaction=translist)
         try:
-            return json.loads(response,parse_float=decimal.Decimal)
+            return json.loads(response,parse_float=Decimal)
         except ValueError:
             raise JSONError
     def transactions_reconcile(self,ref,translist):
         response=self._sendrequest("totals.json",ref=ref,transaction=translist)
         try:
-            return json.loads(response,parse_float=decimal.Decimal)
+            return json.loads(response,parse_float=Decimal)
         except ValueError:
             raise JSONError
     def test_connection(self):
         response=self._sendrequest("totals.json")
         try:
-            return json.loads(response,parse_float=decimal.Decimal)
+            return json.loads(response,parse_float=Decimal)
         except ValueError:
             raise JSONError
 
-# XXX temporarily moving this code here as part of the payments
-# reorganisation; it will need updating to work when away from register.py
 class btcpopup(ui.dismisspopup):
     """
     A window used to accept a Bitcoin payment.
 
     """
-    def __init__(self,func,transid,amount):
-        self.func=func
-        self.transid=transid
-        self.amount=amount
+    def __init__(self,pm,reg,payment):
+        self._pm=pm
+        self._reg=reg
+        self._paymentid=payment.id
         (mh,mw)=ui.stdwin.getmaxyx()
         self.h=mh
         self.w=mh*2
         self.response={}
+        # Title will be drawn in "refresh()"
         ui.dismisspopup.__init__(
-            self,self.h,self.w,
-            title="Bitcoin payment - press Cash/Enter to check",
-            colour=ui.colour_input,keymap={
+            self,self.h,self.w,colour=ui.colour_input,keymap={
                 keyboard.K_CASH:(self.refresh,None,False),
                 keyboard.K_PRINT:(self.printout,None,False)})
         self.refresh()
     def draw_qrcode(self):
-        import qrcode
         q=qrcode.QRCode(border=2)
-        q.add_data("bitcoin:%s?amount=%s"%(self.response[u'pay_to_address'],
-                                           self.response[u'to_pay']))
+        q.add_data("bitcoin:{}?amount={}".format(
+                self.response['pay_to_address'],
+                self.response['to_pay']))
         m=q.get_matrix()
         size=len(m)
         # Will it fit using single block characters?
@@ -141,7 +143,7 @@ class btcpopup(ui.dismisspopup):
             x=(self.w/2)-size
             y=(self.h-size)/2
             for line in m:
-                self.addstr(y,x,''.join(["  " if c else u"\u2588\u2588" for c in line]))
+                self.addstr(y,x,''.join(["  " if c else "\u2588\u2588" for c in line]))
                 y=y+1
         # Will it fit using half block characters?
         elif (size/2)<self.h and size+2<self.w:
@@ -150,9 +152,9 @@ class btcpopup(ui.dismisspopup):
             y=(self.h-(size/2))/2
             # We work on two rows at once.
             lt={
-                (False,False): u"\u2588", # Full block
-                (False,True): u"\u2580", # Upper half block
-                (True,False): u"\u2584", # Lower half block
+                (False,False): "\u2588", # Full block
+                (False,True): "\u2580", # Upper half block
+                (True,False): "\u2584", # Lower half block
                 (True,True): " ", # No block
                 }
             while len(m)>0:
@@ -164,57 +166,154 @@ class btcpopup(ui.dismisspopup):
                 self.addstr(y,x,''.join([lt[c] for c in row]))
                 y=y+1
         else:
-            self.addstr(2,2,
-                        "QR code will not fit on this screen.  Press Print.")
+            self.addstr(
+                2,2,"QR code will not fit on this screen.  Press Print.")
     def printout(self):
-        if u'to_pay_url' in self.response:
-            printer.print_qrcode(self.response)
+        if 'to_pay_url' in self.response:
+            driver=printer.driver
+            driver.start()
+            driver.printline("\t"+tillconfig.pubname,emph=1)
+            driver.printline("\t{} payment".format(self._pm.description))
+            driver.printline("\t"+self.response['description'])
+            driver.printline("\t"+tillconfig.fc(self.response['amount']))
+            driver.printline("\t{} {} to pay".format(
+                    self.response['to_pay'],self._pm._currency))
+            driver.printqrcode(str(self.response['to_pay_url']))
+            driver.printline()
+            driver.printline()
+            driver.end()
     def refresh(self):
+        payment=td.s.query(Payment).get(self._paymentid)
+        if not payment:
+            self.dismiss()
+            ui.infopopup(["The payment record for this transaction has "
+                          "disappeared.  The transaction can't be "
+                          "completed."],title="Error")
+            return
+        if payment.amount!=zero:
+            self.dismiss()
+            ui.infopopup(["The payment has already been completed."],
+                         title="Error")
+            return
+        # A pending Bitcoin payment has the GBP amount as the reference.
+        amount=Decimal(payment.ref)
         try:
-            result=tillconfig.btcmerch_api.request_payment(
-                "tx%d"%self.transid,"Transaction %d"%self.transid,self.amount)
-        except btcmerch.HTTPError as e:
+            result=self._pm._api.request_payment(
+                "p{}".format(self._paymentid),
+                "Payment {}".format(self._paymentid),amount)
+        except HTTPError as e:
             if e.e.code==409:
                 return ui.infopopup(
-                    ["Once a request for Bitcoin payment has been made, the "
-                     "amount being requested can't be changed.  You have "
-                     "previously requested payment for this transaction of "
-                     "a different amount.  Please cancel the change and try "
-                     "again.  If you can't do this, cancel and re-enter the "
-                     "whole transaction."],title="Bitcoin error")
-            return ui.infopopup([str(e)],title="Bitcoin error")
-        except btcmerch.BTCMerchError as e:
-            return ui.infopopup([str(e)],title="Bitcoin error")
+                    ["The {} merchant service has rejected the payment "
+                     "request because the amount has changed.".
+                     format(self._pm.description)],
+                    title="{} error".format(self._pm.description))
+            return ui.infopopup([str(e)],title="{} error".format(
+                        self._pm.description))
+        except BTCMerchError as e:
+            return ui.infopopup([str(e)],title="{} error".format(
+                        self._pm.description))
         self.response=result
-        if u'to_pay_url' in result:
+        if 'to_pay_url' in result:
+            self.addstr(
+                0,1,"{} payment of {} - press {} to recheck".format(
+                    self._pm.description,tillconfig.fc(amount),
+                    keyboard.K_CASH.keycap))
             self.draw_qrcode()
-        self.addstr(self.h-1,3,"Received %s of %s BTC so far"%(
-                result[u'paid_so_far'],result[u'amount_in_btc']))
+        self.addstr(self.h-1,3,"Received {} of {} {} so far".format(
+                result['paid_so_far'],result['amount_in_btc'],
+                self._pm._currency))
         if result['paid']:
             self.dismiss()
-            self.func(result[u'amount'],str(result['amount_in_btc']))
-            return ui.infopopup(["Bitcoin payment received"],title="Bitcoin",
-                                dismiss=keyboard.K_CASH,colour=ui.colour_info)
-
-# XXX moved from managetill.py
-def bitcoincheck():
-    log.info("Bitcoin service check")
-    if tillconfig.btcmerch_api is None:
-        return ui.infopopup(
-            ["Bitcoin service is not configured for this till."],
-            title="Bitcoin info",dismiss=keyboard.K_CASH)
-    try:
-        rv=tillconfig.btcmerch_api.test_connection()
-    except btcmerch.BTCMerchError as e:
-        return ui.infopopup([str(e)],title="Bitcoin error")
-    return ui.infopopup(
-        ["Bitcoin service ok; it reports it owes us %s for the current "
-         "session."%rv[u'total']],
-        title="Bitcoin info",dismiss=keyboard.K_CASH,
-        colour=ui.colour_info)
+            self._pm._finish_payment(self._reg,payment,
+                                     result['amount_in_btc'])
 
 class BitcoinPayment(payment.PaymentMethod):
     def __init__(self,paytype,description,
-                 username,password,site,base_url):
+                 username,password,site,base_url,
+                 currency="BTC",min_payment=Decimal("1.00")):
         payment.PaymentMethod.__init__(self,paytype,description)
         self._api=Api(username,password,site,base_url)
+        self._min_payment=min_payment
+        self._currency=currency
+    def describe_payment(self,payment):
+        if payment.amount==zero:
+            # It's a pending payment.  The ref field is the amount in
+            # our our configured currency (i.e. NOT in Bitcoin).
+            return "Pending {} payment of {}{}".format(
+            self.description,tillconfig.currency,payment.ref)
+        return "{} ({} {})".format(self.description,payment.ref,
+                                   self._currency)
+    def start_payment(self,reg,trans,amount,outstanding):
+        # Search the transaction for an unfinished Bitcoin payment; if
+        # there is one, check to see if it's already been paid.
+        for p in trans.payments:
+            if p.paytype_id==self.paytype:
+                if p.amount==zero:
+                    btcpopup(self,reg,p)
+                    return
+        if amount<zero:
+            ui.infopopup(
+                ["We don't support refunds using {}.".format(
+                        self.description)],
+                title="Refund not suported")
+            return
+        if amount>outstanding:
+            ui.infopopup(
+                ["You can't take an overpayment using {}.".format(
+                        self.description)],
+                title="Overpayment not accepted")
+            return
+        if amount<self._min_payment:
+            ui.infopopup(
+                ["The minimum amount you can take using {} is {}.  "
+                 "Small transactions will cost the customer "
+                 "proportionally too much in transaction fees.".format(
+                        self.description,tillconfig.fc(self._min_payment))],
+                title="Payment too small")
+            return
+        # We're ready to attempt a Bitcoin payment at this point.  Add
+        # the Payment to the transaction to get its ID.
+        p=Payment(transaction=trans,paytype=self.get_paytype(),
+                  ref=str(amount),amount=zero,user=ui.current_user().dbuser)
+        td.s.add(p)
+        td.s.flush()
+        reg.add_payments(trans,[payment.pline(p,method=self)])
+        btcpopup(self,reg,p)
+    def _finish_payment(self,reg,payment,btcamount):
+        amount=Decimal(payment.ref)
+        payment.ref=str(btcamount)
+        payment.amount=amount
+        td.s.flush()
+        reg.payments_update()
+        ui.infopopup(["{} payment received".format(self.description)],
+                     title=self.description,
+                     dismiss=keyboard.K_CASH,colour=ui.colour_info)
+    def _payment_ref_list(self,session):
+        td.s.add(session)
+        # Find all the payments in this session
+        payments=td.s.query(Payment).join(Transaction).\
+            filter(Payment.paytype_id==self.paytype).\
+            filter(Payment.amount!=zero).\
+            filter(Transaction.session==session).\
+            all()
+        return ["p{}".format(p.id) for p in payments]
+    def total(self,session,fields):
+        td.s.add(session)
+        try:
+            btcval=self._api.transactions_total(
+                self._payment_ref_list(session))["total"]
+        except BTCMerchError:
+            ui.infopopup(
+                ["Could not retrieve {} total; please try again "
+                 "later.".format(self.description)],
+                title="Error")
+            btcval=zero
+        return btcval
+    def commit_total(self,session,amount):
+        td.s.add(session)
+        try:
+            self._api.transactions_reconcile(
+                str(session.id),self._payment_ref_list(session))
+        except Exception as e:
+            return str(e)
