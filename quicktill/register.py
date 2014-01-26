@@ -303,7 +303,7 @@ class page(ui.basicpage):
             self.balance=self.trans.balance
         else: self.balance=zero
     def close_if_balanced(self):
-        if (self.trans and not self.trans.closed and self.trans.total>zero
+        if (self.trans and not self.trans.closed and self.trans.total!=zero
             and self.trans.total==self.trans.payments_total):
             self.trans.closed=True
             td.s.flush()
@@ -840,6 +840,8 @@ class page(ui.basicpage):
         self.balance=self.trans.balance
         if self.buf:
             amount=strtoamount(self.buf)
+            if self.balance<zero:
+                amount=zero-amount # refund amount
         else:
             # Exact amount
             log.info("Register: paymentkey: exact amount")
@@ -854,7 +856,7 @@ class page(ui.basicpage):
             if self.balance==zero:
                 self.close_if_balanced()
                 return
-            ui.infopopup(["You can't pay {}!".format(tillconfig.fc(zero)),
+            ui.infopopup([u"You can't pay {}!".format(tillconfig.fc(zero)),
                           'If you meant "exact amount" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")
@@ -1072,7 +1074,7 @@ class page(ui.basicpage):
         if not self.entry(): return
         if self.trans.closed:
             l=self.dl[self.s.cursor]
-            if isinstance(l,rline):
+            if not isinstance(l,tline):
                 ui.infopopup(["You can't void payments from closed "
                               "transactions."],title="Error")
                 return
@@ -1166,13 +1168,7 @@ class page(ui.basicpage):
             self.voidline(i)
         self.cursor_off()
         self.update_balance()
-        # XXX To deal properly with voids of card transactions, perhaps we
-        # should leave the voiding transaction open here and allow the
-        # operator to close with Cash or Card key as appropriate.  We'd
-        # need to make sure that negative card payments work properly for
-        # refunds!   Also, since this would be a change in behaviour, perhaps
-        # we should pop up an explanatory dialog box here.
-        self.cashkey()
+        self._redraw()
     def recalltrans(self,trans):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current

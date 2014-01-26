@@ -1,5 +1,5 @@
 import string,time
-from . import td,ui,tillconfig
+from . import td,ui,tillconfig,payment
 from decimal import Decimal
 from .models import Delivery,VatBand,Business,Transline,Transaction
 from .models import zero,penny
@@ -40,17 +40,8 @@ def print_receipt(transid):
     driver.printline("\t\tSubtotal %s%s"%(tillconfig.fc(trans.total),totalpad),
                      colour=1,emph=1)
     for p in trans.payments:
-        if p.paytype_id=='CASH':
-            driver.printline("\t\t%s %s%s"%(p.ref,
-                                            tillconfig.fc(p.amount),totalpad))
-        else:
-            if p.ref is None:
-                driver.printline("\t\t%s %s%s"%(p.paytype.description,
-                                                tillconfig.fc(p.amount),
-                                                totalpad))
-            else:
-                driver.printline("\t\t%s %s %s%s"%(
-                    p.paytype.description,p.ref,tillconfig.fc(p.amount),totalpad))
+        pl=payment.pline(p)
+        driver.printline(u"\t\t{}{}".format(pl.text,totalpad))
     driver.printline("")
     if not trans.closed:
         driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)

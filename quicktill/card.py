@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+import logging
+log=logging.getLogger(__name__)
 from . import payment,ui,td,tillconfig,keyboard,printer
 from .models import Payment,zero,penny
 from decimal import Decimal
@@ -19,7 +22,8 @@ class cardpopup(ui.dismisspopup):
     terminal) and whether there is any cashback on this transaction.
 
     """
-    def __init__(self,reg,trans,amount,func,max_cashback,cashback_first):
+    def __init__(self,reg,trans,amount,func,max_cashback,cashback_first,
+                 refund=False):
         self.reg=reg
         self.trans=trans
         self.amount=amount
@@ -27,9 +31,11 @@ class cardpopup(ui.dismisspopup):
         self.max_cashback=max_cashback
         cashback_in_use=max_cashback>zero
         h=18 if cashback_in_use else 10
-        ui.dismisspopup.__init__(self,h,44,title="Card payment transaction %d"%
-                                 trans.id,colour=ui.colour_input)
-        self.addstr(2,2,"Card payment of %s"%tillconfig.fc(amount))
+        desc="refund" if refund else "payment"
+        ui.dismisspopup.__init__(
+            self,h,44,title="Card {} transaction {}".format(
+                desc,trans.id),colour=ui.colour_input)
+        self.addstr(2,2,"Card {} of {}".format(desc,tillconfig.fc(amount)))
         if cashback_in_use:
             if cashback_first:
                 cbstart=4
@@ -135,8 +141,19 @@ class CardPayment(payment.PaymentMethod):
                             for t in range(self._machines)]
     def describe_payment(self,payment):
         # Card payments use the 'ref' field for the card receipt number
-        return u"%s %s"%(self.description,payment.ref)
+        if payment.amount>=zero:
+            return "{} {}".format(self.description,payment.ref)
+        return "{} refund {}".format(self.description,payment.ref)
     def start_payment(self,reg,trans,amount,outstanding):
+        if amount<zero:
+            if amount<outstanding:
+                ui.infopopup(
+                    ["You can't refund more than the amount due back."],
+                    title="Refund too large")
+                return
+            cardpopup(reg,trans,amount,self._finish_payment,zero,
+                      self._cashback_first,refund=True)
+            return
         if amount>outstanding:
             if self._cashback_method:
                 ui.infopopup(

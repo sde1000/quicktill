@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from . import payment,td,printer,ui
 from .models import Payment,PayType,zero
 from decimal import Decimal
@@ -12,7 +13,7 @@ class CashPayment(payment.PaymentMethod):
         payment.PaymentMethod.__init__(self,paytype,description)
         self._change_description=change_description
         self._drawers=drawers
-        self._total_fields=[(u"Tray {t}".format(t=t+1),
+        self._total_fields=[("Tray {t}".format(t=t+1),
                              ui.validate_float,countup)
                             for t in range(self._drawers)]
     def describe_payment(self,payment):
@@ -29,17 +30,25 @@ class CashPayment(payment.PaymentMethod):
         td.s.flush()
         return payment.pline(p,method=self)
     def start_payment(self,reg,trans,amount,outstanding):
+        description=self.description
+        if amount<zero:
+            if amount<outstanding:
+                ui.infopopup(["You can't refund more than the amount we owe."],
+                             title="Refund too large")
+                return
+            description=description+" refund"
         user=ui.current_user().dbuser
         td.s.add(user)
         p=Payment(transaction=trans,paytype=self.get_paytype(),
-                  ref=self.description,amount=amount,user=user)
+                  ref=description,amount=amount,user=user)
         td.s.add(p)
-        change=outstanding-amount
         c=None
-        if change<zero:
-            c=Payment(transaction=trans,paytype=self.get_paytype(),
-                      ref=self._change_description,amount=change,user=user)
-            td.s.add(c)
+        if amount>zero:
+            change=outstanding-amount
+            if change<zero:
+                c=Payment(transaction=trans,paytype=self.get_paytype(),
+                          ref=self._change_description,amount=change,user=user)
+                td.s.add(c)
         td.s.flush()
         r=[payment.pline(p,method=self)]
         if c: r.append(payment.pline(c,method=self))
