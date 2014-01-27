@@ -3,7 +3,7 @@ Section: python
 X-Python-Version: >= 2.7
 Priority: optional
 Maintainer: Stephen Early <sde@individualpubs.co.uk>
-Build-Depends: debhelper (>= 5), dh-python, python2.7
+Build-Depends: debhelper (>= 5), python2.7
 Standards-Version: 3.7.2
 
 Package: quicktill1
