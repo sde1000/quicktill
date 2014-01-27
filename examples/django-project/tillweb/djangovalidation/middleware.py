@@ -104,7 +104,6 @@ February 6, 2009:
 '''
 
 import re
-import tidy
 
 from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
@@ -170,6 +169,7 @@ class HTMLValidationMiddleware(object):
                 type(response) == HttpResponse)
 
     def _validate(self, response):
+        import tidy
         errors = tidy.parseString(response.content, **self.options).errors
         return self._filter_errors(errors)
 

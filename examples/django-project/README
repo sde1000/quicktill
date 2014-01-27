@@ -1,0 +1,20 @@
+To set up tillweb:
+
+Install python-django (>=1.4), python-utidylib (if you want to use the
+built-in development webserver), nginx
+
+django-admin startproject \
+  --template=/usr/share/doc/quicktill1/examples/django-project/ tillweb
+
+cd tillweb
+
+(as root) cp tillweb-nginx-configuration /etc/nginx/sites-available/tillweb
+(as root) cd /etc/nginx/sites-enabled/
+(as root) rm default
+(as root) ln -s ../sites-available/tillweb .
+(as root) service nginx reload
+
+Edit tillweb/tillweb/tillweb/settings.py to include your pub name and
+database details.
+
+tillweb/start-daemon
