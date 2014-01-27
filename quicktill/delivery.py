@@ -491,12 +491,13 @@ class editsupplier(ui.basicpopup):
             keyboard.K_CASH: (self.confirmed,None,True)})
     def confirmed(self):
         if self.sn:
-            supplier=td.s.query(Supplier).get(sn)
+            supplier=td.s.query(Supplier).get(self.sn)
         else:
             supplier=Supplier()
+            td.s.add(supplier)
         supplier.name=self.namefield.f
         supplier.tel=self.telfield.f
         supplier.email=self.emailfield.f
+        td.s.flush()
         if self.sn is not None: self.dismiss()
-        td.s.add(supplier)
         self.func(supplier)
