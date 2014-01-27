@@ -348,7 +348,7 @@ class page(ui.basicpage):
                 title="Not enough stock on display")
             return
         if len(sell)==0:
-            log.info("Register: linekey: no stock in use for %s",name)
+            log.info("linekey: no stock in use for %s",stockline.name)
             ui.infopopup(["No stock is registered for {}.".format(
                         stockline.name),
                           "To tell the till about stock on sale, "
