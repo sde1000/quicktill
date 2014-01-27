@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # How to use this script:
-# 1) Make sure that the git HEAD is what you want to release
+# 1) Make sure that the git index is what you want to release
 # 2) Edit setup.py in the working copy to set the new version number
 # 3) Run this script
 # 4) If the generated package is ok, copy and paste the commands output
@@ -16,7 +16,7 @@ distribution=stable
 urgency=low
 tmpdir=release-tmp
 
-usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency]"
+usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency ]"
 
 while getopts "p:d:u:t:h" options; do
   case $options in
@@ -78,7 +78,7 @@ echo "version=\"${newversion} (${releasedate})\"" >${pkgdir}/quicktill/version.p
 
 # Build the Debian package files
 
-(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -k34B34908)
+(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
 
 # If we reach this point, we should have Debian packages built in ${tmpdir}
 

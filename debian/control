@@ -1,15 +1,15 @@
 Source: quicktill
 Section: python
-XS-Python-Version: >=2.6
+X-Python-Version: >= 2.7
 Priority: optional
 Maintainer: Stephen Early <sde@individualpubs.co.uk>
-Build-Depends: debhelper (>= 5), python-dev
-Build-Depends-Indep: python-central (>= 0.4.7)
+Build-Depends: debhelper (>= 5), dh-python, python2.7
 Standards-Version: 3.7.2
 
-Package: quicktill
+Package: quicktill1
 Architecture: all
 Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml
-XB-Python-Version: ${python:Versions}
+Conflicts: quicktill
+Replaces: quicktill
 Description: Simple stock-control and cash register software
  Developed for Individual Pubs Limited in the UK.
