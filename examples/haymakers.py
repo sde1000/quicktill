@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
+
 import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
@@ -18,8 +20,6 @@ from quicktill.cash import CashPayment
 from quicktill.card import CardPayment
 from quicktill.bitcoin import BitcoinPayment
 from decimal import Decimal,ROUND_UP
-import math
-import os
 import socket,struct
 
 import logging
@@ -81,9 +81,6 @@ user.group('manager','Pub manager [group]',[
         "alter-stocktype",
         ])
 
-user.group('magic','Magic things',[
-        "wibble","wobble","version"])
-
 def haymakers_deptkeycheck(dept,price):
     """
     Check that the price entered when a department key is pressed is
@@ -95,16 +92,16 @@ def haymakers_deptkeycheck(dept,price):
     """
     if dept.id==7: # Soft drinks
         if price not in [0.50,1.00,2.00]:
-            return (u"Soft drinks are 50p for a mixer, £1.00 for a half, "
-                    u"and £2.00 for a pint.  If you're selling a bottle, "
-                    u"you must press the appropriate button for that bottle.")
+            return ("Soft drinks are 50p for a mixer, £1.00 for a half, "
+                    "and £2.00 for a pint.  If you're selling a bottle, "
+                    "you must press the appropriate button for that bottle.")
     if dept.id==9: # Wine
         if price not in [2.50,3.70,4.80,14.00]:
-            return ([u"£2.50 for a small glass, "
-                     u"£3.70 for a medium glass, "
-                     u"£4.80 for a large glass, and £14.00 for a bottle."])
+            return (["£2.50 for a small glass, "
+                     "£3.70 for a medium glass, "
+                     "£4.80 for a large glass, and £14.00 for a bottle."])
     if dept.id==8: # Misc
-        return u"We do not use the Misc button."
+        return "We do not use the Misc button."
 
 # Price policy function
 def haymakers_pricepolicy(item,qty):
@@ -275,11 +272,9 @@ std={
     'pubname':"The Haymakers",
     'pubnumber':"01223 311077",
     'pubaddr':("54 High Street, Chesterton","Cambridge CB4 1NG"),
-    'currency':u"£",
+    'currency':"£",
     'all_payment_methods':all_payment_methods,
     'payment_methods':payment_methods,
-    'cashback_limit':50.0,
-    'cashback_first':True,
     'pricepolicy':haymakers_pricepolicy,
     'priceguess':haymakers_priceguess,
     'deptkeycheck':haymakers_deptkeycheck,
@@ -302,7 +297,7 @@ noprinter={
     'printer': (nullprinter,()),
     }
 localprinter={
-    'printer': (Epson_TM_T20,("/dev/usb/lp0",80)),
+    'printer': (Epson_TM_T20,("/dev/usb/lp0".encode('ascii'),80)),
     }
 pdfprinter={
     'printer': (pdf,("lpr %s",)),
