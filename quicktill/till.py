@@ -228,7 +228,8 @@ class adduser(command):
             u=User(fullname=args.fullname,shortname=args.shortname,
                    enabled=True,superuser=True)
             t=UserToken(token=args.usertoken,user=u,description=args.fullname)
-            td.s.add(u,t)
+            td.s.add(u)
+            td.s.add(t)
             td.s.flush()
             print("User added.")
 
