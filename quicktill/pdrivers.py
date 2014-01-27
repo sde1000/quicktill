@@ -55,7 +55,7 @@ def wrap(l,width):
     if len(w)==0: w=[""]
     return w
 
-class nullprinter:
+class nullprinter(object):
     def available(self):
         return True
     def start(self):
@@ -88,7 +88,7 @@ def ep_2d_cmd(*params):
     pH=(len(p)>>8)&0xff
     return string.join([chr(29),'(','k',chr(pL),chr(pH),p],"")
 
-class escpos:
+class escpos(object):
     ep_reset=l2s([27,64,27,116,16])
     ep_pulse=l2s([27,ord('p'),0,50,50])
     ep_underline=(l2s([27,45,0]),l2s([27,45,1]),l2s([27,45,2]))
@@ -107,6 +107,8 @@ class escpos:
     ep_half_dot_feed=l2s([27,74,1])
     def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False,
                  lines_before_cut=3,default_font=0):
+        if isinstance(devicefile,unicode):
+            devicefile=devicefile.encode('ascii')
         if isinstance(devicefile,str):
             self.f=file(devicefile,'w')
             self.ci=None
@@ -350,7 +352,7 @@ class Epson_TM_T20(escpos):
         # Print the QR code
         self.f.write(ep_2d_cmd(49,81,48))
 
-class pdf:
+class pdf(object):
     def __init__(self,printcmd,width=140,pagesize=A4,
                  fontsizes=[8,10],pitches=[10,12]):
         """
@@ -453,7 +455,7 @@ class pdf:
     def kickout(self):
         pass
 
-class pdfpage:
+class pdfpage(object):
     def __init__(self,printcmd,pagesize):
         self.printcmd=printcmd
         self.pagesize=pagesize
