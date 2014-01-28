@@ -1,11 +1,13 @@
+from __future__ import unicode_literals
 import time
-from . import ui,event,td,keyboard,usestock,stocklines
+from . import ui,event,td,keyboard,usestock,stocklines,user
 
 class page(ui.basicpage):
-    def __init__(self,hotkeys,locations=None):
+    def __init__(self,hotkeys,locations=None,user=None):
         ui.basicpage.__init__(self)
         self.mainloopnexttime=0 # XXX needed when being created dynamically
         # - sort out the event loop code sometime so it doesn't need this!
+        self.user=user
         self.display=0
         self.alarm(need_new_session=False)
         self.hotkeys=hotkeys
@@ -13,7 +15,7 @@ class page(ui.basicpage):
         event.eventlist.append(self)
         self.updateheader()
     def pagename(self):
-        return "Stock Control"
+        return self.user.fullname if self.user else "Stock Control"
     def drawlines(self):
         sl=td.stockline_summary(td.s,self.locations)
         y=1
@@ -87,3 +89,13 @@ class page(ui.basicpage):
         ui.basicpage.deselect(self)
         del event.eventlist[event.eventlist.index(self)]
         self.dismiss()
+
+def handle_usertoken(t,*args):
+    """
+    Called when a usertoken has been handled by the default hotkey
+    handler.
+
+    """
+    u=user.user_from_token(t)
+    if u is None: return # Should already have popped up a dialog box
+    return page(*args,user=u)

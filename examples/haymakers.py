@@ -266,6 +266,8 @@ register_hotkeys={
     ord('T'): appsmenu,
     ord('m'): managetill,
     ord('M'): managetill,
+    ord('l'): lockscreen.lockpage,
+    ord('L'): lockscreen.lockpage,
     }
 
 std={
@@ -453,7 +455,7 @@ kb1={
             ("M2H","M2T"),
             ("M3H","M3T"),
             ]),
-    'firstpage': lambda: lockscreen.lockpage(),
+    'firstpage': lockscreen.lockpage,
     'usertoken_handler': lambda t:register.handle_usertoken(t,register_hotkeys),
     'usertoken_listen': ('127.0.0.1',8455),
     }
@@ -469,6 +471,8 @@ stock_hotkeys={
     ord('T'): appsmenu,
     ord('m'): managetill,
     ord('M'): managetill,
+    ord('l'): lockscreen.lockpage,
+    ord('L'): lockscreen.lockpage,
     }
 
 global_hotkeys={
@@ -478,7 +482,10 @@ global_hotkeys={
 
 stockcontrol={
     'kbdriver':kbdrivers.curseskeyboard(),
-    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"]),
+#    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"]),
+    'firstpage': lockscreen.lockpage,
+    'usertoken_handler': lambda t:stockterminal.handle_usertoken(t,stock_hotkeys,["Bar"]),
+    'usertoken_listen': ('127.0.0.1',8455),
 }    
 
 # Config0 is a QWERTY-keyboard stock-control terminal
