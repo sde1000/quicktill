@@ -129,7 +129,8 @@ class ActionPopup(ui.menu):
             ui.popup_exception("Invalid response from server")
             return
         if len(l)>0:
-            ui.menu.__init__(self,l,title=title,blurb=message)
+            ui.menu.__init__(self,l,title=title,
+                             blurb=[message] if message else [])
         else:
             ui.infopopup([message],title=title,colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)
@@ -166,4 +167,4 @@ class popup(ui.menu):
             ui.infopopup([str(e)],title="Timesheet error")
             return
         l=[(u.fullname,enterpin,(u,)) for u in users]
-        ui.menu.__init__(self,l,title="Who are you?",blurb="Pick your name:")
+        ui.menu.__init__(self,l,title="Who are you?",blurb=[])
