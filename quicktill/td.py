@@ -210,6 +210,9 @@ def stockline_summary(session,locations):
         order_by(StockLine.name).\
         options(joinedload('stockonsale')).\
         options(joinedload('stockonsale.stocktype')).\
+        options(undefer('stockonsale.used')).\
+        options(undefer('stockonsale.sold')).\
+        options(undefer('stockonsale.remaining')).\
         all()
     return s
 

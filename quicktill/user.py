@@ -20,6 +20,7 @@ indicate restricted functionality.
 
 from . import ui,td,event,keyboard,tillconfig
 from .models import User,UserToken,Permission
+from sqlalchemy.orm import joinedload
 import types
 import socket,logging
 log=logging.getLogger(__name__)
@@ -285,7 +286,10 @@ def user_from_token(t):
     hotkeys ensures the box can't pop up on top of itself.)
 
     """
-    dbt=td.s.query(UserToken).get(t.usertoken)
+    dbt=td.s.query(UserToken).\
+        options(joinedload('user')).\
+        options(joinedload('user.permissions')).\
+        get(t.usertoken)
     if not dbt:
         tokeninfo(["User token '{}' not recognised.".format(t.usertoken)],
                    title="Unknown token")

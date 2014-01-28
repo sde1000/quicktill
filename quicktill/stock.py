@@ -7,6 +7,7 @@ from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,Delivery,desc
+from sqlalchemy.orm import joinedload,undefer
 log=logging.getLogger(__name__)
 
 # XXX should probably convert this to take a StockItem object rather
@@ -234,7 +235,9 @@ class stockpicker(ui.dismisspopup):
         self.addstr(4,15," "*43)
         if self.numfield.f:
             stockid=int(self.numfield.f)
-            item=td.s.query(StockItem).get(stockid)
+            item=td.s.query(StockItem).\
+                options(joinedload('stocktype')).\
+                get(stockid)
             if item:
                 self.addstr(3,15,item.stocktype.format(maxw=43))
                 not_ok=self.filter.item_problem(item)
@@ -268,7 +271,10 @@ class stockpicker(ui.dismisspopup):
                         self.popup_menu,(d,)) for d in depts]
                 ui.menu(lines)
     def popup_menu(self,department):
-        items=self.filter.query_items(department).all()
+        items=self.filter.query_items(department).\
+            options(joinedload('stocktype')).\
+            options(undefer('remaining')).\
+            all()
         f=ui.tableformatter(' r l c ')
         sl=[(ui.tableline(f,(s.id,s.stocktype.format(),"%s %ss"%(
                             s.remaining,s.stockunit.unit.name))),
