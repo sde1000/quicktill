@@ -166,4 +166,4 @@ class popup(ui.menu):
             ui.infopopup([str(e)],title="Timesheet error")
             return
         l=[(u.fullname,enterpin,(u,)) for u in users]
-        ui.menu.__init__(self,l,title="Who are you?",blurb=None)
+        ui.menu.__init__(self,l,title="Who are you?",blurb="Pick your name:")
