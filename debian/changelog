@@ -1,3 +1,15 @@
+quicktill (0.10.3) stable; urgency=low
+
+  * New release 0.10.3
+
+  * Fix printing of session totals from dialog
+
+  * Fix timesheets properly!
+
+  * Attempt at screen unblanking on user token receipt
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 28 Jan 2014 18:10:03 +0000
+
 quicktill (0.10.2) stable; urgency=low
 
   * New release 0.10.2
