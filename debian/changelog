@@ -1,3 +1,17 @@
+quicktill (0.10.1) stable; urgency=low
+
+  * New release 0.10.1
+
+  * Support different users on the stockterminal
+
+  * ui.menu doesn't allow null blurb any more
+
+  * Make printer drivers behave when devicefile is passed as unicode
+
+  * Example config file updates
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 28 Jan 2014 10:53:55 +0000
+
 quicktill (0.10.0) stable; urgency=low
 
   * New release 0.10.0
