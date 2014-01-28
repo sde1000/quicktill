@@ -648,6 +648,7 @@ class page(ui.basicpage):
         as a string.
 
         """
+        if not self.entry(): return
         self.prompt=self.defaultprompt
         self.clearbuffer()
         trans=self.gettrans()
