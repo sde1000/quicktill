@@ -7,6 +7,7 @@ module.
 
 from __future__ import print_function
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
+import termios,fcntl,array
 from . import ui,event,td,printer,tillconfig,foodorder,user
 from .version import version
 from .models import Session,User,UserToken
@@ -233,6 +234,11 @@ class adduser(command):
             td.s.flush()
             print("User added.")
 
+def _linux_unblank_screen():
+    TIOCL_UNBLANKSCREEN=4
+    buf=array.array('b',[TIOCL_UNBLANKSCREEN])
+    fcntl.ioctl(sys.stdin,termios.TIOCLINUX,buf)
+
 def main():
     """Usual main entry point for the till software, unless you are doing
     something strange.  Reads the location of its global configuration,
@@ -372,7 +378,10 @@ def main():
         tillconfig.usertoken_listen=config['usertoken_listen']
 
     if os.uname()[0]=='Linux':
-        if os.getenv('TERM')=='xterm': os.putenv('TERM','linux')
+        if os.getenv('TERM')=='linux':
+            tillconfig.unblank_screen=_linux_unblank_screen
+        elif os.getenv('TERM')=='xterm':
+            os.putenv('TERM','linux')
 
     locale.setlocale(locale.LC_ALL,'')
 

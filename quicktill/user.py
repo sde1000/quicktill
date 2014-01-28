@@ -18,7 +18,7 @@ indicate restricted functionality.
 
 """
 
-from . import ui,td,event,keyboard
+from . import ui,td,event,keyboard,tillconfig
 from .models import User,UserToken,Permission
 import types
 import socket,logging
@@ -271,6 +271,7 @@ class tokenlistener(object):
         d=self.s.recv(1024).strip()
         log.debug("Received: {}".format(repr(d)))
         if d:
+            tillconfig.unblank_screen()
             with td.orm_session():
                 ui.handle_keyboard_input(token(d))
 
