@@ -120,6 +120,7 @@ def print_sessiontotals(s):
     """Print a session totals report given a Session object.
 
     """
+    td.s.add(s)
     depts=s.dept_totals
     paytotals=dict(s.payment_totals)
     payments=dict([(x.paytype,x) for x in s.actual_totals])
