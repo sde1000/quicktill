@@ -243,7 +243,8 @@ def sessiondept(request,base,access,session,sessionid,dept):
     translines=session.query(Transline).\
         join(Transaction).\
         options(joinedload('transaction')).\
-        options(joinedload_all('stockref.stockitem.stocktype')).\
+        options(joinedload('user')).\
+        options(joinedload_all('stockref.stockitem.stocktype.unit')).\
         filter(Transaction.sessionid==s.id).\
         filter(Transline.dept_id==dept.id).\
         order_by(Transline.time).\
@@ -280,7 +281,9 @@ def supplier(request,base,access,session,supplierid):
 
 @tillweb_view
 def deliverylist(request,base,access,session):
-    dl=session.query(Delivery).order_by(desc(Delivery.id)).all()
+    dl=session.query(Delivery).order_by(desc(Delivery.id)).\
+        options(joinedload('supplier')).\
+        all()
     return ('deliveries.html',{'deliveries':dl})
 
 @tillweb_view
@@ -348,7 +351,12 @@ class StockForm(StockTypeForm):
 def stocksearch(request,base,access,session):
     form=StockForm(request.GET)
     result=[]
-    q=session.query(StockItem).join(StockType).order_by(StockItem.id)
+    q=session.query(StockItem).join(StockType).order_by(StockItem.id).\
+        options(joinedload_all('stocktype.unit')).\
+        options(joinedload('stockline')).\
+        options(undefer('used')).\
+        options(undefer('sold')).\
+        options(undefer('remaining'))
     if form.is_valid():
         if form.is_filled_in():
             q=form.filter(q)
@@ -406,7 +414,13 @@ def department(request,base,access,session,departmentid):
     items=session.query(StockItem).\
         join(StockType).\
         filter(StockType.department==d).\
-        order_by(desc(StockItem.id))
+        order_by(desc(StockItem.id)).\
+        options(joinedload_all('stocktype.unit')).\
+        options(undefer('used')).\
+        options(undefer('sold')).\
+        options(undefer('remaining')).\
+        options(joinedload('stockline')).\
+        options(joinedload('finishcode'))
     if not include_finished:
         items=items.filter(StockItem.finished==None)
     items=items.all()
@@ -425,14 +439,23 @@ def userlist(request,base,access,session):
 @tillweb_view
 def user(request,base,access,session,userid):
     try:
-        u=session.query(User).get(int(userid))
+        u=session.query(User).\
+            options(joinedload('permissions')).\
+            options(joinedload('tokens')).\
+            get(int(userid))
     except NoResultFound:
         raise Http404
     sales=session.query(Transline).filter(Transline.user==u).\
+        options(joinedload('transaction')).\
+        options(joinedload_all('stockref.stockitem.stocktype.unit')).\
         order_by(desc(Transline.time))[:50]
     payments=session.query(Payment).filter(Payment.user==u).\
+        options(joinedload('transaction')).\
+        options(joinedload('paytype')).\
         order_by(desc(Payment.time))[:50]
     annotations=session.query(StockAnnotation).\
+        options(joinedload_all('stockitem.stocktype')).\
+        options(joinedload('type')).\
         filter(StockAnnotation.user==u).\
         order_by(desc(StockAnnotation.time))[:50]
     return ('user.html',{'user':u,'sales':sales,'payments':payments,

@@ -5,7 +5,7 @@
 </thead>
 <tbody>
 {% for s in stocklist %}
-<tr class="{% cycle 'even' 'odd' %}">
+<tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
 <td><a href="{{u}}stocktype/?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
 <td><a href="{{u}}{{s.stocktype.tillweb_url}}">{{s.stocktype.name}}</a></td>
@@ -14,7 +14,7 @@
 <td>{{s.sold}} {{s.stocktype.unit.name}}s</td>
 <td>{{s.remaining}} {{s.stocktype.unit.name}}s</td>
 <td>{% if s.finished %}{{s.finishcode}} ({{s.finished|date:dtf}}){% endif %}
-{% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale: {{s.stockline.name}}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}</td>
+{% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale{% if exclude_column != "stockline" %}: {{s.stockline.name}}{% endif %}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
