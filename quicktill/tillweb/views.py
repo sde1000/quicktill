@@ -148,7 +148,7 @@ def pubroot(request,base,access,session):
     barsummary=session.query(StockLine).\
         filter(StockLine.location=="Bar").\
         order_by(StockLine.dept_id,StockLine.name).\
-        options(joinedload_all('stockonsale.stocktype')).\
+        options(joinedload_all('stockonsale.stocktype.unit')).\
         all()
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
@@ -159,7 +159,7 @@ def pubroot(request,base,access,session):
                 group_by(StockAnnotation.text))).\
         filter(StockItem.finished==None).\
         order_by(StockLine.name!=null(),StockAnnotation.time).\
-        options(joinedload_all('stockitem.stocktype')).\
+        options(joinedload_all('stockitem.stocktype.unit')).\
         options(joinedload_all('stockitem.stockline')).\
         all()
     return ('index.html',
