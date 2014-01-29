@@ -27,20 +27,22 @@ under different licences; see the individual source files for details:
 A big warning
 -------------
 
-This software is in the middle of being rewritten; it isn't finished,
-it isn't tested and it isn't easy to use.  This is the development
-branch and isn't being used regularly in live situations!
+This software is not very easy to configure.  Once it's configured,
+though, it's generally quite easy to use.  This is the development
+branch; it's currently being tested in [the Pembury Tavern in
+Hackney](http://www.individualpubs.co.uk/pembury/) before being
+deployed in other pubs.  At the moment I'm not guaranteeing that
+changes from one release to the next won't break existing
+configuration files.
 
 The stable branch has been in use in a few pubs since 2004 without any
 problems, but is becoming difficult to maintain.  The rewrite has
 replaced lots of embedded SQL with the sqlalchemy ORM; this enables
 the code be rather more readable!  There is also a django-based
 reporting interface to the till database that makes use of the ORM
-models defined here in quicktill/models.py; it's included in
-quicktill/tillweb/ but is out of date.
-
-I intend to start using this branch in one of my pubs (probably the
-Pembury) in early 2014, once I'm happy the whole thing is stable.
+models defined here in quicktill/models.py; it's fairly complete and
+bug-free for read-only access to the till state, but the read/write
+features I plan to add aren't there yet.
 
 Getting started
 ---------------
