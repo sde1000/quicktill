@@ -1,3 +1,15 @@
+quicktill (0.10.5) stable; urgency=low
+
+  * New release 0.10.5
+
+  * Improve the session takings in a department page
+
+  * Minor improvements to pub index page load time
+
+  * Tillweb performance improvements
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 29 Jan 2014 14:43:47 +0000
+
 quicktill (0.10.4) stable; urgency=low
 
   * New release 0.10.4
