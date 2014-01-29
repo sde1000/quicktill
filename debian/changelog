@@ -1,3 +1,11 @@
+quicktill (0.10.6) stable; urgency=low
+
+  * New release 0.10.6
+
+  * Don't print "underline" when we want to print a line...
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 29 Jan 2014 19:23:33 +0000
+
 quicktill (0.10.5) stable; urgency=low
 
   * New release 0.10.5
