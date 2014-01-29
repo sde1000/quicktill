@@ -7,7 +7,9 @@
 {% block tillcontent %}
 
 {% if translines %}
+{% with exclude_column="department" %}
 {% include "tillweb/translinelist.html" %}
+{% endwith %}
 {% else %}
 <p>There are no transactions for the {{department.description}}
 department in session {{session.id}}.</p>

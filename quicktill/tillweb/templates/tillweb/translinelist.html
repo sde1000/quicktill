@@ -18,10 +18,10 @@
 {% if tl.stockref %}
 <td><a href="{{u}}{{tl.stockref.stockitem.tillweb_url}}">{{tl.description}}</a></td>
 {% else %}
-<td>{{tl.description}} ({{tl.department}})</td>
+<td>{{tl.description}}{% if exclude_column != "department" %} ({{tl.department}}){% endif %}</td>
 {% endif %}
 <td>{{tl.transcode}}</td>
-<td>{{tl.items}} @ <span class="money">{{tl.amount}}</span> = <span class="money">{{tl.total}}</span></td>
+<td>{% if tl.items and tl.amount %}{{tl.items}} @ <span class="money">{{tl.amount}}</span> = <span class="money">{{tl.total}}</span>{% endif %}</td>
 <td>{{tl.time|date:dtf}}</td>
 {% if exclude_column != "user" %}
 <td>{% if tl.user %}<a href="{{u}}{{tl.user.tillweb_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
