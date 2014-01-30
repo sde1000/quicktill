@@ -236,7 +236,7 @@ class adduser(command):
 
 def _linux_unblank_screen():
     TIOCL_UNBLANKSCREEN=4
-    buf=array.array('b',[TIOCL_UNBLANKSCREEN])
+    buf=array.array(str('b'),[TIOCL_UNBLANKSCREEN])
     fcntl.ioctl(sys.stdin,termios.TIOCLINUX,buf)
 
 def main():
