@@ -456,7 +456,8 @@ kb1={
             ("M3H","M3T"),
             ]),
     'firstpage': lockscreen.lockpage,
-    'usertoken_handler': lambda t:register.handle_usertoken(t,register_hotkeys),
+    'usertoken_handler': lambda t:register.handle_usertoken(
+        t,register_hotkeys,autolock=K_LOCK),
     'usertoken_listen': ('127.0.0.1',8455),
     }
 

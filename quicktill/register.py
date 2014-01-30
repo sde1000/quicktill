@@ -81,7 +81,7 @@ class bufferline(ui.lrline):
             self.ltext=m
             cursorx=len(m)
         else:
-            self.ltext=self.reg.prompt
+            self.ltext="Locked" if self.reg.locked else self.reg.prompt
             cursorx=0
         self.rtext="{} {}".format(
             "Amount to pay" if self.reg.balance>=zero else "Refund amount",
@@ -184,12 +184,14 @@ class repeat(object):
             setattr(self,k,v)
 
 class page(ui.basicpage):
-    def __init__(self,user,hotkeys):
+    def __init__(self,user,hotkeys,autolock=None):
         # trans and name needed for "pagename" which is called in basicpage.__init__()
         self.trans=None # models.Transaction object
         self.user=user
         log.info("Page created for %s",self.user.fullname)
         ui.basicpage.__init__(self)
+        self._autolock=autolock
+        self.locked=False
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.hotkeys=hotkeys
         self.defaultprompt="Ready"
@@ -308,6 +310,7 @@ class page(ui.basicpage):
             and self.trans.total==self.trans.payments_total):
             self.trans.closed=True
             td.s.flush()
+            if self._autolock: self.locked=True
     @user.permission_required('sell-stock','Sell stock from a stockline')
     def linekey(self,kb): # We are passed the keyboard binding
         # We may be being called back from a stocklinemenu here, so
@@ -1460,6 +1463,14 @@ class page(ui.basicpage):
     def keypress(self,k):
         # This is our main entry point.  We will have a new database session.
         # Update the transaction object before we do anything else!
+        if self.locked:
+            # When we are locked, the only operation that's permitted
+            # is printing the current transaction if it is closed.
+            # All other keypresses are ignored.
+            if self.trans: td.s.add(self.trans)
+            if self.trans.closed and k==keyboard.K_PRINT:
+                self.printkey()
+            return
         if not self.entry(): return
         if hasattr(k,'line'):
             stocklines.linemenu(k,self.linekey)
@@ -1494,8 +1505,18 @@ class page(ui.basicpage):
         if k==keyboard.K_CANCELFOOD:
             return foodorder.cancel()
         curses.beep()
+    def hotkeypress(self,k):
+        if self._autolock and k==self._autolock and not self.locked:
+            # Intercept the 'Lock' keypress and handle it ourselves.
+            self.locked=True
+            self._redraw()
+        else:
+            super(page,self).hotkeypress(k)
     def select(self,u):
         self.user=u # Permissions might have changed!
+        if self.locked:
+            self.locked=False
+            self._redraw()
         ui.basicpage.select(self)
         log.info("Existing page selected for %s",self.user.fullname)
         self.entry()
@@ -1515,7 +1536,7 @@ class page(ui.basicpage):
         else:
             ui.basicpage.deselect(self)
 
-def handle_usertoken(t,*args):
+def handle_usertoken(t,*args,**kwargs):
     """
     Called when a usertoken has been handled by the default hotkey
     handler.
@@ -1527,4 +1548,4 @@ def handle_usertoken(t,*args):
         if isinstance(p,page) and p.user.userid==u.userid:
             p.select(u)
             return p
-    return page(u,*args)
+    return page(u,*args,**kwargs)
