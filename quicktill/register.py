@@ -562,6 +562,8 @@ class page(ui.basicpage):
         elif stockline.linetype=="display":
             self.prompt="{}: {} left on display; {} in stock".format(
                 stockline.name,stockremain[0],int(stockremain[1]))
+        # Adding and altering translines changes the total
+        td.s.expire(self.trans,['total'])
         self.update_balance()
         self.cursor_off()
         self._redraw()
@@ -579,6 +581,7 @@ class page(ui.basicpage):
                 tl.items=tl.items+1
                 td.s.flush()
                 self.dl[-1].update()
+                td.s.expire(self.trans,['total'])
                 self.update_balance()
                 self.cursor_off()
                 self._redraw()
@@ -638,6 +641,7 @@ class page(ui.basicpage):
         log.info("deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
                  "price=%f",trans.id,tl.id,dept,items,price)
         self.dl.append(tline(tl.id))
+        td.s.expire(self.trans,['total'])
         self.update_balance()
         self.cursor_off()
         self._redraw()
@@ -667,6 +671,7 @@ class page(ui.basicpage):
             self.dl.append(tline(tl.id))
         self.repeat=None
         self.cursor_off()
+        td.s.expire(self.trans,['total'])
         self.update_balance()
         self._redraw()
         return True
