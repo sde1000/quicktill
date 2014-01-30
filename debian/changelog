@@ -1,3 +1,11 @@
+quicktill (0.10.10) stable; urgency=low
+
+  * New release 0.10.10
+
+  * Expire transaction total property when translines are changed
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 30 Jan 2014 18:24:22 +0000
+
 quicktill (0.10.9) stable; urgency=low
 
   * New release 0.10.9
