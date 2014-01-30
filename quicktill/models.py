@@ -261,13 +261,7 @@ class Transaction(Base):
     notes=Column(String(60))
     closed=Column(Boolean,nullable=False,default=False)
     session=relationship(Session,backref=backref('transactions',order_by=id))
-    @hybrid_property
-    def total(self):
-        """
-        Transaction lines total
-
-        """
-        return sum((tl.items*tl.amount for tl in self.lines),zero)
+    # total is a column property defined below
     @hybrid_property
     def payments_total(self):
         """
@@ -545,6 +539,17 @@ Session.total=column_property(
            whereclause=and_(Transline.transid==Transaction.id,
                             Transaction.sessionid==Session.id)).\
         correlate(Session.__table__).\
+        label('total'),
+    deferred=True,
+    doc="Transaction lines total")
+
+# Add "total" column property to the Transaction class now that
+# transactions and translines are defined
+Transaction.total=column_property(
+    select([func.coalesce(func.sum(Transline.items*Transline.amount),
+                          text("0.00"))],
+           whereclause=and_(Transline.transid==Transaction.id)).\
+        correlate(Transaction.__table__).\
         label('total'),
     deferred=True,
     doc="Transaction lines total")
