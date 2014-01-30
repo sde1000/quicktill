@@ -115,7 +115,11 @@ def end():
                      keymap=km,colour=ui.colour_confirm)
 
 def sessionlist(cont,unpaidonly=False,closedonly=False):
-    "Return a list of sessions suitable for a menu"
+    """
+    Return a list of sessions suitable for a menu.  This list is limited to
+    100 sessions.
+
+    """
     def ss(s):
         if s.endtime is None:
             total=""
@@ -132,7 +136,7 @@ def sessionlist(cont,unpaidonly=False,closedonly=False):
                        correlate(Session.__table__).as_scalar()==0)
     if closedonly:
         q=q.filter(Session.endtime!=None)
-    return [(ss(x),cont,(x,)) for x in q.all()]
+    return [(ss(x),cont,(x,)) for x in q[:100]]
 
 class _PMWrapper(object):
     """
