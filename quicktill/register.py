@@ -42,7 +42,7 @@ import datetime
 log=logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
-from .models import Payment,zero,User,Department
+from .models import Payment,zero,User,Department,desc
 from decimal import Decimal
 import uuid
 
@@ -1208,10 +1208,16 @@ class page(ui.basicpage):
                           "be paid for at the time it is ordered."],
                          title="Error")
             return
+        transactions=td.s.query(Transaction).\
+            filter(Transaction.session==sc).\
+            options(td.undefer('total')).\
+            order_by(Transaction.closed==True).\
+            order_by(desc(Transaction.id)).\
+            all()
         f=ui.tableformatter(' r l r l ')
         sl=[(ui.tableline(f,(x.id,('open','closed')[x.closed],
                              tillconfig.fc(x.total),x.notes)),
-             self.recalltrans,(x.id,)) for x in sc.transactions]
+             self.recalltrans,(x.id,)) for x in transactions]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
