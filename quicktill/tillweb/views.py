@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from django.http import HttpResponse,Http404,HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
@@ -197,7 +198,7 @@ def sessionfinder(request,base,access,session):
             if s:
                 return HttpResponseRedirect(base+s.tillweb_url)
             errors=form._errors.setdefault("session",ErrorList())
-            errors.append(u"This session does not exist.")
+            errors.append("This session does not exist.")
     else:
         form=SessionFinderForm()
     recent=session.query(Session).\

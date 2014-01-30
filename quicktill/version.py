@@ -1,1 +1,1 @@
-version="git"
+version=u"git"

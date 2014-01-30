@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import sys,string,curses,hashlib,logging
 from . import keyboard,event,ui,td,user
 log=logging.getLogger(__name__)

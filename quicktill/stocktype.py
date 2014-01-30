@@ -3,6 +3,7 @@ Create and modify stocktypes.
 
 """
 
+from __future__ import unicode_literals
 import logging
 log=logging.getLogger(__name__)
 from . import ui,td,keyboard,stocklines,tillconfig,user

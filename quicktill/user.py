@@ -18,6 +18,7 @@ indicate restricted functionality.
 
 """
 
+from __future__ import unicode_literals
 from . import ui,td,event,keyboard,tillconfig
 from .models import User,UserToken,Permission
 from sqlalchemy.orm import joinedload

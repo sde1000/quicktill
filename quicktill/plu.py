@@ -3,6 +3,7 @@ Price lookup window.
 
 """
 
+from __future__ import unicode_literals
 from . import td,ui,keyboard,stock,stocklines
 
 class plu_keypress(object):

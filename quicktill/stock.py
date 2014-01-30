@@ -2,6 +2,7 @@
 
 """
 
+from __future__ import unicode_literals
 import logging
 from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
@@ -186,9 +187,9 @@ class stockfilter(object):
             d=td.s.merge(self.department)
             if item.stocktype.department!=d: return "wrong department"
         if item.stocklineid is not None and not self.allow_on_sale:
-            return u"already on sale on %s"%item.stockline.name
+            return "already on sale on %s"%item.stockline.name
         if item.finished is not None and not self.allow_finished:
-            return u"finished at %s"%ui.formattime(item.finished)
+            return "finished at %s"%ui.formattime(item.finished)
 
 class stockpicker(ui.dismisspopup):
     """
@@ -241,7 +242,7 @@ class stockpicker(ui.dismisspopup):
             if item:
                 self.addstr(3,15,item.stocktype.format(maxw=43))
                 not_ok=self.filter.item_problem(item)
-                if not_ok: self.addstr(4,15,u"(%s)"%not_ok)
+                if not_ok: self.addstr(4,15,"(%s)"%not_ok)
     def checkfield_set(self):
         self.addstr(6,20," "*7)
         if len(self.checkfield.f)!=3: return
@@ -326,7 +327,7 @@ class stockfield(ui.popupfield):
                  title="Choose stock item"):
         ui.popupfield.__init__(
             self,y,x,w,popupfunc=stockpicker, # Pass on args?
-            valuefunc=lambda x:u"%d: %s"%(
+            valuefunc=lambda x:"%d: %s"%(
                 x.id,x.stocktype.format(maxw=w-2-len(str(x.id)))),
             f=f,readonly=readonly,keymap=keymap)
         self.filter=filter

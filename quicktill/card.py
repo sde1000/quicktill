@@ -136,7 +136,7 @@ class CardPayment(payment.PaymentMethod):
         self._max_cashback=max_cashback
         self._cashback_first=cashback_first
         self._kickout=kickout
-        self._total_fields=[(u"Terminal {t}".format(t=t+1),
+        self._total_fields=[("Terminal {t}".format(t=t+1),
                              ui.validate_float,None)
                             for t in range(self._machines)]
     def describe_payment(self,payment):

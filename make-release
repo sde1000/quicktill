@@ -74,7 +74,7 @@ cp setup.py ${pkgdir}/setup.py
 
 # Put the version number in the version.py file
 
-echo "version=\"${newversion} (${releasedate})\"" >${pkgdir}/quicktill/version.py
+echo "version=u\"${newversion} (${releasedate})\"" >${pkgdir}/quicktill/version.py
 
 # Build the Debian package files
 

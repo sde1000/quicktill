@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from . import ui
 
 class lockpage(ui.basicpage):

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import urllib,imp,textwrap,curses,sys,traceback,math
 from . import ui,keyboard,td,printer,tillconfig
 from .models import zero,penny

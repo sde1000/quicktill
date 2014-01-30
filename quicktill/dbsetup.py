@@ -3,7 +3,7 @@ Help with populating the database with basic configuration information
 like the name of the business, the various departments, and VAT rates.
 
 """
-from __future__ import print_function
+from __future__ import print_function,unicode_literals
 
 template=r"""
 # This is a database setup file for quicktill.  It is written in YAML

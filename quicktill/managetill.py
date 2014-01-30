@@ -2,6 +2,7 @@
 
 """
 
+from __future__ import unicode_literals
 import sys,os
 from . import ui,keyboard,td,printer,session,user
 from . import tillconfig,managekeyboard,stocklines,event

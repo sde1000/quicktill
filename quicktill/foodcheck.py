@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import sys
 from . import ui,foodorder,keyboard,event,tillconfig
 

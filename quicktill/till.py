@@ -5,7 +5,7 @@ module.
 
 """
 
-from __future__ import print_function
+from __future__ import print_function,unicode_literals
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
 from . import ui,event,td,printer,tillconfig,foodorder,user

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from . import td,ui
 from .models import Department
 

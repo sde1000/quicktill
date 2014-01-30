@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import curses.ascii
 from . import ui,stock,td,keyboard,printer,tillconfig,stocklines,stocktype
 from . import user

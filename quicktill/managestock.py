@@ -1,5 +1,6 @@
 """Implements the 'Manage Stock' menu."""
 
+from __future__ import unicode_literals
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer,user
 from . import stock,delivery,department,stocklines,stocktype

@@ -31,6 +31,7 @@ Cash register page.  Allows transaction entry, voiding of lines.
 # is implemented as a notional "last entry" in the display list, and
 # will only be redrawn when the display list is redrawn.
 
+from __future__ import unicode_literals
 from . import tillconfig
 import curses,textwrap
 from . import td,ui,keyboard,printer
@@ -72,9 +73,9 @@ class bufferline(ui.lrline):
         self.cursor_colour=self.colour
         self.reg=reg
     def display(self,width):
-        if self.reg.qty is not None: m=u"{} of ".format(self.reg.qty)
+        if self.reg.qty is not None: m="{} of ".format(self.reg.qty)
         else: m=""
-        if self.reg.mod is not None: m=m+u"{} ".format(self.reg.mod.keycap)
+        if self.reg.mod is not None: m=m+"{} ".format(self.reg.mod.keycap)
         if self.reg.buf is not None: m=m+self.reg.buf
         if len(m)>0:
             self.ltext=m
@@ -82,9 +83,9 @@ class bufferline(ui.lrline):
         else:
             self.ltext=self.reg.prompt
             cursorx=0
-        self.rtext=u"{} {}".format(
+        self.rtext="{} {}".format(
             "Amount to pay" if self.reg.balance>=zero else "Refund amount",
-            tillconfig.fc(self.reg.balance)) if self.reg.balance!=zero else u""
+            tillconfig.fc(self.reg.balance)) if self.reg.balance!=zero else ""
         # Add the expected blank line
         l=['']+ui.lrline.display(self,width)
         self.cursor=(cursorx,len(l)-1)
@@ -122,7 +123,7 @@ class edittransnotes(ui.dismisspopup):
         ui.dismisspopup.__init__(
             self,5,60,title="Notes for transaction {}".format(trans.id),
             colour=ui.colour_input)
-        notes=trans.notes if trans.notes else u''
+        notes=trans.notes if trans.notes else ''
         self.notesfield=ui.editfield(2,2,56,f=notes,flen=60,keymap={
                 keyboard.K_CASH:(self.enter,None)})
         self.notesfield.focus()
@@ -289,8 +290,8 @@ class page(ui.basicpage):
         self.updateheader()
     def update_note(self):
         note=self.trans.notes if self.trans is not None else None
-        if note is None: note=u""
-        note=note+u" "*(self.w-len(note))
+        if note is None: note=""
+        note=note+" "*(self.w-len(note))
         c=self.win.getyx()
         self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
         self.win.move(*c)
@@ -394,17 +395,17 @@ class page(ui.basicpage):
             explicitprice=strtoamount(buf)
             if explicitprice==zero:
                 ui.infopopup(
-                    [u"You can't override the price of an item to be zero.  "
-                     u"You should use the {} key instead to say why we're "
-                     u"giving this item away.".format(
+                    ["You can't override the price of an item to be zero.  "
+                     "You should use the {} key instead to say why we're "
+                     "giving this item away.".format(
                             keyboard.K_WASTE.keycap)],
                     title="Zero price not allowed")
                 return
             if not self.user.has_permission('override-price'):
                 ui.infopopup(
-                    [u"You don't have permission to override the price of "
-                     u"this item to {}.  Did you mean to press the {} key "
-                     u"to enter a number of items instead?".format(
+                    ["You don't have permission to override the price of "
+                     "this item to {}.  Did you mean to press the {} key "
+                     "to enter a number of items instead?".format(
                             tillconfig.fc(explicitprice),
                             keyboard.K_QUANTITY.keycap)],
                     title="Permission required")
@@ -416,9 +417,9 @@ class page(ui.basicpage):
                 explicitprice=explicitprice/stockqty
             if department.minprice and explicitprice<department.minprice:
                 ui.infopopup(
-                    [u"Your price of {} per item is too low for {}.  "
-                     u"Did you mean to press the {} key to enter a number "
-                     u"of items instead?".format(
+                    ["Your price of {} per item is too low for {}.  "
+                     "Did you mean to press the {} key to enter a number "
+                     "of items instead?".format(
                             tillconfig.fc(explicitprice),
                             department.description,
                             keyboard.K_QUANTITY.keycap)],
@@ -426,7 +427,7 @@ class page(ui.basicpage):
                 return
             if department.maxprice and explicitprice>department.maxprice:
                 ui.infopopup(
-                    [u"Your price of {} per item is too high for {}.".format(
+                    ["Your price of {} per item is too high for {}.".format(
                             tillconfig.fc(explicitprice),
                             department.description)],
                     title="Price too high")
@@ -612,14 +613,14 @@ class page(ui.basicpage):
             return
         if department.minprice and price<department.minprice:
             self._redraw()
-            ui.infopopup([u"The minimum price for {} is {}.".format(
+            ui.infopopup(["The minimum price for {} is {}.".format(
                         department.description,
                         tillconfig.fc(department.minprice))],
                          title="Price too low")
             return
         if department.maxprice and price>department.maxprice:
             self._redraw()
-            ui.infopopup([u"The maximum price for {} is {}.".format(
+            ui.infopopup(["The maximum price for {} is {}.".format(
                         department.description,
                         tillconfig.fc(department.maxprice))],
                          title="Price too high")
@@ -857,7 +858,7 @@ class page(ui.basicpage):
             if self.balance==zero:
                 self.close_if_balanced()
                 return
-            ui.infopopup([u"You can't pay {}!".format(tillconfig.fc(zero)),
+            ui.infopopup(["You can't pay {}!".format(tillconfig.fc(zero)),
                           'If you meant "exact amount" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'],title="Error")

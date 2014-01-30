@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import string,time
 from . import td,ui,tillconfig,payment
 from decimal import Decimal
@@ -41,7 +42,7 @@ def print_receipt(transid):
                      colour=1,emph=1)
     for p in trans.payments:
         pl=payment.pline(p)
-        driver.printline(u"\t\t{}{}".format(pl.text,totalpad))
+        driver.printline("\t\t{}{}".format(pl.text,totalpad))
     driver.printline("")
     if not trans.closed:
         driver.printline("\tThis is not a VAT receipt",colour=1,emph=1)
@@ -328,4 +329,3 @@ def print_order_cancel(driver,number):
 
 def kickout():
     pass
-

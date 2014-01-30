@@ -1,6 +1,7 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
+from __future__ import unicode_literals
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
 from . import keyboard,event,tillconfig,td
 

@@ -6,6 +6,8 @@ Till configurations can define as many new keycodes as they need.
 
 """
 
+from __future__ import unicode_literals
+
 class keycode(object):
     def __new__(cls,name,keycap,*args,**kwargs):
         # If a keycode of this name already exists, return it instead

@@ -3,6 +3,7 @@ Starting, ending, and recording totals for sessions.
 
 """
 
+from __future__ import unicode_literals
 from . import ui,keyboard,td,printer,tillconfig,user
 from .models import Session,SessionTotal,PayType,penny,zero
 from .td import undefer,func,desc,select
@@ -167,7 +168,7 @@ class record(ui.dismisspopup):
     """
     ttx=30
     atx=45
-    ff=u"{:>13}"
+    ff="{:>13}"
     def __init__(self,s):
         td.s.add(s)
         log.info("Record session takings popup: session %d",s.id)
@@ -199,7 +200,7 @@ class record(ui.dismisspopup):
             pm.y=y
             self.addstr(y,self.ttx,self.ff.format(tillconfig.fc(pm.till_total)))
             pm.display_total()
-            self.addstr(y,2,u"{}:".format(pm.pm.description))
+            self.addstr(y,2,"{}:".format(pm.pm.description))
             if len(pm.pm.total_fields)==0:
                 # No data entry; just the description
                 pm.fields=[]
@@ -215,7 +216,7 @@ class record(ui.dismisspopup):
                 # one line per field with indent
                 for field in pm.pm.total_fields:
                     y=y+1
-                    self.addstr(y,4,u"{}:".format(field[0]))
+                    self.addstr(y,4,"{}:".format(field[0]))
                     f=ui.editfield(y,20,8,validate=field[1])
                     self.fl.append(f)
                     pm.fields.append(f)
@@ -239,11 +240,11 @@ class record(ui.dismisspopup):
         """
         total=sum(pm.actual_total for pm in self.pms)
         difference=self.till_total-total
-        description=u"Total (DOWN by {})"
-        if difference==zero: description=u"Total (correct)"
+        description="Total (DOWN by {})"
+        if difference==zero: description="Total (correct)"
         elif difference<zero:
             difference=-difference
-            description=u"Total (UP by {})"
+            description="Total (UP by {})"
         colour=ui.colour_error if difference>Decimal(20) else ui.colour_input
         self.addstr(self.total_y,2,' '*28)
         self.addstr(self.total_y,2,
@@ -287,7 +288,7 @@ class record(ui.dismisspopup):
             r=pm.pm.commit_total(self.session,pm.actual_total)
             if r is not None:
                 td.s.rollback()
-                ui.infopopup([u"Totals not recorded: {} payment method "
+                ui.infopopup(["Totals not recorded: {} payment method "
                               "says {}".format(pm.pm.description,r)],
                              title="Error")
                 return

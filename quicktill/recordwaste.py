@@ -3,6 +3,7 @@ Record waste against a stock item or stock line.
 
 """
 
+from __future__ import unicode_literals
 from . import ui,td,keyboard,stock,stocklines,department,user
 from .models import StockItem,StockType,RemoveCode,StockOut,StockLine
 from decimal import Decimal
@@ -34,7 +35,7 @@ def stockline_chosen(stockline):
             if len(stockline.stockonsale)>0:
                 record_item_waste(stockline.stockonsale[0])
             else:
-                ui.infopopup([u"There is nothing on sale on {}.".format(
+                ui.infopopup(["There is nothing on sale on {}.".format(
                             stockline.name)],title="Error")
 
 class record_item_waste(ui.dismisspopup):
@@ -69,7 +70,7 @@ class record_item_waste(ui.dismisspopup):
     def stockfield_updated(self):
         self.addstr(6,26," "*20)
         s=self.stockfield.read()
-        if s: self.addstr(6,26,u"%ss"%s.stocktype.unit.name)
+        if s: self.addstr(6,26,"%ss"%s.stocktype.unit.name)
     def finish(self):
         item=self.stockfield.read()
         if item is None:

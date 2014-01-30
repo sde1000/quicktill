@@ -1,5 +1,6 @@
 """Implements the "use stock" menu"""
 
+from __future__ import unicode_literals
 from . import ui,td,keyboard,stock,stocklines,tillconfig
 from .models import StockLine,FinishCode,StockItem
 from .models import StockType,StockAnnotation

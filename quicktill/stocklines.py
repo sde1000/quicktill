@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import logging
 from . import keyboard,ui,td,tillconfig,printer
 from .models import Department,StockLine,KeyboardBinding

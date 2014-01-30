@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function,unicode_literals
 from . import ui,keyboard,printer,tillconfig,event,td,user
 from . import twitter
 from .models import VatBand
