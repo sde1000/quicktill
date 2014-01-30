@@ -1,3 +1,11 @@
+quicktill (0.10.8) stable; urgency=low
+
+  * New release 0.10.8
+
+  * Bugfix in screen unblank
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 30 Jan 2014 15:54:01 +0000
+
 quicktill (0.10.7) stable; urgency=low
 
   * New release 0.10.7
