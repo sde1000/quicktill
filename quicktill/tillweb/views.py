@@ -247,7 +247,7 @@ def sessiondept(request,base,access,session,sessionid,dept):
         options(joinedload_all('stockref.stockitem.stocktype.unit')).\
         filter(Transaction.sessionid==s.id).\
         filter(Transline.dept_id==dept.id).\
-        order_by(Transline.time).\
+        order_by(Transline.id).\
         all()
     return ('sessiondept.html',{'session':s,'department':dept,
                                 'translines':translines})
