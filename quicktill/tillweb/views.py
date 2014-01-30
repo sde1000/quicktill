@@ -240,6 +240,18 @@ def sessiondept(request,base,access,session,sessionid,dept):
         dept=session.query(Department).filter_by(id=int(dept)).one()
     except NoResultFound:
         raise Http404
+    nextsession=session.query(Session).\
+        filter(Session.id>s.id).\
+        order_by(Session.id).\
+        first()
+    nextlink=base+nextsession.tillweb_url+"dept{}/".format(dept.id) \
+        if nextsession else None
+    prevsession=session.query(Session).\
+        filter(Session.id<s.id).\
+        order_by(desc(Session.id)).\
+        first()
+    prevlink=base+prevsession.tillweb_url+"dept{}/".format(dept.id) \
+        if prevsession else None
     translines=session.query(Transline).\
         join(Transaction).\
         options(joinedload('transaction')).\
@@ -250,7 +262,8 @@ def sessiondept(request,base,access,session,sessionid,dept):
         order_by(Transline.id).\
         all()
     return ('sessiondept.html',{'session':s,'department':dept,
-                                'translines':translines})
+                                'translines':translines,
+                                'nextlink':nextlink,'prevlink':prevlink})
 
 @tillweb_view
 def transaction(request,base,access,session,transid):
