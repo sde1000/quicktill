@@ -1468,7 +1468,7 @@ class page(ui.basicpage):
             # is printing the current transaction if it is closed.
             # All other keypresses are ignored.
             if self.trans: td.s.add(self.trans)
-            if self.trans.closed and k==keyboard.K_PRINT:
+            if self.trans and self.trans.closed and k==keyboard.K_PRINT:
                 self.printkey()
             return
         if not self.entry(): return
