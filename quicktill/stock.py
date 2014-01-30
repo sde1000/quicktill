@@ -60,7 +60,8 @@ class annotate(ui.dismisspopup):
         self.addstr(3,2,"       Stock item:")
         stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),}
         self.stockfield=stockfield(3,21,47,keymap=stockfield_km,
-                                   filter=stockfilter(allow_finished=True),
+                                   filter=stockfilter(
+                allow_finished=True,sort_descending_stockid=True),
                                    title="Choose stock item to annotate",
                                    check_checkdigits=False)
         self.addstr(4,2,"Annotation type:")
@@ -158,6 +159,8 @@ class stockfilter(object):
         """
         if department is None: department=self.department
         q=td.s.query(StockItem).join(Delivery).filter(Delivery.checked==True)
+        # Unfinished items are sorted to the top
+        q=q.order_by(StockItem.finished!=None)
         if department:
             td.s.add(department)
             q=q.join(StockType)
@@ -274,8 +277,7 @@ class stockpicker(ui.dismisspopup):
     def popup_menu(self,department):
         items=self.filter.query_items(department).\
             options(joinedload('stocktype')).\
-            options(undefer('remaining')).\
-            all()
+            options(undefer('remaining'))[:100]
         f=ui.tableformatter(' r l c ')
         sl=[(ui.tableline(f,(s.id,s.stocktype.format(),"%s %ss"%(
                             s.remaining,s.stockunit.unit.name))),
