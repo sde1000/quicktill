@@ -1,3 +1,15 @@
+quicktill (0.10.9) stable; urgency=low
+
+  * New release 0.10.9
+
+  * Limit stockpicker popups to 100 items, sort unfinished items to the top
+
+  * Limit session totals popup to last 100 sessions
+
+  * Fix print key on locked register with no transaction
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 30 Jan 2014 17:51:33 +0000
+
 quicktill (0.10.8) stable; urgency=low
 
   * New release 0.10.8
