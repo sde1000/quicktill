@@ -1,3 +1,23 @@
+quicktill (0.10.7) stable; urgency=low
+
+  * New release 0.10.7
+
+  * Add "autolock" feature
+
+  * Unicode literals everywhere!
+
+  * Sort open transactions to the top of the list for Recall Trans
+
+  * Convert transaction total to a column property
+
+  * Add "next" and "previous" links to sessiondept pages
+
+  * Fix transline ordering in sessiondept page
+
+  * Update README
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 30 Jan 2014 14:42:10 +0000
+
 quicktill (0.10.6) stable; urgency=low
 
   * New release 0.10.6
