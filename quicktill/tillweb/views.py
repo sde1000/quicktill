@@ -312,6 +312,9 @@ def delivery(request,base,access,session,deliveryid):
     try:
         d=session.query(Delivery).\
             filter_by(id=int(deliveryid)).\
+            options(joinedload_all('items.stocktype.unit')).\
+            options(joinedload_all('items.stockline')).\
+            options(undefer_group('qtys')).\
             one()
     except NoResultFound:
         raise Http404
@@ -414,6 +417,8 @@ def stockline(request,base,access,session,stocklineid):
     try:
         s=session.query(StockLine).\
             filter_by(id=int(stocklineid)).\
+            options(joinedload_all('stockonsale.stocktype.unit')).\
+            options(undefer_group('qtys')).\
             one()
     except NoResultFound:
         raise Http404
