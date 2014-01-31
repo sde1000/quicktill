@@ -1,9 +1,14 @@
-"""Implements the "use stock" menu"""
+"""
+Deals with connecting stock items with stock lines.
+
+"""
 
 from __future__ import unicode_literals
-from . import ui,td,keyboard,stock,stocklines,tillconfig
-from .models import StockLine,FinishCode,StockItem
-from .models import StockType,StockAnnotation
+from . import ui,td,keyboard,stock,stocklines,tillconfig,user
+from .models import StockLine,FinishCode,StockItem,Department,Delivery
+from .models import StockType,StockAnnotation,StockLineTypeLog
+from sqlalchemy.orm import contains_eager,undefer
+from sqlalchemy.sql import select
 import datetime
 
 import logging
@@ -22,7 +27,8 @@ log=logging.getLogger(__name__)
 # 2) Print a re-stock slip for all stock lines
 # 3) Print a re-stock slip for all lines in a particular location
 
-class popup(ui.infopopup):
+class popup(user.permission_checked,ui.infopopup):
+    permission_required=("use-stock","Allocate stock to lines")
     def __init__(self):
         log.info("Use Stock popup")
         ui.infopopup.__init__(
@@ -34,7 +40,7 @@ class popup(ui.infopopup):
             title="Use Stock",colour=ui.colour_input,
             keymap={keyboard.K_ONE:(stocklines.restock_all,None,True),
                     keyboard.K_TWO:(stocklines.restock_location,None,True),
-                    keyboard.K_THREE:(stocklines.auto_allocate,None,True)})
+                    keyboard.K_THREE:(auto_allocate,None,True)})
     def line_chosen(self,kb):
         self.dismiss()
         td.s.add(kb)
@@ -238,3 +244,88 @@ def remove_stockitem(line,item):
         item.id,item.stocktype.format(),line.name,displaynote)],
                  title="Stock removed from line",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
+
+def stock_autoallocate_candidates(deliveryid=None):
+    """
+    Return a list of (stockitem,stockline) tuples.
+
+    """
+
+def auto_allocate_internal(deliveryid=None,message_on_no_work=True):
+    """
+    Automatically allocate stock to stock lines.  If there's a potential
+    clash (the same type of stock has been allocated to more than one
+    stock line in the past) then enter a reduced version of the stockline
+    associations dialogue and let them sort out the clash; then retry.
+
+    """
+    q=td.s.query(StockItem,StockLine).\
+        join(StockType).\
+        join(Delivery).\
+        filter(StockLine.id.in_(
+            select([StockLineTypeLog.stocklineid],
+              whereclause=(
+                StockLineTypeLog.stocktype_id==StockItem.stocktype_id)).\
+            correlate(StockItem.__table__))).\
+        filter(StockItem.finished==None).\
+        filter(StockItem.stocklineid==None).\
+        filter(Delivery.checked==True).\
+        filter(StockLine.capacity!=None).\
+        options(contains_eager(StockItem.stocktype)).\
+        options(undefer(StockItem.used)).\
+        order_by(StockItem.id)
+    if deliveryid:
+        q=q.filter(Delivery.id==deliveryid)
+    cl=q.all()
+    # Check for duplicate stockids
+    seen={}
+    duplines={}
+    for item,line in cl:
+        if item in seen:
+            duplines[line.id]=item
+            duplines[seen[item].id]=item
+        seen[item]=line
+    if duplines:
+        # Oops, there were duplicate stockids.  Dump the user into the
+        # stockline associations editor to sort it out.
+        stockline_associations(
+            list(duplines.keys()),"The following stock line and stock type "
+            "associations meant an item of stock could not be allocated "
+            "unambiguously.  Delete associations from the list below "
+            "until there is only one stock line per stock type, then "
+            "press Clear and re-try the stock allocation using 'Use Stock' "
+            "option 3.")
+        return
+    user=ui.current_user()
+    user=user.dbuser if user and hasattr(user,'dbuser') else None
+    if len(cl)>0:
+        for item,line in cl:
+            item.stockline=line
+            item.displayqty=item.used
+            item.onsale=datetime.datetime.now()
+            td.s.add(StockAnnotation(
+                    stockitem=item,atype="start",
+                    text="{} (auto-allocate)".format(line.name),
+                    user=user))
+        td.s.flush()
+        ui.infopopup([
+                "The following stock items have been allocated to "
+                "display lines:",""]+[
+                "{} {} -> {}".format(item.id,item.stocktype.format(),
+                                     line.name) for item,line in cl],
+                     title="Auto-allocate confirmation",
+                     colour=ui.colour_confirm,
+                     dismiss=keyboard.K_CASH)
+    elif message_on_no_work:
+        ui.infopopup([
+                "There was nothing available for automatic allocation.  "
+                "To allocate stock to a stock line manually, press the "
+                "'Use Stock' button, then the button for the stock line, "
+                "and choose option 2."],
+                     title="Auto-allocate confirmation",
+                     colour=ui.colour_confirm,
+                     dismiss=keyboard.K_CASH)
+
+auto_allocate=user.permission_required(
+    'auto-allocate','Automatically allocate stock to lines')(
+    auto_allocate_internal)

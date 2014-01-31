@@ -61,10 +61,10 @@ def restock_list(stockline_list):
         return
     printer.print_restock_list(sl)
     ui.infopopup([
-        "The list of stock to be put on display has been printed.","",
-        "Please choose one of the following options:","",
-        "1. I have finished moving the stock on the printed list.",
-        "2. I have not moved any stock and I have thrown the list away."],
+            "The list of stock to be put on display has been printed.","",
+            "Please choose one of the following options:","",
+            "1. I have finished moving the stock on the printed list.",
+            "2. I have not moved any stock and I have thrown the list away."],
                  title="Confirm stock movement",
                  keymap={keyboard.K_ONE:(finish_restock,(sl,),True),
                          keyboard.K_TWO:(abandon_restock,(sl,),True)},
@@ -140,54 +140,6 @@ class stockline_associations(ui.listpopup):
             td.s.flush()
         else:
             ui.listpopup.keypress(self,k)
-
-def auto_allocate(deliveryid=None,confirm=True):
-    """
-    Automatically allocate stock to stock lines.  If there's a potential
-    clash (the same type of stock has been allocated to more than one
-    stock line in the past) then enter a reduced version of the stockline
-    associations dialogue and let them sort out the clash; then retry.
-
-    """
-    cl=td.stock_autoallocate_candidates(deliveryid)
-    # Check for duplicate stockids
-    seen={}
-    duplines={}
-    for item,line in cl:
-        if item in seen:
-            duplines[line.id]=item
-            duplines[seen[item].id]=item
-        seen[item]=line
-    if duplines!={}:
-        # Oops, there were duplicate stockids.  Dump the user into the
-        # stockline associations editor to sort it out.
-        stockline_associations(
-            list(duplines.keys()),"The following stock line and stock type "
-            "associations meant an item of stock could not be allocated "
-            "unambiguously.  Delete associations from the list below "
-            "until there is only one stock line per stock type, then "
-            "press Clear and re-try the stock allocation using 'Use Stock' "
-            "option 3.")
-    else:
-        if len(cl)>0:
-            for item,line in cl:
-                item.stockline=line
-                item.displayqty=item.used
-            td.s.flush()
-            message=("The following stock items have been allocated to "
-                     "display lines: %s."%(
-                    ', '.join(["%d"%item.id for item,line in cl])))
-            confirm=True
-        else:
-            message=("There was nothing available for automatic allocation.  "
-                     "To allocate stock to a stock line manually, press the "
-                     "'Use Stock' button, then the button for the stock line, "
-                     "and choose option 2.")
-        if confirm:
-            ui.infopopup([message],
-                         title="Auto-allocate confirmation",
-                         colour=ui.colour_confirm,
-                         dismiss=keyboard.K_CASH)
 
 def return_stock(stockline):
     td.s.add(stockline)

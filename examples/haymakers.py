@@ -54,6 +54,8 @@ user.group('skilled-user','Skilled user [group]',[
         "stock-check",
         "stock-level-check",
         "twitter",
+        "use-stock",
+        "auto-allocate",
         ])
 
 # Pub managers should generally have the following permissions:

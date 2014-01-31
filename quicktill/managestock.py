@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 import curses,curses.ascii,time
-from . import ui,td,keyboard,printer,user
+from . import ui,td,keyboard,printer,user,usestock
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType
 from .models import StockItem,Delivery,StockOut,func,desc
@@ -215,11 +215,8 @@ def correct_stocktype():
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
-        (keyboard.K_ONE,"Re-fill all stock lines",stocklines.restock_all,None),
-        (keyboard.K_TWO,"Re-fill stock lines by location",
-         stocklines.restock_location,None),
         (keyboard.K_THREE,"Auto-allocate stock to lines",
-         stocklines.auto_allocate,None),
+         usestock.auto_allocate,None),
         (keyboard.K_FOUR,"Manage stock line associations",
          stocklines.stockline_associations,None),
         (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
@@ -237,6 +234,9 @@ def popup():
     log.info("Stock management popup")
     menu=[
         (keyboard.K_ONE,"Deliveries",delivery.deliverymenu,None),
+        (keyboard.K_TWO,"Re-fill all stock lines",stocklines.restock_all,None),
+        (keyboard.K_THREE,"Re-fill stock lines by location",
+         stocklines.restock_location,None),
         (keyboard.K_FOUR,"Finish stock not currently on sale",
          finishstock,None),
         (keyboard.K_FIVE,"Stock check (unfinished stock)",

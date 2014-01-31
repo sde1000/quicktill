@@ -90,29 +90,6 @@ def stock_checkpullthru(stockid,maxtime):
             where(StockOut.removecode_id.in_(['sold','pullthru']))
         ).scalar()
 
-def stock_autoallocate_candidates(deliveryid=None):
-    """
-    Return a list of (stockitem,stockline) tuples.
-
-    """
-    global s
-    q=s.query(StockItem,StockLine).\
-        join(StockType).\
-        join(Delivery).\
-        filter(StockLine.id.in_(
-            select([StockLineTypeLog.stocklineid],
-                   whereclause=(
-                        StockLineTypeLog.stocktype_id==StockItem.stocktype_id)).\
-                correlate(StockItem.__table__))).\
-        filter(StockItem.finished==None).\
-        filter(StockItem.stocklineid==None).\
-        filter(Delivery.checked==True).\
-        filter(StockLine.capacity!=None).\
-        order_by(StockItem.id)
-    if deliveryid is not None:
-        q=q.filter(Delivery.id==deliveryid)
-    return q.all()
-
 def stock_purge():
     """Stock items that have been completely used up through the
     display mechanism should be marked as 'finished' in the stock

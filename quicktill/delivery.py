@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import curses.ascii
-from . import ui,stock,td,keyboard,printer,tillconfig,stocklines,stocktype
-from . import user
+from . import ui,stock,td,keyboard,printer,tillconfig,stocktype
+from . import user,usestock
 from decimal import Decimal
 from .models import Delivery,Supplier,StockUnit,StockItem,desc
 from .models import penny
@@ -218,7 +218,8 @@ class delivery(ui.basicpopup):
         d.checked=True
         td.s.flush()
         self.dismiss()
-        stocklines.auto_allocate(deliveryid=self.dn,confirm=False)
+        usestock.auto_allocate_internal(deliveryid=self.dn,
+                                        message_on_no_work=False)
     def confirmcheck(self):
         if not self.dn:
             ui.infopopup(["There is nothing here to confirm!"],
