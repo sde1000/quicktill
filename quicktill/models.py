@@ -1017,6 +1017,8 @@ StockItem.used=column_property(
         correlate(StockItem.__table__).\
         where(StockOut.stockid==StockItem.id).\
         label('used'),
+    deferred=True,
+    group="qtys",
     doc="Amount of this item that has been used for any reason")
 StockItem.sold=column_property(
     select([func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
@@ -1024,6 +1026,8 @@ StockItem.sold=column_property(
         where(StockOut.stockid==StockItem.id).\
         where(StockOut.removecode_id=="sold").\
         label('sold'),
+    deferred=True,
+    group="qtys",
     doc="Amount of this item that has been used by being sold")
 StockItem.remaining=column_property(
     select([select([StockUnit.size],StockUnit.id==StockItem.stockunit_id
@@ -1031,19 +1035,25 @@ StockItem.remaining=column_property(
                 func.coalesce(func.sum(StockOut.qty),text("0.0"))]).\
         where(StockOut.stockid==StockItem.id).\
         label('remaining'),
+    deferred=True,
+    group="qtys",
     doc="Amount of this item remaining")
 StockItem.firstsale=column_property(
     select([func.min(StockOut.time)]).\
         correlate(StockItem.__table__).\
         where(StockOut.stockid==StockItem.id).\
         where(StockOut.removecode_id=='sold').\
-        label('firstsale'))
+        label('firstsale'),
+    deferred=True,
+    doc="Time of first sale of this item")
 StockItem.lastsale=column_property(
     select([func.max(StockOut.time)]).\
         correlate(StockItem.__table__).\
         where(StockOut.stockid==StockItem.id).\
         where(StockOut.removecode_id=='sold').\
-        label('lastsale'))
+        label('lastsale'),
+    deferred=True,
+    doc="Time of last sale of this item")
 
 # Similarly, this is added to the StockType class here because it
 # refers to Stock

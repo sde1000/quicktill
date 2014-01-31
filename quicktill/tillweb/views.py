@@ -11,7 +11,8 @@ from models import *
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload,subqueryload_all
 from sqlalchemy.orm import joinedload,joinedload_all
-from sqlalchemy.orm import undefer
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import undefer,defer,undefer_group
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import desc
 from sqlalchemy.sql.expression import tuple_,func,null
@@ -150,6 +151,7 @@ def pubroot(request,base,access,session):
         filter(StockLine.location=="Bar").\
         order_by(StockLine.dept_id,StockLine.name).\
         options(joinedload_all('stockonsale.stocktype.unit')).\
+        options(undefer_group('qtys')).\
         all()
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
@@ -162,6 +164,7 @@ def pubroot(request,base,access,session):
         order_by(StockLine.name!=null(),StockAnnotation.time).\
         options(joinedload_all('stockitem.stocktype.unit')).\
         options(joinedload_all('stockitem.stockline')).\
+        options(undefer_group('qtys')).\
         all()
     return ('index.html',
             {'currentsession':currentsession,
@@ -275,6 +278,8 @@ def transaction(request,base,access,session,transid):
             filter_by(id=int(transid)).\
             options(subqueryload_all('payments')).\
             options(joinedload_all('lines.stockref.stockitem.stocktype')).\
+            options(joinedload('lines.user')).\
+            options(undefer('total')).\
             one()
     except NoResultFound:
         raise Http404
@@ -370,9 +375,7 @@ def stocksearch(request,base,access,session):
     q=session.query(StockItem).join(StockType).order_by(StockItem.id).\
         options(joinedload_all('stocktype.unit')).\
         options(joinedload('stockline')).\
-        options(undefer('used')).\
-        options(undefer('sold')).\
-        options(undefer('remaining'))
+        options(undefer_group('qtys'))
     if form.is_valid():
         if form.is_filled_in():
             q=form.filter(q)
@@ -432,9 +435,7 @@ def department(request,base,access,session,departmentid):
         filter(StockType.department==d).\
         order_by(desc(StockItem.id)).\
         options(joinedload_all('stocktype.unit')).\
-        options(undefer('used')).\
-        options(undefer('sold')).\
-        options(undefer('remaining')).\
+        options(undefer_group('qtys')).\
         options(joinedload('stockline')).\
         options(joinedload('finishcode'))
     if not include_finished:
