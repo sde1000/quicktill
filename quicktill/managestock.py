@@ -5,7 +5,8 @@ import curses,curses.ascii,time
 from . import ui,td,keyboard,printer,user
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType
-from .models import StockItem,Delivery
+from .models import StockItem,Delivery,StockOut,func,desc
+from sqlalchemy.orm import lazyload,undefer
 import datetime
 
 import logging
@@ -171,7 +172,20 @@ class stocklevelcheck(user.permission_checked,ui.dismisspopup):
               else self.deptfield.read())
         if dept: td.s.add(dept)
         self.dismiss()
-        r=td.stocklevel_check(dept,'%d weeks'%weeks)
+        q=td.s.query(StockType,func.sum(StockOut.qty)).\
+            join(StockItem).\
+            join(StockOut).\
+            options(lazyload(StockType.department)).\
+            options(lazyload(StockType.unit)).\
+            options(undefer(StockType.instock)).\
+            filter(StockOut.removecode_id=='sold').\
+            filter((func.now()-StockOut.time)<"{} weeks".format(weeks)).\
+            having(func.sum(StockOut.qty)>0).\
+            group_by(StockType).\
+            order_by(desc(func.sum(StockOut.qty)-StockType.instock))
+        if dept:
+            q=q.filter(StockType.dept_id==dept.id)
+        r=q.all()
         f=ui.tableformatter(' l r  r  r ')
         lines=[ui.tableline(f,(st.format(),sold,st.instock,sold-st.instock))
                for st,sold in r]

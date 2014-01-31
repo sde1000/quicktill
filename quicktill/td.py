@@ -173,24 +173,6 @@ def stillage_summary(session):
         all()
     return stillage
 
-### Check stock levels
-
-def stocklevel_check(dept=None,period='3 weeks'):
-    global s
-    q=s.query(StockType,func.sum(StockOut.qty)).\
-        join(StockItem).\
-        join(StockOut).\
-        options(lazyload(StockType.department)).\
-        options(lazyload(StockType.unit)).\
-        filter(StockOut.removecode_id=='sold').\
-        filter((func.now()-StockOut.time)<period).\
-        having(func.sum(StockOut.qty)>0).\
-        group_by(StockType).\
-        order_by(desc(func.sum(StockOut.qty)-StockType.instock))
-    if dept is not None:
-        q=q.filter(StockType.dept_id==dept.id)
-    return q.all()
-
 ### Functions related to food order numbers
 
 def foodorder_reset():
