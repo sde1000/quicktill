@@ -35,10 +35,11 @@ def add_ddl(target,create,drop):
 class Business(Base):
     __tablename__='businesses'
     id=Column('business',Integer,primary_key=True,autoincrement=False)
-    name=Column(String(80))
-    abbrev=Column(String(20))
-    address=Column(String(200))
+    name=Column(String(80),nullable=False)
+    abbrev=Column(String(20),nullable=False)
+    address=Column(String(),nullable=False)
     vatno=Column(String(30))
+    show_vat_breakdown=Column(Boolean(),nullable=False,default=False)
     def __unicode__(self):
         return u"%s"%(self.abbrev,)
     def __repr__(self):

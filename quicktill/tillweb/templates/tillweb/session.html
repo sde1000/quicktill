@@ -22,7 +22,7 @@
 {% endfor %}
 <td><strong>Error</strong><br /><span class="money">{{session.error}}</span></td>
 {% for vb,t,ex,vat in session.vatband_totals %}
-{% if vb.business.abbrev == "IPL" %}
+{% if vb.business.show_vat_breakdown %}
 <td><strong>{{vb.business}} ex-VAT</strong><br /><span class="money">{{ex}}</span></td>
 <td><strong>{{vb.business}} VAT</strong><br /><span class="money">{{vat}}</span></td>
 {% else %}

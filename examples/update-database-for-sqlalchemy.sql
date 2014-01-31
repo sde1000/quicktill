@@ -193,3 +193,11 @@ ALTER TABLE departments ADD COLUMN minprice NUMERIC(5,2);
 ALTER TABLE departments ADD COLUMN maxprice NUMERIC(5,2);
 
 ALTER TABLE stock_annotations ADD COLUMN "user" INTEGER REFERENCES users(id);
+
+/* Alter and update the Business table */
+ALTER TABLE businesses
+  ALTER COLUMN address SET DATA TYPE VARCHAR;
+ALTER TABLE businesses ALTER COLUMN name SET NOT NULL;
+ALTER TABLE businesses ALTER COLUMN abbrev SET NOT NULL;
+ALTER TABLE businesses ALTER COLUMN address SET NOT NULL;
+ALTER TABLE businesses ADD COLUMN show_vat_breakdown BOOLEAN NOT NULL DEFAULT false;
