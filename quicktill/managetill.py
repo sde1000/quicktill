@@ -11,15 +11,6 @@ from .version import version
 import logging
 log=logging.getLogger(__name__)
 
-@user.permission_required(
-    'restore-deferred','Restore deferred transactions to the current session')
-def transrestore():
-    log.info("Restore deferred transactions")
-    td.trans_restore()
-    ui.infopopup(["All deferred transactions have been restored."],
-                 title="Confirmation",colour=ui.colour_confirm,
-                 dismiss=keyboard.K_CASH)
-
 class receiptprint(user.permission_checked,ui.dismisspopup):
     permission_required=('print-receipt-by-number',
                          'Print any receipt given the transaction number')
@@ -77,7 +68,6 @@ def popup():
     menu=[
         (keyboard.K_ONE,"Sessions",session.menu,None),
         (keyboard.K_TWO,"Current session summary",session.currentsummary,None),
-        (keyboard.K_THREE,"Restore deferred transactions",transrestore,None),
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
         (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),

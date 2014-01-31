@@ -60,20 +60,6 @@ class orm_session(object):
         s=None
         log.debug("End session")
 
-### Convenience functions
-
-def trans_restore():
-    """Restores all deferred transactions.
-
-    """
-    global s
-    sc=Session.current(s)
-    if sc is None: return 0
-    deferred=s.query(Transaction).filter(Transaction.sessionid==None).all()
-    for i in deferred:
-        i.session=sc
-    s.flush()
-
 ### Functions related to the stocktypes table
 
 def stocktype_completemanufacturer(m):

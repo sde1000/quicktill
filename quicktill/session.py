@@ -5,13 +5,27 @@ Starting, ending, and recording totals for sessions.
 
 from __future__ import unicode_literals
 from . import ui,keyboard,td,printer,tillconfig,user
-from .models import Session,SessionTotal,PayType,penny,zero
+from .models import Session,SessionTotal,PayType,Transaction,penny,zero
 from .td import undefer,func,desc,select
 from decimal import Decimal
 import datetime,math
 
 import logging
 log=logging.getLogger(__name__)
+
+def trans_restore():
+    """
+    Moves deferred transactions to the current session.  Returns a
+    list of transactions that were deferred.
+
+    """
+    sc=Session.current(td.s)
+    if sc is None: return 0
+    deferred=td.s.query(Transaction).filter(Transaction.sessionid==None).all()
+    for i in deferred:
+        i.session=sc
+    td.s.flush()
+    return deferred
 
 class ssdialog(ui.dismisspopup):
     """
@@ -45,11 +59,14 @@ class ssdialog(ui.dismisspopup):
         sc=Session(date)
         td.s.add(sc)
         td.s.flush()
-        td.trans_restore()
+        deferred=trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d",sc.id)
         printer.kickout()
-        ui.infopopup(["Started session number %d."%sc.id],
+        deferred=["","The following deferred transactions were restored:",""]+[
+            "{} - {}".format(d.id,d.notes) if d.notes else
+            "{}".format(d.id) for d in deferred] if deferred else []
+        ui.infopopup(["Started session number %d."%sc.id]+deferred,
                      title="Session started",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
@@ -392,6 +409,23 @@ def currentsummary():
     else:
         totalpopup(sc)
 
+@user.permission_required(
+    'restore-deferred','Restore deferred transactions to the current session')
+def restore_deferred():
+    log.info("Restore deferred transactions")
+    deferred=trans_restore()
+    if deferred:
+        ui.infopopup(["The following deferred transactions were restored "
+                      "to this session:",""]+[
+                "{} - {}".format(d.id,d.notes) if d.notes else
+                "{}".format(d.id) for d in deferred],
+                     title="Deferred transactions restored",
+                     colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
+    else:
+        ui.infopopup(["There were no deferred transactions to be restored."],
+                     title="No transactions restored",colour=ui.colour_confirm,
+                     dismiss=keyboard.K_CASH)
+
 def menu():
     """
     Session management menu.
@@ -403,5 +437,6 @@ def menu():
         (keyboard.K_TWO,"End the current session",end,None),
         (keyboard.K_THREE,"Record session takings",recordtakings,None),
         (keyboard.K_FOUR,"Display session summary",summary,None),
+        (keyboard.K_FIVE,"Restore deferred transactions",restore_deferred,None),
         ]
     ui.keymenu(menu,"Session management options")
