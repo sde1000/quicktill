@@ -12,12 +12,12 @@ class bbcheck(ui.dismisspopup):
     the collection receipt.
 
     """
-    def __init__(self,share=25.0):
+    def __init__(self,vatband,share=25.0):
         ui.dismisspopup.__init__(self,7,20,title="Bar Billiards check",
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         # We assume that VAT band 'A' is the current main VAT rate.
-        self.vatrate=float(td.s.query(VatBand).get('A').at(datetime.datetime.now()).rate)
+        self.vatrate=float(td.s.query(VatBand).get(vatband).at(datetime.datetime.now()).rate)
         self.vatrate=self.vatrate/100.0
         self.addstr(2,2,"   Total gross:")
         self.addstr(3,2,"Supplier share:")
