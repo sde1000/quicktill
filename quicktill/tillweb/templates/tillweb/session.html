@@ -77,6 +77,35 @@ transactions.</p>
 </table>
 {% endif %}
 
+{% with usertotals=session.user_totals %}
+{% if usertotals %}
+<h2>Takings by user</h2>
+
+<table id="usertakings">
+<thead>
+<tr><th>User</th><th>Items</th><th>Total</th></tr>
+</thead>
+<tbody>
+{% for user,i,t in usertotals %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
+<td>{{i}}</td>
+<td class="money">{{t}}</td>
+</tr>
+{% empty %}
+<tr><td>Not recorded</td><td></td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#usertakings").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% endif %}
+{% endwith %}
+
 <h2>Stock sold in this session</h2>
 <table id="stocksold">
 <thead>

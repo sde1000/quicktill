@@ -155,6 +155,17 @@ class Session(Base):
             order_by(Department.id).\
             group_by(Department).all()
     @property
+    def user_totals(self):
+        "Transaction lines broken down by User; also count of items sold."
+        return object_session(self).\
+            query(User,func.sum(Transline.items),func.sum(
+                Transline.items*Transline.amount)).\
+            filter(Transaction.sessionid==self.id).\
+            join(Transline,Transaction).\
+            order_by(desc(func.sum(
+                Transline.items*Transline.amount))).\
+            group_by(User).all()
+    @property
     def payment_totals(self):
         "Transactions broken down by payment type."
         return object_session(self).\
