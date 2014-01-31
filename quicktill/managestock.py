@@ -4,9 +4,11 @@ from __future__ import unicode_literals
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer,user,usestock
 from . import stock,delivery,department,stocklines,stocktype
-from .models import Department,FinishCode,StockLine,StockType
+from .models import Department,FinishCode,StockLine,StockType,StockAnnotation
 from .models import StockItem,Delivery,StockOut,func,desc
-from sqlalchemy.orm import lazyload,undefer
+from sqlalchemy.orm import lazyload,joinedload,undefer,contains_eager
+from sqlalchemy.sql import not_
+from decimal import Decimal
 import datetime
 
 import logging
@@ -198,11 +200,58 @@ class stocklevelcheck(user.permission_checked,ui.dismisspopup):
                      colour=ui.colour_info,show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
+def stock_purge_internal(source):
+    """
+    Stock items that have been completely used up through the display
+    mechanism should be marked as 'finished' in the stock table, and
+    disconnected from the stockline.  This is usually done
+    automatically at the end of each session because stock items may
+    be put back on display through the voiding mechanism during the
+    session, but is also available as an option on the stock
+    management menu.
+
+    """
+    # Find stockonsale that is ready for purging: used==size on a
+    # stockline that has a display capacity
+    finished=td.s.query(StockItem).\
+        join(StockLine).\
+        options(contains_eager(StockItem.stockline)).\
+        options(joinedload('stocktype')).\
+        filter(not_(StockLine.capacity==None)).\
+        filter(StockItem.remaining==Decimal("0.0")).\
+        all()
+
+    # Mark all these stockitems as finished, removing them from being
+    # on sale as we go
+    user=ui.current_user()
+    user=user.dbuser if user and hasattr(user,'dbuser') else None
+    for item in finished:
+        td.s.add(StockAnnotation(
+                stockitem=item,atype="stop",user=user,
+                text="{} ({})".format(item.stockline.name,source)))
+        item.finished=datetime.datetime.now()
+        item.finishcode_id='empty' # guaranteed to exist
+        item.displayqty=None
+        item.stocklineid=None
+    td.s.flush()
+    return finished
+
 @user.permission_required(
     'purge-finished-stock',
     "Mark empty stock items on display stocklines as finished")
 def purge_finished_stock():
-    td.stock_purge()
+    purged=stock_purge_internal(source="explicit purge")
+    if purged:
+        ui.infopopup(
+            ["The following stock items were marked as finished:",""]+
+            ["{} {}".format(p.id,p.stocktype.format()) for p in purged],
+            title="Stock Purged",colour=ui.colour_confirm,
+            dismiss=keyboard.K_CASH)
+    else:
+        ui.infopopup(
+            ["There were no stock items to mark as finished."],
+            title="No Stock Purged",colour=ui.colour_confirm,
+            dismiss=keyboard.K_CASH)
 
 @user.permission_required(
     'alter-stocktype',

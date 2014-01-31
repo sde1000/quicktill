@@ -597,7 +597,6 @@ def popup():
         (keyboard.K_SIX,"Return stock from display",selectline,
          (return_stock,"Return Stock","Select the stock line to remove "
           "from display",True)),
-        (keyboard.K_NINE,"Purge finished stock items",td.stock_purge,None),
         ]
     ui.keymenu(menu,"Stock line options")
 

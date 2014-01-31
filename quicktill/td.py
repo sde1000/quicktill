@@ -90,34 +90,6 @@ def stock_checkpullthru(stockid,maxtime):
             where(StockOut.removecode_id.in_(['sold','pullthru']))
         ).scalar()
 
-def stock_purge():
-    """Stock items that have been completely used up through the
-    display mechanism should be marked as 'finished' in the stock
-    table, and disconnected from the stockline.  This is usually
-    done automatically at the end of each session because stock items
-    may be put back on display through the voiding mechanism during
-    the session, but is also available as an option on the till
-    management menu.
-
-    """
-    global s
-    # Find stockonsale that is ready for purging: used==size on a
-    # stockline that has a display capacity
-    finished=s.query(StockItem).\
-        join(StockLine).\
-        filter(not_(StockLine.capacity==None)).\
-        filter(StockItem.remaining==0.0).\
-        all()
-
-    # Mark all these stockitems as finished, removing them from being
-    # on sale as we go
-    for item in finished:
-        item.finished=datetime.datetime.now()
-        item.finishcode_id='empty' # guaranteed to exist
-        item.displayqty=None
-        item.stocklineid=None
-    s.flush()
-
 def foodorder_reset():
     foodorder_seq.drop()
     foodorder_seq.create()

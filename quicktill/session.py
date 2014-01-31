@@ -4,7 +4,7 @@ Starting, ending, and recording totals for sessions.
 """
 
 from __future__ import unicode_literals
-from . import ui,keyboard,td,printer,tillconfig,user
+from . import ui,keyboard,td,printer,tillconfig,user,managestock
 from .models import Session,SessionTotal,PayType,Transaction,penny,zero
 from .td import undefer,func,desc,select
 from decimal import Decimal
@@ -115,7 +115,7 @@ def confirmendsession():
                  dismiss=keyboard.K_CASH)
     printer.print_sessioncountup(r)
     printer.kickout()
-    td.stock_purge()
+    managestock.stock_purge_internal(source="session end")
 
 @user.permission_required("end-session","End a session")
 def end():
