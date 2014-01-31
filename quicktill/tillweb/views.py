@@ -357,6 +357,7 @@ def stocktype(request,base,access,session,stocktype_id):
     include_finished=request.GET.get("show_finished","off")=="on"
     items=session.query(StockItem).\
         filter(StockItem.stocktype==s).\
+        options(undefer_group('qtys')).\
         order_by(desc(StockItem.id))
     if not include_finished:
         items=items.filter(StockItem.finished==None)
@@ -398,6 +399,7 @@ def stock(request,base,access,session,stockid):
             options(joinedload('stockunit')).\
             options(joinedload('stockunit.unit')).\
             options(subqueryload_all('out.transline.transaction')).\
+            options(undefer_group('qtys')).\
             one()
     except NoResultFound:
         raise Http404
