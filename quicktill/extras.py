@@ -73,9 +73,10 @@ class bbcheck(ui.dismisspopup):
 
 ### Coffee pot timer
 
-class coffeealarm:
-    def __init__(self,timestampfilename):
+class coffeealarm(object):
+    def __init__(self,timestampfilename,dismisskey):
         self.tsf=timestampfilename
+        self.dismisskey=dismisskey
         self.update()
         event.eventlist.append(self)
     def update(self):
@@ -100,7 +101,7 @@ class coffeealarm:
         ui.alarmpopup(title="Coffee pot alarm",
                       text=["Please empty out and clean the coffee pot - the "
                       "coffee in it is now too old."],
-                      colour=ui.colour_info,dismiss=keyboard.K_DEPT11)
+                      colour=ui.colour_info,dismiss=self.dismisskey)
 
 class managecoffeealarm(ui.dismisspopup):
     def __init__(self,alarminstance):
@@ -136,7 +137,7 @@ class managecoffeealarm(ui.dismisspopup):
         self.dismiss()
 
 ### Reminders at particular times of day
-class reminderpopup:
+class reminderpopup(object):
     def __init__(self,alarmtime,title,text,colour=ui.colour_info,
                  dismiss=keyboard.K_CANCEL):
         """
