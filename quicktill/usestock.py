@@ -105,8 +105,11 @@ def finish_stock(line):
 
 def finish_disconnect(line,sn):
     td.s.add(line)
-    log.info("Use Stock: disconnected item %d from %s"%(sn,line.name))
+    log.info("Use Stock: disconnected item %d from %s",sn,line.name)
     item=td.s.query(StockItem).get(sn)
+    td.s.add(StockAnnotation(stockitem=item,atype="stop",
+                             text="{} (Use Stock disconnect)".format(line.name),
+                             user=user.current_dbuser()))
     item.displayqty=None
     item.stocklineid=None
     td.s.flush()
@@ -118,12 +121,16 @@ def finish_disconnect(line,sn):
 def finish_reason(line,sn,reason):
     td.s.add(line)
     stockitem=td.s.query(StockItem).get(sn)
+    td.s.add(StockAnnotation(
+            stockitem=stockitem,atype="stop",
+            text="{} (Use Stock reason {})".format(line.name,reason),
+            user=user.current_dbuser()))
     stockitem.finished=datetime.datetime.now()
     stockitem.finishcode_id=reason
     stockitem.displayqty=None
     stockitem.stocklineid=None
     td.s.flush()
-    log.info("Use Stock: finished item %d reason %s"%(sn,reason))
+    log.info("Use Stock: finished item %d reason %s",sn,reason)
     pick_new_stock(line,"Stock item %d is finished.  Now select "
                    "a new stock item to put on sale on %s, or press "
                    "Clear to leave the line unused."%(sn,line.name))
@@ -187,10 +194,8 @@ def put_on_sale(line,sn):
     si=td.s.query(StockItem).get(sn)
     si.onsale=datetime.datetime.now()
     si.stockline=line
-    cu=ui.current_user()
-    user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
     td.s.add(StockAnnotation(stockitem=si,atype='start',text=line.name,
-                             user=user))
+                             user=user.current_dbuser()))
     td.s.flush()
     log.info("Use Stock: item %d (%s) put on sale as %s"%(
             si.id,si.stocktype.format(),line.name))
@@ -287,8 +292,7 @@ def auto_allocate_internal(deliveryid=None,message_on_no_work=True):
             "press Clear and re-try the stock allocation using 'Use Stock' "
             "option 3.")
         return
-    user=ui.current_user()
-    user=user.dbuser if user and hasattr(user,'dbuser') else None
+    dbu=user.current_dbuser()
     if len(cl)>0:
         for item,line in cl:
             item.stockline=line
@@ -297,7 +301,7 @@ def auto_allocate_internal(deliveryid=None,message_on_no_work=True):
             td.s.add(StockAnnotation(
                     stockitem=item,atype="start",
                     text="{} (auto-allocate)".format(line.name),
-                    user=user))
+                    user=dbu))
         td.s.flush()
         ui.infopopup([
                 "The following stock items have been allocated to "

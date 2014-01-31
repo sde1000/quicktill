@@ -17,12 +17,16 @@ from functools import reduce
 
 def finish_reason(item,reason):
     stockitem=td.s.merge(item)
+    td.s.add(StockAnnotation(
+            stockitem=stockitem,atype="stop",
+            text="no stock line (Finish Stock: {})".format(reason),
+            user=user.current_dbuser()))
     stockitem.finished=datetime.datetime.now()
     stockitem.finishcode_id=reason
     stockitem.displayqty=None
     stockitem.stocklineid=None
     td.s.flush()
-    log.info("Stock: finished item %d reason %s"%(stockitem.id,reason))
+    log.info("Stock: finished item %d reason %s",stockitem.id,reason)
     ui.infopopup(["Stock item %d is now finished."%stockitem.id],
                  dismiss=keyboard.K_CASH,
                  title="Stock Finished",colour=ui.colour_info)

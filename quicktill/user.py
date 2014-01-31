@@ -189,6 +189,10 @@ class group(object):
             else:
                 self.members.add(m)
 
+def current_dbuser():
+    user=ui.current_user()
+    if user and hasattr(user,'dbuser'): return user.dbuser
+
 class built_in_user(object):
     """
     A user defined in the configuration file.  Usually applied to a
