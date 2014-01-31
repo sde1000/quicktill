@@ -4,7 +4,7 @@ from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
 from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
-from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager,column_property
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
@@ -195,14 +195,15 @@ class Session(Base):
         "Returns a list of (StockType,quantity) tuples."
         return object_session(self).\
             query(StockType,func.sum(StockOut.qty)).\
+            join(UnitType).\
             join(StockItem).\
             join(StockOut).\
             join(Transline).\
             join(Transaction).\
             filter(Transaction.sessionid==self.id).\
             options(lazyload(StockType.department)).\
-            options(lazyload(StockType.unit)).\
-            group_by(StockType).\
+            options(contains_eager(StockType.unit)).\
+            group_by(StockType,UnitType).\
             order_by(StockType.dept_id,desc(func.sum(StockOut.qty))).\
             all()
     @classmethod

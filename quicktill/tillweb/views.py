@@ -214,7 +214,9 @@ def session(request,base,access,session,sessionid):
         # the transaction totals
         s=session.query(Session).\
             filter_by(id=int(sessionid)).\
-            options(subqueryload_all('transactions.lines')).\
+            options(undefer('transactions.total')).\
+            options(undefer('total')).\
+            options(undefer('actual_total')).\
             one()
     except NoResultFound:
         raise Http404
