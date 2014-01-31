@@ -877,7 +877,13 @@ class lrline(emptyline):
 
 class tableformatter(object):
     """
-    This class implements policy for formatting a table.
+    This class implements policy for formatting a table.  The format
+    string is used as-is with the following characters being replaced:
+
+    l - left-aligned field
+    c - centered field
+    r - right-aligned string
+    p - padding
     
     """
     def __init__(self,format):
@@ -889,6 +895,7 @@ class tableformatter(object):
         f=f.replace('l','')
         f=f.replace('c','')
         f=f.replace('r','')
+        f=f.replace('p','')
         self.formatlen=len(f)
     def update(self,line):
         if self.colwidths is None:
@@ -903,6 +910,14 @@ class tableformatter(object):
     def format(self,line,width):
         r=[]
         n=0
+        pads=self.f.count("p")
+        if pads>0:
+            total_to_pad=max(0,width-self.idealwidth())
+            pw=total_to_pad/pads
+            odd=total_to_pad%pads
+            pads=[pw+1]*odd+[pw]*(pads-odd)
+        else:
+            pads=[]
         for i in self.f:
             if i=='l':
                 r.append(line.fields[n].ljust(self.colwidths[n]))
@@ -913,6 +928,8 @@ class tableformatter(object):
             elif i=='r':
                 r.append(line.fields[n].rjust(self.colwidths[n]))
                 n=n+1
+            elif i=="p":
+                r.append(" "*pads.pop(0))
             else:
                 r.append(i)
         return [''.join(r)[:width]]
