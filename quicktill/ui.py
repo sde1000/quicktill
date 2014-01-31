@@ -534,8 +534,10 @@ class alarmpopup(infopopup):
         if self.remaining<1:
             self.remaining=10
             if self in basicwin._focus.parents(): self.dismiss()
+            else: del event.eventlist[event.eventlist.index(self)]
     def dismiss(self):
-        del event.eventlist[event.eventlist.index(self)]
+        if self in event.eventlist:
+            del event.eventlist[event.eventlist.index(self)]
         infopopup.dismiss(self)
 
 def validate_int(s,c):
