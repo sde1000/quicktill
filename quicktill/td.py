@@ -198,19 +198,6 @@ def stockline_summary(session,locations):
         all()
     return s
 
-def session_bitcoin_translist(session):
-    """
-    Returns the list of transactions involving Bitcoin payment in
-    a session.
-
-    """
-    global s
-    pl=s.query(Payment).join(Transaction).\
-        filter(Payment.paytype_id=='BTC').\
-        filter(Transaction.sessionid==session).\
-        all()
-    return [p.transid for p in pl]
-
 def db_version():
     global s
     return s.execute("select version()").scalar()
