@@ -1,6 +1,12 @@
 from __future__ import unicode_literals
 import time
+import logging
 from . import ui,event,td,keyboard,usestock,stocklines,user
+from .models import StockLine,StockAnnotation,StockItem
+from sqlalchemy.sql.expression import tuple_,func,null
+from sqlalchemy.sql import select,not_
+from sqlalchemy.orm import joinedload,undefer_group
+log=logging.getLogger(__name__)
 
 class page(ui.basicpage):
     def __init__(self,hotkeys,locations=None,user=None):
@@ -9,61 +15,83 @@ class page(ui.basicpage):
         # - sort out the event loop code sometime so it doesn't need this!
         self.user=user
         self.display=0
-        self.alarm(need_new_session=False)
         self.hotkeys=hotkeys
         self.locations=locations if locations else ['Bar']
         event.eventlist.append(self)
         self.updateheader()
+        self.alarm(need_new_session=False)
     def pagename(self):
         return self.user.fullname if self.user else "Stock Control"
-    def drawlines(self):
-        sl=td.stockline_summary(td.s,self.locations)
-        y=1
-        self.addstr(0,0,"Line")
-        self.addstr(0,10,"StockID")
-        self.addstr(0,18,"Stock")
-        self.addstr(0,64,"Used")
-        self.addstr(0,70,"Remaining")
-        for line in sl:
-            self.addstr(y,0,line.name)
-            if len(line.stockonsale)>0:
-                # We are only showing stock lines with null capacity.
-                # There should be no more than one stock item on sale
-                # at once.  Here we explicitly use the first one.
+    def drawlines(self,h):
+        log.debug("drawlines")
+        sl=td.s.query(StockLine).\
+            filter(StockLine.location.in_(self.locations)).\
+            filter(StockLine.capacity==None).\
+            order_by(StockLine.name).\
+            options(joinedload('stockonsale')).\
+            options(joinedload('stockonsale.stocktype')).\
+            options(undefer_group('qtys')).\
+            all()
+        f=ui.tableformatter("lpl lpr r")
+        header=ui.tableline(f,("Line","StockID","Stock","Used","Remaining"))
+        def fl(line):
+            if line.stockonsale:
                 sos=line.stockonsale[0]
-                self.addstr(y,10,"%d"%sos.id)
-                self.addstr(y,18,sos.stocktype.format(45))
-                self.addstr(y,64,"%0.1f"%sos.used)
-                self.addstr(y,73,"%0.1f"%sos.remaining)
-            y=y+1
-            if y>=(self.h-3): break
-    def drawstillage(self):
-        sl=td.stillage_summary(td.s)
-        y=1
-        self.addstr(0,0,"Loc")
-        self.addstr(0,5,"StockID")
-        self.addstr(0,13,"Name")
-        self.addstr(0,70,"Line")
-        for a in sl:
-            self.addstr(y,0,a.text[:5])
-            self.addstr(y,5,str(a.stockid))
-            self.addstr(y,13,a.stockitem.stocktype.format(56))
-            if a.stockitem.stockline:
-                self.addstr(y,70,a.stockitem.stockline.name[:9])
-            y=y+1
-            if y>=(self.h-3): break
+                return (line.name,sos.id,sos.stocktype.format(),
+                        sos.used,sos.remaining)
+            return (line.name,"","","","")
+        ml=[header]+[ui.tableline(f,fl(line)) for line in sl]
+        y=0
+        for l in ml:
+            for line in l.display(self.w):
+                self.addstr(y,0,line)
+                y=y+1
+            if y>=h: break
+    def drawstillage(self,h):
+        log.debug("drawstillage")
+        sl=td.s.query(StockAnnotation).\
+            join(StockItem).\
+            outerjoin(StockLine).\
+            filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
+                select([StockAnnotation.text,func.max(StockAnnotation.time)],
+                       StockAnnotation.atype=='location').\
+                    group_by(StockAnnotation.text))).\
+            filter(StockItem.finished==None).\
+            order_by(StockLine.name!=null(),StockAnnotation.time).\
+            options(joinedload('stockitem')).\
+            options(joinedload('stockitem.stocktype')).\
+            options(joinedload('stockitem.stockline')).\
+            all()
+        f=ui.tableformatter('lplplpl')
+        header=ui.tableline(f,("Loc","StockID","Name","Line"))
+        ml=[ui.tableline(f,(
+                    a.text,a.stockid,a.stockitem.stocktype.format(),
+                    a.stockitem.stockline.name if a.stockitem.stockline
+                    else "")) for a in sl]
+        ml.insert(0,header)
+        y=0
+        for l in ml:
+            for line in l.display(self.w):
+                self.addstr(y,0,line)
+                y=y+1
+            if y>=h: break
     def redraw(self):
         win=self.win
         win.erase()
-        self.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")
-        self.addstr(self.h-2,0,"Press S for stock management.  "
-                   "Press U to use stock.  Press R to record waste.")
-        self.addstr(self.h-3,0,"Press Enter to refresh display.  "
-                   "Press A to add a stock annotation.")
+        pl=ui.lrline("Ctrl+X = Clear; Ctrl+Y = Cancel.  "
+                     "Press S for stock management.  "
+                     "Press U to use stock.  Press R to record waste.  "
+                     "Press Enter to refresh display.  "
+                     "Press A to add a stock annotation.  "
+                     "Press L to lock.").display(self.w)
+        y=self.h-len(pl)
+        for l in pl:
+            self.addstr(y,0,l)
+            y=y+1
         if self.display==0:
-            self.drawlines()
+            self.drawlines(self.h-len(pl))
         elif self.display==1:
-            self.drawstillage()
+            self.drawstillage(self.h-len(pl))
     def alarm(self,need_new_session=True):
         self.nexttime=time.time()+60.0
         self.display=self.display+1
@@ -90,7 +118,7 @@ class page(ui.basicpage):
         del event.eventlist[event.eventlist.index(self)]
         self.dismiss()
 
-def handle_usertoken(t,*args):
+def handle_usertoken(t,*args,**kwargs):
     """
     Called when a usertoken has been handled by the default hotkey
     handler.
@@ -98,4 +126,4 @@ def handle_usertoken(t,*args):
     """
     u=user.user_from_token(t)
     if u is None: return # Should already have popped up a dialog box
-    return page(*args,user=u)
+    return page(*args,user=u,**kwargs)

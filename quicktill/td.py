@@ -155,26 +155,6 @@ def stock_purge():
         item.stocklineid=None
     s.flush()
 
-### Find out what's on the stillage by checking annotations
-
-def stillage_summary(session):
-    stillage=session.query(StockAnnotation).\
-        join(StockItem).\
-        outerjoin(StockLine).\
-        filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
-            select([StockAnnotation.text,func.max(StockAnnotation.time)],
-                   StockAnnotation.atype=='location').\
-                group_by(StockAnnotation.text))).\
-        filter(StockItem.finished==None).\
-        order_by(StockLine.name!=null(),StockAnnotation.time).\
-        options(joinedload('stockitem')).\
-        options(joinedload('stockitem.stocktype')).\
-        options(joinedload('stockitem.stockline')).\
-        all()
-    return stillage
-
-### Functions related to food order numbers
-
 def foodorder_reset():
     foodorder_seq.drop()
     foodorder_seq.create()
@@ -182,21 +162,6 @@ def foodorder_reset():
 def foodorder_ticket():
     global s
     return s.execute(select([foodorder_seq.next_value()])).scalar()
-
-### Functions related to stock lines
-
-def stockline_summary(session,locations):
-    s=session.query(StockLine).\
-        filter(StockLine.location.in_(locations)).\
-        filter(StockLine.capacity==None).\
-        order_by(StockLine.name).\
-        options(joinedload('stockonsale')).\
-        options(joinedload('stockonsale.stocktype')).\
-        options(undefer('stockonsale.used')).\
-        options(undefer('stockonsale.sold')).\
-        options(undefer('stockonsale.remaining')).\
-        all()
-    return s
 
 def db_version():
     global s
