@@ -40,8 +40,6 @@ def stockinfo_linelist(sn):
 
 def stockinfo_popup(sn,keymap={}):
     keymap=keymap.copy()
-    # Not sure what this is doing here!  Was it for testing?
-    keymap[ord('l')]=(annotate_location,(sn,),False)
     ui.listpopup(stockinfo_linelist(sn),
                  title="Stock Item %d"%sn,
                  dismiss=keyboard.K_CASH,
@@ -96,42 +94,6 @@ class annotate(ui.dismisspopup):
                     item.id,item.stocktype.format())],
                      title="Annotation Recorded",dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
-
-class annotate_location(ui.dismisspopup):
-    """A special, simplified version of the stock annotation popup, that
-    only allows the location to be set.  Must be called with a stock ID;
-    doesn't permit stock ID entry.
-
-    """
-    def __init__(self,stockid):
-        sd=td.s.query(StockItem).get(stockid)
-        if sd is None:
-            ui.infopopup(["Stock number %d does not exist."%sn],
-                         title="Error")
-            return
-        if not sd.delivery.checked:
-            ui.infopopup(["Stock number %d is part of a delivery that has "
-                          "not yet been confirmed.  You can't annotate "
-                          "it until the whole delivery is confirmed."%sd.id],
-                         title="Error")
-            return
-        ui.dismisspopup.__init__(self,7,64,"Stock Location",
-                                 colour=ui.colour_input)
-        self.sd=sd
-        self.addstr(2,2,sd.stocktype.format(maxw=60))
-        self.addstr(4,2,"Enter location:")
-        self.locfield=ui.editfield(4,18,40,keymap={
-            keyboard.K_CASH: (self.finish,None),
-            keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield.focus()
-    def finish(self):
-        cu=ui.current_user()
-        user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
-        td.s.add(self.sd)
-        td.s.add(StockAnnotation(stockitem=self.sd,atype='location',
-                                 text=self.locfield.f,user=user))
-        td.s.flush()
-        self.dismiss()
 
 class stockfilter(object):
     """

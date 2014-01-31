@@ -198,15 +198,6 @@ def put_on_sale(line,sn):
                   "as '%s'."%(si.id,si.stocktype.format(),line.name)],
                  title="Confirmation",
                  dismiss=keyboard.K_CASH,colour=ui.colour_info)
-    # If no location is recorded for the stock item, and the
-    # department is number 1 (real ale) then pop up a window
-    # asking for the location.  The window will pop up _on top_ of
-    # the confirmation box.
-    # XXX this is IPL-specific code and should be removed!
-    if line.dept_id==1 and td.s.query(StockAnnotation).\
-            filter(StockAnnotation.stockid==sn).\
-            filter(StockAnnotation.atype=='location').count()==0:
-        stock.annotate_location(sn)
     if line.capacity is None:
         tillconfig.usestock_hook(si,line) # calling convention changed!
 
