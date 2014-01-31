@@ -159,9 +159,8 @@ class basicwin(object):
                 self.win.addstr(y,x,s.encode(c))
             else:
                 self.win.addstr(y,x,s.encode(c),attr)
-        except:
+        except curses.error:
             log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
-            raise
     @property
     def focused(self):
         """
