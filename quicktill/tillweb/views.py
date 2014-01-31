@@ -390,14 +390,11 @@ def stock(request,base,access,session,stockid):
     try:
         s=session.query(StockItem).\
             filter_by(id=int(stockid)).\
-            options(joinedload('stocktype')).\
-            options(joinedload('stocktype.department')).\
-            options(joinedload('stocktype.stockline_log')).\
-            options(joinedload('stocktype.stockline_log.stockline')).\
-            options(joinedload('delivery')).\
-            options(joinedload('delivery.supplier')).\
-            options(joinedload('stockunit')).\
-            options(joinedload('stockunit.unit')).\
+            options(joinedload_all('stocktype.department')).\
+            options(joinedload_all('stocktype.stockline_log.stockline')).\
+            options(joinedload_all('delivery.supplier')).\
+            options(joinedload_all('stockunit.unit')).\
+            options(joinedload_all('annotations.type')).\
             options(subqueryload_all('out.transline.transaction')).\
             options(undefer_group('qtys')).\
             one()
