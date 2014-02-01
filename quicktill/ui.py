@@ -1123,10 +1123,10 @@ class datefield(editfield):
         editfield.__init__(self,y,x,10,keymap=keymap,f=f,flen=10,
                            readonly=readonly,validate=validate_date)
     def set(self,v):
-        if isinstance(v,str):
-            editfield.set(self,v)
-        else:
+        if hasattr(v,'strftime'):
             editfield.set(self,formatdate(v))
+        else:
+            editfield.set(self,v)
     def read(self):
         try:
             d=datetime.datetime.strptime(self.f,"%Y-%m-%d")
