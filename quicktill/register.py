@@ -52,6 +52,8 @@ max_transline_modify_age=datetime.timedelta(minutes=1)
 # Permissions checked for explicitly in this module
 user.action_descriptions['override-price']="Override the sale price of an item"
 user.action_descriptions['nosale']="Open the cash drawer with no payment"
+user.action_descriptions['suppress-refund-help-text']=(
+    "Don't show the refund help text")
 
 # Whenever the register is started it generates a new unique ID for
 # itself.  This is used to distinguish register instances that are
@@ -83,6 +85,15 @@ class bufferline(ui.lrline):
         else:
             self.ltext="Locked" if self.reg.locked else self.reg.prompt
             cursorx=0
+            if self.reg.balance<zero and not self.reg.user.has_permission(
+                'suppress-refund-help-text'):
+                self.ltext=(
+                    "This transaction has a negative balance, so a "
+                    "refund is due.  Press the appropriate payment key "
+                    "to issue a refund of that type.  If you are replacing "
+                    "items for a customer you can enter the replacement "
+                    "items now; the till will show the difference in price "
+                    "between the original and replacement items.")
         self.rtext="{} {}".format(
             "Amount to pay" if self.reg.balance>=zero else "Refund amount",
             tillconfig.fc(self.reg.balance)) if self.reg.balance!=zero else ""
@@ -806,7 +817,7 @@ class page(ui.basicpage):
                 keyboard.K_CASH:(self.paymentkey,(pm,),True)})
             return
         self.paymentkey(pm)
-    def payment_method_menu(self):
+    def payment_method_menu(self,title="Payment methods"):
         possible_keys=[
             keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
             keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
@@ -814,7 +825,7 @@ class page(ui.basicpage):
             keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
         ui.keymenu([(possible_keys.pop(0),m.description,self.paymentkey,(m,))
                     for m in tillconfig.payment_methods],
-                   title="Payment methods")
+                   title=title)
     @user.permission_required("take-payment","Take a payment")
     def paymentkey(self,method):
         """
@@ -1179,6 +1190,8 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
         self._redraw()
+        self.payment_method_menu(title="Choose refund type, or press Clear to "
+                                 "add more items")
     def recalltrans(self,trans):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
