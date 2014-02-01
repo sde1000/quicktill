@@ -300,15 +300,15 @@ class BitcoinPayment(payment.PaymentMethod):
         return ["p{}".format(p.id) for p in payments]
     def total(self,session,fields):
         td.s.add(session)
+        btcval=zero
         try:
-            btcval=self._api.transactions_total(
-                self._payment_ref_list(session))["total"]
+            btcval=Decimal(self._api.transactions_total(
+                self._payment_ref_list(session))["total"]).quantize(penny)
         except BTCMerchError:
             ui.infopopup(
                 ["Could not retrieve {} total; please try again "
                  "later.".format(self.description)],
                 title="Error")
-            btcval=zero
         return btcval
     def commit_total(self,session,amount):
         td.s.add(session)
