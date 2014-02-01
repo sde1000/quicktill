@@ -192,6 +192,7 @@ class delivery(ui.basicpopup):
         self.s.drawdl()
     def deleteline(self):
         if not self.s.cursor_on_lastline():
+            td.s.add(self.dl[self.s.cursor].stockitem)
             ui.infopopup(
                 ["Press Cash/Enter to confirm deletion of stock "
                  "number %d.  Note that once it's deleted you can't "
