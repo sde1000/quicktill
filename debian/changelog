@@ -1,3 +1,13 @@
+quicktill (0.10.13) stable; urgency=low
+
+  * New release 0.10.13
+
+  * Extra help with void transactions
+
+  * Fix date entry fields
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 01 Feb 2014 18:36:16 +0000
+
 quicktill (0.10.12) stable; urgency=low
 
   * New release 0.10.12
