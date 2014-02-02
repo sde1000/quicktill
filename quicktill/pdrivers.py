@@ -56,25 +56,30 @@ def wrap(l,width):
     return w
 
 class nullprinter(object):
+    def __init__(self,name=None):
+        if name: self._name="nullprinter {}".format(name)
+        else: self._name="nullprinter"
     def available(self):
         return True
     def start(self):
-        pass
+        log.info("%s: start",self._name)
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
     def printline(self,l="",justcheckfit=False,allowwrap=True,
                   colour=None,font=None,emph=None,underline=None):
+        if not justcheckfit:
+            log.info("%s: printline: %s",self._name,l)
         return True
     def printqrcode(self,code):
-        pass
+        log.info("%s: printqrcode: %s",self._name,code)
     def end(self):
-        pass
+        log.info("%s: end",self._name)
     def cancut(self):
         return False
     def checkwidth(self,line):
         return self.printline(l,justcheckfit=True)
     def kickout(self):
-        pass
+        log.info("%s: kickout",self._name)
 
 def ep_2d_cmd(*params):
     """
