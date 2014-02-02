@@ -7,6 +7,7 @@ from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType,StockAnnotation
 from .models import StockItem,Delivery,StockOut,func,desc
 from sqlalchemy.orm import lazyload,joinedload,undefer,contains_eager
+from sqlalchemy.orm import joinedload_all
 from sqlalchemy.sql import not_
 from decimal import Decimal
 import datetime
@@ -85,6 +86,9 @@ def stockcheck(dept=None):
         join(Delivery).\
         filter(StockItem.finished==None).\
         filter(Delivery.checked==True).\
+        options(contains_eager(StockItem.stocktype)).\
+        options(contains_eager(StockItem.delivery)).\
+        options(undefer('remaining')).\
         order_by(StockItem.id)
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
@@ -128,6 +132,8 @@ def stockhistory(dept=None):
     log.info("Stock history")
     sq=td.s.query(StockItem).join(StockItem.stocktype).\
         filter(StockItem.finished!=None).\
+        options(undefer(StockItem.remaining)).\
+        options(joinedload_all('stocktype.unit')).\
         order_by(StockItem.id.desc())
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
