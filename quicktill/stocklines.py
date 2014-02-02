@@ -3,6 +3,7 @@ import logging
 from . import keyboard,ui,td,tillconfig,printer
 from .models import Department,StockLine,KeyboardBinding
 from .models import StockType,StockLineTypeLog
+from sqlalchemy.sql import select
 from decimal import Decimal
 log=logging.getLogger(__name__)
 
@@ -160,6 +161,29 @@ def return_stock(stockline):
                  keymap={keyboard.K_CASH:(finish_restock,(restock,),True)},
                  colour=ui.colour_confirm)
 
+def completelocation(m):
+    """
+    An editfield validator that completes based on stockline location.
+
+    """
+    result=td.s.execute(
+        select([StockLine.location]).\
+            where(StockLine.location.ilike(m+'%'))
+        )
+    return [x[0] for x in result]
+
+def validate_location(s,c):
+    t=s[:c+1]
+    l=completelocation(t)
+    if len(l)>0: return l[0]
+    # If a string one character shorter matches then we know we
+    # filled it in last time, so we should return the string with
+    # the rest chopped off rather than just returning the whole
+    # thing unedited.
+    if len(completelocation(t[:-1]))>0:
+        return t
+    return s
+
 class create(ui.dismisspopup):
     """
     Create a new stockline.
@@ -180,7 +204,7 @@ class create(ui.dismisspopup):
         self.addstr(9,2,"creating a stockline for the fridge.")
         self.namefield=ui.editfield(2,23,30,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield=ui.editfield(3,23,20)
+        self.locfield=ui.editfield(3,23,20,validate=validate_location)
         self.deptfield=ui.listfield(4,23,20,depts,d=lambda x:x.description)
         self.capacityfield=ui.editfield(5,23,5,validate=ui.validate_int)
         self.pullthrufield=ui.editfield(
@@ -252,7 +276,8 @@ class modify(ui.dismisspopup):
             self.addstr(5,2,"   Display capacity:")
         self.namefield=ui.editfield(2,23,30,f=stockline.name,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield=ui.editfield(3,23,20,f=stockline.location)
+        self.locfield=ui.editfield(3,23,20,f=stockline.location,
+                                   validate=validate_location)
         fl=[self.namefield,self.locfield]
         if stockline.capacity is None:
             self.pullthrufield=ui.editfield(
