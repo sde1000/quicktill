@@ -317,7 +317,8 @@ class page(ui.basicpage):
             self.balance=self.trans.balance
         else: self.balance=zero
     def close_if_balanced(self):
-        if (self.trans and not self.trans.closed and self.trans.total!=zero
+        if (self.trans and not self.trans.closed and (
+                self.trans.lines or self.trans.payments)
             and self.trans.total==self.trans.payments_total):
             self.trans.closed=True
             td.s.flush()
@@ -876,6 +877,8 @@ class page(ui.basicpage):
             # attempting a zero payment.
             if self.balance==zero:
                 self.close_if_balanced()
+                self.cursor_off()
+                self._redraw()
                 return
             ui.infopopup(["You can't pay {}!".format(tillconfig.fc(zero)),
                           'If you meant "exact amount" then please '
