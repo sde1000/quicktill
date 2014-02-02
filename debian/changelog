@@ -1,3 +1,17 @@
+quicktill (0.10.14) stable; urgency=low
+
+  * New release 0.10.14
+
+  * Update transaction balance correctly when a line is deleted
+
+  * Autocomplete location field
+
+  * Speed up ui.tableformatter
+
+  * Speed up 'stock check' and 'stock history' functions
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 02 Feb 2014 20:50:29 +0000
+
 quicktill (0.10.13) stable; urgency=low
 
   * New release 0.10.13
