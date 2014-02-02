@@ -888,30 +888,56 @@ class tableformatter(object):
     
     """
     def __init__(self,format):
-        self.f=format
-        self.lines=[]
-        self.colwidths=None
-        # Remove formatting characters from format and see what's left
+        self._f=format
+        self._rows=[] # Doesn't need to be kept in order
+        self._formats={}
+        self._colwidths=None
+        # Remove the formatting characters from the format and see
+        # what's left
         f=format
         f=f.replace('l','')
         f=f.replace('c','')
         f=f.replace('r','')
         f=f.replace('p','')
-        self.formatlen=len(f)
-    def update(self,line):
-        if self.colwidths is None:
-            self.colwidths=[0]*len(line.fields)
-        self.colwidths=[max(a,len(b))
-                        for a,b in zip(self.colwidths,line.fields)]
+        self._formatlen=len(f)
+    def append(self,row):
+        """
+        Add a row to the table.
+
+        """
+        self._rows.append(row)
+        self.update(row)
+    def update(self,row):
+        """
+        Called when a row is changed.  Invalidate any cached widths
+        and format strings.
+
+        """
+        self._formats={}
+        self._colwidths=None
+    @property
+    def colwidths(self):
+        """
+        List of column widths.
+
+        """
+        if not self._colwidths:
+            # Each row has a list of fields.  We want to rearrange
+            # this so we have a list of columns.
+            cols=zip(*(r.fields for r in self._rows))
+            self._colwidths=[max(len(f) for f in c) for c in cols]
+        return self._colwidths
     def idealwidth(self):
-        return self.formatlen+sum(self.colwidths)
-    def addline(self,line):
-        self.lines.append(line)
-        self.update(line)
-    def format(self,line,width):
+        return self._formatlen+sum(self.colwidths)
+    def _formatstr(self,width):
+        """
+        Return a format template for the given width.
+
+        """
+        if width in self._formats: return self._formats[width]
+        w=list(self.colwidths) # copy
         r=[]
-        n=0
-        pads=self.f.count("p")
+        pads=self._f.count("p")
         if pads>0:
             total_to_pad=max(0,width-self.idealwidth())
             pw=total_to_pad/pads
@@ -919,37 +945,38 @@ class tableformatter(object):
             pads=[pw+1]*odd+[pw]*(pads-odd)
         else:
             pads=[]
-        for i in self.f:
+        for i in self._f:
             if i=='l':
-                r.append(line.fields[n].ljust(self.colwidths[n]))
-                n=n+1
+                r.append("{:<%d}"%w.pop(0))
             elif i=='c':
-                r.append(line.fields[n].center(self.colwidths[n]))
-                n=n+1
+                r.append("{:^%d}"%w.pop(0))
             elif i=='r':
-                r.append(line.fields[n].rjust(self.colwidths[n]))
-                n=n+1
+                r.append("{:>%d}"%w.pop(0))
             elif i=="p":
                 r.append(" "*pads.pop(0))
             else:
                 r.append(i)
-        return [''.join(r)[:width]]
+        fs=''.join(r)
+        self._formats[width]=fs
+        return fs
+    def format(self,row,width):
+        return [self._formatstr(width).format(*row.fields)[:width]]
 
 class tableline(emptyline):
     def __init__(self,formatter,fields,colour=None,userdata=None):
         emptyline.__init__(self,colour,userdata)
-        self.formatter=formatter
+        self._formatter=formatter
         self.fields=[unicode(x) for x in fields]
-        self.formatter.addline(self)
+        self._formatter.append(self)
     def update(self):
         emptyline.update(self)
-        self.formatter.update(self)
+        self._formatter.update(self)
     def idealwidth(self):
-        return self.formatter.idealwidth()
+        return self._formatter.idealwidth()
     def display(self,width):
         self.cursor=(0,0)
-        return self.formatter.format(self,width)
-    
+        return self._formatter.format(self,width)
+
 class booleanfield(field):
     """
     A field that can be either True or False, displayed as Yes or No.
