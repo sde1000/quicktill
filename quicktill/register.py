@@ -1123,6 +1123,7 @@ class page(ui.basicpage):
                         td.s.delete(tl)
                         td.s.flush()
                         del self.dl[self.s.cursor]
+                        td.s.expire(self.trans,['total'])
                         self.cursor_off()
                         self.update_balance()
                         if len(self.dl)==0:
