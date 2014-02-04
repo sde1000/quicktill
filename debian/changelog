@@ -1,3 +1,15 @@
+quicktill (0.10.16) stable; urgency=low
+
+  * New release 0.10.16
+
+  * Downloadable spreadsheet of session takings in tillweb
+
+  * Fix cash/enter removing empty transactions
+
+  * Use nullprinter() when no printer configured
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 04 Feb 2014 19:01:13 +0000
+
 quicktill (0.10.15) stable; urgency=low
 
   * New release 0.10.15
