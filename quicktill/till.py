@@ -8,7 +8,7 @@ module.
 from __future__ import print_function,unicode_literals
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
-from . import ui,event,td,printer,tillconfig,foodorder,user
+from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers
 from .version import version
 from .models import Session,User,UserToken
 log=logging.getLogger(__name__)
@@ -336,6 +336,7 @@ def main():
     if 'printer' in config:
         printer.driver=config['printer'][0](*config['printer'][1])
     else:
+        log.info("no printer configured: using nullprinter()")
         printer.driver=pdrivers.nullprinter()
     printer.kickout=printer.driver.kickout
     if 'labelprinter' in config:
