@@ -787,7 +787,7 @@ class page(ui.basicpage):
             self.clearbuffer()
             self._redraw()
             return
-        if self.balance is None and len(self.ml)==0 and len(self.dl)==0:
+        if len(self.trans.lines)==0 and len(self.trans.payments)==0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
             td.s.delete(self.trans)
