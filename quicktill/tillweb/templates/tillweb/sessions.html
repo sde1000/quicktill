@@ -9,7 +9,7 @@
 <h2>Find session</h2>
 <form action="" method="post">{% csrf_token %}
 {{ form.as_p }}
-<input type="submit" value="Find" />
+<input type="submit" value="Find" name="submit_find" />
 </form>
 
 <h2>Recent sessions</h2>
@@ -38,6 +38,21 @@
 <script type="text/javascript">
 $(document).ready(function(){
   $("#recentsessions").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+<h2>Download spreadsheet</h2>
+<form action="" method="post">{% csrf_token %}
+{{ rangeform.as_p }}
+<input type="submit" value="Download" name="submit_sheet" />
+</form>
+
+<script type="text/javascript">
+var dtpicker_options = {firstDay: 1,
+  dateFormat: 'yy-mm-dd'};
+$(document).ready(function(){
+ $("#id_startdate").datepicker(dtpicker_options);
+ $("#id_enddate").datepicker(dtpicker_options);
 });
 </script>
 

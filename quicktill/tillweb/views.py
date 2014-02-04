@@ -18,6 +18,7 @@ from sqlalchemy.sql import desc
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy import distinct
 from quicktill.models import *
+from . import spreadsheets
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
@@ -84,7 +85,13 @@ def tillweb_view(view):
             access=access.permission
         try:
             depts=session.query(Department).order_by(Department.id).all()
-            result=view(request,base,access,session,*args,**kwargs)
+            info={
+                'depts':depts,
+                'base':base,
+                'access':access,
+                'tillname':tillname,
+                }
+            result=view(request,info,session,*args,**kwargs)
             if isinstance(result,HttpResponse): return result
             t,d=result
             # object is the Till object, possibly used for a nav menu
@@ -127,7 +134,7 @@ def business_totals(session,firstday,lastday):
         all()
 
 @tillweb_view
-def pubroot(request,base,access,session):
+def pubroot(request,info,session):
     date=datetime.date.today()
     # If it's the early hours of the morning, it's more useful for us
     # to consider it still to be yesterday.
@@ -174,13 +181,13 @@ def pubroot(request,base,access,session):
              })
 
 @tillweb_view
-def locationlist(request,base,access,session):
+def locationlist(request,info,session):
     locations=[x[0] for x in session.query(distinct(StockLine.location)).\
                    order_by(StockLine.location).all()]
     return ('locations.html',{'locations':locations})
 
 @tillweb_view
-def location(request,base,access,session,location):
+def location(request,info,session,location):
     lines=session.query(StockLine).\
         filter(StockLine.location==location).\
         order_by(StockLine.dept_id,StockLine.name).\
@@ -190,28 +197,45 @@ def location(request,base,access,session,location):
     return ('location.html',{'location':location,'lines':lines})
 
 class SessionFinderForm(forms.Form):
-    session=forms.IntegerField(label="Session ID")
+    # django-1.6 uses forms.NumberInput by default for integer fields;
+    # this is only valid in HTML5, which we are not using yet.
+    # Specify the TextInput widget explicitly for now.
+    session=forms.IntegerField(label="Session ID",widget=forms.TextInput)
+
+class SessionRangeForm(forms.Form):
+    startdate=forms.DateField(label="Start date",required=False)
+    enddate=forms.DateField(label="End date",required=False)
 
 @tillweb_view
-def sessionfinder(request,base,access,session):
-    if request.method=='POST':
+def sessionfinder(request,info,session):
+    if request.method=='POST' and "submit_find" in request.POST:
         form=SessionFinderForm(request.POST)
         if form.is_valid():
             s=session.query(Session).get(form.cleaned_data['session'])
             if s:
-                return HttpResponseRedirect(base+s.tillweb_url)
+                return HttpResponseRedirect(info['base']+s.tillweb_url)
             errors=form._errors.setdefault("session",ErrorList())
             errors.append("This session does not exist.")
     else:
         form=SessionFinderForm()
+    if request.method=='POST' and "submit_sheet" in request.POST:
+        rangeform=SessionRangeForm(request.POST)
+        if rangeform.is_valid():
+            cd=rangeform.cleaned_data
+            return spreadsheets.sessionrange(
+                session,
+                start=cd['startdate'],end=cd['enddate'],
+                tillname=info['tillname'])
+    else:
+        rangeform=SessionRangeForm()
     recent=session.query(Session).\
         options(undefer('total')).\
         options(undefer('actual_total')).\
         order_by(desc(Session.id))[:30]
-    return ('sessions.html',{'recent':recent,'form':form})
+    return ('sessions.html',{'recent':recent,'form':form,'rangeform':rangeform})
 
 @tillweb_view
-def session(request,base,access,session,sessionid):
+def session(request,info,session,sessionid):
     try:
         # The subqueryload_all() significantly improves the speed of loading
         # the transaction totals
@@ -227,17 +251,17 @@ def session(request,base,access,session,sessionid):
         filter(Session.id>s.id).\
         order_by(Session.id).\
         first()
-    nextlink=base+nextsession.tillweb_url if nextsession else None
+    nextlink=info['base']+nextsession.tillweb_url if nextsession else None
     prevsession=session.query(Session).\
         filter(Session.id<s.id).\
         order_by(desc(Session.id)).\
         first()
-    prevlink=base+prevsession.tillweb_url if prevsession else None
+    prevlink=info['base']+prevsession.tillweb_url if prevsession else None
     return ('session.html',{'session':s,'nextlink':nextlink,
                             'prevlink':prevlink})
 
 @tillweb_view
-def sessiondept(request,base,access,session,sessionid,dept):
+def sessiondept(request,info,session,sessionid,dept):
     try:
         s=session.query(Session).filter_by(id=int(sessionid)).one()
     except NoResultFound:
@@ -250,13 +274,13 @@ def sessiondept(request,base,access,session,sessionid,dept):
         filter(Session.id>s.id).\
         order_by(Session.id).\
         first()
-    nextlink=base+nextsession.tillweb_url+"dept{}/".format(dept.id) \
+    nextlink=info['base']+nextsession.tillweb_url+"dept{}/".format(dept.id) \
         if nextsession else None
     prevsession=session.query(Session).\
         filter(Session.id<s.id).\
         order_by(desc(Session.id)).\
         first()
-    prevlink=base+prevsession.tillweb_url+"dept{}/".format(dept.id) \
+    prevlink=info['base']+prevsession.tillweb_url+"dept{}/".format(dept.id) \
         if prevsession else None
     translines=session.query(Transline).\
         join(Transaction).\
@@ -272,7 +296,7 @@ def sessiondept(request,base,access,session,sessionid,dept):
                                 'nextlink':nextlink,'prevlink':prevlink})
 
 @tillweb_view
-def transaction(request,base,access,session,transid):
+def transaction(request,info,session,transid):
     try:
         t=session.query(Transaction).\
             filter_by(id=int(transid)).\
@@ -286,12 +310,12 @@ def transaction(request,base,access,session,transid):
     return ('transaction.html',{'transaction':t,})
 
 @tillweb_view
-def supplierlist(request,base,access,session):
+def supplierlist(request,info,session):
     sl=session.query(Supplier).order_by(Supplier.name).all()
     return ('suppliers.html',{'suppliers':sl})
 
 @tillweb_view
-def supplier(request,base,access,session,supplierid):
+def supplier(request,info,session,supplierid):
     try:
         s=session.query(Supplier).\
             filter_by(id=int(supplierid)).\
@@ -301,14 +325,14 @@ def supplier(request,base,access,session,supplierid):
     return ('supplier.html',{'supplier':s,})
 
 @tillweb_view
-def deliverylist(request,base,access,session):
+def deliverylist(request,info,session):
     dl=session.query(Delivery).order_by(desc(Delivery.id)).\
         options(joinedload('supplier')).\
         all()
     return ('deliveries.html',{'deliveries':dl})
 
 @tillweb_view
-def delivery(request,base,access,session,deliveryid):
+def delivery(request,info,session,deliveryid):
     try:
         d=session.query(Delivery).\
             filter_by(id=int(deliveryid)).\
@@ -338,7 +362,7 @@ class StockTypeForm(forms.Form):
         return q
 
 @tillweb_view
-def stocktypesearch(request,base,access,session):
+def stocktypesearch(request,info,session):
     form=StockTypeForm(request.GET)
     result=[]
     q=session.query(StockType).order_by(
@@ -350,7 +374,7 @@ def stocktypesearch(request,base,access,session):
     return ('stocktypesearch.html',{'form':form,'stocktypes':result})
 
 @tillweb_view
-def stocktype(request,base,access,session,stocktype_id):
+def stocktype(request,info,session,stocktype_id):
     try:
         s=session.query(StockType).\
             filter_by(id=int(stocktype_id)).\
@@ -373,7 +397,7 @@ class StockForm(StockTypeForm):
         required=False,label="Include finished items")
 
 @tillweb_view
-def stocksearch(request,base,access,session):
+def stocksearch(request,info,session):
     form=StockForm(request.GET)
     result=[]
     q=session.query(StockItem).join(StockType).order_by(StockItem.id).\
@@ -389,7 +413,7 @@ def stocksearch(request,base,access,session):
     return ('stocksearch.html',{'form':form,'stocklist':result})
 
 @tillweb_view
-def stock(request,base,access,session,stockid):
+def stock(request,info,session,stockid):
     try:
         s=session.query(StockItem).\
             filter_by(id=int(stockid)).\
@@ -406,14 +430,14 @@ def stock(request,base,access,session,stockid):
     return ('stock.html',{'stock':s,})
 
 @tillweb_view
-def stocklinelist(request,base,access,session):
+def stocklinelist(request,info,session):
     lines=session.query(StockLine).\
         order_by(StockLine.dept_id,StockLine.name).\
         all()
     return ('stocklines.html',{'lines':lines,})
 
 @tillweb_view
-def stockline(request,base,access,session,stocklineid):
+def stockline(request,info,session,stocklineid):
     try:
         s=session.query(StockLine).\
             filter_by(id=int(stocklineid)).\
@@ -425,12 +449,12 @@ def stockline(request,base,access,session,stocklineid):
     return ('stockline.html',{'stockline':s,})
 
 @tillweb_view
-def departmentlist(request,base,access,session):
+def departmentlist(request,info,session):
     # depts are included in template context anyway
     return ('departmentlist.html',{})
 
 @tillweb_view
-def department(request,base,access,session,departmentid):
+def department(request,info,session,departmentid):
     d=session.query(Department).get(int(departmentid))
     if d is None: raise Http404
     include_finished=request.GET.get("show_finished","off")=="on"
@@ -449,7 +473,7 @@ def department(request,base,access,session,departmentid):
                                'include_finished':include_finished})
 
 @tillweb_view
-def userlist(request,base,access,session):
+def userlist(request,info,session):
     q=session.query(User).order_by(User.fullname)
     include_inactive=request.GET.get("include_inactive","off")=="on"
     if not include_inactive:
@@ -458,7 +482,7 @@ def userlist(request,base,access,session):
     return ('userlist.html',{'users':users,'include_inactive':include_inactive})
 
 @tillweb_view
-def user(request,base,access,session,userid):
+def user(request,info,session,userid):
     try:
         u=session.query(User).\
             options(joinedload('permissions')).\
