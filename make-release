@@ -16,20 +16,23 @@ distribution=stable
 urgency=low
 tmpdir=release-tmp
 
-usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency ]"
+usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency ] [ -r ]"
 
-while getopts "p:d:u:t:h" options; do
+rerelease=no
+
+while getopts "p:d:u:t:hr" options; do
   case $options in
     p ) packagename=$OPTARG;;
     d ) distribution=$OPTARG;;
     u ) urgency=$OPTARG;;
     t ) tmpdir=$OPTARG;;
     h ) echo $usage;;
+    r ) echo "Re-release: skipping version number and changelog update"
+	rerelease=yes;;
     \? ) echo $usage
          exit 1;;
     * ) echo $usage
           exit 1;;
-
   esac
 done
 
@@ -46,11 +49,18 @@ mkdir ${tmpdir}
 pkgdir=${tmpdir}/${packagename}-${newversion}
 git checkout-index -a --prefix=${pkgdir}/
 
+if [ "${rerelease}" = "yes" ]; then
+  (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
+  echo "Rebuilt package is in ${tmpdir}"
+  exit 0
+fi
+
 oldversion=$(dpkg-parsechangelog -l${pkgdir}/debian/changelog | grep Version: | sed 's/Version: //')
 echo "Previous version: ${oldversion}"
 
 if [ "${oldversion}" = "${newversion}" ]; then
   echo Versions are the same!  Have you forgotten to update setup.py?
+  echo If you are rebuilding the current release, use the -r option
   exit 1
 fi
 
