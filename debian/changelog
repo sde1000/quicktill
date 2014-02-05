@@ -1,3 +1,15 @@
+quicktill (0.10.17) stable; urgency=low
+
+  * New release 0.10.17
+
+  * Fix error reporting in tillweb
+
+  * Include the jquery-ui CSS file
+
+  * quicktill 0.10.16
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 05 Feb 2014 10:43:52 +0000
+
 quicktill (0.10.16) stable; urgency=low
 
   * New release 0.10.16
