@@ -61,6 +61,7 @@ def tillweb_view(view):
     single_site=getattr(settings,'TILLWEB_SINGLE_SITE',False)
     def new_view(request,pubname,*args,**kwargs):
         if single_site:
+            till=None
             tillname=settings.TILLWEB_PUBNAME
             access=settings.TILLWEB_DEFAULT_ACCESS
             session=settings.TILLWEB_DATABASE()
@@ -99,7 +100,7 @@ def tillweb_view(view):
             # till is the name of the till
             # access is 'R','M','F'
             # u is the base URL for the till website including trailing /
-            defaults={'object':None if settings.TILLWEB_SINGLE_SITE else till,
+            defaults={'object':till,
                       'till':tillname,'access':access,'u':base,
                       'depts':depts,'dtf':dtf}
             defaults.update(d)
