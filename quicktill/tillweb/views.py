@@ -504,5 +504,5 @@ def user(request,info,session,userid):
         options(joinedload('type')).\
         filter(StockAnnotation.user==u).\
         order_by(desc(StockAnnotation.time))[:50]
-    return ('user.html',{'user':u,'sales':sales,'payments':payments,
+    return ('user.html',{'tuser':u,'sales':sales,'payments':payments,
                          'annotations':annotations})

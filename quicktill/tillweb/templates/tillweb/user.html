@@ -1,37 +1,37 @@
 {% extends "tillweb/tillweb.html" %}
 
-{% block title %}{{till}} — User "{{user.fullname}}"{% endblock %}
+{% block title %}{{till}} — User "{{tuser.fullname}}"{% endblock %}
 
-{% block heading %}{{till}} — User "{{user.fullname}}"{% endblock %}
+{% block heading %}{{till}} — User "{{tuser.fullname}}"{% endblock %}
 
 {% block tillcontent %}
 
 <table>
-<tr><th>Full name:</th><td>{{user.fullname}}</td></tr>
-<tr><th>Short name:</th><td>{{user.shortname}}</td></tr>
+<tr><th>Full name:</th><td>{{tuser.fullname}}</td></tr>
+<tr><th>Short name:</th><td>{{tuser.shortname}}</td></tr>
 {% if user.webuser %}
-<tr><th>Web username:</th><td>{{user.webuser}}</td></tr>
+<tr><th>Web username:</th><td>{{tuser.webuser}}</td></tr>
 {% endif %}
 </table>
-{% if not user.enabled %}
+{% if not tuser.enabled %}
 <p>This user is marked as inactive and cannot use the till.</p>
 {% endif %}
 
 <h2>Permissions</h2>
 
-{% if user.superuser %}
+{% if tuser.superuser %}
 <p>This user can do anything that needs permissions without explicitly
 having the appropriate permission.  Any permissions shown below are
 irrelevant until the user's "superuser" status is revoked.</p>
 {% endif %}
 
-{% if user.permissions %}
+{% if tuser.permissions %}
 <table id="permissionlist">
 <thead>
 <tr><th>Name</th><th>Description</th></tr>
 </thead>
 <tbody>
-{% for p in user.permissions %}
+{% for p in tuser.permissions %}
 <tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
 {% endfor %}
 </tbody>
@@ -47,13 +47,13 @@ $(document).ready(function(){
 
 <h2>Access tokens</h2>
 
-{% if user.tokens %}
+{% if tuser.tokens %}
 <table id="tokenlist">
 <thead>
 <tr><th>Description</th><th>Value</th></tr>
 </thead>
 <tbody>
-{% for t in user.tokens %}
+{% for t in tuser.tokens %}
 <tr><td>{{t.description}}</td><td>{{t.token}}</td></tr>
 {% endfor %}
 </tbody>

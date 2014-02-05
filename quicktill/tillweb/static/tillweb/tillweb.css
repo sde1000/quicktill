@@ -1,0 +1,115 @@
+/* -*- coding: utf-8 -*- */
+
+@charset "UTF-8";
+
+#Content {
+    position: relative;
+}
+
+.tillnav {
+    position:absolute;
+    top:10px;
+    left:0px;
+    width:100px;
+    padding:10px;
+    background-color:#eee;
+    border:1px dashed #999;
+    line-height:20px;
+}
+
+.tillnav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100px;
+}
+
+.tillnav ul li {
+    position: relative;
+}
+
+.tillnav ul li ul {
+    position: absolute;
+    left: 99px;
+    top: 0;
+    display: none;
+    width: 150px;
+    padding-left: 5px;
+    background-color: #eee;
+    border: 1px dashed #999;
+    line-height: 20px;
+}
+
+.tillnav ul li:hover ul { display: block; }
+
+.tillcontent {
+    position: absolute;
+    top: 0;
+    left: 150px;
+#    margin:0px 0px 0px 150px;
+    padding:10px;
+}
+
+/* A table with keys in the first column and values in the second */
+table.kvtable th { text-align: left; }
+table.kvtable th:after { content: ":"; }
+table.kvtable table th { text-align: center; }
+table.kvtable table th:after { content: ""; }
+
+table td {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.nobullets ul {
+    list-style: none;
+}
+
+ul.adminnav li { display: inline; }
+ul.adminnav li:before { content: " »"; }
+ul.adminnav li:after { content: "« "; }
+
+.money:before { content: "£"; }
+.money { text-align: right; }
+.date { text-align: center; }
+.sessionid { text-align: center; }
+.abv:after { content: "%"; }
+.abv { 	text-align: center; }
+.stockid { text-align: center; }
+.transid { text-align: center; }
+.deliveryid { text-align: center; }
+.stockline { text-align: left; }
+
+.qtywarn { color: orange; }
+.qtyerr { color: red; }
+.finishwarn { color: orange; }
+
+/* Zebra tables */
+tbody tr.even td { background-color: #ddd; }
+tbody tr.odd td { background-color: #fff; }
+
+@media print {
+    #Menu {
+	display:none; }
+    #Content {
+	margin:0px;
+	padding:10px;
+    }
+}
+
+.error {
+    color: red;
+}
+
+ul.errorlist {
+    color: red;
+    list-style: none;
+}
+ul.errorlist li {
+    display: inline;
+}
+ul.errorlist li:before {content: " » ";}
+
+form table tr td ul {
+    list-style: none;
+}
