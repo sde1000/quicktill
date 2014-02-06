@@ -1,3 +1,13 @@
+quicktill (0.10.18) stable; urgency=low
+
+  * New release 0.10.18
+
+  * Integrate properly with ipladmin django project
+
+  * Add release script option to rebuild current package
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 06 Feb 2014 14:54:39 +0000
+
 quicktill (0.10.17) stable; urgency=low
 
   * New release 0.10.17
