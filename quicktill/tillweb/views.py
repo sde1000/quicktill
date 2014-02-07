@@ -102,7 +102,7 @@ def tillweb_view(view):
             # u is the base URL for the till website including trailing /
             defaults={'object':till,
                       'till':tillname,'access':access,'u':base,
-                      'depts':depts,'dtf':dtf}
+                      'depts':depts,'dtf':dtf,'pubname':pubname}
             defaults.update(d)
             return render_to_response(
                 'tillweb/'+t,defaults,
