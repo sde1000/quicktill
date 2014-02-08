@@ -49,6 +49,19 @@ mkdir ${tmpdir}
 pkgdir=${tmpdir}/${packagename}-${newversion}
 git checkout-index -a --prefix=${pkgdir}/
 
+releasedate="$(date -R)"
+version="${newversion} (${releasedate})"
+
+# Put the version number in the version.py file
+echo "version=u\"${version}\"" >${pkgdir}/quicktill/version.py
+# Put the version number in the version check template
+cat >${pkgdir}/quicktill/tillweb/templates/tillweb/versioncheck.html <<EOF
+{% if version != "${version}" %}
+<p><strong>Warning:</strong> mismatch between template version [${version}]
+and running code version [{{version}}].</p>
+{% endif %}
+EOF
+
 if [ "${rerelease}" = "yes" ]; then
   (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
   echo "Rebuilt package is in ${tmpdir}"
@@ -63,8 +76,6 @@ if [ "${oldversion}" = "${newversion}" ]; then
   echo If you are rebuilding the current release, use the -r option
   exit 1
 fi
-
-releasedate="$(date -R)"
 
 # Construct a changelog entry with the new version number
 
@@ -81,10 +92,6 @@ rm ${pkgdir}/debian/changelog.old
 # the version number that we want to use for the generated package.
 
 cp setup.py ${pkgdir}/setup.py
-
-# Put the version number in the version.py file
-
-echo "version=u\"${newversion} (${releasedate})\"" >${pkgdir}/quicktill/version.py
 
 # Build the Debian package files
 

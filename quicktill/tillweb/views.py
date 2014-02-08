@@ -18,6 +18,7 @@ from sqlalchemy.sql import desc
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy import distinct
 from quicktill.models import *
+from quicktill.version import version
 from . import spreadsheets
 
 # We use this date format in templates - defined here so we don't have
@@ -102,7 +103,8 @@ def tillweb_view(view):
             # u is the base URL for the till website including trailing /
             defaults={'object':till,
                       'till':tillname,'access':access,'u':base,
-                      'depts':depts,'dtf':dtf,'pubname':pubname}
+                      'depts':depts,'dtf':dtf,'pubname':pubname,
+                      'version':version}
             defaults.update(d)
             return render_to_response(
                 'tillweb/'+t,defaults,
