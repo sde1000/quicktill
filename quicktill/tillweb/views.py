@@ -133,6 +133,7 @@ def business_totals(session,firstday,lastday):
         join(Session).\
         filter(Session.date<=lastday).\
         filter(Session.date>=firstday).\
+        order_by(Business.id).\
         group_by(Business).\
         all()
 
