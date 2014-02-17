@@ -1,3 +1,13 @@
+quicktill (0.10.20) stable; urgency=low
+
+  * New release 0.10.20
+
+  * Fix exception when register.deptlines() returns None
+
+  * Show weekly business totals in tillweb in a consistent order
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 17 Feb 2014 19:30:36 +0000
+
 quicktill (0.10.19) stable; urgency=low
 
   * New release 0.10.19
