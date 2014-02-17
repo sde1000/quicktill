@@ -403,7 +403,8 @@ class popup(ui.basicpopup):
                 return
             self.dismiss()
         else:
-            ui.infopopup([r],title="Error")
+            if r:
+                ui.infopopup([r],title="Error")
     def keypress(self,k):
         if k==keyboard.K_CLEAR:
             # Maybe ask for confirmation?

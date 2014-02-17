@@ -665,7 +665,8 @@ class page(ui.basicpage):
         if the department name is to be used.
 
         Returns True on success; on failure, returns an error message
-        as a string.
+        as a string or None if it was a self.entry() error that will
+        already have popped up a message.
 
         """
         if not self.entry(): return
