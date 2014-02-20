@@ -253,6 +253,7 @@ class delivery(ui.basicpopup):
             stockitem(self.line_edited,self.dn,self.dl[self.s.cursor].stockitem)
     def view_line(self):
         # In read-only mode there is no "lastline"
+        td.s.add(self.dl[self.s.cursor].stockitem)
         stock.stockinfo_popup(self.dl[self.s.cursor].stockitem.id)
     def duplicate_item(self):
         existing=self.dl[len(self.dl)-1 if self.s.cursor_on_lastline()
