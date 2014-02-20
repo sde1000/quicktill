@@ -1,3 +1,13 @@
+quicktill (0.10.21) stable; urgency=low
+
+  * New release 0.10.21
+
+  * Minor updates to release script
+
+  * Fix popup of stock details on a confirmed delivery
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 20 Feb 2014 14:43:17 +0000
+
 quicktill (0.10.20) stable; urgency=low
 
   * New release 0.10.20
