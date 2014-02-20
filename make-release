@@ -108,13 +108,13 @@ dpkg-parsechangelog
 
 cat <<EOF
 
-You can commit this release and build the source distribution
-by pasting the following commands:
+You can commit this release by pasting the following commands:
 
 git add setup.py debian/changelog
 git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
-mv ${tmpdir}/${packagename}_* ../releases/
-python setup.py sdist -d ../releases/
+
+The following files should be put in the "incoming" directory:
+cp ${tmpdir}/quicktill_* ${tmpdir}/quicktill1_* ~packages/incoming/
 
 EOF
