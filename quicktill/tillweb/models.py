@@ -4,9 +4,11 @@ from django.core.urlresolvers import reverse
 
 def get_app_details(user):
     tills=Till.objects.filter(access__user=user)
-    return [{'name':"Till access",
-            'url':reverse('quicktill.tillweb.views.publist'),
-            'objects':tills}]
+    if len(tills)>0:
+        return [{'name':"Till access",
+                 'url':reverse('quicktill.tillweb.views.publist'),
+                 'objects':tills}]
+    return []
 
 class Till(models.Model):
     """
