@@ -117,7 +117,7 @@ def tillweb_view(view):
                 status=503)
         finally:
             session.close()
-    if single_site and settings.TILLWEB_LOGIN_REQUIRED:
+    if settings.TILLWEB_LOGIN_REQUIRED or not single_site:
         new_view=login_required(new_view)
     return new_view
 
