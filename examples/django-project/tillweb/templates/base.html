@@ -4,8 +4,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>{% block title %}quicktill{% endblock %}</title>
-{% block style %}<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}style.css" />{% endblock %}
-{% block scripts %}{% endblock %}
+{% block style %}
+<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}style.css" />
+{% endblock %}
+{% block scripts %}
+{% endblock %}
+{% block jquery %}
+{% endblock %}
 </head>
 <body>
 <div id="Header">{% block heading %}Base heading{% endblock %}

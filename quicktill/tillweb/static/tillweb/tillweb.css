@@ -46,8 +46,14 @@
     position: absolute;
     top: 0;
     left: 150px;
-#    margin:0px 0px 0px 150px;
     padding:10px;
+}
+
+.bordered td {
+    border-style:solid;
+    border-color:black;
+    border-width:1px;
+    text-align:center;
 }
 
 /* A table with keys in the first column and values in the second */
@@ -61,24 +67,7 @@ table td {
     padding-right: 5px;
 }
 
-.nobullets ul {
-    list-style: none;
-}
-
-ul.adminnav li { display: inline; }
-ul.adminnav li:before { content: " »"; }
-ul.adminnav li:after { content: "« "; }
-
-.money:before { content: "£"; }
 .money { text-align: right; }
-.date { text-align: center; }
-.sessionid { text-align: center; }
-.abv:after { content: "%"; }
-.abv { 	text-align: center; }
-.stockid { text-align: center; }
-.transid { text-align: center; }
-.deliveryid { text-align: center; }
-.stockline { text-align: left; }
 
 .qtywarn { color: orange; }
 .qtyerr { color: red; }
@@ -89,12 +78,14 @@ tbody tr.even td { background-color: #ddd; }
 tbody tr.odd td { background-color: #fff; }
 
 @media print {
-    #Menu {
-	display:none; }
-    #Content {
-	margin:0px;
-	padding:10px;
-    }
+  .tillnav {
+      display: none; }
+  #Menu {
+      display: none; }
+  #Content {
+      margin:0px;
+      padding:10px;
+  }
 }
 
 .error {
