@@ -54,10 +54,7 @@ class Api(object):
 
     '''
     def __init__(self,
-                 username,password,site=None,base_url=None):
-        if site is None: site="https://admin.individualpubs.co.uk"
-        if base_url is None:
-            base_url="/schedule/%s/api/users/"%username
+                 username,password,site,base_url):
         self._site=site
         self._base_url=base_url
         password_mgr=urllib2.HTTPPasswordMgrWithDefaultRealm()
