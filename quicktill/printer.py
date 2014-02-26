@@ -282,8 +282,9 @@ def print_restock_list(rl):
     driver.end()
 
 def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
-                     transid=None):
-    """This function prints a food order to the _specified_ printer.
+                     transid=None,print_total=True,user=None):
+    """
+    This function prints a food order to the _specified_ printer.
 
     """
     driver.start()
@@ -299,6 +300,9 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
     if transid is not None:
         driver.printline("\tTransaction %s"%transid)
         driver.printline()
+    if user:
+        driver.printline("\t%s"%user)
+        driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     driver.printline()
     driver.printline("\t%s"%ui.formattime(now()))
@@ -307,8 +311,9 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
     for item in ol:
         driver.printline("%s\t\t%s"%(item.ltext,item.rtext))
         tot+=item.price
-    driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
-    driver.printline()
+    if print_total:
+        driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
+        driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     if verbose:
         driver.printline()

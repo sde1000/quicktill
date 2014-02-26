@@ -296,6 +296,10 @@ class popup(ui.basicpopup):
             self.foodmenu.dept
             if "dept" in self.foodmenu.__dict__
             else default_dept)
+        self.print_total=(
+            self.foodmenu.print_total
+            if "print_total" in self.foodmenu.__dict__
+            else True)
         self.func=func
         self.transid=transid
         self.ordernumberfunc=ordernumberfunc
@@ -384,13 +388,17 @@ class popup(ui.basicpopup):
         if r==True:
             printer.print_food_order(printer.driver,number,self.ml,
                                      verbose=True,tablenumber=tablenumber,
-                                     footer=self.footer,transid=self.transid)
+                                     footer=self.footer,transid=self.transid,
+                                     print_total=self.print_total)
             try:
-                printer.print_food_order(kitchenprinter,number,self.ml,
-                                         verbose=False,tablenumber=tablenumber,
-                                         footer=self.footer,transid=self.transid)
+                printer.print_food_order(
+                    kitchenprinter,number,self.ml,
+                    verbose=False,tablenumber=tablenumber,
+                    footer=self.footer,transid=self.transid,
+                    user=ui.current_user().shortname)
             except:
-                e=traceback.format_exception_only(sys.exc_info()[0],sys.exc_info()[1])
+                e=traceback.format_exception_only(
+                    sys.exc_info()[0],sys.exc_info()[1])
                 self.dismiss()
                 ui.infopopup(
                     ["There was a problem sending the order to the "
