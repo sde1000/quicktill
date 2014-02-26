@@ -1,3 +1,27 @@
+quicktill (0.10.22) stable; urgency=low
+
+  * New release 0.10.22
+
+  * Check for lack of user before using name
+
+  * Enable suppression of total on customer food order tickets
+
+  * Remove defaults from timesheets API
+
+  * Grr, avoid name clash
+
+  * Augh!  Fix typo in tillweb!
+
+  * Oops - be careful reading TILLWEB_LOGIN_REQUIRED
+
+  * Fix login_required for integrated version of tillweb
+
+  * Remove duplication of styles, add extra header blocks
+
+  * Don't show "Till access" on index page when no tills are listed
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 26 Feb 2014 13:12:21 +0000
+
 quicktill (0.10.21) stable; urgency=low
 
   * New release 0.10.21
