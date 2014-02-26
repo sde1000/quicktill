@@ -60,6 +60,7 @@ def publist(request):
 
 def tillweb_view(view):
     single_site=getattr(settings,'TILLWEB_SINGLE_SITE',False)
+    login_required=getattr(setting,'TILLWEB_LOGIN_REQUIRED',True)
     def new_view(request,pubname,*args,**kwargs):
         if single_site:
             till=None
@@ -117,7 +118,7 @@ def tillweb_view(view):
                 status=503)
         finally:
             session.close()
-    if settings.TILLWEB_LOGIN_REQUIRED or not single_site:
+    if login_required or not single_site:
         new_view=login_required(new_view)
     return new_view
 
