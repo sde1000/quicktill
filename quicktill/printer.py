@@ -313,7 +313,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
         tot+=item.price
     if print_total:
         driver.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
-        driver.printline()
+    driver.printline()
     driver.printline("\tFood order %d"%number,colour=1,emph=1)
     if verbose:
         driver.printline()

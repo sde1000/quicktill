@@ -391,11 +391,12 @@ class popup(ui.basicpopup):
                                      footer=self.footer,transid=self.transid,
                                      print_total=self.print_total)
             try:
+                user=ui.current_user()
                 printer.print_food_order(
                     kitchenprinter,number,self.ml,
                     verbose=False,tablenumber=tablenumber,
                     footer=self.footer,transid=self.transid,
-                    user=ui.current_user().shortname)
+                    user=user.shortname if user else None)
             except:
                 e=traceback.format_exception_only(
                     sys.exc_info()[0],sys.exc_info()[1])
