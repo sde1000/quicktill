@@ -367,6 +367,11 @@ class modify(ui.dismisspopup):
         self.dismiss()
         td.s.add(self.stockline)
         if len(self.stockline.stockonsale)>0:
+            # Set displayqtys to none - if we don't do this explicitly here
+            # then setting the stockline field to null will violate the
+            # displayqty_null_if_no_stockline constraint
+            for si in self.stockline.stockonsale:
+                si.displayqty=None
             message=["The stock line has been deleted.  Note that it still "
                      "had stock attached to it; this stock is now available "
                      "to be attached to another stock line.  The stock items "
