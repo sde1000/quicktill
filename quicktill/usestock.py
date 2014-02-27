@@ -194,6 +194,8 @@ def put_on_sale(line,sn):
     si=td.s.query(StockItem).get(sn)
     si.onsale=datetime.datetime.now()
     si.stockline=line
+    if line.linetype=="display":
+        si.displayqty=si.used
     td.s.add(StockAnnotation(stockitem=si,atype='start',text=line.name,
                              user=user.current_dbuser()))
     td.s.flush()
@@ -203,7 +205,7 @@ def put_on_sale(line,sn):
                   "as '%s'."%(si.id,si.stocktype.format(),line.name)],
                  title="Confirmation",
                  dismiss=keyboard.K_CASH,colour=ui.colour_info)
-    if line.capacity is None:
+    if line.linetype=="regular":
         tillconfig.usestock_hook(si,line) # calling convention changed!
 
 def select_stockitem(line,item):
