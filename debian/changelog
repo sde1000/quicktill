@@ -1,3 +1,13 @@
+quicktill (0.10.23) stable; urgency=low
+
+  * New release 0.10.23
+
+  * Set displayqty to zero when removing stock on stockline delete
+
+  * Fix displayqty when adding stock to line
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 27 Feb 2014 16:05:05 +0000
+
 quicktill (0.10.22) stable; urgency=low
 
   * New release 0.10.22
