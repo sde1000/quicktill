@@ -249,6 +249,7 @@ def session(request,info,session,sessionid):
             options(undefer('transactions.total')).\
             options(undefer('total')).\
             options(undefer('actual_total')).\
+            options(joinedload('transactions.payments')).\
             one()
     except NoResultFound:
         raise Http404

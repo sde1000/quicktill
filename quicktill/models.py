@@ -282,6 +282,15 @@ class Transaction(Base):
 
         """
         return sum((p.amount for p in self.payments),zero)
+    def payments_summary(self):
+        """
+        List of (paytype,amount) tuples.
+
+        """
+        pts={}
+        for p in self.payments:
+            pts[p.paytype]=pts.get(p.paytype,zero)+p.amount
+        return pts.items()
     @property
     def balance(self):
         """

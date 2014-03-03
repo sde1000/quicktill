@@ -131,14 +131,19 @@ $(document).ready(function(){
 
 <table id="transactions">
 <thead>
-<tr><th>Transaction</th><th>Amount</th><th>Closed</th><th>Note</th></tr>
+<tr><th>Transaction</th><th>Amount</th><th>Note</th><th>State</th></tr>
 </thead>
 <tbody>
 {% for t in session.transactions %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
-<td class="money">{{t.total}}</td><td>{{t.closed|yesno:"Yes,No"}}</td>
-<td>{% if t.notes %}{{t.notes}}{% endif %}</td></tr>
+<td class="money">{{t.total}}</td>
+<td>{% if t.notes %}{{t.notes}}{% endif %}</td>
+<td>{% if t.closed %}Paid:
+{% for pt,amount in t.payments_summary %}
+{{pt}} (<span class="money">{{amount}}</span>)
+{% endfor %}{% else %}Open{% endif %}</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
