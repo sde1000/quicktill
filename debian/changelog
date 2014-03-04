@@ -1,3 +1,11 @@
+quicktill (0.10.25) stable; urgency=low
+
+  * New release 0.10.25
+
+  * Add a command to display session totals on the console
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 04 Mar 2014 22:12:23 +0000
+
 quicktill (0.10.24) stable; urgency=low
 
   * New release 0.10.24
