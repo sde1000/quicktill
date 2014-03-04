@@ -10,7 +10,7 @@ import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
 from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers
 from .version import version
-from .models import Session,User,UserToken
+from .models import Session,User,UserToken,Business,zero
 log=logging.getLogger(__name__)
 
 configurlfile="/etc/quicktill/configurl"
@@ -233,6 +233,61 @@ class adduser(command):
             td.s.add(t)
             td.s.flush()
             print("User added.")
+
+class totals(command):
+    """
+    Display a table of session totals.
+
+    """
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'totals',help="display table of session totals",
+            description=adduser.__doc__)
+        parser.set_defaults(command=totals.run)
+        parser.add_argument("-d","--days",type=int,dest="days",
+                            help="number of days to display",default=40)
+    @staticmethod
+    def run(args):
+        td.init(tillconfig.database)
+        with td.orm_session():
+            sessions=td.s.query(Session).\
+                filter(Session.endtime!=None).\
+                order_by(Session.id)[-args.days:]
+            businesses=td.s.query(Business).order_by(Business.id).all()
+            f="{s.id:>5} | {s.date} | "
+            h="  ID  |    Date    | "
+            for x in tillconfig.all_payment_methods:
+                f=f+"{p[%s]:>8} | "%x.paytype
+                h=h+"{:^8} | ".format(x.description)
+            f=f+"{error:>7} | "
+            h=h+" Error  | "
+            for b in businesses:
+                if b.show_vat_breakdown:
+                    f=f+"{b[%s][1]:>10} | {b[%s][2]:>8} | "%(b.id,b.id)
+                    h=h+"{:^10} | {:^8} | ".format(
+                        b.abbrev+" ex-VAT",b.abbrev+" VAT")
+                else:
+                    f=f+"{b[%s][0]:>8} | "%b.id
+                    h=h+"{:^8} | ".format(b.abbrev)
+            f=f[:-2]
+            h=h[:-2]
+            print(h)
+            for s in sessions:
+                vbt=s.vatband_totals
+                p={}
+                for x in tillconfig.all_payment_methods:
+                    p[x.paytype]=""
+                for t in s.actual_totals:
+                    p[t.paytype_id]=t.amount
+                b={}
+                for x in businesses:
+                    b[x.id]=(zero,zero,zero)
+                for x in vbt:
+                    o=b[x[0].businessid]
+                    o=(o[0]+x[1],o[1]+x[2],o[2]+x[3])
+                    b[x[0].businessid]=o
+                print(f.format(s=s,p=p,error=s.actual_total-s.total,b=b))
 
 def _linux_unblank_screen():
     TIOCL_UNBLANKSCREEN=4
