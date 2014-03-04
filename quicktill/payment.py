@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from . import ui,tillconfig,td
 from models import PayType,Payment,zero
+import datetime
 
 class DuplicatePayType(Exception):
     pass
@@ -32,11 +33,14 @@ class pline(ui.line):
         self.update()
     def update(self):
         payment=td.s.query(Payment).get(self.payment_id)
+        self.transtime=payment.time
         self.text="%s %s"%(self.method.describe_payment(payment),
                            tillconfig.fc(payment.amount))
         self.cursor=(0,0)
     def display(self,width):
         return [' '*(width-len(self.text))+self.text]
+    def age(self):
+        return datetime.datetime.now() - self.transtime
 
 class PaymentMethod(object):
     change_given=False
