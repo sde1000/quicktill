@@ -308,7 +308,6 @@ def main():
         f.close()
     except:
         configurl=None
-    usage="usage: %prog [options] [command]"
     parser=argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
     parser.add_argument("--version", action="version", version=version)
