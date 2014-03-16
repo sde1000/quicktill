@@ -1258,15 +1258,44 @@ class page(ui.basicpage):
             ui.infopopup(["Transaction %d has been closed, and cannot now "
                           "be deferred."%trans.id],title="Error")
             return
+        amount=self.trans.payments_total
+        if amount!=zero:
+            # Check that there is a default payment method
+            if len(tillconfig.payment_methods)<1:
+                ui.infopopup(
+                    ["This transaction is part-paid; to defer it "
+                     "we must refund the part-payment.  There is no default "
+                     "payment method so this can't be done now."],
+                    title="Error")
+                return
+            pm=tillconfig.payment_methods[0]
+            # The payment method must support both change and refunds
+            if not pm.change_given or not pm.refund_supported:
+                ui.infopopup(
+                    ["This transaction is part-paid; to defer it "
+                     "we must refund the part-payment.  The default payment "
+                     "method does not support this."],
+                    title="Error")
+                return
+            # Refund the amount paid so far and ask the user to set it aside
+            pm.add_change(self.trans,"Deferred",zero-amount)
+            printer.kickout()
         transid=self.trans.id
         self.trans.session=None
         td.s.flush()
         self._clear()
         self._redraw()
-        ui.infopopup(["Transaction %d has been deferred to the next "
-                      "session.  Make sure you keep a note of the "
-                      "transaction number and the name of the person "
-                      "responsible for paying it!"%transid],
+        message=["Transaction {} has been deferred to the next "
+                 "session.  Make sure you keep a note of the "
+                 "transaction number and the name of the person "
+                 "responsible for paying it!".format(transid)]
+        if amount:
+            message=message+["","{} had been paid towards this transaction. "
+                             "You must remove this amount from the till and "
+                             "set it aside to be used to pay off the "
+                             "transaction in a later session.".format(
+                    tillconfig.fc(amount))]
+        ui.infopopup(message,
                      title="Transaction defer confirmed",
                      colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
     @user.permission_required("convert-to-free-drinks",

@@ -44,6 +44,7 @@ class pline(ui.line):
 
 class PaymentMethod(object):
     change_given=False
+    refund_supported=False
     def __init__(self,paytype,description):
         self.paytype=paytype
         self.description=description

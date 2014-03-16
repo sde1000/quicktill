@@ -110,6 +110,7 @@ class BadCashbackMethod(Exception):
     pass
 
 class CardPayment(payment.PaymentMethod):
+    refund_supported=True
     def __init__(self,paytype,description,machines=1,cashback_method=None,
                  max_cashback=zero,cashback_first=True,kickout=False):
         """

@@ -5,6 +5,7 @@ from decimal import Decimal
 
 class CashPayment(payment.PaymentMethod):
     change_given=True
+    refund_supported=True
     def __init__(self,paytype,description,change_description,drawers=1,
                  countup=["50","20","10","5","2","1",
                           "0.50","0.20","0.10",
