@@ -364,6 +364,8 @@ class User(Base):
                     doc="Transaction being worked on by this user")
     register=Column(String(),nullable=True,doc="Terminal most recently used "
                     "by this user")
+    message=Column(String(),nullable=True,doc="Message to present to user "
+                   "on their next keypress")
     permissions=relationship("Permission",secondary="permission_grants",
                              backref="users")
     transaction=relationship(Transaction,backref=backref(
