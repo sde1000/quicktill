@@ -144,54 +144,17 @@ def pick_new_stock(line,blurb=""):
     td.s.add(line)
     # We want to filter by dept, unfinished stock only, exclude stock on sale,
     # and order based on the stocktype/stockline log
-    sinfo=td.s.query(StockItem).join(StockType).\
-        filter(StockItem.finished==None).\
-        filter(StockItem.stockline==None).\
-        filter(StockType.department==line.department).\
-        order_by(StockItem.id).\
-        all()
-    # The relevant part of the original code for ordering by stocktype/line log
-    # is:
-    #    order="(s.stocktype IN (SELECT stocktype FROM stockline_stocktype_log stl WHERE stl.stocklineid=%d)) DESC,s.stockid"%stockline
+    sf=stock.stockfilter(department=line.department,
+                         allow_on_sale=False,
+                         allow_finished=False,
+                         stockline_affinity=line,
+                         sort_descending_stockid=False)
+    stock.stockpicker(lambda x:put_on_sale(line,x),
+                      title="Select Stock Item",filter=sf,
+                      check_checkdigits=line.linetype=="regular")
 
-    nextfunc=(
-        check_checkdigits if tillconfig.checkdigit_on_usestock
-        and line.capacity is None
-        else put_on_sale)
-    f=ui.tableformatter(' r l l l ')
-    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units,
-                         ui.formatdate(x.bestbefore))),
-         nextfunc,(line,x.id)) for x in sinfo]
-    ui.menu(sl,title="Select Stock Item",blurb=blurb)
-
-class check_checkdigits(ui.dismisspopup):
-    def __init__(self,line,sn):
-        self.line=line
-        self.sn=sn
-        ui.dismisspopup.__init__(self,7,40,title="Check stock",
-                                 colour=ui.colour_input)
-        self.addstr(2,2,'Please enter the check digits from')
-        self.addstr(3,2,'the label on stock item %d.'%sn)
-        self.addstr(5,2,'Check digits:')
-        self.cdfield=ui.editfield(5,16,3,validate=ui.validate_int,keymap={
-                keyboard.K_CASH:(self.check,None)})
-        self.cdfield.focus()
-    def check(self):
-        s=td.s.query(StockItem).get(self.sn)
-        if self.cdfield.f==s.checkdigits:
-            self.dismiss()
-            put_on_sale(self.line,self.sn)
-        else:
-            self.cdfield.set('')
-            ui.infopopup(["The digits you entered are incorrect.  If the "
-                          "item of stock you are trying to put on sale "
-                          "does not have a label, you must consult your "
-                          "manager before continuing.  Do not sell from "
-                          "any item that has no label."],title="Error")
-
-def put_on_sale(line,sn):
+def put_on_sale(line,si):
     td.s.add(line)
-    si=td.s.query(StockItem).get(sn)
     si.onsale=datetime.datetime.now()
     si.stockline=line
     if line.linetype=="display":
