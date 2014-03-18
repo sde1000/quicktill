@@ -150,8 +150,8 @@ def pick_new_stock(line,blurb=""):
                          stockline_affinity=line,
                          sort_descending_stockid=False)
     stock.stockpicker(lambda x:put_on_sale(line,x),
-                      title="Select Stock Item",filter=sf,
-                      check_checkdigits=line.linetype=="regular")
+                      title="Select Stock Item for {}".format(line.name),
+                      filter=sf,check_checkdigits=line.linetype=="regular")
 
 def put_on_sale(line,si):
     td.s.add(line)
