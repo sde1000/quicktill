@@ -18,25 +18,6 @@ class fooditem(ui.lrline):
     def copy(self):
         return fooditem(self.name,self.price)
 
-# Defaults, for compatibility with older menu definition files; these
-# defaults wil be removed once all known menu files have been updated,
-# and the popup code will display an error if any of them are missing.
-# These defaults are specific to Individual Pubs Limited.
-
-# Default staff discount policy.  Returns the amount to be taken off
-# the price of each line of an order.
-def default_staffdiscount(tablenumber,item):
-    if tablenumber!=0: return zero
-    discount=item.price*Decimal("0.4")
-    if discount>Decimal("3.00"): discount=Decimal("3.00")
-    discount=discount.quantize("0.05")
-    return discount
-
-default_footer=("Please make sure your table number is displayed "
-                "on your table.  Your food will be brought to you.")
-
-default_dept=10
-
 class menuchoice(object):
     def __init__(self,options):
         """
@@ -284,18 +265,21 @@ class popup(ui.basicpopup):
                           "contain a menu definition."],
                          title="No menu defined")
             return
-        self.staffdiscount=(
-            self.foodmenu.staffdiscount
-            if "staffdiscount" in self.foodmenu.__dict__
-            else default_staffdiscount)
-        self.footer=(
-            self.foodmenu.footer
-            if "footer" in self.foodmenu.__dict__
-            else default_footer)
-        self.dept=(
-            self.foodmenu.dept
-            if "dept" in self.foodmenu.__dict__
-            else default_dept)
+        if "staffdiscount" not in self.foodmenu.__dict__:
+            ui.infopopup(["The menu file is missing a discount policy."],
+                         title="Discount policy missing")
+            return
+        if "footer" not in self.foodmenu.__dict__:
+            ui.infopopup(["The recipt footer definition is missing from "
+                          "the menu file."],title="Footer missing")
+            return
+        if "dept" not in self.foodmenu.__dict__:
+            ui.infopopup(["The department for food is missing from the "
+                          "menu file."],title="Department missing")
+            return
+        self.staffdiscount=self.foodmenu.staffdiscount
+        self.footer=self.foodmenu.footer
+        self.dept=self.foodmenu.dept
         self.print_total=(
             self.foodmenu.print_total
             if "print_total" in self.foodmenu.__dict__
