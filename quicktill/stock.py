@@ -7,7 +7,7 @@ import logging
 from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,stocklines,department
 from .models import Department,StockType,StockItem,StockAnnotation
-from .models import AnnotationType,Delivery,desc
+from .models import AnnotationType,Delivery,desc,StockLineTypeLog
 from sqlalchemy.orm import joinedload,undefer
 log=logging.getLogger(__name__)
 
@@ -119,7 +119,8 @@ class stockfilter(object):
         object.
 
         """
-        if department is None: department=self.department
+        if department is None:
+            department=td.s.merge(self.department) if self.department else None
         q=td.s.query(StockItem).join(Delivery).filter(Delivery.checked==True)
         # Unfinished items are sorted to the top
         q=q.order_by(StockItem.finished!=None)
@@ -133,7 +134,11 @@ class stockfilter(object):
             q=q.filter(StockItem.finished==None)
         if self.stockline_affinity:
             td.s.add(self.stockline_affinity)
-            # XXX add order by stockline affinity here
+            q=q.order_by(desc(StockItem.stocktype_id.in_(
+                        td.select([StockLineTypeLog.stocktype_id],
+                                  whereclause=(
+                                StockLineTypeLog.stocklineid==self.stockline_affinity.id),
+                                  correlate=True))))
         if self.sort_descending_stockid:
             q=q.order_by(desc(StockItem.id))
         else:
