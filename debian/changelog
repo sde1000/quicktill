@@ -1,3 +1,29 @@
+quicktill (0.10.26) stable; urgency=low
+
+  * New release 0.10.26
+
+  * Show line name while in stock picker dialog
+
+  * Use new stock pick in Use Stock function
+
+  * Support sorting by stockline affinity in stock picker
+
+  * Remove redundant function definition
+
+  * Show user in "recall transaction" list
+
+  * Remove defaults from foodorder
+
+  * Refund part-paid transactions on defer
+
+  * Add message field to user model
+
+  * Remove old command line usage message
+
+  * Add an age() method to payment lines
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 18 Mar 2014 12:52:10 +0000
+
 quicktill (0.10.25) stable; urgency=low
 
   * New release 0.10.25
