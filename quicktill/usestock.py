@@ -243,12 +243,6 @@ def remove_stockitem(line,item):
                  title="Stock removed from line",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
 
-def stock_autoallocate_candidates(deliveryid=None):
-    """
-    Return a list of (stockitem,stockline) tuples.
-
-    """
-
 def auto_allocate_internal(deliveryid=None,message_on_no_work=True):
     """
     Automatically allocate stock to stock lines.  If there's a potential
