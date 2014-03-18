@@ -1238,12 +1238,14 @@ class page(ui.basicpage):
         transactions=td.s.query(Transaction).\
             filter(Transaction.session==sc).\
             options(td.undefer('total')).\
+            options(td.joinedload('user')).\
             order_by(Transaction.closed==True).\
             order_by(desc(Transaction.id)).\
             all()
-        f=ui.tableformatter(' r l r l ')
+        f=ui.tableformatter(' r l r l l ')
         sl=[(ui.tableline(f,(x.id,('open','closed')[x.closed],
-                             tillconfig.fc(x.total),x.notes)),
+                             tillconfig.fc(x.total),
+                             x.user.shortname if x.user else "",x.notes)),
              self.recalltrans,(x.id,)) for x in transactions]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
