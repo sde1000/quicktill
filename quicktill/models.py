@@ -426,7 +426,7 @@ class Payment(Base):
     amount=Column(Numeric(10,2),nullable=False)
     paytype_id=Column('paytype',String(8),ForeignKey('paytypes.paytype'),
                       nullable=False)
-    ref=Column(String(16))
+    ref=Column(String())
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     user_id=Column('user',Integer,ForeignKey('users.id'),nullable=True,
                    doc="User who created this payment")
