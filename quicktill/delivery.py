@@ -329,7 +329,7 @@ class stockitem(ui.basicpopup):
         self.typefield.sethook=self.typefield_changed
         self.unitfield=ui.listfield(4,24,30,[],lambda x:x.name)
         self.unitfield.sethook=self.update_suggested_price
-        self.costfield=ui.editfield(5,24+len(tillconfig.currency),6,
+        self.costfield=ui.editfield(5,24+len(tillconfig.currency),10,
                                     validate=ui.validate_float)
         self.costfield.sethook=self.update_suggested_price
         self.salefield=ui.editfield(7,24+len(tillconfig.currency),6,
