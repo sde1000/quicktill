@@ -32,7 +32,6 @@ class bbcheck(ui.dismisspopup):
         ui.map_fieldlist([self.grossfield,self.sharefield])
         self.grossfield.focus()
     def enter(self):
-        pdriver=printer.driver
         try:
             grossamount=float(self.grossfield.f)
         except:
@@ -55,20 +54,19 @@ class bbcheck(ui.dismisspopup):
         vat_on_rent=supplier_share*self.vatrate
         left_on_site=brewery_share+vat_on_nett_take-vat_on_rent
         banked=supplier_share+vat_on_rent
-        pdriver.start()
-        pdriver.setdefattr(font=1)
-        pdriver.printline("Nett take:\t\t%s"%tillconfig.fc(grossamount))
-        pdriver.printline("VAT on nett take:\t\t%s"%tillconfig.fc(vat_on_nett_take))
-        pdriver.printline("Balance A/B:\t\t%s"%tillconfig.fc(balancea))
-        pdriver.printline("Supplier share:\t\t%s"%tillconfig.fc(supplier_share))
-        pdriver.printline("Licensee share:\t\t%s"%tillconfig.fc(brewery_share))
-        pdriver.printline("VAT on rent:\t\t%s"%tillconfig.fc(vat_on_rent))
-        pdriver.printline("(VAT on rent is added to")
-        pdriver.printline("'banked' column and subtracted")
-        pdriver.printline("from 'left on site' column.)")
-        pdriver.printline("Left on site:\t\t%s"%tillconfig.fc(left_on_site))
-        pdriver.printline("Banked:\t\t%s"%tillconfig.fc(banked))
-        pdriver.end()
+        with printer.driver as d:
+            d.setdefattr(font=1)
+            d.printline("Nett take:\t\t%s"%tillconfig.fc(grossamount))
+            d.printline("VAT on nett take:\t\t%s"%tillconfig.fc(vat_on_nett_take))
+            d.printline("Balance A/B:\t\t%s"%tillconfig.fc(balancea))
+            d.printline("Supplier share:\t\t%s"%tillconfig.fc(supplier_share))
+            d.printline("Licensee share:\t\t%s"%tillconfig.fc(brewery_share))
+            d.printline("VAT on rent:\t\t%s"%tillconfig.fc(vat_on_rent))
+            d.printline("(VAT on rent is added to")
+            d.printline("'banked' column and subtracted")
+            d.printline("from 'left on site' column.)")
+            d.printline("Left on site:\t\t%s"%tillconfig.fc(left_on_site))
+            d.printline("Banked:\t\t%s"%tillconfig.fc(banked))
         self.dismiss()
 
 ### Coffee pot timer

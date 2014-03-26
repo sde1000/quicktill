@@ -329,15 +329,18 @@ def main():
     loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
                           dest="logfile", help="Simple logging output file")
     parser.add_argument("--debug", action="store_true", dest="debug",
-                         help="Include debug output in log")
+                        help="Include debug output in log")
     parser.add_argument("--log-sql", action="store_true", dest="logsql",
-                         help="Include SQL queries in logfile")
+                        help="Include SQL queries in logfile")
+    parser.add_argument("--disable-printer", action="store_true",
+                        dest="disable_printer",help="Use the null printer "
+                        "instead of the configured printer")
     subparsers=parser.add_subparsers(title="commands")
     for c in command._commands:
         c.add_arguments(subparsers)
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
-                        interactive=False)
+                        interactive=False,disable_printer=False)
     args=parser.parse_args()
 
     if not args.configurl:
@@ -386,13 +389,19 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
     if args.logsql:
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
     if 'printer' in config:
-        printer.driver=config['printer'][0](*config['printer'][1])
+        pc=config['printer']
+        # Deal with legacy printer configurations: a two-tuple of a callable
+        # and its arguments
+        if hasattr(pc,"__getitem__"):
+            printer.driver=pc[0](*pc[1])
+        else:
+            printer.driver=pc
     else:
         log.info("no printer configured: using nullprinter()")
         printer.driver=pdrivers.nullprinter()
-    printer.kickout=printer.driver.kickout
+    if args.disable_printer:
+        printer.driver=pdrivers.nullprinter(name="disabled-printer")
     if 'labelprinter' in config:
         printer.labeldriver=config['labelprinter'][0](
             *config['labelprinter'][1])

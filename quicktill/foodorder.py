@@ -198,6 +198,55 @@ class subopts_dialog(ui.dismisspopup):
         self.func(self.itemfunc,self.ol)
         self.dismiss()
 
+def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
+                     transid=None,print_total=True,user=None):
+    """
+    This function prints a food order to the _specified_ printer.
+
+    """
+    with driver as d:
+        if verbose:
+            d.printline("\t%s"%tillconfig.pubname,emph=1)
+            for i in tillconfig.pubaddr:
+                d.printline("\t%s"%i,colour=1)
+            d.printline("\tTel. %s"%tillconfig.pubnumber)
+            d.printline()
+        if tablenumber is not None:
+            d.printline("\tTable number %s"%tablenumber,colour=1,emph=1)
+            d.printline()
+        if transid is not None:
+            d.printline("\tTransaction %s"%transid)
+            d.printline()
+        if user:
+            d.printline("\t%s"%user)
+            d.printline()
+        d.printline("\tFood order %d"%number,colour=1,emph=1)
+        d.printline()
+        d.printline("\t%s"%ui.formattime(now()))
+        d.printline()
+        tot=zero
+        for item in ol:
+            d.printline("%s\t\t%s"%(item.ltext,item.rtext))
+            tot+=item.price
+        if print_total:
+            d.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
+        d.printline()
+        d.printline("\tFood order %d"%number,colour=1,emph=1)
+        if verbose:
+            d.printline()
+            d.printline("\t%s"%footer)
+        else:
+            d.printline()
+            d.printline()
+
+def print_order_cancel(driver,number):
+    with driver as d:
+        d.printline("\tCANCEL order %d"%number,colour=1,emph=1)
+        d.printline()
+        d.printline("\t%s"%ui.formattime(now()))
+        d.printline()
+        d.printline()
+
 class tablenumber(ui.dismisspopup):
     """
     Request a table number and call a function with it.
@@ -289,7 +338,7 @@ class popup(ui.basicpopup):
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
-        if not kitchenprinter.available():
+        if kitchenprinter.offline():
             ui.infopopup(["The kitchen printer might not be connected or "
                           "turned on.  Please check it!"],
                          title="No connection to printer")
@@ -370,13 +419,13 @@ class popup(ui.basicpopup):
             rl.insert(0,(self.dept,"Food order %d:"%number,zero))
         r=self.func(rl)
         if r==True:
-            printer.print_food_order(printer.driver,number,self.ml,
-                                     verbose=True,tablenumber=tablenumber,
-                                     footer=self.footer,transid=self.transid,
-                                     print_total=self.print_total)
+            print_food_order(printer.driver,number,self.ml,
+                             verbose=True,tablenumber=tablenumber,
+                             footer=self.footer,transid=self.transid,
+                             print_total=self.print_total)
             try:
                 user=ui.current_user()
-                printer.print_food_order(
+                print_food_order(
                     kitchenprinter,number,self.ml,
                     verbose=False,tablenumber=tablenumber,
                     footer=self.footer,transid=self.transid,
@@ -425,7 +474,7 @@ class cancel(ui.dismisspopup):
     def finish(self):
         if self.field.f is None or self.field.f=='': return
         number=int(self.field.f)
-        printer.print_order_cancel(kitchenprinter,number)
+        print_order_cancel(kitchenprinter,number)
         self.dismiss()
         ui.infopopup(["The kitchen has been asked to cancel order "
                       "number %d."%number],title="Food order cancelled",

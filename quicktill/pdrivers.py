@@ -6,14 +6,28 @@ import qrcode
 import logging
 log=logging.getLogger(__name__)
 
-# Methods a printer class should implement:
-# available - returns True if start/print/end is likely to succeed
-#  (eg. checks network connection on network printers)
-# start - set up for printing; might do nothing
+class PrinterError(Exception):
+    def __init__(self,printer,desc):
+        self.printer=printer
+        self.desc=desc
+    def __str__(self):
+        return "PrinterError({},'{}')".format(self.printer,self.desc)
+
+# Printer objects must not claim external resources when instances are
+# created; they must only attempt to claim them when __enter__ is
+# called.
+
+# We break most printer definitions up into two classes: a connection
+# and a protocol.  The connection object defines how we connect to the
+# printer (USB, parallel, network etc.) and is passed an instance of a
+# protocol object defining how to control the printer (paper width,
+# options, etc.)
+
+# Methods a printer driver should implement (these objects are used
+# when a printer class is used in a with: statement)
 # setdefattr - set default attributes for subsequent lines
 # printline - print a line.  Text up to first \t is left-justified;
 #  text up to second \t is centered; text after that is right-aligned
-# end - form feed, cut if hardware supports it
 # cancut() - does the hardware support cutting?  If not, the caller can pause
 # setattr/printline have optional attribute arguments:
 #  colour (0/1 at the moment)
@@ -24,18 +38,16 @@ log=logging.getLogger(__name__)
 # printing and just returns True or False depending on whether the supplied
 # text fits without wrapping
 # The method 'checkwidth()' invokes printline with justcheckfit=True
-
-# Might implement kickout() if kickout goes through printer
+# kickout()
 
 def test_ping(host):
     """
     Check whether a host is alive using ping; returns True if it is alive.
 
     """
-    null=open('/dev/null','w')
-    r=subprocess.call("ping -q -w 2 -c 1 %s"%host,
-                      shell=True,stdout=null,stderr=null)
-    null.close()
+    with open('/dev/null','w') as null:
+        r=subprocess.call("ping -q -w 2 -c 1 %s"%host,
+                          shell=True,stdout=null,stderr=null)
     if r==0: return True
     return False
 
@@ -56,13 +68,26 @@ def wrap(l,width):
     return w
 
 class nullprinter(object):
+    """
+    A "dummy" printer that just writes to the log.
+
+    """
     def __init__(self,name=None):
         if name: self._name="nullprinter {}".format(name)
         else: self._name="nullprinter"
+        self._started=False
+    def __enter__(self):
+        if self._started: raise PrinterError(self,"Nested call to start()")
+        log.info("%s: start",self._name)
+        self._started=True
+        return self
+    def __exit__(self,type,value,tb):
+        log.info("%s: end",self._name)
+        if not self._started:
+            raise PrinterError(self,"end() called without start()")
+        self._started=False
     def available(self):
         return True
-    def start(self):
-        log.info("%s: start",self._name)
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
     def printline(self,l="",justcheckfit=False,allowwrap=True,
@@ -72,8 +97,6 @@ class nullprinter(object):
         return True
     def printqrcode(self,code):
         log.info("%s: printqrcode: %s",self._name,code)
-    def end(self):
-        log.info("%s: end",self._name)
     def cancut(self):
         return False
     def checkwidth(self,line):
@@ -81,11 +104,165 @@ class nullprinter(object):
     def kickout(self):
         log.info("%s: kickout",self._name)
 
+class fileprinter(object):
+    """
+    Print to a file.  The file may be a device file!
+
+    """
+    def __init__(self,filename,driver):
+        self._filename=filename
+        self._driver=driver
+        self._file=None
+    def __str__(self):
+        return "fileprinter({},{})".format(self._filename,self._driver)
+    def offline(self):
+        """
+        If the printer is unavailable for any reason, return a description
+        of that reason; otherwise return None.
+
+        """
+        if self._file: return 
+        try:
+            f=file(self._filename,'a')
+            f.close()
+        except IOError as e:
+            return str(e)
+    def __enter__(self):
+        if self._file:
+            raise PrinterError(self,"Already started in start()")
+        self._file=file(self._filename,'a')
+        self._driver.start(self._file)
+        return self._driver
+    def __exit__(self,type,value,tb):
+        try:
+            if tb is not None:
+                self._driver.printline(
+                    "An error occurred, the document may be incomplete")
+            self._driver.end()
+        except:
+            pass
+        self._file.close()
+        self._file=None
+
+class netprinter(object):
+    """
+    Print to a network socket.  connection is a (hostname,port) tuple.
+
+    """
+    def __init__(self,connection,driver):
+        self._connection=connection
+        self._driver=driver
+        self._socket=None
+        self._file=None
+    def __str__(self):
+        return "netprinter({},{})".format(self._filename,self._driver)
+    def offline(self):
+        """
+        If the printer is unavailable for any reason, return a description
+        of that reason; otherwise return None.
+
+        """
+        if self._file: return
+        host=self._connection[0]
+        if not test_ping(host):
+            return "Printer {} did not respond to ping".format(host)
+    def __enter__(self):
+        if self._file:
+            raise PrinterError(self,"Already started in start()")
+        self._socket=socket.socket(socket.AF_INET)
+        self._socket.connect(self.ci)
+        self._file=self.s.makefile('w')
+        self._driver.start(self._file)
+        return self._driver
+    def __exit__(self,type,value,tb):
+        try:
+            if tb is not None:
+                self._driver.printline(
+                    "An error occurred, the document may be incomplete")
+            self._driver.end()
+        except:
+            pass
+        self._file.close()
+        self._file=None
+        self._socket.close()
+        self._socket=None
+
+class tmpfileprinter(object):
+    """
+    Print to a temporary file.  Call the "finish" method with the
+    filename before the file is deleted.  This method does nothing in
+    this class: it expected that subclasses will override it.
+
+    """
+    def __init__(self,driver):
+        self._driver=driver
+        self._file=None
+    def __str__(self):
+        return "tmpfileprinter({})".format(self._driver)
+    def offline(self):
+        return
+    def __enter__(self):
+        if self._file:
+            raise PrinterError(self,"Already started in start()")
+        self._file=tempfile.NamedTemporaryFile(suffix=self._driver.filesuffix)
+        self._driver.start(self._file)
+        return self._driver
+    def __exit__(self,type,value,tb):
+        try:
+            if tb is not None:
+                self._driver.printline(
+                    "An error occurred, the document may be incomplete")
+            self._driver.end()
+        except:
+            pass
+        tmpfilename=self._file.name
+        self._file.flush()
+        self.finish(self._file.name)
+        self._file.close()
+        self._file=None
+    def finish(self,filename):
+        pass
+
+class commandprinter(tmpfileprinter):
+    """
+    Invoke a command to print.  The command is expected to have a '%s'
+    in it into which the filename to print will be substituted.
+
+    """
+    def __init__(self,printcmd,driver):
+        tmpfileprinter.__init__(self,driver)
+        self._printcmd=printcmd
+    def __str__(self):
+        return "commandprinter({},{})".format(self._printcmd,self._driver)
+    def finish(self,filename):
+        with open('/dev/null','w') as null:
+            r=subprocess.call(self._printcmd%filename,
+                              shell=True,stdout=null,stderr=null)
+
+class cupsprinter(tmpfileprinter):
+    """
+    Print to a CUPS printer.
+
+    """
+    def __init__(self,printername,driver):
+        tmpfileprinter.__init__(self,driver)
+        self._printername=printername
+    def __str__(self):
+        return "cupsprinter({},{})".format(self._printername,self._driver)
+    def finish(self,filename):
+        # XXX it might be a better idea to use python-cups here to
+        # submit the job; it could also provide more information for
+        # the offline() method.  Using lpr for now provides maximum
+        # compatibility.
+        with open('/dev/null','w') as null:
+            r=subprocess.call("lpr -P {} {}".format(self._printername,filename),
+                              shell=True,stdout=null,stderr=null)
+
 def ep_2d_cmd(*params):
     """
-    Assemble a 2d barcode command.  params are either 8-bit integers
-    or strings, which will be concatenated.  Strings are assumed to be
-    sequences of bytes here!
+    Assemble an ESC/POS 2d barcode command.  params are either 8-bit
+    integers or strings, which will be concatenated.  Strings are
+    assumed to be sequences of bytes here!
 
     """
     p=string.join([chr(x) if isinstance(x,int) else x for x in params],"")
@@ -94,6 +271,11 @@ def ep_2d_cmd(*params):
     return string.join([chr(29),'(','k',chr(pL),chr(pH),p],"")
 
 class escpos(object):
+    """
+    The ESC/POS protocol for controlling receipt printers.
+
+    """
+    filesuffix=".dat"
     ep_reset=l2s([27,64,27,116,16])
     ep_pulse=l2s([27,ord('p'),0,50,50])
     ep_underline=(l2s([27,45,0]),l2s([27,45,1]),l2s([27,45,2]))
@@ -110,31 +292,19 @@ class escpos(object):
     ep_bitimage_sd=l2s([27,42,0]) # follow with 16-bit little-endian data length
     ep_short_feed=l2s([27,74,5])
     ep_half_dot_feed=l2s([27,74,1])
-    def __init__(self,devicefile,cpl,dpl,coding,has_cutter=False,
-                 lines_before_cut=3,default_font=0):
-        if isinstance(devicefile,unicode):
-            devicefile=devicefile.encode('ascii')
-        if isinstance(devicefile,str):
-            self.f=file(devicefile,'w')
-            self.ci=None
-        else:
-            self.f=None
-            self.ci=devicefile
+    def __init__(self,cpl,dpl,coding,has_cutter=False,
+                 lines_before_cut=3,default_font=0,
+                 native_qrcode_support=False):
+        self.f=None
         self.fontcpl=cpl
         self.dpl=dpl
         self.coding=coding
         self.has_cutter=has_cutter
         self.lines_before_cut=lines_before_cut
         self.default_font=default_font
-    def available(self):
-        if self.f: return True
-        host=self.ci[0]
-        return test_ping(host)
-    def start(self):
-        if self.f is None:
-            self.s=socket.socket(socket.AF_INET)
-            self.s.connect(self.ci)
-            self.f=self.s.makefile('w')
+        self.native_qrcode_support=native_qrcode_support
+    def start(self,fileobj):
+        self.f=fileobj
         self.colour=0
         self.font=self.default_font
         self.emph=0
@@ -142,17 +312,16 @@ class escpos(object):
         self.cpl=self.fontcpl[0]
         self.f.write(escpos.ep_reset)
         self.f.write(escpos.ep_font[self.font])
+        self._printed=False
     def end(self):
-        self.f.write(escpos.ep_ff)
-        if self.has_cutter:
-            self.f.write('\n'*self.lines_before_cut+escpos.ep_left)
-            self.f.write(escpos.ep_fullcut)
-        self.f.flush()
-        if self.ci is not None:
-            self.f.close()
-            self.s.close()
-            self.f=None
-            self.s=None
+        if self._printed:
+            self.f.write(escpos.ep_ff)
+            if self.has_cutter:
+                self.f.write('\n'*self.lines_before_cut+escpos.ep_left)
+                self.f.write(escpos.ep_fullcut)
+            self.f.flush()
+        self.f=None
+        self._printed=False
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         if colour is not None:
             if colour!=self.colour:
@@ -173,6 +342,7 @@ class escpos(object):
                 self.f.write(escpos.ep_underline[underline])
     def printline(self,l="",justcheckfit=False,allowwrap=True,
                   colour=None,font=None,emph=None,underline=None):
+        self._printed=True
         cpl=self.cpl
         if font is not None:
             cpl=self.fontcpl[font]
@@ -229,7 +399,58 @@ class escpos(object):
         return fits
     def checkwidth(self,line):
         return self.printline(line,justcheckfit=True)
+    def printqrcode_native(self,data):
+        log.debug("Native QR code print: %d bytes: %s"%(len(data),repr(data)))
+        # Set the size of a "module", in dots.  The default is apparently
+        # 3 (which is also the lowest).  The maximum is 16.
+        
+        ms=16
+        if self.dpl==420: # 58mm paper width
+            if len(data)>14: ms=14
+            if len(data)>24: ms=12
+            if len(data)>34: ms=11
+            if len(data)>44: ms=10
+            if len(data)>58: ms=9
+            if len(data)>64: ms=8
+            if len(data)>84: ms=7
+            if len(data)>119: ms=6
+            if len(data)>177: ms=5
+            if len(data)>250: ms=4
+            if len(data)>439: ms=3
+            if len(data)>742: return # Too big to print
+        else: # 80mm paper width
+            if len(data)>34: ms=15
+            if len(data)>44: ms=14
+            if len(data)>45: ms=13
+            if len(data)>58: ms=12
+            if len(data)>64: ms=11
+            if len(data)>84: ms=10
+            if len(data)>119: ms=9
+            if len(data)>137: ms=8
+            if len(data)>177: ms=7
+            if len(data)>250: ms=6
+            if len(data)>338: ms=5
+            if len(data)>511: ms=4
+            if len(data)>790: ms=3
+            if len(data)>1273: return # Too big to print
+        self.f.write(ep_2d_cmd(49,67,ms))
+
+        # Set error correction:
+        # 48 = L = 7% recovery
+        # 49 = M = 15% recovery
+        # 50 = Q = 25% recovery
+        # 51 = H = 30% recovery
+        self.f.write(ep_2d_cmd(49,69,51))
+
+        # Send QR code data
+        self.f.write(ep_2d_cmd(49,80,48,data))
+
+        # Print the QR code
+        self.f.write(ep_2d_cmd(49,81,48))
     def printqrcode(self,data):
+        self._printed=True
+        if self.native_qrcode_support:
+            return self.printqrcode_native(data)
         q=qrcode.QRCode(border=2)
         q.add_data(data)
         code=q.get_matrix()
@@ -266,21 +487,11 @@ class escpos(object):
             self.f.write(escpos.ep_short_feed)
         self.f.write(escpos.ep_unidirectional_off)
     def kickout(self):
-        if self.f is None:
-            self.s=socket.socket(socket.AF_INET)
-            self.s.connect(self.ci)
-            self.f=self.s.makefile('w')
         self.f.write(escpos.ep_pulse)
         self.f.flush()
-        if self.ci is not None:
-            self.f.close()
-            self.s.close()
-            self.f=None
-            self.s=None
 
-class Epson_TM_U220(escpos):
-    def __init__(self,devicefile,paperwidth,coding='iso-8859-1',
-                 has_cutter=False):
+class Epson_TM_U220_driver(escpos):
+    def __init__(self,paperwidth,coding='iso-8859-1',has_cutter=False):
         # Characters per line with fonts 0 and 1
         if paperwidth==57 or paperwidth==58:
             cpl=(25,30)
@@ -290,11 +501,11 @@ class Epson_TM_U220(escpos):
             dpl=192
         else:
             raise Exception("Unknown paper width")
-        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter,
+        escpos.__init__(self,cpl,dpl,coding,has_cutter,
                         default_font=1)
 
-class Epson_TM_T20(escpos):
-    def __init__(self,devicefile,paperwidth,coding='iso-8859-1'):
+class Epson_TM_T20_driver(escpos):
+    def __init__(self,paperwidth,coding='iso-8859-1'):
         # Characters per line with fonts 0 and 1
         if paperwidth==57 or paperwidth==58:
             cpl=(35,46)
@@ -303,72 +514,19 @@ class Epson_TM_T20(escpos):
             cpl=(48,64)
             dpl=576
         else:
-            raise Exception("Unknown paper width")
-        escpos.__init__(self,devicefile,cpl,dpl,coding,has_cutter=True,
-                        lines_before_cut=0,default_font=0)
-    def printqrcode(self,data):
-        log.debug("QR code print: %d bytes: %s"%(len(data),repr(data)))
-        # Set the size of a "module", in dots.  The default is apparently
-        # 3 (which is also the lowest).  The maximum is 16.
-        
-        # Note that these figures are for 58mm paper width.  I have
-        # not yet had a chance to calibrate for 80mm paper width.
-        ms=16
-        if self.dpl==420:
-            if len(data)>14: ms=14
-            if len(data)>24: ms=12
-            if len(data)>34: ms=11
-            if len(data)>44: ms=10
-            if len(data)>58: ms=9
-            if len(data)>64: ms=8
-            if len(data)>84: ms=7
-            if len(data)>119: ms=6
-            if len(data)>177: ms=5
-            if len(data)>250: ms=4
-            if len(data)>439: ms=3
-            if len(data)>742: return # Too big to print
-        else:
-            if len(data)>34: ms=15
-            if len(data)>44: ms=14
-            if len(data)>45: ms=13
-            if len(data)>58: ms=12
-            if len(data)>64: ms=11
-            if len(data)>84: ms=10
-            if len(data)>119: ms=9
-            if len(data)>137: ms=8
-            if len(data)>177: ms=7
-            if len(data)>250: ms=6
-            if len(data)>338: ms=5
-            if len(data)>511: ms=4
-            if len(data)>790: ms=3
-            if len(data)>1273: return # Too big to print
-        self.f.write(ep_2d_cmd(49,67,ms))
+            raise Exception("Unknown paper width {}".format(paperwidth))
+        escpos.__init__(self,cpl,dpl,coding,has_cutter=True,
+                        lines_before_cut=0,default_font=0,
+                        native_qrcode_support=True)
 
-        # Set error correction:
-        # 48 = L = 7% recovery
-        # 49 = M = 15% recovery
-        # 50 = Q = 25% recovery
-        # 51 = H = 30% recovery
-        self.f.write(ep_2d_cmd(49,69,51))
-
-        # Send QR code data
-        self.f.write(ep_2d_cmd(49,80,48,data))
-
-        # Print the QR code
-        self.f.write(ep_2d_cmd(49,81,48))
-
-class pdf(object):
-    def __init__(self,printcmd,width=140,pagesize=A4,
+class pdf_driver(object):
+    filesuffix=".pdf"
+    def __init__(self,width=140,pagesize=A4,
                  fontsizes=[8,10],pitches=[10,12]):
         """
-        printcmd is the name of the shell command that will be invoked
-        with the filename of the PDF
-
         width is the width of the output in points
 
         """
-        
-        self.printcmd=printcmd
         self.width=width
         self.pagesize=pagesize
         self.pagewidth=pagesize[0]
@@ -376,12 +534,9 @@ class pdf(object):
         self.fontsizes=fontsizes
         self.pitches=pitches
         self.leftmargin=40
-    def available(self):
-        return True
-    def start(self):
-        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
-        self.tmpfilename=self.tmpfile.name
-        self.c=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
+    def start(self,fileobj):
+        self._f=fileobj
+        self.c=canvas.Canvas(self._f,pagesize=self.pagesize)
         self.colour=0
         self.font=0
         self.emph=0
@@ -395,10 +550,6 @@ class pdf(object):
         self.c.showPage()
         self.c.save()
         del self.c
-        os.system(self.printcmd%self.tmpfilename)
-        self.tmpfile.close()
-        del self.tmpfilename
-        del self.tmpfile
     def newcol(self):
         self.y=self.pageheight-self.pitch*4
         self.column=self.column+1
@@ -531,3 +682,27 @@ class pdflabel(pdfpage):
         function(self.f,self.width,self.height,data)
         self.f.restoreState()
         self.label=self.label+1
+
+
+# The remainder of the functions in this file are for compatibility
+# with old till config files and should be removed once they have all
+# been updated.
+
+def _pick_connection(devicefile):
+    if isinstance(devicefile,unicode):
+        devicefile=devicefile.encode('ascii')
+    if isinstance(devicefile,str):
+        return fileprinter
+    return netprinter
+
+def Epson_TM_U220(devicefile,paperwidth,coding='iso-8859-1',has_cutter=False):
+    return _pick_connection(devicefile)(
+        devicefile,Epson_TM_U220_driver(paperwidth,coding,has_cutter=False))
+
+def Epson_TM_T20(devicefile,paperwidth,coding='iso-8859-1'):
+    return _pick_connection(devicefile)(
+        devicefile,Epson_TM_T20_driver(paperwidth,coding))
+
+def pdf(printcmd,width=140,pagesize=A4,
+        fontsizes=[8,10],pitches=[10,12]):
+    return commandprinter(printcmd,pdf_driver(width,pagesize,fontsizes,pitches))
