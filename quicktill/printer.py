@@ -283,7 +283,7 @@ def kickout():
     o=driver.offline()
     if o:
         ui.infopopup(["Could not kick out the cash drawer: {}".format(o)],
-                     title="Printer offline")
+                     title="Printer problem")
         return
     with driver as d:
         d.kickout()

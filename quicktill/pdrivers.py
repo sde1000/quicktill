@@ -1,4 +1,5 @@
-import string,socket,os,tempfile,textwrap,subprocess
+from __future__ import unicode_literals
+import string,socket,os,tempfile,textwrap,subprocess,fcntl,array,sys
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
@@ -114,7 +115,8 @@ class fileprinter(object):
         self._driver=driver
         self._file=None
     def __str__(self):
-        return "fileprinter({},{})".format(self._filename,self._driver)
+        return "{}({},{})".format(self.__class__.__name__,
+                                  self._filename,self._driver)
     def offline(self):
         """
         If the printer is unavailable for any reason, return a description
@@ -143,6 +145,36 @@ class fileprinter(object):
             pass
         self._file.close()
         self._file=None
+
+class linux_lpprinter(fileprinter):
+    """
+    Print to a lp device file - /dev/lp? or /dev/usblp? on Linux
+
+    Expects the specified file to support the LPGETSTATUS ioctl.
+
+    """
+    LPGETSTATUS=0x060b
+    @staticmethod
+    def _decode_status(status):
+        if status & 0x20: return "out of paper" # LP_POUTPA
+        if ~status & 0x10: return "off-line" # LP_PSELECD
+        if ~status & 0x08: return "error light is on" # LP_PERRORP
+    def __init__(self,*args,**kwargs):
+        if sys.platform!="linux2":
+            raise PrinterError(
+                self,"linux_lpprinter: wrong platform '{}' "
+                "(expected 'linux2')".format(sys.platform))
+        fileprinter.__init__(self,*args,**kwargs)
+    def offline(self):
+        if self._file: return 
+        try:
+            f=file(self._filename,'a')
+            buf=array.array(str('b'),[0])
+            fcntl.ioctl(f,self.LPGETSTATUS,buf)
+            f.close()
+            return self._decode_status(buf[0])
+        except IOError as e:
+            return str(e)
 
 class netprinter(object):
     """
@@ -692,7 +724,7 @@ def _pick_connection(devicefile):
     if isinstance(devicefile,unicode):
         devicefile=devicefile.encode('ascii')
     if isinstance(devicefile,str):
-        return fileprinter
+        return lpprinter
     return netprinter
 
 def Epson_TM_U220(devicefile,paperwidth,coding='iso-8859-1',has_cutter=False):
