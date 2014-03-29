@@ -170,16 +170,17 @@ class btcpopup(ui.dismisspopup):
                 2,2,"QR code will not fit on this screen.  Press Print.")
     def printout(self):
         if 'to_pay_url' in self.response:
-            with printer.driver as d:
-                d.printline("\t"+tillconfig.pubname,emph=1)
-                d.printline("\t{} payment".format(self._pm.description))
-                d.printline("\t"+self.response['description'])
-                d.printline("\t"+tillconfig.fc(self.response['amount']))
-                d.printline("\t{} {} to pay".format(
-                        self.response['to_pay'],self._pm._currency))
-                d.printqrcode(str(self.response['to_pay_url']))
-                d.printline()
-                d.printline()
+            with ui.exception_guard("printing the QR code"):
+                with printer.driver as d:
+                    d.printline("\t"+tillconfig.pubname,emph=1)
+                    d.printline("\t{} payment".format(self._pm.description))
+                    d.printline("\t"+self.response['description'])
+                    d.printline("\t"+tillconfig.fc(self.response['amount']))
+                    d.printline("\t{} {} to pay".format(
+                            self.response['to_pay'],self._pm._currency))
+                    d.printqrcode(str(self.response['to_pay_url']))
+                    d.printline()
+                    d.printline()
     def refresh(self):
         payment=td.s.query(Payment).get(self._paymentid)
         if not payment:

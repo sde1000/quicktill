@@ -29,8 +29,9 @@ class receiptprint(user.permission_checked,ui.dismisspopup):
         except:
             rn=None
         if rn is None: return
-        printer.print_receipt(rn)
         self.dismiss()
+        with ui.exception_guard("printing the receipt",title="Printer error"):
+            printer.print_receipt(rn)
 
 @user.permission_required('version','See version information')
 def versioninfo():

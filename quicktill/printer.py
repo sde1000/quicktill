@@ -285,5 +285,7 @@ def kickout():
         ui.infopopup(["Could not kick out the cash drawer: {}".format(o)],
                      title="Printer problem")
         return
-    with driver as d:
-        d.kickout()
+    with ui.exception_guard("kicking out the cash drawer",
+                            title="Printer error"):
+        with driver as d:
+            d.kickout()

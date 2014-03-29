@@ -106,6 +106,12 @@ def checkendsession():
 def confirmendsession():
     r=checkendsession()
     if r is None: return
+    # Check that the printer has paper before ending the session
+    pp=printer.driver.offline()
+    if pp:
+        ui.infopopup(["Could not end the session: there is a problem with "
+                      "the printer: {}".format(pp)],title="Printer problem")
+        return
     r.endtime=datetime.datetime.now()
     log.info("End of session %d confirmed.",r.id)
     ui.infopopup(["Session %d has ended.  "
@@ -113,7 +119,9 @@ def confirmendsession():
                   "actual amounts using management option 1,3."%(r.id,)],
                  title="Session Ended",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
-    printer.print_sessioncountup(r)
+    with ui.exception_guard("printing the session countup sheet",
+                            title="Printer error"):
+        printer.print_sessioncountup(r)
     printer.kickout()
     managestock.stock_purge_internal(source="session end")
 
@@ -313,8 +321,10 @@ class record(ui.dismisspopup):
                               "says {}".format(pm.pm.description,r)],
                              title="Error")
                 return
-        printer.print_sessiontotals(self.session)
         self.dismiss()
+        with ui.exception_guard("printing the confirmed session totals",
+                                title="Printer error"):
+            printer.print_sessiontotals(self.session)
 
 @user.permission_required('record-takings',"Record takings for a session")
 def recordtakings():
