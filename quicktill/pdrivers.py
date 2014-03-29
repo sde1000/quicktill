@@ -87,8 +87,8 @@ class nullprinter(object):
         if not self._started:
             raise PrinterError(self,"end() called without start()")
         self._started=False
-    def available(self):
-        return True
+    def offline(self):
+        return
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
     def printline(self,l="",justcheckfit=False,allowwrap=True,
