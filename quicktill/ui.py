@@ -1352,6 +1352,43 @@ def popup_exception(title):
                                  sys.exc_info()[2])
     infopopup(e,title=title)
 
+class exception_popup(object):
+    """
+    Pop up a window describing a caught exception.  Provide the user
+    with the option to see the full traceback if they want to.
+
+    """
+    def __init__(self,description,title,type,value,tb):
+        self._description=description
+        self._title=title
+        self._type=type
+        self._value=value
+        self._tb=tb
+        infopopup(
+            [description,"",str(value),"",
+             "Press {} to see more details.".format(keyboard.K_CASH.keycap)],
+            title=title,keymap={keyboard.K_CASH:(self.show_all,None,True)})
+    def show_all(self):
+        e=traceback.format_exception(self._type,self._value,self._tb)
+        infopopup(
+            [self._description,""]+e,title=self._title)
+
+class exception_guard(object):
+    """
+    Context manager for running code that may raise an exception that
+    should be reported to the user.
+
+    """
+    def __init__(self,description,title=None):
+        self._description="There was a problem while {}.".format(description)
+        self._title=title if title else "Error"
+    def __enter__(self):
+        return self
+    def __exit__(self,type,value,tb):
+        if tb is None: return
+        exception_popup(self._description,self._title,type,value,tb)
+        return True
+
 def init(w):
     global stdwin,header
     stdwin=w
