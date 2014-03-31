@@ -1556,8 +1556,8 @@ class page(ui.basicpage):
             trans=self.gettrans()
             if trans is None: return
             return foodorder.popup(self.deptlines,transid=trans.id)
-        if k==keyboard.K_CANCELFOOD:
-            return foodorder.cancel()
+        if k==keyboard.K_CANCELFOOD or k==keyboard.K_FOODMESSAGE:
+            return foodorder.message()
         curses.beep()
     def hotkeypress(self,k):
         if self._autolock and k==self._autolock and not self.locked:

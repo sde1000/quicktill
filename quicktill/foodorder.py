@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
-import urllib,imp,textwrap,curses,sys,traceback,math
-from . import ui,keyboard,td,printer,tillconfig
+import urllib,imp,textwrap,curses,sys,traceback,math,datetime
+from . import ui,keyboard,td,printer,tillconfig,pdrivers
 from .models import zero,penny
 from decimal import Decimal
 
-kitchenprinter=None
+kitchenprinter=pdrivers.nullprinter(name="default_kitchenprinter")
 menuurl=None
 
 class fooditem(ui.lrline):
@@ -222,7 +222,7 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
             d.printline()
         d.printline("\tFood order %d"%number,colour=1,emph=1)
         d.printline()
-        d.printline("\t%s"%ui.formattime(now()))
+        d.printline("\t%s"%ui.formattime(datetime.datetime.now()))
         d.printline()
         tot=zero
         for item in ol:
@@ -232,6 +232,9 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
             d.printline("\t\tTotal %s"%tillconfig.fc(tot),emph=1)
         d.printline()
         d.printline("\tFood order %d"%number,colour=1,emph=1)
+        if tablenumber is not None:
+            d.printline()
+            d.printline("\tTable number %s"%tablenumber,colour=1,emph=1)
         if verbose:
             d.printline()
             d.printline("\t%s"%footer)
@@ -239,13 +242,6 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
             d.printline()
             d.printline()
 
-def print_order_cancel(driver,number):
-    with driver as d:
-        d.printline("\tCANCEL order %d"%number,colour=1,emph=1)
-        d.printline()
-        d.printline("\t%s"%ui.formattime(now()))
-        d.printline()
-        d.printline()
 
 class tablenumber(ui.dismisspopup):
     """
@@ -338,10 +334,16 @@ class popup(ui.basicpopup):
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
-        if kitchenprinter.offline():
-            ui.infopopup(["The kitchen printer might not be connected or "
-                          "turned on.  Please check it!"],
-                         title="No connection to printer")
+        kpprob=kitchenprinter.offline()
+        rpprob=printer.driver.offline()
+        if kpprob and rpprob:
+            ui.infopopup(
+                ["Both the kitchen printer and receipt printer report "
+                 "problems.  You will not be able to print a food order "
+                 "until these are fixed.","",
+                 "Kitchen printer problem: {}".format(kpprob),
+                 "Receipt printer problem: {}".format(rpprob)],
+                title="Printer problems")
             return
         ui.basicpopup.__init__(self,self.h,self.w,title="Food Order",
                           colour=ui.colour_input)
@@ -368,6 +370,22 @@ class popup(ui.basicpopup):
                                  lastline=ui.emptyline())
         self.toplevel=menuchoice(self.foodmenu.menu)
         self.order.focus()
+        if kpprob:
+            ui.infopopup(
+                ["The kitchen printer might not be connected or "
+                 "turned on.  Please check it!","",
+                 "You can continue anyway if you like; if the kitchen "
+                 "printer isn't working when you try to print the "
+                 "order then their copy will be printed on the "
+                 "receipt printer.","",
+                 "The kitchen printer says: {}".format(kpprob)],
+                title="No connection to kitchen printer")
+        if rpprob:
+            ui.infopopup(
+                ["The receipt printer is reporting a problem.  Please fix it "
+                 "before trying to print the order.","",
+                 "The problem is: {}".format(rpprob)],
+                title="Receipt printer problem")
     def insert_item(self,item):
         self.ml.insert(self.order.cursor,item)
         self.order.cursor_down()
@@ -402,6 +420,15 @@ class popup(ui.basicpopup):
             return
         tablenumber(self.finish)
     def finish(self,tablenumber):
+        # Check on the printer before we do any work...
+        rpprob=printer.driver.offline()
+        if rpprob:
+            ui.infopopup(
+                ["The receipt printer is reporting a problem.  Please fix it "
+                 "before trying to print the order.","",
+                 "The problem is: {}".format(rpprob)],
+                title="Receipt printer problem")
+            return
         discount=sum([self.staffdiscount(tablenumber,x) for x in self.ml],zero)
         if discount>zero:
             self.ml.append(fooditem("Staff discount",zero-discount))
@@ -417,14 +444,16 @@ class popup(ui.basicpopup):
                          (number,tablenumber),zero))
         else:
             rl.insert(0,(self.dept,"Food order %d:"%number,zero))
-        r=self.func(rl)
+        r=self.func(rl) # Return values: True=success; string or None=failure
+        self.dismiss()
         if r==True:
-            print_food_order(printer.driver,number,self.ml,
-                             verbose=True,tablenumber=tablenumber,
-                             footer=self.footer,transid=self.transid,
-                             print_total=self.print_total)
+            user=ui.current_user()
+            with ui.exception_guard("printing the customer copy"):
+                print_food_order(printer.driver,number,self.ml,
+                                 verbose=True,tablenumber=tablenumber,
+                                 footer=self.footer,transid=self.transid,
+                                 print_total=self.print_total)
             try:
-                user=ui.current_user()
                 print_food_order(
                     kitchenprinter,number,self.ml,
                     verbose=False,tablenumber=tablenumber,
@@ -433,17 +462,23 @@ class popup(ui.basicpopup):
             except:
                 e=traceback.format_exception_only(
                     sys.exc_info()[0],sys.exc_info()[1])
-                self.dismiss()
+                try:
+                    print_food_order(
+                        printer.driver,number,self.ml,
+                        verbose=False,tablenumber=tablenumber,
+                        footer=self.footer,transid=self.transid,
+                        user=user.shortname if user else None)
+                except:
+                    pass
                 ui.infopopup(
                     ["There was a problem sending the order to the "
-                     "printer in the kitchen.  You must now take "
-                     "the customer's copy of the order to the kitchen "
+                     "printer in the kitchen, so the kitchen copy has been "
+                     "printed here.  You must now take it to the kitchen "
                      "so that they can make it.  Check that the printer "
                      "in the kitchen has paper, is turned on, and is plugged "
                      "in to the network.","","The error message from the "
                      "printer is:"]+e,title="Kitchen printer error")
                 return
-            self.dismiss()
         else:
             if r:
                 ui.infopopup([r],title="Error")
@@ -462,20 +497,59 @@ class popup(ui.basicpopup):
         elif self.toplevel.menu_keypress(self.insert_item,k):
             return
 
-class cancel(ui.dismisspopup):
+class message(ui.dismisspopup):
+    """
+    Send a printed message to the kitchen.
+
+    """
     def __init__(self):
-        ui.dismisspopup.__init__(self,5,20,title="Cancel food order",
+        problem=kitchenprinter.offline()
+        if problem:
+            ui.infopopup(["There is a problem with the kitchen printer:","",
+                          problem],title="Kitchen printer problem")
+            return
+        ui.dismisspopup.__init__(self,6,78,title="Message to kitchen",
                                  colour=ui.colour_input)
         self.addstr(2,2,"Order number:")
-        self.field=ui.editfield(
-            2,16,5,validate=ui.validate_int,
+        self.onfield=ui.editfield(2,16,5)
+        self.addstr(2,23,"(may be blank)")
+        self.addstr(3,2,"     Message: ")
+        self.messagefield=ui.editfield(
+            3,16,60,flen=160,
             keymap={keyboard.K_CASH: (self.finish,None)})
-        self.field.focus()
+        ui.map_fieldlist([self.onfield,self.messagefield])
+        self.onfield.focus()
     def finish(self):
-        if self.field.f is None or self.field.f=='': return
-        number=int(self.field.f)
-        print_order_cancel(kitchenprinter,number)
+        if not self.onfield.f and not self.messagefield.f: return
+        problem=kitchenprinter.offline()
+        if problem:
+            ui.infopopup(["There is a problem with the kitchen printer:","",
+                          problem],title="Kitchen printer problem")
+            return
         self.dismiss()
-        ui.infopopup(["The kitchen has been asked to cancel order "
-                      "number %d."%number],title="Food order cancelled",
-                     colour=ui.colour_info,dismiss=keyboard.K_CASH)
+        try:
+            with kitchenprinter as d:
+                if self.onfield.f:
+                    d.printline(
+                        "\tMessage about order {}".format(self.onfield.f),
+                        colour=1,emph=1)
+                else:
+                    d.printline("\tMessage",colour=1,emph=1)
+                d.printline()
+                d.printline("\t%s"%ui.formattime(datetime.datetime.now()))
+                d.printline()
+                user=ui.current_user()
+                if user:
+                    d.printline("\t{}".format(user.shortname))
+                    d.printline()
+                if self.messagefield.f:
+                    d.printline("\t{}".format(self.messagefield.f))
+                    d.printline()
+                d.printline()
+            ui.infopopup(["The message has been printed in the kitchen."],
+                         title="Message sent",
+                         colour=ui.colour_info,dismiss=keyboard.K_CASH)
+        except:
+            ui.infopopup(["There was a problem printing the message in the "
+                          "kitchen.  Please try again."],
+                         title="Message not sent")
