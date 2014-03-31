@@ -1,3 +1,29 @@
+quicktill (0.10.27) stable; urgency=low
+
+  * New release 0.10.27
+
+  * Only soft-lock the register if it has the focus
+
+  * Better handling of kitchen printer problems
+
+  * Add a fake 'bad' printer driver
+
+  * Add printer status to lock page
+
+  * Add exception guard to some calls to the printer
+
+  * Context manager to catch and display exceptions
+
+  * Check printer status
+
+  * Reorganise printing
+
+  * Increase cost price field length
+
+  * Remove length restriction on payment references
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 31 Mar 2014 17:58:04 +0100
+
 quicktill (0.10.26) stable; urgency=low
 
   * New release 0.10.26
