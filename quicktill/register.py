@@ -1560,8 +1560,10 @@ class page(ui.basicpage):
             return foodorder.message()
         curses.beep()
     def hotkeypress(self,k):
-        if self._autolock and k==self._autolock and not self.locked:
+        if self._autolock and k==self._autolock and not self.locked \
+                and self.s.focused:
             # Intercept the 'Lock' keypress and handle it ourselves.
+            # Do this only if our scrollable has the focus.
             self.locked=True
             self._redraw()
         else:
