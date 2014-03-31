@@ -214,7 +214,7 @@ class netprinter(object):
         if self._file:
             raise PrinterError(self,"Already started in start()")
         self._socket=socket.socket(socket.AF_INET)
-        self._socket.connect(self.ci)
+        self._socket.connect(self._connection)
         self._file=self.s.makefile('w')
         self._driver.start(self._file)
         return self._driver
@@ -736,7 +736,7 @@ def _pick_connection(devicefile):
     if isinstance(devicefile,unicode):
         devicefile=devicefile.encode('ascii')
     if isinstance(devicefile,str):
-        return lpprinter
+        return linux_lpprinter
     return netprinter
 
 def Epson_TM_U220(devicefile,paperwidth,coding='iso-8859-1',has_cutter=False):
