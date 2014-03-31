@@ -1,3 +1,11 @@
+quicktill (0.10.29) stable; urgency=low
+
+  * New release 0.10.29
+
+  * Fix netprinter / kitchenprinter
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 31 Mar 2014 18:19:57 +0100
+
 quicktill (0.10.28) stable; urgency=low
 
   * New release 0.10.28
