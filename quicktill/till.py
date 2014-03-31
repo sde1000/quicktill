@@ -408,7 +408,8 @@ def main():
     tillconfig.database=config.get('database')
     if args.database is not None: tillconfig.database=args.database
     tillconfig.kb=config['kbdriver']
-    foodorder.kitchenprinter=config.get('kitchenprinter')
+    if 'kitchenprinter' in config:
+        foodorder.kitchenprinter=config['kitchenprinter']
     foodorder.menuurl=config.get('menuurl')
     tillconfig.pubname=config['pubname']
     tillconfig.pubnumber=config['pubnumber']

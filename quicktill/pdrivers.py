@@ -215,7 +215,7 @@ class netprinter(object):
             raise PrinterError(self,"Already started in start()")
         self._socket=socket.socket(socket.AF_INET)
         self._socket.connect(self._connection)
-        self._file=self.s.makefile('w')
+        self._file=self._socket.makefile('w')
         self._driver.start(self._file)
         return self._driver
     def __exit__(self,type,value,tb):
