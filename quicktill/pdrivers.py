@@ -77,6 +77,8 @@ class nullprinter(object):
         if name: self._name="nullprinter {}".format(name)
         else: self._name="nullprinter"
         self._started=False
+    def __str__(self):
+        return "{}(name='{}')".format(self.__class__.__name__,self._name)
     def __enter__(self):
         if self._started: raise PrinterError(self,"Nested call to start()")
         log.info("%s: start",self._name)
@@ -104,6 +106,16 @@ class nullprinter(object):
         return self.printline(l,justcheckfit=True)
     def kickout(self):
         log.info("%s: kickout",self._name)
+
+class badprinter(nullprinter):
+    """
+    A null printer that always reports it is offline, for testing.
+
+    """
+    def offline(self):
+        return "badprinter is always offline!"
+    def __enter__(self):
+        raise PrinterError(self,"badprinter is always offline!")
 
 class fileprinter(object):
     """
