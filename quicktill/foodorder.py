@@ -511,7 +511,8 @@ class message(ui.dismisspopup):
         ui.dismisspopup.__init__(self,6,78,title="Message to kitchen",
                                  colour=ui.colour_input)
         self.addstr(2,2,"Order number:")
-        self.onfield=ui.editfield(2,16,5)
+        self.onfield=ui.editfield(2,16,5,keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
         self.addstr(2,23,"(may be blank)")
         self.addstr(3,2,"     Message: ")
         self.messagefield=ui.editfield(
