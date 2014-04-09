@@ -445,6 +445,11 @@ class popup(ui.basicpopup):
         else:
             rl.insert(0,(self.dept,"Food order %d:"%number,zero))
         r=self.func(rl) # Return values: True=success; string or None=failure
+        # If r is None then a window will have been popped up telling the
+        # user what's happened to their transaction.  It will have popped
+        # up on top of us; we can't do anything else at this point other than
+        # exit and let the user try again.
+        if r==None: return
         self.dismiss()
         if r==True:
             user=ui.current_user()
