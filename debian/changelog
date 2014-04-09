@@ -1,3 +1,11 @@
+quicktill (0.10.31) stable; urgency=low
+
+  * New release 0.10.31
+
+  * Fix focus problem when aborting print of kitchen order
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 09 Apr 2014 17:13:18 +0100
+
 quicktill (0.10.30) stable; urgency=low
 
   * New release 0.10.30
