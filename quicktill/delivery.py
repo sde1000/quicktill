@@ -420,7 +420,7 @@ class stockitem(ui.basicpopup):
                 stocktype.pricechanged=datetime.datetime.now()
             for i in range(qty):
                 thiscost=remaining_cost if i==(qty-1) else costper
-                remaining_cost=remaining_cost-thiscost
+                remaining_cost=remaining_cost-thiscost if cost else None
                 item=StockItem()
                 item.deliveryid=self.deliveryid
                 item.stocktype=stocktype
