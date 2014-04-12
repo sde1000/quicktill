@@ -1,3 +1,11 @@
+quicktill (0.10.32) stable; urgency=low
+
+  * New release 0.10.32
+
+  * Cope with null cost price in deliveries
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 12 Apr 2014 12:39:28 +0100
+
 quicktill (0.10.31) stable; urgency=low
 
   * New release 0.10.31
