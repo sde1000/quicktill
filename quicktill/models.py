@@ -715,6 +715,7 @@ class Supplier(Base):
     name=Column(String(60),nullable=False)
     tel=Column(String(20))
     email=Column(String(60))
+    web=Column(String())
     def __repr__(self):
         return "<Supplier(%s,'%s')>"%(self.id,self.name)
     def __unicode__(self):

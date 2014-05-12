@@ -461,7 +461,7 @@ class editsupplier(ui.basicpopup):
         if supplier: td.s.add(supplier)
         self.func=func
         self.sn=supplier.id if supplier else None
-        ui.basicpopup.__init__(self,10,70,title="Supplier Details",
+        ui.basicpopup.__init__(self,11,70,title="Supplier Details",
                                colour=ui.colour_input,cleartext=
                                "Press Clear to go back")
         self.addstr(2,2,"Please enter the supplier's details. You may ")
@@ -469,6 +469,7 @@ class editsupplier(ui.basicpopup):
         self.addstr(5,2,"     Name:")
         self.addstr(6,2,"Telephone:")
         self.addstr(7,2,"    Email:")
+        self.addstr(8,2,"      Web:")
         self.namefield=ui.editfield(
             5,13,55,flen=60,keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)},
@@ -476,20 +477,24 @@ class editsupplier(ui.basicpopup):
         self.telfield=ui.editfield(
             6,13,20,f=supplier.tel if supplier else "")
         self.emailfield=ui.editfield(
-            7,13,55,flen=60,f=supplier.email if supplier else "",
+            7,13,55,flen=60,f=supplier.email if supplier else "")
+        self.webfield=ui.editfield(
+            8,13,55,flen=120,f=supplier.web if supplier else "",
             keymap={
                 keyboard.K_CASH:(self.confirmwin if supplier is None
                                  else self.confirmed,None)})
-        ui.map_fieldlist([self.namefield,self.telfield,self.emailfield])
+        ui.map_fieldlist([self.namefield,self.telfield,self.emailfield,
+                          self.webfield])
         self.namefield.focus()
     def confirmwin(self):
         # Called when Cash/Enter is pressed on the last field, for new
         # suppliers only
         self.dismiss()
         ui.infopopup(["Press Cash/Enter to confirm new supplier details:",
-                      "Name: %s"%self.namefield.f,
-                      "Telephone: %s"%self.telfield.f,
-                      "Email: %s"%self.emailfield.f],
+                      "Name: {}".format(self.namefield.f),
+                      "Telephone: {}".format(self.telfield.f),
+                      "Email: {}".format(self.emailfield.f),
+                      "Web: {}".format(self.webfield.f)],
                      title="Confirm New Supplier Details",
                      colour=ui.colour_input,keymap={
             keyboard.K_CASH: (self.confirmed,None,True)})
@@ -502,6 +507,7 @@ class editsupplier(ui.basicpopup):
         supplier.name=self.namefield.f
         supplier.tel=self.telfield.f
         supplier.email=self.emailfield.f
+        supplier.web=self.webfield.f
         td.s.flush()
         if self.sn is not None: self.dismiss()
         self.func(supplier)

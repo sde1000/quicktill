@@ -8,7 +8,7 @@
 
 <table id="suppliers">
 <thead>
-<tr><th>Name</th><th>Telephone</th><th>Email</th></tr>
+<tr><th>Name</th><th>Telephone</th><th>Email</th><th>Web</th></tr>
 </thead>
 <tbody>
 {% for s in suppliers %}
@@ -16,6 +16,7 @@
 <td><a href="{{u}}{{s.tillweb_url}}">{{s.name}}</a></td>
 <td>{{s.tel}}</td>
 <td>{% if s.email %}<a href="mailto:{{s.email|urlencode}}">{{s.email}}</a>{% endif %}</td>
+<td>{% if s.web %}<a href="{{s.web|urlencode}}">{{s.web}}</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

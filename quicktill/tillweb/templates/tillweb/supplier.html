@@ -10,6 +10,7 @@
 <tr><th>Name</th><td>{{supplier.name}}</td></tr>
 <tr><th>Telephone</th><td>{{supplier.tel}}</td></tr>
 <tr><th>Email</th><td>{{supplier.email}}</td></tr>
+<tr><th>Web</th><td>{% if supplier.web %}<a href="{{supplier.web|urlencode}}">{{supplier.web}}</a>{% endif %}</td></tr>
 </table>
 
 <h2>Deliveries</h2>
