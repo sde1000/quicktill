@@ -740,13 +740,16 @@ def _pick_connection(devicefile):
     return netprinter
 
 def Epson_TM_U220(devicefile,paperwidth,coding='iso-8859-1',has_cutter=False):
+    log.warning("Obsolete function pdrivers.Epson_TM_U220 called")
     return _pick_connection(devicefile)(
         devicefile,Epson_TM_U220_driver(paperwidth,coding,has_cutter=False))
 
 def Epson_TM_T20(devicefile,paperwidth,coding='iso-8859-1'):
+    log.warning("Obsolete function pdrivers.Epson_TM_T20 called")
     return _pick_connection(devicefile)(
         devicefile,Epson_TM_T20_driver(paperwidth,coding))
 
 def pdf(printcmd,width=140,pagesize=A4,
         fontsizes=[8,10],pitches=[10,12]):
+    log.warning("Obsolete function pdrivers.pdf called")
     return commandprinter(printcmd,pdf_driver(width,pagesize,fontsizes,pitches))
