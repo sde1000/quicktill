@@ -6,7 +6,7 @@ import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
 from quicktill.keyboard import *
-from quicktill.pdrivers import nullprinter,Epson_TM_U220,Epson_TM_T20,pdf,pdflabel,A4
+from quicktill.pdrivers import nullprinter,linux_lpprinter,netprinter,commandprinter,Epson_TM_U220_driver,Epson_TM_T20_driver,pdf_driver,pdflabel,A4
 from quicktill import register,ui,kbdrivers,stockterminal,user
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
@@ -290,9 +290,9 @@ std={
 }
 
 kitchen={
-#    'kitchenprinter':Epson_TM_U220(
-#    ('kitchenprinter.haymakers.i.individualpubs.co.uk',9100),57,
-#    has_cutter=True),
+#    'kitchenprinter':netprinter(
+#        ('kitchenprinter.haymakers.i.individualpubs.co.uk',9100),
+#        driver=Epson_TM_U220_driver(57,has_cutter=True)),
     'kitchenprinter': nullprinter(), # XXX testing
     'menuurl':'http://till.haymakers.i.individualpubs.co.uk:8080/foodmenu.py',
     }
@@ -301,13 +301,13 @@ noprinter={
     'printer': (nullprinter,()),
     }
 localprinter={
-    'printer': (Epson_TM_T20,("/dev/usb/lp0".encode('ascii'),80)),
+    'printer': linux_lpprinter("/dev/usb/lp0",driver=Epson_TM_T20_driver(80)),
     }
 pdfprinter={
-    'printer': (pdf,("lpr %s",)),
+    'printer': commandprinter("lpr %s",driver=pdf_driver()),
     }
 xpdfprinter={
-    'printer': (pdf,("evince %s",)),
+    'printer': commandprinter("evince %s",driver=pdf_driver()),
     }
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
@@ -485,8 +485,10 @@ global_hotkeys={
 
 stockcontrol={
     'kbdriver':kbdrivers.curseskeyboard(),
-#    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"]),
-    'firstpage': lockscreen.lockpage,
+    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"],
+                                            user=user.built_in_user(
+                                                "Stock Terminal","Stock Terminal",['manager'])),
+#    'firstpage': lockscreen.lockpage,
     'usertoken_handler': lambda t:stockterminal.handle_usertoken(t,stock_hotkeys,["Bar"]),
     'usertoken_listen': ('127.0.0.1',8455),
 }    
