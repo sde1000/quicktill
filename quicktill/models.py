@@ -327,7 +327,7 @@ BEGIN
     AND (SELECT sum(amount*items) FROM translines
       WHERE transid=NEW.transid)!=
       (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
-  THEN RAISE EXCEPTION 'transaction % does not balance', NEW.transid;
+  THEN RAISE EXCEPTION 'transaction %% does not balance', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -442,7 +442,7 @@ add_ddl(Payment.__table__,"""
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction % payment', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %% payment', NEW.transid;
   END IF;
   RETURN NULL;
 END;
@@ -542,7 +542,7 @@ add_ddl(Transline.__table__,"""
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction % line', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %% line', NEW.transid;
   END IF;
   RETURN NULL;
 END;
