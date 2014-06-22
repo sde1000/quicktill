@@ -390,6 +390,7 @@ class UserToken(Base):
     authdata=Column(String(),nullable=True)
     description=Column(String())
     user_id=Column('user',Integer,ForeignKey('users.id'),nullable=False)
+    last_seen=Column(DateTime)
     user=relationship(User,backref='tokens')
 
 class Permission(Base):
