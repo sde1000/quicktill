@@ -498,12 +498,14 @@ class edituser(permission_checked,ui.basicpopup):
         td.s.flush()
     def edittokens(self):
         u=td.s.query(User).get(self.userid)
-        f=ui.tableformatter(' l l ')
-        tl=[(ui.tableline(f,(x.description,x.token)),
+        f=ui.tableformatter(' l l l ')
+        h=ui.tableline(f,("Description","Value","Last used"))
+        tl=[(ui.tableline(f,(x.description,x.token,x.last_seen)),
              self.removetoken,(x.token,)) for x in u.tokens]
         tl.insert(0,("Add new token",addtoken,(self.userid,)))
         ui.menu(tl,title="Tokens for {}".format(u.fullname),
-                blurb="Select a token and press Cash/Enter to remove it.")
+                blurb=["Select a token and press Cash/Enter to remove it.",
+                       "",h])
     def removepermission(self,permission):
         u=td.s.query(User).get(self.userid)
         p=td.s.query(Permission).get(permission)
