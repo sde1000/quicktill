@@ -43,7 +43,7 @@ import datetime
 log=logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
-from .models import Payment,zero,User,Department,desc
+from .models import Payment,zero,User,Department,desc,RemoveCode
 from decimal import Decimal
 import uuid
 
@@ -1302,32 +1302,55 @@ class page(ui.basicpage):
                      colour=ui.colour_confirm,dismiss=keyboard.K_CASH)
     @user.permission_required("convert-to-free-drinks",
                               "Convert a transaction to free drinks")
-    def freedrinktrans(self,transid):
-        # Temporarily disable this function - SDE 5/6/09
-        ui.infopopup(["This function is no longer available.  Instead you "
-                      "must write a note to Steve with the transaction IDs "
-                      "that need to be converted, and he will do it after "
-                      "checking very carefully!"],
-                     title="Convert to Free Drinks")
-        return
-        #if td.trans_closed(transid):
-        #    ui.infopopup(["Transaction %d has been closed, and cannot now "
-        #                  "be converted to free drinks."%transid],
-        #                 title="Error")
-        #    return
-        #lines,payments=td.trans_getlines(transid)
-        #if len(payments)>0:
-        #    ui.infopopup(["Some payments have already been entered against "
-        #                  "transaction %d, so it can't be converted to "
-        #                  "free drinks."%transid],
-        #                 title="Error")
-        #    return
-        #td.trans_makefree(transid,'freebie')
-        #self.clear()
-        #self.redraw()
-        #ui.infopopup(["Transaction %d has been converted to free drinks."%
-        #              transid],title="Free Drinks",colour=ui.colour_confirm,
-        #             dismiss=keyboard.K_CASH)
+    def freedrinktrans(self):
+        """
+        Convert the current transaction to free drinks.
+
+        """
+        if not self.entry(): return
+        if not self.trans:
+            ui.infopopup(["There is no current transaction."],
+                         title="Error")
+            return
+        if self.trans.closed:
+            ui.infopopup(["The transaction is already closed."],
+                         title="Error")
+            return
+        if len(self.trans.payments)>0:
+            ui.infopopup(["This transaction has already had payments entered "
+                          "against it, so cannot be converted to free drinks."],
+                         title="Error")
+            return
+        if not self.trans.notes or "free" not in self.trans.notes.lower():
+            ui.infopopup(
+                ["The transaction notes must include the word 'free' "
+                 "before the transaction can be converted to free drinks.",
+                 "","This is a protective measure to try to ensure you don't "
+                 "convert the wrong transaction.  Conversion of a transaction "
+                 "to free drinks cannot be reversed."],
+                title="Transaction not labelled for free drinks")
+            return
+        freebie=td.s.query(RemoveCode).get('freebie')
+        if not freebie:
+            ui.infopopup(["The database does not include a 'free drink' "
+                          "waste code."],title="Error")
+            return
+        for l in self.trans.lines:
+            sr=l.stockref
+            if sr:
+                sr.removecode=freebie
+                sr.transline=None
+        td.s.flush()
+        td.s.refresh(self.trans) # remove references to stockout objects
+        for l in self.trans.lines: td.s.delete(l)
+        td.s.delete(self.trans)
+        self.trans=None
+        td.s.flush()
+        self._clear()
+        self._redraw()
+        ui.infopopup(["Transaction has been converted to free drinks."],
+                     title="Free drinks",colour=ui.colour_confirm,
+                     dismiss=keyboard.K_CASH)
     def _check_session_and_open_transaction(self):
         # For transaction merging
         if not self.entry(): return False
