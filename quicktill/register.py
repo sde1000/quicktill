@@ -206,6 +206,8 @@ class page(ui.basicpage):
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.hotkeys=hotkeys
         self.defaultprompt="Ready"
+        # Set user's current register to be us
+        self.user.dbuser.register=register_instance
         # Save user's current transaction because it is unset by clear()
         candidate_trans=self.user.dbuser.transaction
         self._clear()
@@ -221,6 +223,14 @@ class page(ui.basicpage):
                 # The session has expired
                 log.info("User's transaction %d is for a different session",
                          candidate_trans.id)
+        else:
+            # We're starting with a clear display.  The user might
+            # have been expecting a transaction!  If there's a message
+            # left for the user, display it now.
+            if self.user.dbuser.message:
+                ui.infopopup([self.user.dbuser.message],
+                             title="Transaction information")
+                self.user.dbuser.message=None
         td.s.flush()
         self._redraw()
     def clearbuffer(self):
@@ -239,20 +249,13 @@ class page(ui.basicpage):
         various functions may want to fiddle with the state (for example
         loading a previous transaction) before requesting a redraw.
 
-        This function should only ever be called when dealing with
-        user input; it assumes the user is now at the current register
-        and sets the register_instance in the user record
-        appropriately.
-
         """
         self.dl=[] # Display list
         if hasattr(self,'s'):
             self.s.set(self.dl) # Tell the scrollable about the new display list
         self.ml=set() # Marked transactions set
         self.trans=None # Current transaction
-        # By definition the user is standing at this register - record this.
         self.user.dbuser.transaction=None
-        self.user.dbuser.register=register_instance
         self.repeat=None # If dept/line button pressed, update this transline
         self.keyguard=False
         self.clearbuffer()
@@ -1203,9 +1206,22 @@ class page(ui.basicpage):
         # transaction anyway!
         self.user.dbuser=td.s.query(User).get(self.user.userid)
         self._clear()
+        # All other active pages pagesummary() methods will be called
+        # during a redraw.  This will get them to add their
+        # currently-loaded transactions to the identity map, meaning
+        # we'll get the right one when we query.
+        self._redraw()
         if trans is not None:
             log.info("Register: recalltrans %d",trans)
             trans=td.s.query(Transaction).get(trans)
+            # Leave a message if the transaction belonged to another
+            # user.
+            user=td.s.query(User).filter(User.transaction==trans).first()
+            if user:
+                user.transaction=None
+                user.message="Your transaction {} ({}) was taken over by {} " \
+                    "using the Recall Transaction function.".format(
+                        trans.id,trans.notes or "no notes",self.user.fullname)
             self._loadtrans(trans)
             self.keyguard=True
             self.close_if_balanced()
@@ -1439,104 +1455,61 @@ class page(ui.basicpage):
         """
         This function is called at all entry points to the register
         code except the __init__ code.  It checks to see whether the
-        user has moved to another terminal; if they have it clears the
-        current transaction and pops up a warning box letting the user
-        know their session has moved.
+        current transaction is still valid; if it isn't it pops up an
+        appropriate message and clears the register.
+
+        Returns True if the current transaction is valid, or False if
+        it isn't.  If False is returned, this function may have popped
+        up a dialog box.
 
         """
-        # Refresh the transaction object
-        if self.trans: td.s.add(self.trans)
-
-        # Fetch the current user from the database.  We don't recreate
+        # Fetch the current user database object.  We don't recreate
         # the user.database_user object because that's unlikely to
         # change often; we're just interested in the transaction and
-        # register fields.
+        # register fields.  The fetch from the database has probably
+        # already been done in hotkeypress() - here we are fetching
+        # from the sqlalchemy session's map
         self.user.dbuser=td.s.query(User).get(self.user.userid)
 
-        register_matches=self.user.dbuser.register==register_instance
-        if not register_matches:
-            self.user.dbuser.register=register_instance
-            td.s.flush()
+        # This check has already been done in hotkeypress().  We
+        # repeat it here because it is possible we may not have been
+        # entered in response to a keypress - a timer event, for
+        # example.
+        if self.user.dbuser.register!=register_instance:
+            # If the register in the database isn't us, lock immediately
+            # XXX We should be able to do this by deselecting ourselves
+            # once the "default page" function has been implemented.
+            # For now, just invoke firstpage
+            tillconfig.firstpage()
+            return False
 
-        if self.user.dbuser.transaction is None and self.trans is None:
-            # We're all good.
-            return True
-        if self.user.dbuser.transaction is None and self.trans is not None:
-            if self.trans.closed:
-                self._clear()
-                return True
-            # The current transaction may have been edited on another
-            # terminal.  If it's still being edited by someone else,
-            # let them keep it.  If not, reload it but warn.
-            otheruser=td.s.query(User).filter(User.transaction==self.trans).\
-                first()
-            if otheruser:
-                self._clear()
-                ui.infopopup(["Your transaction has been taken over "
-                              "by {}.".format(otheruser.fullname)],
-                             title="Transaction stolen")
-                return False
-            self._loadtrans(self.trans)
-            if register_matches:
-                ui.infopopup(["This transaction may have been edited by "
-                              "another user.  Please check it carefully "
-                              "before continuing."],
-                             title="Warning")
-            else:
-                ui.infopopup(["This transaction may have been edited by "
-                              "you or another user on another terminal.  "
-                              "Please check it carefully before continuing."],
-                             title="Warning")
+        # If there is a message queued for the user, display it.  It
+        # probably explains where their transaction has gone to!
+        if self.user.dbuser.message:
+            ui.infopopup([self.user.dbuser.message],
+                         title="Transaction information")
+            self._clear()
+            self.user.dbuser.message=None
+            td.s.flush()
             return False
-        if self.user.dbuser.transaction is not None and self.trans is None:
-            # Teleport the transaction to us if it's open.  If it's
-            # closed, just continue.
-            if self.user.dbuser.transaction.closed: return True
-            self._loadtrans(self.user.dbuser.transaction)
-            ui.infopopup(["The transaction you were working on at the "
-                          "other terminal has been moved here."],
-                         title="Transaction moved")
+
+        if self.trans and not self.user.dbuser.transaction:
+            # Someone has taken our transaction without leaving a
+            # message.  How rude!  Give them a default message.
+            ui.infopopup(["Your transaction has gone away, but there was "
+                          "no explanatory message left for you."],
+                         title="Transaction gone")
+            self._clear()
+            td.s.flush()
             return False
-        # self.trans and user.trans are both not-None
-        if self.trans==self.user.dbuser.transaction:
-            if register_matches: return True
-            # The transaction may have been edited on another
-            # terminal.  If it's still open, reload it and warn.
-            # If it's closed, clear and continue.
-            if self.trans.closed:
-                self._clear()
-                return True
-            self._loadtrans(self.trans)
-            ui.infopopup(["This transaction may have been edited by you "
-                          "on another terminal."],
-                         title="Warning")
-            return False
-        else:
-            # Different transactions.  If they are both closed,
-            # clear and continue.  If only one is open, load it
-            # and warn that it may have been edited.  If both are
-            # open, clear and pop up both transaction IDs.
-            if self.trans.closed and self.user.dbuser.transaction.closed:
-                self._clear()
-                return True
-            if not self.trans.closed and \
-                    not self.user.dbuser.transaction.closed:
-                tx1=self.trans.id
-                tx2=self.user.dbuser.transaction.id
-                self._clear()
-                ui.infopopup(
-                    ["You have been working on multiple transactions.  "
-                     "Please check transactions {0} and {1}.".format(
-                            tx1,tx2)],
-                    title="Multiple transactions")
-                return False
-            self._loadtrans(self.user.dbuser.transaction
-                            if self.trans.closed else self.trans)
-            ui.infopopup(
-                ["This transaction may have been edited by you on "
-                 "another terminal."],title="Warning")
-            return False
-        return False # Should not be reached
+
+        # At this point, self.trans and self.user.dbuser.transaction
+        # should either both be None or both be the current
+        # transaction.  self.trans may be detached from the current
+        # sqlalchemy session.  Replace it with the one from
+        # self.user.dbuser.transaction
+        self.trans=self.user.dbuser.transaction
+        return True
     def keypress(self,k):
         # This is our main entry point.  We will have a new database session.
         # Update the transaction object before we do anything else!
@@ -1583,6 +1556,23 @@ class page(ui.basicpage):
             return foodorder.message()
         curses.beep()
     def hotkeypress(self,k):
+        # Fetch the current user from the database.  We don't recreate
+        # the user.database_user object because that's unlikely to
+        # change often; we're just interested in the transaction and
+        # register fields.
+        self.user.dbuser=td.s.query(User).get(self.user.userid)
+
+        # Check that the user hasn't moved to another terminal.  If they
+        # have, lock immediately unless we are processing a usertoken
+        # keypress which will select or deselect us anyway.
+        if self.user.dbuser.register!=register_instance and \
+           not hasattr(k,'usertoken'):
+            # XXX We should be able to do this by deselecting ourselves
+            # once the "default page" function has been implemented.
+            # For now, just invoke firstpage
+            tillconfig.firstpage()
+            return
+
         if self._autolock and k==self._autolock and not self.locked \
                 and self.s.focused:
             # Intercept the 'Lock' keypress and handle it ourselves.
@@ -1592,7 +1582,10 @@ class page(ui.basicpage):
         else:
             super(page,self).hotkeypress(k)
     def select(self,u):
+        # Called when the appropriate user token is presented
         self.user=u # Permissions might have changed!
+        self.user.dbuser.register=register_instance
+        td.s.flush()
         if self.locked:
             self.locked=False
             self._redraw()
