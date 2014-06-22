@@ -24,6 +24,7 @@ from .models import User,UserToken,Permission
 from sqlalchemy.orm import joinedload
 import types
 import socket,logging
+import datetime
 log=logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
@@ -299,6 +300,7 @@ def user_from_token(t):
         tokeninfo(["User token '{}' not recognised.".format(t.usertoken)],
                    title="Unknown token")
         return
+    dbt.last_seen=datetime.datetime.now()
     u=dbt.user
     if not u.enabled:
         tokeninfo(["User '{}' is not active.".format(u.fullname)],
