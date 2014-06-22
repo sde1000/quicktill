@@ -1,3 +1,21 @@
+quicktill (0.10.33) stable; urgency=low
+
+  * New release 0.10.33
+
+  * Add option to convert transaction to free drinks
+
+  * Update example config to avoid obsolete printer setup functions
+
+  * Log warnings when old printer setup functions are called
+
+  * Add web address field to suppliers
+
+  * Add example script to generate a PDF of paper keycaps
+
+  * Move obsolete examples out of the way
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 22 Jun 2014 18:22:02 +0100
+
 quicktill (0.10.32) stable; urgency=low
 
   * New release 0.10.32
