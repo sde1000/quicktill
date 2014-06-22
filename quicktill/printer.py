@@ -83,7 +83,7 @@ def print_receipt(transid):
                             band,tillconfig.fc(net),tillconfig.fc(vat),rate,
                             tillconfig.fc(gross)),font=1)
                 d.printline("")
-        d.printline("\tReceipt number %d"%trans.id)
+            d.printline("\tReceipt number %d"%trans.id)
         d.printline("\t%s"%ui.formatdate(trans.session.date))
 
 def print_sessioncountup(s):
