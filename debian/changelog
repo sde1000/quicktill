@@ -1,3 +1,11 @@
+quicktill (0.10.35) stable; urgency=low
+
+  * New release 0.10.35
+
+  * Bugfix: deal with deleted transactions while reg page still exists
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 23 Jun 2014 14:11:43 +0100
+
 quicktill (0.10.34) stable; urgency=low
 
   * New release 0.10.34
