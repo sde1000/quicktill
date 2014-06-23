@@ -289,10 +289,13 @@ class page(ui.basicpage):
         self._redraw()
     def pagename(self):
         if self.trans is None: return self.user.shortname
-        td.s.add(self.trans)
-        return "{0} - Transaction {1} ({2})".format(
-            self.user.shortname,self.trans.id,
-            ("open","closed")[self.trans.closed])
+        try:
+            td.s.add(self.trans)
+            return "{0} - Transaction {1} ({2})".format(
+                self.user.shortname,self.trans.id,
+                ("open","closed")[self.trans.closed])
+        except ObjectDeletedError:
+            return self.user.shortname
     def pagesummary(self):
         if self.trans is None: return ""
         try:
