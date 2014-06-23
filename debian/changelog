@@ -1,3 +1,23 @@
+quicktill (0.10.34) stable; urgency=low
+
+  * New release 0.10.34
+
+  * Display "last seen" information for tokens in token editor
+
+  * Record the time whenever a user token is used
+
+  * Merge branch 'master' of /home/sde/quicktill-build/../quicktill
+
+  * Add "last seen" field to user tokens
+
+  * Don't print receipt number on open transactions
+
+  * Improve handling of users moving between terminals
+
+  * Escape '%' correctly in DDL
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 23 Jun 2014 11:51:34 +0100
+
 quicktill (0.10.33) stable; urgency=low
 
   * New release 0.10.33
