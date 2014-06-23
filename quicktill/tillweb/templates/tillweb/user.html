@@ -50,11 +50,13 @@ $(document).ready(function(){
 {% if tuser.tokens %}
 <table id="tokenlist">
 <thead>
-<tr><th>Description</th><th>Value</th></tr>
+<tr><th>Description</th><th>Value</th><th>Last used</th></tr>
 </thead>
 <tbody>
 {% for t in tuser.tokens %}
-<tr><td>{{t.description}}</td><td>{{t.token}}</td></tr>
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
