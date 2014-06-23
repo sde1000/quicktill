@@ -297,10 +297,13 @@ class page(ui.basicpage):
         if self.trans is None: return ""
         try:
             td.s.add(self.trans)
+            if self.trans.closed: return ""
+            return "{0}:{1}".format(self.user.shortname,self.trans.id)
         except ObjectDeletedError:
+            # NB the ObjectDeletedError won't happen during the add(),
+            # it'll happen on the first database access to refresh the
+            # object.
             return ""
-        if self.trans.closed: return ""
-        return "{0}:{1}".format(self.user.shortname,self.trans.id)
     def _redraw(self):
         """
         Updates the screen, scrolling until the cursor is visible.
