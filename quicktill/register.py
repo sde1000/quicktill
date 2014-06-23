@@ -45,6 +45,7 @@ from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
 from .models import Payment,zero,User,Department,desc,RemoveCode
 from decimal import Decimal
+from sqlalchemy.orm.exc import ObjectDeletedError
 import uuid
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
@@ -294,7 +295,10 @@ class page(ui.basicpage):
             ("open","closed")[self.trans.closed])
     def pagesummary(self):
         if self.trans is None: return ""
-        td.s.add(self.trans)
+        try:
+            td.s.add(self.trans)
+        except ObjectDeletedError:
+            return ""
         if self.trans.closed: return ""
         return "{0}:{1}".format(self.user.shortname,self.trans.id)
     def _redraw(self):
@@ -1496,8 +1500,7 @@ class page(ui.basicpage):
         if self.trans and not self.user.dbuser.transaction:
             # Someone has taken our transaction without leaving a
             # message.  How rude!  Give them a default message.
-            ui.infopopup(["Your transaction has gone away, but there was "
-                          "no explanatory message left for you."],
+            ui.infopopup(["Your transaction has gone away."],
                          title="Transaction gone")
             self._clear()
             td.s.flush()
@@ -1562,16 +1565,16 @@ class page(ui.basicpage):
         # register fields.
         self.user.dbuser=td.s.query(User).get(self.user.userid)
 
-        # Check that the user hasn't moved to another terminal.  If they
-        # have, lock immediately unless we are processing a usertoken
-        # keypress which will select or deselect us anyway.
-        if self.user.dbuser.register!=register_instance and \
-           not hasattr(k,'usertoken'):
+        # Check that the user hasn't moved to another terminal.  If
+        # they have, lock immediately.  Continue with hotkey
+        # processing, because the keypress might be a user token that
+        # will need to be dealt with.
+        if self.user.dbuser.register!=register_instance:
             # XXX We should be able to do this by deselecting ourselves
             # once the "default page" function has been implemented.
             # For now, just invoke firstpage
             tillconfig.firstpage()
-            return
+            return super(page,self).hotkeypress(k)
 
         if self._autolock and k==self._autolock and not self.locked \
                 and self.s.focused:
