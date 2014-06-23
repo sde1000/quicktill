@@ -1,3 +1,13 @@
+quicktill (0.10.38) stable; urgency=low
+
+  * New release 0.10.38
+
+  * Add "last seen" column to usertokens in web interface
+
+  * Don't urlencode supplier web addresses
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 23 Jun 2014 18:42:46 +0100
+
 quicktill (0.10.37) stable; urgency=low
 
   * New release 0.10.37
