@@ -1603,19 +1603,27 @@ class page(ui.basicpage):
         self.entry()
     def deselect(self):
         # We might be able to delete ourselves completely after
-        # deselection if there are no popups (i.e. our scrollable
-        # holds the input focus).  When we are recreated we can reload
-        # the current transaction from the database.
-        if self.s.focused:
-            log.info("Page for %s deselected while focused: deleting self",
-                     self.user.fullname)
-            td.s.add(self.user.dbuser)
-            self.user.dbuser.register=None
-            td.s.flush()
-            ui.basicpage.deselect(self)
-            self.dismiss()
-        else:
-            ui.basicpage.deselect(self)
+        # deselection if none of the popups has unsaved data.  When we
+        # are recreated we can reload the current transaction from the
+        # database.
+        focus=ui.basicwin._focus # naughty!
+        self.unsaved_data=None
+        while focus!=self.s:
+            unsaved_data=getattr(focus,'unsaved_data',None)
+            log.debug("deselect: checking %s: unsaved_data=%s",focus,unsaved_data)
+            if unsaved_data:
+                log.info("Page for %s deselected; unsaved data (%s) so just "
+                         "hiding the page",self.user.fullname,unsaved_data)
+                self.unsaved_data=unsaved_data
+                return ui.basicpage.deselect(self)
+            focus=focus.parent
+        log.info("Page for %s deselected with no unsaved data: deleting self",
+                 self.user.fullname)
+        td.s.add(self.user.dbuser)
+        self.user.dbuser.register=None
+        td.s.flush()
+        ui.basicpage.deselect(self)
+        self.dismiss()
 
 def handle_usertoken(t,*args,**kwargs):
     """

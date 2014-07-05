@@ -387,6 +387,7 @@ class popup(ui.basicpopup):
                  "The problem is: {}".format(rpprob)],
                 title="Receipt printer problem")
     def insert_item(self,item):
+        self.unsaved_data="food order"
         self.ml.insert(self.order.cursor,item)
         self.order.cursor_down()
         self.order.redraw()
@@ -525,6 +526,7 @@ class message(ui.dismisspopup):
             keymap={keyboard.K_CASH: (self.finish,None)})
         ui.map_fieldlist([self.onfield,self.messagefield])
         self.onfield.focus()
+        self.unsaved_data="message to kitchen"
     def finish(self):
         if not self.onfield.f and not self.messagefield.f: return
         problem=kitchenprinter.offline()

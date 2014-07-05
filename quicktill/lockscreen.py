@@ -12,7 +12,7 @@ class lockpage(ui.basicpage):
             self.line("The following users have unsaved work "
                       "on this terminal:")
             for p in unsaved:
-                self.line("  {}".format(p.pagename()))
+                self.line("  {} ({})".format(p.pagename(),p.unsaved_data))
             self.line("")
         rpproblem=printer.driver.offline()
         if rpproblem:

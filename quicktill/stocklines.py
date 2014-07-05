@@ -69,7 +69,8 @@ def restock_list(stockline_list):
                  title="Confirm stock movement",
                  keymap={keyboard.K_ONE:(finish_restock,(sl,),True),
                          keyboard.K_TWO:(abandon_restock,(sl,),True)},
-                 colour=ui.colour_confirm,dismiss=None)
+                 colour=ui.colour_confirm,dismiss=None).\
+        unsaved_data="confirm stock movements"
 
 def abandon_restock(sl):
     ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
@@ -159,7 +160,8 @@ def return_stock(stockline):
         "at this point will completely cancel the operation."],
                  title="Confirm stock movement",
                  keymap={keyboard.K_CASH:(finish_restock,(restock,),True)},
-                 colour=ui.colour_confirm)
+                 colour=ui.colour_confirm).\
+        unsaved_data="confirm removal of stock from sale"
 
 def completelocation(m):
     """
