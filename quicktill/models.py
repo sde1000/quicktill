@@ -1099,6 +1099,16 @@ StockType.instock=column_property(
         label('instock'),
     deferred=True,
     doc="Amount remaining in stock")
+StockType.lastsale=column_property(
+    select([func.max(StockOut.time)],
+           and_(StockItem.stocktype_id==StockType.id,
+                StockOut.stockid==StockItem.id,
+                Delivery.id==StockItem.deliveryid,
+                Delivery.checked==True)).\
+        correlate(StockType.__table__).\
+        label('lastsale'),
+    deferred=True,
+    doc="Date of last sale")
 
 class KeyboardBinding(Base):
     __tablename__='keyboard'
