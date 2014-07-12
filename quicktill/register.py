@@ -46,6 +46,9 @@ from .models import Transline,Transaction,Session,StockOut,Transline,penny
 from .models import Payment,zero,User,Department,desc,RemoveCode
 from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
+from sqlalchemy.orm import subqueryload,subqueryload_all
+from sqlalchemy.orm import joinedload,joinedload_all
+from sqlalchemy.orm import undefer
 import uuid
 
 max_transline_modify_age=datetime.timedelta(minutes=1)
@@ -271,6 +274,14 @@ class page(ui.basicpage):
 
         """
         log.debug("Register: loadtrans %s",trans)
+        # Reload the transaction and its related objects
+        trans=td.s.query(Transaction).\
+               filter_by(id=trans.id).\
+               options(subqueryload_all('payments')).\
+               options(joinedload_all('lines.stockref.stockitem.stocktype')).\
+               options(joinedload('lines.user')).\
+               options(undefer('total')).\
+               one()
         self.trans=trans
         self.user.dbuser.transaction=trans
         self.dl=[tline(l.id) for l in trans.lines]+\
