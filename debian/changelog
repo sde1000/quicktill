@@ -1,3 +1,11 @@
+quicktill (0.10.39) stable; urgency=low
+
+  * New release 0.10.39
+
+  * Performance improvement loading transactions
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sat, 12 Jul 2014 17:18:45 +0100
+
 quicktill (0.10.38) stable; urgency=low
 
   * New release 0.10.38
