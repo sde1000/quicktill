@@ -176,9 +176,9 @@ def twitter_auth(consumer_key,consumer_secret):
     import urlparse
     from . import oauth2 as oauth
 
-    request_token_url = 'http://api.twitter.com/oauth/request_token'
-    access_token_url = 'http://api.twitter.com/oauth/access_token'
-    authorize_url = 'http://api.twitter.com/oauth/authorize'
+    request_token_url = 'https://api.twitter.com/oauth/request_token'
+    access_token_url = 'https://api.twitter.com/oauth/access_token'
+    authorize_url = 'https://api.twitter.com/oauth/authorize'
 
     consumer = oauth.Consumer(consumer_key, consumer_secret)
     client = oauth.Client(consumer)
