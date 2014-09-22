@@ -16,22 +16,26 @@ distribution=stable
 urgency=low
 tmpdir=release-tmp
 
-usage="make-release [ -p packagename ] [ -d distribution ] [ -u urgency ] [ -r ]"
+usage="make-release [ -p packagename ] [ -d distribution ]
+             [ -u urgency ] [ -t tmpdir ] [ -r ] [-s ]"
 
 rerelease=no
+skiptests=no
 
-while getopts "p:d:u:t:hr" options; do
+while getopts "p:d:u:t:hrs" options; do
   case $options in
     p ) packagename=$OPTARG;;
     d ) distribution=$OPTARG;;
     u ) urgency=$OPTARG;;
     t ) tmpdir=$OPTARG;;
-    h ) echo $usage;;
+    h ) echo "$usage" ; exit;;
     r ) echo "Re-release: skipping version number and changelog update"
 	rerelease=yes;;
-    \? ) echo $usage
+    s ) echo "Skipping package tests"
+	skiptests=yes;;
+    \? ) echo "$usage"
          exit 1;;
-    * ) echo $usage
+    * ) echo "$usage"
           exit 1;;
   esac
 done
@@ -92,6 +96,11 @@ rm ${pkgdir}/debian/changelog.old
 # the version number that we want to use for the generated package.
 
 cp setup.py ${pkgdir}/setup.py
+
+# Run tests
+if [ "${skiptests}" = "no" ]; then
+  (cd ${pkgdir} ; python -m unittest discover)
+fi
 
 # Build the Debian package files
 
