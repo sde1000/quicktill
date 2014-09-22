@@ -13,8 +13,6 @@ class page(ui.basicpage):
     def __init__(self,hotkeys,locations=None,user=None,
                  max_unattended_updates=None):
         ui.basicpage.__init__(self)
-        self.mainloopnexttime=0 # XXX needed when being created dynamically
-        # - sort out the event loop code sometime so it doesn't need this!
         self.user=user
         self.display=0
         self.max_unattended_updates=max_unattended_updates

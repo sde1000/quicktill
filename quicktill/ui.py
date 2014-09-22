@@ -124,7 +124,6 @@ class autodismiss(object):
     """
     autodismisstime=10
     def __init__(self,*args,**kwargs):
-        self.mainloopnexttime=None
         self.nexttime=time.time()+self.autodismisstime
         event.eventlist.append(self)
         super(autodismiss,self).__init__(*args,**kwargs)
@@ -523,7 +522,6 @@ class alarmpopup(infopopup):
     """
     def __init__(self,*args,**kwargs):
         infopopup.__init__(self,*args,**kwargs)
-        self.mainloopnexttime=0
         self.remaining=300
         event.eventlist.append(self)
         self.alarm()
@@ -532,7 +530,6 @@ class alarmpopup(infopopup):
         self.nexttime=math.ceil(time.time())
         self.remaining=self.remaining-1
         if self.remaining<1:
-            self.remaining=10
             if self in basicwin._focus.parents(): self.dismiss()
             else: del event.eventlist[event.eventlist.index(self)]
     def dismiss(self):

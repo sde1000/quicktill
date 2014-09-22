@@ -34,6 +34,6 @@ def eventloop():
         # Process any events whose time has come
         t=time.time()
         for i in eventlist:
-            if i.mainloopnexttime is None: continue
+            if not hasattr(i,'mainloopnexttime'): continue
             if t>=i.mainloopnexttime:
                 i.alarm()
