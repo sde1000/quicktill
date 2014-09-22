@@ -1630,9 +1630,6 @@ class page(ui.basicpage):
             focus=focus.parent
         log.info("Page for %s deselected with no unsaved data: deleting self",
                  self.user.fullname)
-        td.s.add(self.user.dbuser)
-        self.user.dbuser.register=None
-        td.s.flush()
         ui.basicpage.deselect(self)
         self.dismiss()
 
