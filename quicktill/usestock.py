@@ -243,7 +243,7 @@ def auto_allocate_internal(deliveryid=None,message_on_no_work=True):
     if duplines:
         # Oops, there were duplicate stockids.  Dump the user into the
         # stockline associations editor to sort it out.
-        stockline_associations(
+        stocklines.stockline_associations(
             list(duplines.keys()),"The following stock line and stock type "
             "associations meant an item of stock could not be allocated "
             "unambiguously.  Delete associations from the list below "
