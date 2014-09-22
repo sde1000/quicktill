@@ -2,8 +2,9 @@ from __future__ import unicode_literals
 import logging
 log=logging.getLogger(__name__)
 from . import payment,ui,td,tillconfig,keyboard,printer
-from .models import Payment,zero,penny
+from .models import Session,Payment,zero,penny
 from decimal import Decimal
+import datetime
 
 class moneyfield(ui.editfield):
     def __init__(self,y,x,w):
@@ -112,9 +113,9 @@ class BadCashbackMethod(Exception):
 class CardPayment(payment.PaymentMethod):
     refund_supported=True
     def __init__(self,paytype,description,machines=1,cashback_method=None,
-                 max_cashback=zero,cashback_first=True,kickout=False):
-        """
-        Accept payments using a manual PDQ machine.  This payment
+                 max_cashback=zero,cashback_first=True,kickout=False,
+                 rollover_guard_time=None):
+        """Accept payments using a manual PDQ machine.  This payment
         method records the receipt number ("reference") from the PDQ
         machine as confirmation, and optionally supports cashback.
 
@@ -128,6 +129,20 @@ class CardPayment(payment.PaymentMethod):
         The kickout parameter sets whether the cash drawer will be
         opened on a card transaction that does not include cashback.
 
+        rollover_guard_time is the time at which the card terminals
+        roll over from recording one day's totals to recording the
+        next.  For example, if rollover_guard_time is 3am then
+        transactions at 2am on 2nd February will be recorded against
+        the card machine totals for 1st February, and transactions at
+        4am on 2nd February will be recorded against the card machine
+        totals for 2nd February.  This time is determined by the bank;
+        it can't be configured directly on the card machines.
+
+        If rollover_guard_time is set then the card machine totals
+        date will be checked against the current session's date, and
+        the payment will be prevented if it would be recorded against
+        the wrong day.
+
         """
         payment.PaymentMethod.__init__(self,paytype,description)
         self._machines=machines
@@ -140,12 +155,39 @@ class CardPayment(payment.PaymentMethod):
         self._total_fields=[("Terminal {t}".format(t=t+1),
                              ui.validate_float,None)
                             for t in range(self._machines)]
+        self._rollover_guard_time=rollover_guard_time
     def describe_payment(self,payment):
         # Card payments use the 'ref' field for the card receipt number
         if payment.amount>=zero:
             return "{} {}".format(self.description,payment.ref)
         return "{} refund {}".format(self.description,payment.ref)
     def start_payment(self,reg,trans,amount,outstanding):
+        if self._rollover_guard_time:
+            session=Session.current(td.s)
+            # session should not be None; this should have been
+            # checked in register code before we are called.
+            if not session: return
+            now=datetime.datetime.now()
+            date=now.date()
+            if now.time()<self._rollover_guard_time:
+                date=date-datetime.timedelta(days=1)
+            if date!=session.date:
+                ui.infopopup(
+                    ["The card machines 'roll over' from one day to the next at "
+                     "around {}, so a card transaction performed now would be "
+                     "recorded against the card totals for {}.".format(
+                         self._rollover_guard_time,date),
+                     "",
+                     "The current session is for {}.".format(session.date),
+                     "",
+                     "Please don't perform a card transaction now.  If you have "
+                     "already done one, you must call your manager and let them "
+                     "know that the card totals for {} and {} will be "
+                     "incorrect.  Set aside the card merchant receipt so that "
+                     "it can be entered into the till later.".format(
+                         date,session.date)],
+                    title="Card transactions not allowed")
+                return
         if amount<zero:
             if amount<outstanding:
                 ui.infopopup(

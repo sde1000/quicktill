@@ -20,6 +20,7 @@ from quicktill.cash import CashPayment
 from quicktill.card import CardPayment
 from quicktill.bitcoin import BitcoinPayment
 from decimal import Decimal,ROUND_UP
+import datetime
 import socket,struct
 
 import logging
@@ -164,7 +165,8 @@ def markup(stocktype,stockunit,cost,markup):
 # we accept.
 cash=CashPayment('CASH','Cash',change_description="Change",drawers=1)
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
-                 max_cashback=Decimal("50.00"))
+                 max_cashback=Decimal("50.00"),
+                 rollover_guard_time=datetime.time(4,0,0))
 bitcoin=BitcoinPayment(
     'BTC','Bitcoin',site='test',username='test',
     base_url='http://btcmerch.i.individualpubs.co.uk/merchantservice/',
