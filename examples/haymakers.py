@@ -491,7 +491,7 @@ stockcontrol={
                                             user=user.built_in_user(
                                                 "Stock Terminal","Stock Terminal",['manager'])),
 #    'firstpage': lockscreen.lockpage,
-    'usertoken_handler': lambda t:stockterminal.handle_usertoken(t,stock_hotkeys,["Bar"]),
+    'usertoken_handler': lambda t:stockterminal.handle_usertoken(t,stock_hotkeys,["Bar"],max_unattended_updates=2),
     'usertoken_listen': ('127.0.0.1',8455),
 }    
 

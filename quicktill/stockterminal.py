@@ -7,14 +7,17 @@ from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select,not_
 from sqlalchemy.orm import joinedload,undefer_group
 log=logging.getLogger(__name__)
+from lockscreen import lockpage
 
 class page(ui.basicpage):
-    def __init__(self,hotkeys,locations=None,user=None):
+    def __init__(self,hotkeys,locations=None,user=None,
+                 max_unattended_updates=None):
         ui.basicpage.__init__(self)
         self.mainloopnexttime=0 # XXX needed when being created dynamically
         # - sort out the event loop code sometime so it doesn't need this!
         self.user=user
         self.display=0
+        self.max_unattended_updates=max_unattended_updates
         self.hotkeys=hotkeys
         self.locations=locations if locations else ['Bar']
         event.eventlist.append(self)
@@ -100,8 +103,16 @@ class page(ui.basicpage):
         # by the timer expiring.
         if need_new_session:
             with td.orm_session():
+                if self.max_unattended_updates:
+                    self.remaining_life=self.remaining_life-1
+                    if self.remaining_life<1:
+                        # XXX when default page is implemented, this should be
+                        # self.dismiss()
+                        return lockpage()
                 self.redraw()
-        else: self.redraw()
+        else:
+            self.remaining_life=self.max_unattended_updates
+            self.redraw()
     def keypress(self,k):
         if k in self.hotkeys: return self.hotkeys[k]()
         elif k==keyboard.K_CASH:
