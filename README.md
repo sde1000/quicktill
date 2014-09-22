@@ -1,10 +1,10 @@
-quicktill - cash register software
+quicktill — cash register software
 ==================================
 
 Copying
 -------
 
-quicktill is Copyright (C) 2004-2014 Stephen Early <sde@individualpubs.co.uk>
+quicktill is Copyright (C) 2004–2014 Stephen Early <sde@individualpubs.co.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -21,28 +21,29 @@ link](http://www.gnu.org/licenses/).
 
 Parts of this program were written by other people and are distributed
 under different licences; see the individual source files for details:
- - quicktill/twitter.py - Apache License, version 2.0
- - quicktill/oauth2.py - MIT License
+ - quicktill/twitter.py — Apache License, version 2.0
+ - quicktill/oauth2.py — MIT License
 
 A big warning
 -------------
 
 This software is not very easy to configure.  Once it's configured,
-though, it's generally quite easy to use.  This is the development
-branch; it's currently being tested in [the Pembury Tavern in
-Hackney](http://www.individualpubs.co.uk/pembury/) before being
-deployed in other pubs.  At the moment I'm not guaranteeing that
-changes from one release to the next won't break existing
-configuration files.
+though, it's generally quite easy for staff to use.  It's currently in
+use by [Individual Pubs Ltd](https://www.individualpubs.co.uk/) in all
+their pubs.  It's occasionally used by
+[EMFcamp](https://www.emfcamp.org/) and [London
+Hackspace](https://london.hackspace.org.uk/).
 
-The stable branch has been in use in a few pubs since 2004 without any
-problems, but is becoming difficult to maintain.  The rewrite has
-replaced lots of embedded SQL with the sqlalchemy ORM; this enables
-the code be rather more readable!  There is also a django-based
-reporting interface to the till database that makes use of the ORM
-models defined here in quicktill/models.py; it's fairly complete and
-bug-free for read-only access to the till state, but the read/write
-features I plan to add aren't there yet.
+At the moment I'm not guaranteeing that changes from one release to
+the next won't break existing configuration files, although I aim to
+avoid this where possible.  The database schema can also change; SQL
+commands to update existing databases are shown in commit messages.
+Generally schema changes can be made before installing the updated
+release, and won't affect older versions of the software; config file
+changes must be made after installing newer versions of the software
+and aren't backward-compatible.  (So, to upgrade smoothly: make
+database schema changes, install the new version, then update the
+config file to enable any new features you need.)
 
 Getting started
 ---------------
