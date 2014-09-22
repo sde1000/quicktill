@@ -66,17 +66,21 @@ def stocktype_completemanufacturer(m):
     global s
     result=s.execute(
         select([StockType.manufacturer]).\
-            where(StockType.manufacturer.ilike(m+'%'))
-        )
+        where(StockType.manufacturer.ilike(m+'%')).\
+        group_by(StockType.manufacturer).\
+        order_by(func.length(StockType.manufacturer),StockType.manufacturer)
+    )
     return [x[0] for x in result]
 
 def stocktype_completename(m,n):
     global s
     result=s.execute(
-        select([distinct(StockType.name)]).\
-            where(StockType.manufacturer==m).\
-            where(StockType.name.ilike(n+'%'))
-        )
+        select([StockType.name]).\
+        where(StockType.manufacturer==m).\
+        where(StockType.name.ilike(n+'%')).\
+        group_by(StockType.name).\
+        order_by(func.length(StockType.name),StockType.name)
+    )
     return [x[0] for x in result]
 
 ### Functions related to the stock,stockout tables
