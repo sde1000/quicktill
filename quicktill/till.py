@@ -274,6 +274,9 @@ class totals(command):
             h=h[:-2]
             print(h)
             for s in sessions:
+                # Sessions with no total recorded will report actual_total
+                # of None
+                if s.actual_total is None: continue
                 vbt=s.vatband_totals
                 p={}
                 for x in tillconfig.all_payment_methods:
