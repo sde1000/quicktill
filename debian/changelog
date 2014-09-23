@@ -1,3 +1,37 @@
+quicktill (0.10.40) stable; urgency=low
+
+  * New release 0.10.40
+
+  * Change padding location on stock terminal display
+
+  * Update README
+
+  * Fix handling of dynamically created timer events
+
+  * Add optional timeout to stock terminal page
+
+  * Improve completion of manufacturer/name in stock type dialog
+
+  * Fix crash in auto-allocate
+
+  * Don't set user's register to None when deleting register page
+
+  * Prevent card payments before card machine rollover
+
+  * Framework for testing
+
+  * Skip sessions with no totals recorded in totals command
+
+  * Use https urls when setting up twitter access
+
+  * Merge branch 'performance'
+
+  * Add a lastsold column to stock types
+
+  * Delete register pages based on unsaved data rather than popups
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 23 Sep 2014 13:23:10 +0100
+
 quicktill (0.10.39) stable; urgency=low
 
   * New release 0.10.39
