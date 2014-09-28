@@ -67,8 +67,7 @@ def line_chosen(line):
         # We need a window with a list of the current stock items, and
         # a blurb that says:
         f=ui.tableformatter(' r l r+l ')
-        sl=[(ui.tableline(
-                    f,(x.id,x.stocktype.format(),x.ondisplay,x.instock)),
+        sl=[(f(x.id,x.stocktype.format(),x.ondisplay,x.instock),
              select_stockitem,(line,x)) for x in sl]
         newstockblurb="Pick a stock item to add to %s."%line.name
         ui.menu(sl,title="%s (%s) - display capacity %d"%
