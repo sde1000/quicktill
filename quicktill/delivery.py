@@ -19,8 +19,8 @@ def deliverymenu():
         order_by(desc(Delivery.id)).\
         all()
     f=ui.tableformatter(' r l l l l ')
-    lines=[(ui.tableline(f,(x.id,x.supplier.name,x.date,x.docnumber or "",
-            "" if x.checked else "not confirmed")),
+    lines=[(f(x.id,x.supplier.name,x.date,x.docnumber or "",
+              "" if x.checked else "not confirmed"),
             delivery,(x.id,)) for x in dl]
     lines.insert(0,("Record new delivery",delivery,None))
     ui.menu(lines,title="Delivery List",
