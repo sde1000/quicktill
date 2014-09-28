@@ -139,19 +139,11 @@ def end():
                       "session number %d."%r.id],title="Session End",
                      keymap=km,colour=ui.colour_confirm)
 
-def sessionlist(cont,unpaidonly=False,closedonly=False):
+def sessionlist(cont,unpaidonly=False,closedonly=False,maxlen=None):
     """
-    Return a list of sessions suitable for a menu.  This list is limited to
-    100 sessions.
+    Return a list of sessions suitable for a menu.
 
     """
-    def ss(s):
-        if s.endtime is None:
-            total=""
-        else:
-            total="%s "%tillconfig.fc(s.total)
-            total="%s%s"%(' '*(10-len(total)),total)
-        return "%6d  %s  %s"%(s.id,ui.formatdate(s.date),total)
     q=td.s.query(Session).\
         order_by(desc(Session.id)).\
         options(undefer('total'))
@@ -161,7 +153,10 @@ def sessionlist(cont,unpaidonly=False,closedonly=False):
                        correlate(Session.__table__).as_scalar()==0)
     if closedonly:
         q=q.filter(Session.endtime!=None)
-    return [(ss(x),cont,(x,)) for x in q[:100]]
+    if maxlen: q=q[:maxlen]
+    f=ui.tableformatter(' r  l  r ')
+    return [(ui.tableline(f,(x.id,x.date,tillconfig.fc(x.total))),
+             cont,(x,)) for x in q]
 
 class _PMWrapper(object):
     """
@@ -403,9 +398,11 @@ def totalpopup(s):
                  dismiss=keyboard.K_CASH,show_cursor=False)
 
 @user.permission_required("session-summary","Display a summary for any session")
-def summary():
+def summary(maxlen=100):
     log.info("Session summary popup")
-    m=sessionlist(totalpopup)
+    m=sessionlist(totalpopup,maxlen=maxlen)
+    if len(m)==maxlen:
+        m.append(("Show all",summary,(None,)))
     ui.menu(m,title="Session Summary",blurb="Select a session and "
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
