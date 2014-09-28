@@ -343,8 +343,6 @@ def totalpopup(s):
     """
     s=td.s.merge(s)
     w=33
-    def lr(l,r):
-        return "%s%s%s"%(l,' '*(w-len(l)-len(r)),r)
     log.info("Totals popup for session %d"%(s.id,))
 
     depts=s.dept_totals # Now gives list of (Dept,total) tuples
@@ -353,47 +351,48 @@ def totalpopup(s):
 
     paytypes=set(list(paytotals.keys())+list(payments.keys()))
     l=[]
-    l.append("Accounting date %s"%ui.formatdate(s.date))
-    l.append("Started %s"%ui.formattime(s.starttime))
+    l.append(" Accounting date {} ".format(s.date))
+    l.append(" Started {:%Y-%m-%d %H:%M:%S} ".format(s.starttime))
     if s.endtime is None:
-        l.append("Session is still open.")
+        l.append(" Session is still open. ")
     else:
-        l.append("Ended %s"%ui.formattime(s.endtime))
-    l.append(lr("Till totals:","Actual totals:"))
-    ttt=Decimal("0.00")
-    att=Decimal("0.00")
+        l.append(" Ended {:%Y-%m-%d %H:%M:%S} ".format(s.endtime))
+    l.append("")
+    tf=ui.tableformatter(" l pr  r ")
+    l.append(ui.tableline(tf,("","Till:","Actual:")))
+    ttt=zero
+    att=zero
     for i in paytypes:
         if i in paytotals:
-            tt="%s: %s%0.2f"%(i.description,tillconfig.currency,
-                              paytotals[i])
+            tt=tillconfig.fc(paytotals[i])
             ttt=ttt+paytotals[i]
         else:
             tt=""
         if i in payments:
-            at="%s: %s%0.2f"%(i.description,tillconfig.currency,
-                              payments[i].amount)
+            at=tillconfig.fc(payments[i].amount)
             att=att+payments[i].amount
         else:
             at=""
-        # Format tt and at at left/right
-        l.append(lr(tt,at))
+        if tt or at: l.append(ui.tableline(tf,(i.description+":",tt,at)))
     if len(paytypes)>1:
-        tt="Total: %s"%(tillconfig.fc(ttt),)
-        at="Total: %s"%(tillconfig.fc(att),) if att>Decimal("0.00") else ""
-        l.append(lr(tt,at))
+        l.append(ui.tableline(tf,("Total:",tillconfig.fc(ttt),
+                                  tillconfig.fc(att) if att>zero else "")))
     l.append("")
-    dt=Decimal("0.00")
+    dt=zero
+    df=ui.tableformatter(" r l pr ")
     for dept,total in depts:
-        l.append(lr("%2d %s"%(dept.id,dept.description),
-                    "%s%0.2f"%(tillconfig.currency,total)))
+        l.append(ui.tableline(df,(
+            dept.id,dept.description,tillconfig.fc(total))))
         dt=dt+total
-    l.append(lr("Total","%s%0.2f"%(tillconfig.currency,dt)))
-    l.append("Press Print for a hard copy")
+    lf=ui.tableformatter(" l pr ")
+    l.append(ui.tableline(lf,("Total",tillconfig.fc(dt))))
+    l.append("")
+    l.append(" Press Print for a hard copy ")
     keymap={
         keyboard.K_PRINT:(printer.print_sessiontotals,(s,),False),
         }
-    ui.listpopup([ui.marginline(ui.line(x),margin=1) for x in l],
-                 title="Session number %d"%s.id,
+    ui.listpopup(l,
+                 title="Session number {}".format(s.id),
                  colour=ui.colour_info,keymap=keymap,
                  dismiss=keyboard.K_CASH,show_cursor=False)
 
