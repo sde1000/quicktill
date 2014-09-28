@@ -1280,9 +1280,9 @@ class page(ui.basicpage):
             order_by(desc(Transaction.id)).\
             all()
         f=ui.tableformatter(' r l r l l ')
-        sl=[(ui.tableline(f,(x.id,('open','closed')[x.closed],
-                             tillconfig.fc(x.total),
-                             x.user.shortname if x.user else "",x.notes)),
+        sl=[(f(x.id,('open','closed')[x.closed],
+               tillconfig.fc(x.total),
+               x.user.shortname if x.user else "",x.notes),
              self.recalltrans,(x.id,)) for x in transactions]
         ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
                 title="Recall Transaction",
@@ -1410,7 +1410,7 @@ class page(ui.basicpage):
         if not sc: return
         tl=[t for t in sc.transactions if not t.closed]
         f=ui.tableformatter(' r r l ')
-        sl=[(ui.tableline(f,(x.id,tillconfig.fc(x.total),x.notes or "")),
+        sl=[(f(x.id,tillconfig.fc(x.total),x.notes or ""),
             self._mergetrans,(x.id,)) for x in tl if x!=self.trans]
         ui.menu(sl,
                 title="Merge with transaction",
