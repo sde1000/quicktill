@@ -125,9 +125,8 @@ class stockline_associations(ui.listpopup):
             stllist=stllist.filter(StockLine.id.in_(stocklines))
         stllist=stllist.all()
         f=ui.tableformatter(' l l ')
-        headerline=ui.tableline(f,["Stock line","Stock type"])
-        lines=[ui.tableline(f,(stl.stockline.name,stl.stocktype.fullname),
-                            userdata=stl)
+        headerline=f("Stock line","Stock type")
+        lines=[f(stl.stockline.name,stl.stocktype.fullname,userdata=stl)
                for stl in stllist]
         ui.listpopup.__init__(
             self,lines,title="Stockline / Stock type associations",
@@ -306,12 +305,11 @@ class modify(ui.dismisspopup):
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
         self.addstr(13,2,"below and press Enter or Cancel.")
         f=ui.tableformatter(' l   c   r ')
-        kbl=[ui.tableline(f,(keyboard.__dict__[x.keycode].keycap,
-                             keyboard.__dict__[x.menukey].keycap,
-                             x.qty),userdata=x)
+        kbl=[f(keyboard.__dict__[x.keycode].keycap,
+               keyboard.__dict__[x.menukey].keycap,
+               x.qty,userdata=x)
              for x in self.stockline.keyboard_bindings]
-        self.addstr(15,1,ui.tableline(
-                f,("Line key","Menu key","Quantity")).display(61)[0])
+        self.addstr(15,1,f("Line key","Menu key","Quantity").display(61)[0])
         self.kbs=ui.scrollable(16,1,56,4,kbl,keymap={
                 keyboard.K_CASH: (self.editbinding,None),
                 keyboard.K_CANCEL: (self.deletebinding,None)})
@@ -433,7 +431,7 @@ class addbinding(ui.listpopup):
                           "to select '%s'; make sure it isn't "
                           "already in the list!"%stockline.name),
                 ui.emptyline(),
-                ui.tableline(f,('Menu key','','Stock line','Quantity')),
+                f('Menu key','','Stock line','Quantity'),
                 ]
         else:
             lines=[
@@ -448,9 +446,9 @@ class addbinding(ui.listpopup):
                 ui.lrline("Pressing '1' now is usually the right thing to do!"),
                 ]
         for kb in existing:
-            lines.append(ui.tableline(f,(
-                        keyboard.__dict__[kb.menukey].keycap,
-                        '->',kb.stockline.name,kb.qty)))
+            lines.append(
+                f(keyboard.__dict__[kb.menukey].keycap,
+                  '->',kb.stockline.name,kb.qty))
             self.exdict[kb.menukey]=kb.stockline.name
         lines.append(ui.emptyline())
         lines=[ui.marginline(x,margin=1) for x in lines]
@@ -528,10 +526,10 @@ class listunbound(ui.listpopup):
                 dismiss=keyboard.K_CASH)
             return
         f=ui.tableformatter(' l l l l ')
-        headerline=ui.tableline(f,["Name","Location","Department","Stock"])
-        self.ll=[ui.tableline(f,(x.name,x.location,x.department.description,
-                                 "Yes" if len(x.stockonsale)>0 else "No"),
-                              userdata=x) for x in l]
+        headerline=f("Name","Location","Department","Stock")
+        self.ll=[f(x.name,x.location,x.department.description,
+                   "Yes" if len(x.stockonsale)>0 else "No",
+                   userdata=x) for x in l]
         ui.listpopup.__init__(self,self.ll,title="Unbound stock lines",
                               colour=ui.colour_info,header=[headerline])
     def keypress(self,k):
@@ -565,14 +563,14 @@ class selectline(ui.listpopup):
         if exccap: q=q.filter(StockLine.capacity==None)
         stocklines=q.all()
         f=ui.tableformatter(' l l c ')
-        self.sl=[ui.tableline(f,(x.name,x.location,x.dept_id),userdata=x)
+        self.sl=[f(x.name,x.location,x.dept_id,userdata=x)
                  for x in stocklines]
         self.create_new=create_new
         if create_new:
             self.sl=[ui.line(" New stockline")]+self.sl
         elif select_none:
             self.sl=[ui.line(" %s"%select_none)]+self.sl
-        hl=[ui.tableline(f,("Name","Location","Dept"))]
+        hl=[f("Name","Location","Dept")]
         if blurb:
             hl=[ui.lrline(blurb),ui.emptyline()]+hl
         ui.listpopup.__init__(self,self.sl,title=title,header=hl,keymap=keymap)
