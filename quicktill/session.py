@@ -155,8 +155,7 @@ def sessionlist(cont,unpaidonly=False,closedonly=False,maxlen=None):
         q=q.filter(Session.endtime!=None)
     if maxlen: q=q[:maxlen]
     f=ui.tableformatter(' r  l  r ')
-    return [(ui.tableline(f,(x.id,x.date,tillconfig.fc(x.total))),
-             cont,(x,)) for x in q]
+    return [(f(x.id,x.date,tillconfig.fc(x.total)),cont,(x,)) for x in q]
 
 class _PMWrapper(object):
     """
