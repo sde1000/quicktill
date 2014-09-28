@@ -900,6 +900,13 @@ class tableformatter(object):
         f=f.replace('r','')
         f=f.replace('p','')
         self._formatlen=len(f)
+    def __call__(self,*args,**kwargs):
+        """Append a line to the table.  Positional arguments are used as table
+        fields, and keyword arguments are passed to the underlying
+        line object eg. for colour and userdata.
+
+        """
+        return tableline(self,args,**kwargs)
     def append(self,row):
         """
         Add a row to the table.
