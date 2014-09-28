@@ -33,14 +33,14 @@ class page(ui.basicpage):
             options(undefer_group('qtys')).\
             all()
         f=ui.tableformatter("pl l l r rp")
-        header=ui.tableline(f,("Line","StockID","Stock","Used","Remaining"))
+        header=f("Line","StockID","Stock","Used","Remaining")
         def fl(line):
             if line.stockonsale:
                 sos=line.stockonsale[0]
                 return (line.name,sos.id,sos.stocktype.format(),
                         sos.used,sos.remaining)
             return (line.name,"","","","")
-        ml=[header]+[ui.tableline(f,fl(line)) for line in sl]
+        ml=[header]+[f(*fl(line)) for line in sl]
         y=0
         for l in ml:
             for line in l.display(self.w):
@@ -63,11 +63,10 @@ class page(ui.basicpage):
             options(joinedload('stockitem.stockline')).\
             all()
         f=ui.tableformatter('pl l l lp')
-        header=ui.tableline(f,("Loc","StockID","Name","Line"))
-        ml=[ui.tableline(f,(
-                    a.text,a.stockid,a.stockitem.stocktype.format(),
-                    a.stockitem.stockline.name if a.stockitem.stockline
-                    else "")) for a in sl]
+        header=f("Loc","StockID","Name","Line")
+        ml=[f(a.text,a.stockid,a.stockitem.stocktype.format(),
+              a.stockitem.stockline.name if a.stockitem.stockline
+              else "") for a in sl]
         ml.insert(0,header)
         y=0
         for l in ml:
