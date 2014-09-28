@@ -359,7 +359,7 @@ def totalpopup(s):
         l.append(" Ended {:%Y-%m-%d %H:%M:%S} ".format(s.endtime))
     l.append("")
     tf=ui.tableformatter(" l pr  r ")
-    l.append(ui.tableline(tf,("","Till:","Actual:")))
+    l.append(tf("","Till:","Actual:"))
     ttt=zero
     att=zero
     for i in paytypes:
@@ -373,19 +373,18 @@ def totalpopup(s):
             att=att+payments[i].amount
         else:
             at=""
-        if tt or at: l.append(ui.tableline(tf,(i.description+":",tt,at)))
+        if tt or at: l.append(tf(i.description+":",tt,at))
     if len(paytypes)>1:
-        l.append(ui.tableline(tf,("Total:",tillconfig.fc(ttt),
-                                  tillconfig.fc(att) if att>zero else "")))
+        l.append(tf("Total:",tillconfig.fc(ttt),
+                    tillconfig.fc(att) if att>zero else ""))
     l.append("")
     dt=zero
     df=ui.tableformatter(" r l pr ")
     for dept,total in depts:
-        l.append(ui.tableline(df,(
-            dept.id,dept.description,tillconfig.fc(total))))
+        l.append(df(
+            dept.id,dept.description,tillconfig.fc(total)))
         dt=dt+total
-    lf=ui.tableformatter(" l pr ")
-    l.append(ui.tableline(lf,("Total",tillconfig.fc(dt))))
+    l.append(ui.tableformatter(" l pr ")("Total",tillconfig.fc(dt)))
     l.append("")
     l.append(" Press Print for a hard copy ")
     keymap={
