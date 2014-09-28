@@ -69,7 +69,7 @@ def stockdetail(sinfo):
     if len(sinfo)==1:
         return stock.stockinfo_popup(sinfo[0].id)
     f=ui.tableformatter(' r l l ')
-    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units)),
+    sl=[(f(x.id,x.stocktype.format(),x.remaining_units),
          stock.stockinfo_popup,(x.id,)) for x in sinfo]
     ui.menu(sl,title="Stock Detail",blurb="Select a stock item and press "
             "Cash/Enter for more information.",
@@ -116,9 +116,8 @@ def stockcheck(dept=None):
         items=len(i)
         unit=i[0].stocktype.unit.name
         sl.append(
-            (ui.tableline(
-                    f,(name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
-                            items,("s","")[items==1]))),
+            (f(name,"%.0f %ss"%(remaining,unit),"(%d item%s)"%(
+                items,("s","")[items==1])),
              stockdetail,(i,)))
     title="Stock Check" if dept is None else "Stock Check department %d"%dept
     ui.menu(sl,title=title,blurb="Select a stock type and press "
@@ -138,7 +137,7 @@ def stockhistory(dept=None):
     if dept: sq=sq.filter(StockType.dept_id==dept)
     sinfo=sq.all()
     f=ui.tableformatter(' r l l ')
-    sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.remaining_units)),
+    sl=[(f(x.id,x.stocktype.format(),x.remaining_units),
          stock.stockinfo_popup,(x.id,)) for x in sinfo]
     title=("Stock History" if dept is None
            else "Stock History department %d"%dept)
@@ -199,12 +198,12 @@ class stocklevelcheck(user.permission_checked,ui.dismisspopup):
             q=q.filter(StockType.dept_id==dept.id)
         r=q.all()
         f=ui.tableformatter(' l r  r  r ')
-        lines=[ui.tableline(f,(st.format(),sold,st.instock,sold-st.instock))
+        lines=[f(st.format(),sold,st.instock,sold-st.instock)
                for st,sold in r]
         header=[ui.lrline("Do not order any stock if the 'Buy' amount "
                           "is negative!"),
                 ui.emptyline(),
-                ui.tableline(f,('Name','Sold','In stock','Buy'))]
+                f('Name','Sold','In stock','Buy')]
         ui.listpopup(lines,header=header,
                      title="Stock level check - %d weeks"%weeks,
                      colour=ui.colour_info,show_cursor=False,
