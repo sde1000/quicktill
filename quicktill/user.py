@@ -446,7 +446,7 @@ def addpermission(userid):
     pl=sorted(pl)
     pl=sorted(pl,key=lambda p:p not in group.all_groups)
     f=ui.tableformatter(' l l ')
-    menu=[(ui.tableline(f,(p,action_descriptions[p])),
+    menu=[(f(p,action_descriptions[p]),
            do_add_permission,(userid,p)) for p in pl]
     ui.menu(menu,title="Give permission to {}".format(u.fullname),
             blurb="Choose the permission to give to {}".format(u.fullname))
@@ -499,8 +499,8 @@ class edituser(permission_checked,ui.basicpopup):
     def edittokens(self):
         u=td.s.query(User).get(self.userid)
         f=ui.tableformatter(' l l l ')
-        h=ui.tableline(f,("Description","Value","Last used"))
-        tl=[(ui.tableline(f,(x.description,x.token,x.last_seen)),
+        h=f("Description","Value","Last used")
+        tl=[(f(x.description,x.token,x.last_seen),
              self.removetoken,(x.token,)) for x in u.tokens]
         tl.insert(0,("Add new token",addtoken,(self.userid,)))
         ui.menu(tl,title="Tokens for {}".format(u.fullname),
@@ -514,7 +514,7 @@ class edituser(permission_checked,ui.basicpopup):
     def editpermissions(self):
         u=td.s.query(User).get(self.userid)
         f=ui.tableformatter(' l l ')
-        pl=[(ui.tableline(f,(p.id,p.description)),
+        pl=[(f(p.id,p.description),
              self.removepermission,(p.id,)) for p in u.permissions]
         pl.insert(0,("Add permission",addpermission,(self.userid,)))
         ui.menu(pl,title="Permissions for {}".format(u.fullname),
@@ -566,14 +566,12 @@ def usersmenu(include_inactive=False):
     ul=q.all()
     if u.has_permission('edit-user'):
         f=ui.tableformatter(' l l l ')
-        lines=[(ui.tableline(
-                    f,(x.fullname,x.shortname,
-                       "(Active)" if x.enabled else "(Inactive)")),
+        lines=[(f(x.fullname,x.shortname,
+                  "(Active)" if x.enabled else "(Inactive)"),
                 edituser,(x.id,)) for x in ul]
     else:
         f=ui.tableformatter(' l l ')
-        lines=[(ui.tableline(
-                    f,(x.fullname,"(Active)" if x.enabled else "(Inactive")),
+        lines=[(f(x.fullname,"(Active)" if x.enabled else "(Inactive)"),
                 display_info,(x.id,)) for x in ul]
     if not include_inactive:
         lines.insert(0,("Include inactive users",usersmenu,(True,)))
