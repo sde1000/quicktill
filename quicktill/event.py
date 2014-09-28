@@ -12,8 +12,12 @@ eventlist=[]
 # called doread(), dowrite(), etc.
 rdlist=[]
 
+# List of functions to invoke each time around the event loop
+ticklist=[]
+
 def eventloop():
     while shutdowncode is None:
+        for i in ticklist: i()
         # Work out what the earliest timeout is
         timeout=None
         t=time.time()

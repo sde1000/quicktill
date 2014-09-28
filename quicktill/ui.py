@@ -261,9 +261,7 @@ class basicpage(basicwin):
         basicpage._basepage=None
     def dismiss(self):
         """
-        Remove this page.  Whoever is calling this needs to make sure
-        another page is selected afterwards, otherwise the screen will
-        be blank!
+        Remove this page.
 
         """
         if basicpage._basepage==self: self.deselect()
@@ -280,6 +278,11 @@ class basicpage(basicwin):
                 ps=i.pagesummary()
                 if ps: s=s+i.pagesummary()+' '
         header.update(m,s)
+    @staticmethod
+    def _ensure_page_exists():
+        if basicpage._basepage==None:
+            with td.orm_session():
+                tillconfig.firstpage()
     def hotkeypress(self,k):
         """
         Since this is a page, it is always at the base of the stack of
@@ -1399,5 +1402,6 @@ def init(w):
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
+    event.ticklist.append(basicpage._ensure_page_exists)
 
 beep=curses.beep

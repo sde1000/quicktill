@@ -7,7 +7,6 @@ from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select,not_
 from sqlalchemy.orm import joinedload,undefer_group
 log=logging.getLogger(__name__)
-from lockscreen import lockpage
 
 class page(ui.basicpage):
     def __init__(self,hotkeys,locations=None,user=None,
@@ -104,9 +103,8 @@ class page(ui.basicpage):
                 if self.max_unattended_updates:
                     self.remaining_life=self.remaining_life-1
                     if self.remaining_life<1:
-                        # XXX when default page is implemented, this should be
-                        # self.dismiss()
-                        return lockpage()
+                        self.dismiss()
+                        return
                 self.redraw()
         else:
             self.remaining_life=self.max_unattended_updates

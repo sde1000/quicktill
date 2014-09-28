@@ -1498,10 +1498,7 @@ class page(ui.basicpage):
         # example.
         if self.user.dbuser.register!=register_instance:
             # If the register in the database isn't us, lock immediately
-            # XXX We should be able to do this by deselecting ourselves
-            # once the "default page" function has been implemented.
-            # For now, just invoke firstpage
-            tillconfig.firstpage()
+            self.deselect()
             return False
 
         # If there is a message queued for the user, display it.  It
@@ -1587,10 +1584,7 @@ class page(ui.basicpage):
         # processing, because the keypress might be a user token that
         # will need to be dealt with.
         if self.user.dbuser.register!=register_instance:
-            # XXX We should be able to do this by deselecting ourselves
-            # once the "default page" function has been implemented.
-            # For now, just invoke firstpage
-            tillconfig.firstpage()
+            self.deselect()
             return super(page,self).hotkeypress(k)
 
         if self._autolock and k==self._autolock and not self.locked \

@@ -36,21 +36,9 @@ def start(stdwin):
     an exception, ncurses will reraise it.
 
     """
-
     stdwin.nodelay(1) # Make getch() non-blocking
-
+    ui.init(stdwin)
     tillconfig.kb.curses_init(stdwin)
-
-    # Some of the init functions may make use of the database.
-    with td.orm_session():
-        ui.init(stdwin)
-
-        if tillconfig.firstpage:
-            tillconfig.firstpage()
-        else:
-            intropage()
-
-    # Enter main event loop
     event.eventloop()
 
 class CommandTracker(type):
@@ -440,6 +428,8 @@ def main():
         tillconfig.hotkeys=config['hotkeys']
     if 'firstpage' in config:
         tillconfig.firstpage=config['firstpage']
+    else:
+        tillconfig.firstpage=intropage
     if 'usertoken_handler' in config:
         tillconfig.usertoken_handler=config['usertoken_handler']
     if 'usertoken_listen' in config:
