@@ -37,7 +37,7 @@ class plu_line_with_capacity(plu_keypress,ui.menu):
     def __init__(self,stockline):
         sos=stockline.stockonsale
         f=ui.tableformatter(' r l r+l ')
-        sl=[(ui.tableline(f,(x.id,x.stocktype.format(),x.ondisplay,x.instock)),
+        sl=[(f(x.id,x.stocktype.format(),x.ondisplay,x.instock),
              plu_stockitem,(x,)) for x in sos]
         ui.menu.__init__(self,sl,title="%s (%s) - display capacity %d"%
                          (stockline.name,stockline.location,stockline.capacity),
