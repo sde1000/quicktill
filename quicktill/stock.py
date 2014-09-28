@@ -238,7 +238,7 @@ class stockpicker(ui.dismisspopup):
             else:
                 depts=td.s.query(Department).order_by(Department.id).all()
                 f=ui.tableformatter(' r l ')
-                lines=[(ui.tableline(f,(d.id,d.description)),
+                lines=[(f(d.id,d.description),
                         self.popup_menu,(d,)) for d in depts]
                 ui.menu(lines)
     def popup_menu(self,department):
@@ -246,8 +246,8 @@ class stockpicker(ui.dismisspopup):
             options(joinedload('stocktype')).\
             options(undefer('remaining'))[:100]
         f=ui.tableformatter(' r l c ')
-        sl=[(ui.tableline(f,(s.id,s.stocktype.format(),"%s %ss"%(
-                            s.remaining,s.stockunit.unit.name))),
+        sl=[(f(s.id,s.stocktype.format(),"%s %ss"%(
+            s.remaining,s.stockunit.unit.name)),
              self.item_chosen,(s.id,))
             for s in items]
         ui.menu(sl,title=self.title)
