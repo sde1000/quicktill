@@ -245,14 +245,13 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
         # guide prices.
         h=min(6+len(sl),mh-1)
         f=ui.tableformatter(' r c c c c c ')
-        headerline=ui.tableline(f,[
-                "StockID","Delivered","Cost","Size","Remaining","Guide price"])
-        ll=[ui.tableline(
-                f,[x.id,x.delivery.date,tillconfig.fc(x.costprice),
-                   x.stockunit.size,x.remaining,
-                   tillconfig.fc(
-                        tillconfig.priceguess(
-                            x.stocktype,x.stockunit,x.costprice))])
+        headerline=f("StockID","Delivered","Cost","Size","Remaining",
+                     "Guide price")
+        ll=[f(x.id,x.delivery.date,tillconfig.fc(x.costprice),
+              x.stockunit.size,x.remaining,
+              tillconfig.fc(
+                  tillconfig.priceguess(
+                      x.stocktype,x.stockunit,x.costprice)))
             for x in sl]
         w=min(max(f.idealwidth()+2,len(name)+4,30),mw)
         ui.dismisspopup.__init__(self,h,w,title="Re-price %s"%name,
