@@ -877,15 +877,14 @@ class lrline(emptyline):
         return w
 
 class tableformatter(object):
-    """
-    This class implements policy for formatting a table.  The format
+    """This class implements policy for formatting a table.  The format
     string is used as-is with the following characters being replaced:
 
     l - left-aligned field
     c - centered field
     r - right-aligned string
     p - padding
-    
+
     """
     def __init__(self,format):
         self._f=format
@@ -901,20 +900,16 @@ class tableformatter(object):
         f=f.replace('p','')
         self._formatlen=len(f)
     def __call__(self,*args,**kwargs):
-        """Append a line to the table.  Positional arguments are used as table
+        """Append a row to the table.  Positional arguments are used as table
         fields, and keyword arguments are passed to the underlying
         line object eg. for colour and userdata.
 
         """
-        return tableline(self,args,**kwargs)
-    def append(self,row):
-        """
-        Add a row to the table.
-
-        """
+        row=_tableline(self,args,**kwargs)
         self._rows.append(row)
-        self.update(row)
-    def update(self,row):
+        self._update(row)
+        return row
+    def _update(self,row):
         """
         Called when a row is changed.  Invalidate any cached widths
         and format strings.
@@ -969,15 +964,18 @@ class tableformatter(object):
     def format(self,row,width):
         return [self._formatstr(width).format(*row.fields)[:width]]
 
-class tableline(emptyline):
+class _tableline(emptyline):
+    """A line for use in a tableformatter table.  Create instances of this
+    by calling tableformatter instances.
+
+    """
     def __init__(self,formatter,fields,colour=None,userdata=None):
         emptyline.__init__(self,colour,userdata)
         self._formatter=formatter
         self.fields=[unicode(x) for x in fields]
-        self._formatter.append(self)
     def update(self):
         emptyline.update(self)
-        self._formatter.update(self)
+        self._formatter._update(self)
     def idealwidth(self):
         return self._formatter.idealwidth()
     def display(self,width):
