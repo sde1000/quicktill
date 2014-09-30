@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH RUNTILL 1 "2013-12-16"
+.TH RUNTILL 1 "2014-09-30"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -19,7 +19,7 @@
 runtill \- start up a till or stock control terminal
 .SH SYNOPSIS
 .B runtill
-.RI [ options ] action
+.RI "[ options ] action"
 .SH DESCRIPTION
 This manual page documents briefly the
 .B runtill
@@ -51,8 +51,6 @@ The default is 'default'.
 .TP
 .B \-d, \-\-database DATABASE
 Override the database connection indicated in the configuration file.
-Will usually have to be escaped, because the connection string is of
-the form "dbname=foo host=bar".
 .TP
 .B \-y, \-\-log\-config LOGCONFIG
 Specify a YAML log configuration file.
@@ -65,21 +63,40 @@ Include debug output in the log.
 .TP
 .B \-\-log\-sql
 Include SQL queries in the log.
+.TP
+.B \-\-disable\-printer
+Use the null printer instead of the configured printer.
 .SH ACTIONS
 .TP
-.B start
-Run the till interactively.
+.B start [ \-\-nolisten ]
+Run the till interactively.  Use \-n or \-\-nolisten to disable the
+listening socket for user tokens.
 .TP
 .B dbshell
-Initialise the database, import quicktill.td and from quicktill.models import *
+Starts an interactive python session with the database initialised, an
+ORM session started, the first two commends being "import
+quicktill.td" and "from quicktill.models import *".
 .TP
 .B syncdb
-Create database tables that are missing from the database
+Create database tables that are missing from the database.
 .TP
-.B flushdb
-Remove tables from the database
+.B flushdb [ \-\-really ]
+Remove tables from the database.  If the database contains more than
+two sessions of data then this command will refuse to run unless you
+supply the \-\-really option.
 .TP
-.B dbsetup
-Add initial records to the database
+.B dbsetup [ dbfile ]
+With no positional argument, outputs a template database setup file on
+STDOUT.  With one argument, reads and processes a database setup file.
+.TP
+.B adduser fullname shortname usertoken
+Adds a superuser to the database.  This is necessary during setup;
+that user can then create new ordinary users.
+.TP
+.B totals [ \-\-days DAYS ]
+Display a table of session totals, by default for the last 40 days.
+Override this with the \-\-days option.
+
 .SH AUTHOR
-quicktill was written by <steve@greenend.org.uk>.
+.B quicktill
+was written by <steve@greenend.org.uk>.
