@@ -231,7 +231,7 @@ class totals(command):
     def add_arguments(subparsers):
         parser=subparsers.add_parser(
             'totals',help="display table of session totals",
-            description=adduser.__doc__)
+            description=totals.__doc__)
         parser.set_defaults(command=totals.run)
         parser.add_argument("-d","--days",type=int,dest="days",
                             help="number of days to display",default=40)
