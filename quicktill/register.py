@@ -189,7 +189,7 @@ def record_pullthru(stockid,qty):
     td.s.add(StockOut(stockid=stockid,qty=qty,removecode_id='pullthru'))
     td.s.flush()
 
-class repeat(object):
+class repeatinfo(object):
     """
     Information for repeat keypresses.
 
@@ -494,7 +494,7 @@ class page(ui.basicpage):
         may_repeat=self.repeat and hasattr(self.repeat,'stocklineid') and \
             self.repeat.stocklineid==stockline.id and \
             self.repeat.qty==kb.qty
-        self.repeat=repeat(stocklineid=stockline.id,qty=kb.qty)
+        self.repeat=repeatinfo(stocklineid=stockline.id,qty=kb.qty)
 
         if stockline.linetype=="regular" and stockline.pullthru:
             # Check first to see whether we may need to record a pullthrough.
@@ -681,7 +681,7 @@ class page(ui.basicpage):
         self.update_balance()
         self.cursor_off()
         self._redraw()
-        self.repeat=repeat(dept=dept)
+        self.repeat=repeatinfo(dept=dept)
     def deptlines(self,lines):
         """Accept multiple transaction lines from an external source.
 
