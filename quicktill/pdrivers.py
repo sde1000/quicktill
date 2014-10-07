@@ -3,6 +3,7 @@ import string,socket,os,tempfile,textwrap,subprocess,fcntl,array,sys
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
+import glob
 import qrcode
 import logging
 log=logging.getLogger(__name__)
@@ -118,8 +119,7 @@ class badprinter(nullprinter):
         raise PrinterError(self,"badprinter is always offline!")
 
 class fileprinter(object):
-    """
-    Print to a file.  The file may be a device file!
+    """Print to a file.  The file may be a device file!
 
     """
     def __init__(self,filename,driver):
@@ -129,22 +129,27 @@ class fileprinter(object):
     def __str__(self):
         return "{}({},{})".format(self.__class__.__name__,
                                   self._filename,self._driver)
+    def _getfilename(self):
+        gi=glob.iglob(self._filename)
+        try:
+            return gi.next()
+        except StopIteration:
+            return self._filename
     def offline(self):
-        """
-        If the printer is unavailable for any reason, return a description
+        """If the printer is unavailable for any reason, return a description
         of that reason; otherwise return None.
 
         """
         if self._file: return 
         try:
-            f=file(self._filename,'a')
+            f=file(self._getfilename(),'a')
             f.close()
         except IOError as e:
             return str(e)
     def __enter__(self):
         if self._file:
             raise PrinterError(self,"Already started in start()")
-        self._file=file(self._filename,'a')
+        self._file=file(self._getfilename(),'a')
         self._driver.start(self._file)
         return self._driver
     def __exit__(self,type,value,tb):
@@ -180,7 +185,7 @@ class linux_lpprinter(fileprinter):
     def offline(self):
         if self._file: return 
         try:
-            f=file(self._filename,'a')
+            f=file(self._getfilename(),'a')
             buf=array.array(str('b'),[0])
             fcntl.ioctl(f,self.LPGETSTATUS,buf)
             f.close()
