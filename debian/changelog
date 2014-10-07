@@ -1,3 +1,55 @@
+quicktill (0.10.41) stable; urgency=low
+
+  * New release 0.10.41
+
+  * Allow globs in printer device filenames
+
+  * Rename repeat to repeatinfo
+
+  * Tell debhelper where the man page is
+
+  * Update manpage
+
+  * Show correct description for totals subcommand
+
+  * Update tableformatter API
+
+  * Update usestock.py tableformatter calls
+
+  * Update user.py tableformatter calls
+
+  * Update stocktype.py tableformatter calls
+
+  * Update stockterminal.py tableformatter calls
+
+  * Update stock.py tableformatter calls
+
+  * Update stocklines.py tableformatter calls
+
+  * Update session.py tableformatter calls (oops, missed one!)
+
+  * Update register.py tableformatter calls
+
+  * Update plu.py tableformatter calls
+
+  * Update managestock.py tableformatter calls
+
+  * Update department.py tableformatter calls
+
+  * Update delivery.py tableformatter calls
+
+  * Update session.py tableformatter calls
+
+  * Add row to table by calling tableformatter instance
+
+  * Update session total popup to use tableformatter
+
+  * Allow whole session list to be viewed
+
+  * Bring up firstpage automatically when no page is selected
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 07 Oct 2014 01:41:34 +0100
+
 quicktill (0.10.40) stable; urgency=low
 
   * New release 0.10.40
