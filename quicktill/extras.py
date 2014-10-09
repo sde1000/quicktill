@@ -1,6 +1,8 @@
 from __future__ import print_function,unicode_literals
 from . import ui,keyboard,printer,tillconfig,event,td,user
-from . import twitter
+import twitter
+import oauth2 as oauth
+import urlparse
 from .models import VatBand
 import traceback,sys,os,time,datetime
 
@@ -173,8 +175,6 @@ def twitter_auth(consumer_key,consumer_secret):
     """
     # This code is from the example at
     # https://github.com/simplegeo/python-oauth2
-    import urlparse
-    from . import oauth2 as oauth
 
     request_token_url = 'https://api.twitter.com/oauth/request_token'
     access_token_url = 'https://api.twitter.com/oauth/access_token'
