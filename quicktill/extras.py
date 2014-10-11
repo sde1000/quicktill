@@ -264,10 +264,13 @@ class twitter_post(ui.dismisspopup):
             ui.infopopup(title="Twitter Problem",text=[
                     "That's too short!  Try typing some more."])
             return
-        self.tapi.PostUpdate(ttext)
-        self.dismiss()
-        ui.infopopup(title="Tweeted",text=["Your update has been posted."],
-                     dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
+        try:
+            self.tapi.PostUpdate(ttext)
+            self.dismiss()
+            ui.infopopup(title="Tweeted",text=["Your update has been posted."],
+                         dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
+        except:
+            ui.popup_exception("Error posting tweet")
 
 class Tweet(ui.lrline):
     def __init__(self,status):
