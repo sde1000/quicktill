@@ -19,11 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see [this
 link](http://www.gnu.org/licenses/).
 
-Parts of this program were written by other people and are distributed
-under different licences; see the individual source files for details:
- - quicktill/twitter.py — Apache License, version 2.0
- - quicktill/oauth2.py — MIT License
-
 A big warning
 -------------
 
