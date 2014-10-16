@@ -1,7 +1,6 @@
 from __future__ import print_function,unicode_literals
 from . import ui,keyboard,printer,tillconfig,event,td,user
 import twitter
-import oauth2 as oauth
 import urlparse
 from .models import VatBand
 import traceback,sys,os,time,datetime
@@ -179,6 +178,8 @@ def twitter_auth(consumer_key,consumer_secret):
     request_token_url = 'https://api.twitter.com/oauth/request_token'
     access_token_url = 'https://api.twitter.com/oauth/access_token'
     authorize_url = 'https://api.twitter.com/oauth/authorize'
+
+    import oauth2 as oauth
 
     consumer = oauth.Consumer(consumer_key, consumer_secret)
     client = oauth.Client(consumer)
