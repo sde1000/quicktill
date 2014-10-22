@@ -116,6 +116,7 @@ class btcpopup(ui.dismisspopup):
     A window used to accept a Bitcoin payment.
 
     """
+    unsaved_data="Bitcoin payment QR code"
     def __init__(self,pm,reg,payment):
         self._pm=pm
         self._reg=reg
