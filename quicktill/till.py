@@ -8,7 +8,7 @@ module.
 from __future__ import print_function,unicode_literals
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
-from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers
+from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers,cmdline,extras
 from .version import version
 from .models import Session,User,UserToken,Business,zero
 log=logging.getLogger(__name__)
@@ -41,27 +41,7 @@ def start(stdwin):
     tillconfig.kb.curses_init(stdwin)
     event.eventloop()
 
-class CommandTracker(type):
-    """
-    Metaclass keeping track of all the types of command we understand.
-
-    """
-    def __init__(cls,name,bases,attrs):
-        if not hasattr(cls,'_commands'):
-            cls._commands=[]
-        else:
-            cls._commands.append(cls)
-
-class command(object):
-    __metaclass__=CommandTracker
-    @staticmethod
-    def add_arguments(parser):
-        pass
-    @staticmethod
-    def run(args):
-        pass
-
-class runtill(command):
+class runtill(cmdline.command):
     """
     Run the till interactively.
 
@@ -90,7 +70,7 @@ class runtill(command):
         logging.shutdown()
         return event.shutdowncode
 
-class dbshell(command):
+class dbshell(cmdline.command):
     """
     Provide an interactive python prompt with the 'td' module and
     'models.*' already imported, and a database session started.
@@ -113,7 +93,7 @@ class dbshell(command):
         with td.orm_session():
             console.interact()
 
-class syncdb(command):
+class syncdb(cmdline.command):
     """
     Create database tables and indexes that have not already been
     created.  This command should always be safe to run; it won't
@@ -136,7 +116,7 @@ class syncdb(command):
         td.init(tillconfig.database)
         td.create_tables()
 
-class flushdb(command):
+class flushdb(cmdline.command):
     """
     Remove database tables.  This command will refuse to run without
     the "--really" option if your database contains more than two
@@ -170,7 +150,7 @@ class flushdb(command):
         td.remove_tables()
         print("Finished.")
 
-class dbsetup(command):
+class dbsetup(cmdline.command):
     """
     With no arguments, print a template database setup file.
     With one argument, import and process a database setup file.
@@ -195,7 +175,7 @@ class dbsetup(command):
             with td.orm_session():
                 setup(args.dbfile)
 
-class adduser(command):
+class adduser(cmdline.command):
     """
     Add a user.  This user will be a superuser.  This is necessary
     during setup.
@@ -222,7 +202,7 @@ class adduser(command):
             td.s.flush()
             print("User added.")
 
-class totals(command):
+class totals(cmdline.command):
     """
     Display a table of session totals.
 
@@ -327,7 +307,7 @@ def main():
                         dest="disable_printer",help="Use the null printer "
                         "instead of the configured printer")
     subparsers=parser.add_subparsers(title="commands")
-    for c in command._commands:
+    for c in cmdline.command._commands:
         c.add_arguments(subparsers)
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
