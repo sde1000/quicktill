@@ -1,9 +1,10 @@
 from __future__ import print_function,unicode_literals
-from . import ui,keyboard,printer,tillconfig,event,td,user
+from . import ui,keyboard,printer,tillconfig,event,td,user,cmdline
 import twitter
 import urlparse
 from .models import VatBand
 import traceback,sys,os,time,datetime
+from requests_oauthlib import OAuth1Session
 
 ### Bar Billiards checker
 
@@ -166,72 +167,62 @@ class reminderpopup(object):
                       colour=self.colour,dismiss=self.dismisskey)
         self.setalarm()
 
-def twitter_auth(consumer_key,consumer_secret):
-    """
-    Generate oauth_token and oauth_token_secret for twitter login.
-    Call this function from an interactive shell.
+class twitter_auth(cmdline.command):
+    """Generate tokens for Twitter login.
 
     """
-    # This code is from the example at
-    # https://github.com/simplegeo/python-oauth2
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'twitter-auth',help="authorise with Twitter",
+            description=twitter_auth.__doc__)
+        parser.add_argument("--consumer-key", action="store",
+                            dest="consumer_key",
+                            help="OAuth1 consumer key")
+        parser.add_argument("--consumer-secret", action="store",
+                            dest="consumer_secret",
+                            help="OAuth1 consumer secret")
+        parser.set_defaults(command=twitter_auth.run)
+    @staticmethod
+    def run(args):
+        if not args.consumer_key: args.consumer_key=raw_input("Consumer key: ")
+        if not args.consumer_secret:
+            args.consumer_secret=raw_input("Consumer secret: ")
+        request_token_url='https://api.twitter.com/oauth/request_token'
+        base_authorize_url = 'https://api.twitter.com/oauth/authorize'
+        access_token_url = 'https://api.twitter.com/oauth/access_token'
+        oauth=OAuth1Session(args.consumer_key,client_secret=args.consumer_secret)
+        fetch_response=oauth.fetch_request_token(request_token_url)
+        resource_owner_key=fetch_response.get('oauth_token')
+        resource_owner_secret=fetch_response.get('oauth_token_secret')
+        authorize_url=oauth.authorization_url(base_authorize_url)
+        print("Please visit this URL: {}".format(authorize_url))
+        verifier=raw_input("Enter the PIN from Twitter: ")
+        oauth=OAuth1Session(args.consumer_key,
+                            client_secret=args.consumer_secret,
+                            resource_owner_key=resource_owner_key,
+                            resource_owner_secret=resource_owner_secret,
+                            verifier=verifier)
+        oauth_tokens=oauth.fetch_access_token(access_token_url)
+        resource_owner_key=oauth_tokens.get('oauth_token')
+        resource_owner_secret=oauth_tokens.get('oauth_token_secret')
 
-    request_token_url = 'https://api.twitter.com/oauth/request_token'
-    access_token_url = 'https://api.twitter.com/oauth/access_token'
-    authorize_url = 'https://api.twitter.com/oauth/authorize'
+        tapi=twitter.Api(consumer_key=args.consumer_key,
+                         consumer_secret=args.consumer_secret,
+                         access_token_key=resource_owner_key,
+                         access_token_secret=resource_owner_secret)
+        user=tapi.VerifyCredentials()
 
-    import oauth2 as oauth
-
-    consumer = oauth.Consumer(consumer_key, consumer_secret)
-    client = oauth.Client(consumer)
-
-    # Step 1: Get a request token. This is a temporary token that is
-    # used for having the user authorize an access token and to sign
-    # the request to obtain said access token.
-
-    resp, content = client.request(request_token_url, "POST")
-    if resp['status'] != '200':
-        raise Exception("Invalid response %s: %s." % (resp['status'],content))
-
-    request_token = dict(urlparse.parse_qsl(content))
-
-    print("Request Token:")
-    print("    - oauth_token        = %s" % request_token['oauth_token'])
-    print("    - oauth_token_secret = %s" % request_token['oauth_token_secret'])
-    print() 
-
-    # Step 2: Redirect to the provider. Since this is a CLI script we
-    # do not redirect. In a web application you would redirect the
-    # user to the URL below.
-
-    print("Go to the following link in your browser:")
-    print("%s?oauth_token=%s" % (authorize_url, request_token['oauth_token']))
-    print() 
-
-    # After the user has granted access to you, the consumer, the provider will
-    # redirect you to whatever URL you have told them to redirect to. You can 
-    # usually define this in the oauth_callback argument as well.
-    oauth_verifier = raw_input('What is the PIN? ')
-
-    # Step 3: Once the consumer has redirected the user back to the
-    # oauth_callback URL you can request the access token the user has
-    # approved. You use the request token to sign this request. After
-    # this is done you throw away the request token and use the access
-    # token returned. You should store this access token somewhere
-    # safe, like a database, for future use.
-    token = oauth.Token(request_token['oauth_token'],
-                        request_token['oauth_token_secret'])
-    token.set_verifier(oauth_verifier)
-    client = oauth.Client(consumer, token)
-
-    resp, content = client.request(access_token_url, "POST")
-    access_token = dict(urlparse.parse_qsl(content))
-
-    print("Access Token:")
-    print("    - oauth_token        = %s" % access_token['oauth_token'])
-    print("    - oauth_token_secret = %s" % access_token['oauth_token_secret'])
-    print()
-    print("You may now access protected resources using the access tokens above.") 
-    print()
+        print("Paste the following to enable Twitter access as @{}:".format(
+            user.screen_name))
+        print("""
+        tapi=extras.twitter_api(
+            token='{}',
+            token_secret='{}',
+            consumer_key='{}',
+            consumer_secret='{}')""".format(
+                resource_owner_key,resource_owner_secret,
+                args.consumer_key,args.consumer_secret))
 
 def twitter_api(token,token_secret,consumer_key,consumer_secret):
     return twitter.Api(consumer_key=consumer_key,
