@@ -175,33 +175,6 @@ class dbsetup(cmdline.command):
             with td.orm_session():
                 setup(args.dbfile)
 
-class adduser(cmdline.command):
-    """
-    Add a user.  This user will be a superuser.  This is necessary
-    during setup.
-
-    """
-    @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'adduser',help="add a superuser to the database",
-            description=adduser.__doc__)
-        parser.set_defaults(command=adduser.run)
-        parser.add_argument("fullname", help="Full name of user")
-        parser.add_argument("shortname", help="Short name of user")
-        parser.add_argument("usertoken", help="User ID token")
-    @staticmethod
-    def run(args):
-        td.init(tillconfig.database)
-        with td.orm_session():
-            u=User(fullname=args.fullname,shortname=args.shortname,
-                   enabled=True,superuser=True)
-            t=UserToken(token=args.usertoken,user=u,description=args.fullname)
-            td.s.add(u)
-            td.s.add(t)
-            td.s.flush()
-            print("User added.")
-
 class totals(cmdline.command):
     """
     Display a table of session totals.
