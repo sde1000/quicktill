@@ -828,6 +828,21 @@ class page(ui.basicpage):
                           title="Error")
             return
         pm=tillconfig.payment_methods[0]
+        # If any of the transaction's existing payments are pending,
+        # pop up a menu allowing them to be resumed.
+        ml=[(p.description(),p.resume,(self,))
+            for p in self.dl
+            if hasattr(p,'is_pending')
+            and p.is_pending()]
+        log.debug("Pending payments: %s",ml)
+        if ml:
+            ui.menu(ml,blurb="This transaction has one or more pending payments."
+                    "  Choose a payment to resume from this list.  If you would "
+                    "like to add a new payment, dismiss this menu and then "
+                    "press Manage Transaction, choose option 6, then choose "
+                    "the type of payment to take.",
+                    title="Resume pending payment")
+            return
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
         # confirmation - one of the most common user errors is to

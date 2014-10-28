@@ -116,7 +116,6 @@ class btcpopup(ui.dismisspopup):
     A window used to accept a Bitcoin payment.
 
     """
-    unsaved_data="Bitcoin payment QR code"
     def __init__(self,pm,reg,payment):
         self._pm=pm
         self._reg=reg
@@ -239,11 +238,17 @@ class BitcoinPayment(payment.PaymentMethod):
     def describe_payment(self,payment):
         if payment.amount==zero:
             # It's a pending payment.  The ref field is the amount in
-            # our our configured currency (i.e. NOT in Bitcoin).
+            # our configured currency (i.e. NOT in Bitcoin).
             return "Pending {} payment of {}{}".format(
             self.description,tillconfig.currency,payment.ref)
         return "{} ({} {})".format(self.description,payment.ref,
                                    self._currency)
+    def payment_is_pending(self,pline_instance):
+        return pline_instance.amount==zero
+    def resume_payment(self,reg,pline_instance):
+        if self.payment_is_pending(pline_instance):
+            p=td.s.query(Payment).get(pline_instance.payment_id)
+            btcpopup(self,reg,p)
     def start_payment(self,reg,trans,amount,outstanding):
         # Search the transaction for an unfinished Bitcoin payment; if
         # there is one, check to see if it's already been paid.

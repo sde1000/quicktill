@@ -25,14 +25,15 @@ class pline(ui.line):
     """
     def __init__(self,payment,method=None):
         self.payment_id=payment.id
-        amount=payment.amount
+        self.amount=payment.amount
         if method is None: method=methods[payment.paytype_id]
         self.method=method
-        ui.line.__init__(self,colour=ui.colour_cashline if amount>=zero
+        ui.line.__init__(self,colour=ui.colour_cashline if self.amount>=zero
                          else ui.colour_changeline)
         self.update()
     def update(self):
         payment=td.s.query(Payment).get(self.payment_id)
+        self.amount=payment.amount
         self.transtime=payment.time
         self.text="%s %s"%(self.method.describe_payment(payment),
                            tillconfig.fc(payment.amount))
@@ -41,6 +42,13 @@ class pline(ui.line):
         return [' '*(width-len(self.text))+self.text]
     def age(self):
         return datetime.datetime.now() - self.transtime
+    def description(self):
+        payment=td.s.query(Payment).get(self.payment_id)
+        return self.method.describe_payment(payment)
+    def is_pending(self):
+        return self.method.payment_is_pending(self)
+    def resume(self,register):
+        return self.method.resume_payment(register,self)
 
 class PaymentMethod(object):
     change_given=False
@@ -55,6 +63,12 @@ class PaymentMethod(object):
                     self.description)],title="Payment type not supported")
     def describe_payment(self,payment):
         return payment.paytype.description
+    def payment_is_pending(self,pline_instance):
+        return False
+    def resume_payment(self,register,pline_instance):
+        # The default payment method doesn't support pending payments
+        ui.infopopup(["{} payments can't be resumed.".format(self.description)],
+                     title="Pending payments not supported")
     def get_paytype(self):
         pt=PayType(paytype=self.paytype,description=self.description)
         return td.s.merge(pt)
