@@ -1,3 +1,11 @@
+quicktill (0.10.45) stable; urgency=low
+
+  * New release 0.10.45
+
+  * Implement pending Bitcoin payments
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 28 Oct 2014 13:46:51 +0000
+
 quicktill (0.10.44) stable; urgency=low
 
   * New release 0.10.44
