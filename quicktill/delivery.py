@@ -371,6 +371,7 @@ class stockitem(ui.basicpopup):
     def update_suggested_price(self):
         self.addstr(6,24,' '*10)
         if self.typefield.read() is None: return
+        if self.unitfield.read() is None: return
         if len(self.costfield.f)==0: return
         if not self.item and len(self.qtyfield.f)==0: return
         if self.item: qty=1
@@ -380,7 +381,6 @@ class stockitem(ui.basicpopup):
             self.typefield.read(),self.unitfield.read(),wholeprice/qty)
         if g is not None:
             g=g.quantize(penny)
-            self.addstr(6,24,' '*10)
             self.addstr(6,24,tillconfig.fc(g))
     def accept(self):
         if ((not self.item and len(self.qtyfield.f)==0) or
