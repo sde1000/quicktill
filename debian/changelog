@@ -1,3 +1,13 @@
+quicktill (0.10.46) stable; urgency=low
+
+  * New release 0.10.46
+
+  * Rename adduser_cmd class to avoid clash
+
+  * Don't call price guess function with null unit
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 04 Nov 2014 16:25:58 +0000
+
 quicktill (0.10.45) stable; urgency=low
 
   * New release 0.10.45
