@@ -579,7 +579,7 @@ def usersmenu(include_inactive=False):
         lines.insert(0,("Add new user",adduser,None))
     ui.menu(lines,title="User list",blurb="Select a user and press Cash/Enter")
 
-class adduser(cmdline.command):
+class adduser_cmd(cmdline.command):
     """
     Add a user.  This user will be a superuser.  This is necessary
     during setup.
@@ -589,8 +589,8 @@ class adduser(cmdline.command):
     def add_arguments(subparsers):
         parser=subparsers.add_parser(
             'adduser',help="add a superuser to the database",
-            description=adduser.__doc__)
-        parser.set_defaults(command=adduser.run)
+            description=adduser_cmd.__doc__)
+        parser.set_defaults(command=adduser_cmd.run)
         parser.add_argument("fullname", help="Full name of user")
         parser.add_argument("shortname", help="Short name of user")
         parser.add_argument("usertoken", help="User ID token")
