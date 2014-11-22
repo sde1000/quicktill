@@ -334,21 +334,20 @@ def main():
     if args.logsql:
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     if 'printer' in config:
-        pc=config['printer']
-        # Deal with legacy printer configurations: a two-tuple of a callable
-        # and its arguments
-        if hasattr(pc,"__getitem__"):
-            printer.driver=pc[0](*pc[1])
-        else:
-            printer.driver=pc
+        printer.driver=config['printer']
     else:
         log.info("no printer configured: using nullprinter()")
         printer.driver=pdrivers.nullprinter()
     if args.disable_printer:
         printer.driver=pdrivers.nullprinter(name="disabled-printer")
     if 'labelprinter' in config:
-        printer.labeldriver=config['labelprinter'][0](
-            *config['labelprinter'][1])
+        pc=config['labelprinter']
+        # Deal with legacy printer configurations: a two-tuple of a callable
+        # and its arguments
+        if hasattr(pc,"__getitem__"):
+            printer.labeldriver=pc[0](*pc[1])
+        else:
+            printer.labeldriver=pc
     tillconfig.database=config.get('database')
     if args.database is not None: tillconfig.database=args.database
     tillconfig.kb=config['kbdriver']

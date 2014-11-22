@@ -3,6 +3,7 @@ import string,socket,os,tempfile,textwrap,subprocess,fcntl,array,sys
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
+import cups
 import glob
 import qrcode
 import logging
@@ -150,8 +151,7 @@ class fileprinter(object):
         if self._file:
             raise PrinterError(self,"Already started in start()")
         self._file=file(self._getfilename(),'a')
-        self._driver.start(self._file)
-        return self._driver
+        return self._driver.start(self._file,self)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -221,8 +221,7 @@ class netprinter(object):
         self._socket=socket.socket(socket.AF_INET)
         self._socket.connect(self._connection)
         self._file=self._socket.makefile('w')
-        self._driver.start(self._file)
-        return self._driver
+        return self._driver.start(self._file,self)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -254,8 +253,7 @@ class tmpfileprinter(object):
         if self._file:
             raise PrinterError(self,"Already started in start()")
         self._file=tempfile.NamedTemporaryFile(suffix=self._driver.filesuffix)
-        self._driver.start(self._file)
-        return self._driver
+        return self._driver.start(self._file,self)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -288,24 +286,33 @@ class commandprinter(tmpfileprinter):
             r=subprocess.call(self._printcmd%filename,
                               shell=True,stdout=null,stderr=null)
 
+# XXX python-cups in Ubuntu 14.04 doesn't support the CUPS streaming
+# API, so we have to write our output to a temporary file before
+# printing it.  Fix this when we move on from 14.04!
 class cupsprinter(tmpfileprinter):
-    """
-    Print to a CUPS printer.
+    """Print to a CUPS printer.
 
     """
-    def __init__(self,printername,driver):
+    def __init__(self,printername,driver,options={}):
         tmpfileprinter.__init__(self,driver)
         self._printername=printername
+        self._options=options
     def __str__(self):
         return "cupsprinter({},{})".format(self._printername,self._driver)
+    def offline(self):
+        try:
+            conn=cups.Connection()
+            accepting=conn.getPrinterAttributes(
+                self._printername)['printer-is-accepting-jobs']
+            if accepting: return
+            return "'{}' is not accepting jobs at the moment".format(
+                self._printername)
+        except cups.IPPError as e:
+            return str(e)
     def finish(self,filename):
-        # XXX it might be a better idea to use python-cups here to
-        # submit the job; it could also provide more information for
-        # the offline() method.  Using lpr for now provides maximum
-        # compatibility.
-        with open('/dev/null','w') as null:
-            r=subprocess.call("lpr -P {} {}".format(self._printername,filename),
-                              shell=True,stdout=null,stderr=null)
+        conn=cups.Connection()
+        conn.printFile(self._printername,filename,"quicktill output",
+                       self._options)
 
 def ep_2d_cmd(*params):
     """
@@ -352,7 +359,7 @@ class escpos(object):
         self.lines_before_cut=lines_before_cut
         self.default_font=default_font
         self.native_qrcode_support=native_qrcode_support
-    def start(self,fileobj):
+    def start(self,fileobj,interface):
         self.f=fileobj
         self.colour=0
         self.font=self.default_font
@@ -362,6 +369,7 @@ class escpos(object):
         self.f.write(escpos.ep_reset)
         self.f.write(escpos.ep_font[self.font])
         self._printed=False
+        return self
     def end(self):
         if self._printed:
             self.f.write(escpos.ep_ff)
@@ -569,6 +577,10 @@ class Epson_TM_T20_driver(escpos):
                         native_qrcode_support=True)
 
 class pdf_driver(object):
+    """A driver that outputs to PDF and supports the same calls as the
+    ESC/POS driver.
+
+    """
     filesuffix=".pdf"
     def __init__(self,width=140,pagesize=A4,
                  fontsizes=[8,10],pitches=[10,12]):
@@ -583,7 +595,7 @@ class pdf_driver(object):
         self.fontsizes=fontsizes
         self.pitches=pitches
         self.leftmargin=40
-    def start(self,fileobj):
+    def start(self,fileobj,interface):
         self._f=fileobj
         self.c=canvas.Canvas(self._f,pagesize=self.pagesize)
         self.colour=0
@@ -595,6 +607,7 @@ class pdf_driver(object):
         self.y=self.pageheight-self.pitch*4
         self.x=self.leftmargin
         self.column=0
+        return self
     def end(self):
         self.c.showPage()
         self.c.save()
@@ -660,39 +673,77 @@ class pdf_driver(object):
     def kickout(self):
         pass
 
-class pdfpage(object):
-    def __init__(self,printcmd,pagesize):
-        self.printcmd=printcmd
-        self.pagesize=pagesize
-    def available(self):
-        return True
-    def start(self,title="Page"):
-        self.tmpfile=tempfile.NamedTemporaryFile(suffix='.pdf')
-        self.tmpfilename=self.tmpfile.name
-        self.f=canvas.Canvas(self.tmpfilename,pagesize=self.pagesize)
-        self.f.setAuthor("quicktill")
-        self.f.setTitle(title)
-    def newpage(self):
-        self.f.showPage()
-    def getCanvas(self):
-        return self.f
-    def end(self):
-        self.f.showPage()
-        self.f.save()
-        del self.f
-        os.system(self.printcmd%self.tmpfilename)
-        self.tmpfile.close()
-        del self.tmpfilename
-        del self.tmpfile
+# XXX this depends on an implementation detail of reportlab.pdfgen
+class PageSizeCanvas(canvas.Canvas):
+    def getPageSize(self):
+        return self._pagesize
 
-class pdflabel(pdfpage):
-    def __init__(self,printcmd,labelsacross,labelsdown,
+class pdf_page(object):
+    """A driver that presents as a PDF canvas, extended to make the page
+    size readable via a getPageSize() method.
+
+    """
+    filesuffix=".pdf"
+    def __init__(self,pagesize=A4):
+        self._pagesize=pagesize
+    def start(self,fileobj,interface):
+        self._canvas=PageSizeCanvas(fileobj,pagesize=self._pagesize)
+        self._canvas.setAuthor("quicktill")
+        return self._canvas
+    def end(self):
+        self._canvas.save()
+        del self._canvas
+
+# XXX this depends on an implementation detail of reportlab.pdfgen
+class LabelCanvas(canvas.Canvas):
+    def __init__(self,labellist,labelsize,*args,**kwargs):
+        self._labellist=labellist
+        self._labelsize=labelsize
+        canvas.Canvas.__init__(self,*args,**kwargs)
+        self._startpage()
+    def _startpage(self):
+        self._cpll=list(self._labellist)
+        self.saveState()
+        self._nextlabel()
+    def _nextlabel(self):
+        self.restoreState()
+        if self._cpll:
+            self.saveState()
+            lpos=self._cpll.pop(0)
+            self.translate(*lpos)
+        else:
+            canvas.Canvas.showPage(self)
+            self._startpage()
+    def getPageSize(self):
+        return self._labelsize
+    def showPage(self):
+        self._nextlabel()
+    def _end(self):
+        if len(self._cpll)==len(self._labellist):
+            # We haven't drawn a label on this page yet - the code
+            # will just be the save and transform for the first label.
+            # Drop it.
+            self._code = []
+        self.save()
+
+class pdf_labelpage(object):
+    """A driver that prints onto laser label paper.  It presents as a PDF
+    canvas, extended to make the page size readable via a
+    getPageSize() method.  Each individual label is treated as a
+    separate page; the canvas overrides the showPage() method such
+    that it can be called after each individual label has been output,
+    and takes care of changing the origin to enable the next label to
+    be output.
+
+    """
+    filesuffix=".pdf"
+    def __init__(self,labelsacross,labelsdown,
                  labelwidth,labelheight,
                  horizlabelgap,vertlabelgap,
-                 pagesize):
-        pdfpage.__init__(self,printcmd,pagesize)
+                 pagesize=A4):
         self.width=toLength(labelwidth)
         self.height=toLength(labelheight)
+        self._pagesize=pagesize
         horizlabelgap=toLength(horizlabelgap)
         vertlabelgap=toLength(vertlabelgap)
         pagewidth=pagesize[0]
@@ -713,21 +764,31 @@ class pdflabel(pdfpage):
                 ypos=(pageheight-endmargin-((self.height+vertlabelgap)*y)
                       -self.height)
                 self.ll.append((xpos,ypos))
-    def labels_per_page(self):
-        return len(self.ll)
-    def start(self,title="Labels"):
-        pdfpage.start(self,title)
-        self.label=0
-    def newpage(self):
-        pdfpage.newpage(self)
-        self.label=0
-    def addlabel(self,function,data):
-        # Save the graphics state, move the origin to the bottom-left-hand
-        # corner of the label, call the function, then restore.
-        if self.label>=len(self.ll): self.newpage()
-        pos=self.ll[self.label]
-        self.f.saveState()
-        self.f.translate(pos[0],pos[1])
-        function(self.f,self.width,self.height,data)
-        self.f.restoreState()
-        self.label=self.label+1
+    def start(self,fileobj,interface):
+        self._canvas=LabelCanvas(self.ll,(self.width,self.height),
+                                 fileobj,pagesize=self._pagesize)
+        self._canvas.setAuthor("quicktill")
+        return self._canvas
+    def end(self):
+        self._canvas._end()
+        del self._canvas
+
+# Compatibility code for old pdflabel configuration - remove after all
+# till configuration files have been updated.  Also remove the special
+# treatment of 'labelprinter' in till.py
+
+def pdflabel(printcmd,*args):
+    log.warning("Obsolete function pdrivers.pdflabel called")
+    conn=cups.Connection()
+    printer=conn.getDefault()
+    words=printcmd.split()
+    options={}
+    while words:
+        word=words.pop(0)
+        if word=="-P":
+            printer=words.pop(0)
+        if word=="-o":
+            option=words.pop(0)
+            name,val=option.split("=",1)
+            options[name]=val
+    return cupsprinter(printer,pdf_labelpage(*args),options)

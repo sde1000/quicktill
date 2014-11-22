@@ -174,42 +174,42 @@ def label_print_delivery(delivery):
     d=td.s.query(Delivery).get(delivery)
     stocklabel_print(d.items)
 
+def stock_label(f,d):
+    """Draw a stock label (d) on a PDF canvas (f).
+
+    """
+    (width,height)=f.getPageSize()
+    fontsize=12
+    margin=12
+    pitch=fontsize+2
+    fontname="Times-Roman"
+    f.setFont(fontname,fontsize)
+    def fits(s):
+        sw=f.stringWidth(s,fontname,fontsize)
+        return sw<(width-(2*margin))
+    y=height-margin-fontsize
+    f.drawCentredString(width/2,y,d.stocktype.format(fits))
+    y=y-pitch
+    f.drawCentredString(width/2,y,d.delivery.supplier.name)
+    y=y-pitch
+    f.drawCentredString(width/2,y,ui.formatdate(d.delivery.date))
+    y=y-pitch
+    f.drawCentredString(width/2,y,d.stockunit.name)
+    if tillconfig.checkdigit_print:
+        y=y-pitch
+        f.drawCentredString(width/2,y,"Check digits: %s"%(d.checkdigits,))
+    f.setFont(fontname,y-margin)
+    f.drawCentredString(width/2,margin,str(d.id))
+    f.showPage()
+
 def stocklabel_print(sl):
     """Print stock labels for a list of stock numbers.
 
     """
     td.s.add_all(sl)
-    labeldriver.start()
-    def stock_label(f,width,height,d):
-        # Item name
-        # Supplier
-        # Delivery date
-        # Stock unit
-        # Stock number
-        fontsize=12
-        margin=12
-        pitch=fontsize+2
-        fontname="Times-Roman"
-        f.setFont(fontname,fontsize)
-        def fits(s):
-            sw=f.stringWidth(s,fontname,fontsize)
-            return sw<(width-(2*margin))
-        y=height-margin-fontsize
-        f.drawCentredString(width/2,y,d.stocktype.format(fits))
-        y=y-pitch
-        f.drawCentredString(width/2,y,d.delivery.supplier.name)
-        y=y-pitch
-        f.drawCentredString(width/2,y,ui.formatdate(d.delivery.date))
-        y=y-pitch
-        f.drawCentredString(width/2,y,d.stockunit.name)
-        if tillconfig.checkdigit_print:
-            y=y-pitch
-            f.drawCentredString(width/2,y,"Check digits: %s"%(d.checkdigits,))
-        f.setFont(fontname,y-margin)
-        f.drawCentredString(width/2,margin,str(d.id))
-    for sd in sl:
-        labeldriver.addlabel(stock_label,sd)
-    labeldriver.end()
+    with labeldriver as d:
+        for sd in sl:
+            stock_label(d,sd)
 
 def print_delivery(delivery):
     d=td.s.query(Delivery).get(delivery)

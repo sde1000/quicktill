@@ -6,7 +6,7 @@ import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
 from quicktill.keyboard import *
-from quicktill.pdrivers import nullprinter,linux_lpprinter,netprinter,commandprinter,Epson_TM_U220_driver,Epson_TM_T20_driver,pdf_driver,pdflabel,A4
+from quicktill.pdrivers import nullprinter,linux_lpprinter,netprinter,commandprinter,Epson_TM_U220_driver,Epson_TM_T20_driver,pdf_driver,pdf_page,pdf_labelpage,A4,cupsprinter
 from quicktill import register,ui,kbdrivers,stockterminal,user
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
@@ -306,17 +306,31 @@ localprinter={
     'printer': linux_lpprinter("/dev/usb/lp0",driver=Epson_TM_T20_driver(80)),
     }
 pdfprinter={
-    'printer': commandprinter("lpr %s",driver=pdf_driver()),
+    'printer': cupsprinter("officeprinter",driver=pdf_driver()),
     }
 xpdfprinter={
     'printer': commandprinter("evince %s",driver=pdf_driver()),
     }
+
+# Example config for a laser printer with A4 label paper.  NB "Letterhead"
+# is used on printers that don't support a "Label" media type.
+
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
 staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
 labelprinter={
-    'labelprinter': (pdflabel,["lpr -o MediaType=Labels %s"]+staples_3by6),
-    }
+    'labelprinter': cupsprinter("officeprinter",
+                                driver=pdf_labelpage(*staples_3by6),
+                                options={"MediaType":"Letterhead"}),
+}
+
+# Example config for a DYMO LabelWriter 450 label printer
+#label11356=(252,118)
+#label99015=(198,154)
+#labelprinter={
+#    'labelprinter': cupsprinter("DYMO-LabelWriter-450",
+#                                driver=pdf_page(pagesize=label99015))
+#}
 
 # Should we let line keys be named with things other than integers
 # (although allow integers for backwards compatibility)?  Strings
@@ -499,7 +513,7 @@ stockcontrol={
 config0={'description':"Stock-control terminal"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(xpdfprinter)
+config0.update(pdfprinter)
 config0.update(labelprinter)
 
 # Config1 is the main bar terminal
