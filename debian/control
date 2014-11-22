@@ -8,7 +8,7 @@ Standards-Version: 3.7.2
 
 Package: quicktill1
 Architecture: all
-Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml, python-odf, python-twitter, python-requests-oauthlib
+Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml, python-odf, python-twitter, python-requests-oauthlib, python-cups
 Conflicts: quicktill
 Replaces: quicktill
 Description: Simple stock-control and cash register software
