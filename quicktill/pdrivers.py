@@ -724,6 +724,11 @@ class LabelCanvas(canvas.Canvas):
             # will just be the save and transform for the first label.
             # Drop it.
             self._code = []
+        else:
+            # We need to flush the current page explicitly before
+            # saving, because the save() method calls showPage() which
+            # we have overridden.
+            canvas.Canvas.showPage(self)
         self.save()
 
 class pdf_labelpage(object):
