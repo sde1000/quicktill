@@ -364,41 +364,6 @@ class dismisspopup(basicpopup):
             return self.dismiss()
         basicpopup.keypress(self,k)
 
-# itemlist entries are (keycode,desc,func,args)
-class keymenu(dismisspopup):
-    def __init__(self,itemlist,title="Press a key",colour=colour_input):
-        h=len(itemlist)+4
-        pw=0 ; tw=0
-        km={}
-        for keycode,desc,func,args in itemlist:
-            promptwidth=len(keycode.keycap)
-            textwidth=len(desc)
-            if promptwidth>pw: pw=promptwidth
-            if textwidth>tw: tw=textwidth
-            km[keycode]=(func,args)
-        self.menukeys=km
-        w=pw+tw+6
-        dismisspopup.__init__(self,h,w,title=title,colour=colour)
-        (h,w)=self.win.getmaxyx()
-        y=2
-        for keycode,desc,func,args in itemlist:
-            line_colour=colour
-            if hasattr(func,"allowed"):
-                if not func.allowed(): line_colour=colour_error
-            self.addstr(y,2,"%s."%keycode.keycap)
-            self.addstr(y,pw+4,desc,curses.color_pair(line_colour))
-            y=y+1
-        self.win.move(h-1,w-1)
-    def keypress(self,k):
-        if k in self.menukeys:
-            self.dismiss()
-            if self.menukeys[k][1]:
-                self.menukeys[k][0](*self.menukeys[k][1])
-            else:
-                self.menukeys[k][0]()
-        else:
-            dismisspopup.keypress(self,k)
-
 class listpopup(dismisspopup):
     """
     A popup window with an initial non-scrolling header, and then a
@@ -418,7 +383,11 @@ class listpopup(dismisspopup):
             w=max(25,w)
         if title is not None:
             w=max(len(title)+3,w)
-        h=sum([len(x.display(w-2)) for x in hl+dl],0)+2
+        # We know that the created window will not be wider than the
+        # width of the screen.
+        (mh,mw)=stdwin.getmaxyx()
+        w=min(w,mw)
+        h=sum(len(x.display(w-2)) for x in hl+dl)+2
         dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
                               dismiss=dismiss,cleartext=cleartext)
         (h,w)=self.win.getmaxyx()
@@ -441,41 +410,6 @@ class listpopup(dismisspopup):
             self.s.focus()
         else:
             self.s=None
-
-class menu(listpopup):
-    """
-    A popup menu with a list of selections. Selection can be made by
-    using cursor keys to move up and down, and pressing Cash/Enter to
-    confirm.
-
-    itemlist is a list of (desc,func,args) tuples.  If desc is a
-    string it will be converted to a line(); otherwise it is assumed
-    to be some subclass of emptyline().
-
-    """
-    def __init__(self,itemlist,default=0,
-                 blurb="Select a line and press Cash/Enter",
-                 title=None,
-                 colour=colour_input,w=None,dismiss_on_select=True,
-                 keymap={}):
-        self.itemlist=itemlist
-        self.dismiss_on_select=dismiss_on_select
-        dl=[x[0] for x in itemlist]
-        if not isinstance(blurb,list): blurb=[blurb]
-        listpopup.__init__(self,dl,default=default,
-                           header=blurb,title=title,
-                           colour=colour,w=w,keymap=keymap)
-    def keypress(self,k):
-        if k==keyboard.K_CASH:
-            if len(self.itemlist)>0:
-                i=self.itemlist[self.s.cursor]
-                if self.dismiss_on_select: self.dismiss()
-                if i[2] is None:
-                    i[1]()
-                else:
-                    i[1](*i[2])
-        else:
-            listpopup.keypress(self,k)
 
 class infopopup(listpopup):
     """
@@ -981,6 +915,110 @@ class _tableline(emptyline):
     def display(self,width):
         self.cursor=(0,0)
         return self._formatter.format(self,width)
+
+class menu(listpopup):
+    """A popup menu with a list of selections. Selection can be made by
+    using cursor keys to move up and down, and pressing Cash/Enter to
+    confirm.
+
+    itemlist is a list of (desc,func,args) tuples.  If desc is a
+    string it will be converted to a line(); otherwise it is assumed
+    to be some subclass of emptyline().
+
+    """
+    def __init__(self,itemlist,default=0,
+                 blurb="Select a line and press Cash/Enter",
+                 title=None,
+                 colour=colour_input,w=None,dismiss_on_select=True,
+                 keymap={}):
+        self.itemlist=itemlist
+        self.dismiss_on_select=dismiss_on_select
+        dl=[x[0] for x in itemlist]
+        if not isinstance(blurb,list): blurb=[blurb]
+        listpopup.__init__(self,dl,default=default,
+                           header=blurb,title=title,
+                           colour=colour,w=w,keymap=keymap)
+    def keypress(self,k):
+        if k==keyboard.K_CASH:
+            if len(self.itemlist)>0:
+                i=self.itemlist[self.s.cursor]
+                if self.dismiss_on_select: self.dismiss()
+                if i[2] is None:
+                    i[1]()
+                else:
+                    i[1](*i[2])
+        else:
+            listpopup.keypress(self,k)
+
+class _keymenuline(emptyline):
+    """A line for use in a keymenu.  Used internally by keymenu.
+
+    """
+    def __init__(self,keymenu,keycode,desc,func,args):
+        self._keymenu=keymenu
+        colour=keymenu._colour
+        if hasattr(func,"allowed"):
+            if not func.allowed(): colour=keymenu._not_allowed_colour
+        self.colour=curses.color_pair(colour)
+        self.cursor_colour=self.colour
+        self.prompt=" "+keycode.keycap+". "
+        self.desc=desc if isinstance(desc,emptyline) else line(desc)
+    def update(self):
+        pass
+    def idealwidth(self):
+        return self._keymenu.promptwidth+self.desc.idealwidth()+1
+    def display(self,width):
+        self.cursor=(0,0)
+        dl=self.desc.display(width-self._keymenu.promptwidth)
+        # First line is the prompt followed by the first line of the
+        # description
+        ll=[self.prompt+dl.pop(0)]
+        # Subsequent lines are an indentation of the width of the
+        # prompt followed by the line of the description
+        ll=ll+[" "*len(self.prompt)+x for x in dl]
+        return ll
+
+class keymenu(listpopup):
+    """A popup menu with a list of selections.  Selections are made by
+    pressing the key associated with the selection.
+
+    itemlist is a list of (key,desc,func,args) tuples.  If desc is a
+    string it will be converted to a line(); otherwise it is assumed
+    to be some subclass of emptyline().
+
+    """
+    def __init__(self,itemlist,blurb=[],title="Press a key",colour=colour_input,
+                 w=None,dismiss_on_select=True):
+        if not isinstance(blurb,list): blurb=[blurb]
+        km={}
+        self._colour=colour
+        self._not_allowed_colour=colour_error
+        lines=[_keymenuline(self,*x) for x in itemlist]
+        self.promptwidth=max(len(l.prompt) for l in lines)
+        for keycode,desc,func,args in itemlist:
+            km[keycode]=(func,args,dismiss_on_select)
+        self.menukeys=km
+        listpopup.__init__(self,[emptyline()]+lines+[emptyline()],
+                           header=blurb,title=title,
+                           colour=colour,w=w,keymap=km,show_cursor=False)
+
+def automenu(itemlist,**kwargs):
+    """Pop up a dialog to choose an item from the itemlist, which consists
+    of (desc,func,args) tuples.  If desc is a string it will be
+    converted to a line().  If the list is short enough then a keymenu
+    will be used; otherwise a menu will be used.
+
+    """
+    possible_keys=[
+        keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
+        keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
+        keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
+        keyboard.K_ZERO]
+    if len(itemlist)>len(possible_keys):
+        return menu(itemlist,**kwargs)
+    else:
+        return keymenu([(possible_keys.pop(0),desc,func,args)
+                        for desc,func,args in itemlist],**kwargs)
 
 class booleanfield(field):
     """
