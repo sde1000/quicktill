@@ -59,7 +59,7 @@ def print_stocklist_menu(sinfo,title):
             (keyboard.K_TWO,"Print sticky labels",
              printer.stocklabel_print,(sinfo,)),
             ]
-        ui.keymenu(menu,"Stock print options",colour=ui.colour_confirm)
+        ui.keymenu(menu,title="Stock print options",colour=ui.colour_confirm)
     else:
         printer.print_stocklist(sinfo,title)
 
@@ -285,7 +285,7 @@ def maintenance():
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
          purge_finished_stock,None),
         ]
-    ui.keymenu(menu,"Stock Maintenance options")
+    ui.keymenu(menu,title="Stock Maintenance options")
 
 def popup():
     "Pop up the stock management menu."
@@ -305,4 +305,4 @@ def popup():
         (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
         (keyboard.K_NINE,"Check stock levels",stocklevelcheck,None),
         ]
-    ui.keymenu(menu,"Stock Management options")
+    ui.keymenu(menu,title="Stock Management options")

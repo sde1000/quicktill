@@ -210,7 +210,8 @@ class delivery(ui.basicpopup):
                 (keyboard.K_TWO,"Print sticky labels",
                  printer.label_print_delivery,(self.dn,)),
                 ]
-            ui.keymenu(menu,"Delivery print options",colour=ui.colour_confirm)
+            ui.keymenu(menu,title="Delivery print options",
+                       colour=ui.colour_confirm)
         else:
             printer.print_delivery(self.dn)
     def reallyconfirm(self):

@@ -443,4 +443,4 @@ def menu():
         (keyboard.K_FOUR,"Display session summary",summary,None),
         (keyboard.K_FIVE,"Restore deferred transactions",restore_deferred,None),
         ]
-    ui.keymenu(menu,"Session management options")
+    ui.keymenu(menu,title="Session management options")

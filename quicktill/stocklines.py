@@ -628,7 +628,7 @@ def popup():
          (return_stock,"Return Stock","Select the stock line to remove "
           "from display",True)),
         ]
-    ui.keymenu(menu,"Stock line options")
+    ui.keymenu(menu,title="Stock line options")
 
 def linemenu(keycode,func):
     """

@@ -62,7 +62,7 @@ def restartmenu():
         (keyboard.K_TWO,"Turn off till",exitoption,(2,)),
         (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
         ]
-    ui.keymenu(menu,"Exit / restart options")
+    ui.keymenu(menu,title="Exit / restart options")
 
 def popup():
     log.info("Till management menu")
@@ -76,4 +76,4 @@ def popup():
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
         (keyboard.K_NINE,"Display till software versions",versioninfo,None),
         ]
-    ui.keymenu(menu,"Management options")
+    ui.keymenu(menu,title="Management options")
