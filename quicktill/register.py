@@ -1594,24 +1594,14 @@ class page(ui.basicpage):
         self.user.dbuser=td.s.query(User).get(self.user.userid)
 
         # Check that the user hasn't moved to another terminal.  If
-        # they have, lock immediately.
-        if self.user.dbuser.register!=register_instance:
+        # they have, lock immediately.  Skip this check if the
+        # keypress is a user token; it won't have any side effects in
+        # the register and may well lead to another page being
+        # selected instead.
+        if (not hasattr(k,'usertoken')
+            and self.user.dbuser.register!=register_instance):
             self.deselect()
-            # XXX bodgy bugfix alert!  See issue #59 on github.  We
-            # want to continue with hotkeypress processing here,
-            # because it might be a usertoken that will cause another
-            # register page to be created or selected.  We can't,
-            # though: it might also cause a popup to be created
-            # (eg. "user token not known"), and might also pass a
-            # regular keypress down to our keypress handling code,
-            # causing a call to enter() and another self.deselect()
-            # which will lead to a crash when we try to delete our
-            # panel and window for a second time.
-            #
-            # For now just abort hotkey processing.  If it's a
-            # usertoken then they will have to present it again.
             return
-            #return super(page,self).hotkeypress(k)
 
         if self._autolock and k==self._autolock and not self.locked \
                 and self.s.focused:
