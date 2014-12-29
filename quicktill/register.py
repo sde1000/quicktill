@@ -797,8 +797,7 @@ class page(ui.basicpage):
             if not self.buf:
                 log.info("Register: cashkey: NO SALE")
                 if self.user.has_permission('nosale'):
-                    ui.infopopup(["No Sale has been recorded."],
-                                 title="No Sale",colour=2)
+                    ui.toast("No Sale has been recorded.")
                     printer.kickout()
                 else:
                     ui.infopopup(["You don't have permission to use "
