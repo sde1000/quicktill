@@ -345,6 +345,7 @@ def main():
         # Deal with legacy printer configurations: a two-tuple of a callable
         # and its arguments
         if hasattr(pc,"__getitem__"):
+            log.warning("Old-style label printer configuration in use")
             printer.labeldriver=pc[0](*pc[1])
         else:
             printer.labeldriver=pc
