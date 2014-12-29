@@ -2,9 +2,10 @@ import select,time,curses,curses.panel
 
 shutdowncode=None
 
-# List of future events; objects must support nexttime() and alarm()
-# methods. nexttime() should return the time at which the object next
-# wants to be called.
+# List of future events; objects must support the nexttime attribute
+# and alarm() method. nexttime should be the time at which the object
+# next wants to be called, or None if the object temporarily does not
+# need to be scheduled.
 eventlist=[]
 
 # List of file descriptors to watch with handlers.  Expected to be objects
@@ -39,5 +40,5 @@ def eventloop():
         t=time.time()
         for i in eventlist:
             if not hasattr(i,'mainloopnexttime'): continue
-            if t>=i.mainloopnexttime:
+            if i.mainloopnexttime and t>=i.mainloopnexttime:
                 i.alarm()
