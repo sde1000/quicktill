@@ -3,7 +3,7 @@
 
 from __future__ import unicode_literals
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
-from . import keyboard,event,tillconfig,td
+from . import keyboard,event,tillconfig,td,version
 
 import datetime
 
@@ -107,6 +107,102 @@ def current_user():
     for i in stack:
         if hasattr(i,'user'): return i.user
 
+class winobject(object):
+    """Any class that has win and pan attributes.  Not instantiated
+    directly.
+
+    """
+    def addstr(self,y,x,s,attr=None):
+        try:
+            if attr is None:
+                self.win.addstr(y,x,s.encode(c))
+            else:
+                self.win.addstr(y,x,s.encode(c),attr)
+        except curses.error:
+            log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
+
+class _toastmaster(winobject):
+    """Manages a queue of messages to be displayed to the user without
+    affecting the input focus.  A single instance of this object is
+    created during UI initialisation.
+
+    """
+    # How long to display messages for, in seconds
+    toast_display_time=3
+    # Gap between messages, in seconds
+    inter_toast_time=0.5
+
+    def __init__(self):
+        self.messagequeue=[]
+        self.current_message=None
+        self.nexttime=None
+        event.eventlist.append(self)
+    def toast(self,message):
+        """Display the message to the user.
+
+        If an identical message is already in the queue of messages,
+        don't add it.  If an identical message is already being
+        displayed, reset the timeout to the default so the message
+        continues to be displayed.
+
+        """
+        if message in self.messagequeue: return
+        if message==self.current_message:
+            self.nexttime=time.time()+self.toast_display_time
+            return
+        if self.current_message or self.messagequeue:
+            self.messagequeue.append(message)
+        else:
+            self.start_display(message)
+    def start_display(self,message):
+        self.current_message=message
+        self.nexttime=time.time()+self.toast_display_time
+        # Work out where to put the window.  We're aiming for about
+        # 2/3 of the screen width, around 1/3 of the way up
+        # vertically.  If a toast ends up particularly high, make sure
+        # we always have at least one blank line at the bottom of the
+        # screen.
+        (mh,mw)=stdwin.getmaxyx()
+        w=min((mw*2)/3,len(message))
+        lines=textwrap.wrap(message,w)
+        w=max(len(l) for l in lines)+4
+        h=len(lines)+2
+        y=(mh*2)/3-(h/2)
+        if y+h+1>=mh: y=mh-h-1
+        try:
+            self.win=curses.newwin(h,w,y,(mw-w)/2)
+        except curses.error:
+            return self.start_display("(toast too long)")
+        self.pan=curses.panel.new_panel(self.win)
+        self.pan.set_userptr(self)
+        self.win.bkgdset(ord(' '),curses.color_pair(colour_error))
+        self.win.clear()
+        y=1
+        for l in lines:
+            self.win.addstr(y,2,l)
+            y=y+1
+    def to_top(self):
+        if hasattr(self,"pan"):
+            self.pan.top()
+    def alarm(self):
+        if self.current_message:
+            # Stop display of message
+            self.current_message=None
+            self.pan.hide()
+            del self.pan,self.win
+            self.nexttime=(
+                time.time()+self.inter_toast_time if self.messagequeue else None)
+        else:
+            self.start_display(self.messagequeue.pop(0))
+
+def toast(message):
+    """Display a message briefly to the user without affecting the input
+    focus.
+
+    """
+    global toaster
+    toaster.toast(message)
+
 class ignore_hotkeys(object):
     """
     Mixin class for UI elements that disables handling of hotkeys;
@@ -141,7 +237,7 @@ class autodismiss(object):
             del event.eventlist[event.eventlist.index(self)]
         super(autodismiss,self).dismiss()
 
-class basicwin(object):
+class basicwin(winobject):
     """Container for all pages, popup windows and fields.
 
     It is required that the parent holds the input focus whenever a
@@ -152,14 +248,6 @@ class basicwin(object):
     def __init__(self):
         self.parent=basicwin._focus
         log.debug("New %s with parent %s",self,self.parent)
-    def addstr(self,y,x,s,attr=None):
-        try:
-            if attr is None:
-                self.win.addstr(y,x,s.encode(c))
-            else:
-                self.win.addstr(y,x,s.encode(c),attr)
-        except curses.error:
-            log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
     @property
     def focused(self):
         """
@@ -223,6 +311,7 @@ class basicpage(basicwin):
         basicpage._basepage=self
         basicwin._focus=self
         basicwin.__init__(self) # Sets self.parent to self - ok!
+        toaster.to_top()
     def pagename(self):
         return "Basic page"
     def pagesummary(self):
@@ -240,6 +329,7 @@ class basicpage(basicwin):
         self.savedfocus=None
         self.stack=None
         self.updateheader()
+        toaster.to_top()
     def deselect(self):
         """
         Deselect this page if it is currently selected.  Save the
@@ -251,6 +341,9 @@ class basicpage(basicwin):
         l=[]
         t=curses.panel.top_panel()
         while t.userptr()!=self:
+            if t.userptr()==toaster:
+                t=t.below()
+                continue # Ignore any toast
             st=t
             l.append(t)
             t=t.below()
@@ -323,6 +416,7 @@ class basicpopup(basicwin):
         if title: self.addstr(0,1,title)
         if cleartext: self.addstr(h-1,w-1-len(cleartext),cleartext)
         self.pan.show()
+        toaster.to_top()
     def dismiss(self):
         self.pan.hide()
         del self.pan,self.win
@@ -1433,7 +1527,7 @@ class exception_guard(object):
         return True
 
 def init(w):
-    global stdwin,header
+    global stdwin,header,toaster
     stdwin=w
     (my,mx)=stdwin.getmaxyx()
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
@@ -1446,5 +1540,7 @@ def init(w):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
+    toaster=_toastmaster()
+    toast("Quick till software {}".format(version.version))
 
 beep=curses.beep
