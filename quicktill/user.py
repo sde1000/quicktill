@@ -282,9 +282,6 @@ class tokenlistener(object):
             with td.orm_session():
                 ui.handle_keyboard_input(token(d))
 
-class tokeninfo(ui.ignore_hotkeys,ui.autodismiss,ui.infopopup):
-    autodismisstime=2
-
 def user_from_token(t):
     """
     Find a user given a token object.  Pops up a dialog box that
@@ -297,14 +294,12 @@ def user_from_token(t):
         options(joinedload('user.permissions')).\
         get(t.usertoken)
     if not dbt:
-        tokeninfo(["User token '{}' not recognised.".format(t.usertoken)],
-                   title="Unknown token")
+        ui.toast("User token '{}' not recognised.".format(t.usertoken))
         return
     dbt.last_seen=datetime.datetime.now()
     u=dbt.user
     if not u.enabled:
-        tokeninfo(["User '{}' is not active.".format(u.fullname)],
-                  title="User not active")
+        ui.toast("User '{}' is not active.".format(u.fullname))
         return
     return database_user(u)
 
