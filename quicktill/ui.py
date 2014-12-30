@@ -137,6 +137,7 @@ class _toastmaster(winobject):
         self.current_message=None
         self.nexttime=None
         event.eventlist.append(self)
+        self.curses_initialised=False
     def toast(self,message):
         """Display the message to the user.
 
@@ -147,6 +148,9 @@ class _toastmaster(winobject):
 
         """
         if message in self.messagequeue: return
+        if not self.curses_initialised:
+            self.messagequeue.append(message)
+            return
         if message==self.current_message:
             self.nexttime=time.time()+self.toast_display_time
             return
@@ -154,6 +158,9 @@ class _toastmaster(winobject):
             self.messagequeue.append(message)
         else:
             self.start_display(message)
+    def notify_curses_initialised(self):
+        self.curses_initialised=True
+        if self.messagequeue: self.alarm()
     def start_display(self,message):
         self.current_message=message
         self.nexttime=time.time()+self.toast_display_time
@@ -194,6 +201,8 @@ class _toastmaster(winobject):
                 time.time()+self.inter_toast_time if self.messagequeue else None)
         else:
             self.start_display(self.messagequeue.pop(0))
+
+toaster=_toastmaster()
 
 def toast(message):
     """Display a message briefly to the user without affecting the input
@@ -1515,7 +1524,7 @@ def init(w):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
-    toaster=_toastmaster()
     toast("Quick till software {}".format(version.version))
+    toaster.notify_curses_initialised()
 
 beep=curses.beep
