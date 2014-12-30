@@ -238,6 +238,10 @@ def _linux_unblank_screen():
     buf=array.array(str('b'),[TIOCL_UNBLANKSCREEN])
     fcntl.ioctl(sys.stdin,termios.TIOCLINUX,buf)
 
+class ToastHandler(logging.Handler):
+    def emit(self,record):
+        ui.toast(self.format(record))
+
 def main():
     """Usual main entry point for the till software, unless you are doing
     something strange.  Reads the location of its global configuration,
@@ -333,6 +337,13 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
     if args.logsql:
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    # Set up handler to direct warnings to toaster UI
+    log=logging.getLogger()
+    toasthandler=ToastHandler()
+    toastformatter=logging.Formatter('%(levelname)s: %(message)s')
+    toasthandler.setFormatter(toastformatter)
+    toasthandler.setLevel(logging.WARNING)
+    log.addHandler(toasthandler)
     if 'printer' in config:
         printer.driver=config['printer']
     else:
