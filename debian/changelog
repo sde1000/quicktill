@@ -1,3 +1,39 @@
+quicktill (0.10.47) stable; urgency=low
+
+  * New release 0.10.47
+
+  * Add handler to convert log warnings into toasts
+
+  * Add support for toasts before curses is initialised
+
+  * Ignore usertokens when deciding to lock a register page
+
+  * Use a toast instead of infopopup for the "no sale" message
+
+  * Remove obsolete "autodismiss" class
+
+  * Display messages related to user tokens as toasts rather than popups
+
+  * Add "toast" user-interface element
+
+  * Don't call alarm() method when nexttime is None
+
+  * Add warning to log when old style of label printer configuration is found
+
+  * Re-vamp menu classes
+
+  * Explicitly specify title for keymenu
+
+  * Flush last page of labels explicitly
+
+  * Add dependency on python-cups
+
+  * PDF printing system update
+
+  * Remove compatibility code for old printer driver definitions
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 30 Dec 2014 15:17:31 +0000
+
 quicktill (0.10.46) stable; urgency=low
 
   * New release 0.10.46
