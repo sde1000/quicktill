@@ -1,3 +1,11 @@
+quicktill (0.10.48) stable; urgency=low
+
+  * New release 0.10.48
+
+  * Revert "Ignore usertokens when deciding to lock a register page"
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 31 Dec 2014 18:25:48 +0000
+
 quicktill (0.10.47) stable; urgency=low
 
   * New release 0.10.47
