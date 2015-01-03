@@ -336,6 +336,7 @@ class basicpage(basicwin):
         self.stack=l
         self.pan.hide()
         basicpage._basepage=None
+        basicwin._focus=None
     def dismiss(self):
         """
         Remove this page.
@@ -361,12 +362,14 @@ class basicpage(basicwin):
             with td.orm_session():
                 tillconfig.firstpage()
     def hotkeypress(self,k):
-        """
-        Since this is a page, it is always at the base of the stack of
+        """Since this is a page, it is always at the base of the stack of
         windows - it does not have a parent to pass keypresses on to.
         By default we look at the configured hotkeys and call if
         found; otherwise we pass the keypress on to the current input
-        focus for regular keypress processing.
+        focus (if it exists) for regular keypress processing.
+
+        If there is no current input focus then one will be set in
+        _ensurepage_exists() the next time around the event loop.
 
         """
         if k in tillconfig.hotkeys:
@@ -374,7 +377,8 @@ class basicpage(basicwin):
         elif hasattr(k,'usertoken'):
             tillconfig.usertoken_handler(k)
         else:
-            basicwin._focus.keypress(k)
+            if basicwin._focus:
+                basicwin._focus.keypress(k)
 
 class basicpopup(basicwin):
     def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
