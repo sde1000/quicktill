@@ -600,3 +600,55 @@ class adduser_cmd(cmdline.command):
             td.s.add(t)
             td.s.flush()
             print("User added.")
+
+class default_groups(object):
+    """Three basic group definitions.  Pub configuration files can use these
+    as they are, or add or remove individual items.
+
+    """
+    basic_user=set([
+        "sell-stock",
+        "sell-dept",
+        "take-payment",
+        "print-receipt",
+        "recall-trans",
+        "record-waste", # Record waste
+        "current-session-summary", # Display current session summary
+        "version", # Display software version
+        ])
+    skilled_user=set([
+        "basic-user",
+        "record-waste",
+        "drink-in",
+        "nosale",
+        "merge-trans",
+        "stock-check",
+        "stock-level-check",
+        "twitter",
+        "use-stock",
+        "auto-allocate",
+        ])
+    manager=set([
+        "skilled-user",
+        "print-receipt-by-number",
+        "restore-deferred",
+        "exit",
+        "deliveries",
+        "edit-supplier",
+        "start-session",
+        "end-session",
+        "record-takings",
+        "session-summary",
+        "nosale",
+        "edit-user",
+        "override-price",
+        "reprice-stock",
+        "defer-trans",
+        "edit-keycaps",
+        "finish-unconnected-stock",
+        "stock-history",
+        "update-supplier",
+        "purge-finished-stock",
+        "alter-stocktype",
+        "add-custom-transline",
+        ])
