@@ -384,8 +384,6 @@ def main():
         tillconfig.checkdigit_print=config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
         tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
-    if 'allow_tabs' in config:
-        tillconfig.allow_tabs=config['allow_tabs']
     if 'usestock_hook' in config:
         tillconfig.usestock_hook=config['usestock_hook']
     if 'hotkeys' in config:

@@ -1280,11 +1280,13 @@ class page(ui.basicpage):
                           "current session."],title="Error")
             return
         log.info("recalltrans")
-        if (tillconfig.allow_tabs is False and self.keyguard is False and
-            not (self.trans is None or self.trans.closed)):
-            ui.infopopup(["We do not run tabs.  Food and drink must "
-                          "be paid for at the time it is ordered."],
-                         title="Error")
+        if self.trans and not self.trans.closed and not self.trans.notes:
+            ui.infopopup(
+                ["Recalling another transaction will hide the current one "
+                 "away.  You must set a note on the current transaction first "
+                 "using 'Manage Transaction' option 4 or 5 so that you will "
+                 "be able to find it again."],
+                title="Transaction note required")
             return
         transactions=td.s.query(Transaction).\
             filter(Transaction.session==sc).\

@@ -59,9 +59,6 @@ checkdigit_print=False
 # Do we ask the user to input check digits when using stock?
 checkdigit_on_usestock=False
 
-# Do we allow transactions to be stored for use as tabs?
-allow_tabs=True
-
 # Hook that is called whenever an item of stock is put on sale, with
 # a StockItem and StockLine as the arguments
 def usestock_hook(stock,line):
