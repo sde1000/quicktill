@@ -162,6 +162,10 @@ class _toastmaster(winobject):
         self.curses_initialised=True
         if self.messagequeue: self.alarm()
     def start_display(self,message):
+        # Ensure that we do not attempt to display a toast (for example, an
+        # error log entry from an exception caught at the top level of the
+        # application) if curses has already been deinitialised.
+        if curses.isendwin(): return
         self.current_message=message
         self.nexttime=time.time()+self.toast_display_time
         # Work out where to put the window.  We're aiming for about
@@ -188,6 +192,12 @@ class _toastmaster(winobject):
         for l in lines:
             self.win.addstr(y,2,l)
             y=y+1
+        # Flush this to the display immediately; sometimes toasts are
+        # added just before starting a lengthy / potentially blocking
+        # operation, and if the timer expires before the operation
+        # completes the toast will never be seen.
+        curses.panel.update_panels()
+        curses.doupdate()
     def to_top(self):
         if hasattr(self,"pan"):
             self.pan.top()
