@@ -435,16 +435,16 @@ class popup(ui.basicpopup):
             self.ml.append(fooditem("Staff discount",zero-discount))
         tot=sum([x.price for x in self.ml],zero)
         number=self.ordernumberfunc()
-        # We need to prepare a list of (dept,text,amount) tuples for
-        # the register. We enter these into the register before
+        # We need to prepare a list of (dept,text,items,amount) tuples
+        # for the register.  We enter these into the register before
         # printing, so that we can avoid printing if there is a
         # register problem.
-        rl=[(self.dept,x.name,x.price) for x in self.ml]
+        rl=[(self.dept,x.name,1,x.price) for x in self.ml]
         if tablenumber is not None:
             rl.insert(0,(self.dept,"Food order %d (table %s):"%
-                         (number,tablenumber),zero))
+                         (number,tablenumber),1,zero))
         else:
-            rl.insert(0,(self.dept,"Food order %d:"%number,zero))
+            rl.insert(0,(self.dept,"Food order %d:"%number,1,zero))
         r=self.func(rl) # Return values: True=success; string or None=failure
         # If r is None then a window will have been popped up telling the
         # user what's happened to their transaction.  It will have popped

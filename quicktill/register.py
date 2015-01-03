@@ -147,6 +147,69 @@ class edittransnotes(ui.dismisspopup):
         self.dismiss()
         self.func(notes)
 
+class addtransline(user.permission_checked,ui.dismisspopup):
+    """A popup to allow an arbitrary transaction line to be created.
+
+    """
+    permission_required=('add-custom-transline','Add a custom transaction line')
+    def __init__(self,func):
+        self.func=func
+        ui.dismisspopup.__init__(
+            self,9,70,title="Add a custom transaction line",
+            colour=ui.colour_input)
+        self.addstr(2,2," Department:")
+        self.addstr(3,2,"Description:")
+        depts=td.s.query(Department).order_by(Department.id).all()
+        self.deptfield=ui.listfield(2,15,20,depts,
+                                    d=lambda x:x.description,
+                                    keymap={
+                keyboard.K_CLEAR: (self.dismiss,None)})
+        self.descfield=ui.editfield(3,15,53,flen=300)
+        self.itemsfield=ui.editfield(4,15,5,validate=ui.validate_int)
+        self.addstr(4,21,"items @ {}".format(tillconfig.currency))
+        self.amountfield=ui.editfield(4,29+len(tillconfig.currency),8,
+                                      validate=ui.validate_float)
+        self.addstr(4,38+len(tillconfig.currency),'=')
+        self.itemsfield.sethook=self.calculate_total
+        self.amountfield.sethook=self.calculate_total
+        self.addbutton=ui.buttonfield(6,25,20,"Add transaction line",keymap={
+            keyboard.K_CASH: (self.enter,None)})
+        ui.map_fieldlist([self.deptfield,self.descfield,self.itemsfield,
+                          self.amountfield,self.addbutton])
+        self.deptfield.focus()
+    def calculate_total(self):
+        self.addstr(4,40+len(tillconfig.currency),' '*15)
+        try:
+            items=int(self.itemsfield.f)
+            amount=Decimal(self.amountfield.f)
+            if items==0: raise Exception("Zero items not permitted")
+        except:
+            return
+        self.addstr(4,40+len(tillconfig.currency),tillconfig.fc(items*amount))
+    def enter(self):
+        if self.deptfield.f is None:
+            return ui.infopopup(["You must specify a department."],title="Error")
+        dept=self.deptfield.read()
+        td.s.add(dept)
+        text=self.descfield.f if self.descfield.f else None
+        try:
+            items=int(self.itemsfield.f)
+            amount=Decimal(self.amountfield.f)
+        except:
+            return ui.infopopup(["You must specify the number of items and "
+                                 "the amount per item."],title="Error")
+        if items==0:
+            return ui.infopopup(["You can't create a transaction line with no "
+                                 "items.  Create a transaction line with one "
+                                 "item of zero price instead."],title="Error")
+        if amount<zero:
+            return ui.infopopup(["You can't create a transaction line with a "
+                                 "negative amount.  Create a transaction line "
+                                 "with a negative number of items instead."],
+                                title="Error")
+        self.dismiss()
+        self.func([(dept.id,text,items,amount)])
+
 def strtoamount(s):
     if s.find('.')>=0:
         return Decimal(s).quantize(penny)
@@ -685,7 +748,7 @@ class page(ui.basicpage):
     def deptlines(self,lines):
         """Accept multiple transaction lines from an external source.
 
-        lines is a list of (dept,text,amount) tuples; text may be None
+        lines is a list of (dept,text,items,amount) tuples; text may be None
         if the department name is to be used.
 
         Returns True on success; on failure, returns an error message
@@ -698,8 +761,8 @@ class page(ui.basicpage):
         self.clearbuffer()
         trans=self.gettrans()
         if trans is None: return "Transaction cannot be started."
-        for dept,text,amount in lines:
-            tl=Transline(transaction=trans,dept_id=dept,items=1,amount=amount,
+        for dept,text,items,amount in lines:
+            tl=Transline(transaction=trans,dept_id=dept,items=items,amount=amount,
                          transcode='S',text=text,user=self.user.dbuser)
             td.s.add(tl)
             td.s.flush()
@@ -1467,27 +1530,28 @@ class page(ui.basicpage):
         self.trans.notes=notes
         self.update_note()
     def managetranskey(self):
-        if self.trans is None or self.trans.closed:
-            ui.infopopup(["You can only modify an open transaction."],
-                         title="Error")
-            return
-        menu=[
-            (keyboard.K_ONE,"Defer transaction to next session",
-             self.defertrans,None),
-            (keyboard.K_TWO,"Convert transaction to free drinks",
-             self.freedrinktrans,None),
-            (keyboard.K_THREE,"Merge this transaction with another "
-             "open transaction",self.mergetransmenu,None),
-            (keyboard.K_FOUR,"Set this transaction's note to '{}'".format(
+        if self.trans and not self.trans.closed:
+            menu=[
+                (keyboard.K_ONE,"Defer transaction to next session",
+                 self.defertrans,None),
+                (keyboard.K_TWO,"Convert transaction to free drinks",
+                 self.freedrinktrans,None),
+                (keyboard.K_THREE,"Merge this transaction with another "
+                 "open transaction",self.mergetransmenu,None),
+                (keyboard.K_FOUR,"Set this transaction's note to '{}'".format(
                     self.user.fullname),
-             self.settransnote,(self.user.fullname,)),
-            (keyboard.K_FIVE,"Change this transaction's notes "
-             "(free text entry)",
-             edittransnotes,(self.trans,self.settransnote)),
-            (keyboard.K_SIX,"Choose payment method",
-             self.payment_method_menu,None),
+                 self.settransnote,(self.user.fullname,)),
+                (keyboard.K_FIVE,"Change this transaction's notes "
+                 "(free text entry)",
+                 edittransnotes,(self.trans,self.settransnote)),
+                (keyboard.K_SIX,"Choose payment method",
+                 self.payment_method_menu,None),
             ]
-        ui.keymenu(menu,title="Transaction %d"%self.trans.id)
+        else:
+            menu=[]
+        menu.append((keyboard.K_SEVEN,"Add a custom transaction line",
+                     addtransline,(self.deptlines,)))
+        ui.keymenu(menu,title="Transaction options")
     def entry(self):
         """
         This function is called at all entry points to the register
