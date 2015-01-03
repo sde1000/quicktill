@@ -30,6 +30,8 @@ class receiptprint(user.permission_checked,ui.dismisspopup):
             rn=None
         if rn is None: return
         self.dismiss()
+        log.info("Manage Till: printing transaction %d",rn)
+        ui.toast("The receipt is being printed.")
         with ui.exception_guard("printing the receipt",title="Printer error"):
             printer.print_receipt(rn)
 

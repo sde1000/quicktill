@@ -1112,9 +1112,8 @@ class page(ui.basicpage):
                           "'Manage Till'."],title="Error")
             return
         log.info("Register: printing transaction %d"%self.trans.id)
+        ui.toast("The receipt is being printed.")
         printer.print_receipt(self.trans.id)
-        ui.infopopup(["The receipt is being printed."],title="Printing",
-                     dismiss=keyboard.K_CASH,colour=ui.colour_info)
     def cancelkey(self):
         if self.trans is None:
             log.info("Register: cancelkey help message")

@@ -119,6 +119,7 @@ def confirmendsession():
                   "actual amounts using management option 1,3."%(r.id,)],
                  title="Session Ended",colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
+    ui.toast("Printing the countup sheet.")
     with ui.exception_guard("printing the session countup sheet",
                             title="Printer error"):
         printer.print_sessioncountup(r)
@@ -316,6 +317,7 @@ class record(ui.dismisspopup):
                              title="Error")
                 return
         self.dismiss()
+        ui.toast("Printing the confirmed session totals.")
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
