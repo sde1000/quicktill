@@ -1,3 +1,21 @@
+quicktill (0.10.49) stable; urgency=low
+
+  * New release 0.10.49
+
+  * Add default definitions for permission groups
+
+  * Convert printer popups into toasts
+
+  * Flush toasts to the display immediately
+
+  * Implement a function to allow creation of custom transaction lines
+
+  * Remove the 'allow_tabs' config option
+
+  * Ensure focus is set to None when page is deselected
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 05 Jan 2015 10:37:04 +0000
+
 quicktill (0.10.48) stable; urgency=low
 
   * New release 0.10.48
