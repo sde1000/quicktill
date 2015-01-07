@@ -3,11 +3,11 @@ Upstream-Name: quicktill
 Source: https://github.com/sde1000/quicktill
 
 Files: *
-Copyright: 2004-2014 Stephen Early <sde@individualpubs.co.uk>
+Copyright: 2004-2015 Stephen Early <sde@individualpubs.co.uk>
 License: GPL-3.0+
 
 Files: debian/*
-Copyright: 2007-2014 Stephen Early <sde@individualpubs.co.uk>
+Copyright: 2007-2015 Stephen Early <sde@individualpubs.co.uk>
 License: GPL-3.0+
 
 License: GPL-3.0+
