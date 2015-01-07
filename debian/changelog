@@ -1,3 +1,11 @@
+quicktill (0.10.50) stable; urgency=low
+
+  * New release 0.10.50
+
+  * Allow food order items to have different departments
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 07 Jan 2015 17:00:57 +0000
+
 quicktill (0.10.49) stable; urgency=low
 
   * New release 0.10.49
