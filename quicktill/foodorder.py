@@ -8,15 +8,17 @@ kitchenprinter=pdrivers.nullprinter(name="default_kitchenprinter")
 menuurl=None
 
 class fooditem(ui.lrline):
-    def __init__(self,name,price):
-        self.update(name,price)
-    def update(self,name,price):
+    def __init__(self,name,price,dept=None):
+        self.dept=dept
+        self.update(name,price,dept)
+    def update(self,name,price,dept=None):
         self.name=name
         self.price=Decimal(price).quantize(penny)
+        if dept: self.dept=dept
         ui.lrline.__init__(self,name,tillconfig.fc(self.price)
                            if self.price!=zero else "")
     def copy(self):
-        return fooditem(self.name,self.price)
+        return fooditem(self.name,self.price,self.dept)
 
 class menuchoice(object):
     def __init__(self,options):
@@ -47,7 +49,7 @@ class menuchoice(object):
         if k in self.optionkeys:
             option=self.optionkeys[k][1]
             # If it has a display_menu method we invoke it; otherwise
-            # we assume it's a food item with a price.
+            # we assume it's a food item with a price and optional department
             if hasattr(option[1],'display_menu'):
                 try:
                     option[1].display_menu(itemfunc)
@@ -56,7 +58,7 @@ class menuchoice(object):
                                                  sys.exc_info()[2])
                     ui.infopopup(e,title="There is a problem with the menu")
             else:
-                itemfunc(fooditem(option[0],option[1]))
+                itemfunc(fooditem(*option))
             return True
         return False
 
@@ -81,7 +83,7 @@ class subopts(object):
     pounds, then 1 pound per extra scoop'.
 
     """
-    def __init__(self,name,itemprice,subopts,atleast=0,atmost=None,
+    def __init__(self,name,itemprice,subopts,dept=None,atleast=0,atmost=None,
                  connector='; ',nameconnector=': '):
         self.name=name
         self.itemprice=itemprice
@@ -90,6 +92,7 @@ class subopts(object):
         self.atmost=atmost
         self.nameconnector=nameconnector
         self.connector=connector
+        self.dept=dept
     def price(self,options):
         tot=self.itemprice
         for opt,price in options:
@@ -112,7 +115,7 @@ class subopts(object):
         listpart=self.connector.join([x[0] for x in chosen_options])
         if len(chosen_options)==0: name=self.name
         else: name=self.nameconnector.join([self.name,listpart])
-        itemfunc(fooditem(name,total))
+        itemfunc(fooditem(name,total,self.dept))
         
 class subopts_dialog(ui.dismisspopup):
     def __init__(self,name,subopts,atleast,atmost,connector,nameconnector,
@@ -439,7 +442,8 @@ class popup(ui.basicpopup):
         # for the register.  We enter these into the register before
         # printing, so that we can avoid printing if there is a
         # register problem.
-        rl=[(self.dept,x.name,1,x.price) for x in self.ml]
+        rl=[(self.dept if x.dept is None else x.dept,x.name,1,x.price)
+            for x in self.ml]
         if tablenumber is not None:
             rl.insert(0,(self.dept,"Food order %d (table %s):"%
                          (number,tablenumber),1,zero))
