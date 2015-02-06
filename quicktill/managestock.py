@@ -270,9 +270,23 @@ def correct_stocktype():
         lambda x:stocktype.choose_stocktype(lambda:None,default=x,mode=2),
         allownew=False)
 
+@user.permission_required(
+    'reprint-stocklabel','Re-print a single stock label')
+def reprint_stocklabel():
+    if printer.labeldriver is None:
+        ui.infopopup(["There is no label printer configured."],
+                     title="Error")
+        return
+    stock.stockpicker(lambda x:printer.stocklabel_print([x]),
+                      title="Re-print a single stock label",
+                      filter=stock.stockfilter(),
+                      check_checkdigits=False)
+
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
+        (keyboard.K_ONE,"Re-print a single stock label",
+         reprint_stocklabel,None),
         (keyboard.K_THREE,"Auto-allocate stock to lines",
          usestock.auto_allocate,None),
         (keyboard.K_FOUR,"Manage stock line associations",

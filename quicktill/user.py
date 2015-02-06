@@ -651,4 +651,5 @@ class default_groups(object):
         "purge-finished-stock",
         "alter-stocktype",
         "add-custom-transline",
+        "reprint-stocklabel",
         ])
