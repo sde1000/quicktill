@@ -352,14 +352,7 @@ def main():
     if args.disable_printer:
         printer.driver=pdrivers.nullprinter(name="disabled-printer")
     if 'labelprinter' in config:
-        pc=config['labelprinter']
-        # Deal with legacy printer configurations: a two-tuple of a callable
-        # and its arguments
-        if hasattr(pc,"__getitem__"):
-            log.warning("Old-style label printer configuration in use")
-            printer.labeldriver=pc[0](*pc[1])
-        else:
-            printer.labeldriver=pc
+        printer.labeldriver=config['labelprinter']
     tillconfig.database=config.get('database')
     if args.database is not None: tillconfig.database=args.database
     tillconfig.kb=config['kbdriver']

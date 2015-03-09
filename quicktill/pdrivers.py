@@ -777,23 +777,3 @@ class pdf_labelpage(object):
     def end(self):
         self._canvas._end()
         del self._canvas
-
-# Compatibility code for old pdflabel configuration - remove after all
-# till configuration files have been updated.  Also remove the special
-# treatment of 'labelprinter' in till.py
-
-def pdflabel(printcmd,*args):
-    log.warning("Obsolete function pdrivers.pdflabel called")
-    conn=cups.Connection()
-    printer=conn.getDefault()
-    words=printcmd.split()
-    options={}
-    while words:
-        word=words.pop(0)
-        if word=="-P":
-            printer=words.pop(0)
-        if word=="-o":
-            option=words.pop(0)
-            name,val=option.split("=",1)
-            options[name]=val
-    return cupsprinter(printer,pdf_labelpage(*args),options)
