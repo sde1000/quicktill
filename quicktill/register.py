@@ -667,7 +667,8 @@ class page(ui.basicpage):
         self.cursor_off()
         self._redraw()
     @user.permission_required("sell-dept","Sell items using a department key")
-    def deptkey(self,dept): # we are passed the department number
+    def deptkey(self,k):
+        dept=k.department
         if self.repeat and hasattr(self.repeat,'dept') and \
                 self.repeat.dept==dept \
                 and self.dl[-1].age()<max_transline_modify_age:
@@ -709,7 +710,7 @@ class page(ui.basicpage):
         self.prompt=self.defaultprompt
         self.clearbuffer()
         self.cursor_off()
-        priceproblem=tillconfig.deptkeycheck(department,price)
+        priceproblem=k.checkfunction and k.checkfunction(department,price)
         if priceproblem:
             self._redraw()
             if not isinstance(priceproblem,list):
@@ -1622,7 +1623,7 @@ class page(ui.basicpage):
             stocklines.linemenu(k,self.linekey)
             return
         elif hasattr(k,'department'):
-            return self.deptkey(k.department)
+            return self.deptkey(k)
         self.repeat=None
         if hasattr(k,'notevalue'):
             return self.notekey(k)

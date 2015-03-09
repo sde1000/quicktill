@@ -8,6 +8,9 @@ Till configurations can define as many new keycodes as they need.
 
 from __future__ import unicode_literals
 
+# XXX only needed for deptkeycheck fallback; remove once this is gone
+import tillconfig
+
 class keycode(object):
     def __new__(cls,name,keycap,*args,**kwargs):
         # If a keycode of this name already exists, return it instead
@@ -42,11 +45,12 @@ class modkey(keycode):
         self.unittypes=unittypes
 
 class deptkey(keycode):
-    def __new__(cls,dept):
+    def __new__(cls,dept,checkfunction=None):
         existing=globals().get("K_DEPT%d"%dept)
         if existing: return existing
         self=object.__new__(cls)
         self._dept=dept
+        self._checkfunction=checkfunction
         self._register()
         return self
     def __init__(self,*args,**kwargs):
@@ -63,6 +67,19 @@ class deptkey(keycode):
     @property
     def department(self):
         return self._dept
+    @property
+    def checkfunction(self):
+        """Returns a function that takes (models.Department object,price) as
+        arguments, and returns None for "ok" or a string or list of
+        strings describing any problems.  None is returned here if
+        there is no check function to call.
+
+        """
+        if self._checkfunction: return self._checkfunction
+        # Fallback: return the deprecated global dept key check
+        # function; remove once all till configurations are
+        # updated. Also remove import of tillconfig!
+        return tillconfig.deptkeycheck
     def __repr__(self):
         return "deptkey(%d)"%self._dept
 

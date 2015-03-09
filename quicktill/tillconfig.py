@@ -5,7 +5,6 @@ most of the entries here.
 
 """
 
-from . import keyboard
 from .models import penny
 
 configversion="tillconfig.py"
@@ -43,16 +42,13 @@ def priceguess(stocktype,stockunit,cost):
     """
     return None
 
-def deptkeycheck(department,price):
-    """
-    Check that the price entered when a department key is pressed is
-    appropriate for that department.  Returns either None (no problem
-    found), a string or a list of strings to display to the user.
-
-    "department" is a models.Department object.
-
-    """
-    return None
+# A function that takes (models.Department object,price) and returns
+# either None (if there is no problem), or a string or list of strings
+# to display to the user (if there is a problem).
+#
+# This is a deprecated configuration setting; deptkeycheck should now
+# be specified as the "checkfunction" argument to keyboard.deptkey()
+deptkeycheck=None
 
 # Do we print check digits on stock labels?
 checkdigit_print=False

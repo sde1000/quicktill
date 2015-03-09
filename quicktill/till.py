@@ -379,6 +379,7 @@ def main():
     if 'priceguess' in config:
         tillconfig.priceguess=config['priceguess']
     if 'deptkeycheck' in config:
+        log.warning("Deprecated global deptkeycheck configuration in use")
         tillconfig.deptkeycheck=config['deptkeycheck']
     if 'checkdigit_print' in config:
         tillconfig.checkdigit_print=config['checkdigit_print']
