@@ -50,18 +50,15 @@ def finishstock(dept=None):
                       filter=stock.stockfilter(allow_on_sale=False),
                       check_checkdigits=False)
 
+@user.permission_required('print-stocklist',
+                          'Print a list of stock')
 def print_stocklist_menu(sinfo,title):
     td.s.add_all(sinfo)
-    if printer.labeldriver is not None:
-        menu=[
-            (keyboard.K_ONE,"Print list",
-             printer.print_stocklist,(sinfo,title)),
-            (keyboard.K_TWO,"Print sticky labels",
-             printer.stocklabel_print,(sinfo,)),
-            ]
-        ui.keymenu(menu,title="Stock print options",colour=ui.colour_confirm)
-    else:
-        printer.print_stocklist(sinfo,title)
+    menu=[("Print list",printer.print_stocklist,(sinfo,title))]+\
+        [("Print labels on {}".format(unicode(x)),
+          printer.stocklabel_print,(x,sinfo))
+         for x in printer.labelprinters]
+    ui.automenu(menu,title="Stock print options",colour=ui.colour_confirm)
 
 def stockdetail(sinfo):
     # We are now passed a list of StockItem objects
@@ -273,14 +270,23 @@ def correct_stocktype():
 @user.permission_required(
     'reprint-stocklabel','Re-print a single stock label')
 def reprint_stocklabel():
-    if printer.labeldriver is None:
-        ui.infopopup(["There is no label printer configured."],
+    if not printer.labelprinters:
+        ui.infopopup(["There are no label printers configured."],
                      title="Error")
         return
-    stock.stockpicker(lambda x:printer.stocklabel_print([x]),
+    stock.stockpicker(lambda x:reprint_stocklabel_choose_printer(x),
                       title="Re-print a single stock label",
                       filter=stock.stockfilter(),
                       check_checkdigits=False)
+
+def reprint_stocklabel_choose_printer(item):
+    if len(printer.labelprinters)==1:
+        printer.stocklabel_print(printer.labelprinters[0],[item])
+        return
+    menu=[("Print label on {}".format(unicode(x)),
+           printer.stocklabel_print,(x,[item]))
+          for x in printer.labelprinters]
+    ui.automenu(menu,title="Choose where to print label",colour=ui.colour_confirm)
 
 def maintenance():
     "Pop up the stock maintenance menu."

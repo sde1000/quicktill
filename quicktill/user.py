@@ -652,4 +652,5 @@ class default_groups(object):
         "alter-stocktype",
         "add-custom-transline",
         "reprint-stocklabel",
+        "print-stocklist",
         ])

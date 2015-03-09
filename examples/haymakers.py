@@ -310,19 +310,22 @@ xpdfprinter={
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
 staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
-labelprinter={
-    'labelprinter': cupsprinter("officeprinter",
-                                driver=pdf_labelpage(*staples_3by6),
-                                options={"MediaType":"Letterhead"}),
-}
-
 # Example config for a DYMO LabelWriter 450 label printer
-#label11356=(252,118)
-#label99015=(198,154)
-#labelprinter={
-#    'labelprinter': cupsprinter("DYMO-LabelWriter-450",
-#                                driver=pdf_page(pagesize=label99015))
-#}
+label11356=(252,118)
+label99015=(198,154)
+labelprinter={
+    'labelprinters': [
+        cupsprinter(
+            "officeprinter",
+            driver=pdf_labelpage(*staples_3by6),
+            options={"MediaType":"Letterhead"},
+            description="A4 label paper in office printer"),
+        cupsprinter(
+            "DYMO-LabelWriter-450",
+            driver=pdf_page(pagesize=label99015),
+            description="Dymo label printer"),
+    ],
+}
 
 # Should we let line keys be named with things other than integers
 # (although allow integers for backwards compatibility)?  Strings

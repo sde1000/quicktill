@@ -9,7 +9,7 @@ import datetime
 now=datetime.datetime.now
 
 driver=None
-labeldriver=None
+labelprinters=[]
 
 # All of these functions assume there's a database session in td.s
 # This should be the case if called during a keypress!  If being used
@@ -170,9 +170,9 @@ def print_sessiontotals(s):
         d.printline()
         d.printline("\tPrinted %s"%ui.formattime(now()))
 
-def label_print_delivery(delivery):
+def label_print_delivery(p,delivery):
     d=td.s.query(Delivery).get(delivery)
-    stocklabel_print(d.items)
+    stocklabel_print(p,d.items)
 
 def stock_label(f,d):
     """Draw a stock label (d) on a PDF canvas (f).
@@ -202,12 +202,13 @@ def stock_label(f,d):
     f.drawCentredString(width/2,margin,str(d.id))
     f.showPage()
 
-def stocklabel_print(sl):
-    """Print stock labels for a list of stock numbers.
+def stocklabel_print(p,sl):
+    """Print stock labels for a list of stock numbers to the specified
+    printer.
 
     """
     td.s.add_all(sl)
-    with labeldriver as d:
+    with p as d:
         for sd in sl:
             stock_label(d,sd)
 

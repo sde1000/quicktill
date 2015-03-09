@@ -203,17 +203,12 @@ class delivery(ui.basicpopup):
                 keymap={keyboard.K_CASH:(self.reallydeleteline,None,True)})
     def printout(self):
         if self.dn is None: return
-        if printer.labeldriver is not None:
-            menu=[
-                (keyboard.K_ONE,"Print list",
-                 printer.print_delivery,(self.dn,)),
-                (keyboard.K_TWO,"Print sticky labels",
-                 printer.label_print_delivery,(self.dn,)),
-                ]
-            ui.keymenu(menu,title="Delivery print options",
-                       colour=ui.colour_confirm)
-        else:
-            printer.print_delivery(self.dn)
+        menu=[("Print list of items",printer.print_delivery,(self.dn,))]+\
+            [("Print labels on {}".format(unicode(x)),
+              printer.label_print_delivery,(x,self.dn))
+             for x in printer.labelprinters]
+        ui.automenu(menu,title="Delivery print options",
+                    colour=ui.colour_confirm)
     def reallyconfirm(self):
         if not self.dn: return
         d=td.s.query(Delivery).get(self.dn)
