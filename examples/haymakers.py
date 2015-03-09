@@ -84,27 +84,20 @@ user.group('manager','Pub manager [group]',[
         "alter-stocktype",
         ])
 
-def haymakers_deptkeycheck(dept,price):
-    """
-    Check that the price entered when a department key is pressed is
-    appropriate for that department.  Returns either None (no problem
-    found), a string or a list of strings to display to the user.
+def check_soft_drinks(dept,price):
+    if price not in [0.50,1.00,2.00]:
+        return ("Soft drinks are 50p for a mixer, £1.00 for a half, "
+                "and £2.00 for a pint.  If you're selling a bottle, "
+                "you must press the appropriate button for that bottle.")
 
-    "dept" is a models.Department object.
+def check_wine(dept,price):
+    if price not in [2.50,3.70,4.80,14.00]:
+        return (["£2.50 for a small glass, "
+                 "£3.70 for a medium glass, "
+                 "£4.80 for a large glass, and £14.00 for a bottle."])
 
-    """
-    if dept.id==7: # Soft drinks
-        if price not in [0.50,1.00,2.00]:
-            return ("Soft drinks are 50p for a mixer, £1.00 for a half, "
-                    "and £2.00 for a pint.  If you're selling a bottle, "
-                    "you must press the appropriate button for that bottle.")
-    if dept.id==9: # Wine
-        if price not in [2.50,3.70,4.80,14.00]:
-            return (["£2.50 for a small glass, "
-                     "£3.70 for a medium glass, "
-                     "£4.80 for a large glass, and £14.00 for a bottle."])
-    if dept.id==8: # Misc
-        return "We do not use the Misc button."
+def check_misc(dept,price):
+    return "We do not use the Misc button."
 
 # Price policy function
 def haymakers_pricepolicy(item,qty):
@@ -283,7 +276,6 @@ std={
     'payment_methods':payment_methods,
     'pricepolicy':haymakers_pricepolicy,
     'priceguess':haymakers_priceguess,
-    'deptkeycheck':haymakers_deptkeycheck,
     'database':'dbname=haymakers',
     'allow_tabs':True,
     'checkdigit_print':True,
@@ -385,11 +377,11 @@ kb1={
             ("E12",modkey('K_DOUBLE','Double',Decimal(2),['25ml','50ml'])),
             ("A02",modkey('K_4JUG','4pt jug',Decimal(4),['pt'])),
             # Departments
-            ("H12",deptkey(8)),
+            ("H12",deptkey(8,checkfunction=check_misc)),
             ("H13",deptkey(11)),
             ("G12",K_DRINKIN), # Not a department!
-            ("G13",deptkey(9)),
-            ("F12",deptkey(7)),
+            ("G13",deptkey(9,checkfunction=check_wine)),
+            ("F12",deptkey(7,checkfunction=check_soft_drinks)),
             ("F13",deptkey(10)),
             # All line keys
             ("H03",linekey(1)),
