@@ -75,12 +75,11 @@ class nullprinter(object):
     A "dummy" printer that just writes to the log.
 
     """
-    def __init__(self,name=None):
+    def __init__(self,name=None,description=None):
         if name: self._name="nullprinter {}".format(name)
         else: self._name="nullprinter"
+        self._description=description
         self._started=False
-    def __str__(self):
-        return "{}(name='{}')".format(self.__class__.__name__,self._name)
     def __enter__(self):
         if self._started: raise PrinterError(self,"Nested call to start()")
         log.info("%s: start",self._name)
@@ -108,6 +107,8 @@ class nullprinter(object):
         return self.printline(l,justcheckfit=True)
     def kickout(self):
         log.info("%s: kickout",self._name)
+    def __unicode__(self):
+        return self._description or self._name
 
 class badprinter(nullprinter):
     """
@@ -123,13 +124,13 @@ class fileprinter(object):
     """Print to a file.  The file may be a device file!
 
     """
-    def __init__(self,filename,driver):
+    def __init__(self,filename,driver,description=None):
         self._filename=filename
         self._driver=driver
+        self._description=description
         self._file=None
-    def __str__(self):
-        return "{}({},{})".format(self.__class__.__name__,
-                                  self._filename,self._driver)
+    def __unicode__(self):
+        return self._description or "Print to file {}".format(self._fileprinter)
     def _getfilename(self):
         gi=glob.iglob(self._filename)
         try:
@@ -198,13 +199,14 @@ class netprinter(object):
     Print to a network socket.  connection is a (hostname,port) tuple.
 
     """
-    def __init__(self,connection,driver):
+    def __init__(self,connection,driver,description=None):
         self._connection=connection
         self._driver=driver
+        self._description=description
         self._socket=None
         self._file=None
-    def __str__(self):
-        return "netprinter({},{})".format(self._filename,self._driver)
+    def __unicode__(self):
+        return self._description or "Print to network {}".format(self._connection)
     def offline(self):
         """
         If the printer is unavailable for any reason, return a description
@@ -242,11 +244,12 @@ class tmpfileprinter(object):
     this class: it expected that subclasses will override it.
 
     """
-    def __init__(self,driver):
+    def __init__(self,driver,description=None):
         self._driver=driver
         self._file=None
-    def __str__(self):
-        return "tmpfileprinter({})".format(self._driver)
+        self._description=description
+    def __unicode__(self):
+        return self._description or "Print to temporary file"
     def offline(self):
         return
     def __enter__(self):
@@ -276,11 +279,11 @@ class commandprinter(tmpfileprinter):
     in it into which the filename to print will be substituted.
 
     """
-    def __init__(self,printcmd,driver):
-        tmpfileprinter.__init__(self,driver)
+    def __init__(self,printcmd,*args,**kwargs):
+        tmpfileprinter.__init__(self,*args,**kwargs)
         self._printcmd=printcmd
-    def __str__(self):
-        return "commandprinter({},{})".format(self._printcmd,self._driver)
+    def __unicode__(self):
+        return self._description or "Print to command '{}'".format(self._printcmd)
     def finish(self,filename):
         with open('/dev/null','w') as null:
             r=subprocess.call(self._printcmd%filename,
@@ -293,12 +296,12 @@ class cupsprinter(tmpfileprinter):
     """Print to a CUPS printer.
 
     """
-    def __init__(self,printername,driver,options={}):
-        tmpfileprinter.__init__(self,driver)
+    def __init__(self,printername,driver,options={},description=None):
+        tmpfileprinter.__init__(self,driver,description=description)
         self._printername=printername
         self._options=options
-    def __str__(self):
-        return "cupsprinter({},{})".format(self._printername,self._driver)
+    def __unicode__(self):
+        return self._description or "Print to '{}'".format(self._printername)
     def offline(self):
         try:
             conn=cups.Connection()
