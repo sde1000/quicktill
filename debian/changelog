@@ -1,3 +1,31 @@
+quicktill (0.10.51) stable; urgency=low
+
+  * New release 0.10.51
+
+  * Don't toast version number on startup
+
+  * cupsprinter shows offline status in description
+
+  * ui.automenu converts strings to lrline() instead of line()
+
+  * Enable multiple label printers to be configured
+
+  * Update example config for non-global deptkeycheck
+
+  * Add optional descriptions to printer drivers
+
+  * Remove the legacy compatibility code for old labelprinter definitions
+
+  * deptkeycheck function now specified per key rather than globally
+
+  * Use keycap as stockline menu title
+
+  * Add reprint-stocklabel function
+
+  * Update copyright year
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 09 Mar 2015 16:11:29 +0000
+
 quicktill (0.10.50) stable; urgency=low
 
   * New release 0.10.50
