@@ -652,5 +652,5 @@ def linemenu(keycode,func):
     elif len(kb)>1:
         il=sorted([(keyboard.__dict__[x.menukey],x.stockline.name,func,(x,))
                    for x in kb],key=lambda x:x[0].keycap)
-        ui.keymenu(il,title="Choose an item",colour=ui.colour_line)
+        ui.keymenu(il,title=keycode.keycap,colour=ui.colour_line)
     return len(kb)
