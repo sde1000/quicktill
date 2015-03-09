@@ -1540,7 +1540,6 @@ def init(w):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
-    toast("Quick till software {}".format(version.version))
     toaster.notify_curses_initialised()
 
 beep=curses.beep
