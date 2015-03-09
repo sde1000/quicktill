@@ -301,7 +301,10 @@ class cupsprinter(tmpfileprinter):
         self._printername=printername
         self._options=options
     def __unicode__(self):
-        return self._description or "Print to '{}'".format(self._printername)
+        x=self._description or "Print to '{}'".format(self._printername)
+        o=self.offline()
+        if o: x=x+" (offline: {})".format(o)
+        return x
     def offline(self):
         try:
             conn=cups.Connection()
