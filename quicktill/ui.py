@@ -1097,7 +1097,7 @@ class keymenu(listpopup):
 def automenu(itemlist,**kwargs):
     """Pop up a dialog to choose an item from the itemlist, which consists
     of (desc,func,args) tuples.  If desc is a string it will be
-    converted to a line().  If the list is short enough then a keymenu
+    converted to a lrline().  If the list is short enough then a keymenu
     will be used; otherwise a menu will be used.
 
     """
@@ -1106,6 +1106,8 @@ def automenu(itemlist,**kwargs):
         keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
         keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
         keyboard.K_ZERO]
+    itemlist=[(lrline(desc) if not isinstance(desc,emptyline) else desc,
+               func,args) for desc,func,args in itemlist]
     if len(itemlist)>len(possible_keys):
         return menu(itemlist,**kwargs)
     else:
