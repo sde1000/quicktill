@@ -1,6 +1,9 @@
 from quicktill.foodorder import simplemenu,subopts
 import math
 
+footer="This is a footer"
+dept=10
+
 def staffdiscount(tablenumber,item):
     if tablenumber!=1234: return 0.00
     discount=item.price*0.4
@@ -90,7 +93,9 @@ maincourses=simplemenu([
                  ["without Ardrahan","without Stilton","without Golden Cross",
                   "without Cheddar",
                   "with Ardrahan instead","with Stilton instead",
-                  "with Golden Cross instead","with Cheddar instead"]),
+                  "with Golden Cross instead","with Cheddar instead",
+                  "filler","filler 2","filler 3","filler 4","filler 5",
+                  "filler 6"]),
     ("Nut Burger",7.50),
     ("Sausages",sausages),
     ("Beef Burger",7.50),
@@ -144,7 +149,8 @@ jackets=subopts("Jacket potato",3.25,
                  ("Stilton",0.75),
                  ("Cheddar",0.75),
                  ("Ham",0.75),
-                 ("Baked Beans",0.75)],
+                 ("Baked Beans",0.75),
+                 ("More",[("More 1",0.01),("More 2",0.02)])],
                 connector=", ",
                 nameconnector=" with ",atleast=1)
 
@@ -154,7 +160,16 @@ courses=simplemenu([
     ("Third course...",0.00),
     ("More to come...",0.00),
     ("Special instructions",0.00),
-    ])
+    # Extra options to test that this is correctly spilled into a menu
+    # rather than a keymenu when we run out of numeric keypad keys:
+    ("Six...",0.00),
+    ("Seven...",0.00),
+    ("Eight...",0.00),
+    ("Nine...",0.00),
+    ("Ten...",0.00),
+    ("Eleven...",0.00),
+    ("Twelve...",0.00),
+])
 
 roast=simplemenu([
     ("Roast Chicken",7.50),

@@ -23,59 +23,30 @@ class fooditem(ui.lrline):
     def copy(self):
         return fooditem(self.name,self.price,self.dept)
 
-class menuchoice(object):
-    def __init__(self,options):
-        """
-        options is a list of (name,action) tuples
+def handle_option(itemfunc,option):
+    """An option is either a tuple of (name,price), a tuple of
+    (name,price,dept), or a tuple of (name,action) where action is an
+    object with a display_menu method.
 
-        """
-        possible_keys=[
-            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
-        o=list(zip(possible_keys,options))
-        self.options=o
-        self.optionkeys={}
-        for i in o:
-            self.optionkeys[i[0]]=i
-    def menu_keypress(self,itemfunc,k):
-        """
-        Possibly handle a keypress which will ultimately lead to the
-        selection of a menu item.  When a menu item is selected, call
-        itemfunc with the fooditem object as an argument.  If
-        something else is selected (a submenu perhaps), invoke its
-        display_menu() method and return True to indicate the keypress
-        was handled.
+    """
+    if hasattr(option[1],'display_menu'):
+        try:
+            option[1].display_menu(itemfunc,default_title=option[0])
+        except:
+            e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
+                                         sys.exc_info()[2])
+            ui.infopopup(e,title="There is a problem with the menu")
+    else:
+        itemfunc(fooditem(*option))
 
-        """
-        if k in self.optionkeys:
-            option=self.optionkeys[k][1]
-            # If it has a display_menu method we invoke it; otherwise
-            # we assume it's a food item with a price and optional department
-            if hasattr(option[1],'display_menu'):
-                try:
-                    option[1].display_menu(itemfunc)
-                except:
-                    e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
-                                                 sys.exc_info()[2])
-                    ui.infopopup(e,title="There is a problem with the menu")
-            else:
-                itemfunc(fooditem(*option))
-            return True
-        return False
-
-class simplemenu(menuchoice):
+class simplemenu(object):
     def __init__(self,options,title=None):
-        menuchoice.__init__(self,options)
+        self.options=options
         self.title=title
-    def display_menu(self,itemfunc):
-        # Create a popup for the menu.  When it returns an option, set
-        # it up to call our menu_keypress method, probably inherited
-        # from menuchoice
-        il=[(key,opt[0],self.menu_keypress,(itemfunc,key))
-            for key,opt in self.options]
-        ui.keymenu(il,colour=ui.colour_line,title=self.title)
+    def display_menu(self,itemfunc,default_title=None):
+        il=[(opt[0],handle_option,(itemfunc,opt))
+            for opt in self.options]
+        ui.automenu(il,colour=ui.colour_line,title=self.title or default_title)
 
 class subopts(object):
     """
@@ -101,7 +72,7 @@ class subopts(object):
         for opt,price in options:
             tot=tot+price
         return tot
-    def display_menu(self,itemfunc):
+    def display_menu(self,itemfunc,default_title=None):
         """
         Pop up the suboptions selection dialog.  This has a 'text
         entry' area at the top which is initially filled in with the
@@ -123,33 +94,29 @@ class subopts(object):
 class subopts_dialog(ui.dismisspopup):
     def __init__(self,name,subopts,atleast,atmost,connector,nameconnector,
                  func,itemfunc):
+        possible_keys=[
+            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
+            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
+            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
+            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+        # If we have more options than keys, split them into a submenu.
+        if len(subopts)>len(possible_keys):
+            subopts=subopts[:len(possible_keys)-1]+\
+                     [("More...",subopts[len(possible_keys)-1:])]
         # Height: we need four lines for the "text entry" box at the top,
         # four lines for the top/bottom border, three lines for the prompt,
         # and len(subopts) lines for the suboptions list.
         h=4+4+3+len(subopts)
         self.w=68
-        possible_keys=[
-            (keyboard.K_ONE," 1"),
-            (keyboard.K_TWO," 2"),
-            (keyboard.K_THREE," 3"),
-            (keyboard.K_FOUR," 4"),
-            (keyboard.K_FIVE," 5"),
-            (keyboard.K_SIX," 6"),
-            (keyboard.K_SEVEN," 7"),
-            (keyboard.K_EIGHT," 8"),
-            (keyboard.K_NINE," 9"),
-            (keyboard.K_ZERO," 0"),
-            (keyboard.K_ZEROZERO,"00"),
-            (keyboard.K_POINT,". ")]
         opts=list(zip(possible_keys,subopts))
         km={keyboard.K_CASH: (self.finish,None,False)}
         for k,so in opts:
-           km[k[0]]=(self.newsubopt,(so,),False)
+           km[k]=(self.newsubopt,(so,),False)
         ui.dismisspopup.__init__(self,h,self.w,name+" options",
                                  colour=ui.colour_line,keymap=km)
         y=9
         for k,so in opts:
-           self.addstr(y,2,"%s: %s"%(k[1],so[0]))
+           self.addstr(y,2,"{:>2}: {}".format(k.keycap,so[0]))
            y=y+1
         self.ol=[]
         self.name=name
@@ -190,15 +157,8 @@ class subopts_dialog(ui.dismisspopup):
                 self.ol.append(so)
                 self.redraw()
             else:
-                possible_keys=[
-                    keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-                    keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-                    keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-                    keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
-                zz=list(zip(possible_keys,so[1]))
-                il=[(key,opt[0],self.newsubopt,(opt,))
-                    for key,opt in zz]
-                ui.keymenu(il,colour=ui.colour_input,title=so[0])
+                il=[(opt[0],self.newsubopt,(opt,)) for opt in so[1]]
+                ui.automenu(il,colour=ui.colour_input,title=so[0])
     def finish(self):
         if len(self.ol)<self.atleast: return
         self.func(self.itemfunc,self.ol)
@@ -365,17 +325,24 @@ class popup(ui.basicpopup):
                           colour=ui.colour_input)
         self.addstr(self.h-1,3,"Clear: abandon order   Print: finish   "
                     "Cancel:  delete item")
-        # Split the top level menu into lines for display
+        # Split the top level menu into lines for display, and add the
+        # options to the keymap
+        possible_keys=[
+            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
+            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
+            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
+            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
         tlm=[""]
-        labels=["1","2","3","4","5","6","7","8","9","0","00","."]
         for i in self.foodmenu.menu:
-            label=labels.pop(0)
+            key=possible_keys.pop(0)
+            label=key.keycap
             ls="%s: %s"%(label,i[0])
             trial="%s%s%s"%(tlm[-1],('','  ')[len(tlm[-1])>0],ls)
             if len(trial)>self.w-4:
                 tlm.append(ls)
             else:
                 tlm[-1]=trial
+            self.keymap[key]=(handle_option,(self.insert_item,i),False)
         maxy=self.h-len(tlm)-2
         y=maxy+1
         for i in tlm:
@@ -384,7 +351,6 @@ class popup(ui.basicpopup):
         self.ml=[] # list of chosen items
         self.order=ui.scrollable(2,2,self.w-4,maxy-1,self.ml,
                                  lastline=ui.emptyline())
-        self.toplevel=menuchoice(self.foodmenu.menu)
         self.order.focus()
         if kpprob:
             ui.infopopup(
@@ -517,8 +483,8 @@ class popup(ui.basicpopup):
             self.printkey()
         elif k==keyboard.K_CASH:
             self.edit_item()
-        elif self.toplevel.menu_keypress(self.insert_item,k):
-            return
+        else:
+            super(popup,self).keypress(k)
 
 class message(ui.dismisspopup):
     """
