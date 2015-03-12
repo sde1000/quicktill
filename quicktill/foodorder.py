@@ -280,30 +280,30 @@ class popup(ui.basicpopup):
                 self.__class__.menu_module=None
                 ui.popup_exception("There is a problem with the menu")
                 return
-        self.foodmenu=self.menu_module
-        if "menu" not in self.foodmenu.__dict__:
+        foodmenu=self.menu_module
+        if "menu" not in foodmenu.__dict__:
             ui.infopopup(["The menu file was read succesfully, but did not "
                           "contain a menu definition."],
                          title="No menu defined")
             return
-        if "staffdiscount" not in self.foodmenu.__dict__:
+        if "staffdiscount" not in foodmenu.__dict__:
             ui.infopopup(["The menu file is missing a discount policy."],
                          title="Discount policy missing")
             return
-        if "footer" not in self.foodmenu.__dict__:
+        if "footer" not in foodmenu.__dict__:
             ui.infopopup(["The recipt footer definition is missing from "
                           "the menu file."],title="Footer missing")
             return
-        if "dept" not in self.foodmenu.__dict__:
+        if "dept" not in foodmenu.__dict__:
             ui.infopopup(["The department for food is missing from the "
                           "menu file."],title="Department missing")
             return
-        self.staffdiscount=self.foodmenu.staffdiscount
-        self.footer=self.foodmenu.footer
-        self.dept=self.foodmenu.dept
+        self.staffdiscount=foodmenu.staffdiscount
+        self.footer=foodmenu.footer
+        self.dept=foodmenu.dept
         self.print_total=(
-            self.foodmenu.print_total
-            if "print_total" in self.foodmenu.__dict__
+            foodmenu.print_total
+            if "print_total" in foodmenu.__dict__
             else True)
         self.func=func
         self.transid=transid
@@ -332,8 +332,14 @@ class popup(ui.basicpopup):
             keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
             keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
             keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+        # If we have more options than keys, split them into a submenu.
+        if len(foodmenu.menu)>len(possible_keys):
+            menu=foodmenu.menu[:len(possible_keys)-1]+\
+                  [("More...",simplemenu(foodmenu.menu[len(possible_keys)-1:]))]
+        else:
+            menu=foodmenu.menu
         tlm=[""]
-        for i in self.foodmenu.menu:
+        for i in menu:
             key=possible_keys.pop(0)
             label=key.keycap
             ls="%s: %s"%(label,i[0])

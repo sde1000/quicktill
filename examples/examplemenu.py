@@ -186,4 +186,8 @@ menu=[
     ('Sandwiches',sandwiches),
     ('Jacket potatos',jackets),
     ('Courses / misc',courses),
+    ("more",0.00),
+    ("more",0.00),
+    ("more",0.00),
+    ("more",0.00),
     ]
