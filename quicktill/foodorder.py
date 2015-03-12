@@ -3,6 +3,9 @@ import urllib,imp,textwrap,curses,sys,traceback,math,datetime
 from . import ui,keyboard,td,printer,tillconfig,pdrivers
 from .models import zero,penny
 from decimal import Decimal
+import hashlib
+import logging
+log=logging.getLogger(__name__)
 
 kitchenprinter=pdrivers.nullprinter(name="default_kitchenprinter")
 menuurl=None
@@ -291,6 +294,8 @@ class edititem(ui.dismisspopup):
         self.func()
 
 class popup(ui.basicpopup):
+    menu_hash=None
+    menu_module=None
     def __init__(self,func,ordernumberfunc=td.foodorder_ticket,transid=None):
         if menuurl is None:
             ui.infopopup(["No menu has been set!"],title="Error")
@@ -302,12 +307,20 @@ class popup(ui.basicpopup):
         except:
             ui.infopopup(["Unable to read the menu!"],title="Error")
             return
-        try:
-            self.foodmenu=imp.new_module("foodmenu")
-            exec(g,self.foodmenu.__dict__)
-        except:
-            ui.popup_exception("There is a problem with the menu")
-            return
+        hash=hashlib.sha1(g).hexdigest()
+        if hash!=self.menu_hash:
+            log.debug("creating new menu module - oldhash %s, newhash %s",
+                      self.menu_hash,hash)
+            try:
+                self.__class__.menu_module=imp.new_module("foodmenu")
+                exec(g,self.menu_module.__dict__)
+                self.__class__.menu_hash=hash
+            except:
+                self.__class__.menu_hash=None
+                self.__class__.menu_module=None
+                ui.popup_exception("There is a problem with the menu")
+                return
+        self.foodmenu=self.menu_module
         if "menu" not in self.foodmenu.__dict__:
             ui.infopopup(["The menu file was read succesfully, but did not "
                           "contain a menu definition."],
