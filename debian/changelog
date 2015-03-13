@@ -1,3 +1,15 @@
+quicktill (0.10.52) stable; urgency=low
+
+  * New release 0.10.52
+
+  * Allow top-level food menu to be unlimited in length as well
+
+  * Improvements to menu file handling
+
+  * Cache food order module
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Fri, 13 Mar 2015 12:52:57 +0000
+
 quicktill (0.10.51) stable; urgency=low
 
   * New release 0.10.51
