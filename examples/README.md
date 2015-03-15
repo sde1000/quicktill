@@ -5,15 +5,6 @@ Most of these scripts are terribly out of date and are retained in the
 hope that they might be updated someday.  Currently useful scripts
 are:
 
- - createdb: pipe this to psql to set up an old- (stable-)style till
-   database.  Note that this isn't needed for new-style till
-   databases, because they can be created directly from the metadata
-   in quicktill/models.py
-
- - update-database-for-sqlalchemy: pipe this to psql to convert an
-   old-style till database to one that works with the current
-   quicktill/models.py
-
  - haymakers.py is an example till configuration file, adapted from
    the one in use at the Haymakers in Cambridge.
 
