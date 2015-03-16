@@ -1094,11 +1094,15 @@ class keymenu(listpopup):
                            header=blurb,title=title,
                            colour=colour,w=w,keymap=km,show_cursor=False)
 
-def automenu(itemlist,**kwargs):
+def automenu(itemlist,spill="menu",**kwargs):
     """Pop up a dialog to choose an item from the itemlist, which consists
     of (desc,func,args) tuples.  If desc is a string it will be
-    converted to a lrline().  If the list is short enough then a keymenu
-    will be used; otherwise a menu will be used.
+    converted to a lrline().
+
+    If the list is short enough then a keymenu will be used.  If
+    spill="menu" then a menu will be used; otherwise if
+    spill="keymenu" (or anything else) the last option on the menu
+    will bring up another menu containing the remaining items.
 
     """
     possible_keys=[
@@ -1108,11 +1112,15 @@ def automenu(itemlist,**kwargs):
         keyboard.K_ZERO]
     itemlist=[(lrline(desc) if not isinstance(desc,emptyline) else desc,
                func,args) for desc,func,args in itemlist]
-    if len(itemlist)>len(possible_keys):
+    if spill=="menu" and len(itemlist)>len(possible_keys):
         return menu(itemlist,**kwargs)
-    else:
-        return keymenu([(possible_keys.pop(0),desc,func,args)
-                        for desc,func,args in itemlist],**kwargs)
+    if len(itemlist)>len(possible_keys):
+        remainder=itemlist[len(possible_keys)-1:]
+        itemlist=itemlist[:len(possible_keys)-1]+[
+            ("More...",(lambda:automenu(remainder,spill="keymenu",**kwargs)),
+             None)]
+    return keymenu([(possible_keys.pop(0),desc,func,args)
+                    for desc,func,args in itemlist],**kwargs)
 
 class booleanfield(field):
     """
