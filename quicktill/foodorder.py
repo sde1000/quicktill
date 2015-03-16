@@ -46,7 +46,8 @@ class simplemenu(object):
     def display_menu(self,itemfunc,default_title=None):
         il=[(opt[0],handle_option,(itemfunc,opt))
             for opt in self.options]
-        ui.automenu(il,colour=ui.colour_line,title=self.title or default_title)
+        ui.automenu(il,spill="keymenu",colour=ui.colour_line,
+                    title=self.title or default_title)
 
 class subopts(object):
     """
@@ -158,7 +159,7 @@ class subopts_dialog(ui.dismisspopup):
                 self.redraw()
             else:
                 il=[(opt[0],self.newsubopt,(opt,)) for opt in so[1]]
-                ui.automenu(il,colour=ui.colour_input,title=so[0])
+                ui.automenu(il,spill="keymenu",colour=ui.colour_input,title=so[0])
     def finish(self):
         if len(self.ol)<self.atleast: return
         self.func(self.itemfunc,self.ol)
