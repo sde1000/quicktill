@@ -618,7 +618,6 @@ class default_groups(object):
         ])
     skilled_user=set([
         "basic-user",
-        "record-waste",
         "drink-in",
         "nosale",
         "merge-trans",
@@ -639,7 +638,6 @@ class default_groups(object):
         "end-session",
         "record-takings",
         "session-summary",
-        "nosale",
         "edit-user",
         "override-price",
         "reprice-stock",
