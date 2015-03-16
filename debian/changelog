@@ -1,3 +1,19 @@
+quicktill (0.10.53) stable; urgency=low
+
+  * New release 0.10.53
+
+  * Use automenu spill="keymenu" from foodorder module
+
+  * Add parameter to automenu to specify how options should be spilled
+
+  * Remove duplicate entries from default permissions
+
+  * Update README for examples
+
+  * Remove obsolete examples and tillweb code
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 16 Mar 2015 13:37:14 +0000
+
 quicktill (0.10.52) stable; urgency=low
 
   * New release 0.10.52
