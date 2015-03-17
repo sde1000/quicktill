@@ -651,4 +651,5 @@ class default_groups(object):
         "add-custom-transline",
         "reprint-stocklabel",
         "print-stocklist",
+        "add-best-before",
         ])

@@ -288,11 +288,48 @@ def reprint_stocklabel_choose_printer(item):
           for x in printer.labelprinters]
     ui.automenu(menu,title="Choose where to print label",colour=ui.colour_confirm)
 
+@user.permission_required(
+    'add-best-before','Add a best-before date to a stock item')
+def add_bestbefore():
+    stock.stockpicker(lambda x:add_bestbefore_dialog(x),
+                      title="Add a best-before date",
+                      filter=stock.stockfilter(allow_has_bestbefore=False),
+                      check_checkdigits=False)
+
+class add_bestbefore_dialog(ui.dismisspopup):
+    def __init__(self,stockitem):
+        self.stockid=stockitem.id
+        ui.dismisspopup.__init__(self,7,60,title="Set best-before date",
+                                 colour=ui.colour_input)
+        self.addstr(2,2,"Stock item {}: {}".format(
+            stockitem.id,stockitem.stocktype.format(maxw=40)))
+        self.addstr(4,2,"Best before: ")
+        self.bbfield=ui.datefield(4,15,keymap={keyboard.K_CASH: (self.finish,None)})
+        self.bbfield.focus()
+    def finish(self):
+        bb=self.bbfield.read()
+        if bb:
+            item=td.s.query(StockItem).get(self.stockid)
+            if not item:
+                ui.infopopup(["Error: item has gone away!"],title="Error")
+                return
+            item.bestbefore=bb
+            td.s.commit()
+            self.dismiss()
+            ui.infopopup(["Best-before date for {} [{}] set to {}.".format(
+                self.stockid,item.stocktype.format(),ui.formatdate(bb))],
+                         title="Best-before date set",dismiss=keyboard.K_CASH,
+                         colour=ui.colour_info)
+        else:
+            ui.infopopup(["You must enter a date!"],title="Error")
+
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
         (keyboard.K_ONE,"Re-print a single stock label",
          reprint_stocklabel,None),
+        (keyboard.K_TWO,"Add a best-before date to a stock item",
+         add_bestbefore,None),
         (keyboard.K_THREE,"Auto-allocate stock to lines",
          usestock.auto_allocate,None),
         (keyboard.K_FOUR,"Manage stock line associations",
