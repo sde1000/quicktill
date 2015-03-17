@@ -34,55 +34,12 @@ K_PANIC=keycode("K_PANIC","Panic")
 K_APPS=keycode("K_APPS","Apps")
 K_LOCK=keycode("K_LOCK","Lock")
 
-# Ordinary users should generally have the following permissions:
-user.group('basic-user','Basic user [group]',[
-        "sell-stock",
-        "sell-dept",
-        "take-payment",
-        "print-receipt",
-        "recall-trans", # But possibly not some of its sub-options
-        "record-waste", # Record waste
-        "current-session-summary", # Display current session summary
-        "version", # Display software version
-        ])
-
-user.group('skilled-user','Skilled user [group]',[
-        "basic-user",
-        "drink-in",
-        "nosale",
-        "recall-trans",
-        "merge-trans",
-        "stock-check",
-        "stock-level-check",
-        "twitter",
-        "use-stock",
-        "auto-allocate",
-        ])
-
-# Pub managers should generally have the following permissions:
-user.group('manager','Pub manager [group]',[
-        "skilled-user", # Everything defined for skilled users, above
-        "print-receipt-by-number", # Print any old receipt
-        "restore-deferred", # Restore deferred transactions
-        "exit", # Exit or restart the software
-        "deliveries", # List existing deliveries
-        "edit-supplier", # Create or edit supplier details
-        "start-session", # Start a session
-        "end-session", # End a session
-        "record-takings", # Record takings for a session
-        "session-summary", # Display any session summary
-        "nosale", # Pop open the till drawer
-        "edit-user", # Add and edit users
-        "override-price",
-        "reprice-stock",
-        "defer-trans",
-        "edit-keycaps",
-        "finish-unconnected-stock",
-        "stock-history",
-        "update-supplier",
-        "purge-finished-stock",
-        "alter-stocktype",
-        ])
+user.group('basic-user','Basic user [group]',
+           user.default_groups.basic_user)
+user.group('skilled-user','Skilled user [group]',
+           user.default_groups.skilled_user)
+user.group('manager','Pub manager [group]',
+           user.default_groups.manager)
 
 def check_soft_drinks(dept,price):
     if price not in [0.50,1.00,2.00]:
