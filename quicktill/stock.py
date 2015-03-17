@@ -103,10 +103,12 @@ class stockfilter(object):
 
     """
     def __init__(self,department=None,allow_on_sale=True,allow_finished=False,
+                 allow_has_bestbefore=True,
                  stockline_affinity=None,sort_descending_stockid=False):
         self.department=department
         self.allow_on_sale=allow_on_sale
         self.allow_finished=allow_finished
+        self.allow_has_bestbefore=allow_has_bestbefore
         self.stockline_affinity=stockline_affinity
         self.sort_descending_stockid=sort_descending_stockid
     @property
@@ -132,6 +134,8 @@ class stockfilter(object):
             q=q.filter(StockItem.stocklineid==None)
         if not self.allow_finished:
             q=q.filter(StockItem.finished==None)
+        if not self.allow_has_bestbefore:
+            q=q.filter(StockItem.bestbefore==None)
         if self.stockline_affinity:
             td.s.add(self.stockline_affinity)
             q=q.order_by(desc(StockItem.stocktype_id.in_(
@@ -160,6 +164,8 @@ class stockfilter(object):
             return "already on sale on %s"%item.stockline.name
         if item.finished is not None and not self.allow_finished:
             return "finished at %s"%ui.formattime(item.finished)
+        if item.bestbefore is not None and not self.allow_has_bestbefore:
+            return "already has a best-before date: %s"%ui.formatdate(item.bestbefore)
 
 class stockpicker(ui.dismisspopup):
     """
@@ -185,7 +191,7 @@ class stockpicker(ui.dismisspopup):
         self.filter=filter
         self.check=check_checkdigits and tillconfig.checkdigit_on_usestock
         h=9 if self.check else 7
-        ui.dismisspopup.__init__(self,h,60,title,colour=ui.colour_input)
+        ui.dismisspopup.__init__(self,h,62,title,colour=ui.colour_input)
         self.addstr(2,2,"   Stock ID:")
         self.numfield=ui.editfield(
             2,15,8,validate=ui.validate_int,f=default.id if default else None,
@@ -202,8 +208,8 @@ class stockpicker(ui.dismisspopup):
             self.checkfield.sethook=self.checkfield_set
         self.numfield.focus()
     def numfield_set(self):
-        self.addstr(3,15," "*43)
-        self.addstr(4,15," "*43)
+        self.addstr(3,15," "*45)
+        self.addstr(4,15," "*45)
         if self.numfield.f:
             stockid=int(self.numfield.f)
             item=td.s.query(StockItem).\
