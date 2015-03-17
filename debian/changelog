@@ -1,3 +1,15 @@
+quicktill (0.10.54) stable; urgency=low
+
+  * New release 0.10.54
+
+  * User interface for adding best-before dates to existing stock
+
+  * Add best-before date stockfilter option
+
+  * Update example script to use default permissions
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 17 Mar 2015 10:47:54 +0000
+
 quicktill (0.10.53) stable; urgency=low
 
   * New release 0.10.53
