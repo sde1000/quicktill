@@ -73,6 +73,11 @@ table td {
 .qtyerr { color: red; }
 .finishwarn { color: orange; }
 
+/* Best-before date states */
+.bbok { }
+.bbwarn { background-color: yellow !important; }
+.bberr { background-color: red !important; }
+
 /* Zebra tables */
 tbody tr.even td { background-color: #ddd; }
 tbody tr.odd td { background-color: #fff; }

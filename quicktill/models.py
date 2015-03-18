@@ -908,6 +908,14 @@ class StockItem(Base):
                 StockItem.id)))
 
     @property
+    def shelflife(self):
+        """The shelf-life of the item, in days.  None if the best-before date
+        is not known.  Negative if the item is out of date.
+
+        """
+        if self.bestbefore is None: return None
+        return (self.bestbefore-datetime.date.today()).days
+    @property
     def displayqty_or_zero(self):
         """
         displayqty is always null when a stockline has no display capacity.

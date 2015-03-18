@@ -1,7 +1,8 @@
 <table id="stocklist">
 <thead>
 <tr><th>Stock ID</th><th>Manufacturer</th><th>Name</th><th>ABV</th>
-<th>Used</th><th>Sold</th><th>Remaining</th><th>State</th></tr>
+<th>Used</th><th>Sold</th><th>Remaining</th><th>Best Before</th>
+<th>State</th></tr>
 </thead>
 <tbody>
 {% for s in stocklist %}
@@ -13,6 +14,8 @@
 <td>{{s.used}} {{s.stocktype.unit.name}}s</td>
 <td>{{s.sold}} {{s.stocktype.unit.name}}s</td>
 <td>{{s.remaining}} {{s.stocktype.unit.name}}s</td>
+{% if s.bestbefore != None %}<td {% if s.shelflife > 28 %}class="bbok"{% elif s.shelflife <= 0 %}class="bberr"{% else %}class="bbwarn"{% endif %}>{{s.bestbefore}}</td>
+{% else %}<td></td>{% endif %}
 <td>{% if s.finished %}{{s.finishcode}} ({{s.finished|date:dtf}}){% endif %}
 {% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale{% if exclude_column != "stockline" %}: {{s.stockline.name}}{% endif %}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}</td>
 </tr>
