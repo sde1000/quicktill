@@ -1298,6 +1298,14 @@ class page(ui.basicpage):
         self._redraw()
         self.payment_method_menu(title="Choose refund type, or press Clear to "
                                  "add more items")
+    def clear_and_lock_register(self):
+        # We set the user's current transaction to None and dismiss
+        # the current register page, most likely returning to the lock
+        # screen on the next time around the event loop.
+        self.user.dbuser=td.s.query(User).get(self.user.userid)
+        self.user.dbuser.transaction=None
+        td.s.flush()
+        self.deselect()
     def recalltrans(self,trans):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
@@ -1363,7 +1371,12 @@ class page(ui.basicpage):
                tillconfig.fc(x.total),
                x.user.shortname if x.user else "",x.notes),
              self.recalltrans,(x.id,)) for x in transactions]
-        ui.menu([('New Transaction',self.recalltrans,(None,))]+sl,
+        if self.trans and not self.trans.closed:
+            firstline=("Save current transaction and lock register",
+                       self.clear_and_lock_register,None)
+        else:
+            firstline=("Start a new transaction",self.recalltrans,(None,))
+        ui.menu([firstline]+sl,
                 title="Recall Transaction",
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
