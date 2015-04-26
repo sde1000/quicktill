@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import logging
-from . import keyboard,ui,td,tillconfig,printer
+from . import keyboard,ui,td,tillconfig,printer,user
 from .models import Department,StockLine,KeyboardBinding
 from .models import StockType,StockLineTypeLog
 from sqlalchemy.sql import select
@@ -90,6 +90,7 @@ def finish_restock(rsl):
 def restock_item(stockline):
     return restock_list([stockline])
 
+@user.permission_required('restock',"Re-stock items on display stocklines")
 def restock_location():
     """Display a menu of locations, and then invoke restock_list for
     all stocklines in the selected location.
@@ -97,18 +98,21 @@ def restock_location():
     """
     selectlocation(restock_list,title="Re-stock location",caponly=True)
 
+@user.permission_required('restock',"Re-stock items on display stocklines")
 def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
 
     """
     restock_list(td.s.query(StockLine).filter(StockLine.capacity!=None).all())
 
-class stockline_associations(ui.listpopup):
+class stockline_associations(user.permission_checked,ui.listpopup):
     """
     A window showing the list of stocklines and their associated stock
     types.  Pressing Cancel on a line deletes the association.
 
     """
+    permission_required=('manage-stockline-associations',
+                         "View and delete stocktype <-> stockline links")
     def __init__(self,stocklines=None,
                  blurb="To create a new association, use the 'Use Stock' "
                  "button to assign stock to a line."):
@@ -185,11 +189,12 @@ def validate_location(s,c):
         return t
     return s
 
-class create(ui.dismisspopup):
+class create(user.permission_checked,ui.dismisspopup):
     """
     Create a new stockline.
 
     """
+    permission_required=('create-stockline',"Create a new stock line")
     def __init__(self,func):
         ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
                                  colour=ui.colour_input,
@@ -246,7 +251,7 @@ class create(ui.dismisspopup):
         self.dismiss()
         self.func(sl)
 
-class modify(ui.dismisspopup):
+class modify(user.permission_checked,ui.dismisspopup):
     """
     Modify a stockline.  Shows the name and location, and allows any
     pull-through amount or display capacity to be edited.
@@ -259,6 +264,7 @@ class modify(ui.dismisspopup):
     remove the binding.
 
     """
+    permission_required=('alter-stockline','Modify or delete an existing stock line')
     def __init__(self,stockline):
         td.s.add(stockline)
         self.stockline=stockline

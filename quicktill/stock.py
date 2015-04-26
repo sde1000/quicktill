@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import logging
 from decimal import Decimal
-from . import ui,td,keyboard,tillconfig,stocklines,department
+from . import ui,td,keyboard,tillconfig,stocklines,department,user
 from .models import Department,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,Delivery,desc,StockLineTypeLog
 from sqlalchemy.orm import joinedload,undefer
@@ -46,11 +46,12 @@ def stockinfo_popup(sn,keymap={}):
                  show_cursor=False,
                  colour=ui.colour_info,keymap=keymap)
 
-class annotate(ui.dismisspopup):
+class annotate(user.permission_checked,ui.dismisspopup):
     """
     This class permits annotations to be made to stock items.
 
     """
+    permission_required=("annotate","Add an annotation to a stock item")
     def __init__(self):
         ui.dismisspopup.__init__(self,9,70,"Annotate Stock",
                                  colour=ui.colour_input)

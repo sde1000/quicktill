@@ -612,9 +612,12 @@ class default_groups(object):
         "take-payment",
         "print-receipt",
         "recall-trans",
-        "record-waste", # Record waste
-        "current-session-summary", # Display current session summary
-        "version", # Display software version
+        "record-waste",
+        "current-session-summary",
+        "version",
+        "kitchen-message",
+        "kitchen-order",
+        "edit-transaction-note",
         ])
     skilled_user=set([
         "basic-user",
@@ -625,7 +628,10 @@ class default_groups(object):
         "stock-level-check",
         "twitter",
         "use-stock",
+        "restock",
         "auto-allocate",
+        "manage-stockline-associations",
+        "annotate",
         ])
     manager=set([
         "skilled-user",
@@ -652,4 +658,6 @@ class default_groups(object):
         "reprint-stocklabel",
         "print-stocklist",
         "add-best-before",
+        "create-stockline",
+        "alter-stockline",
         ])

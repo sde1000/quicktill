@@ -129,8 +129,9 @@ class tline(ui.lrline):
             self.colour=curses.color_pair(0)
         self.cursor_colour=self.colour|curses.A_REVERSE
 
-class edittransnotes(ui.dismisspopup):
+class edittransnotes(user.permission_checked,ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
+    permission_required=("edit-transaction-note","Alter a transactions's note")
     def __init__(self,trans,func):
         td.s.add(trans)
         self.transid=trans.id

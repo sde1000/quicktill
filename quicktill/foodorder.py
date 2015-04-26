@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import urllib,imp,textwrap,curses,sys,traceback,math,datetime
-from . import ui,keyboard,td,printer,tillconfig,pdrivers
+from . import ui,keyboard,td,printer,tillconfig,pdrivers,user
 from .models import zero,penny
 from decimal import Decimal
 import hashlib
@@ -254,7 +254,8 @@ class edititem(ui.dismisspopup):
         self.dismiss()
         self.func()
 
-class popup(ui.basicpopup):
+class popup(user.permission_checked,ui.basicpopup):
+    permission_required=('kitchen-order','Send an order to the kitchen')
     menu_hash=None
     menu_module=None
     def __init__(self,func,ordernumberfunc=td.foodorder_ticket,transid=None):
@@ -493,11 +494,12 @@ class popup(ui.basicpopup):
         else:
             super(popup,self).keypress(k)
 
-class message(ui.dismisspopup):
+class message(user.permission_checked,ui.dismisspopup):
     """
     Send a printed message to the kitchen.
 
     """
+    permission_required=('kitchen-message','Send a message to the kitchen')
     def __init__(self):
         problem=kitchenprinter.offline()
         if problem:
