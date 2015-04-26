@@ -1,14 +1,16 @@
 from quicktill.foodorder import simplemenu,subopts
-import math
+from quicktill.models import zero,penny
+from decimal import Decimal,ROUND_UP
 
 footer="This is a footer"
 dept=10
 
 def staffdiscount(tablenumber,item):
-    if tablenumber!=1234: return 0.00
-    discount=item.price*0.4
-    if discount>3.00: discount=3.00
-    discount=math.floor(discount*20.0)/20.0
+    if tablenumber!=1234: return zero
+    discount=item.price*Decimal("0.4")
+    if discount>Decimal("3.00"): discount=Decimal("3.00")
+    discount=discount.quantize(Decimal("0.1"),rounding=ROUND_UP)
+    discount=discount.quantize(penny)
     return discount
 
 class ices(subopts):

@@ -15,8 +15,9 @@ class page(ui.basicpage):
     def pagename(self):
         return "Menu Check"
     def receive_order(self,lines):
-        for dept,name,price in lines:
-            self.dl.append(ui.lrline(name,tillconfig.fc(price)))
+        for dept,text,items,amount in lines:
+            self.dl.append(ui.lrline("{}: {}".format(dept,text),
+                                     tillconfig.fc(items*amount)))
         self.s.redraw()
         return True
     def ordernumber(self):
