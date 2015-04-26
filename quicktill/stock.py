@@ -83,6 +83,9 @@ class annotate(ui.dismisspopup):
         if anntype is None:
             ui.infopopup(["You must choose an annotation type!"],title="Error")
             return
+        if not self.annfield.f:
+            ui.infopopup(["You can't add a blank annotation!"],title="Error")
+            return
         annotation=self.annfield.f or ""
         cu=ui.current_user()
         user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
