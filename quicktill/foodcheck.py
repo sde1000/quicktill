@@ -3,8 +3,9 @@ import sys
 from . import ui,foodorder,keyboard,event,tillconfig
 
 class page(ui.basicpage):
-    def __init__(self,hotkeys):
+    def __init__(self,hotkeys,user=None):
         ui.basicpage.__init__(self)
+        self.user=user
         self.dl=[ui.lrline("Orders")]
         self.s=ui.scrollable(1,0,self.w,self.h-3,self.dl,show_cursor=False)
         self.addstr(self.h-1,0,"Ctrl+X = Clear; Ctrl+Y = Cancel")

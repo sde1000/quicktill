@@ -490,7 +490,8 @@ config3={'description':"Test menu file 'testmenu.py' in current directory",
 #         'menuurl':'http://localhost:8080/foodmenu.py',
          'menuurl':"file:testmenu.py",
          'kitchenprinter':nullprinter(),
-         'firstpage': lambda: foodcheck.page([]),
+         'firstpage': lambda: foodcheck.page(
+             [],user=user.built_in_user("Food check","Food check",['kitchen-order'])),
          }
 config3.update(std)
 config3.update(xpdfprinter)
