@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 from . import ui,version,printer,foodorder
+import logging
+log=logging.getLogger(__name__)
 
 class lockpage(ui.basicpage):
     def __init__(self):
@@ -17,9 +19,11 @@ class lockpage(ui.basicpage):
         rpproblem=printer.driver.offline()
         if rpproblem:
             self.line("Receipt printer problem: {}".format(rpproblem))
+            log.warning(rpproblem)
         kpproblem=foodorder.kitchenprinter.offline()
         if kpproblem:
             self.line("Kitchen printer problem: {}".format(kpproblem))
+            log.warning(kpproblem)
         self.addstr(self.h-1,0,"Till version: {}".format(version.version))
         self.win.move(0,0)
     def line(self,s):
