@@ -270,6 +270,10 @@ def main():
                         dest="database",
                         help="Database connection string; overrides "
                         "database specified in configuration file")
+    parser.add_argument("-f", "--user", action="store",
+                        dest="user",type=int,default=None,
+                        help="User ID to use when no other user information "
+                        "is available (use 'listusers' command to check IDs)")
     loggroup=parser.add_mutually_exclusive_group()
     loggroup.add_argument("-y", "--log-config", help="Logging configuration file "
                           "in YAML", type=argparse.FileType('r'),
@@ -337,6 +341,8 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
     if args.logsql:
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    if args.user:
+        tillconfig.default_user=args.user
     # Set up handler to direct warnings to toaster UI
     log=logging.getLogger()
     toasthandler=ToastHandler()

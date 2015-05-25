@@ -73,3 +73,7 @@ usertoken_listen=None
 # A function to turn off the screensaver if the screen has gone blank
 def unblank_screen():
     pass
+
+# The user ID to use for creating a page if not otherwise specified.
+# An integer if present.
+default_user=None

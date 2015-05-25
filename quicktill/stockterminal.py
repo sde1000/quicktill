@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 import time
 import logging
-from . import ui,event,td,keyboard,usestock,stocklines,user
+from . import ui,event,td,keyboard,usestock,stocklines,user,tillconfig
+from .user import load_user
 from .models import StockLine,StockAnnotation,StockItem
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select,not_
@@ -12,7 +13,7 @@ class page(ui.basicpage):
     def __init__(self,hotkeys,locations=None,user=None,
                  max_unattended_updates=None):
         ui.basicpage.__init__(self)
-        self.user=user
+        self.user=user if user else load_user(tillconfig.default_user)
         self.display=0
         self.max_unattended_updates=max_unattended_updates
         self.hotkeys=hotkeys

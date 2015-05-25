@@ -18,7 +18,7 @@ indicate restricted functionality.
 
 """
 
-from __future__ import unicode_literals
+from __future__ import print_function,unicode_literals
 from . import ui,td,event,keyboard,tillconfig,cmdline
 from .models import User,UserToken,Permission
 from sqlalchemy.orm import joinedload
@@ -254,6 +254,17 @@ class database_user(built_in_user):
         built_in_user.__init__(self,user.fullname,user.shortname,
                                permissions=[p.id for p in user.permissions],
                                is_superuser=user.superuser)
+
+def load_user(userid):
+    """Load the specified user from the database and return a user object
+    for them.  If the user does not exist or is not active, return
+    None.
+
+    """
+    if not userid: return
+    dbuser=td.s.query(User).get(userid)
+    if not dbuser or not dbuser.enabled: return
+    return database_user(dbuser)
 
 class token(object):
     """
@@ -600,6 +611,25 @@ class adduser_cmd(cmdline.command):
             td.s.add(t)
             td.s.flush()
             print("User added.")
+
+class listusers_cmd(cmdline.command):
+    """List all active users.
+
+    """
+    @staticmethod
+    def add_arguments(subparsers):
+        parser=subparsers.add_parser(
+            'listusers',help="list active users",
+            description=listusers_cmd.__doc__)
+        parser.set_defaults(command=listusers_cmd.run)
+    @staticmethod
+    def run(args):
+        td.init(tillconfig.database)
+        with td.orm_session():
+            users=td.s.query(User).filter_by(enabled=True).\
+                   order_by(User.id).all()
+            for u in users:
+                print("{:>4}: {}".format(u.id,u.fullname))
 
 class default_groups(object):
     """Three basic group definitions.  Pub configuration files can use these
