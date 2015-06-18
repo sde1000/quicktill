@@ -280,6 +280,9 @@ def reprint_stocklabel():
                       check_checkdigits=False)
 
 def reprint_stocklabel_choose_printer(item):
+    td.s.add(StockAnnotation(
+        stockitem=item,atype="memo",user=user.current_dbuser(),
+        text="Re-printed stock label"))
     if len(printer.labelprinters)==1:
         printer.stocklabel_print(printer.labelprinters[0],[item])
         return
