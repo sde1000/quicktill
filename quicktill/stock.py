@@ -11,8 +11,6 @@ from .models import AnnotationType,Delivery,desc,StockLineTypeLog
 from sqlalchemy.orm import joinedload,undefer
 log=logging.getLogger(__name__)
 
-# XXX should probably convert this to take a StockItem object rather
-# than a stock ID at some point
 def stockinfo_linelist(sn):
     s=td.s.query(StockItem).get(sn)
     l=[]
@@ -24,18 +22,19 @@ def stockinfo_linelist(sn):
     l.append("")
     l.append("Delivered %s by %s"%(s.delivery.date,s.delivery.supplier.name))
     if s.bestbefore: l.append("Best Before %s"%s.bestbefore)
-    if s.onsale: l.append("Put on sale %s"%s.onsale)
+    if s.onsale: l.append("Put on sale {:%c}".format(s.onsale))
     if s.firstsale:
-        l.append("First sale: %s  Last sale: %s"%(s.firstsale,s.lastsale))
+        l.append("First sale: {:%c} Last sale: {:%c}".format(
+            s.firstsale,s.lastsale))
     if s.finished:
-        l.append("Finished %s; %s"%(s.finished,s.finishcode.description))
+        l.append("Finished {:%c} {}".format(s.finished,s.finishcode.description))
     l.append("")
     for code,qty in s.removed:
         l.append("%s: %s"%(code.reason,qty))
     if len(s.annotations)>0:
         l.append("Annotations:")
     for a in s.annotations:
-        l.append("%s: %s: %s"%(a.time,a.type.description,a.text))
+        l.append(ui.lrline("{:%c}{}: {}".format(a.time,a.type.description,a.text)))
     return l
 
 def stockinfo_popup(sn,keymap={}):
@@ -70,7 +69,7 @@ class annotate(user.permission_checked,ui.dismisspopup):
         self.anntypefield=ui.listfield(
             4,21,30,annlist,d=lambda x:x.description)
         self.addstr(5,2,"Annotation:")
-        self.annfield=ui.editfield(6,2,60,keymap={
+        self.annfield=ui.editfield(6,2,60,flen=120,keymap={
                 keyboard.K_CASH: (self.finish,None)})
         ui.map_fieldlist([self.stockfield,self.anntypefield,self.annfield])
         self.stockfield.focus()
