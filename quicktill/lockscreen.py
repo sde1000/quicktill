@@ -19,11 +19,11 @@ class lockpage(ui.basicpage):
         rpproblem=printer.driver.offline()
         if rpproblem:
             self.line("Receipt printer problem: {}".format(rpproblem))
-            log.warning(rpproblem)
+            log.info("Receipt printer problem: %s",rpproblem)
         kpproblem=foodorder.kitchenprinter.offline()
         if kpproblem:
             self.line("Kitchen printer problem: {}".format(kpproblem))
-            log.warning(kpproblem)
+            log.info("Kitchen printer problem: %s",kpproblem)
         self.addstr(self.h-1,0,"Till version: {}".format(version.version))
         self.win.move(0,0)
     def line(self,s):
