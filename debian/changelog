@@ -1,3 +1,25 @@
+quicktill (0.10.57) stable; urgency=low
+
+  * New release 0.10.57
+
+  * Change printer problem logs to info
+
+  * Implement the "return finished item to stock" feature
+
+  * Improve display of stock information
+
+  * Remove restriction on annotation length
+
+  * Record use of re-print stock label function
+
+  * Allow default user to be specified on command line
+
+  * Log printer errors when they are displayed on the lock page
+
+  * Give foodcheck page the kitchen-order permission
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 18 Jun 2015 12:48:44 +0100
+
 quicktill (0.10.56) stable; urgency=low
 
   * New release 0.10.56
