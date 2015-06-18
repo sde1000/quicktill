@@ -107,13 +107,17 @@ class stockfilter(object):
     """
     def __init__(self,department=None,allow_on_sale=True,allow_finished=False,
                  allow_has_bestbefore=True,
-                 stockline_affinity=None,sort_descending_stockid=False):
+                 stockline_affinity=None,sort_descending_stockid=False,
+                 require_finished=False):
         self.department=department
         self.allow_on_sale=allow_on_sale
         self.allow_finished=allow_finished
         self.allow_has_bestbefore=allow_has_bestbefore
         self.stockline_affinity=stockline_affinity
         self.sort_descending_stockid=sort_descending_stockid
+        self.require_finished=require_finished
+        if self.require_finished:
+            self.allow_finished=True
     @property
     def is_single_department(self):
         return self.department is not None
@@ -137,6 +141,8 @@ class stockfilter(object):
             q=q.filter(StockItem.stocklineid==None)
         if not self.allow_finished:
             q=q.filter(StockItem.finished==None)
+        if self.require_finished:
+            q=q.filter(StockItem.finished!=None)
         if not self.allow_has_bestbefore:
             q=q.filter(StockItem.bestbefore==None)
         if self.stockline_affinity:
@@ -167,6 +173,8 @@ class stockfilter(object):
             return "already on sale on %s"%item.stockline.name
         if item.finished is not None and not self.allow_finished:
             return "finished at %s"%ui.formattime(item.finished)
+        if item.finished is None and self.require_finished:
+            return "not finished"
         if item.bestbefore is not None and not self.allow_has_bestbefore:
             return "already has a best-before date: %s"%ui.formatdate(item.bestbefore)
 

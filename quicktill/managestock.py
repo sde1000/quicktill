@@ -326,6 +326,27 @@ class add_bestbefore_dialog(ui.dismisspopup):
         else:
             ui.infopopup(["You must enter a date!"],title="Error")
 
+@user.permission_required(
+    'return-finished-item','Return a finished item to stock')
+def return_finished_item():
+    stock.stockpicker(finish_return_finished_item,
+                      title="Return a finished item to stock",
+                      filter=stock.stockfilter(require_finished=True,
+                                               sort_descending_stockid=True),
+                      check_checkdigits=True)
+
+def finish_return_finished_item(item):
+    td.s.add(StockAnnotation(
+        stockitem=item,atype="memo",user=user.current_dbuser(),
+        text="Returned to stock; had been finished at {:%c}({})".format(
+            item.finished,item.finishcode)))
+    item.finished=None
+    item.finishcode=None
+    ui.infopopup(["Stock item {} ({}) has been returned to stock.".format(
+        item.id,item.stocktype.format())],
+                 title="Item returned",colour=ui.colour_info,
+                 dismiss=keyboard.K_CASH)
+
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
@@ -344,6 +365,8 @@ def maintenance():
          correct_stocktype,None),
         (keyboard.K_EIGHT,"Purge finished stock from stock lines",
          purge_finished_stock,None),
+        (keyboard.K_NINE,"Return a finished item to stock",
+         return_finished_item,None),
         ]
     ui.keymenu(menu,title="Stock Maintenance options")
 
