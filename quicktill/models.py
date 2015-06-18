@@ -1004,7 +1004,7 @@ class StockAnnotation(Base):
     stockid=Column(Integer,ForeignKey('stock.stockid'),nullable=False)
     atype=Column(String(8),ForeignKey('annotation_types.atype'),nullable=False)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
-    text=Column(String(60),nullable=False)
+    text=Column(String(),nullable=False)
     user_id=Column('user',Integer,ForeignKey('users.id'),nullable=True,
                    doc="User who created this annotation")
     stockitem=relationship(StockItem,backref=backref(
