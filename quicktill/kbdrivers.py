@@ -60,7 +60,7 @@ class prehkeyboard(curseskeyboard):
         self.card=None
         self.inputs={}
         for loc,code in kblayout:
-            self.inputs[loc]=code
+            self.inputs[loc.upper()]=code
         if magstripe:
             for start,end in magstripe:
                 self.inputs[start]=magstripecode(start)
@@ -79,8 +79,8 @@ class prehkeyboard(curseskeyboard):
         if self.decode:
             if i==ord(']'):
                 s=string.join([chr(x) for x in self.ibuf],'')
-                if s in self.inputs:
-                    self.handle_input(self.inputs[s])
+                if s.upper() in self.inputs:
+                    self.handle_input(self.inputs[s.upper()])
                     self.decode=False
                     self.ibuf=[]
                 else:
