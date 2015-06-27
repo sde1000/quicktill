@@ -397,7 +397,7 @@ class addbinding(ui.listpopup):
                           "to select '%s'; make sure it isn't "
                           "already in the list!"%stockline.name),
                 ui.emptyline(),
-                f('Menu key','','Stock line','Quantity'),
+                f('Menu key','','Name','Default modifier'),
                 ]
         else:
             lines=[
@@ -414,7 +414,7 @@ class addbinding(ui.listpopup):
         for kb in existing:
             lines.append(
                 f(keyboard.__dict__[kb.menukey].keycap,
-                  '->',kb.name,kb.qty))
+                  '->',kb.name,kb.modifier))
             self.exdict[kb.menukey]=kb.stockline.name
         lines.append(ui.emptyline())
         lines=[ui.marginline(x,margin=1) for x in lines]
@@ -585,16 +585,3 @@ def selectlocation(func,title="Stock Locations",blurb="Choose a location",
         else: l[sl.location]=[sl]
     ml=[(x,func,(l[x],)) for x in list(l.keys())]
     ui.menu(ml,title=title,blurb=blurb)
-
-def popup():
-    log.info("Stock line management popup")
-    menu=[
-        (keyboard.K_ONE,"Stock lines",stocklinemenu,None),
-        (keyboard.K_FIVE,"List stock lines with no key bindings",
-         listunbound,None),
-        (keyboard.K_SIX,"Return stock from display",selectline,
-         (return_stock,"Return Stock","Select the stock line to remove "
-          "from display",True)),
-        ]
-    ui.keymenu(menu,title="Stock line options")
-

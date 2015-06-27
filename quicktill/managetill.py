@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import sys,os
 from . import ui,keyboard,td,printer,session,user
-from . import tillconfig,linekeys,stocklines,event
+from . import tillconfig,linekeys,stocklines,plu,modifiers,event
 from .version import version
 
 import logging
@@ -66,13 +66,30 @@ def restartmenu():
         ]
     ui.keymenu(menu,title="Exit / restart options")
 
+def slmenu():
+    log.info("Stock line / PLU management popup")
+    menu=[
+        (keyboard.K_ONE,"Stock lines",stocklines.stocklinemenu,None),
+        (keyboard.K_TWO,"Price lookups",plu.plumenu,None),
+        (keyboard.K_THREE,"Modifiers",modifiers.modifiermenu,None),
+        (keyboard.K_FOUR,"List stock lines with no key bindings",
+         stocklines.listunbound,None),
+        (keyboard.K_FIVE,"List price lookups with no key bindings",
+         plu.listunbound,None),
+        (keyboard.K_SIX,"Return items from display to stock",
+         stocklines.selectline,
+         (stocklines.return_stock,"Return Stock",
+          "Select the stock line to remove from display",True)),
+        (keyboard.K_SEVEN,"Edit key labels",linekeys.edit_keycaps,None),
+        ]
+    ui.keymenu(menu,title="Stock line and PLU options")
+
 def popup():
     log.info("Till management menu")
     menu=[
         (keyboard.K_ONE,"Sessions",session.menu,None),
         (keyboard.K_TWO,"Current session summary",session.currentsummary,None),
-        (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
-        (keyboard.K_FIVE,"Keyboard labels",linekeys.edit_keycaps,None),
+        (keyboard.K_FOUR,"Stock lines, PLUs and modifiers",slmenu,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
         (keyboard.K_SEVEN,"Users",user.usersmenu,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
