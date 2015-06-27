@@ -7,6 +7,7 @@ import sys,os
 from . import ui,keyboard,td,printer,session,user
 from . import tillconfig,linekeys,stocklines,plu,modifiers,event
 from .version import version
+import subprocess
 
 import logging
 log=logging.getLogger(__name__)
@@ -84,6 +85,21 @@ def slmenu():
         ]
     ui.keymenu(menu,title="Stock line and PLU options")
 
+def netinfo():
+    log.info("Net info popup")
+    v4=subprocess.check_output(["ip","-4","addr"])
+    v6=subprocess.check_output(["ip","-6","addr"])
+    ui.infopopup(["IPv4:"]+v4.split('\n')+["IPv6:"]+v6.split('\n'),
+                 title="Network information",colour=ui.colour_info)
+
+def sysinfo_menu():
+    log.info("System information menu")
+    menu=[
+        (keyboard.K_ONE,"Software versions",versioninfo,None),
+        (keyboard.K_TWO,"Network status",netinfo,None),
+        ]
+    ui.keymenu(menu,title="System information")
+
 def popup():
     log.info("Till management menu")
     menu=[
@@ -93,6 +109,6 @@ def popup():
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
         (keyboard.K_SEVEN,"Users",user.usersmenu,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
-        (keyboard.K_NINE,"Display till software versions",versioninfo,None),
+        (keyboard.K_NINE,"System information",sysinfo_menu,None),
         ]
     ui.keymenu(menu,title="Management options")
