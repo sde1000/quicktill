@@ -7,46 +7,6 @@ from sqlalchemy.sql import select
 from decimal import Decimal
 log=logging.getLogger(__name__)
 
-def calculate_sale(stocklineid,items):
-    """
-    Given a line, work out a plan to remove a number of items from
-    display.  They may be sold, wasted, etc.
-
-    Returns (list of (stockitem,items) pairs, the number of items that
-    could not be allocated, remaining stock (ondisplay,instock)).
-
-    """
-    stockline=td.s.query(StockLine).get(stocklineid)
-    stocklist=stockline.stockonsale
-    if len(stocklist)==0:
-        return ([],items,(0,0))
-    # Iterate over the stock items attached to the line and produce a
-    # list of (stockid,items) pairs if possible; otherwise produce an
-    # error message If the stockline has no capacity mentioned
-    # ("capacity is None") then bypass this and just sell the
-    # appropriate number of items from the only stockitem in the list!
-    if stockline.linetype=="regular":
-        return ([(stocklist[0],items)],0,None)
-    unallocated=items
-    leftondisplay=0
-    totalinstock=0
-    sell=[]
-    # Iterate through the StockItem objects for this stock line
-
-    # XXX this can probably be stated more simply now that StockOnSale
-    # and StockItem have been merged, and StockItem has lots of nice
-    # informative properties!
-    for item in stocklist:
-        ondisplay=item.ondisplay
-        sellqty=min(unallocated,ondisplay)
-        log.debug("ondisplay=%d, sellqty=%d"%(ondisplay,sellqty))
-        unallocated=unallocated-sellqty
-        leftondisplay=leftondisplay+ondisplay-sellqty
-        totalinstock=totalinstock+item.remaining-sellqty
-        if sellqty>0:
-            sell.append((item,sellqty))
-    return (sell,unallocated,(leftondisplay,totalinstock-leftondisplay))
-
 def restock_list(stockline_list):
     # Print out list of things to fetch and put on display
     # Display prompt: have you fetched them all?

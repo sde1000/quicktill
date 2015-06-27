@@ -706,6 +706,36 @@ class StockLine(Base):
             if move!=0:
                 sm.append((i,move,newdisplayqty,instock_after_move))
         return sm
+    def calculate_sale(self,items):
+        """Work out a plan to remove a number of items from display.  They may
+        be sold, wasted, etc.
+
+        Returns (list of (stockitem,items) pairs, the number of items
+        that could not be allocated, and remaining stock
+        (ondisplay,instock)).
+
+        """
+        if len(self.stockonsale)==0:
+            return ([],items,(0,0))
+        # If the stockline is a regular stockline with no display
+        # capacity, just sell the appropriate number of items from the
+        # only stockitem in the list.
+        if self.linetype=="regular":
+            return ([(self.stockonsale[0],items)],0,None)
+        unallocated=items
+        leftondisplay=0
+        totalinstock=0
+        sell=[]
+        # Iterate through the StockItem objects for this stock line
+        for item in self.stockonsale:
+            ondisplay=item.ondisplay
+            sellqty=min(unallocated,ondisplay)
+            unallocated=unallocated-sellqty
+            leftondisplay=leftondisplay+ondisplay-sellqty
+            totalinstock=totalinstock+item.remaining-sellqty
+            if sellqty>0:
+                sell.append((item,sellqty))
+        return (sell,unallocated,(leftondisplay,totalinstock-leftondisplay))
 
 plu_seq=Sequence('plu_seq')
 class PriceLookup(Base):

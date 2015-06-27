@@ -143,8 +143,7 @@ class record_line_waste(ui.dismisspopup):
                          title='Error')
             self.amountfield.set("")
             return
-        sell,unallocated,stockremain=stocklines.calculate_sale(
-            stockline.id,amount)
+        sell,unallocated,stockremain=stockline.calculate_sale(amount)
         if unallocated>0:
             ui.infopopup(["There are less than {} items on display.".format(
                         amount)],title="Error")

@@ -439,8 +439,7 @@ class page(ui.basicpage):
         # individual items on a "display" stockline then it will be 1,
         # and if we're on a "regular" stockline it won't affect the
         # result.
-        sell,unallocated,stockremain=stocklines.calculate_sale(
-            stockline.id,items)
+        sell,unallocated,stockremain=stockline.calculate_sale(items)
 
         if stockline.linetype=="display" and unallocated>0:
             ui.infopopup(
