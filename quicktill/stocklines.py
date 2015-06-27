@@ -568,15 +568,17 @@ class selectline(ui.listpopup):
         if caponly: q=q.filter(StockLine.capacity!=None)
         if exccap: q=q.filter(StockLine.capacity==None)
         stocklines=q.all()
-        f=ui.tableformatter(' l l c ')
-        self.sl=[f(x.name,x.location,x.dept_id,userdata=x)
+        f=ui.tableformatter(' l l l r r ')
+        self.sl=[f(x.name,x.location,x.department,
+                   x.capacity or "",x.pullthru or "",
+                   userdata=x)
                  for x in stocklines]
         self.create_new=create_new
         if create_new:
             self.sl=[ui.line(" New stockline")]+self.sl
         elif select_none:
             self.sl=[ui.line(" %s"%select_none)]+self.sl
-        hl=[f("Name","Location","Dept")]
+        hl=[f("Name","Location","Department","DC","PT")]
         if blurb:
             hl=[ui.lrline(blurb),ui.emptyline()]+hl
         ui.listpopup.__init__(self,self.sl,title=title,header=hl,keymap=keymap)
