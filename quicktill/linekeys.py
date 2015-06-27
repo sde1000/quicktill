@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from . import keyboard,ui,td,user
-from .models import KeyCap
+from .models import KeyCap,KeyboardBinding
 
 class edit_keycaps(user.permission_checked,ui.dismisspopup):
     """This popup window enables the keycaps of line keys to be edited.
@@ -36,3 +36,35 @@ class edit_keycaps(user.permission_checked,ui.dismisspopup):
             self.selectline(k)
         else:
             ui.dismisspopup.keypress(self,k)
+
+def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
+             allow_mods=False):
+    """Given a keycode, find out what is bound to it.  If there's more
+    than one thing, pop up a menu to select a particular binding.
+    Call func with the keyboard binding as an argument when a
+    selection is made (NB at this point, the binding may be a detached
+    instance).  No call is made if Clear is pressed.  If there's only
+    one keyboard binding in the list, shortcut to the function.
+
+    This function returns the number of keyboard bindings found.  Some
+    callers may wish to use this to inform the user that a key has no
+    bindings rather than having an uninformative empty menu pop up.
+
+    """
+    # Find the keyboard bindings associated with this keycode
+    kb=td.s.query(KeyboardBinding).\
+        filter(KeyboardBinding.keycode==keycode.name)
+    if not allow_stocklines:
+        kb=kb.filter(KeyboardBinding.stocklineid==None)
+    if not allow_plus:
+        kb=kb.filter(KeyboardBinding.pluid==None)
+    if not allow_mods:
+        kb=kb.filter((KeyboardBinding.stocklineid!=None)|(KeyboardBinding.pluid!=None))
+    kb=kb.all()
+
+    if len(kb)==1: func(kb[0])
+    elif len(kb)>1:
+        il=sorted([(keyboard.__dict__[x.menukey],x.name,func,(x,))
+                   for x in kb],key=lambda x:x[0].keycap)
+        ui.keymenu(il,title=keycode.keycap,colour=ui.colour_line)
+    return len(kb)

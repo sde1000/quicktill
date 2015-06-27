@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import logging
 from decimal import Decimal
-from . import ui,td,keyboard,tillconfig,stocklines,department,user
+from . import ui,td,keyboard,tillconfig,linekeys,department,user
 from .models import Department,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,Delivery,desc,StockLineTypeLog
 from sqlalchemy.orm import joinedload,undefer
@@ -296,7 +296,7 @@ class stockpicker(ui.dismisspopup):
                           line.name],title="Error")
     def keypress(self,k):
         if hasattr(k,'line'):
-            stocklines.linemenu(k,self.linekey)
+            linekeys.linemenu(k,self.linekey)
         else:
             ui.dismisspopup.keypress(self,k)
 
@@ -349,6 +349,6 @@ class stockfield(ui.popupfield):
             self.popup()
             ui.handle_keyboard_input(k)
         if hasattr(k,'line'):
-            stocklines.linemenu(k,self.linekey)
+            linekeys.linemenu(k,self.linekey)
         else:
             ui.popupfield.keypress(self,k)

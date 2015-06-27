@@ -3,7 +3,7 @@
 """
 
 from __future__ import unicode_literals
-from . import td,ui,keyboard,stock,stocklines
+from . import td,ui,keyboard,stock,linekeys
 
 class pricecheck_keypress(object):
     """
@@ -15,7 +15,7 @@ class pricecheck_keypress(object):
     def keypress(self,k):
         if hasattr(k,"line"):
             self.dismiss()
-            bindings=stocklines.linemenu(k,pricecheck_window)
+            bindings=linekeys.linemenu(k,pricecheck_window)
             if bindings==0:
                 popup(prompt="There are no options on key \"%s\".  Press "
                       "another line key."%k.keycap)

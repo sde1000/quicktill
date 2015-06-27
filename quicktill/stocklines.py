@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import logging
-from . import keyboard,ui,td,tillconfig,printer,user
+from . import keyboard,ui,td,tillconfig,printer,user,linekeys
 from .models import Department,StockLine,KeyboardBinding
 from .models import StockType,StockLineTypeLog
 from sqlalchemy.sql import select
@@ -388,8 +388,8 @@ class addbinding(ui.listpopup):
             lines=[
                 ui.emptyline(),
                 ui.lrline("The line key '%s' already has some other "
-                          "stock lines associated with it; they are "
-                          "listed below."%keycode.keycap),
+                          "stock lines, PLUs or modifiers associated "
+                          "with it; they are listed below."%keycode.keycap),
                 ui.emptyline(),
                 ui.lrline("When the key is pressed, a menu will be displayed "
                           "enabling the till user to choose between them.  "
@@ -414,7 +414,7 @@ class addbinding(ui.listpopup):
         for kb in existing:
             lines.append(
                 f(keyboard.__dict__[kb.menukey].keycap,
-                  '->',kb.stockline.name,kb.qty))
+                  '->',kb.name,kb.qty))
             self.exdict[kb.menukey]=kb.stockline.name
         lines.append(ui.emptyline())
         lines=[ui.marginline(x,margin=1) for x in lines]
@@ -549,7 +549,7 @@ class selectline(ui.listpopup):
     def keypress(self,k):
         log.debug("selectline keypress %s",k)
         if hasattr(k,'line'):
-            linemenu(k,self.line_selected)
+            linekeys.linemenu(k,self.line_selected)
         elif k==keyboard.K_CASH and len(self.sl)>0:
             self.dismiss()
             line=self.sl[self.s.cursor]
@@ -598,27 +598,3 @@ def popup():
         ]
     ui.keymenu(menu,title="Stock line options")
 
-def linemenu(keycode,func):
-    """
-    Pop up a menu to select a line from a list.  Call func with the
-    keyboard binding as an argument when a selection is made (NB it
-    may be a detached instance).  No call is made if Clear is pressed.
-    If there's only one keyboard binding in the list, shortcut to the
-    function.
-
-    This function returns the number of keyboard bindings found.  Some
-    callers may wish to use this to inform the user that a key has no
-    bindings rather than having an uninformative empty menu pop up.
-    
-    """
-    # Find the keyboard bindings associated with this keycode
-    kb=td.s.query(KeyboardBinding).\
-        filter(KeyboardBinding.keycode==keycode.name).\
-        all()
-
-    if len(kb)==1: func(kb[0])
-    elif len(kb)>1:
-        il=sorted([(keyboard.__dict__[x.menukey],x.stockline.name,func,(x,))
-                   for x in kb],key=lambda x:x[0].keycap)
-        ui.keymenu(il,title=keycode.keycap,colour=ui.colour_line)
-    return len(kb)

@@ -1208,6 +1208,15 @@ class KeyboardBinding(Base):
         return "<KeyboardBinding('%s','%s',%s)>"%(
             self.keycode,self.menukey,self.stocklineid)
     @property
+    def name(self):
+        """Look up the name of this binding: the stockline name, PLU name,
+        or modifer name as appropriate.
+
+        """
+        if self.stockline: return self.stockline.name
+        if self.plu: return self.plu.description
+        return self.modifier
+    @property
     def keycap(self):
         """Look up the keycap corresponding to the keycode of this binding.
 

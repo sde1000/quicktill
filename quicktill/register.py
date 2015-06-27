@@ -35,7 +35,7 @@ from __future__ import unicode_literals
 from . import tillconfig
 import curses,textwrap
 from . import td,ui,keyboard,printer
-from . import stock,stocklines,stocktype
+from . import stocktype,linekeys
 from . import payment
 from . import user
 import logging
@@ -1633,7 +1633,7 @@ class page(ui.basicpage):
             return
         if not self.entry(): return
         if hasattr(k,'line'):
-            stocklines.linemenu(k,self.linekey)
+            linekeys.linemenu(k,self.linekey)
             return
         elif hasattr(k,'department'):
             return self.deptkey(k)

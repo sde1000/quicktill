@@ -4,7 +4,7 @@ Deals with connecting stock items with stock lines.
 """
 
 from __future__ import unicode_literals
-from . import ui,td,keyboard,stock,stocklines,tillconfig,user
+from . import ui,td,keyboard,stock,stocklines,tillconfig,user,linekeys
 from .models import StockLine,FinishCode,StockItem,Department,Delivery
 from .models import StockType,StockAnnotation,StockLineTypeLog
 from sqlalchemy.orm import contains_eager,undefer
@@ -47,7 +47,7 @@ class popup(user.permission_checked,ui.infopopup):
         line_chosen(kb.stockline)
     def keypress(self,k):
         if hasattr(k,'line'):
-            stocklines.linemenu(k,self.line_chosen)
+            linekeys.linemenu(k,self.line_chosen)
         else:
             ui.infopopup.keypress(self,k)
 
