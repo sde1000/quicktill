@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 
 TEST_DATABASE_NAME="quicktill-test"
 
@@ -79,6 +80,48 @@ class ModelTest(unittest.TestCase):
             ])
         self.s.commit()
         self.assertEqual(session.actual_total,Decimal(3))
+
+    def template_setup(self):
+        """Add some template data to the database to make other tests easier
+        to write.
+
+        """
+        business=models.Business(
+            id=1,name='Test',abbrev='TEST',address='An address')
+        vatband=models.VatBand(band='A',business=business,rate=0.2)
+        dept=models.Department(id=1,description="Test",vat=vatband)
+        self.s.add_all([business,vatband,dept])
+        self.s.commit()
+
+    def template_stockline_and_plu_setup(self):
+        self.template_setup()
+        stockline=models.StockLine(name="Test SL",location="Test",dept_id=1)
+        plu=models.PriceLookup(description="Test PLU",note="",dept_id=1,
+                               price=1.00)
+        self.s.add_all([stockline,plu])
+        self.s.commit()
+        return stockline,plu
+
+    def test_stockline_constraint(self):
+        self.template_setup()
+        self.s.add(models.StockLine(name="Test",location="Test",dept_id=1,
+                                    capacity=10,pullthru=1))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_keyboard_binding_unambigous_constraint(self):
+        stockline,plu=self.template_stockline_and_plu_setup()
+        self.s.add(models.KeyboardBinding(
+            keycode='FOO',menukey='BAR',qty=1,
+            stockline=stockline,plu=plu))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_keyboard_binding_useful_constraint(self):
+        self.s.add(models.KeyboardBinding(
+            keycode='FOO',menukey='BAR',qty=1))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
 
 if __name__=='__main__':
     unittest.main()

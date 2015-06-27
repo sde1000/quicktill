@@ -581,12 +581,11 @@ Transaction.total=column_property(
 
 stocklines_seq=Sequence('stocklines_seq',start=100)
 class StockLine(Base):
-    """
-    All stock is sold through stocklines.  An item of stock is "on
-    sale" if it has an entry in the stockonsale table pointing to a
-    stockline.  Keyboard bindings on the till keyboard point to
-    stocklines and supply a quantity (usually "1" but may be otherwise
-    for keys that do doubles, halves, 4pt jugs and so on).
+    """All stock is sold through stocklines.  An item of stock is "on
+    sale" if its stocklineid column points to a stockline.  Keyboard
+    bindings on the till keyboard can point to stocklines and supply a
+    serving size (usually "1" but may be otherwise for keys that do
+    doubles, halves, 4pt jugs and so on).
 
     There are currently two types of stockline:
 
@@ -707,6 +706,37 @@ class StockLine(Base):
             if move!=0:
                 sm.append((i,move,newdisplayqty,instock_after_move))
         return sm
+
+plu_seq=Sequence('plu_seq')
+class PriceLookup(Base):
+    """A PriceLookup enables an item or service to be sold that is not
+    covered by the stock management system.
+
+    The description is used in menus and is copied to the transaction
+    line when the PLU is used.  The department and price are also used
+    in the transaction line.
+
+    The note field and alternate price fields are not used by default,
+    but may be accessed by modifiers that can override the default
+    description and price.
+
+    """
+    __tablename__='pricelookups'
+    id=Column('id',Integer,plu_seq,nullable=False,primary_key=True)
+    description=Column(String(),nullable=False,unique=True,
+                       doc="Descriptive text for this PLU")
+    note=Column(String(),nullable=False,
+                doc="Additional information for this PLU")
+    dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
+                   nullable=False)
+    price=Column(Numeric(5,2),nullable=False)
+    altprice1=Column(Numeric(5,2))
+    altprice2=Column(Numeric(5,2))
+    altprice3=Column(Numeric(5,2))
+    department=relationship(
+        Department,lazy='joined',
+        doc="All stock items on sale on this line must belong to this "
+        "department.")
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
@@ -1123,20 +1153,40 @@ class KeyboardBinding(Base):
     keycode=Column(String(20),nullable=False,primary_key=True)
     menukey=Column(String(20),nullable=False,primary_key=True)
     stocklineid=Column(Integer,ForeignKey(
-            'stocklines.stocklineid',ondelete='CASCADE'),nullable=False)
+            'stocklines.stocklineid',ondelete='CASCADE'))
+    pluid=Column(Integer,ForeignKey(
+        'pricelookups.id',ondelete='CASCADE'))
+    # qty values other than 1.0 are now deprecated and the column will
+    # be removed in the future.  The modifier field is used instead to
+    # indicate halves, doubles, and so on.
     qty=Column(Numeric(5,1),nullable=False)
+    modifier=Column(String(),nullable=True)
     stockline=relationship(StockLine,backref=backref('keyboard_bindings',cascade='all'))
+    plu=relationship(PriceLookup,backref=backref('keyboard_bindings',cascade='all'))
+    # At least one of stocklineid, pluid and modifier must be non-NULL
+    # At most one of stocklineid and pluid can be non-NULL
+    __table_args__=(
+        CheckConstraint(
+            "stocklineid IS NOT NULL OR pluid IS NOT NULL "
+            "OR modifier IS NOT NULL",
+            name="be_useful_constraint"),
+        CheckConstraint(
+            "stocklineid IS NULL OR pluid IS NULL",
+            name="be_unambiguous_constraint"),
+    )
     def __repr__(self):
         return "<KeyboardBinding('%s','%s',%s)>"%(
             self.keycode,self.menukey,self.stocklineid)
     @property
     def keycap(self):
-        """
-        Look up the keycap corresponding to the keycode of this binding.
+        """Look up the keycap corresponding to the keycode of this binding.
 
         This is intended for use in the web interface, not in the main
         part of the till software; that should be looking at the
-        keycap attribute of the keyboard.linekey object.
+        keycap attribute of the keyboard.linekey object, if that
+        object exists.  (It is not guaranteed to exist, because line
+        keys can be removed from the keyboard definition if they are
+        repurposed.)
 
         """
         return object_session(self).query(KeyCap).get(self.keycode)
