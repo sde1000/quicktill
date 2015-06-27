@@ -2,9 +2,8 @@ from __future__ import unicode_literals
 from . import keyboard,ui,td,user
 from .models import KeyCap
 
-class popup(user.permission_checked,ui.dismisspopup):
-    """
-    This popup window enables the keycaps of line keys to be edited.
+class edit_keycaps(user.permission_checked,ui.dismisspopup):
+    """This popup window enables the keycaps of line keys to be edited.
 
     """
     permission_required=('edit-keycaps',

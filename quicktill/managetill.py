@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import sys,os
 from . import ui,keyboard,td,printer,session,user
-from . import tillconfig,managekeyboard,stocklines,event
+from . import tillconfig,linekeys,stocklines,event
 from .version import version
 
 import logging
@@ -72,7 +72,7 @@ def popup():
         (keyboard.K_ONE,"Sessions",session.menu,None),
         (keyboard.K_TWO,"Current session summary",session.currentsummary,None),
         (keyboard.K_FOUR,"Stock lines",stocklines.popup,None),
-        (keyboard.K_FIVE,"Keyboard",managekeyboard.popup,None),
+        (keyboard.K_FIVE,"Keyboard labels",linekeys.edit_keycaps,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
         (keyboard.K_SEVEN,"Users",user.usersmenu,None),
         (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
