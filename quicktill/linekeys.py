@@ -79,7 +79,7 @@ class addbinding(ui.listpopup):
         self.target=target
         if isinstance(target,StockLine) or isinstance(target,PriceLookup):
             td.s.add(target)
-            self.name=target.name
+        self.name=target.name
         self.keycode=keycode
         existing=td.s.query(KeyboardBinding).\
             filter(KeyboardBinding.keycode==self.keycode.name).\
