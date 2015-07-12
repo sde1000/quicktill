@@ -690,5 +690,7 @@ class default_groups(object):
         "add-best-before",
         "create-stockline",
         "alter-stockline",
+        "create-plu",
+        "alter-plu",
         "return-finished-item",
         ])

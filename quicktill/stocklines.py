@@ -270,12 +270,10 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.addstr(11,2,"To add a keyboard binding, press a line key now.")
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
         self.addstr(13,2,"below and press Enter or Cancel.")
-        f=ui.tableformatter(' l   c   r ')
-        kbl=[f(keyboard.__dict__[x.keycode].keycap,
-               keyboard.__dict__[x.menukey].keycap,
-               x.qty,userdata=x)
-             for x in self.stockline.keyboard_bindings]
-        self.addstr(15,1,f("Line key","Menu key","Quantity").display(61)[0])
+        f=ui.tableformatter(' l   c   l ')
+        kbl=linekeys.keyboard_bindings_table(self.stockline.keyboard_bindings,f)
+        self.addstr(15,1,f("Line key","Menu key","Default modifier").
+                    display(61)[0])
         self.kbs=ui.scrollable(16,1,56,4,kbl,keymap={
                 keyboard.K_CASH: (self.editbinding,None),
                 keyboard.K_CANCEL: (self.deletebinding,None)})
@@ -289,7 +287,8 @@ class modify(user.permission_checked,ui.dismisspopup):
             usestock.line_chosen(self.stockline)
         elif hasattr(k,'line'):
             self.dismiss()
-            addbinding(self.stockline,k,func=lambda:modify(self.stockline))
+            linekeys.addbinding(self.stockline,k,
+                                func=lambda:modify(self.stockline))
     def save(self):
         td.s.add(self.stockline)
         if (self.namefield.f=='' or self.locfield.f==''):
@@ -371,70 +370,6 @@ class modify(user.permission_checked,ui.dismisspopup):
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
-
-class addbinding(ui.listpopup):
-    def __init__(self,stockline,keycode,func):
-        self.func=func
-        td.s.add(stockline)
-        self.stocklineid=stockline.id
-        self.keycode=keycode
-        existing=td.s.query(KeyboardBinding).\
-            filter(KeyboardBinding.keycode==self.keycode.name).\
-            all()
-        self.exdict={}
-        lines=[]
-        f=ui.tableformatter(' l l l   c ')
-        if len(existing)>0:
-            lines=[
-                ui.emptyline(),
-                ui.lrline("The line key '%s' already has some other "
-                          "stock lines, PLUs or modifiers associated "
-                          "with it; they are listed below."%keycode.keycap),
-                ui.emptyline(),
-                ui.lrline("When the key is pressed, a menu will be displayed "
-                          "enabling the till user to choose between them.  "
-                          "You must now choose which key the user must press "
-                          "to select '%s'; make sure it isn't "
-                          "already in the list!"%stockline.name),
-                ui.emptyline(),
-                f('Menu key','','Name','Default modifier'),
-                ]
-        else:
-            lines=[
-                ui.emptyline(),
-                ui.lrline("There are no other stock lines associated with "
-                          "that key, so when it's used there is no need "
-                          "for a menu to be displayed.  However, in case "
-                          "you add more stock lines to the key in the future, "
-                          "you must now choose which key the user will have "
-                          "to press to select this line."),
-                ui.emptyline(),
-                ui.lrline("Pressing '1' now is usually the right thing to do!"),
-                ]
-        for kb in existing:
-            lines.append(
-                f(keyboard.__dict__[kb.menukey].keycap,
-                  '->',kb.name,kb.modifier))
-            self.exdict[kb.menukey]=kb.stockline.name
-        lines.append(ui.emptyline())
-        lines=[ui.marginline(x,margin=1) for x in lines]
-        ui.listpopup.__init__(
-            self,lines,title="Add keyboard binding for %s"%stockline.name,
-            colour=ui.colour_input,show_cursor=False,w=58)
-    def keypress(self,k):
-        if k==keyboard.K_CLEAR:
-            self.dismiss()
-            return self.func()
-        if k in keyboard.cursorkeys:
-            return ui.listpopup.keypress(self,k)
-        if k.name in self.exdict: return
-        binding=KeyboardBinding(keycode=self.keycode.name,
-                                menukey=k.name,stocklineid=self.stocklineid,
-                                qty=1)
-        td.s.add(binding)
-        td.s.flush()
-        self.dismiss()
-        changebinding(binding,self.func)
 
 class changebinding(ui.dismisspopup):
     def __init__(self,binding,func):

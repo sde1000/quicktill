@@ -759,7 +759,8 @@ class PriceLookup(Base):
                 doc="Additional information for this PLU")
     dept_id=Column('dept',Integer,ForeignKey('departments.dept'),
                    nullable=False)
-    price=Column(Numeric(5,2),nullable=False)
+    # A PLU with a null price will act very much like a department key
+    price=Column(Numeric(5,2))
     altprice1=Column(Numeric(5,2))
     altprice2=Column(Numeric(5,2))
     altprice3=Column(Numeric(5,2))
@@ -767,6 +768,9 @@ class PriceLookup(Base):
         Department,lazy='joined',
         doc="All stock items on sale on this line must belong to this "
         "department.")
+    @property
+    def name(self):
+        return self.description
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):
@@ -1205,8 +1209,7 @@ class KeyboardBinding(Base):
             name="be_unambiguous_constraint"),
     )
     def __repr__(self):
-        return "<KeyboardBinding('%s','%s',%s)>"%(
-            self.keycode,self.menukey,self.stocklineid)
+        return "<KeyboardBinding({},{})>".format(self.keycode,self.menukey)
     @property
     def name(self):
         """Look up the name of this binding: the stockline name, PLU name,
