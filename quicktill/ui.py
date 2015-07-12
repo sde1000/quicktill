@@ -680,6 +680,7 @@ class scrollable(field):
         if self.prevfield and self.prevfield.focused: self.cursor=0
         elif self.nextfield and self.nextfield.focused:
             self.cursor=len(self.dl) if self.lastline else len(self.dl)-1
+            if self.cursor<0: self.cursor=0 # Empty display list
         field.focus(self)
         self.redraw()
     def defocus(self):
@@ -767,7 +768,7 @@ class scrollable(field):
             if self.lastline:
                 return self.cursor>=len(self.dl)
             else:
-                return self.cursor==len(self.dl)-1
+                return self.cursor==len(self.dl)-1 or len(self.dl)==0
         else:
             return self.display_complete
     def cursor_on_lastline(self):
