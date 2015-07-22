@@ -771,6 +771,9 @@ class PriceLookup(Base):
     @property
     def name(self):
         return self.description
+    @property
+    def tillweb_url(self):
+        return "plu/%d/"%self.id
 
 suppliers_seq=Sequence('suppliers_seq')
 class Supplier(Base):

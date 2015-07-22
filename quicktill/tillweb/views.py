@@ -455,6 +455,23 @@ def stockline(request,info,session,stocklineid):
     return ('stockline.html',{'stockline':s,})
 
 @tillweb_view
+def plulist(request,info,session):
+    plus=session.query(PriceLookup).\
+        order_by(PriceLookup.dept_id,PriceLookup.description).\
+        all()
+    return ('plus.html',{'plus':plus,})
+
+@tillweb_view
+def plu(request,info,session,pluid):
+    try:
+        p=session.query(PriceLookup).\
+            filter_by(id=int(pluid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('plu.html',{'plu':p,})
+
+@tillweb_view
 def departmentlist(request,info,session):
     # depts are included in template context anyway
     return ('departmentlist.html',{})

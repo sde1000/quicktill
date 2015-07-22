@@ -18,6 +18,11 @@
 {% if department.notes %}<p>{{department.notes}}</p>{% endif %}
 
 {% if items %}
+{% if include_finished %}
+<h2>All stock items</h2>
+{% else %}
+<h2>Currently in stock</h2>
+{% endif %}
 {% with items as stocklist %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}

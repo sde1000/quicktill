@@ -1,0 +1,36 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Price Lookups{% endblock %}
+
+{% block heading %}{{till}} — Price Lookups{% endblock %}
+
+{% block tillcontent %}
+
+<table id="plulist">
+<thead>
+<tr><th>Description</th><th>Department</th>
+<th>Price</th><th>Alt price 1</th><th>Alt price 2</th><th>Alt price 3</th>
+<th>Note</th></tr>
+</thead>
+<tbody>
+{% for p in plus %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{p.tillweb_url}}">{{p.description}}</a></td>
+<td><a href="{{u}}{{p.department.tillweb_url}}">{{p.department}}</a></td>
+{% if p.price %}<td class="money">{{p.price}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice1 %}<td class="money">{{p.altprice1}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice2 %}<td class="money">{{p.altprice2}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice3 %}<td class="money">{{p.altprice3}}</td>{% else %}<td></td>{% endif %}
+<td>{% if p.note %}{{p.note}}{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#plulist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endblock %}

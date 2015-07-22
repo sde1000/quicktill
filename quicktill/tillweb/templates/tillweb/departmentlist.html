@@ -8,13 +8,17 @@
 
 <table id="departments">
 <thead>
-<tr><th>Number</th><th>Description</th></tr>
+<tr><th>Number</th><th>Description</th><th>Min price</th><th>Max price</th><th>Notes</th></tr>
 </thead>
 <tbody>
 {% for d in depts %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{d.tillweb_url}}">{{d.id}}</a></td>
-<td><a href="{{u}}{{d.tillweb_url}}">{{d.description}}</a></td></tr>
+<td><a href="{{u}}{{d.tillweb_url}}">{{d.description}}</a></td>
+<td{% if d.minprice %} class="money"{% endif %}>{% if d.minprice %}{{d.minprice}}{% endif %}</td>
+<td{% if d.maxprice %} class="money"{% endif %}>{% if d.maxprice %}{{d.maxprice}}{% endif %}</td>
+<td>{% if d.notes %}{{d.notes}}{% endif %}</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
