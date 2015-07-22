@@ -133,7 +133,7 @@ class addbinding(ui.listpopup):
         else:
             args={'modifier':self.target.name}
         binding=KeyboardBinding(keycode=self.keycode.name,
-                                menukey=k.name,qty=1,**args)
+                                menukey=k.name,**args)
         td.s.add(binding)
         td.s.flush()
         self.dismiss()
