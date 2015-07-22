@@ -638,6 +638,7 @@ class default_groups(object):
     """
     basic_user=set([
         "sell-stock",
+        "sell-plu",
         "sell-dept",
         "take-payment",
         "print-receipt",

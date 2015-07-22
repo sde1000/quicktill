@@ -21,13 +21,6 @@ hotkeys={}
 all_payment_methods=[]
 payment_methods=[]
 
-def pricepolicy(si,qty):
-    """How much does qty of stock item sd cost? qty is a Decimal,
-    eg. 1.0 or 0.5, and si is a StockItem
-
-    """
-    return qty*si.stocktype.saleprice
-
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None: return "None"
@@ -41,14 +34,6 @@ def priceguess(stocktype,stockunit,cost):
 
     """
     return None
-
-# A function that takes (models.Department object,price) and returns
-# either None (if there is no problem), or a string or list of strings
-# to display to the user (if there is a problem).
-#
-# This is a deprecated configuration setting; deptkeycheck should now
-# be specified as the "checkfunction" argument to keyboard.deptkey()
-deptkeycheck=None
 
 # Do we print check digits on stock labels?
 checkdigit_print=False

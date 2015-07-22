@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import logging
-from . import keyboard,ui,td,tillconfig,printer,user,linekeys
+from . import keyboard,ui,td,tillconfig,printer,user,linekeys,modifiers
 from .models import Department,StockLine,KeyboardBinding
 from .models import StockType,StockLineTypeLog
 from sqlalchemy.sql import select
@@ -359,7 +359,10 @@ class modify(user.permission_checked,ui.dismisspopup):
         except IndexError:
             return
         self.dismiss()
-        changebinding(line.userdata,func=lambda:modify(self.stockline))
+        # XXX it might be worth filtering the modifiers list to exclude
+        # modifiers that won't work with stock lines
+        linekeys.changebinding(line.userdata,lambda:modify(self.stockline),
+                               modifiers.defined_modifiers())
     def deletebinding(self):
         # We should only be called when the scrollable has the focus
         try:
@@ -370,44 +373,6 @@ class modify(user.permission_checked,ui.dismisspopup):
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
-
-class changebinding(ui.dismisspopup):
-    def __init__(self,binding,func):
-        self.func=func
-        td.s.add(binding)
-        ui.dismisspopup.__init__(
-            self,7,50,
-            title="Change keyboard binding for %s"%binding.stockline.name,
-            colour=ui.colour_input)
-        self.binding=binding
-        self.addstr(2,2,"Check the quantity and press Cash/Enter,")
-        self.addstr(3,2,"or press Cancel to delete the binding.")
-        self.addstr(5,2,"Quantity:")
-        self.qtyfield=ui.editfield(
-            5,12,5,f=str(binding.qty),validate=ui.validate_float,
-            keymap={keyboard.K_CANCEL: (self.deletebinding,None),
-                    keyboard.K_CASH: (self.setqty,None),
-                    keyboard.K_CLEAR: (self.return_to_caller,None)})
-        self.qtyfield.focus()
-    def return_to_caller(self):
-        self.dismiss()
-        self.func()
-    def deletebinding(self):
-        self.dismiss()
-        td.s.add(self.binding)
-        td.s.delete(self.binding)
-        td.s.flush()
-        self.func()
-    def setqty(self):
-        if self.qtyfield.f=="":
-            ui.infopopup(["You must specify a quantity (1 is the most usual)"],
-                         title="Error")
-            return
-        td.s.add(self.binding)
-        self.binding.qty=Decimal(self.qtyfield.f)
-        td.s.flush()
-        self.dismiss()
-        self.func()
 
 class listunbound(ui.listpopup):
     """

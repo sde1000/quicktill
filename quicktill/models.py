@@ -1190,10 +1190,6 @@ class KeyboardBinding(Base):
             'stocklines.stocklineid',ondelete='CASCADE'))
     pluid=Column(Integer,ForeignKey(
         'pricelookups.id',ondelete='CASCADE'))
-    # qty values other than 1.0 are now deprecated and the column will
-    # be removed in the future.  The modifier field is used instead to
-    # indicate halves, doubles, and so on.
-    qty=Column(Numeric(5,1),nullable=False)
     modifier=Column(String(),nullable=True)
     stockline=relationship(StockLine,backref=backref('keyboard_bindings',cascade='all'))
     plu=relationship(PriceLookup,backref=backref('keyboard_bindings',cascade='all'))

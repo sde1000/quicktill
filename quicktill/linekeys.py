@@ -4,10 +4,6 @@ from .models import KeyCap,KeyboardBinding,StockLine,PriceLookup
 import logging
 log=logging.getLogger(__name__)
 
-def changebinding(binding,func):
-    # XXX placeholder
-    func()
-
 class edit_keycaps(user.permission_checked,ui.dismisspopup):
     """This popup window enables the keycaps of line keys to be edited.
 
@@ -47,21 +43,17 @@ def keyboard_bindings_table(bindings,formatter):
     """Given a list of keyboard bindings, from the database, format a
     table to show them.
 
-    If any bindings in the database do not have corresponding keycodes
-    defined in the till configuration file, they are deleted and a
-    warning is logged.
-
     """
     f=formatter
     for b in bindings:
         if b.keycode not in keyboard.__dict__:
-            log.warning("Removing keyboard binding {}: keycode {} "
+            keyboard.keycode(b.keycode,b.keycode)
+            log.warning("Keyboard binding {}: keycode {} "
                         "does not exist.".format(b,b.keycode))
-            td.s.delete(b)
         if b.menukey not in keyboard.__dict__:
-            log.warning("Removing keyboard binding {}: menu key {} "
+            keyboard.keycode(b.menukey,b.menukey)
+            log.warning("Keyboard binding {}: menu key {} "
                         "does not exist.".format(b,b.menukey))
-            td.s.delete(b)
     kbl=[f(keyboard.__dict__[x.keycode].keycap,
            keyboard.__dict__[x.menukey].keycap,
            x.modifier,userdata=x)
@@ -149,6 +141,23 @@ class addbinding(ui.listpopup):
             changebinding(binding,self.func)
         else:
             self.func()
+
+def changebinding(binding,func,available_modifiers):
+    """Enable the default modifier on the binding to be changed.
+
+    """
+    td.s.add(binding)
+    blurb=["Choose the new default modifier for {}.".format(
+               binding.name)]
+    ml=[(name,_finish_changebinding,(binding,func,name))
+        for name in available_modifiers]
+    ml=[("No modifier",_finish_changebinding,(binding,func,None))]+ml
+    ui.automenu(ml,title="Choose default modifier",blurb=blurb)
+
+def _finish_changebinding(binding,func,mod):
+    td.s.add(binding)
+    binding.modifier=mod
+    func()
 
 def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
              allow_mods=False):

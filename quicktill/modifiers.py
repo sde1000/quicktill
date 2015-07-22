@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from . import ui,td,user,linekeys,keyboard
 from .models import KeyboardBinding
+from decimal import Decimal
 import inspect,itertools
 
 class Incompatible(Exception):
@@ -20,11 +21,11 @@ class BaseModifier(object):
     def __init__(self,name):
         self.name=name
     def mod_stockline(self,stockline,transline):
-        raise Incompatible()
+        raise Incompatible("The '{}' modifier can't be used with stocklines."
+                           .format(self.name))
     def mod_plu(self,plu,transline):
-        raise Incompatible()
-    def mod_dept(self,department,transline):
-        raise Incompatible()
+        raise Incompatible("The '{}' modifier can't be used with price lookups."
+                           .format(self.name))
     @property
     def description(self):
         return inspect.cleandoc(self.__doc__)
@@ -42,9 +43,10 @@ class Half(BaseModifier):
             raise Incompatible(
                 "The {} modifier can only be used with stock "
                 "that is sold in pints.".format(self.name))
-        transline.amount=transline.amount/2
-        transline.stockref.qty=transline.stockref.qty/2
-        transline.text="{} {} half pint".format(st.manufacturer,st.name)
+        # There may not be a price at this point
+        if transline.amount: transline.amount=transline.amount/2
+        transline.stockref.qty=transline.stockref.qty*Decimal("0.5")
+        transline.text="{} half pint".format(st.format())
 
 class Test(BaseModifier):
     """Test modifier.  Uses alt price 1 if the note is 'Wine', rejects
@@ -54,9 +56,13 @@ class Test(BaseModifier):
     @classmethod
     def mod_plu(cls,plu,transline):
         if plu.note!='Wine':
-            raise Incompatible("This modifier can only be used with wine.")
+            raise Incompatible(
+                "This modifier can only be used with wine; the Note field "
+                "of the price lookup must be set to 'Wine'.")
         if not plu.altprice1:
-            raise Incompatible("The PLU does not have alternative price 1 set.")
+            raise Incompatible(
+                "The {} price lookup does not have alternative price 1 set."
+                .format(plu.description))
         transline.amount=plu.altprice1
 
 all={

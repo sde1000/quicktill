@@ -375,14 +375,13 @@ def main():
     tillconfig.all_payment_methods=config['all_payment_methods']
     tillconfig.payment_methods=config['payment_methods']
     if 'pricepolicy' in config:
-        tillconfig.pricepolicy=config['pricepolicy']
+        log.warning("Obsolete 'pricepolicy' key present in configuration")
     if 'format_currency' in config:
         tillconfig.fc=config['format_currency']
     if 'priceguess' in config:
         tillconfig.priceguess=config['priceguess']
     if 'deptkeycheck' in config:
-        log.warning("Deprecated global deptkeycheck configuration in use")
-        tillconfig.deptkeycheck=config['deptkeycheck']
+        log.warning("Obsolete 'deptkeycheck' key present in configuration")
     if 'checkdigit_print' in config:
         tillconfig.checkdigit_print=config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:

@@ -33,6 +33,7 @@ K_STOCKINFO=keycode("K_STOCKINFO","Stock Info")
 K_PANIC=keycode("K_PANIC","Panic")
 K_APPS=keycode("K_APPS","Apps")
 K_LOCK=keycode("K_LOCK","Lock")
+K_MARK=keycode("K_MARK","Mark")
 
 user.group('basic-user','Basic user [group]',
            user.default_groups.basic_user)
@@ -55,14 +56,6 @@ def check_wine(dept,price):
 
 def check_misc(dept,price):
     return "We do not use the Misc button."
-
-# Price policy function
-def haymakers_pricepolicy(item,qty):
-    # Start with the standard price
-    price=item.stocktype.saleprice*qty
-    if item.stocktype.dept_id==4 and qty==2.0: price=price-Decimal("0.50")
-    if item.stocktype.dept_id==1 and qty==4.0: price=price-Decimal("1.00")
-    return price
 
 # Suggested sale price algorithm
 
@@ -231,7 +224,6 @@ std={
     'currency':"£",
     'all_payment_methods':all_payment_methods,
     'payment_methods':payment_methods,
-    'pricepolicy':haymakers_pricepolicy,
     'priceguess':haymakers_priceguess,
     'database':'dbname=haymakers',
     'allow_tabs':True,
@@ -334,8 +326,7 @@ kb1={
             ("B14",notekey('K_TENNER','£10',cash,Decimal("10.00"))),
             ("A14",notekey('K_FIVER','£5',cash,Decimal("5.00"))),
             ("E13",K_QUANTITY),
-            ("E12",modkey('K_DOUBLE','Double',Decimal(2),['25ml','50ml'])),
-            ("A02",modkey('K_4JUG','4pt jug',Decimal(4),['pt'])),
+            ("A02",K_MARK),
             # Departments
             ("H12",deptkey(8,checkfunction=check_misc)),
             ("H13",deptkey(11)),
@@ -380,6 +371,7 @@ kb1={
             ("E09",linekey(34)),
             ("E10",linekey(35)),
             ("E11",linekey(36)),
+            ("E12",linekey(81)), # Used to be "Double"
             ("D03",linekey(37)),
             ("D04",linekey(38)),
             ("D05",linekey(39)),

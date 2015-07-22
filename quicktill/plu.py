@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from . import pricecheck
-from . import ui,td,keyboard,user,tillconfig,linekeys
+from . import ui,td,keyboard,user,tillconfig,linekeys,modifiers
 from .models import PriceLookup,Department
 from decimal import Decimal
 import logging
@@ -166,7 +166,8 @@ class modify(user.permission_checked,ui.dismisspopup):
         except IndexError:
             return
         self.dismiss()
-        linekeys.changebinding(line.userdata,func=lambda:modify(self.plu))
+        linekeys.changebinding(line.userdata,lambda:modify(self.plu),
+                               modifiers.defined_modifiers())
     def deletebinding(self):
         try:
             line=self.kbs.dl.pop(self.kbs.cursor)
