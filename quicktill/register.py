@@ -493,7 +493,9 @@ class page(ui.basicpage):
         # If we are repeating a PLU button press, we don't have to do
         # many of the usual checks.  If it's the same PLU again, just
         # increase the number of items
-        may_repeat=hasattr(self.repeat,'plu') and self.repeat.plu==plu.id
+        may_repeat=hasattr(self.repeat,'plu') \
+                    and self.repeat.plu==plu.id \
+                    and self.repeat.mod==mod
 
         trans=self.gettrans() # Zaps self.repeat
         if trans is None: return # Will already be displaying an error.
@@ -558,7 +560,7 @@ class page(ui.basicpage):
         td.s.flush()
         td.s.refresh(tl,['time']) # load time from database
         self.dl.append(tline(tl.id))
-        self.repeat=repeatinfo(plu=plu.id)
+        self.repeat=repeatinfo(plu=plu.id,mod=mod)
         td.s.expire(self.trans,['total'])
         self.update_balance()
         self.cursor_off()
