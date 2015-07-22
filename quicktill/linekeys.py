@@ -148,8 +148,10 @@ def changebinding(binding,func,available_modifiers):
 
     """
     td.s.add(binding)
-    blurb=["Choose the new default modifier for {}.".format(
-               binding.name)]
+    blurb=["","Choose the new default modifier for {} when accessed through "
+           "{} option {}.".format(
+               binding.name,keyboard.__dict__[binding.keycode].keycap,
+               keyboard.__dict__[binding.menukey].keycap)]
     ml=[(name,_finish_changebinding,(binding,func,name))
         for name in available_modifiers]
     ml=[("No modifier",_finish_changebinding,(binding,func,None))]+ml
