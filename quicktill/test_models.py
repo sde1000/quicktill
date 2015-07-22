@@ -112,14 +112,14 @@ class ModelTest(unittest.TestCase):
     def test_keyboard_binding_unambigous_constraint(self):
         stockline,plu=self.template_stockline_and_plu_setup()
         self.s.add(models.KeyboardBinding(
-            keycode='FOO',menukey='BAR',qty=1,
+            keycode='FOO',menukey='BAR',
             stockline=stockline,plu=plu))
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
     def test_keyboard_binding_useful_constraint(self):
         self.s.add(models.KeyboardBinding(
-            keycode='FOO',menukey='BAR',qty=1))
+            keycode='FOO',menukey='BAR'))
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
