@@ -494,13 +494,15 @@ class page(ui.basicpage):
         # many of the usual checks.  If it's the same PLU again, just
         # increase the number of items
         may_repeat=hasattr(self.repeat,'plu') and self.repeat.plu==plu.id
+
+        trans=self.gettrans() # Zaps self.repeat
+        if trans is None: return # Will already be displaying an error.
+
         # Check for an explicit price
         explicitprice=None
         if buf:
             explicitprice=self._read_explicitprice(buf,plu.department)
             if not explicitprice: return # Error popup already in place
-
-        trans=self.gettrans() # Zaps self.repeat
 
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
