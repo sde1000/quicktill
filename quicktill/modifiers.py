@@ -9,17 +9,18 @@ class Incompatible(Exception):
     def __init__(self,msg=None):
         self.msg=msg
 
-# XXX it might be nice to do something here so that modifiers don't
-# have to be instantiated to be used if they don't need extra
-# information passing in on instantiation.  Otherwise typical config
-# files will have tedious redundancy in them.
+# Dictionary of all registered modifiers, allowing modifier instances
+# to be looked up using the modifier name
+all={}
 
 class BaseModifier(object):
     """The base modifier.  Not compatible with anything.
 
     """
     def __init__(self,name):
+        global all
         self.name=name
+        all[name]=self
     def mod_stockline(self,stockline,transline):
         raise Incompatible("The '{}' modifier can't be used with stocklines."
                            .format(self.name))
@@ -30,11 +31,27 @@ class BaseModifier(object):
     def description(self):
         return inspect.cleandoc(self.__doc__)
 
-class Half(BaseModifier):
+class RegisterSimpleModifier(type):
+    """Metaclass that automatically instantiates modifiers using their
+    class name.
+
+    """
+    def __init__(cls,name,bases,attrs):
+        if name!="SimpleModifier":
+            cls(name=name)
+
+class SimpleModifier(BaseModifier):
+    """Modifiers created as a subclass of this register themselves
+    automatically using the class name.  They shouldn't have their own
+    __init__ methods.  Their methods can access the modifier name as
+    self.name.
+
+    """
+    __metaclass__=RegisterSimpleModifier
+
+class Half(SimpleModifier):
     """Half pint modifier.  Sets the serving size to 0.5 when used with
     items sold in pints.
-
-    This is a test to see what happens with a second paragraph.
 
     """
     def mod_stockline(self,stockline,transline):
@@ -48,13 +65,12 @@ class Half(BaseModifier):
         transline.stockref.qty=transline.stockref.qty*Decimal("0.5")
         transline.text="{} half pint".format(st.format())
 
-class Test(BaseModifier):
+class Test(SimpleModifier):
     """Test modifier.  Uses alt price 1 if the note is 'Wine', rejects
     otherwise.
 
     """
-    @classmethod
-    def mod_plu(cls,plu,transline):
+    def mod_plu(self,plu,transline):
         if plu.note!='Wine':
             raise Incompatible(
                 "This modifier can only be used with wine; the Note field "
@@ -64,11 +80,6 @@ class Test(BaseModifier):
                 "The {} price lookup does not have alternative price 1 set."
                 .format(plu.description))
         transline.amount=plu.altprice1
-
-all={
-    'Half':Half("Half"),
-    'Test':Test("Test"),
-}
 
 class modify(user.permission_checked,ui.listpopup):
     permission_required=('alter-modifier','Alter the key bindings for a modifier')
@@ -110,7 +121,9 @@ class modify(user.permission_checked,ui.listpopup):
         td.s.flush()
 
 def defined_modifiers():
-    # XXX testing only
+    """Return a list of all modifiers.
+
+    """
     return all.keys()
 
 class modifiermenu(ui.menu):
