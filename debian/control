@@ -6,7 +6,7 @@ Maintainer: Stephen Early <sde@individualpubs.co.uk>
 Build-Depends: debhelper (>= 5), python2.7
 Standards-Version: 3.7.2
 
-Package: quicktill1
+Package: quicktill2
 Architecture: all
 Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml, python-odf, python-twitter, python-requests-oauthlib, python-cups
 Conflicts: quicktill

@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH RUNTILL 1 "2014-09-30"
+.TH RUNTILL 1 "2015-07-22"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -52,6 +52,10 @@ The default is 'default'.
 .B \-d, \-\-database DATABASE
 Override the database connection indicated in the configuration file.
 .TP
+.B \-f, \-\-user USER
+User ID to use when no other user information is available (use 'listusers'
+command to check IDs)
+.TP
 .B \-y, \-\-log\-config LOGCONFIG
 Specify a YAML log configuration file.
 .TP
@@ -93,9 +97,16 @@ STDOUT.  With one argument, reads and processes a database setup file.
 Adds a superuser to the database.  This is necessary during setup;
 that user can then create new ordinary users.
 .TP
+.B listusers
+List active users.
+.TP
 .B totals [ \-\-days DAYS ]
 Display a table of session totals, by default for the last 40 days.
 Override this with the \-\-days option.
+.TP
+.B twitter-auth [ \-\-consumer-key KEY ] [ \-\-consumer-secret SECRET ]
+Generate tokens for Twitter login; produces a fragment of code to
+be copied into the configuration file.
 
 .SH AUTHOR
 .B quicktill
