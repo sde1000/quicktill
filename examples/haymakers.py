@@ -19,6 +19,7 @@ from quicktill import timesheets
 from quicktill.cash import CashPayment
 from quicktill.card import CardPayment
 from quicktill.bitcoin import BitcoinPayment
+from quicktill import modifiers
 from decimal import Decimal,ROUND_UP
 import datetime
 import socket,struct
@@ -41,6 +42,91 @@ user.group('skilled-user','Skilled user [group]',
            user.default_groups.skilled_user)
 user.group('manager','Pub manager [group]',
            user.default_groups.manager)
+
+class Half(modifiers.SimpleModifier):
+    """When used with a stock line, checks that the item is sold in pints
+    and then sets the serving size to 0.5 and halves the price.
+
+    When used with a price lookup, checks that the department is 7
+    (soft drinks) and halves the price.
+
+    """
+    def mod_stockline(self,stockline,transline):
+        st=transline.stockref.stockitem.stocktype
+        if st.unit_id!='pt':
+            raise modifiers.Incompatible(
+                "The {} modifier can only be used with stock "
+                "that is sold in pints.".format(self.name))
+        # There may not be a price at this point
+        if transline.amount: transline.amount=transline.amount/2
+        transline.stockref.qty=transline.stockref.qty*Decimal("0.5")
+        transline.text="{} half pint".format(st.format())
+    def mod_plu(self,plu,transline):
+        if plu.dept_id!=7:
+            raise modifiers.Incompatible(
+                "The {} modifier can only be used with stock that is "
+                "sold in pints.".format(self.name))
+        if transline.amount: transline.amount=transline.amount/2
+        transline.text="{} half pint".format(transline.text)
+
+class Double(modifiers.SimpleModifier):
+    """When used with a stock line, checks that the item is sold in 25ml
+    or 50ml measures and then sets the serving size to 2, doubles the
+    price, and subtracts 50p.
+
+    """
+    def mod_stockline(self,stockline,transline):
+        st=transline.stockref.stockitem.stocktype
+        if st.unit_id not in ('25ml','50ml'):
+            raise modifiers.Incompatible(
+                "The {} modifier can only be used with spirits."\
+                .format(self.name))
+        # There may not be a price at this point
+        if transline.amount:
+            transline.amount=transline.amount*Decimal(2)-Decimal("0.50")
+        transline.stockref.qty=transline.stockref.qty*Decimal(2)
+        transline.text="{} double {}".format(st.format(),st.unit.name)
+
+class Staff(modifiers.SimpleModifier):
+    """Used to set the staff price on coffee capsules.
+
+    """
+    def mod_stockline(self,stockline,transline):
+        st=transline.stockref.stockitem.stocktype
+        if st.manufacturer!="Nespresso":
+            raise modifiers.Incompatible(
+                "The {} modifier can only be used with coffee capsules."\
+                .format(self.name))
+        # There may not be a price at this point
+        transline.amount=Decimal("0.50")
+        transline.text="{} {} staff price".format(st.format(),st.unit.name)
+
+class Wine(modifiers.BaseModifier):
+    """Wine serving modifier.  Can only be used with price lookups.
+
+    Checks that the PLU department is 9 (wine) and then selects the
+    appropriate alternative price; small is alt price 1, large is alt
+    price 3.
+
+    """
+    def __init__(self,name,text,field):
+        super(Wine,self).__init__(name)
+        self.text=text
+        self.field=field
+    def mod_plu(self,plu,transline):
+        if plu.dept_id!=9:
+            raise modifiers.Incompatible(
+                "This modifier can only be used with wine.")
+        price=getattr(plu,self.field)
+        if not price:
+            raise modifiers.Incompatible(
+                "The {} price lookup does not have {} set."
+                .format(plu.description,self.field))
+        transline.amount=price
+        transline.text=transline.text+" "+self.text
+Wine("Small","125ml glass","altprice1")
+Wine("Medium","175ml glass","altprice2")
+Wine("Large","250ml glass","altprice3")
 
 def check_soft_drinks(dept,price):
     if price not in [0.50,1.00,2.00]:

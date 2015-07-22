@@ -61,38 +61,6 @@ class SimpleModifier(BaseModifier):
     """
     __metaclass__=RegisterSimpleModifier
 
-class Half(SimpleModifier):
-    """Half pint modifier.  Sets the serving size to 0.5 and halves the
-    price when used with items sold in pints.
-
-    """
-    def mod_stockline(self,stockline,transline):
-        st=transline.stockref.stockitem.stocktype
-        if st.unit_id!='pt':
-            raise Incompatible(
-                "The {} modifier can only be used with stock "
-                "that is sold in pints.".format(self.name))
-        # There may not be a price at this point
-        if transline.amount: transline.amount=transline.amount/2
-        transline.stockref.qty=transline.stockref.qty*Decimal("0.5")
-        transline.text="{} half pint".format(st.format())
-
-class Test(SimpleModifier):
-    """Test modifier.  Uses alt price 1 if the note is 'Wine', rejects
-    otherwise.
-
-    """
-    def mod_plu(self,plu,transline):
-        if plu.note!='Wine':
-            raise Incompatible(
-                "This modifier can only be used with wine; the Note field "
-                "of the price lookup must be set to 'Wine'.")
-        if not plu.altprice1:
-            raise Incompatible(
-                "The {} price lookup does not have alternative price 1 set."
-                .format(plu.description))
-        transline.amount=plu.altprice1
-
 class modify(user.permission_checked,ui.listpopup):
     permission_required=('alter-modifier','Alter the key bindings for a modifier')
     def __init__(self,name):
@@ -140,7 +108,7 @@ def defined_modifiers():
     """Return a list of all modifiers.
 
     """
-    return all.keys()
+    return sorted(all.keys())
 
 class modifiermenu(ui.menu):
     def __init__(self):
