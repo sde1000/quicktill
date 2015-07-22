@@ -229,4 +229,6 @@ class plumenu(ui.listpopup):
         else:
             ui.listpopup.keypress(self,k)
     def plu_selected(self,kb):
-        pass
+        self.dismiss()
+        td.s.add(kb)
+        modify(kb.plu)

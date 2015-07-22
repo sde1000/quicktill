@@ -67,23 +67,40 @@ def restartmenu():
         ]
     ui.keymenu(menu,title="Exit / restart options")
 
-def slmenu():
-    log.info("Stock line / PLU management popup")
-    menu=[
-        (keyboard.K_ONE,"Stock lines",stocklines.stocklinemenu,None),
-        (keyboard.K_TWO,"Price lookups",plu.plumenu,None),
-        (keyboard.K_THREE,"Modifiers",modifiers.modifiermenu,None),
-        (keyboard.K_FOUR,"List stock lines with no key bindings",
-         stocklines.listunbound,None),
-        (keyboard.K_FIVE,"List price lookups with no key bindings",
-         plu.listunbound,None),
-        (keyboard.K_SIX,"Return items from display to stock",
-         stocklines.selectline,
-         (stocklines.return_stock,"Return Stock",
-          "Select the stock line to remove from display",True)),
-        (keyboard.K_SEVEN,"Edit key labels",linekeys.edit_keycaps,None),
+class slmenu(ui.keymenu):
+    def __init__(self):
+        log.info("Stock line / PLU management popup")
+        menu=[
+            (keyboard.K_ONE,"Stock lines",stocklines.stocklinemenu,None),
+            (keyboard.K_TWO,"Price lookups",plu.plumenu,None),
+            (keyboard.K_THREE,"Modifiers",modifiers.modifiermenu,None),
+            (keyboard.K_FOUR,"List stock lines with no key bindings",
+             stocklines.listunbound,None),
+            (keyboard.K_FIVE,"List price lookups with no key bindings",
+             plu.listunbound,None),
+            (keyboard.K_SIX,"Return items from display to stock",
+             stocklines.selectline,
+             (stocklines.return_stock,"Return Stock",
+              "Select the stock line to remove from display",True)),
+            (keyboard.K_SEVEN,"Edit key labels",linekeys.edit_keycaps,None),
         ]
-    ui.keymenu(menu,title="Stock line and PLU options")
+        ui.keymenu.__init__(
+            self,menu,title="Stock line and PLU options",
+            blurb="You can press a line key here to go directly to "
+            "editing stock lines, price lookups and modifiers that are "
+            "already bound to it.")
+    def keypress(self,k):
+        if hasattr(k,'line'):
+            linekeys.linemenu(k,self.line_selected,allow_stocklines=True,
+                              allow_plus=True,allow_mods=True)
+        else:
+            ui.keymenu.keypress(self,k)
+    def line_selected(self,kb):
+        self.dismiss()
+        td.s.add(kb)
+        if kb.stockline: stocklines.modify(kb.stockline)
+        elif kb.plu: plu.modify(kb.plu)
+        else: modifiers.modify(kb.modifier)
 
 def netinfo():
     log.info("Net info popup")

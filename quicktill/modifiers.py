@@ -79,6 +79,7 @@ class modify(user.permission_checked,ui.listpopup):
         bindings=td.s.query(KeyboardBinding).\
                   filter(KeyboardBinding.stockline==None).\
                   filter(KeyboardBinding.plu==None).\
+                  filter(KeyboardBinding.modifier==name).\
                   all()
         f=ui.tableformatter(' l   c ')
         kbl=linekeys.keyboard_bindings_table(bindings,f)
@@ -119,3 +120,13 @@ class modifiermenu(ui.menu):
                          "or press a line key that is already bound to the "
                          "modifier.",
                          title="Modifiers")
+    def keypress(self,k):
+        if hasattr(k,'line'):
+            linekeys.linemenu(k,self.mod_selected,allow_stocklines=False,
+                              allow_plus=False,allow_mods=True)
+        else:
+            ui.menu.keypress(self,k)
+    def mod_selected(self,kb):
+        self.dismiss()
+        td.s.add(kb)
+        modify(kb.modifier)
