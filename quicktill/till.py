@@ -357,9 +357,6 @@ def main():
         printer.driver=pdrivers.nullprinter()
     if args.disable_printer:
         printer.driver=pdrivers.nullprinter(name="disabled-printer")
-    if 'labelprinter' in config:
-        log.warning("Deprecated config option 'labelprinter' in use")
-        printer.labelprinters=[config['labelprinter']]
     if 'labelprinters' in config:
         printer.labelprinters=config['labelprinters']
     tillconfig.database=config.get('database')
