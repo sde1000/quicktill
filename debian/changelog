@@ -1,3 +1,69 @@
+quicktill (0.11.0) stable; urgency=low
+
+  * New release 0.11.0
+
+  * Package conflicts with and replaces the previous version
+
+  * Add more documentation
+
+  * Remove support for deprecated 'labelprinter' option
+
+  * Update package name in build script
+
+  * Remove qty from KeyboardBinding unit tests
+
+  * Move example modifiers to example config file
+
+  * Tighten the restrictions on repeating PLUs
+
+  * Improve the "modify keyboard binding" help text
+
+  * Deal with obsolete modifiers in the database
+
+  * Automatically handle registry of modifiers
+
+  * Update packaging information
+
+  * Add shortcuts to editing windows for stocklines, PLUs and modifiers
+
+  * Check for session before checking for explicit price
+
+  * List unbound PLUs popup, binding creation fixes
+
+  * Remove reference to qty when creating keyboard binding
+
+  * Tillweb additions for price lookups
+
+  * First working version of new modifier system
+
+  * Work in progress: first version of modifiers menu
+
+  * Work in progress: price lookups
+
+  * Deal with scrollables that have no contents and no lastline
+
+  * Add network information popup
+
+  * Move stock line menu into managetill module
+
+  * Move the linemenu function to the linekeys module
+
+  * Rename managekeyboard to linekeys
+
+  * Rename plu to pricecheck
+
+  * Move the calculate_sale function into the StockLine model
+
+  * Model changes for new PLU feature
+
+  * Add display capacity and pullthru to stockline menu
+
+  * Fix Caps Lock issue with keyboard driver
+
+  * Remove list of modules from init file
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Wed, 22 Jul 2015 21:05:04 +0100
+
 quicktill (0.10.57) stable; urgency=low
 
   * New release 0.10.57
