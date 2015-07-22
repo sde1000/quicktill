@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from . import pricecheck
 from . import ui,td,keyboard,user,tillconfig,linekeys,modifiers
-from .models import PriceLookup,Department
+from .models import PriceLookup,Department,KeyboardBinding
 from decimal import Decimal
 import logging
 log=logging.getLogger(__name__)
@@ -12,9 +12,6 @@ def popup():
     log.warning(
         "Config file needs updating: import popup from pricecheck not plu")
     pricecheck.popup()
-
-def listunbound():
-    pass
 
 def _decimal_or_none(x):
     return Decimal(x) if x else None
@@ -123,7 +120,8 @@ class modify(user.permission_checked,ui.dismisspopup):
         # Handle keypresses that the fields pass up to the main popup
         if hasattr(k,'line'):
             self.dismiss()
-            linekeys.addbinding(self.plu,k,func=lambda:modify(self.plu))
+            linekeys.addbinding(self.plu,k,lambda:modify(self.plu),
+                                modifiers.defined_modifiers())
     def save(self):
         td.s.add(self.plu)
         if self.descfield.f=='':
@@ -177,6 +175,34 @@ class modify(user.permission_checked,ui.dismisspopup):
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
+
+class listunbound(ui.listpopup):
+    """Pop up a list of price lookups with no key bindings on any keyboard.
+
+    """
+    def __init__(self):
+        l=td.s.query(PriceLookup).outerjoin(KeyboardBinding).\
+            filter(KeyboardBinding.pluid==None).\
+            all()
+        if len(l)==0:
+            ui.infopopup(
+                ["There are no price lookups that lack key bindings.",
+                 "","Note that other tills may have key bindings to "
+                 "a price lookup even if this till doesn't."],
+                title="Unbound price lookups",colour=ui.colour_info,
+                dismiss=keyboard.K_CASH)
+            return
+        f=ui.tableformatter(' l l ')
+        headerline=f("Description","Note")
+        self.ll=[f(x.description,x.note,userdata=x) for x in l]
+        ui.listpopup.__init__(self,self.ll,title="Unbound price lookups",
+                              colour=ui.colour_info,header=[headerline])
+    def keypress(self,k):
+        if k==keyboard.K_CASH:
+            self.dismiss()
+            modify(self.ll[self.s.cursor].userdata)
+        else:
+            ui.listpopup.keypress(self,k)
 
 class plumenu(ui.listpopup):
     def __init__(self):

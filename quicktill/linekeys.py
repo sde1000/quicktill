@@ -66,9 +66,10 @@ class addbinding(ui.listpopup):
     """Add a binding for a stockline, PLU or modifier to the database.
 
     """
-    def __init__(self,target,keycode,func):
+    def __init__(self,target,keycode,func,available_modifiers=None):
         self.func=func
         self.target=target
+        self.available_modifiers=available_modifiers
         if isinstance(target,StockLine) or isinstance(target,PriceLookup):
             td.s.add(target)
         self.name=target.name
@@ -137,8 +138,8 @@ class addbinding(ui.listpopup):
         td.s.add(binding)
         td.s.flush()
         self.dismiss()
-        if binding.stockline or binding.plu:
-            changebinding(binding,self.func)
+        if self.available_modifiers:
+            changebinding(binding,self.func,self.available_modifiers)
         else:
             self.func()
 

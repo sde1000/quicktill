@@ -288,7 +288,8 @@ class modify(user.permission_checked,ui.dismisspopup):
         elif hasattr(k,'line'):
             self.dismiss()
             linekeys.addbinding(self.stockline,k,
-                                func=lambda:modify(self.stockline))
+                                lambda:modify(self.stockline),
+                                modifiers.defined_modifiers())
     def save(self):
         td.s.add(self.stockline)
         if (self.namefield.f=='' or self.locfield.f==''):
