@@ -31,6 +31,18 @@ class BaseModifier(object):
     def description(self):
         return inspect.cleandoc(self.__doc__)
 
+class BadModifier(BaseModifier):
+    """This modifier exists in the database, but is not defined in the
+    configuration file.  It can't be used with any stock line or price
+    lookup.  You should either declare it in the configuration file,
+    or delete its keyboard bindings.
+
+    If you modify the configuration file, you must restart the till
+    software to pick up the changes.
+
+    """
+    pass
+
 class RegisterSimpleModifier(type):
     """Metaclass that automatically instantiates modifiers using their
     class name.
@@ -50,8 +62,8 @@ class SimpleModifier(BaseModifier):
     __metaclass__=RegisterSimpleModifier
 
 class Half(SimpleModifier):
-    """Half pint modifier.  Sets the serving size to 0.5 when used with
-    items sold in pints.
+    """Half pint modifier.  Sets the serving size to 0.5 and halves the
+    price when used with items sold in pints.
 
     """
     def mod_stockline(self,stockline,transline):
@@ -84,7 +96,11 @@ class Test(SimpleModifier):
 class modify(user.permission_checked,ui.listpopup):
     permission_required=('alter-modifier','Alter the key bindings for a modifier')
     def __init__(self,name):
-        # XXX might not exist!
+        # If the modifier does not exist, create it so that its
+        # keyboard bindings can be deleted.
+        global all
+        if name not in all:
+            BadModifier(name=name)
         mod=all[name]
         self.name=name
         bindings=td.s.query(KeyboardBinding).\
