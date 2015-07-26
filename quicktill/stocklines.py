@@ -210,18 +210,16 @@ class create(user.permission_checked,ui.dismisspopup):
             return
         self.dismiss()
         self.func(sl)
+        if sl.linetype=="regular":
+            # If creating a regular stock line, prompt the user for the
+            # initial stock item - if they don't want to specify one they
+            # can just dismiss the popup
+            ui.handle_keyboard_input(keyboard.K_USESTOCK)
 
 class modify(user.permission_checked,ui.dismisspopup):
     """
     Modify a stockline.  Shows the name and location, and allows any
     pull-through amount or display capacity to be edited.
-
-    Buttons:
-      Save    Delete    Use Stock
-
-    List of current keyboard bindings; when one of these is
-    highlighted, you can press Enter to edit the quantity or Cancel to
-    remove the binding.
 
     """
     permission_required=('alter-stockline','Modify or delete an existing stock line')
@@ -256,16 +254,22 @@ class modify(user.permission_checked,ui.dismisspopup):
             fl.append(self.capacityfield)
         self.savebutton=ui.buttonfield(7,2,8,"Save",keymap={
                 keyboard.K_CASH: (self.save,None)})
-        self.deletebutton=ui.buttonfield(7,14,10,"Delete",keymap={
+        self.deletebutton=ui.buttonfield(7,12,10,"Delete",keymap={
                 keyboard.K_CASH: (self.delete,None)})
         # Stock control terminals won't have a dedicated "Use Stock"
         # button.  This button fakes that keypress.
-        self.usestockbutton=ui.buttonfield(7,28,13,"Use Stock",keymap={
+        self.usestockbutton=ui.buttonfield(7,25,13,"Use Stock",keymap={
                 keyboard.K_CASH: (
                     lambda:ui.handle_keyboard_input(keyboard.K_USESTOCK),None)})
+        sid=stockline.id
+        self.associationbutton=ui.buttonfield(
+            7,40,16,"Associations",keymap={
+                keyboard.K_CASH: (
+                    lambda:stockline_associations(stocklines=[sid]),None)})
         fl.append(self.savebutton)
         fl.append(self.deletebutton)
         fl.append(self.usestockbutton)
+        fl.append(self.associationbutton)
         self.addstr(9,2,'Press "Use Stock" to add or remove stock.')
         self.addstr(11,2,"To add a keyboard binding, press a line key now.")
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
