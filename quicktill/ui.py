@@ -749,11 +749,12 @@ class scrollable(field):
         """
         if self.cursor<self.top or self.show_cursor==False:
             self.top=self.cursor
+        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
+        if self.cursor>=end_of_displaylist: self.cursor=end_of_displaylist-1
         lastitem=self.drawdl()
         while self.cursor>lastitem:
             self.top=self.top+1
             lastitem=self.drawdl()
-        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
         self.display_complete=(lastitem==end_of_displaylist-1)
     def cursor_up(self,n=1):
         if self.cursor==0:
