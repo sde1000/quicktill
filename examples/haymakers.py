@@ -10,7 +10,7 @@ from quicktill.pdrivers import nullprinter,linux_lpprinter,netprinter,commandpri
 from quicktill import register,ui,kbdrivers,stockterminal,user
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
-from quicktill.plu import popup as plu
+from quicktill.pricecheck import popup as pricecheck
 from quicktill.usestock import popup as usestock
 from quicktill.recordwaste import popup as recordwaste
 from quicktill import lockscreen
@@ -282,7 +282,7 @@ def panickey():
                  dismiss=K_CASH)
 
 register_hotkeys={
-    K_PRICECHECK: plu,
+    K_PRICECHECK: pricecheck,
     K_MANAGETILL: managetill,
     K_MANAGESTOCK: managestock,
     K_USESTOCK: usestock,

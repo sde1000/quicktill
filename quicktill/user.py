@@ -649,6 +649,7 @@ class default_groups(object):
         "kitchen-message",
         "kitchen-order",
         "edit-transaction-note",
+        "price-check",
         ])
     skilled_user=set([
         "basic-user",

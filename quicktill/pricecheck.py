@@ -3,7 +3,7 @@
 """
 
 from __future__ import unicode_literals
-from . import td,ui,keyboard,stock,linekeys
+from . import td,ui,keyboard,stock,linekeys,user,modifiers,tillconfig
 
 class pricecheck_keypress(object):
     """
@@ -15,14 +15,17 @@ class pricecheck_keypress(object):
     def keypress(self,k):
         if hasattr(k,"line"):
             self.dismiss()
-            bindings=linekeys.linemenu(k,pricecheck_window)
+            bindings=linekeys.linemenu(k,pricecheck_window,
+                                       allow_stocklines=True,allow_plus=True,
+                                       allow_mods=True)
             if bindings==0:
-                popup(prompt="There are no options on key \"%s\".  Press "
-                      "another line key."%k.keycap)
+                popup(prompt="There are no options on key \"{}\".  Press "
+                      "another line key.".format(k.keycap))
         else:
             super(pricecheck_keypress,self).keypress(k)
 
-class popup(pricecheck_keypress,ui.infopopup):
+class popup(user.permission_checked,pricecheck_keypress,ui.infopopup):
+    permission_required=("price-check","Check prices without selling anything")
     def __init__(self,prompt="Press a line key."):
         ui.infopopup.__init__(
             self,[prompt],title="Price Check",
@@ -58,24 +61,61 @@ class pricecheck_stockitem(pricecheck_keypress,ui.listpopup):
                               show_cursor=False,
                               colour=ui.colour_info)
 
-def pricecheck_window(kb):
+class pricecheck_plu(pricecheck_keypress,ui.listpopup):
+    """A price lookup.
+
     """
-    Given a keyboard binding, display a suitable popup window for
-    information about it.  We're choosing between three classes
+    def __init__(self,plu):
+        l=["",
+           " Description: {}".format(plu.description),
+           "        Note: {}".format(plu.note or ""),
+           "       Price: {}".format(tillconfig.fc(plu.price)),
+           "",
+           " Alternative price 1: {}".format(tillconfig.fc(plu.altprice1)),
+           " Alternative price 2: {}".format(tillconfig.fc(plu.altprice1)),
+           " Alternative price 3: {}".format(tillconfig.fc(plu.altprice1)),
+           ""]
+        ui.listpopup.__init__(self,l,title="Price Lookup",
+                              dismiss=keyboard.K_CASH,show_cursor=False,
+                              colour=ui.colour_info)
+
+class pricecheck_modifier(pricecheck_keypress,ui.infopopup):
+    """A modifier key.
+
+    """
+    def __init__(self,modifier):
+        if modifier not in modifiers.all:
+            l=["This modifier does not exist."]
+        else:
+            mod=modifiers.all[modifier]
+            l=mod.description.split('\n\n')
+        ui.infopopup.__init__(self,l,title=modifier,
+                              dismiss=keyboard.K_CASH,
+                              colour=ui.colour_info)
+
+def pricecheck_window(kb):
+    """Given a keyboard binding, display a suitable popup window for
+    information about it.  We're choosing between classes
     defined in this file:
 
-    no stock -> popup prompt
-    line with capacity -> list of items on sale
-    line without capacity -> stock info
+    modifier -> description of the modifier
+    price lookup -> info about the PLU
+    stockline with no stock -> popup prompt
+    stockline with capacity -> list of items on sale
+    stockline without capacity -> stock info
 
     """
     td.s.add(kb)
-    sos=kb.stockline.stockonsale
-    if len(sos)==0:
-        popup("There is no stock on '%s'.  Press another line key."%
-              kb.stockline.name)
-        return
-    if kb.stockline.capacity:
-        pricecheck_line_with_capacity(kb.stockline)
+    if kb.stockline:
+        sos=kb.stockline.stockonsale
+        if len(sos)==0:
+            popup("There is no stock on sale on '{}'.  Press another "
+                  "line key.".format(kb.stockline.name))
+        elif kb.stockline.capacity:
+            pricecheck_line_with_capacity(kb.stockline)
+        else:
+            pricecheck_stockitem(sos[0])
+    elif kb.plu:
+        pricecheck_plu(kb.plu)
     else:
-        pricecheck_stockitem(sos[0])
+        pricecheck_modifier(kb.modifier)

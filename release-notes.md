@@ -31,3 +31,5 @@ In the configuration file you must make the following changes:
  - remove the deptkeycheck function if you have not already done so
  - add definitions for all the modifier keys you plan to use; follow
    the Haymakers example config file where possible
+ - change "from quicktill.plu import popup as plu" to "from
+   quicktill.pricecheck import popup as plu"
