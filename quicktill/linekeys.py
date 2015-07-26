@@ -126,6 +126,7 @@ class addbinding(ui.listpopup):
             return self.func()
         if k in keyboard.cursorkeys:
             return ui.listpopup.keypress(self,k)
+        if not hasattr(k,"name"): return
         if k.name in self.exdict: return
         if isinstance(self.target,StockLine):
             args={'stockline':self.target}
