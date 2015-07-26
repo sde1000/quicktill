@@ -1,3 +1,21 @@
+quicktill (0.11.1) stable; urgency=low
+
+  * New release 0.11.1
+
+  * Prompt for initial stock on regular stocklines
+
+  * Don't dismiss the stockline and PLU popups while editing bindings
+
+  * Improvements to ui.scrollable
+
+  * Line menu keys must have names
+
+  * Don't hang when cursor is past the end of a scrollable on redraw
+
+  * Add price lookups and modifiers to price check function
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Sun, 26 Jul 2015 18:08:25 +0100
+
 quicktill (0.11.0) stable; urgency=low
 
   * New release 0.11.0
