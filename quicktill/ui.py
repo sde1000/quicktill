@@ -653,6 +653,11 @@ class scrollable(field):
     Where the scrollable is being used for entry of a list of items,
     the last line may be blank/inverse as a prompt.
 
+    self.cursor is the index into dl that is highlighted as the
+    current position.  If "lastline" is selected, self.cursor is at
+    len(self.dl).  If dl is empty and lastline is not present,
+    self.cursor is set to None.
+
     """
     def __init__(self,y,x,width,height,dl,show_cursor=True,
                  lastline=None,default=0,keymap={}):
@@ -661,26 +666,31 @@ class scrollable(field):
         self.x=x
         self.w=width
         self.h=height
-        self.dl=dl
         self.show_cursor=show_cursor
         self.lastline=lastline
         self.cursor=default
         self.top=0
-        self.redraw()
+        self.set(dl)
     def set(self,dl):
         self.dl=dl
-        if self.cursor>=len(self.dl): self.cursor=max(0,len(self.dl)-1)
         self.sethook()
-        self.redraw()
+        self.redraw() # Does implicit set_cursor()
+    def set_cursor(self,c):
+        if len(self.dl)==0 and not self.lastline:
+            self.cursor=None
+            return
+        if c is None or c<0: c=0
+        last_valid_cursor=len(self.dl) if self.lastline else len(self.dl)-1
+        if c>last_valid_cursor: c=last_valid_cursor
+        self.cursor=c
     def focus(self):
         # If we are obtaining the focus from the previous field, we should
         # move the cursor to the top.  If we are obtaining it from the next
         # field, we should move the cursor to the bottom.  Otherwise we
         # leave the cursor untouched.
-        if self.prevfield and self.prevfield.focused: self.cursor=0
+        if self.prevfield and self.prevfield.focused: self.set_cursor(0)
         elif self.nextfield and self.nextfield.focused:
-            self.cursor=len(self.dl) if self.lastline else len(self.dl)-1
-            if self.cursor<0: self.cursor=0 # Empty display list
+            self.set_cursor(len(self.dl))
         field.focus(self)
         self.redraw()
     def defocus(self):
@@ -703,6 +713,9 @@ class scrollable(field):
         # are actually displaying a cursor.
         if self.top==1 and self.cursor==1 and self.show_cursor:
             if len(self.dl[0].display(self.w))==1: self.top=0
+        # self.dl may have shrunk since last time self.top was set;
+        # make sure self.top is in bounds
+        if self.top>len(self.dl): self.top=len(self.dl)
         y=self.y
         i=self.top
         lastcomplete=i
@@ -747,24 +760,22 @@ class scrollable(field):
         the cursor line.
 
         """
-        if self.cursor<self.top or self.show_cursor==False:
+        self.set_cursor(self.cursor)
+        if self.cursor is None:
+            self.top=0
+        elif self.cursor<self.top or self.show_cursor==False:
             self.top=self.cursor
         end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
-        if self.cursor>=end_of_displaylist: self.cursor=end_of_displaylist-1
         lastitem=self.drawdl()
-        while self.cursor>lastitem:
+        while self.cursor is not None and self.cursor>lastitem:
             self.top=self.top+1
             lastitem=self.drawdl()
         self.display_complete=(lastitem==end_of_displaylist-1)
-    def cursor_up(self,n=1):
-        if self.cursor==0:
-            if self.prevfield is not None and self.focused:
-                return self.prevfield.focus()
-        else:
-            self.cursor=self.cursor-n
-            if self.cursor<0: self.cursor=0
-        self.redraw()
+    def cursor_at_start(self):
+        if self.cursor is None: return True
+        return self.cursor==0
     def cursor_at_end(self):
+        if self.cursor is None: return True
         if self.show_cursor:
             if self.lastline:
                 return self.cursor>=len(self.dl)
@@ -774,17 +785,19 @@ class scrollable(field):
             return self.display_complete
     def cursor_on_lastline(self):
         return self.cursor==len(self.dl)
+    def cursor_up(self,n=1):
+        if self.cursor_at_start():
+            if self.prevfield is not None and self.focused:
+                return self.prevfield.focus()
+        else:
+            self.set_cursor(self.cursor-n)
+        self.redraw()
     def cursor_down(self,n=1):
         if self.cursor_at_end():
             if self.nextfield is not None and self.focused:
                 return self.nextfield.focus()
         else:
-            self.cursor=self.cursor+n
-            if self.lastline:
-                if self.cursor>len(self.dl): self.cursor=len(self.dl)
-            else:
-                if self.cursor>=len(self.dl):
-                    self.cursor=len(self.dl)-1 if len(self.dl)>0 else 0
+            self.set_cursor(self.cursor+n)
         self.redraw()
     def keypress(self,k):
         if k==keyboard.K_DOWN: self.cursor_down(1)
