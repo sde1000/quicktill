@@ -103,24 +103,20 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.addstr(14,2,"To add a keyboard binding, press a line key now.")
         self.addstr(15,2,"To edit or delete a keyboard binding, choose it ")
         self.addstr(16,2,"below and press Enter or Cancel.")
-        f=ui.tableformatter(' l   c   l ')
-        kbl=linekeys.keyboard_bindings_table(self.plu.keyboard_bindings,f)
-        self.addstr(18,1,f("Line key","Menu key","Default modifier").
-                    display(61)[0])
-        self.kbs=ui.scrollable(19,1,56,4,kbl,keymap={
+        self.kbs=ui.scrollable(19,1,56,4,[],keymap={
                 keyboard.K_CASH: (self.editbinding,None),
                 keyboard.K_CANCEL: (self.deletebinding,None)})
         ui.map_fieldlist([self.descfield,self.notefield,self.deptfield,
                           self.pricefield,self.altprice1,
                           self.altprice2,self.altprice3,
                           self.savebutton,self.deletebutton,self.kbs])
+        self.reload_bindings()
         if focus_on_price: self.pricefield.focus()
         else: self.descfield.focus()
     def keypress(self,k):
         # Handle keypresses that the fields pass up to the main popup
         if hasattr(k,'line'):
-            self.dismiss()
-            linekeys.addbinding(self.plu,k,lambda:modify(self.plu),
+            linekeys.addbinding(self.plu,k,self.reload_bindings,
                                 modifiers.defined_modifiers())
     def save(self):
         td.s.add(self.plu)
@@ -159,22 +155,25 @@ class modify(user.permission_checked,ui.dismisspopup):
                      title="Price Lookup deleted",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
     def editbinding(self):
-        try:
-            line=self.kbs.dl[self.kbs.cursor]
-        except IndexError:
-            return
-        self.dismiss()
-        linekeys.changebinding(line.userdata,lambda:modify(self.plu),
+        if self.kbs.cursor is None: return
+        line=self.kbs.dl[self.kbs.cursor]
+        linekeys.changebinding(line.userdata,self.reload_bindings,
                                modifiers.defined_modifiers())
     def deletebinding(self):
-        try:
-            line=self.kbs.dl.pop(self.kbs.cursor)
-        except IndexError:
-            return
+        if self.kbs.cursor is None: return
+        line=self.kbs.dl.pop(self.kbs.cursor)
         self.kbs.redraw()
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
+    def reload_bindings(self):
+        td.s.add(self.plu)
+        f=ui.tableformatter(' l   c   l ')
+        kbl=linekeys.keyboard_bindings_table(self.plu.keyboard_bindings,f)
+        self.addstr(18,1," "*56)
+        self.addstr(18,1,f("Line key","Menu key","Default modifier").
+                    display(56)[0])
+        self.kbs.set(kbl)
 
 class listunbound(ui.listpopup):
     """Pop up a list of price lookups with no key bindings on any keyboard.

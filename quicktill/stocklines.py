@@ -270,15 +270,12 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.addstr(11,2,"To add a keyboard binding, press a line key now.")
         self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
         self.addstr(13,2,"below and press Enter or Cancel.")
-        f=ui.tableformatter(' l   c   l ')
-        kbl=linekeys.keyboard_bindings_table(self.stockline.keyboard_bindings,f)
-        self.addstr(15,1,f("Line key","Menu key","Default modifier").
-                    display(61)[0])
-        self.kbs=ui.scrollable(16,1,56,4,kbl,keymap={
+        self.kbs=ui.scrollable(16,1,56,4,[],keymap={
                 keyboard.K_CASH: (self.editbinding,None),
                 keyboard.K_CANCEL: (self.deletebinding,None)})
         fl.append(self.kbs)
         ui.map_fieldlist(fl)
+        self.reload_bindings()
         self.namefield.focus()
     def keypress(self,k):
         # Handle keypresses that the fields pass up to the main popup
@@ -286,9 +283,8 @@ class modify(user.permission_checked,ui.dismisspopup):
             from . import usestock
             usestock.line_chosen(self.stockline)
         elif hasattr(k,'line'):
-            self.dismiss()
             linekeys.addbinding(self.stockline,k,
-                                lambda:modify(self.stockline),
+                                self.reload_bindings,
                                 modifiers.defined_modifiers())
     def save(self):
         td.s.add(self.stockline)
@@ -355,25 +351,26 @@ class modify(user.permission_checked,ui.dismisspopup):
         ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
     def editbinding(self):
-        try:
-            line=self.kbs.dl[self.kbs.cursor]
-        except IndexError:
-            return
-        self.dismiss()
-        # XXX it might be worth filtering the modifiers list to exclude
-        # modifiers that won't work with stock lines
-        linekeys.changebinding(line.userdata,lambda:modify(self.stockline),
+        if self.kbs.cursor is None: return
+        line=self.kbs.dl[self.kbs.cursor]
+        linekeys.changebinding(line.userdata,self.reload_bindings,
                                modifiers.defined_modifiers())
     def deletebinding(self):
         # We should only be called when the scrollable has the focus
-        try:
-            line=self.kbs.dl.pop(self.kbs.cursor)
-        except IndexError:
-            return
+        if self.kbs.cursor is None: return
+        line=self.kbs.dl.pop(self.kbs.cursor)
         self.kbs.redraw()
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
+    def reload_bindings(self):
+        td.s.add(self.stockline)
+        f=ui.tableformatter(' l   c   l ')
+        kbl=linekeys.keyboard_bindings_table(self.stockline.keyboard_bindings,f)
+        self.addstr(15,1," "*56)
+        self.addstr(15,1,f("Line key","Menu key","Default modifier").
+                    display(56)[0])
+        self.kbs.set(kbl)
 
 class listunbound(ui.listpopup):
     """

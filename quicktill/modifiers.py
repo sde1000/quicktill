@@ -4,6 +4,8 @@ from . import ui,td,user,linekeys,keyboard
 from .models import KeyboardBinding
 from decimal import Decimal
 import inspect,itertools
+import logging
+log=logging.getLogger(__name__)
 
 class Incompatible(Exception):
     def __init__(self,msg=None):
@@ -95,10 +97,9 @@ class modify(user.permission_checked,ui.listpopup):
         else:
             super(modify,self).keypress(k)
     def deletebinding(self):
-        try:
-            line=self.s.dl.pop(self.s.cursor)
-        except IndexError:
-            return
+        log.debug("modifier deletebinding: cursor is %s",self.s.cursor)
+        if self.s.cursor is None: return
+        line=self.s.dl.pop(self.s.cursor)
         self.s.redraw()
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
