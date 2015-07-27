@@ -67,13 +67,13 @@ class pricecheck_plu(pricecheck_keypress,ui.listpopup):
     """
     def __init__(self,plu):
         l=["",
-           " Description: {}".format(plu.description),
-           "        Note: {}".format(plu.note or ""),
-           "       Price: {}".format(tillconfig.fc(plu.price)),
+           " Description: {} ".format(plu.description),
+           "        Note: {} ".format(plu.note or ""),
+           "       Price: {} ".format(tillconfig.fc(plu.price)),
            "",
-           " Alternative price 1: {}".format(tillconfig.fc(plu.altprice1)),
-           " Alternative price 2: {}".format(tillconfig.fc(plu.altprice1)),
-           " Alternative price 3: {}".format(tillconfig.fc(plu.altprice1)),
+           " Alternative price 1: {} ".format(tillconfig.fc(plu.altprice1)),
+           " Alternative price 2: {} ".format(tillconfig.fc(plu.altprice2)),
+           " Alternative price 3: {} ".format(tillconfig.fc(plu.altprice3)),
            ""]
         ui.listpopup.__init__(self,l,title="Price Lookup",
                               dismiss=keyboard.K_CASH,show_cursor=False,
