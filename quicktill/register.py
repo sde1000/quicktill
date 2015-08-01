@@ -513,6 +513,7 @@ class page(ui.basicpage):
             otl=td.s.query(Transline).get(self.dl[-1].transline)
             otl.items=otl.items+1
             self.dl[-1].update()
+            td.s.flush()
             td.s.expire(self.trans,['total'])
             self.update_balance()
             self.cursor_off()
