@@ -694,5 +694,6 @@ class default_groups(object):
         "alter-stockline",
         "create-plu",
         "alter-plu",
+        "alter-modifier",
         "return-finished-item",
         ])
