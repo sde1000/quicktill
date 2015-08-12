@@ -278,8 +278,8 @@ class token(object):
         return "token('{}')".format(self.usertoken)
 
 class tokenlistener(object):
-    def __init__(self,address):
-        self.s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def __init__(self,address,addressfamily=socket.AF_INET):
+        self.s=socket.socket(addressfamily, socket.SOCK_DGRAM)
         self.s.bind(address)
         self.s.setblocking(0)
         event.rdlist.append(self)

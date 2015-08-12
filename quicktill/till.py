@@ -8,6 +8,7 @@ module.
 from __future__ import print_function,unicode_literals
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
+import socket
 from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers,cmdline,extras
 from .version import version
 from .models import Session,User,UserToken,Business,zero
@@ -61,6 +62,9 @@ class runtill(cmdline.command):
         try:
             if tillconfig.usertoken_listen and not args.nolisten:
                 user.tokenlistener(tillconfig.usertoken_listen)
+            if tillconfig.usertoken_listen_v6 and not args.nolisten:
+                user.tokenlistener(tillconfig.usertoken_listen_v6,
+                                   addressfamily=socket.AF_INET6)
             td.init(tillconfig.database)
             curses.wrapper(start)
         except:
@@ -395,6 +399,8 @@ def main():
         tillconfig.usertoken_handler=config['usertoken_handler']
     if 'usertoken_listen' in config:
         tillconfig.usertoken_listen=config['usertoken_listen']
+    if 'usertoken_listen_v6' in config:
+        tillconfig.usertoken_listen_v6=config['usertoken_listen_v6']
 
     if os.uname()[0]=='Linux':
         if os.getenv('TERM')=='linux':

@@ -54,6 +54,7 @@ firstpage=None
 def usertoken_handler(t):
     pass
 usertoken_listen=None
+usertoken_listen_v6=None
 
 # A function to turn off the screensaver if the screen has gone blank
 def unblank_screen():
