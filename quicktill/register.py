@@ -347,7 +347,14 @@ class page(ui.basicpage):
                options(undefer('total')).\
                one()
         self.trans=trans
-        self.user.dbuser.transaction=trans
+        if self.trans.user:
+            # There is a unique constraint on User.trans_id - if
+            # another user has this transaction, remove it from them
+            # before claiming it for the current user otherwise we
+            # will receive an integrity exception.
+            self.trans.user=None
+            td.s.flush()
+        self.trans.user=self.user.dbuser
         self.dl=[tline(l.id) for l in trans.lines]+\
             [payment.pline(i) for i in trans.payments]
         self.s.set(self.dl)
@@ -1604,6 +1611,15 @@ class page(ui.basicpage):
                           "merge this transaction into it."%othertrans.id],
                          title="Error")
             return
+        # Leave a message if the other transaction belonged to another
+        # user.
+        user=td.s.query(User).filter(User.transaction==othertrans).first()
+        if user:
+            user.transaction=None
+            user.message="Your transaction {} ({}) was taken over by {} " \
+                "when they merged another transaction into it.".format(
+                    othertrans.id,othertrans.notes or "no notes",
+                    self.user.fullname)
         for line in self.trans.lines:
             line.transid=othertrans.id
         td.s.flush()
