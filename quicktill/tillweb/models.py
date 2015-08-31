@@ -45,6 +45,8 @@ class Access(models.Model):
     till=models.ForeignKey(Till)
     user=models.ForeignKey(User,related_name="till_access")
     permission=models.CharField(max_length=1,choices=PERMISSIONS)
+    class Meta(object):
+        unique_together = ( ("till", "user"), )
     def __unicode__(self):
         return "%s can access %s %s"%(
             self.user.username,self.till,self.get_permission_display())
