@@ -53,7 +53,8 @@ class Vat(object):
         return Column(Numeric(5,2),nullable=False)
     @declared_attr
     def businessid(cls):
-        return Column('business',Integer,ForeignKey('businesses.business'))
+        return Column('business',Integer,ForeignKey('businesses.business'),
+                      nullable=False)
     @property
     def rate_fraction(self):
         return self.rate/Decimal(100)
@@ -480,7 +481,7 @@ class Department(Base):
 class TransCode(Base):
     __tablename__='transcodes'
     code=Column('transcode',CHAR(1),nullable=False,primary_key=True)
-    description=Column(String(20))
+    description=Column(String(20),nullable=False)
     def __unicode__(self):
         return u"%s"%(self.description,)
     def __repr__(self):
