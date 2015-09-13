@@ -93,6 +93,12 @@ supply the \-\-really option.
 With no positional argument, outputs a template database setup file on
 STDOUT.  With one argument, reads and processes a database setup file.
 .TP
+.B checkdb
+Compare the current database schema with one created from "syncdb" on
+an empty database, and output SQL statements to update it to match.
+Uses apgdiff and will fail if it is not installed.  Do not pipe the
+output of this command directly to psql; check it first!
+.TP
 .B adduser fullname shortname usertoken
 Adds a superuser to the database.  This is necessary during setup;
 that user can then create new ordinary users.

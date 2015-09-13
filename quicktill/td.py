@@ -139,6 +139,12 @@ def libpq_to_sqlalchemy(database):
     estring+="/%s"%(csdict['dbname'],)
     return estring
 
+def parse_database_name(database):
+    if database[0]==":":
+        database="dbname=%s"%database[1:]
+    if '://' not in database: database=libpq_to_sqlalchemy(database)
+    return database
+
 def init(database):
     """
     Initialise the database subsystem.
@@ -148,11 +154,7 @@ def init(database):
     """
     global sm
     log.info("init database \'%s\'",database)
-    if database[0]==":":
-        database="dbname=%s"%database[1:]
-
-    if '://' not in database: database=libpq_to_sqlalchemy(database)
-
+    database=parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'",database)
     engine=create_engine(database)
     models.metadata.bind=engine # for DDL, eg. to recreate foodorder_seq
