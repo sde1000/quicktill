@@ -154,55 +154,58 @@ class stocklevelcheck(user.permission_checked,ui.dismisspopup):
     permission_required=('stock-level-check','Check stock levels')
     def __init__(self):
         depts=td.s.query(Department).order_by(Department.id).all()
-        ui.dismisspopup.__init__(self,10,50,title="Stock level check",
+        ui.dismisspopup.__init__(self,10,52,title="Stock level check",
                                  colour=ui.colour_input)
         self.addstr(2,2,'Department:')
         self.deptfield=ui.listfield(2,14,20,depts,
                                     d=lambda x:x.description,
                                     keymap={
                 keyboard.K_CLEAR: (self.dismiss,None)})
-        self.addstr(3,2,'    Period:')
-        self.pfield=ui.editfield(3,14,3,validate=ui.validate_int,keymap={
-                keyboard.K_CASH: (self.enter,None)})
-        self.addstr(3,18,'weeks')
-        self.addstr(5,2,'The period should usually be one-and-a-half')
-        self.addstr(6,2,'times the usual time between deliveries.  For')
-        self.addstr(7,2,'weekly deliveries use 2; for fortnightly')
-        self.addstr(8,2,'deliveries use 3.')
-        ui.map_fieldlist([self.deptfield,self.pfield])
+        self.addstr(4,2,'Show stock to buy to cover the next     weeks')
+        self.wfield=ui.editfield(4,38,3,validate=ui.validate_int)
+        self.addstr(5,2,'based on sales over the last     months,')
+        self.mfield=ui.editfield(5,31,3,validate=ui.validate_int)
+        self.addstr(6,2,'ignoring stock where we sell less than     units')
+        self.addstr(7,2,'per day.')
+        self.minfield=ui.editfield(6,41,3,validate=ui.validate_float,keymap={
+            keyboard.K_CASH: (self.enter,None)})
+        ui.map_fieldlist(
+            [self.deptfield,self.wfield,self.mfield,self.minfield])
         self.deptfield.focus()
     def enter(self):
-        if self.pfield=='':
-            ui.infopopup(["You must enter a period."],title="Error")
+        if self.wfield.f=='' or self.mfield.f=='' or self.minfield.f=='':
+            ui.infopopup(["You must fill in all three fields."],title="Error")
             return
-        weeks=int(self.pfield.f)
+        weeks_ahead=int(self.wfield.f)
+        months_behind=int(self.mfield.f)
+        min_sale=float(self.minfield.f)
+        ahead=datetime.timedelta(days=weeks_ahead * 7)
+        behind=datetime.timedelta(days=months_behind * 30.4)
         dept=(None if self.deptfield.f is None
               else self.deptfield.read())
         if dept: td.s.add(dept)
         self.dismiss()
-        q=td.s.query(StockType,func.sum(StockOut.qty)).\
+        q=td.s.query(StockType,func.sum(StockOut.qty)/behind.days).\
             join(StockItem).\
             join(StockOut).\
             options(lazyload(StockType.department)).\
             options(lazyload(StockType.unit)).\
             options(undefer(StockType.instock)).\
             filter(StockOut.removecode_id=='sold').\
-            filter((func.now()-StockOut.time)<"{} weeks".format(weeks)).\
-            having(func.sum(StockOut.qty)>0).\
-            group_by(StockType).\
-            order_by(desc(func.sum(StockOut.qty)-StockType.instock))
+            filter((func.now()-StockOut.time)<behind).\
+            having(func.sum(StockOut.qty)/behind.days>min_sale).\
+            group_by(StockType)
         if dept:
             q=q.filter(StockType.dept_id==dept.id)
         r=q.all()
         f=ui.tableformatter(' l r  r  r ')
-        lines=[f(st.format(),sold,st.instock,sold-st.instock)
+        lines=[f(st.format(),'{:0.1f}'.format(sold),st.instock,
+                 '{:0.1f}'.format(sold*ahead.days-st.instock))
                for st,sold in r]
-        header=[ui.lrline("Do not order any stock if the 'Buy' amount "
-                          "is negative!"),
-                ui.emptyline(),
-                f('Name','Sold','In stock','Buy')]
+        lines.sort(key=lambda l:float(l.fields[3]),reverse=True)
+        header=[f('Name','Sold per day','In stock','Buy')]
         ui.listpopup(lines,header=header,
-                     title="Stock level check - %d weeks"%weeks,
+                     title="Stock to buy for next {} weeks".format(weeks_ahead),
                      colour=ui.colour_info,show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
