@@ -495,6 +495,56 @@ def department(request,info,session,departmentid):
     return ('department.html',{'department':d,'items':items,
                                'include_finished':include_finished})
 
+class StockCheckForm(forms.Form):
+    def __init__(self,depts,*args,**kwargs):
+        super(StockCheckForm,self).__init__(*args,**kwargs)
+        self.fields['department'].choices=[(d.id,d.description) for d in depts]
+    # django-1.6 uses forms.NumberInput by default for integer fields;
+    # this is only valid in HTML5, which we are not using yet.
+    # Specify the TextInput widget explicitly for now.
+    short=forms.TextInput(attrs={'size':3,'maxlength':3})
+    weeks_ahead=forms.IntegerField(
+        label="Weeks ahead",widget=short,
+        min_value=0)
+    months_behind=forms.IntegerField(
+        label="Months behind",widget=short,
+        min_value=0)
+    minimum_sold=forms.FloatField(
+        label="Minimum sold",widget=short,
+        min_value=0.0, initial=1.0)
+    department=forms.ChoiceField()
+
+@tillweb_view
+def stockcheck(request,info,session):
+    buylist=[]
+    if request.method == 'POST':
+        form=StockCheckForm(info['depts'],request.POST)
+        if form.is_valid():
+            cd=form.cleaned_data
+            ahead=datetime.timedelta(days=cd['weeks_ahead']*7)
+            behind=datetime.timedelta(days=cd['months_behind']*30.4)
+            min_sale=cd['minimum_sold']
+            dept=int(cd['department'])
+            q=session.query(StockType,func.sum(StockOut.qty)/behind.days).\
+               join(StockItem).\
+               join(StockOut).\
+               options(lazyload(StockType.department)).\
+               options(lazyload(StockType.unit)).\
+               options(undefer(StockType.instock)).\
+               filter(StockOut.removecode_id=='sold').\
+               filter((func.now()-StockOut.time)<behind).\
+               filter(StockType.dept_id == dept).\
+               having(func.sum(StockOut.qty)/behind.days>min_sale).\
+               group_by(StockType)
+            r=q.all()
+            buylist=[(st,'{:0.1f}'.format(sold),
+                      '{:0.1f}'.format(sold*ahead.days-st.instock))
+                     for st,sold in r]
+            buylist.sort(key=lambda l:float(l[2]),reverse=True)
+    else:
+        form=StockCheckForm(info['depts'])
+    return ('stockcheck.html',{'form':form,'buylist':buylist})
+
 @tillweb_view
 def userlist(request,info,session):
     q=session.query(User).order_by(User.fullname)

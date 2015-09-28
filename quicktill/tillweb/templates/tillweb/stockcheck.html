@@ -1,0 +1,58 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Buying List{% endblock %}
+
+{% block heading %}{{till}} — Buying List{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Generate buying list</h2>
+<form action="" method="post">{% csrf_token %}
+<p>Generate a buying list to stock up for the next
+{{form.weeks_ahead}} weeks{% if form.weeks_ahead.errors %}
+<span class="error">({% for e in form.weeks_ahead.errors %}{{e}}{% endfor %})</span>{% endif %},
+
+based on sales in the last {{form.months_behind}}
+months{% if form.months_behind.errors %}
+<span class="error">
+({% for e in form.months_behind.errors %}{{e}}{% endfor %})</span>{% endif %}.
+</p>
+
+<p>
+Ignore stock that sold less than {{form.minimum_sold}}
+units per day{% if form.minimum_sold.errors %}
+<span class="error">({% for e in form.minimum_sold.errors %}{{e}}{% endfor %})</span>{% endif %} in that period.
+</p>
+
+<p>Restrict the list to the {{form.department}} department.{% if form.department.errors %} <span class="error">({% for e in form.department.errors %}{{e}}{% endfor %}</span>{% endif %}</p>
+
+<input type="submit" value="Calculate" name="submit_calculate" />
+</form>
+
+{% if buylist %}
+
+<table id="buylist">
+<thead>
+<tr><th>Stock type</th><th>Sold per day</th>
+<th>In stock</th><th>Need to buy</th></tr>
+</thead>
+<tbody>
+{% for st,sold,buy in buylist %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{st.tillweb_url}}">{{st}}</a></td>
+<td>{{sold}} {{st.unit.name}}s</td>
+<td>{{st.instock}} {{st.unit.name}}s</td>
+<td>{{buy}} {{st.unit.name}}s</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#buylist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+{% endif %}
+
+{% endblock %}

@@ -28,6 +28,7 @@ tillurls=patterns(
     url(r'^location/(?P<location>[\w\- ]+)/$','location'),
     url(r'^department/$','departmentlist'),
     url(r'^department/(?P<departmentid>\d+)/$','department'),
+    url(r'^stockcheck/$','stockcheck'),
     url(r'^user/$','userlist'),
     url(r'^user/(?P<userid>\d+)/$','user'),
 )
