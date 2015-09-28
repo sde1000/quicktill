@@ -1,3 +1,19 @@
+quicktill (0.11.4) stable; urgency=low
+
+  * New release 0.11.4
+
+  * Add "pending totals" columns to tillweb
+
+  * Add stock level check function to tillweb
+
+  * Updated stock level check function
+
+  * Model fixes discovered using checkdb
+
+  * Add checkdb command
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 28 Sep 2015 20:51:08 +0100
+
 quicktill (0.11.3) stable; urgency=low
 
   * New release 0.11.3
