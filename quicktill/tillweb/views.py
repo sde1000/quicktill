@@ -248,6 +248,7 @@ def session(request,info,session,sessionid):
             filter_by(id=int(sessionid)).\
             options(undefer('transactions.total')).\
             options(undefer('total')).\
+            options(undefer('closed_total')).\
             options(undefer('actual_total')).\
             options(joinedload('transactions.payments')).\
             one()

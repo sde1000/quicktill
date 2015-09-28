@@ -157,6 +157,28 @@ class Session(Base):
             order_by(Department.id).\
             group_by(Department).all()
     @property
+    def dept_totals_closed(self):
+        """Transaction lines broken down by Department and closed status.
+
+        Returns list of (Department,total,closed_total,pending_total).
+        The list always includes all departments, even if both totals
+        are None.
+        """
+        s=object_session(self)
+        tot_all=s.query(func.sum(Transline.items*Transline.amount)).\
+                 select_from(Transline.__table__).\
+                 join(Transaction).\
+                 filter(Transaction.sessionid==self.id).\
+                 filter(Transline.dept_id==Department.id)
+        tot_closed=tot_all.filter(Transaction.closed)
+        totals=object_session(self).\
+            query(Department,
+                  tot_all.label("total"),
+                  tot_closed.label("closed")).\
+            order_by(Department.id).\
+            group_by(Department).all()
+        return [(d,t,c,(t or zero)-(c or zero)) for d,t,c in totals]
+    @property
     def user_totals(self):
         "Transaction lines broken down by User; also count of items sold."
         return object_session(self).\
@@ -176,8 +198,12 @@ class Session(Base):
             filter(Session.id==self.id).\
             join(Transaction,Payment,PayType).\
             group_by(PayType).all()
-    # total is declared after Transline
+    # total and closed_total are declared after Transline
     # actual_total is declared after SessionTotal
+    @property
+    def pending_total(self):
+        "Total of open transactions"
+        return self.total - self.closed_total
     @property
     def error(self):
         "Difference between actual total and transaction line total."
@@ -568,6 +594,16 @@ Session.total=column_property(
         label('total'),
     deferred=True,
     doc="Transaction lines total")
+Session.closed_total=column_property(
+    select([func.coalesce(func.sum(Transline.items*Transline.amount),
+                          text("0.00"))],
+           whereclause=and_(Transline.transid==Transaction.id,
+                            Transaction.closed,
+                            Transaction.sessionid==Session.id)).\
+        correlate(Session.__table__).\
+        label('closed_total'),
+    deferred=True,
+    doc="Transaction lines total, closed transactions only")
 
 # Add "total" column property to the Transaction class now that
 # transactions and translines are defined
