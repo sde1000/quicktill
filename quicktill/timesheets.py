@@ -3,21 +3,21 @@ import requests
 from . import ui,keyboard
 
 pinlength = 8
-timeout = 1
 
 class Api(object):
     """A python interface to the Timesheet API"""
-    def __init__(self, username, password, site, base_url):
+    def __init__(self, username, password, site, base_url, timeout = 4):
         self._site = site
         self._base_url = base_url
         self._auth = (username, password)
+        self._timeout = timeout
     def get_users(self):
         r = requests.get(self._site + self._base_url, auth=self._auth,
-                         timeout=timeout, verify=True)
+                         timeout=self._timeout, verify=True)
         return [User(self,x) for x in r.json()]
     def action_with_pin(self, url, pin):
         r = requests.post(self._site + url, data={'pin':pin},
-                          auth=self._auth, timeout=timeout, verify=True)
+                          auth=self._auth, timeout=self._timeout, verify=True)
         return r.json()
 
 class User(object):
