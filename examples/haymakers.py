@@ -22,7 +22,6 @@ from quicktill.bitcoin import BitcoinPayment
 from quicktill import modifiers
 from decimal import Decimal,ROUND_UP
 import datetime
-import socket,struct
 
 import logging
 log=logging.getLogger('config')
@@ -31,17 +30,22 @@ log=logging.getLogger('config')
 K_MANAGESTOCK=keycode("K_MANAGESTOCK","Manage Stock")
 K_PRICECHECK=keycode("K_PRICECHECK","Price Check")
 K_STOCKINFO=keycode("K_STOCKINFO","Stock Info")
-K_PANIC=keycode("K_PANIC","Panic")
 K_APPS=keycode("K_APPS","Apps")
 K_LOCK=keycode("K_LOCK","Lock")
 K_MARK=keycode("K_MARK","Mark")
 
 user.group('basic-user','Basic user [group]',
-           user.default_groups.basic_user)
+           set.union(user.default_groups.basic_user,
+                     set(["merge-trans","record-waste"])))
+
 user.group('skilled-user','Skilled user [group]',
            user.default_groups.skilled_user)
+
 user.group('manager','Pub manager [group]',
            user.default_groups.manager)
+
+def dl(*l):
+    return [Decimal(x) for x in l]
 
 class Half(modifiers.SimpleModifier):
     """When used with a stock line, checks that the item is sold in pints
@@ -68,6 +72,19 @@ class Half(modifiers.SimpleModifier):
                 "sold in pints.".format(self.name))
         if transline.amount: transline.amount=transline.amount/2
         transline.text="{} half pint".format(transline.text)
+
+class Mixer(modifiers.SimpleModifier):
+    """When used with a price lookup, checks that the department is 7
+    (soft drinks) and quarters the price.
+
+    """
+    def mod_plu(self,plu,transline):
+        if plu.dept_id!=7:
+            raise modifiers.Incompatible(
+                "The {} modifier can only be used with stock that is "
+                "sold in pints.".format(self.name))
+        if transline.amount: transline.amount=transline.amount/4
+        transline.text="{} mixer".format(transline.text)
 
 class Double(modifiers.SimpleModifier):
     """When used with a stock line, checks that the item is sold in 25ml
@@ -129,19 +146,24 @@ Wine("Medium","175ml glass","altprice2")
 Wine("Large","250ml glass","altprice3")
 
 def check_soft_drinks(dept,price):
-    if price not in [0.50,1.00,2.00]:
-        return ("Soft drinks are 50p for a mixer, £1.00 for a half, "
-                "and £2.00 for a pint.  If you're selling a bottle, "
-                "you must press the appropriate button for that bottle.")
+    return ["Please use the new Draught Soft or Soft Carton buttons "
+            "instead.",
+            "",
+            "You don't need to enter a price first.",
+            "",
+            "For a half pint, press the Half button first.  "
+            "For a mixer, press the Mixer button first."]
 
 def check_wine(dept,price):
-    if price not in [2.50,3.70,4.80,14.00]:
-        return (["£2.50 for a small glass, "
-                 "£3.70 for a medium glass, "
-                 "£4.80 for a large glass, and £14.00 for a bottle."])
-
-def check_misc(dept,price):
-    return "We do not use the Misc button."
+    return ["Please use the new White Wine, Red Wine or Other Wine buttons "
+            "instead.",
+            "",
+            "You don't need to enter a price first.",
+            "",
+            "For a bottle, just choose the appropriate wine.",
+            "",
+            "For a glass, press Small, Medium or Large before choosing "
+            "the wine."]
 
 # Suggested sale price algorithm
 
@@ -150,7 +172,7 @@ def check_misc(dept,price):
 # pints) and the ex-VAT cost of that unit
 def haymakers_priceguess(stocktype,stockunit,cost):
     if stocktype.dept_id==1:
-        return guessbeer(stocktype,stockunit,cost)
+        return markup(stocktype,stockunit,cost,Decimal("3.0"))
     if stocktype.dept_id==3:
         return markup(stocktype,stockunit,cost,Decimal("2.6"))
     if stocktype.dept_id==4:
@@ -162,7 +184,11 @@ def haymakers_priceguess(stocktype,stockunit,cost):
         return markup(stocktype,stockunit,cost,Decimal("2.5"))
     return None
 
-# Unit is a pint
+def markup(stocktype,stockunit,cost,markup):
+    return stocktype.department.vat.current.exc_to_inc(
+        cost*markup/stockunit.size).\
+        quantize(Decimal("0.1"),rounding=ROUND_UP)
+
 def guessbeer(stocktype,stockunit,cost):
     cost_per_pint=cost/stockunit.size
     abv=stocktype.abv
@@ -185,16 +211,12 @@ def guessbeer(stocktype,stockunit,cost):
     r=r.quantize(Decimal("0.1"),rounding=ROUND_UP) # Round to 10p
     return r
 
-def markup(stocktype,stockunit,cost,markup):
-    return stocktype.department.vat.current.exc_to_inc(
-        cost*markup/stockunit.size).\
-        quantize(Decimal("0.1"),rounding=ROUND_UP)
-
 # Payment methods.  Here we create instances of payment methods that
 # we accept.
-cash=CashPayment('CASH','Cash',change_description="Change",drawers=1)
+cash=CashPayment('CASH','Cash',change_description="Change",drawers=2,
+                 countup=[])
 card=CardPayment('CARD','Card',machines=2,cashback_method=cash,
-                 max_cashback=Decimal("50.00"),
+                 max_cashback=Decimal("50.00"),kickout=True,
                  rollover_guard_time=datetime.time(4,0,0))
 bitcoin=BitcoinPayment(
     'BTC','Bitcoin',site='test',username='test',
@@ -213,57 +235,19 @@ def usestock_hook(item,line):
     t=None
     if item.stocktype.dept_id==3:
         # It's a cider. Tweet it.
-        t="Next cider: %s"%item.stocktype.format()
+        t="Next cider: "+item.stocktype.format()
     elif item.stocktype.dept_id==1:
         # Real ale.  Tweet if not from Milton, or if particularly strong
         if item.stocktype.manufacturer!="Milton":
-            t="Next guest beer: %s"%item.stocktype.format()
-        if item.stocktype.abv is not None and item.stocktype.abv>Decimal("6.4"):
-            t="Next strong beer: %s"%item.stocktype.format()
+            t="Next guest beer: "+item.stocktype.format()
+        if item.stocktype.abv and item.stocktype.abv>Decimal("6.4"):
+            t="Next strong beer: "+item.stocktype.format()
     if t: extras.twitter_post(tapi,default_text=t,fail_silently=True)
 
 tsapi=timesheets.Api("haymakers","not-a-valid-password",
-                     "http://www.individualpubs.co.uk",
+                     "https://www.individualpubs.co.uk",
                      "/schedule/haymakers/api/users/")
 
-def dalicmd(address,value):
-    """
-    Very hackily send a message to the lighting system.  Does not
-    check for errors.
-
-    """
-    message=struct.pack("BB",address,value)
-    try:
-        s=socket.create_connection(
-            ("not-valid-address.individualpubs.co.uk",55825))
-        s.send(message)
-        result=s.recv(2)
-        s.close()
-    except:
-        pass
-
-def setscene(scene):
-    return dalicmd(0xff,0x10+scene)
-
-def groupon(group):
-    return dalicmd(0x81+(group<<1),0x05) # "Recall max level"
-
-def groupoff(group):
-    return dalicmd(0x81+(group<<1),0x00) # "Off"
-
-def lightsmenu():
-    menu=[
-        (keyboard.K_ONE,"Start of day cleaning / home time",
-         setscene,(0,)),
-        (keyboard.K_TWO,"Open for business",setscene,(1,)),
-        (keyboard.K_THREE,"Evening - outside lights on",setscene,(2,)),
-        (keyboard.K_FOUR,"End of night counting up",setscene,(4,)),
-        (keyboard.K_FIVE,"Outside back lights off",groupoff,(7,)),
-        (keyboard.K_SIX,"Outside back lights on",groupon,(7,)),
-        (keyboard.K_SEVEN,"Outside front lights off",groupoff,(8,)),
-        (keyboard.K_EIGHT,"Outside front lights on",groupon,(8,)),
-        (keyboard.K_ZERO,"Everything off",setscene,(3,))]
-    ui.keymenu(menu,"Lighting")
 
 def appsmenu():
     menu=[
@@ -272,14 +256,7 @@ def appsmenu():
     if configname=='mainbar':
         menu.append(
             (keyboard.K_TWO,"Timesheets",timesheets.popup,(tsapi,)))
-    menu.append(
-        (keyboard.K_THREE,"Lights",lightsmenu,()))
-    ui.keymenu(menu,"Apps")
-
-def panickey():
-    ui.infopopup(["Don't panic, Captain Mainwaring!"],
-                 title="Jones",colour=ui.colour_confirm,
-                 dismiss=K_CASH)
+    ui.keymenu(menu,title="Apps")
 
 register_hotkeys={
     K_PRICECHECK: pricecheck,
@@ -288,7 +265,6 @@ register_hotkeys={
     K_USESTOCK: usestock,
     K_WASTE: recordwaste,
     K_APPS: appsmenu,
-    K_PANIC: panickey,
     ord('s'): managestock,
     ord('S'): managestock,
     ord('a'): annotate,
@@ -307,7 +283,7 @@ std={
     'pubname':"The Haymakers",
     'pubnumber':"01223 311077",
     'pubaddr':("54 High Street, Chesterton","Cambridge CB4 1NG"),
-    'currency':"£",
+    'currency':u"£",
     'all_payment_methods':all_payment_methods,
     'payment_methods':payment_methods,
     'priceguess':haymakers_priceguess,
@@ -319,53 +295,38 @@ std={
 }
 
 kitchen={
-#    'kitchenprinter':netprinter(
-#        ('kitchenprinter.haymakers.i.individualpubs.co.uk',9100),
-#        driver=Epson_TM_U220_driver(57,has_cutter=True)),
-    'kitchenprinter': nullprinter(), # XXX testing
-    'menuurl':'http://till.haymakers.i.individualpubs.co.uk:8080/foodmenu.py',
+    'kitchenprinter':nullprinter(), # testing only
+    'menuurl':'http://till.haymakers.i.individualpubs.co.uk/foodmenu.py',
     }
 
 noprinter={
-    'printer': (nullprinter,()),
+    'printer': nullprinter(),
     }
 localprinter={
-    'printer': linux_lpprinter("/dev/usb/lp0",driver=Epson_TM_T20_driver(80)),
+    'printer': linux_lpprinter("/dev/usb/lp?",driver=Epson_TM_T20_driver(80)),
     }
 pdfprinter={
-    'printer': cupsprinter("officeprinter",driver=pdf_driver()),
+    'printer': cupsprinter("barprinter",driver=pdf_driver()),
     }
 xpdfprinter={
-    'printer': commandprinter("evince %s",driver=pdf_driver()),
+    'printer': commandprinter("xpdf %s",driver=pdf_driver()),
     }
-
-# Example config for a laser printer with A4 label paper.  NB "Letterhead"
-# is used on printers that don't support a "Label" media type.
-
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
 staples_3by6=[3,6,"63.5mm","46.6mm","2.8mm","0mm",A4]
-# Example config for a DYMO LabelWriter 450 label printer
 label11356=(252,118)
 label99015=(198,154)
 labelprinter={
     'labelprinters': [
-        cupsprinter(
-            "officeprinter",
-            driver=pdf_labelpage(*staples_3by6),
-            options={"MediaType":"Letterhead"},
-            description="A4 label paper in office printer"),
-        cupsprinter(
-            "DYMO-LabelWriter-450",
-            driver=pdf_page(pagesize=label99015),
-            description="Dymo label printer"),
-    ],
+        cupsprinter("barprinter",
+                    driver=pdf_labelpage(*staples_3by6),
+                    options={"MediaType":"Labels"},
+                    description="A4 sheets of 18 labels per sheet"),
+#        cupsprinter("DYMO-LabelWriter-450",
+#                    driver=pdf_page(pagesize=label99015),
+#                    description="DYMO label printer"),
+        ],
 }
-
-# Should we let line keys be named with things other than integers
-# (although allow integers for backwards compatibility)?  Strings
-# would do, they could be nice and descriptive although may not
-# contain characters that are invalid in Python identifiers.
 
 kb1={
     'kbdriver':kbdrivers.prehkeyboard(
@@ -414,8 +375,6 @@ kb1={
             ("E13",K_QUANTITY),
             ("A02",K_MARK),
             # Departments
-            ("H12",deptkey(8,checkfunction=check_misc)),
-            ("H13",deptkey(11)),
             ("G12",K_DRINKIN), # Not a department!
             ("G13",deptkey(9,checkfunction=check_wine)),
             ("F12",deptkey(7,checkfunction=check_soft_drinks)),
@@ -430,6 +389,8 @@ kb1={
             ("H09",linekey(7)),
             ("H10",linekey(8)),
             ("H11",linekey(9)),
+            ("H12",linekey(79)), # formerly Misc dept key
+            ("H13",linekey(80)), # formerly Hot Drinks dept key
             ("G03",linekey(10)),
             ("G04",linekey(11)),
             ("G05",linekey(12)),
@@ -457,7 +418,7 @@ kb1={
             ("E09",linekey(34)),
             ("E10",linekey(35)),
             ("E11",linekey(36)),
-            ("E12",linekey(81)), # Used to be "Double"
+            ("E12",linekey(78)), # formerly Double
             ("D03",linekey(37)),
             ("D04",linekey(38)),
             ("D05",linekey(39)),
@@ -497,6 +458,9 @@ kb1={
             ("A11",linekey(75)),
             ("A12",linekey(76)),
             ("A13",linekey(77)),
+            # 78 is E12 (formerly Double)
+            # 79 is H12 (formerly Misc)
+            # 80 is H13 (formerly Hot)
             ],
         magstripe=[
             ("M1H","M1T"),
@@ -507,6 +471,7 @@ kb1={
     'usertoken_handler': lambda t:register.handle_usertoken(
         t,register_hotkeys,autolock=K_LOCK),
     'usertoken_listen': ('127.0.0.1',8455),
+    'usertoken_listen_v6': ('::1',8455),
     }
 
 stock_hotkeys={
@@ -531,52 +496,51 @@ global_hotkeys={
 
 stockcontrol={
     'kbdriver':kbdrivers.curseskeyboard(),
-    'firstpage': lambda: stockterminal.page(stock_hotkeys,["Bar"],
-                                            user=user.built_in_user(
-                                                "Stock Terminal","Stock Terminal",['manager'])),
-#    'firstpage': lockscreen.lockpage,
-    'usertoken_handler': lambda t:stockterminal.handle_usertoken(t,stock_hotkeys,["Bar"],max_unattended_updates=2),
-    'usertoken_listen': ('127.0.0.1',8455),
-}    
+    'firstpage': lambda: stockterminal.page(
+        stock_hotkeys,["Bar"],user=user.built_in_user(
+            "Stock Terminal","Stock Terminal",['manager'])),
+}
 
-# Config0 is a QWERTY-keyboard stock-control terminal
-config0={'description':"Stock-control terminal"}
+stockcontrol_terminal={
+    'kbdriver':kbdrivers.curseskeyboard(),
+    'firstpage': lockscreen.lockpage,
+    'usertoken_handler': lambda t:stockterminal.handle_usertoken(
+        t,register_hotkeys,["Bar"],max_unattended_updates=5),
+    'usertoken_listen': ('127.0.0.1',8455),
+}
+
+config0={'description':"Stock-control terminal, no user"}
 config0.update(std)
 config0.update(stockcontrol)
 config0.update(pdfprinter)
 config0.update(labelprinter)
 
-# Config1 is the main bar terminal
-config1={'description':"Haymakers main bar"}
+config1={'description':"Haymakers main bar",
+         'hotkeys':global_hotkeys}
 config1.update(std)
 config1.update(kb1)
-config1.update(xpdfprinter) # XXX for testing
+config1.update(localprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
-config1['hotkeys']=global_hotkeys
 
-# Config2 is the festival terminal
-#config2={'description':"Haymakers festival bar"}
-#config2.update(std)
-#config2.update(kb2)
-#config2.update(localprinter)
-#config2.update(labelprinter)
-#config2.update(kitchen)
+config2={'description':"Stock-control terminal, card reader"}
+config2.update(std)
+config2.update(stockcontrol_terminal)
+config2.update(pdfprinter)
+config2.update(labelprinter)
 
 config3={'description':"Test menu file 'testmenu.py' in current directory",
          'kbdriver':kbdrivers.curseskeyboard(),
-#         'menuurl':'http://localhost:8080/foodmenu.py',
          'menuurl':"file:testmenu.py",
-         'kitchenprinter':nullprinter(),
-         'firstpage': lambda: foodcheck.page(
-             [],user=user.built_in_user("Food check","Food check",['kitchen-order'])),
+         'kitchenprinter':nullprinter("kitchen"),
+         'printer':nullprinter("bar"),
+         'firstpage': lambda: foodcheck.page([]),
          }
 config3.update(std)
-config3.update(xpdfprinter)
 
 configurations={
     'default': config0,
     'mainbar': config1,
-#    'festivalbar': config2,
+    'stockterminal': config2,
     'testmenu': config3,
     }
