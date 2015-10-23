@@ -6,6 +6,10 @@
     position: relative;
 }
 
+article {
+    position: relative;
+}
+
 .tillnav {
     position:absolute;
     top:10px;
@@ -87,9 +91,21 @@ tbody tr.odd td { background-color: #fff; }
       display: none; }
   #Menu {
       display: none; }
+  #Userinfo {
+      display: none; }
+  nav {
+      display: none; }
   #Content {
       margin:0px;
       padding:10px;
+  }
+  article {
+      margin:0px;
+      padding:10px;
+  }
+  .tillcontent {
+      position: relative;
+      left: 0px;
   }
 }
 
