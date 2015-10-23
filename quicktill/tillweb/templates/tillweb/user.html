@@ -6,11 +6,11 @@
 
 {% block tillcontent %}
 
-<table>
-<tr><th>Full name:</th><td>{{tuser.fullname}}</td></tr>
-<tr><th>Short name:</th><td>{{tuser.shortname}}</td></tr>
+<table class="kvtable">
+<tr><th>Full name</th><td>{{tuser.fullname}}</td></tr>
+<tr><th>Short name</th><td>{{tuser.shortname}}</td></tr>
 {% if user.webuser %}
-<tr><th>Web username:</th><td>{{tuser.webuser}}</td></tr>
+<tr><th>Web username</th><td>{{tuser.webuser}}</td></tr>
 {% endif %}
 </table>
 {% if not tuser.enabled %}
