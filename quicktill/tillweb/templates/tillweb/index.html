@@ -31,6 +31,7 @@
 
 </table>
 
+{% if barsummary %}
 <h2>On the bar</h2>
 
 {% with barsummary as lines %}
@@ -38,7 +39,11 @@
 {% endwith %}
 
 <p><a href="{{u}}location/">Other locations</a></p>
+{% else %}
+<p><a href="{{u}}location/">Stock locations</a></p>
+{% endif %}
 
+{% if stillage %}
 <h2>On the stillage</h2>
 
 <table id="stillage">
@@ -64,5 +69,6 @@ $(document).ready(function(){
   $("#stillage").tablesorter({widgets:["zebra"]});
 });
 </script>
+{% endif %}
 
 {% endblock %}
