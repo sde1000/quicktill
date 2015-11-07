@@ -604,3 +604,24 @@ def session_sales_pie_chart(request,info,session,sessionid):
     response = HttpResponse(content_type="image/svg+xml")
     fig.savefig(response,transparent=True)
     return response
+
+@tillweb_view
+def session_users_pie_chart(request,info,session,sessionid):
+    try:
+        s = session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    ut = s.user_totals
+    fig = plt.figure(figsize=(5,5))
+    ax = fig.add_subplot(1,1,1)
+    patches,texts = ax.pie(
+        [x[2] for x in ut], labels=[x[0].fullname for x in ut],
+        colors=['r','g','b','c','y','m','olive','brown','orchid',
+                'royalblue','sienna','steelblue'])
+    for t in texts:
+        t.set_fontsize(8)
+    response = HttpResponse(content_type="image/svg+xml")
+    fig.savefig(response,transparent=True)
+    return response

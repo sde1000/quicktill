@@ -36,7 +36,7 @@
 {% endif %}
 {% endif %}
 
-<div id="tabs">
+<div id="tabs" style="min-width: 550px">
 <ul>
 <li><a href="#dept-takings">Takings by department</a></li>
 {% if not session.endtime %}<li><a href="#paytype-takings">Takings by payment type</a></li>{% endif %}
@@ -134,6 +134,7 @@ $(document).ready(function(){
   $("#usertakings").tablesorter({widgets:["zebra"]});
 });
 </script>
+<img src="{{u}}{{session.tillweb_url}}users-pie-chart.svg" alt="Sales by user pie chart" />
 </div>
 {% endif %}
 {% endwith %}
