@@ -9,6 +9,7 @@ tillurls=patterns(
     url(r'^$','pubroot'),
     url(r'^session/$','sessionfinder'),
     url(r'^session/(?P<sessionid>\d+)/$','session'),
+    url(r'^session/(?P<sessionid>\d+)/sales-pie-chart.svg$','session_sales_pie_chart'),
     url(r'^session/(?P<sessionid>\d+)/dept(?P<dept>\d+)/$','sessiondept',
         name="sessiondept"),
     url(r'^transaction/(?P<transid>\d+)/$','transaction'),

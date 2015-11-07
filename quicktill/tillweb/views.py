@@ -579,3 +579,28 @@ def user(request,info,session,userid):
         order_by(desc(StockAnnotation.time))[:50]
     return ('user.html',{'tuser':u,'sales':sales,'payments':payments,
                          'annotations':annotations})
+
+import matplotlib
+matplotlib.use("SVG")
+import matplotlib.pyplot as plt
+
+@tillweb_view
+def session_sales_pie_chart(request,info,session,sessionid):
+    try:
+        s = session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    dt = s.dept_totals
+    fig = plt.figure(figsize=(5,5))
+    ax = fig.add_subplot(1,1,1)
+    patches,texts = ax.pie(
+        [x[1] for x in dt], labels=[x[0].description for x in dt],
+        colors=['r','g','b','c','y','m','olive','brown','orchid',
+                'royalblue','sienna','steelblue'])
+    for t in texts:
+        t.set_fontsize(8)
+    response = HttpResponse(content_type="image/svg+xml")
+    fig.savefig(response,transparent=True)
+    return response
