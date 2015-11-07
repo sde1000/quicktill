@@ -63,6 +63,7 @@ article {
 /* A table with keys in the first column and values in the second */
 table.kvtable th { text-align: left; }
 table.kvtable th:after { content: ":"; }
+form table.kvtable th:after { content: ""; }
 table.kvtable table th { text-align: center; }
 table.kvtable table th:after { content: ""; }
 
@@ -124,4 +125,17 @@ ul.errorlist li:before {content: " » ";}
 
 form table tr td ul {
     list-style: none;
+}
+
+.ui-state-default a,
+.ui-state-default a:link,
+.ui-state-default a:visited {
+	color: black;
+	text-decoration: none;
+}
+.ui-state-active a,
+.ui-state-active a:link,
+.ui-state-active a:visited {
+	color: #eb8f00;
+	text-decoration: none;
 }

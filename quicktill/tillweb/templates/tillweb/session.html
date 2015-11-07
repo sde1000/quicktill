@@ -36,7 +36,16 @@
 {% endif %}
 {% endif %}
 
-<h2>Takings by department</h2>
+<div id="tabs">
+<ul>
+<li><a href="#dept-takings">Takings by department</a></li>
+{% if not session.endtime %}<li><a href="#paytype-takings">Takings by payment type</a></li>{% endif %}
+{% if session.user_totals %}<li><a href="#user-takings">Takings by user</a></li>{% endif %}
+<li><a href="#stocksold">Stock sold</a></li>
+<li><a href="#transactions">Transactions</a></li>
+</ul>
+
+<div id="dept-takings">
 {% if not session.endtime %}
 <p>This session is still open, so may include transactions that have
 not been closed.  These are shown in a separate column.</p>
@@ -83,9 +92,10 @@ $(document).ready(function(){
   $("#depttakings").tablesorter({widgets:["zebra"]});
 });
 </script>
+</div>
 
 {% if not session.endtime %}
-<h2>Takings by payment type</h2>
+<div id="paytype-takings">
 <p>Takings recorded so far this session.  May include part-paid
 transactions.</p>
 <table>
@@ -94,12 +104,12 @@ transactions.</p>
 <tr><td>{{type}}</td><td class="money">{{amount}}</td></tr>
 {% endfor %}
 </table>
+</div>
 {% endif %}
 
 {% with usertotals=session.user_totals %}
 {% if usertotals %}
-<h2>Takings by user</h2>
-
+<div id="user-takings">
 <table id="usertakings">
 <thead>
 <tr><th>User</th><th>Items</th><th>Total</th></tr>
@@ -122,10 +132,11 @@ $(document).ready(function(){
   $("#usertakings").tablesorter({widgets:["zebra"]});
 });
 </script>
+</div>
 {% endif %}
 {% endwith %}
 
-<h2>Stock sold in this session</h2>
+<div id="stock-sold">
 <table id="stocksold">
 <thead>
 <tr><th>Type</th><th>Quantity</th></tr>
@@ -145,10 +156,10 @@ $(document).ready(function(){
   $("#stocksold").tablesorter({widgets:["zebra"]});
 });
 </script>
+</div>
 
-<h2>Transactions</h2>
-
-<table id="transactions">
+<div id="transactions">
+<table id="transactions-table">
 <thead>
 <tr><th>Transaction</th><th>Amount</th><th>Note</th><th>State</th></tr>
 </thead>
@@ -169,9 +180,16 @@ $(document).ready(function(){
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#transactions").tablesorter({widgets:["zebra"]});
+  $("#transactions-table").tablesorter({widgets:["zebra"]});
 });
 </script>
+</div>
 
+</div>
+<script type="text/javascript">
+$(function() {
+  $("#tabs").tabs();
+});
+</script>
 
 {% endblock %}

@@ -3,12 +3,12 @@
 
 {% block style %}
 {{block.super}}
+<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}tillweb/jquery-ui.css" />
 <link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}tillweb/tillweb.css" />
 {% endblock %}
 {% block scripts %}
 {% endblock %}
 {% block jquery %}
-<link rel="STYLESHEET" type="text/css" href="{{STATIC_URL}}tillweb/jquery-ui.css" />
 <script type="text/javascript" src="{{STATIC_URL}}tillweb/jquery.js"></script>
 <script type="text/javascript" src="{{STATIC_URL}}tillweb/jquery.tablesorter.js"></script>
 <script type="text/javascript" src="{{STATIC_URL}}tillweb/jquery-ui.js"></script>

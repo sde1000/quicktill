@@ -43,7 +43,9 @@ $(document).ready(function(){
 
 <h2>Download spreadsheet</h2>
 <form action="" method="post">{% csrf_token %}
-{{ rangeform.as_p }}
+<table class="kvtable">
+{{ rangeform.as_table }}
+</table>
 <input type="submit" value="Download" name="submit_sheet" />
 </form>
 
