@@ -31,9 +31,11 @@
 
 </table>
 
+<div id="accordion">
 {% if barsummary %}
 <h2>On the bar</h2>
 
+<div>
 {% with barsummary as lines %}
 {% include "tillweb/linelist.html" %}
 {% endwith %}
@@ -42,10 +44,12 @@
 {% else %}
 <p><a href="{{u}}location/">Stock locations</a></p>
 {% endif %}
+</div>
 
 {% if stillage %}
 <h2>On the stillage</h2>
 
+<div>
 <table id="stillage">
 <thead>
 <tr><th>Location</th><th>Time</th><th>Cask</th>
@@ -67,6 +71,16 @@
 <script type="text/javascript">
 $(document).ready(function(){
   $("#stillage").tablesorter({widgets:["zebra"]});
+});
+</script>
+</div>
+{% endif %}
+</div>
+
+{% if barsummary and stillage %}
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#accordion").accordion();
 });
 </script>
 {% endif %}

@@ -131,11 +131,17 @@ form table tr td ul {
 .ui-state-default a:link,
 .ui-state-default a:visited {
 	color: black;
+	font-size: 100%;
 	text-decoration: none;
 }
 .ui-state-active a,
 .ui-state-active a:link,
 .ui-state-active a:visited {
 	color: #eb8f00;
+	font-size: 100%;
 	text-decoration: none;
+}
+
+a {
+    font-size: 100%;
 }
