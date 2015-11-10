@@ -1,3 +1,31 @@
+quicktill (0.11.5) stable; urgency=low
+
+  * New release 0.11.5
+
+  * Add accordion to tillweb index page
+
+  * Add users pie chart to session page
+
+  * Add departments pie chart to tillweb
+
+  * Use tabs in tillweb
+
+  * Use kvtable
+
+  * Integrate better with html5 containing site
+
+  * Update jquery and jquery-ui to current versions
+
+  * Don't show empty tables on index page
+
+  * Configurable timeout in timesheets requests
+
+  * Rewrite timesheet client using python-requests
+
+  * Update example config file from current live Haymakers config
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 10 Nov 2015 14:08:44 +0000
+
 quicktill (0.11.4) stable; urgency=low
 
   * New release 0.11.4
