@@ -87,9 +87,7 @@ def tillweb_view(view):
             tillname=till.name
             access=access.permission
         try:
-            depts=session.query(Department).order_by(Department.id).all()
             info={
-                'depts':depts,
                 'base':base,
                 'access':access,
                 'tillname':tillname,
@@ -104,7 +102,7 @@ def tillweb_view(view):
             # u is the base URL for the till website including trailing /
             defaults={'object':till,
                       'till':tillname,'access':access,'u':base,
-                      'depts':depts,'dtf':dtf,'pubname':pubname,
+                      'dtf':dtf,'pubname':pubname,
                       'version':version}
             defaults.update(d)
             return render_to_response(
@@ -474,8 +472,8 @@ def plu(request,info,session,pluid):
 
 @tillweb_view
 def departmentlist(request,info,session):
-    # depts are included in template context anyway
-    return ('departmentlist.html',{})
+    depts=session.query(Department).order_by(Department.id).all()
+    return ('departmentlist.html',{'depts':depts})
 
 @tillweb_view
 def department(request,info,session,departmentid):
@@ -518,8 +516,9 @@ class StockCheckForm(forms.Form):
 @tillweb_view
 def stockcheck(request,info,session):
     buylist=[]
+    depts=session.query(Department).order_by(Department.id).all()
     if request.method == 'POST':
-        form=StockCheckForm(info['depts'],request.POST)
+        form=StockCheckForm(depts,request.POST)
         if form.is_valid():
             cd=form.cleaned_data
             ahead=datetime.timedelta(days=cd['weeks_ahead']*7)
@@ -543,7 +542,7 @@ def stockcheck(request,info,session):
                      for st,sold in r]
             buylist.sort(key=lambda l:float(l[2]),reverse=True)
     else:
-        form=StockCheckForm(info['depts'])
+        form=StockCheckForm(depts)
     return ('stockcheck.html',{'form':form,'buylist':buylist})
 
 @tillweb_view
