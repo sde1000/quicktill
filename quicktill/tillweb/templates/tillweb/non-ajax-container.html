@@ -1,0 +1,9 @@
+{% extends "tillweb/tillweb.html" %}
+{% block title %}{{till}} — AJAX container{% endblock %}
+
+{% block heading %}{{till}} — AJAX container{% endblock %}
+
+{% block tillcontent %}
+<p>The following is normally retrieved using an AJAX request:</p>
+{% include ajax_content %}
+{% endblock %}

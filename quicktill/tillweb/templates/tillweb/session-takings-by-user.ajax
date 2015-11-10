@@ -1,0 +1,31 @@
+{% with usertotals=session.user_totals %}
+<div id="user-takings">
+{% if usertotals %}
+<table id="usertakings">
+<thead>
+<tr><th>User</th><th>Items</th><th>Total</th></tr>
+</thead>
+<tbody>
+{% for user,i,t in usertotals %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
+<td>{{i}}</td>
+<td class="money">{{t}}</td>
+</tr>
+{% empty %}
+<tr><td>Not recorded</td><td></td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#usertakings").tablesorter({widgets:["zebra"]});
+});
+</script>
+<img src="{{u}}{{session.tillweb_url}}users-pie-chart.svg" alt="Sales by user pie chart" />
+{% else %}
+<p>No information.</p>
+{% endif %}
+</div>
+{% endwith %}

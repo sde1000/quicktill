@@ -1,0 +1,21 @@
+<div id="stock-sold">
+<table id="stocksold">
+<thead>
+<tr><th>Type</th><th>Quantity</th></tr>
+</thead>
+<tbody>
+{% for st,q in session.stock_sold %}
+<tr><td><a href="{{u}}{{st.tillweb_url}}">{{st.shortname}}</a></td>
+<td>{{q}} {{st.unit.name}}s</td></tr>
+{% empty %}
+<tr><td>None</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stocksold").tablesorter({widgets:["zebra"]});
+});
+</script>
+</div>

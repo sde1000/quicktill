@@ -1,5 +1,4 @@
 {% extends "tillweb/tillweb.html" %}
-{% load url from future %}
 
 {% block title %}{{till}} — Session {{session.id}}{% endblock %}
 
@@ -38,63 +37,12 @@
 
 <div id="tabs" style="min-width: 550px">
 <ul>
-<li><a href="#dept-takings">Takings by department</a></li>
+<li><a href="takings-by-dept.html">Takings by department</a></li>
 {% if not session.endtime %}<li><a href="#paytype-takings">Takings by payment type</a></li>{% endif %}
-{% if session.user_totals %}<li><a href="#user-takings">Takings by user</a></li>{% endif %}
-<li><a href="#stocksold">Stock sold</a></li>
-<li><a href="#transactions">Transactions</a></li>
+<li><a href="takings-by-user.html">Takings by user</a></li>
+<li><a href="stock-sold.html">Stock sold</a></li>
+<li><a href="transactions.html">Transactions</a></li>
 </ul>
-
-<div id="dept-takings">
-{% if not session.endtime %}
-<p>This session is still open, so may include transactions that have
-not been closed.  These are shown in a separate column.</p>
-{% endif %}
-
-<table id="depttakings">
-<thead>
-<tr><th>Dept</th><th>Description</th>
-{% if not session.endtime %}
-<th>Paid</th>
-<th>Pending</th>
-{% endif %}
-<th>Total</th>
-</tr>
-</thead>
-<tbody>
-{% for d,t,c,p in session.dept_totals_closed %}
-{% if t or c %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td>{{d.id}}</td>
-<td><a href="{% url "sessiondept" pubname session.id d.id %}">{{d.description}}</a></td>
-{% if not session.endtime %}
-{% if c %}<td class="money">{{c}}</td>{% else %}<td></td>{% endif %}
-<td class="money">{{p}}</td>
-{% endif %}
-<td class="money">{{t}}</td>
-</tr>
-{% endif %}
-{% endfor %}
-</tbody>
-<tfoot>
-<tr><td></td><td>Total</td>
-{% if not session.endtime %}
-<td class="money">{{session.closed_total}}</td>
-<td class="money">{{session.pending_total}}</td>
-{% endif %}
-<td class="money">{{session.total}}</td>
-</tr>
-</tfoot>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#depttakings").tablesorter({widgets:["zebra"]});
-});
-</script>
-
-<img src="{{u}}{{session.tillweb_url}}sales-pie-chart.svg" alt="Sales pie chart" />
-</div>
 
 {% if not session.endtime %}
 <div id="paytype-takings">
@@ -108,85 +56,6 @@ transactions.</p>
 </table>
 </div>
 {% endif %}
-
-{% with usertotals=session.user_totals %}
-{% if usertotals %}
-<div id="user-takings">
-<table id="usertakings">
-<thead>
-<tr><th>User</th><th>Items</th><th>Total</th></tr>
-</thead>
-<tbody>
-{% for user,i,t in usertotals %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
-<td>{{i}}</td>
-<td class="money">{{t}}</td>
-</tr>
-{% empty %}
-<tr><td>Not recorded</td><td></td></tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#usertakings").tablesorter({widgets:["zebra"]});
-});
-</script>
-<img src="{{u}}{{session.tillweb_url}}users-pie-chart.svg" alt="Sales by user pie chart" />
-</div>
-{% endif %}
-{% endwith %}
-
-<div id="stock-sold">
-<table id="stocksold">
-<thead>
-<tr><th>Type</th><th>Quantity</th></tr>
-</thead>
-<tbody>
-{% for st,q in session.stock_sold %}
-<tr><td><a href="{{u}}{{st.tillweb_url}}">{{st.shortname}}</a></td>
-<td>{{q}} {{st.unit.name}}s</td></tr>
-{% empty %}
-<tr><td>None</td></tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#stocksold").tablesorter({widgets:["zebra"]});
-});
-</script>
-</div>
-
-<div id="transactions">
-<table id="transactions-table">
-<thead>
-<tr><th>Transaction</th><th>Amount</th><th>Note</th><th>State</th></tr>
-</thead>
-<tbody>
-{% for t in session.transactions %}
-<tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
-<td class="money">{{t.total}}</td>
-<td>{% if t.notes %}{{t.notes}}{% endif %}</td>
-<td>{% if t.closed %}Paid:
-{% for pt,amount in t.payments_summary %}
-{{pt}} (<span class="money">{{amount}}</span>)
-{% endfor %}{% else %}Open{% endif %}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#transactions-table").tablesorter({widgets:["zebra"]});
-});
-</script>
-</div>
 
 </div>
 <script type="text/javascript">

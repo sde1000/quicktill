@@ -104,6 +104,12 @@ def tillweb_view(view):
                       'till':tillname,'access':access,'u':base,
                       'dtf':dtf,'pubname':pubname,
                       'version':version}
+            if t.endswith(".ajax"):
+                # AJAX content typically is not a fully-formed HTML document.
+                # If requested in a non-AJAX context, add a HTML container.
+                if not request.is_ajax():
+                    defaults['ajax_content']='tillweb/'+t
+                    t='non-ajax-container.html'
             defaults.update(d)
             return render_to_response(
                 'tillweb/'+t,defaults,
@@ -244,11 +250,9 @@ def session(request,info,session,sessionid):
         # the transaction totals
         s=session.query(Session).\
             filter_by(id=int(sessionid)).\
-            options(undefer('transactions.total')).\
             options(undefer('total')).\
             options(undefer('closed_total')).\
             options(undefer('actual_total')).\
-            options(joinedload('transactions.payments')).\
             one()
     except NoResultFound:
         raise Http404
@@ -264,6 +268,54 @@ def session(request,info,session,sessionid):
     prevlink=info['base']+prevsession.tillweb_url if prevsession else None
     return ('session.html',{'session':s,'nextlink':nextlink,
                             'prevlink':prevlink})
+
+@tillweb_view
+def session_takings_by_dept(request,info,session,sessionid):
+    try:
+        # The subqueryload_all() significantly improves the speed of loading
+        # the transaction totals
+        s=session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('session-takings-by-dept.ajax',{'session':s})
+
+@tillweb_view
+def session_takings_by_user(request,info,session,sessionid):
+    try:
+        # The subqueryload_all() significantly improves the speed of loading
+        # the transaction totals
+        s=session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('session-takings-by-user.ajax',{'session':s})
+
+@tillweb_view
+def session_stock_sold(request,info,session,sessionid):
+    try:
+        # The subqueryload_all() significantly improves the speed of loading
+        # the transaction totals
+        s=session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('session-stock-sold.ajax',{'session':s})
+
+@tillweb_view
+def session_transactions(request,info,session,sessionid):
+    try:
+        s=session.query(Session).\
+            filter_by(id=int(sessionid)).\
+            options(undefer('transactions.total')).\
+            options(joinedload('transactions.payments')).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('session-transactions.ajax',{'session':s})
 
 @tillweb_view
 def sessiondept(request,info,session,sessionid,dept):

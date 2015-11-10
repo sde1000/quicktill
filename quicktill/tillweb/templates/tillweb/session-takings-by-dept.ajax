@@ -1,0 +1,51 @@
+<div id="dept-takings">
+{% if not session.endtime %}
+<p>This session is still open, so may include transactions that have
+not been closed.  These are shown in a separate column.</p>
+{% endif %}
+
+<table id="depttakings">
+<thead>
+<tr><th>Dept</th><th>Description</th>
+{% if not session.endtime %}
+<th>Paid</th>
+<th>Pending</th>
+{% endif %}
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+{% for d,t,c,p in session.dept_totals_closed %}
+{% if t or c %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td>{{d.id}}</td>
+<td><a href="{% url "sessiondept" pubname session.id d.id %}">{{d.description}}</a></td>
+{% if not session.endtime %}
+{% if c %}<td class="money">{{c}}</td>{% else %}<td></td>{% endif %}
+<td class="money">{{p}}</td>
+{% endif %}
+<td class="money">{{t}}</td>
+</tr>
+{% endif %}
+{% endfor %}
+</tbody>
+<tfoot>
+<tr><td></td><td>Total</td>
+{% if not session.endtime %}
+<td class="money">{{session.closed_total}}</td>
+<td class="money">{{session.pending_total}}</td>
+{% endif %}
+<td class="money">{{session.total}}</td>
+</tr>
+</tfoot>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#depttakings").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+<img src="{{u}}{{session.tillweb_url}}sales-pie-chart.svg" alt="Sales pie chart" />
+</div>
+

@@ -8,11 +8,17 @@ tillurls=patterns(
 
     url(r'^$','pubroot'),
     url(r'^session/$','sessionfinder'),
+
     url(r'^session/(?P<sessionid>\d+)/$','session'),
+    url(r'^session/(?P<sessionid>\d+)/takings-by-dept.html$','session_takings_by_dept'),
+    url(r'^session/(?P<sessionid>\d+)/takings-by-user.html$','session_takings_by_user'),
+    url(r'^session/(?P<sessionid>\d+)/stock-sold.html$','session_stock_sold'),
+    url(r'^session/(?P<sessionid>\d+)/transactions.html$','session_transactions'),
     url(r'^session/(?P<sessionid>\d+)/sales-pie-chart.svg$','session_sales_pie_chart'),
     url(r'^session/(?P<sessionid>\d+)/users-pie-chart.svg$','session_users_pie_chart'),
     url(r'^session/(?P<sessionid>\d+)/dept(?P<dept>\d+)/$','sessiondept',
         name="sessiondept"),
+
     url(r'^transaction/(?P<transid>\d+)/$','transaction'),
     url(r'^supplier/$','supplierlist'),
     url(r'^supplier/(?P<supplierid>\d+)/$','supplier'),
