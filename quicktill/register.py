@@ -1776,6 +1776,10 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
         self._redraw()
+        ui.infopopup(["The selected lines were moved to a new transaction, "
+                      "number {}, called '{}'.  You can find it using the "
+                      "Recall Trans button.".format(nt.id,nt.notes)],
+                     title="Transaction split",colour=ui.colour_info)
 
     def settransnote(self,notes):
         if not self.entry(): return
