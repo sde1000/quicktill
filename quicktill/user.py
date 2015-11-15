@@ -656,6 +656,7 @@ class default_groups(object):
         "drink-in",
         "nosale",
         "merge-trans",
+        "split-trans",
         "stock-check",
         "stock-level-check",
         "twitter",

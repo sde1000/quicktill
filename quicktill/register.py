@@ -155,6 +155,31 @@ class edittransnotes(user.permission_checked,ui.dismisspopup):
         self.dismiss()
         self.func(notes)
 
+class splittrans(user.permission_checked,ui.dismisspopup):
+    """A popup to allow marked lines to be split into a different transaction."""
+    permission_required=("split-trans","Split a transaction into two parts")
+    def __init__(self,total,func):
+        ui.dismisspopup.__init__(
+            self,8,64,title="Move marked lines to new transaction",
+            colour=ui.colour_input)
+        self._func=func
+        self.addstr(2,2,"Total value of marked lines: {}".format(total))
+        self.addstr(4,2,"Notes for the new transaction containing the marked " \
+                    "lines:")
+        self.notesfield=ui.editfield(5,2,60,flen=60,keymap={
+            keyboard.K_CASH:(self.enter,None)})
+        self.notesfield.focus()
+    def enter(self):
+        notes=self.notesfield.f
+        if not notes:
+            ui.infopopup(
+                ["You must set a note for the new transaction, otherwise you "
+                 "will not be able to find it in the list of open transactions!"],
+                title="Note needed")
+            return
+        self.dismiss()
+        self._func(notes)
+
 class addtransline(user.permission_checked,ui.dismisspopup):
     """A popup to allow an arbitrary transaction line to be created.
 
@@ -338,6 +363,12 @@ class page(ui.basicpage):
         self.prompt=self.defaultprompt
         self.update_note()
         td.s.flush()
+    def _clear_marks(self):
+        self.ml=set()
+        for l in self.dl:
+            if isinstance(l,tline):
+                l.update_mark(self.ml)
+        self.prompt=self.defaultprompt
     def _loadtrans(self,trans):
         """
         Load a transaction, overwriting all our existing state.  The
@@ -1059,10 +1090,7 @@ class page(ui.basicpage):
         elif self.ml:
             log.info("Register: paymentkey: amount from marked lines")
             amount=self._total_value_of_marked_translines()
-            self.ml=set()
-            for l in self.dl:
-                if isinstance(l,tline):
-                    l.update_mark(self.ml)
+            self._clear_marks()
         else:
             # Exact amount
             log.info("Register: paymentkey: exact amount")
@@ -1194,11 +1222,7 @@ class page(ui.basicpage):
             if self.buf or self.qty or self.mod:
                 self.clearbuffer()
             elif self.ml:
-                self.prompt=self.defaultprompt
-                self.ml=set()
-                for l in self.dl:
-                    if isinstance(l,tline):
-                        l.update_mark(self.ml)
+                self._clear_marks()
             self.cursor_off()
         self._redraw()
     @user.permission_required("print-receipt","Print a receipt")
@@ -1339,11 +1363,7 @@ class page(ui.basicpage):
                 # delete the transaction.
                 self.canceltrans()
                 return
-            self.ml=set()
-            self.prompt=self.defaultprompt
-            for l in self.dl:
-                if isinstance(l,tline):
-                    l.update_mark(self.ml)
+            self._clear_marks()
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -1739,6 +1759,24 @@ class page(ui.basicpage):
         td.s.flush()
         td.s.expire(othertrans)
         self._loadtrans(othertrans)
+
+    def _splittrans(self,notes):
+        if not self.entry(): return
+        if not self.ml: return
+        # Create a new transaction with the supplied notes
+        nt=Transaction(session=self.trans.session,notes=notes)
+        td.s.add(nt)
+        for l in self.ml:
+            t=td.s.query(Transline).get(l.transline)
+            t.transaction=nt
+            del self.dl[self.dl.index(l)]
+        td.s.flush()
+        td.s.expire(self.trans,['total'])
+        self._clear_marks()
+        self.cursor_off()
+        self.update_balance()
+        self._redraw()
+
     def settransnote(self,notes):
         if not self.entry(): return
         if not self.trans or self.trans.closed: return
@@ -1747,17 +1785,21 @@ class page(ui.basicpage):
         self.update_note()
     def managetranskey(self):
         if self.ml:
+            marked_total=tillconfig.fc(self._total_value_of_marked_translines())
             menu=[
                 (keyboard.K_ONE,"Void the marked lines",
                  self.cancelmarked,None),
                 ]
             if self.trans and not self.trans.closed:
-                menu.append((keyboard.K_SIX,"Choose payment method",
-                             self._payment_method_menu,None))
+                menu+=[(keyboard.K_THREE,"Split the marked lines out "
+                        "into a separate transaction",
+                        splittrans,(marked_total,self._splittrans)),
+                       (keyboard.K_SIX,"Choose payment method",
+                        self._payment_method_menu,None)]
             ui.keymenu(
                 menu,title="Marked line options",
-                blurb="The total value of the marked lines is {}".format(
-                    tillconfig.fc(self._total_value_of_marked_translines())))
+                blurb=["","The value of the marked lines is {}".format(
+                    marked_total)])
             return
         if self.trans and not self.trans.closed:
             menu=[
