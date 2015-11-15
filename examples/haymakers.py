@@ -32,7 +32,6 @@ K_PRICECHECK=keycode("K_PRICECHECK","Price Check")
 K_STOCKINFO=keycode("K_STOCKINFO","Stock Info")
 K_APPS=keycode("K_APPS","Apps")
 K_LOCK=keycode("K_LOCK","Lock")
-K_MARK=keycode("K_MARK","Mark")
 
 user.group('basic-user','Basic user [group]',
            set.union(user.default_groups.basic_user,

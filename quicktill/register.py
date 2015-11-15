@@ -44,6 +44,7 @@ log=logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
 from .models import Payment,zero,User,Department,desc,RemoveCode
+from sqlalchemy.sql import func
 from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.orm import subqueryload,subqueryload_all
@@ -98,9 +99,15 @@ class bufferline(ui.lrline):
                     "items for a customer you can enter the replacement "
                     "items now; the till will show the difference in price "
                     "between the original and replacement items.")
-        self.rtext="{} {}".format(
-            "Amount to pay" if self.reg.balance>=zero else "Refund amount",
-            tillconfig.fc(self.reg.balance)) if self.reg.balance!=zero else ""
+        if self.reg.ml:
+            self.rtext="{} {}".format(
+                "Marked lines total",
+                tillconfig.fc(self.reg._total_value_of_marked_translines()))
+        else:
+            self.rtext="{} {}".format(
+                "Amount to pay" if self.reg.balance>=zero else "Refund amount",
+                tillconfig.fc(self.reg.balance)) \
+                if self.reg.balance!=zero else ""
         # Add the expected blank line
         l=['']+ui.lrline.display(self,width)
         self.cursor=(cursorx,len(l)-1)
@@ -123,7 +130,7 @@ class tline(ui.lrline):
     def age(self):
         return datetime.datetime.now() - self.transtime
     def update_mark(self,ml):
-        if self.transline in ml:
+        if self in ml:
             self.colour=curses.color_pair(ui.colour_cancelline)
         else:
             self.colour=curses.color_pair(0)
@@ -321,7 +328,7 @@ class page(ui.basicpage):
         self.dl=[] # Display list
         if hasattr(self,'s'):
             self.s.set(self.dl) # Tell the scrollable about the new display list
-        self.ml=set() # Marked transactions set
+        self.ml=set() # Set of marked tlines
         self.trans=None # Current transaction
         self.user.dbuser.transaction=None
         self.repeat=None # If dept/line button pressed, update this transline
@@ -933,14 +940,10 @@ class page(ui.basicpage):
         self.update_balance()
         self._redraw()
     def cashkey(self):
+        """The CASH/ENTER key is used to complete the "no sale" action as well
+        as potentially as a payment method key.  Check for that first.
+        It's also used to cancel an empty open transaction.
         """
-        The CASH/ENTER key is used to complete the "void" action and
-        "no sale" action as well as potentially as a payment method
-        key.  Check for those first.
-
-        """
-        if self.ml!=set():
-            return self.cancelmarked()
         if self.qty is not None:
             log.info("Register: cash/enter with quantity not allowed")
             ui.infopopup(["You can't enter a quantity before pressing "
@@ -1012,15 +1015,10 @@ class page(ui.basicpage):
                 keyboard.K_CASH:(self.paymentkey,(pm,),True)})
             return
         self.paymentkey(pm)
-    def payment_method_menu(self,title="Payment methods"):
-        possible_keys=[
-            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
-        ui.keymenu([(possible_keys.pop(0),m.description,self.paymentkey,(m,))
-                    for m in tillconfig.payment_methods],
-                   title=title)
+    def _payment_method_menu(self,title="Payment methods"):
+        ui.automenu([(m.description,self.paymentkey,(m,))
+                     for m in tillconfig.payment_methods],
+                    title=title,spill="keymenu")
     @user.permission_required("take-payment","Take a payment")
     def paymentkey(self,method):
         """
@@ -1185,9 +1183,16 @@ class page(ui.basicpage):
             self._clear()
         else:
             log.info("Register: clearkey on open or null transaction; "
-                     "clearing buffer")
+                     "clearing buffer or marks")
+            if self.buf or self.qty:
+                self.clearbuffer()
+            elif self.ml:
+                self.prompt=self.defaultprompt
+                self.ml=set()
+                for l in self.dl:
+                    if isinstance(l,tline):
+                        l.update_mark(self.ml)
             self.cursor_off()
-            self.clearbuffer()
         self._redraw()
     @user.permission_required("print-receipt","Print a receipt")
     def printkey(self):
@@ -1202,59 +1207,157 @@ class page(ui.basicpage):
         log.info("Register: printing transaction %d"%self.trans.id)
         ui.toast("The receipt is being printed.")
         printer.print_receipt(self.trans.id)
+
     def cancelkey(self):
+        # Does different things depending on context:
+        #
+        # On a blank page, pops up help about the key
+        #
+        # When marked lines are present, attempts to cancel/void the
+        # marked lines
+        #
+        # When no line is selected and no marked lines are present,
+        # attempts to cancel/void the whole transaction
+        #
+        # When a line is selected and no marked lines are present,
+        # attempts to cancel/void the selected line only (on an open
+        # transaction only; on a closed transaction pops up info
+        # telling the user to mark relevant lines first)
+
         if self.trans is None:
             log.info("Register: cancelkey help message")
+            ui.infopopup(
+                ["The Cancel key is used for cancelling whole transactions, "
+                 "and also for cancelling individual lines in a transaction.",
+                 "",
+                 "To cancel a whole transaction, just press Cancel.",
+                 "",
+                 "To cancel individual lines, use the Up and Down keys "
+                 "and the Mark key to mark the lines and then press Cancel.",
+                 "",
+                 "Lines cancelled from a transaction that's still open are "
+                 "reversed immediately.",
+                 "",
+                 "If you are viewing a transaction that has already been "
+                 "closed, a new 'void' transaction will be created reversing "
+                 "the lines from the closed transaction.",
+             ],title="Help on Cancel")
+            return
+        if self.ml:
             ui.infopopup([
-                "The Cancel key is used for cancelling whole "
-                "transactions, and also for cancelling individual lines "
-                "in a transaction.  To cancel a whole transaction, just "
-                "press Cancel.  (If you are viewing a transaction that "
-                "has already been closed, a new 'void' transaction will "
-                "be created with all the lines from the closed "
-                "transaction.)","",
-                "To cancel individual lines, use the Up and Down keys "
-                "to select the line and then press Cancel.  Lines "
-                "cancelled from a transaction that's still open are "
-                "reversed immediately.  If you're looking at a closed "
-                "transaction, you must select the lines you're "
-                "interested in and then press Cash/Enter to void them."],
-                         title="Help on Cancel")
-        else:
-            if self.s.cursor>=len(self.dl):
-                closed=self.trans.closed
-                if not closed and (
+                "Press Cash/Enter to void the marked lines."],
+                         title="Cancel Marked Lines",
+                         keymap={
+                             keyboard.K_CASH: (self.cancelmarked,None,True)})
+            return
+        closed=self.trans.closed
+        if self.s.cursor>=len(self.dl):
+            # The user has not indicated a particular line to cancel.
+            # Try to cancel the whole transaction.
+            if not closed and (
                     self.keyguard or 
                     (len(self.dl)>0 and
                      self.dl[0].age()>max_transline_modify_age)):
-                    log.info("Register: cancelkey kill transaction denied")
-                    ui.infopopup(["This transaction is old; you can't "
-                                  "cancel it all in "
-                                  "one go.  Cancel each line separately "
-                                  "instead."],
-                                 title="Cancel Transaction")
-                else:
-                    log.info("Register: cancelkey confirm kill "
-                             "transaction %d"%self.trans.id)
-                    ui.infopopup(["Are you sure you want to %s all of "
-                                  "transaction number %d?  Press Cash/Enter "
-                                  "to confirm, or Clear to go back."%(
-                        ("cancel","void")[closed],self.trans.id)],
-                                 title="Confirm Transaction Cancel",
-                                 keymap={
-                        keyboard.K_CASH: (self.canceltrans,None,True)})
+                log.info("Register: cancelkey kill transaction denied")
+                ui.infopopup(
+                    ["This transaction is old; you can't cancel it all in "
+                     "one go.  Cancel each line separately instead."],
+                    title="Cancel Transaction")
             else:
-                self.cancelline()
-    def canceltrans(self):
+                log.info("Register: cancelkey confirm kill "
+                         "transaction %d"%self.trans.id)
+                ui.infopopup(["Are you sure you want to %s all of "
+                              "transaction number %d?  Press Cash/Enter "
+                              "to confirm, or Clear to go back."%(
+                                  ("cancel","void")[closed],self.trans.id)],
+                             title="Confirm Transaction Cancel",
+                             keymap={
+                                 keyboard.K_CASH: (self.canceltrans,None,True)})
+        else:
+            # The cursor is on a line.
+            if closed:
+                ui.infopopup(
+                    ["Select the lines to void from this transaction by "
+                     "using Up/Down and the Mark key, then press Cancel "
+                     "again to void them."],
+                    title="Help on voiding lines from closed transactions")
+                return
+            l=self.dl[self.s.cursor]
+            if isinstance(l,tline):
+                log.info("Register: cancelline: confirm cancel")
+                ui.infopopup(["Are you sure you want to cancel this line? "
+                              "Press Cash/Enter to confirm."],
+                             title="Confirm Cancel",keymap={
+                    keyboard.K_CASH: (self.cancelline,(l,),True)})
+            else:
+                log.info("Register: cancelline: can't cancel payments")
+                ui.infopopup(["You can't cancel payments.  Cancel the whole "
+                              "transaction instead."],title="Cancel")
+
+    def cancelmarked(self):
+        """Cancel marked lines from a transaction.
+
+        The transaction may be open or closed; if it is open then
+        delete or void the lines; if it is closed then create a new
+        transaction voiding the marked lines.
+        """
         if not self.entry(): return
-        # Yes, they really want to do it.  But is it open or closed?
+        tl=list(self.ml)
+        if self.trans.closed:
+            self._clear()
+            trans=self.gettrans()
+            if trans is None: return
+            log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans.id))
+            for l in tl:
+                self._void_line(l.transline)
+            self.cursor_off()
+            self.update_balance()
+            self._redraw()
+            self._payment_method_menu(
+                title="Choose refund type, or press Clear to add more items")
+        else:
+            # Are all the lines eligible to be deleted?
+            can_delete=True
+            for l in tl:
+                if l.age()>max_transline_modify_age:
+                    can_delete=False
+                    break
+            for l in tl:
+                if can_delete:
+                    self._delete_line(l)
+                else:
+                    self._void_line(l.transline)
+            if len(self.dl)==0:
+                # The last transaction line was deleted, so also
+                # delete the transaction.
+                self.canceltrans()
+                return
+            self.ml=set()
+            self.prompt=self.defaultprompt
+            for l in self.dl:
+                if isinstance(l,tline):
+                    l.update_mark(self.ml)
+            self.cursor_off()
+            self.update_balance()
+            self._redraw()
+
+    def canceltrans(self):
+        """Cancel the whole transaction"""
+        if not self.entry(): return
         if self.trans.closed:
             log.info("Register: cancel closed transaction %d"%self.trans.id)
-            # Select all lines
-            for i in range(0,len(self.dl)):
-                self.markline(i)
-            # Create new 'void' transaction
-            self.cancelmarked()
+            tl=self.dl
+            self._clear()
+            trans=self.gettrans()
+            if trans is None: return
+            for l in tl:
+                if isinstance(l,tline):
+                    self._void_line(l.transline)
+            self.cursor_off()
+            self.update_balance()
+            self._redraw()
+            self._payment_method_menu(
+                title="Choose refund type, or press Clear to add more items")
         else:
             # Delete this transaction and everything to do with it
             tn=self.trans.id
@@ -1276,78 +1379,36 @@ class page(ui.basicpage):
             ui.infopopup(["Transaction number %d has been cancelled.  %s"%(
                 tn,refundtext)],title="Transaction Cancelled",
                          dismiss=keyboard.K_CASH)
-    def markline(self,line):
-        l=self.dl[line]
-        if isinstance(l,tline):
-            transline=l.transline
-            self.ml.add(transline)
-            l.update_mark(self.ml)
-            self.s.drawdl()
-    def cancelline(self,force=False):
+
+    def cancelline(self,l):
         if not self.entry(): return
-        if self.trans.closed:
-            l=self.dl[self.s.cursor]
-            if not isinstance(l,tline):
-                ui.infopopup(["You can't void payments from closed "
-                              "transactions."],title="Error")
-                return
-            if self.ml==set():
-                ui.infopopup(
-                    ["Use the Up and Down keys and the Cancel key "
-                     "to select lines from this transaction that "
-                     "you want to void, and then press Cash/Enter "
-                     "to create a new transaction that voids these "
-                     "lines.  If you don't want to cancel lines from "
-                     "this transaction, press Clear after dismissing "
-                     "this message."],
-                    title="Help on voiding lines from closed transactions")
-            self.prompt="Press Cash/Enter to void the blue lines"
-            self.markline(self.s.cursor)
+        if l.age() < max_transline_modify_age:
+            self._delete_line(l)
         else:
-            l=self.dl[self.s.cursor]
-            if isinstance(l,tline):
-                transline=l.transline
-                if force:
-                    if l.age()<max_transline_modify_age:
-                        log.info("Register: cancelline: delete "
-                                 "transline %d"%transline)
-                        tl=td.s.query(Transline).get(transline)
-                        td.s.delete(tl)
-                        td.s.flush()
-                        del self.dl[self.s.cursor]
-                        td.s.expire(self.trans,['total'])
-                        self.cursor_off()
-                        self.update_balance()
-                        if len(self.dl)==0:
-                            # The last transaction line was deleted, so also
-                            # delete the transaction.
-                            self.canceltrans()
-                        self._redraw()
-                    else:
-                        log.info("Register: cancelline: reverse "
-                                 "transline %d"%transline)
-                        self.voidline(transline)
-                        self.cursor_off()
-                        self.update_balance()
-                        self._redraw()
-                else:
-                    log.info("Register: cancelline: confirm cancel")
-                    ui.infopopup(["Are you sure you want to cancel this line? "
-                                  "Press Cash/Enter to confirm."],
-                                 title="Confirm Cancel",keymap={
-                        keyboard.K_CASH: (self.cancelline,(True,),True)})
-            else:
-                log.info("Register: cancelline: can't cancel payments")
-                ui.infopopup(["You can't cancel payments.  Cancel the whole "
-                              "transaction instead."],title="Cancel")
-    def voidline(self,tl):
-        """
-        Add a line reversing the supplied transaction line to the
-        current transaction.  tl is a Transline id.
+            self._void_line(l.transline)
+        if len(self.dl)==0:
+            # The last transaction line was deleted, so also
+            # delete the transaction.
+            self.canceltrans()
+            return
+        self.cursor_off()
+        self.update_balance()
+        self._redraw()
+
+    def _delete_line(self,l):
+        # l is a tline
+        tl=td.s.query(Transline).get(l.transline)
+        td.s.delete(tl)
+        td.s.flush()
+        del self.dl[self.dl.index(l)]
+        td.s.expire(self.trans,['total'])
+
+    def _void_line(self,tl):
+        """Add a line reversing the supplied transaction line to the current
+        transaction.  tl is a Transline id.
 
         The caller is responsible for updating the balance and
         redrawing.
-
         """
         trans=self.gettrans()
         transline=td.s.query(Transline).get(tl)
@@ -1372,19 +1433,55 @@ class page(ui.basicpage):
             td.s.add(ntl)
             td.s.flush()
         self.dl.append(tline(ntl.id))
-    def cancelmarked(self):
-        tl=list(self.ml)
-        self._clear()
-        trans=self.gettrans()
-        if trans is None: return
-        log.info("Register: cancelmarked %s; new trans=%d"%(str(tl),trans.id))
-        for i in tl:
-            self.voidline(i)
-        self.cursor_off()
-        self.update_balance()
-        self._redraw()
-        self.payment_method_menu(title="Choose refund type, or press Clear to "
-                                 "add more items")
+
+    def markkey(self):
+        # If there's no line currently selected, pops up a help box
+        #
+        # If a payment line is selected, pops up an error box
+        #
+        # If a transaction line is selected, toggles the selection
+        # status of that line and updates the prompt.
+        if self.s.cursor>=len(self.dl):
+            ui.infopopup(
+                ["Use the Up/Down keys to choose a line, and press Mark "
+                 "to select or deselect that line.  Selected lines are "
+                 "shown in blue.","",
+                 "You can mark several lines and then perform an operation "
+                 "on all of them by pressing Manage Transaction."],
+                title="Mark key help")
+            return
+        l=self.dl[self.s.cursor]
+        if isinstance(l,tline):
+            if l in self.ml:
+                self.ml.remove(l)
+            else:
+                self.ml.add(l)
+            l.update_mark(self.ml)
+            if self.ml:
+                if self.trans.closed:
+                    self.prompt=""
+                else:
+                    self.prompt="Press Clear to remove all the marks.  "
+                self.prompt+="Press Cancel to void the marked lines.  " \
+                    "Press Manage Transaction for other options."
+            else:
+                self.prompt=self.defaultprompt
+            self.s.drawdl()
+        else:
+            ui.infopopup(
+                ["You can only mark transaction lines.  You can't mark "
+                 "payments."],
+                title="Mark error")
+            return
+
+    def _total_value_of_marked_translines(self):
+        if not self.ml:
+            return zero
+        return td.s.query(func.sum(Transline.items*Transline.amount)).\
+            select_from(Transline).\
+            filter(Transline.id.in_([x.transline for x in self.ml])).\
+            scalar()
+
     def clear_and_lock_register(self):
         # We set the user's current transaction to None and dismiss
         # the current register page, most likely returning to the lock
@@ -1393,6 +1490,7 @@ class page(ui.basicpage):
         self.user.dbuser.transaction=None
         td.s.flush()
         self.deselect()
+
     def recalltrans(self,trans):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
@@ -1639,6 +1737,16 @@ class page(ui.basicpage):
         self.trans.notes=notes
         self.update_note()
     def managetranskey(self):
+        if self.ml:
+            menu=[
+                (keyboard.K_ONE,"Void the marked lines",
+                 self.cancelmarked,None),
+                ]
+            ui.keymenu(
+                menu,title="Marked line options",
+                blurb="The total value of the marked lines is {}".format(
+                    tillconfig.fc(self._total_value_of_marked_translines())))
+            return
         if self.trans and not self.trans.closed:
             menu=[
                 (keyboard.K_ONE,"Defer transaction to next session",
@@ -1654,7 +1762,7 @@ class page(ui.basicpage):
                  "(free text entry)",
                  edittransnotes,(self.trans,self.settransnote)),
                 (keyboard.K_SIX,"Choose payment method",
-                 self.payment_method_menu,None),
+                 self._payment_method_menu,None),
             ]
         else:
             menu=[]
@@ -1750,6 +1858,7 @@ class page(ui.basicpage):
             keyboard.K_PRINT: self.printkey,
             keyboard.K_RECALLTRANS: self.recalltranskey,
             keyboard.K_MANAGETRANS: self.managetranskey,
+            keyboard.K_MARK: self.markkey,
             }
         if k in keys: return keys[k]()
         if k in self.hotkeys: return self.hotkeys[k]()
