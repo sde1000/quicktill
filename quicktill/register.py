@@ -1056,6 +1056,13 @@ class page(ui.basicpage):
             amount=strtoamount(self.buf)
             if self.balance<zero:
                 amount=zero-amount # refund amount
+        elif self.ml:
+            log.info("Register: paymentkey: amount from marked lines")
+            amount=self._total_value_of_marked_translines()
+            self.ml=set()
+            for l in self.dl:
+                if isinstance(l,tline):
+                    l.update_mark(self.ml)
         else:
             # Exact amount
             log.info("Register: paymentkey: exact amount")
@@ -1184,7 +1191,7 @@ class page(ui.basicpage):
         else:
             log.info("Register: clearkey on open or null transaction; "
                      "clearing buffer or marks")
-            if self.buf or self.qty:
+            if self.buf or self.qty or self.mod:
                 self.clearbuffer()
             elif self.ml:
                 self.prompt=self.defaultprompt
@@ -1461,7 +1468,9 @@ class page(ui.basicpage):
                 if self.trans.closed:
                     self.prompt=""
                 else:
-                    self.prompt="Press Clear to remove all the marks.  "
+                    self.prompt="Press Clear to remove all the marks.  " \
+                        "Pressing a payment key now will use the marked lines " \
+                        "total instead of the whole outstanding amount.  "
                 self.prompt+="Press Cancel to void the marked lines.  " \
                     "Press Manage Transaction for other options."
             else:
@@ -1742,6 +1751,9 @@ class page(ui.basicpage):
                 (keyboard.K_ONE,"Void the marked lines",
                  self.cancelmarked,None),
                 ]
+            if self.trans and not self.trans.closed:
+                menu.append((keyboard.K_SIX,"Choose payment method",
+                             self._payment_method_menu,None))
             ui.keymenu(
                 menu,title="Marked line options",
                 blurb="The total value of the marked lines is {}".format(
