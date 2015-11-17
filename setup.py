@@ -11,6 +11,7 @@ setup(name='quicktill',
       packages=['quicktill','quicktill.tillweb'],
       package_data={'quicktill.tillweb':
                         ['static/tillweb/*.js','templates/tillweb/*.html',
+                         'templates/tillweb/*.ajax',
                          'static/tillweb/*.css','static/tillweb/images/*']},
       scripts=['runtill'],
       )
