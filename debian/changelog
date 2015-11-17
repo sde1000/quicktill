@@ -1,3 +1,29 @@
+quicktill (0.11.6) stable; urgency=low
+
+  * New release 0.11.6
+
+  * Add event handling time alarm and gc stats
+
+  * Split user class has_permission() method into two
+
+  * Add permissions for cancelling lines from transactions
+
+  * Clear marks when adding new lines to a transaction
+
+  * Add info popup after transaction split
+
+  * Function to split transactions
+
+  * Use marked lines total as default payment amount
+
+  * Use Mark key when cancelling lines from transactions
+
+  * Load session page tabs using AJAX
+
+  * Fetch department list only when necessary in tillweb
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Tue, 17 Nov 2015 14:32:06 +0000
+
 quicktill (0.11.5) stable; urgency=low
 
   * New release 0.11.5
