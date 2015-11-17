@@ -59,6 +59,10 @@ user.action_descriptions['override-price']="Override the sale price of an item"
 user.action_descriptions['nosale']="Open the cash drawer with no payment"
 user.action_descriptions['suppress-refund-help-text']=(
     "Don't show the refund help text")
+user.action_descriptions['cancel-line-in-open-transaction'] = (
+    "Delete or reverse a line in an open transaction")
+user.action_descriptions['void-from-closed-transaction'] = (
+    "Create a transaction voiding lines from a closed transaction")
 
 # Whenever the register is started it generates a new unique ID for
 # itself.  This is used to distinguish register instances that are
@@ -1278,17 +1282,33 @@ class page(ui.basicpage):
                  "",
                  "If you are viewing a transaction that has already been "
                  "closed, a new 'void' transaction will be created reversing "
-                 "the lines from the closed transaction.",
-             ],title="Help on Cancel")
-            return
-        if self.ml:
-            ui.infopopup([
-                "Press Cash/Enter to void the marked lines."],
-                         title="Cancel Marked Lines",
-                         keymap={
-                             keyboard.K_CASH: (self.cancelmarked,None,True)})
+                 "the lines from the closed transaction."],
+                title="Help on Cancel",
+                colour=ui.colour_info)
             return
         closed=self.trans.closed
+        if closed and not \
+           self.user.has_permission("void-from-closed-transaction"):
+            ui.infopopup(
+                ["You don't have permission to void lines from a closed "
+                 "transaction."],
+                title="Not allowed")
+            return
+        if not closed and not \
+           self.user.has_permission("cancel-line-in-open-transaction"):
+            ui.infopopup(
+                ["You don't have permission to cancel lines in an open "
+                 "transaction, or to delete the whole transaction."],
+                title="Not allowed")
+            return
+        if self.ml:
+            ui.infopopup(
+                ["Press Cash/Enter to void the marked lines."],
+                title="Cancel Marked Lines",
+                colour=ui.colour_confirm,
+                keymap={
+                    keyboard.K_CASH: (self.cancelmarked,None,True)})
+            return
         if self.s.cursor>=len(self.dl):
             # The user has not indicated a particular line to cancel.
             # Try to cancel the whole transaction.
@@ -1301,36 +1321,40 @@ class page(ui.basicpage):
                     ["This transaction is old; you can't cancel it all in "
                      "one go.  Cancel each line separately instead."],
                     title="Cancel Transaction")
-            else:
-                log.info("Register: cancelkey confirm kill "
-                         "transaction %d"%self.trans.id)
-                ui.infopopup(["Are you sure you want to %s all of "
-                              "transaction number %d?  Press Cash/Enter "
-                              "to confirm, or Clear to go back."%(
-                                  ("cancel","void")[closed],self.trans.id)],
-                             title="Confirm Transaction Cancel",
-                             keymap={
-                                 keyboard.K_CASH: (self.canceltrans,None,True)})
-        else:
-            # The cursor is on a line.
-            if closed:
-                ui.infopopup(
-                    ["Select the lines to void from this transaction by "
-                     "using Up/Down and the Mark key, then press Cancel "
-                     "again to void them."],
-                    title="Help on voiding lines from closed transactions")
                 return
-            l=self.dl[self.s.cursor]
-            if isinstance(l,tline):
-                log.info("Register: cancelline: confirm cancel")
-                ui.infopopup(["Are you sure you want to cancel this line? "
-                              "Press Cash/Enter to confirm."],
-                             title="Confirm Cancel",keymap={
-                    keyboard.K_CASH: (self.cancelline,(l,),True)})
-            else:
-                log.info("Register: cancelline: can't cancel payments")
-                ui.infopopup(["You can't cancel payments.  Cancel the whole "
-                              "transaction instead."],title="Cancel")
+            log.info("Register: cancelkey confirm kill "
+                     "transaction %d"%self.trans.id)
+            ui.infopopup(["Are you sure you want to %s all of "
+                          "transaction number %d?  Press Cash/Enter "
+                          "to confirm, or Clear to go back."%(
+                              ("cancel","void")[closed],self.trans.id)],
+                         title="Confirm Transaction Cancel",
+                         colour=ui.colour_confirm,
+                         keymap={
+                             keyboard.K_CASH: (self.canceltrans,None,True)})
+            return
+        # The cursor is on a line.
+        if closed:
+            ui.infopopup(
+                ["Select the lines to void from this transaction by "
+                 "using Up/Down and the Mark key, then press Cancel "
+                 "again to void them."],
+                title="Help on voiding lines from closed transactions",
+                colour=ui.colour_info)
+            return
+        l=self.dl[self.s.cursor]
+        if isinstance(l,tline):
+            log.info("Register: cancelline: confirm cancel")
+            ui.infopopup(["Are you sure you want to cancel this line? "
+                          "Press Cash/Enter to confirm."],
+                         title="Confirm Cancel",
+                         colour=ui.colour_confirm,
+                         keymap={
+                             keyboard.K_CASH: (self.cancelline,(l,),True)})
+        else:
+            log.info("Register: cancelline: can't cancel payments")
+            ui.infopopup(["You can't cancel payments.  Cancel the whole "
+                          "transaction instead."],title="Cancel")
 
     def cancelmarked(self):
         """Cancel marked lines from a transaction.
@@ -1338,10 +1362,20 @@ class page(ui.basicpage):
         The transaction may be open or closed; if it is open then
         delete or void the lines; if it is closed then create a new
         transaction voiding the marked lines.
+
+        We repeat the permission checks here because we may be called
+        from the Manage Transaction menu as well as from the cancel
+        key code.
         """
         if not self.entry(): return
         tl=list(self.ml)
         if self.trans.closed:
+            if not self.user.has_permission("void-from-closed-transaction"):
+                ui.infopopup(
+                    ["You don't have permission to void lines from a closed "
+                     "transaction."],
+                    title="Not allowed")
+                return
             self._clear()
             trans=self.gettrans()
             if trans is None: return
@@ -1354,12 +1388,13 @@ class page(ui.basicpage):
             self._payment_method_menu(
                 title="Choose refund type, or press Clear to add more items")
         else:
-            # Are all the lines eligible to be deleted?
-            can_delete=True
-            for l in tl:
-                if l.age()>max_transline_modify_age:
-                    can_delete=False
-                    break
+            if not self.user.has_permission("cancel-line-in-open-transaction"):
+                ui.infopopup(
+                    ["You don't have permission to cancel lines in an open "
+                     "transaction."],
+                    title="Not allowed")
+                return
+            can_delete = all(l.age() <= max_transline_modify_age for l in tl)
             for l in tl:
                 if can_delete:
                     self._delete_line(l)
