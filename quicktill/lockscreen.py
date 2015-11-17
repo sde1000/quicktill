@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 from . import ui,version,printer,foodorder
+import gc
 import logging
 log=logging.getLogger(__name__)
 
@@ -26,6 +27,8 @@ class lockpage(ui.basicpage):
             log.info("Kitchen printer problem: %s",kpproblem)
         self.addstr(self.h-1,0,"Till version: {}".format(version.version))
         self.win.move(0,0)
+        log.info("lockpage gc stats: %s, len(gc.garbage)=%d",gc.get_count(),
+                 len(gc.garbage))
     def line(self,s):
         self.addstr(self._y,1,s)
         self._y=self._y+1
