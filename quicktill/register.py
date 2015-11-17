@@ -364,11 +364,12 @@ class page(ui.basicpage):
         self.update_note()
         td.s.flush()
     def _clear_marks(self):
-        self.ml=set()
-        for l in self.dl:
-            if isinstance(l,tline):
-                l.update_mark(self.ml)
-        self.prompt=self.defaultprompt
+        if self.ml:
+            self.ml=set()
+            for l in self.dl:
+                if isinstance(l,tline):
+                    l.update_mark(self.ml)
+            self.prompt=self.defaultprompt
     def _loadtrans(self,trans):
         """
         Load a transaction, overwriting all our existing state.  The
@@ -455,6 +456,7 @@ class page(ui.basicpage):
             and self.trans.total==self.trans.payments_total):
             self.trans.closed=True
             td.s.flush()
+            self._clear_marks()
             if self._autolock: self.locked=True
     def linekey(self,kb): # We are passed the keyboard binding
         # We may be being called back from a stocklinemenu here, so
@@ -608,6 +610,7 @@ class page(ui.basicpage):
         self.dl.append(tline(tl.id))
         self.repeat=repeatinfo(plu=plu.id,mod=mod)
         td.s.expire(self.trans,['total'])
+        self._clear_marks()
         self.update_balance()
         self.cursor_off()
         self._redraw()
@@ -791,6 +794,7 @@ class page(ui.basicpage):
                 stockline.name,stockremain[0],int(stockremain[1]))
         # Adding and altering translines changes the total
         td.s.expire(self.trans,['total'])
+        self._clear_marks()
         self.update_balance()
         self.cursor_off()
         self._redraw()
@@ -871,6 +875,7 @@ class page(ui.basicpage):
                  "price=%f",trans.id,tl.id,dept,items,price)
         self.dl.append(tline(tl.id))
         td.s.expire(self.trans,['total'])
+        self._clear_marks()
         self.update_balance()
         self.cursor_off()
         self._redraw()
@@ -888,6 +893,7 @@ class page(ui.basicpage):
         """
         if not self.entry(): return
         self.prompt=self.defaultprompt
+        self._clear_marks()
         self.clearbuffer()
         trans=self.gettrans()
         if trans is None: return "Transaction cannot be started."
@@ -967,6 +973,7 @@ class page(ui.basicpage):
             return
         p=pm.add_change(self.trans,description="Drink 'In'",amount=-amount)
         self.dl.append(p)
+        self._clear_marks()
         self.cursor_off()
         self.update_balance()
         self._redraw()
