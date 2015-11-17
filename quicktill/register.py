@@ -259,8 +259,7 @@ def no_saleprice_popup(user,item):
     appropriate permissions.
 
     """
-    if user.has_permission('override-price') and \
-            user.has_permission('reprice-stock'):
+    if user.may('override-price') and user.may('reprice-stock'):
         ist=item.stocktype
         ui.infopopup(
             ["No sale price has been set for {}.  You can enter a price "
@@ -272,7 +271,7 @@ def no_saleprice_popup(user,item):
                 keyboard.K_MANAGESTOCK: (
                     lambda:stocktype.reprice_stocktype(ist),
                     None,True)})
-    elif user.has_permission('override-price'):
+    elif user.may('override-price'):
         ui.infopopup(
             ["No sale price has been set for {}.  You can enter a price "
              "before pressing the line key to set the price just this once.".\
@@ -502,7 +501,7 @@ class page(ui.basicpage):
                      keyboard.K_WASTE.keycap)],
                 title="Zero price not allowed")
             return
-        if not self.user.has_permission('override-price'):
+        if not self.user.may('override-price'):
             ui.infopopup(
                 ["You don't have permission to override the price of "
                  "this item to {}.  Did you mean to press the {} key "
@@ -598,7 +597,7 @@ class page(ui.basicpage):
 
         # If we still don't have a price, we can't continue
         if tl.amount is None:
-            if self.user.has_permission('override-price'):
+            if self.user.may('override-price'):
                 msg="'{}' doesn't have a price set.  You can enter a " \
                     "price before choosing the item.".format(plu.description)
             else:
@@ -996,7 +995,7 @@ class page(ui.basicpage):
         if self.trans is None or self.trans.closed:
             if not self.buf:
                 log.info("Register: cashkey: NO SALE")
-                if self.user.has_permission('nosale'):
+                if self.user.may('nosale'):
                     ui.toast("No Sale has been recorded.")
                     printer.kickout()
                 else:
@@ -1287,15 +1286,13 @@ class page(ui.basicpage):
                 colour=ui.colour_info)
             return
         closed=self.trans.closed
-        if closed and not \
-           self.user.has_permission("void-from-closed-transaction"):
+        if closed and not self.user.may("void-from-closed-transaction"):
             ui.infopopup(
                 ["You don't have permission to void lines from a closed "
                  "transaction."],
                 title="Not allowed")
             return
-        if not closed and not \
-           self.user.has_permission("cancel-line-in-open-transaction"):
+        if not closed and not self.user.may("cancel-line-in-open-transaction"):
             ui.infopopup(
                 ["You don't have permission to cancel lines in an open "
                  "transaction, or to delete the whole transaction."],
@@ -1370,7 +1367,7 @@ class page(ui.basicpage):
         if not self.entry(): return
         tl=list(self.ml)
         if self.trans.closed:
-            if not self.user.has_permission("void-from-closed-transaction"):
+            if not self.user.may("void-from-closed-transaction"):
                 ui.infopopup(
                     ["You don't have permission to void lines from a closed "
                      "transaction."],
@@ -1388,7 +1385,7 @@ class page(ui.basicpage):
             self._payment_method_menu(
                 title="Choose refund type, or press Clear to add more items")
         else:
-            if not self.user.has_permission("cancel-line-in-open-transaction"):
+            if not self.user.may("cancel-line-in-open-transaction"):
                 ui.infopopup(
                     ["You don't have permission to cancel lines in an open "
                      "transaction."],

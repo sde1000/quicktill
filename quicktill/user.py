@@ -89,7 +89,7 @@ class permission_checked(object):
         """
         user=user or ui.current_user()
         if user is None: return False
-        return user.has_permission(cls.permission_required[0])
+        return user.may(cls.permission_required[0])
 
 class _permission_check(object):
     """
@@ -118,7 +118,7 @@ class _permission_check(object):
         """
         user=user or ui.current_user()
         if user is None: return False
-        return user.has_permission(self._action)
+        return user.may(self._action)
     def __get__(self,obj,objtype=None):
         return types.MethodType(self.__call__,obj,objtype)
     def __call__(self,*args,**kwargs):
@@ -214,13 +214,18 @@ class built_in_user(object):
                 self._flat_permissions.update(group.all_groups[m].members)
             else:
                 self._flat_permissions.add(m)
-    def has_permission(self,action):
-        """
-        Check whether this user has permission to perform the
-        specified action.
+    def may(self,action):
+        """May this user perform the specified action?
 
+        Superusers can do anything!
         """
         if self.is_superuser: return True
+        return action in self._flat_permissions
+    def has_permission(self,action):
+        """Does this user have the specified permission?
+
+        This ignores the superuser flag.
+        """
         return action in self._flat_permissions
     @property
     def all_permissions(self):
@@ -561,7 +566,7 @@ def usersmenu(include_inactive=False):
         ui.infopopup(["There is no current user."],title="No user info",
                      colour=ui.colour_info)
         return
-    if not u.has_permission('list-users') and not u.has_permission('edit-user'):
+    if not u.may('list-users') and not u.may('edit-user'):
         # A user who doesn't have the "list users" or "edit user"
         # permission will just see their own information.
         u.display_info()
@@ -570,7 +575,7 @@ def usersmenu(include_inactive=False):
     if not include_inactive:
         q=q.filter(User.enabled==True)
     ul=q.all()
-    if u.has_permission('edit-user'):
+    if u.may('edit-user'):
         f=ui.tableformatter(' l l l ')
         lines=[(f(x.fullname,x.shortname,
                   "(Active)" if x.enabled else "(Inactive)"),
@@ -581,7 +586,7 @@ def usersmenu(include_inactive=False):
                 display_info,(x.id,)) for x in ul]
     if not include_inactive:
         lines.insert(0,("Include inactive users",usersmenu,(True,)))
-    if u.has_permission('edit-user'):
+    if u.may('edit-user'):
         lines.insert(0,("Add new user",adduser,None))
     ui.menu(lines,title="User list",blurb="Select a user and press Cash/Enter")
 
