@@ -60,12 +60,8 @@ def exitoption(code):
 @user.permission_required('exit',"Exit the till software")
 def restartmenu():
     log.info("Restart menu")
-    menu=[
-        (keyboard.K_ONE,"Exit / restart till software",exitoption,(0,)),
-        (keyboard.K_TWO,"Turn off till",exitoption,(2,)),
-        (keyboard.K_THREE,"Reboot till",exitoption,(3,)),
-        ]
-    ui.keymenu(menu,title="Exit / restart options")
+    menu = [(x[1], exitoption, (x[0],)) for x in tillconfig.exitoptions]
+    ui.automenu(menu, title="Exit / restart options")
 
 class slmenu(ui.keymenu):
     def __init__(self):
@@ -119,13 +115,21 @@ def sysinfo_menu():
 
 def popup():
     log.info("Till management menu")
+    if not tillconfig.exitoptions:
+        exit = (keyboard.K_EIGHT, "Exit till software", exitoption, (0,))
+    elif len(tillconfig.exitoptions) == 1:
+        exit = (keyboard.K_EIGHT, tillconfig.exitoptions[0][1],
+                exitoption, (tillconfig.exitoptions[0][0],))
+    else:
+        exit = (keyboard.K_EIGHT, "Exit / restart till software",
+                restartmenu, None)
     menu=[
         (keyboard.K_ONE,"Sessions",session.menu,None),
         (keyboard.K_TWO,"Current session summary",session.currentsummary,None),
         (keyboard.K_FOUR,"Stock lines, PLUs and modifiers",slmenu,None),
         (keyboard.K_SIX,"Print a receipt",receiptprint,None),
         (keyboard.K_SEVEN,"Users",user.usersmenu,None),
-        (keyboard.K_EIGHT,"Exit / restart",restartmenu,None),
+        exit,
         (keyboard.K_NINE,"System information",sysinfo_menu,None),
         ]
     ui.keymenu(menu,title="Management options")

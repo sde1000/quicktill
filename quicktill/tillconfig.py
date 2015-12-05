@@ -63,3 +63,12 @@ def unblank_screen():
 # The user ID to use for creating a page if not otherwise specified.
 # An integer if present.
 default_user=None
+
+# The default options for the "exit / restart" menu.  These will go
+# away, to be replaced by an empty list, once all till startup scripts
+# have been updated to specify the options explicitly.
+exitoptions = [
+    (0, "Exit / restart till software"),
+    (2, "Turn off till"),
+    (3, "Reboot till"),
+]

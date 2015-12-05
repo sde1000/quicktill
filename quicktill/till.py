@@ -43,6 +43,21 @@ def start(stdwin):
     tillconfig.kb.curses_init(stdwin)
     event.eventloop()
 
+class ValidateExitOption(argparse.Action):
+    def __call__(self, parser, args, values, option_string=None):
+        code, text = values
+        try:
+            code = int(code)
+        except ValueError:
+            raise argparse.ArgumentError(
+                self, "first argument to {} must be an integer".format(
+                    self.dest))
+        current = getattr(args, self.dest, None)
+        if not current:
+            current = []
+        current.append((code, text))
+        setattr(args, self.dest, current)
+
 class runtill(cmdline.command):
     """
     Run the till interactively.
@@ -56,6 +71,12 @@ class runtill(cmdline.command):
         parser.add_argument("-n", "--nolisten", action="store_true",
                             dest="nolisten",
                             help="Disable listening socket for user tokens")
+        parser.add_argument(
+            "-e", "--exit-option", nargs=2,
+            dest="exitoptions",
+            action=ValidateExitOption,
+            metavar=("EXITCODE","TEXT"),
+            help="Add an option to the exit menu")
         parser.set_defaults(command=runtill.run,nolisten=False)
     @staticmethod
     def run(args):
@@ -66,6 +87,8 @@ class runtill(cmdline.command):
             if tillconfig.usertoken_listen_v6 and not args.nolisten:
                 user.tokenlistener(tillconfig.usertoken_listen_v6,
                                    addressfamily=socket.AF_INET6)
+            if args.exitoptions:
+                tillconfig.exitoptions = args.exitoptions
             td.init(tillconfig.database)
             curses.wrapper(start)
         except:
