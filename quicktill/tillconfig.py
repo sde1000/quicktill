@@ -72,3 +72,17 @@ exitoptions = [
     (2, "Turn off till"),
     (3, "Reboot till"),
 ]
+
+# If not None, an integer exit code to be used when the till is idle
+idle_exit_code = None
+
+# The minimum number of seconds the till must run before it can
+# consider itself to be idle
+minimum_run_time = 30
+
+# The minimum number of seconds the lock screen must be displayed before
+# the till can consider itself to be idle
+minimum_lock_screen_time = 300
+
+# The time at which this instance of the till was started
+start_time = 0.0

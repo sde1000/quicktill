@@ -9,6 +9,7 @@ from __future__ import print_function,unicode_literals
 import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
 import termios,fcntl,array
 import socket
+import time
 from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers,cmdline,extras
 from .version import version
 from .models import Session,User,UserToken,Business,zero
@@ -77,6 +78,23 @@ class runtill(cmdline.command):
             action=ValidateExitOption,
             metavar=("EXITCODE","TEXT"),
             help="Add an option to the exit menu")
+        parser.add_argument(
+            "-i", "--exit-when-idle",
+            dest="exit_when_idle", default=None,
+            action="store", type=int, metavar="EXITCODE",
+            help="Exit with EXITCODE when the till is idle")
+        parser.add_argument(
+            "-r", "--minimum-runtime",
+            dest="minimum_run_time", default=86400,
+            action="store", type=int, metavar="RUNTIME",
+            help="Run for at least RUNTIME seconds before considering "
+            "the till to be idle")
+        parser.add_argument(
+            "-s", "--minimum-lockscreen-time",
+            dest="minimum_lock_screen_time", default=300,
+            action="store", type=int, metavar="LOCKTIME",
+            help="Display the lock screen for at least LOCKTIME seconds "
+            "before considering the till to be idle")
         parser.set_defaults(command=runtill.run,nolisten=False)
     @staticmethod
     def run(args):
@@ -89,6 +107,10 @@ class runtill(cmdline.command):
                                    addressfamily=socket.AF_INET6)
             if args.exitoptions:
                 tillconfig.exitoptions = args.exitoptions
+            tillconfig.idle_exit_code = args.exit_when_idle
+            tillconfig.minimum_run_time = args.minimum_run_time
+            tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
+            tillconfig.start_time = time.time()
             td.init(tillconfig.database)
             curses.wrapper(start)
         except:
