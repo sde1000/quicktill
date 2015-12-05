@@ -299,6 +299,14 @@ class repeatinfo(object):
         for k,v in kwargs.iteritems():
             setattr(self,k,v)
 
+class _update_timeout_scrollable(ui.scrollable):
+    """A scrollable that calls _update_timeout() on its parent when it
+    receives the input focus.
+    """
+    def focus(self):
+        super(_update_timeout_scrollable,self).focus()
+        self.parent._update_timeout()
+
 class page(ui.basicpage):
     def __init__(self,user,hotkeys,autolock=None,timeout=300):
         """A cash register page
@@ -329,8 +337,8 @@ class page(ui.basicpage):
         # Save user's current transaction because it is unset by clear()
         candidate_trans=self.user.dbuser.transaction
         self._clear()
-        self.s=ui.scrollable(1,0,self.w,self.h-1,self.dl,
-                             lastline=bufferline(self))
+        self.s=_update_timeout_scrollable(
+            1, 0, self.w, self.h-1, self.dl, lastline=bufferline(self))
         self.s.focus()
         if candidate_trans is not None:
             session=Session.current(td.s)
