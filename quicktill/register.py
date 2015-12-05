@@ -38,8 +38,10 @@ from . import td,ui,keyboard,printer
 from . import stocktype,linekeys,modifiers
 from . import payment
 from . import user
+from . import event
 import logging
 import datetime
+import time
 log=logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
@@ -298,7 +300,16 @@ class repeatinfo(object):
             setattr(self,k,v)
 
 class page(ui.basicpage):
-    def __init__(self,user,hotkeys,autolock=None):
+    def __init__(self,user,hotkeys,autolock=None,timeout=300):
+        """A cash register page
+
+        autolock is the keycode of the "Lock" button, if the caller
+          wants the register to lock automatically at the end of each
+          transaction
+
+        timeout is the length of time in seconds since the most recent
+          action before the register automatically deselects itself
+        """
         # trans and name needed for "pagename" which is called in basicpage.__init__()
         self.trans=None # models.Transaction object
         self.user=user
@@ -306,6 +317,10 @@ class page(ui.basicpage):
         ui.basicpage.__init__(self)
         self._autolock=autolock
         self.locked=False
+        self._timeout=timeout
+        if self._timeout:
+            event.eventlist.append(self)
+        self._update_timeout()
         self.h=self.h-1 # XXX hack to avoid drawing into bottom right-hand cell
         self.hotkeys=hotkeys
         self.defaultprompt="Ready"
@@ -336,6 +351,9 @@ class page(ui.basicpage):
                 self.user.dbuser.message=None
         td.s.flush()
         self._redraw()
+    def _update_timeout(self):
+        if self._timeout:
+            self.nexttime = time.time() + self._timeout
     def clearbuffer(self):
         """
         Clear user input from the buffer.  Doesn't reset the prompt or
@@ -1920,6 +1938,7 @@ class page(ui.basicpage):
         # sqlalchemy session.  Replace it with the one from
         # self.user.dbuser.transaction
         self.trans=self.user.dbuser.transaction
+        self._update_timeout()
         return True
     def keypress(self,k):
         # This is our main entry point.  We will have a new database session.
@@ -2018,6 +2037,15 @@ class page(ui.basicpage):
                  self.user.fullname)
         ui.basicpage.deselect(self)
         self.dismiss()
+        if self in event.eventlist:
+            event.eventlist.remove(self)
+    def alarm(self):
+        # The timeout has passed.  If the scrollable has the input
+        # focus (i.e. there are no popups on top of us) we can
+        # deselect.
+        self.nexttime = None
+        if self.s.focused:
+            self.deselect()
 
 def handle_usertoken(t,*args,**kwargs):
     """
