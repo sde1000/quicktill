@@ -1,3 +1,17 @@
+quicktill (0.11.8) stable; urgency=low
+
+  * New release 0.11.8
+
+  * Restart the register timeout when it receives the input focus
+
+  * Register deselects itself after a timeout
+
+  * Add option for the till to exit if idle on the lock screen
+
+  * Enable exit menu options to be specified on the command line
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 07 Dec 2015 12:04:49 +0000
+
 quicktill (0.11.7) stable; urgency=low
 
   * New release 0.11.7
