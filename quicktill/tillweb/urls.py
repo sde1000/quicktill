@@ -20,6 +20,7 @@ tillurls=patterns(
         name="sessiondept"),
 
     url(r'^transaction/(?P<transid>\d+)/$','transaction'),
+    url(r'^transline/(?P<translineid>\d+)/$','transline'),
     url(r'^supplier/$','supplierlist'),
     url(r'^supplier/(?P<supplierid>\d+)/$','supplier'),
     url(r'^delivery/$','deliverylist'),

@@ -367,6 +367,18 @@ def transaction(request,info,session,transid):
     return ('transaction.html',{'transaction':t,})
 
 @tillweb_view
+def transline(request,info,session,translineid):
+    try:
+        tl=session.query(Transline).\
+            filter_by(id=int(translineid)).\
+            options(joinedload_all('stockref.stockitem.stocktype')).\
+            options(joinedload('user')).\
+            one()
+    except NoResultFound:
+        raise Http404
+    return ('transline.html',{'tl':tl,})
+
+@tillweb_view
 def supplierlist(request,info,session):
     sl=session.query(Supplier).order_by(Supplier.name).all()
     return ('suppliers.html',{'suppliers':sl})

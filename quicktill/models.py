@@ -537,10 +537,15 @@ class Transline(Base):
     def __repr__(self):
         return "<Transline(%s,%s)>"%(self.id,self.transid)
     @property
+    def tillweb_url(self):
+        return "transline/{}/".format(self.id)
+    @property
     def description(self):
         if self.text is not None: return self.text
-        if self.stockref is not None:
-            stockout=self.stockref
+        # If there is more than one entry in stockref then the text
+        # field should already have been filled in.
+        if self.stockref and len(self.stockref)==1:
+            stockout=self.stockref[0]
             qty=stockout.qty/self.items
             unitname=stockout.stockitem.stocktype.unit.name
             qty=Decimal(qty).quantize(Decimal("0.1"))
@@ -1138,11 +1143,11 @@ class StockOut(Base):
                          ForeignKey('stockremove.removecode'),nullable=False)
     translineid=Column(Integer,ForeignKey('translines.translineid',
                                           ondelete='CASCADE'),
-                       nullable=True,unique=True)
+                       nullable=True)
     time=Column(DateTime,nullable=False,server_default=func.current_timestamp())
     stockitem=relationship(StockItem,backref=backref('out',order_by=id))
     removecode=relationship(RemoveCode,lazy="joined")
-    transline=relationship(Transline,backref=backref('stockref',uselist=False,
+    transline=relationship(Transline,backref=backref('stockref',
                                                      cascade="all,delete"))
     def __repr__(self):
         return "<StockOut(%s,%s)>"%(self.id,self.stockid)

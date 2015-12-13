@@ -771,18 +771,22 @@ class page(ui.basicpage):
            self.dl[-1].age()<max_transline_modify_age:
             tl,so=tll[0]
             otl=td.s.query(Transline).get(self.dl[-1].transline)
-            if otl.stockref and otl.stockref.stockitem==so.stockitem:
+            # If the stockref has more than one item, we don't repeat
+            # because we have probably moved on to using the next
+            # stockitem
+            if otl.stockref and otl.stockref[0].stockitem==so.stockitem \
+               and len(otl.stockref)==1:
                 # It's the same stockitem, but are the quantities compatible?
-                orig_stockqty=otl.stockref.qty/otl.items
+                orig_stockqty=otl.stockref[0].qty/otl.items
                 new_stockqty=so.qty/tl.items
                 if orig_stockqty==new_stockqty:
                     # Yes, they are.  Just add items and qty together.
                     otl.items=otl.items+tl.items
-                    otl.stockref.qty=otl.stockref.qty+so.qty
+                    otl.stockref[0].qty=otl.stockref[0].qty+so.qty
                     td.s.flush()
                     td.s.expire(so.stockitem,['used','sold','remaining'])
                     log.info("linekey: updated transline %d and stockout %d",
-                             otl.id,otl.stockref.id)
+                             otl.id,otl.stockref[0].id)
                     self.dl[-1].update()
                     tll.pop(0)
 
@@ -1504,26 +1508,18 @@ class page(ui.basicpage):
         """
         trans=self.gettrans()
         transline=td.s.query(Transline).get(tl)
-        if transline.stockref is not None:
-            stockout=transline.stockref
-            ntl=Transline(
-                transaction=trans,items=-transline.items,
-                amount=transline.amount,department=transline.department,
-                transcode='V',user=self.user.dbuser)
-            td.s.add(ntl)
+        ntl=Transline(
+            transaction=trans,items=-transline.items,
+            amount=transline.amount,department=transline.department,
+            transcode='V',text=transline.text,user=self.user.dbuser)
+        td.s.add(ntl)
+        for stockout in transline.stockref:
             nso=StockOut(
                 transline=ntl,
                 stockitem=stockout.stockitem,qty=-stockout.qty,
                 removecode=stockout.removecode)
             td.s.add(nso)
-            td.s.flush()
-        else:
-            ntl=Transline(
-                transaction=trans,items=-transline.items,
-                amount=transline.amount,department=transline.department,
-                transcode='V',text=transline.text,user=self.user.dbuser)
-            td.s.add(ntl)
-            td.s.flush()
+        td.s.flush()
         self.dl.append(tline(ntl.id))
 
     def markkey(self):
@@ -1744,8 +1740,7 @@ class page(ui.basicpage):
                           "waste code."],title="Error")
             return
         for l in self.trans.lines:
-            sr=l.stockref
-            if sr:
+            for sr in l.stockref:
                 sr.removecode=freebie
                 sr.transline=None
         td.s.flush()
