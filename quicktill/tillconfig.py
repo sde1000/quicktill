@@ -64,14 +64,8 @@ def unblank_screen():
 # An integer if present.
 default_user=None
 
-# The default options for the "exit / restart" menu.  These will go
-# away, to be replaced by an empty list, once all till startup scripts
-# have been updated to specify the options explicitly.
-exitoptions = [
-    (0, "Exit / restart till software"),
-    (2, "Turn off till"),
-    (3, "Reboot till"),
-]
+# The options for the "exit / restart" menu.
+exitoptions = []
 
 # If not None, an integer exit code to be used when the till is idle
 idle_exit_code = None
