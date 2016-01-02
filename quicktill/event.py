@@ -1,4 +1,5 @@
-import select,time,curses,curses.panel
+import select
+import time
 import logging
 
 log=logging.getLogger(__name__)
@@ -16,8 +17,15 @@ eventlist=[]
 # called doread(), dowrite(), etc.
 rdlist=[]
 
-# List of functions to invoke each time around the event loop
+# List of functions to invoke each time around the event loop.  These
+# functions may do anything, including changing timeouts and drawing
+# on the display.
 ticklist=[]
+
+# List of functions to invoke before calling select.  These functions
+# may not change timeouts or draw on the display.  They will typically
+# flush queued output.
+preselectlist = []
 
 class time_guard(object):
     def __init__(self, name, max_time):
@@ -31,7 +39,8 @@ class time_guard(object):
         if time_taken > self._max_time:
             log.info("time_guard: %s took %f seconds",self._name,time_taken)
 
-curses_update_time_guard = time_guard("curses.doupdate",0.1)
+tick_time_guard = time_guard("tick",0.5)
+preselect_time_guard = time_guard("preselect",0.1)
 doread_time_guard = time_guard("doread",0.5)
 dowrite_time_guard = time_guard("dowrite",0.5)
 doexcept_time_guard = time_guard("doexcept",0.5)
@@ -39,7 +48,9 @@ alarm_time_guard = time_guard("alarm",0.5)
 
 def eventloop():
     while shutdowncode is None:
-        for i in ticklist: i()
+        for i in ticklist:
+            with tick_time_guard:
+                i()
         # Work out what the earliest timeout is
         timeout=None
         t=time.time()
@@ -49,21 +60,19 @@ def eventloop():
             if nt is None: continue
             if timeout is None or (nt-t)<timeout:
                 timeout=nt-t
-        with curses_update_time_guard:
-            curses.panel.update_panels()
-            curses.doupdate()
-        # debug curses.beep()
-        if timeout>0.0:
-            (rd,wr,ex)=select.select(rdlist,[],[],timeout)
-            for i in rd:
-                with doread_time_guard:
-                    i.doread()
-            for i in wr:
-                with dowrite_time_guard:
-                    i.dowrite()
-            for i in ex:
-                with doexcept_time_guard:
-                    i.doexcept()
+        for i in preselectlist:
+            with preselect_time_guard:
+                i()
+        (rd,wr,ex)=select.select(rdlist,[],[],timeout)
+        for i in rd:
+            with doread_time_guard:
+                i.doread()
+        for i in wr:
+            with dowrite_time_guard:
+                i.dowrite()
+        for i in ex:
+            with doexcept_time_guard:
+                i.doexcept()
         # Process any events whose time has come
         t=time.time()
         for i in eventlist:

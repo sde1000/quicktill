@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
+import curses.panel
 from . import keyboard,event,tillconfig,td,version
 
 import datetime
@@ -1549,6 +1550,10 @@ class exception_guard(object):
         exception_popup(self._description,self._title,type,value,tb)
         return True
 
+def _doupdate():
+    curses.panel.update_panels()
+    curses.doupdate()
+
 def init(w):
     global stdwin,header,toaster
     stdwin=w
@@ -1563,6 +1568,7 @@ def init(w):
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header=clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
+    event.preselectlist.append(_doupdate)
     toaster.notify_curses_initialised()
 
 beep=curses.beep
