@@ -391,6 +391,9 @@ def _linux_unblank_screen():
     buf=array.array(str('b'),[TIOCL_UNBLANKSCREEN])
     fcntl.ioctl(sys.stdin,termios.TIOCLINUX,buf)
 
+def _x_unblank_screen():
+    os.system("xset s reset")
+
 class ToastHandler(logging.Handler):
     def emit(self,record):
         ui.toast(self.format(record))
@@ -556,6 +559,9 @@ def main():
             tillconfig.unblank_screen=_linux_unblank_screen
         elif os.getenv('TERM')=='xterm':
             os.putenv('TERM','linux')
+
+    if os.getenv('DISPLAY'):
+        tillconfig.unblank_screen=_x_unblank_screen
 
     locale.setlocale(locale.LC_ALL,'')
 
