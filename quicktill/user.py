@@ -25,6 +25,7 @@ from sqlalchemy.orm import joinedload
 import types
 import socket,logging
 import datetime
+import collections
 log=logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
@@ -122,7 +123,7 @@ class _permission_check(object):
     def __get__(self,obj,objtype=None):
         return types.MethodType(self.__call__,obj,objtype)
     def __call__(self,*args,**kwargs):
-        if not callable(self._func):
+        if not isinstance(self._func, collections.Callable):
             raise TypeError("'permission_check' object is not callable")
         if self.allowed():
             self._func(*args,**kwargs)
@@ -439,7 +440,7 @@ def addpermission(userid):
     """
     cu=ui.current_user()
     if cu.is_superuser:
-        pl=action_descriptions.keys()
+        pl=list(action_descriptions.keys())
     else:
         pl=cu.all_permissions
     # Add in groups if the list of permissions includes everything in that group

@@ -104,11 +104,11 @@ def print_sessioncountup(s):
         for pm in tillconfig.all_payment_methods:
             for name,validator,print_fields in pm.total_fields:
                 for i in print_fields if print_fields else []:
-                    d.printline(u"{:>10}".format(i))
+                    d.printline("{:>10}".format(i))
                     d.printline()
                 if print_fields: d.printline("",underline=1)
                 if len(pm.total_fields)>1:
-                    d.printline(u"{} {}".format(pm.description,name),
+                    d.printline("{} {}".format(pm.description,name),
                                      colour=1,emph=1)
                 else:
                     d.printline(pm.description,colour=1,emph=1)

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -27,7 +29,7 @@ class Till(models.Model):
     def nav(self):
         return [self]
     def navtext(self):
-        return u"%s till"%(self.name,)
+        return "%s till"%(self.name,)
 
 PERMISSIONS=(
     ('R','Read-only'),

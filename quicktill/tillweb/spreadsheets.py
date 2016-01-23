@@ -146,7 +146,7 @@ def sessionrange(ds,start=None,end=None,tillname="Till"):
             tr.addElement(TableCell())
             di=iter(depts)
         while True:
-            dept=di.next()
+            dept=next(di)
             if dept==d:
                 tr.addElement(tcmoney(t))
                 break

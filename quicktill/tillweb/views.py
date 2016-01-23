@@ -7,7 +7,7 @@ from django.template.loader import get_template
 from django.conf import settings
 from django import forms
 from django.forms.util import ErrorList
-from models import *
+from .models import *
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload,subqueryload_all
 from sqlalchemy.orm import joinedload,joinedload_all

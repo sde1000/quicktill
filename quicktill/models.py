@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from sqlalchemy.ext.declarative import declarative_base,declared_attr
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
@@ -41,7 +43,7 @@ class Business(Base):
     vatno=Column(String(30))
     show_vat_breakdown=Column(Boolean(),nullable=False,default=False)
     def __unicode__(self):
-        return u"%s"%(self.abbrev,)
+        return "%s"%(self.abbrev,)
     def __repr__(self):
         return "<Business('%s')>"%(self.name,)
 
@@ -112,7 +114,7 @@ class PayType(Base):
     paytype=Column(String(8),nullable=False,primary_key=True)
     description=Column(String(10),nullable=False)
     def __unicode__(self):
-        return u"%s"%(self.description,)
+        return "%s"%(self.description,)
     def __repr__(self):
         return "<PayType('%s')>"%(self.paytype,)
 
@@ -139,7 +141,7 @@ class Session(Base):
     def __repr__(self):
         return "<Session(%s,'%s')>"%(self.id,self.date,)
     def __unicode__(self):
-        return u"Session %d"%self.id
+        return "Session %d"%self.id
     @property
     def tillweb_url(self):
         return "session/%d/"%self.id
@@ -317,7 +319,7 @@ class Transaction(Base):
         pts={}
         for p in self.payments:
             pts[p.paytype]=pts.get(p.paytype,zero)+p.amount
-        return pts.items()
+        return list(pts.items())
     @property
     def balance(self):
         """
@@ -340,7 +342,7 @@ class Transaction(Base):
         age=datetime.datetime.now()-first
         return age.days
     def __unicode__(self):
-        return u"Transaction %d"%self.id
+        return "Transaction %d"%self.id
     def __repr__(self):
         return "<Transaction(%s,%s,%s)>"%(self.id,self.sessionid,self.closed)
 
@@ -497,7 +499,7 @@ class Department(Base):
                     "single unit of stock in this department.")
     vat=relationship(VatBand)
     def __unicode__(self):
-        return u"%s"%(self.description,)
+        return "%s"%(self.description,)
     def __repr__(self):
         return "<Department(%s,'%s')>"%(self.id,self.description)
     @property
@@ -509,7 +511,7 @@ class TransCode(Base):
     code=Column('transcode',CHAR(1),nullable=False,primary_key=True)
     description=Column(String(20),nullable=False)
     def __unicode__(self):
-        return u"%s"%(self.description,)
+        return "%s"%(self.description,)
     def __repr__(self):
         return "<TransCode('%s','%s')>"%(self.code,self.description)
 
@@ -552,13 +554,13 @@ class Transline(Base):
             if qty==Decimal("1.0"):
                 qtys=unitname
             elif qty==Decimal("0.5"):
-                qtys=u"half %s"%unitname
+                qtys="half %s"%unitname
             else:
-                qtys=u"%s %s"%(qty,unitname)
-            if qtys==u'4.0 pint': qtys=u'4pt jug'
-            if qtys==u'2.0 25ml': qtys=u'double 25ml'
-            if qtys==u'2.0 50ml': qtys=u'double 50ml'
-            return u"%s %s"%(stockout.stockitem.stocktype.format(),qtys)
+                qtys="%s %s"%(qty,unitname)
+            if qtys=='4.0 pint': qtys='4pt jug'
+            if qtys=='2.0 25ml': qtys='double 25ml'
+            if qtys=='2.0 50ml': qtys='double 50ml'
+            return "%s %s"%(stockout.stockitem.stocktype.format(),qtys)
         return self.department.description
     def regtotal(self,currency):
         """
@@ -566,9 +568,9 @@ class Transline(Base):
         the register or on a receipt.
 
         """
-        if self.amount==zero: return u""
-        if self.items==1: return u"%s%s"%(currency,self.amount)
-        return u"%d @ %s%s = %s%s"%(
+        if self.amount==zero: return ""
+        if self.items==1: return "%s%s"%(currency,self.amount)
+        return "%d @ %s%s = %s%s"%(
             self.items,currency,self.amount,currency,self.items*self.amount)
 
 add_ddl(Transline.__table__,"""
@@ -829,7 +831,7 @@ class Supplier(Base):
     def __repr__(self):
         return "<Supplier(%s,'%s')>"%(self.id,self.name)
     def __unicode__(self):
-        return u"%s"%(self.name,)
+        return "%s"%(self.name,)
     @property
     def tillweb_url(self):
         return "supplier/%d/"%(self.id,)
@@ -857,7 +859,7 @@ class UnitType(Base):
     id=Column('unit',String(10),nullable=False,primary_key=True)
     name=Column(String(30),nullable=False)
     def __unicode__(self):
-        return u"%s"%(self.name,)
+        return "%s"%(self.name,)
     def __repr__(self):
         return "<UnitType('%s','%s')>"%(self.id,self.name)
 
@@ -897,7 +899,7 @@ class StockType(Base):
     def tillweb_url(self):
         return "stocktype/%d/"%self.id
     def __unicode__(self):
-        return u"%s %s"%(self.manufacturer,self.name)
+        return "%s %s"%(self.manufacturer,self.name)
     def __repr__(self):
         return "<StockType(%s,'%s','%s')>"%(self.id,self.manufacturer,self.name)
     @property
@@ -945,7 +947,7 @@ class FinishCode(Base):
     id=Column('finishcode',String(8),nullable=False,primary_key=True)
     description=Column(String(50),nullable=False)
     def __unicode__(self):
-        return u"%s"%self.description
+        return "%s"%self.description
     def __repr__(self):
         return "<FinishCode('%s','%s')>"%(self.id,self.description)
 
@@ -1088,7 +1090,7 @@ class StockItem(Base):
         pints, 1 pint)
 
         """
-        return u"%s %s%s"%(
+        return "%s %s%s"%(
             self.remaining,self.stocktype.unit.name,
             "s" if self.remaining!=Decimal(1) else "")
     @property
@@ -1102,7 +1104,7 @@ class AnnotationType(Base):
     id=Column('atype',String(8),nullable=False,primary_key=True)
     description=Column(String(20),nullable=False)
     def __unicode__(self):
-        return u"%s"%(self.description,)
+        return "%s"%(self.description,)
     def __repr__(self):
         return "<AnnotationType('%s','%s')>"%(self.id,self.description)
 
@@ -1129,7 +1131,7 @@ class RemoveCode(Base):
     id=Column('removecode',String(8),nullable=False,primary_key=True)
     reason=Column(String(80))
     def __unicode__(self):
-        return u"%s"%(self.reason,)
+        return "%s"%(self.reason,)
     def __repr__(self):
         return "<RemoveCode('%s','%s')>"%(self.id,self.reason)
 

@@ -134,7 +134,7 @@ class fileprinter(object):
     def _getfilename(self):
         gi=glob.iglob(self._filename)
         try:
-            return gi.next()
+            return next(gi)
         except StopIteration:
             return self._filename
     def offline(self):

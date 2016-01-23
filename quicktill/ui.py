@@ -968,7 +968,7 @@ class tableformatter(object):
         if not self._colwidths:
             # Each row has a list of fields.  We want to rearrange
             # this so we have a list of columns.
-            cols=zip(*(r.fields for r in self._rows))
+            cols=list(zip(*(r.fields for r in self._rows)))
             self._colwidths=[max(len(f) for f in c) for c in cols]
         return self._colwidths
     def idealwidth(self):
