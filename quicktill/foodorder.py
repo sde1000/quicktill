@@ -1,5 +1,5 @@
-from __future__ import unicode_literals
-import urllib,imp,textwrap,curses,sys,traceback,math,datetime
+import urllib.request, urllib.parse, urllib.error
+import imp, textwrap, curses, sys, traceback, math, datetime
 from . import ui,keyboard,td,printer,tillconfig,pdrivers,user
 from .models import zero,penny
 from decimal import Decimal
@@ -263,7 +263,7 @@ class popup(user.permission_checked,ui.basicpopup):
             ui.infopopup(["No menu has been set!"],title="Error")
             return
         try:
-            f=urllib.urlopen(menuurl)
+            f=urllib.request.urlopen(menuurl)
             g=f.read()
             f.close()
         except:

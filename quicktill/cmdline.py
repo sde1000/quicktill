@@ -2,7 +2,6 @@
 
 """
 
-from __future__ import print_function,unicode_literals
 import argparse
 
 class CommandTracker(type):
@@ -16,8 +15,7 @@ class CommandTracker(type):
         else:
             cls._commands.append(cls)
 
-class command(object):
-    __metaclass__=CommandTracker
+class command(object, metaclass=CommandTracker):
     @staticmethod
     def add_arguments(parser):
         pass

@@ -1,7 +1,6 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-from __future__ import unicode_literals
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
 import curses.panel
 from . import keyboard,event,tillconfig,td,version
@@ -54,8 +53,8 @@ class clockheader(object):
         (my,mx)=stdwin.getmaxyx()
         def cat(m,s,t):
             w=len(m)+len(s)+len(t)
-            pad1=(mx-w)/2
-            pad2=pad1
+            pad1 = (mx-w) // 2 # integer floor division
+            pad2 = pad1
             if w+pad1+pad2!=mx: pad1=pad1+1
             return "%s%s%s%s%s"%(m,' '*pad1,s,' '*pad2,t)
         x=cat(m,s,t)
@@ -175,14 +174,14 @@ class _toastmaster(winobject):
         # we always have at least one blank line at the bottom of the
         # screen.
         (mh,mw)=stdwin.getmaxyx()
-        w=min((mw*2)/3,len(message))
+        w = min((mw * 2) // 3, len(message))
         lines=textwrap.wrap(message,w)
         w=max(len(l) for l in lines)+4
         h=len(lines)+2
-        y=(mh*2)/3-(h/2)
+        y=(mh * 2) // 3 - (h // 2)
         if y+h+1>=mh: y=mh-h-1
         try:
-            self.win=curses.newwin(h,w,y,(mw-w)/2)
+            self.win=curses.newwin(h, w, y, (mw - w) // 2)
         except curses.error:
             return self.start_display("(toast too long)")
         self.pan=curses.panel.new_panel(self.win)
@@ -404,8 +403,8 @@ class basicpopup(basicwin):
         if cleartext: w=max(w,len(cleartext)+3)
         w=min(w,mw)
         h=min(h,mh)
-        y=(mh-h)/2
-        x=(mw-w)/2
+        y=(mh - h) // 2
+        x=(mw - w) // 2
         self.win=curses.newwin(h,w,y,x)
         self.pan=curses.panel.new_panel(self.win)
         self.pan.set_userptr(self)
@@ -523,7 +522,7 @@ class infopopup(listpopup):
         # We want the window to end up as close to 2/3 the maximum width
         # as possible.  Try that first, and only let it go wider if the
         # maximum height is exceeded.
-        w=(maxw*2)/3
+        w = (maxw * 2) // 3
         if cleartext: w=max(w,len(cleartext)-1)
         def formatat(width):
             r=[]
@@ -984,8 +983,8 @@ class tableformatter(object):
         pads=self._f.count("p")
         if pads>0:
             total_to_pad=max(0,width-self.idealwidth())
-            pw=total_to_pad/pads
-            odd=total_to_pad%pads
+            pw=total_to_pad // pads # integer floor division
+            odd=total_to_pad % pads
             pads=[pw+1]*odd+[pw]*(pads-odd)
         else:
             pads=[]
@@ -1014,7 +1013,7 @@ class _tableline(emptyline):
     def __init__(self,formatter,fields,colour=None,userdata=None):
         emptyline.__init__(self,colour,userdata)
         self._formatter=formatter
-        self.fields=[unicode(x) for x in fields]
+        self.fields=[str(x) for x in fields]
     def update(self):
         emptyline.update(self)
         self._formatter._update(self)
@@ -1409,10 +1408,10 @@ class listfield(popupfield):
 
     A function d can be provided; if it is, then d(model) is expected
     to return a suitable string for display.  If it is not then
-    unicode(model) is called to obtain a string.
+    str(model) is called to obtain a string.
 
     """
-    def __init__(self,y,x,w,l,d=unicode,f=None,keymap={},readonly=False):
+    def __init__(self,y,x,w,l,d=str,f=None,keymap={},readonly=False):
         # We copy the list because we're going to modify it in-place
         # whenever we refresh from the database
         self.l=list(l)
