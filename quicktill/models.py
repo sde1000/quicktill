@@ -20,7 +20,12 @@ zero=Decimal("0.00")
 penny=Decimal("0.01")
 
 metadata=MetaData()
-Base=declarative_base(metadata=metadata)
+
+class _unistr(object):
+    def __str__(self):
+        return str(self.__unicode__())
+
+Base=declarative_base(metadata=metadata, cls=_unistr)
 
 def add_ddl(target,create,drop):
     """Convenience function to add CREATE and DROP statements for postgresql
