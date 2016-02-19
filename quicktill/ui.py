@@ -90,13 +90,13 @@ def handle_keyboard_input(k):
     We can be passed a variety of things as keyboard input:
 
     keycode objects from keyboard.py
-    integers from curses (eg. ord('t'))
+    unicode strings
     user tokens
 
     They don't always have a 'keycap' method - check the type first!
 
     """
-    log.debug("Keypress %s",k)
+    log.debug("Keypress %s", k)
     basicwin._focus.hotkeypress(k)
 
 def current_user():
@@ -426,10 +426,13 @@ class basicpopup(basicwin):
         # of the popup.
         if k in self.keymap:
             i=self.keymap[k]
-            if i[2]: self.dismiss()
+            if len(i) > 2 and i[2]:
+                if i[2]: self.dismiss()
             if i[0] is not None:
-                if i[1] is None: i[0]()
-                else: i[0](*i[1])
+                if len(i) > 1 and i[1] is not None:
+                    i[0](*i[1])
+                else:
+                    i[0]()
         else:
             curses.beep()
 
@@ -1070,7 +1073,7 @@ class _keymenuline(emptyline):
             if not func.allowed(): colour=keymenu._not_allowed_colour
         self.colour=curses.color_pair(colour)
         self.cursor_colour=self.colour
-        self.prompt=" "+keycode.keycap+". "
+        self.prompt=" "+str(keycode)+". "
         self.desc=desc if isinstance(desc,emptyline) else line(desc)
     def update(self):
         pass
@@ -1123,10 +1126,8 @@ def automenu(itemlist,spill="menu",**kwargs):
 
     """
     possible_keys=[
-        keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-        keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-        keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-        keyboard.K_ZERO]
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+        ]
     itemlist=[(lrline(desc) if not isinstance(desc,emptyline) else desc,
                func,args) for desc,func,args in itemlist]
     if spill=="menu" and len(itemlist)>len(possible_keys):
@@ -1170,14 +1171,14 @@ class booleanfield(field):
         if self.focused: self.win.move(self.y,self.x)
         else: self.win.move(*pos)
     def keypress(self,k):
-        if k in (ord('y'),ord('Y'),keyboard.K_ONE):
+        if k in ('y', 'Y', '1'):
             self.set(True)
-        elif k in (ord('n'),ord('N'),keyboard.K_ZERO,keyboard.K_ZEROZERO):
+        elif k in ('n', 'N', '0', '00'):
             self.set(False)
-        elif k==keyboard.K_CLEAR and self.allow_blank and self.f is not None:
+        elif k == keyboard.K_CLEAR and self.allow_blank and self.f is not None:
             self.set(None)
         else:
-            field.keypress(self,k)
+            field.keypress(self, k)
                 
 class editfield(field):
     """Accept input in a field.  Processes an implicit set of keycodes; when an
@@ -1280,25 +1281,21 @@ class editfield(field):
         self.sethook()
         self.draw()
     def keypress(self,k):
-        # Valid keys are numbers, point, any letter or number from the
-        # normal keypad
-        if k in keyboard.numberkeys:
-            self.insert(k.keycap)
-        elif curses.ascii.isprint(k):
-            self.insert(chr(k))
-        elif k==curses.KEY_BACKSPACE:
+        if isinstance(k, str):
+            self.insert(k)
+        elif k == keyboard.K_BACKSPACE:
             self.backspace()
-        elif k==curses.KEY_DC or k==4:
+        elif k == keyboard.K_DEL:
             self.delete()
-        elif k==keyboard.K_LEFT:
+        elif k == keyboard.K_LEFT:
             self.move_left()
-        elif k==keyboard.K_RIGHT:
+        elif k == keyboard.K_RIGHT:
             self.move_right()
-        elif k==curses.KEY_HOME or k==1:
+        elif k == keyboard.K_HOME:
             self.home()
-        elif k==curses.KEY_END or k==5:
+        elif k == keyboard.K_END:
             self.end()
-        elif k==curses.KEY_EOL or k==11:
+        elif k == keyboard.K_EOL:
             self.killtoeol()
         elif k==keyboard.K_CLEAR and self.f!="" and not self.readonly:
             self.clear()

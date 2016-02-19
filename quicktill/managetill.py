@@ -67,36 +67,39 @@ class slmenu(ui.keymenu):
     def __init__(self):
         log.info("Stock line / PLU management popup")
         menu=[
-            (keyboard.K_ONE,"Stock lines",stocklines.stocklinemenu,None),
-            (keyboard.K_TWO,"Price lookups",plu.plumenu,None),
-            (keyboard.K_THREE,"Modifiers",modifiers.modifiermenu,None),
-            (keyboard.K_FOUR,"List stock lines with no key bindings",
-             stocklines.listunbound,None),
-            (keyboard.K_FIVE,"List price lookups with no key bindings",
-             plu.listunbound,None),
-            (keyboard.K_SIX,"Return items from display to stock",
+            ("1", "Stock lines", stocklines.stocklinemenu, None),
+            ("2", "Price lookups", plu.plumenu, None),
+            ("3", "Modifiers", modifiers.modifiermenu, None),
+            ("4", "List stock lines with no key bindings",
+             stocklines.listunbound, None),
+            ("5", "List price lookups with no key bindings",
+             plu.listunbound, None),
+            ("6", "Return items from display to stock",
              stocklines.selectline,
-             (stocklines.return_stock,"Return Stock",
-              "Select the stock line to remove from display",True)),
-            (keyboard.K_SEVEN,"Edit key labels",linekeys.edit_keycaps,None),
+             (stocklines.return_stock, "Return Stock",
+              "Select the stock line to remove from display", True)),
+            ("7", "Edit key labels", linekeys.edit_keycaps, None),
         ]
         ui.keymenu.__init__(
-            self,menu,title="Stock line and PLU options",
+            self, menu, title="Stock line and PLU options",
             blurb="You can press a line key here to go directly to "
             "editing stock lines, price lookups and modifiers that are "
             "already bound to it.")
-    def keypress(self,k):
-        if hasattr(k,'line'):
-            linekeys.linemenu(k,self.line_selected,allow_stocklines=True,
-                              allow_plus=True,allow_mods=True)
+    def keypress(self, k):
+        if hasattr(k, 'line'):
+            linekeys.linemenu(k, self.line_selected, allow_stocklines=True,
+                              allow_plus=True, allow_mods=True)
         else:
-            ui.keymenu.keypress(self,k)
-    def line_selected(self,kb):
+            ui.keymenu.keypress(self, k)
+    def line_selected(self, kb):
         self.dismiss()
         td.s.add(kb)
-        if kb.stockline: stocklines.modify(kb.stockline)
-        elif kb.plu: plu.modify(kb.plu)
-        else: modifiers.modify(kb.modifier)
+        if kb.stockline:
+            stocklines.modify(kb.stockline)
+        elif kb.plu:
+            plu.modify(kb.plu)
+        else:
+            modifiers.modify(kb.modifier)
 
 def netinfo():
     log.info("Net info popup")
@@ -108,28 +111,28 @@ def netinfo():
 def sysinfo_menu():
     log.info("System information menu")
     menu=[
-        (keyboard.K_ONE,"Software versions",versioninfo,None),
-        (keyboard.K_TWO,"Network status",netinfo,None),
+        ("1", "Software versions", versioninfo, None),
+        ("2", "Network status", netinfo, None),
         ]
-    ui.keymenu(menu,title="System information")
+    ui.keymenu(menu, title="System information")
 
 def popup():
     log.info("Till management menu")
     if not tillconfig.exitoptions:
-        exit = (keyboard.K_EIGHT, "Exit till software", exitoption, (0,))
+        exit = ("8", "Exit till software", exitoption, (0,))
     elif len(tillconfig.exitoptions) == 1:
-        exit = (keyboard.K_EIGHT, tillconfig.exitoptions[0][1],
+        exit = ("8", tillconfig.exitoptions[0][1],
                 exitoption, (tillconfig.exitoptions[0][0],))
     else:
-        exit = (keyboard.K_EIGHT, "Exit / restart till software",
+        exit = ("8", "Exit / restart till software",
                 restartmenu, None)
     menu=[
-        (keyboard.K_ONE,"Sessions",session.menu,None),
-        (keyboard.K_TWO,"Current session summary",session.currentsummary,None),
-        (keyboard.K_FOUR,"Stock lines, PLUs and modifiers",slmenu,None),
-        (keyboard.K_SIX,"Print a receipt",receiptprint,None),
-        (keyboard.K_SEVEN,"Users",user.usersmenu,None),
+        ("1", "Sessions", session.menu, None),
+        ("2", "Current session summary", session.currentsummary, None),
+        ("4", "Stock lines, PLUs and modifiers", slmenu, None),
+        ("6", "Print a receipt", receiptprint, None),
+        ("7", "Users", user.usersmenu, None),
         exit,
-        (keyboard.K_NINE,"System information",sysinfo_menu,None),
+        ("9", "System information", sysinfo_menu, None),
         ]
-    ui.keymenu(menu,title="Management options")
+    ui.keymenu(menu, title="Management options")

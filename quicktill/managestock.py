@@ -353,42 +353,36 @@ def finish_return_finished_item(item):
 def maintenance():
     "Pop up the stock maintenance menu."
     menu=[
-        (keyboard.K_ONE,"Re-print a single stock label",
-         reprint_stocklabel,None),
-        (keyboard.K_TWO,"Add a best-before date to a stock item",
-         add_bestbefore,None),
-        (keyboard.K_THREE,"Auto-allocate stock to lines",
-         usestock.auto_allocate,None),
-        (keyboard.K_FOUR,"Manage stock line associations",
-         stocklines.stockline_associations,None),
-        (keyboard.K_FIVE,"Update supplier details",updatesupplier,None),
-        (keyboard.K_SIX,"Re-price stock",
-         stocktype.choose_stocktype,(stocktype.reprice_stocktype,None,1,False)),
-        (keyboard.K_SEVEN,"Correct a stock type record",
-         correct_stocktype,None),
-        (keyboard.K_EIGHT,"Purge finished stock from stock lines",
-         purge_finished_stock,None),
-        (keyboard.K_NINE,"Return a finished item to stock",
-         return_finished_item,None),
+        ("1", "Re-print a single stock label", reprint_stocklabel, None),
+        ("2", "Add a best-before date to a stock item", add_bestbefore, None),
+        ("3", "Auto-allocate stock to lines", usestock.auto_allocate, None),
+        ("4", "Manage stock line associations",
+         stocklines.stockline_associations, None),
+        ("5", "Update supplier details", updatesupplier, None),
+        ("6", "Re-price stock", stocktype.choose_stocktype,
+         (stocktype.reprice_stocktype, None, 1, False)),
+        ("7", "Correct a stock type record", correct_stocktype, None),
+        ("8", "Purge finished stock from stock lines",
+         purge_finished_stock, None),
+        ("9", "Return a finished item to stock", return_finished_item, None),
         ]
-    ui.keymenu(menu,title="Stock Maintenance options")
+    ui.keymenu(menu, title="Stock Maintenance options")
 
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
     menu=[
-        (keyboard.K_ONE,"Deliveries",delivery.deliverymenu,None),
-        (keyboard.K_TWO,"Re-fill all stock lines",stocklines.restock_all,None),
-        (keyboard.K_THREE,"Re-fill stock lines by location",
-         stocklines.restock_location,None),
-        (keyboard.K_FOUR,"Finish stock not currently on sale",
-         finishstock,None),
-        (keyboard.K_FIVE,"Stock check (unfinished stock)",
-         department.menu,(stockcheck,"Stock Check",True)),
-        (keyboard.K_SIX,"Stock history (finished stock)",
-         department.menu,(stockhistory,"Stock History",True)),
-        (keyboard.K_SEVEN,"Maintenance submenu",maintenance,None),
-        (keyboard.K_EIGHT,"Annotate a stock item",stock.annotate,None),
-        (keyboard.K_NINE,"Check stock levels",stocklevelcheck,None),
+        ("1", "Deliveries", delivery.deliverymenu, None),
+        ("2", "Re-fill all stock lines", stocklines.restock_all, None),
+        ("3", "Re-fill stock lines by location",
+         stocklines.restock_location, None),
+        ("4", "Finish stock not currently on sale", finishstock, None),
+        ("5", "Stock check (unfinished stock)",
+         department.menu, (stockcheck, "Stock Check", True)),
+        ("6", "Stock history (finished stock)",
+         department.menu, (stockhistory, "Stock History", True)),
+        ("7", "Maintenance submenu", maintenance, None),
+        ("8", "Annotate a stock item", stock.annotate, None),
+        ("9", "Check stock levels", stocklevelcheck, None),
         ]
-    ui.keymenu(menu,title="Stock Management options")
+    ui.keymenu(menu, title="Stock Management options")

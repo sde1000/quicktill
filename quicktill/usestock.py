@@ -27,20 +27,21 @@ log=logging.getLogger(__name__)
 # 2) Print a re-stock slip for all stock lines
 # 3) Print a re-stock slip for all lines in a particular location
 
+# XXX This should be a subclass of keymenu!
 class popup(user.permission_checked,ui.infopopup):
     permission_required=("use-stock","Allocate stock to lines")
     def __init__(self):
         log.info("Use Stock popup")
         ui.infopopup.__init__(
             self,["To select stock for a line, press the appropriate "
-                  "line key.","","Alternatively, choose one of these options:",
+                  "line key.", "", "Alternatively, choose one of these options:",
                   "1. Re-fill all stock lines",
                   "2. Re-fill some stock lines",
                   "3. Automatically allocate stock to lines"],
-            title="Use Stock",colour=ui.colour_input,
-            keymap={keyboard.K_ONE:(stocklines.restock_all,None,True),
-                    keyboard.K_TWO:(stocklines.restock_location,None,True),
-                    keyboard.K_THREE:(auto_allocate,None,True)})
+            title="Use Stock", colour=ui.colour_input,
+            keymap={"1": (stocklines.restock_all, None, True),
+                    "2": (stocklines.restock_location, None, True),
+                    "3": (auto_allocate, None, True)})
     def line_chosen(self,kb):
         self.dismiss()
         td.s.add(kb)
@@ -77,8 +78,8 @@ def line_chosen(line):
                 "Alternatively, select a stock item from the list for "
                 "options related to that item.",
                 keymap={
-                keyboard.K_ONE:(stocklines.restock_item,(line,),True),
-                keyboard.K_TWO:(pick_new_stock,(line,newstockblurb),True)})
+                    "1": (stocklines.restock_item, (line,), True),
+                    "2": (pick_new_stock, (line, newstockblurb), True)})
 
 def finish_stock(line):
     # The line should have exactly one item of stock on sale.  Finish

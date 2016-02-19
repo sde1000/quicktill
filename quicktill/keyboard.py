@@ -6,24 +6,23 @@ Till configurations can define as many new keycodes as they need.
 
 """
 
-from __future__ import unicode_literals
-
 class keycode(object):
-    def __new__(cls,name,keycap,*args,**kwargs):
+    def __new__(cls, name, keycap, *args, **kwargs):
         # If a keycode of this name already exists, return it instead
-        existing=globals().get(name)
-        if existing: return existing
-        self=object.__new__(cls)
-        self.name=name
-        self.keycap=keycap
+        existing = globals().get(name)
+        if existing:
+            return existing
+        self = object.__new__(cls)
+        self.name = name
+        self.keycap = keycap
         self._register()
         return self
-    def __init__(self,*args,**kwargs):
+    def __init__(self, *args, **kwargs):
         pass
     def _register(self):
         globals()[self.name]=self
-    def __unicode__(self):
-        return self.name
+    def __str__(self):
+        return self.keycap
     def __repr__(self):
         return '%s("%s","%s")'%(self.__class__.__name__,self.name,self.keycap)
 
@@ -95,6 +94,13 @@ class linekey(keycode):
 # explicitly in the till code.  All other keycodes are defined in the
 # till configuration module.
 
+# Text entry keys
+keycode("K_BACKSPACE", "Backspace")
+keycode("K_DEL", "Del")
+keycode("K_HOME", "Home")
+keycode("K_END", "End")
+keycode("K_EOL", "Kill to EOL")
+
 # Till management keys
 keycode("K_USESTOCK","Use Stock")
 keycode("K_WASTE","Record Waste")
@@ -115,18 +121,7 @@ keycode("K_CASH","Cash / Enter")
 keycode("K_DRINKIN","Drink 'In'")
 
 numberkeys=[
-    keycode("K_ONE","1"),
-    keycode("K_TWO","2"),
-    keycode("K_THREE","3"),
-    keycode("K_FOUR","4"),
-    keycode("K_FIVE","5"),
-    keycode("K_SIX","6"),
-    keycode("K_SEVEN","7"),
-    keycode("K_EIGHT","8"),
-    keycode("K_NINE","9"),
-    keycode("K_ZERO","0"),
-    keycode("K_ZEROZERO","00"),
-    keycode("K_POINT","."),
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "00", ".",
     ]
 cursorkeys=[
     keycode("K_LEFT","Left"),

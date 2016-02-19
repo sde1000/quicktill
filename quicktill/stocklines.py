@@ -27,8 +27,8 @@ def restock_list(stockline_list):
             "1. I have finished moving the stock on the printed list.",
             "2. I have not moved any stock and I have thrown the list away."],
                  title="Confirm stock movement",
-                 keymap={keyboard.K_ONE:(finish_restock,(sl,),True),
-                         keyboard.K_TWO:(abandon_restock,(sl,),True)},
+                 keymap={"1": (finish_restock, (sl,), True),
+                         "2": (abandon_restock, (sl,), True)},
                  colour=ui.colour_confirm,dismiss=None).\
         unsaved_data="confirm stock movements"
 

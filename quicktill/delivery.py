@@ -1,9 +1,7 @@
-from __future__ import unicode_literals
-import curses.ascii
-from . import ui,stock,td,keyboard,printer,tillconfig,stocktype
-from . import user,usestock
+from . import ui, stock, td, keyboard, printer, tillconfig, stocktype
+from . import user, usestock
 from decimal import Decimal
-from .models import Delivery,Supplier,StockUnit,StockItem,desc
+from .models import Delivery, Supplier, StockUnit, StockItem, desc
 from .models import penny
 import datetime
 
@@ -432,7 +430,7 @@ class stockitem(ui.basicpopup):
         # synthesise the keypress again to enter it into the
         # manufacturer field.
         if (self.typefield.focused and self.typefield.f is None
-            and curses.ascii.isprint(k)):
+            and isinstance(k, str) and k):
             self.typefield.popup() # Grabs the focus
             ui.handle_keyboard_input(k)
         else:

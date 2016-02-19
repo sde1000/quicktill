@@ -1849,44 +1849,44 @@ class page(ui.basicpage):
         self.update_note()
     def managetranskey(self):
         if self.ml:
-            marked_total=tillconfig.fc(self._total_value_of_marked_translines())
+            marked_total = tillconfig.fc(
+                self._total_value_of_marked_translines())
             menu=[
-                (keyboard.K_ONE,"Void the marked lines",
-                 self.cancelmarked,None),
+                ("1", "Void the marked lines", self.cancelmarked, None),
                 ]
             if self.trans and not self.trans.closed:
-                menu+=[(keyboard.K_THREE,"Split the marked lines out "
-                        "into a separate transaction",
-                        splittrans,(marked_total,self._splittrans)),
-                       (keyboard.K_SIX,"Choose payment method",
-                        self._payment_method_menu,None)]
+                menu += [("3", "Split the marked lines out "
+                          "into a separate transaction",
+                          splittrans, (marked_total, self._splittrans)),
+                         ("6", "Choose payment method",
+                          self._payment_method_menu, None)]
             ui.keymenu(
-                menu,title="Marked line options",
-                blurb=["","The value of the marked lines is {}".format(
+                menu, title="Marked line options",
+                blurb=["", "The value of the marked lines is {}".format(
                     marked_total)])
             return
         if self.trans and not self.trans.closed:
             menu=[
-                (keyboard.K_ONE,"Defer transaction to next session",
-                 self.defertrans,None),
-                (keyboard.K_TWO,"Convert transaction to free drinks",
-                 self.freedrinktrans,None),
-                (keyboard.K_THREE,"Merge this transaction with another "
-                 "open transaction",self.mergetransmenu,None),
-                (keyboard.K_FOUR,"Set this transaction's note to '{}'".format(
+                ("1", "Defer transaction to next session",
+                 self.defertrans, None),
+                ("2", "Convert transaction to free drinks",
+                 self.freedrinktrans, None),
+                ("3", "Merge this transaction with another "
+                 "open transaction", self.mergetransmenu, None),
+                ("4", "Set this transaction's note to '{}'".format(
                     self.user.fullname),
-                 self.settransnote,(self.user.fullname,)),
-                (keyboard.K_FIVE,"Change this transaction's notes "
+                 self.settransnote, (self.user.fullname,)),
+                ("5", "Change this transaction's notes "
                  "(free text entry)",
-                 edittransnotes,(self.trans,self.settransnote)),
-                (keyboard.K_SIX,"Choose payment method",
-                 self._payment_method_menu,None),
+                 edittransnotes, (self.trans, self.settransnote)),
+                ("6", "Choose payment method",
+                 self._payment_method_menu, None),
             ]
         else:
             menu=[]
-        menu.append((keyboard.K_SEVEN,"Add a custom transaction line",
-                     addtransline,(self.deptlines,)))
-        ui.keymenu(menu,title="Transaction options")
+        menu.append(("7", "Add a custom transaction line",
+                     addtransline, (self.deptlines,)))
+        ui.keymenu(menu, title="Transaction options")
     def entry(self):
         """
         This function is called at all entry points to the register
@@ -1967,7 +1967,7 @@ class page(ui.basicpage):
         elif hasattr(k,'paymentmethod'):
             return self.paymentkey(k.paymentmethod)
         elif k in keyboard.numberkeys:
-            return self.numkey(k.keycap)
+            return self.numkey(k)
         keys={
             keyboard.K_CASH: self.cashkey,
             keyboard.K_DRINKIN: self.drinkinkey,

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import urllib,imp,textwrap,curses,sys,traceback,math,datetime
 from . import ui,keyboard,td,printer,tillconfig,pdrivers,user
 from .models import zero,penny
@@ -96,10 +95,7 @@ class subopts_dialog(ui.dismisspopup):
     def __init__(self,name,subopts,atleast,atmost,connector,nameconnector,
                  func,itemfunc):
         possible_keys=[
-            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "00", "."]
         # If we have more options than keys, split them into a submenu.
         if len(subopts)>len(possible_keys):
             subopts=subopts[:len(possible_keys)-1]+\
@@ -117,7 +113,7 @@ class subopts_dialog(ui.dismisspopup):
                                  colour=ui.colour_line,keymap=km)
         y=9
         for k,so in opts:
-           self.addstr(y,2,"{:>2}: {}".format(k.keycap,so[0]))
+           self.addstr(y,2,"{:>2}: {}".format(k, so[0]))
            y=y+1
         self.ol=[]
         self.name=name
@@ -330,10 +326,7 @@ class popup(user.permission_checked,ui.basicpopup):
         # Split the top level menu into lines for display, and add the
         # options to the keymap
         possible_keys=[
-            keyboard.K_ONE, keyboard.K_TWO, keyboard.K_THREE,
-            keyboard.K_FOUR, keyboard.K_FIVE, keyboard.K_SIX,
-            keyboard.K_SEVEN, keyboard.K_EIGHT, keyboard.K_NINE,
-            keyboard.K_ZERO, keyboard.K_ZEROZERO, keyboard.K_POINT]
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "00", "."]
         # If we have more options than keys, split them into a submenu.
         if len(foodmenu.menu)>len(possible_keys):
             menu=foodmenu.menu[:len(possible_keys)-1]+\
@@ -343,7 +336,7 @@ class popup(user.permission_checked,ui.basicpopup):
         tlm=[""]
         for i in menu:
             key=possible_keys.pop(0)
-            label=key.keycap
+            label=str(key)
             ls="%s: %s"%(label,i[0])
             trial="%s%s%s"%(tlm[-1],('','  ')[len(tlm[-1])>0],ls)
             if len(trial)>self.w-4:

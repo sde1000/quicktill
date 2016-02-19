@@ -3,15 +3,14 @@ Starting, ending, and recording totals for sessions.
 
 """
 
-from __future__ import unicode_literals
 from . import ui,keyboard,td,printer,tillconfig,user,managestock
 from .models import Session,SessionTotal,PayType,Transaction,penny,zero
 from .td import undefer,func,desc,select
 from decimal import Decimal
-import datetime,math
+import datetime
 
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 def trans_restore():
     """
@@ -439,10 +438,10 @@ def menu():
     """
     log.info("Session management menu")
     menu=[
-        (keyboard.K_ONE,"Start a session",start,None),
-        (keyboard.K_TWO,"End the current session",end,None),
-        (keyboard.K_THREE,"Record session takings",recordtakings,None),
-        (keyboard.K_FOUR,"Display session summary",summary,None),
-        (keyboard.K_FIVE,"Restore deferred transactions",restore_deferred,None),
+        ("1", "Start a session", start, None),
+        ("2", "End the current session", end, None),
+        ("3", "Record session takings", recordtakings, None),
+        ("4", "Display session summary", summary, None),
+        ("5", "Restore deferred transactions", restore_deferred, None),
         ]
-    ui.keymenu(menu,title="Session management options")
+    ui.keymenu(menu, title="Session management options")
