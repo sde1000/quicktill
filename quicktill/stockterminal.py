@@ -76,8 +76,7 @@ class page(ui.basicpage):
                 y=y+1
             if y>=h: break
     def redraw(self):
-        win=self.win
-        win.erase()
+        self.erase()
         pl=ui.lrline("Ctrl+X = Clear; Ctrl+Y = Cancel.  "
                      "Press S for stock management.  "
                      "Press U to use stock.  Press R to record waste.  "

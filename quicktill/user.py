@@ -18,14 +18,15 @@ indicate restricted functionality.
 
 """
 
-from . import ui,td,event,keyboard,tillconfig,cmdline
-from .models import User,UserToken,Permission
+from . import ui, td, event, keyboard, tillconfig, cmdline
+from .models import User, UserToken, Permission
 from sqlalchemy.orm import joinedload
 import types
-import socket,logging
+import socket
+import logging
 import datetime
 import collections
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self,key):
@@ -87,61 +88,9 @@ class permission_checked(object, metaclass=_permission_checked_metaclass):
         if user is None: return False
         return user.may(cls.permission_required[0])
 
-class _permission_check(object):
-    """
-    Wrap a function to check that the current user has permission to
-    do something before permitting the function to be called.
-
-    """
-    def __init__(self,action,description=None,func=None):
-        if func:
-            self.__doc__ = func.__doc__
-            self.__name__ = func.__name__
-            self.__module__ = func.__module__
-            self.__defaults__ = func.__defaults__
-            self.__code__ = func.__code__
-            self.__globals__ = func.__globals__
-            self.__dict__ = func.__dict__
-            self.__closure__ = func.__closure__
-        self._action=action
-        action_descriptions[action]=description
-        self._func=func
-    def allowed(self,user=None):
-        """
-        Can the specified user (or the current user if None) do this
-        thing?
-
-        """
-        user=user or ui.current_user()
-        if user is None: return False
-        return user.may(self._action)
-    def __get__(self,obj,objtype=None):
-        return types.MethodType(self.__call__,obj,objtype)
-    def __call__(self,*args,**kwargs):
-        if not isinstance(self._func, collections.Callable):
-            raise TypeError("'permission_check' object is not callable")
-        if self.allowed():
-            self._func(*args,**kwargs)
-        else:
-            u=ui.current_user()
-            if u:
-                ui.infopopup(
-                    ["{user} does not have the '{req}' permission "
-                     "which is required for this operation.".format(
-                            user=u.fullname, req=self._action)],
-                    title="Not allowed")
-            else:
-                ui.infopopup(
-                    ["This operation needs the '{req}' permission, "
-                     "but there is no current user.".format(
-                            req=self._action)],
-                    title="Not allowed")
-    def __repr__(self):
-        return "permission_required('{}') for {}".format(
-            self._action,repr(self._func))
-
 class permission_required(object):
-    """
+    """Function decorator to perform permission check
+
     A factory that creates decorators that will perform a permission
     check on the current user before permitting the call.
 
@@ -153,13 +102,36 @@ class permission_required(object):
     Don't use this on the __init__ method of classes; subclass
     permission_checked and set the permission_required class attribute
     instead.  It's ok to use this on other methods of classes.
-
     """
-    def __init__(self,action,description=None):
-        self._action=action
-        self._description=description
-    def __call__(self,function):
-        return _permission_check(self._action,self._description,function)
+    def __init__(self, action, description=None):
+        self._action = action
+        self._description = description
+    def __call__(self, function):
+        """Decorate a function to perform the permission check"""
+        def allowed(user=None):
+            user = user or ui.current_user()
+            if user is None:
+                return False
+            return user.may(self._action)
+        def permission_check(*args, **kwargs):
+            if allowed():
+                return function(*args, **kwargs)
+            else:
+                u = ui.current_user()
+                if u:
+                    ui.infopopup(
+                        ["{user} does not have the '{req}' permission "
+                         "which is required for this operation.".format(
+                             user=u.fullname, req=self._action)],
+                        title="Not allowed")
+                else:
+                    ui.infopopup(
+                        ["This operation needs the '{req}' permission, "
+                         "but there is no current user.".format(
+                             req=self._action)],
+                        title="Not allowed")
+        permission_check.allowed = allowed
+        return permission_check
 
 class group(object):
     """
@@ -273,21 +245,21 @@ class token(object):
     ui.handle_keyboard_input()
 
     """
-    def __init__(self,t):
-        self.usertoken=t
+    def __init__(self, t):
+        self.usertoken = t
     def __repr__(self):
         return "token('{}')".format(self.usertoken)
 
 class tokenlistener(object):
-    def __init__(self,address,addressfamily=socket.AF_INET):
-        self.s=socket.socket(addressfamily, socket.SOCK_DGRAM)
+    def __init__(self, address, addressfamily=socket.AF_INET):
+        self.s = socket.socket(addressfamily, socket.SOCK_DGRAM)
         self.s.bind(address)
         self.s.setblocking(0)
         event.rdlist.append(self)
     def fileno(self):
         return self.s.fileno()
     def doread(self):
-        d=self.s.recv(1024).strip()
+        d = self.s.recv(1024).strip().decode("utf-8")
         log.debug("Received: {}".format(repr(d)))
         if d:
             tillconfig.unblank_screen()
@@ -295,16 +267,12 @@ class tokenlistener(object):
                 ui.handle_keyboard_input(token(d))
 
 def user_from_token(t):
+    """Find a user given a token object.
     """
-    Find a user given a token object.  Pops up a dialog box that
-    ignores hotkeys to explain if the user can't be found.  (Ignoring
-    hotkeys ensures the box can't pop up on top of itself.)
-
-    """
-    dbt=td.s.query(UserToken).\
-        options(joinedload('user')).\
-        options(joinedload('user.permissions')).\
-        get(t.usertoken)
+    dbt = td.s.query(UserToken).\
+          options(joinedload('user')).\
+          options(joinedload('user.permissions')).\
+          get(t.usertoken)
     if not dbt:
         ui.toast("User token '{}' not recognised.".format(t.usertoken))
         return
@@ -369,16 +337,18 @@ class tokenfield(ui.ignore_hotkeys,ui.field):
         self.sethook()
         self.draw()
     def draw(self):
-        pos=self.win.getyx()
-        self.addstr(self.y,self.x,' '*self.w,ui.curses.A_REVERSE)
+        pos = self.getyx()
+        self.addstr(self.y, self.x, ' ' * self.w, ui.attr_reverse())
         if self.f:
-            self.addstr(self.y,self.x,self.f[:self.w],ui.curses.A_REVERSE)
+            self.addstr(self.y, self.x, self.f[:self.w], ui.attr_reverse())
         else:
             if self.focused:
-                self.addstr(self.y,self.x,self.message[:self.w],
-                            ui.curses.A_REVERSE)
-        if self.focused: self.win.move(self.y,self.x)
-        else: self.win.move(*pos)
+                self.addstr(self.y, self.x, self.message[:self.w],
+                            ui.attr_reverse())
+        if self.focused:
+            self.move(self.y, self.x)
+        else:
+            self.move(*pos)
     def focus(self):
         ui.field.focus(self)
         self.draw()

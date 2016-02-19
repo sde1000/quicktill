@@ -1,5 +1,11 @@
-from __future__ import unicode_literals
-import string,socket,os,tempfile,textwrap,subprocess,fcntl,array,sys
+import socket
+import os
+import tempfile
+import textwrap
+import subprocess
+import fcntl
+import array
+import sys
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
@@ -12,7 +18,7 @@ except ImportError:
     _qrcode_supported = False
 
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class PrinterError(Exception):
     def __init__(self,printer,desc):
@@ -86,21 +92,23 @@ class nullprinter(object):
         self._description=description
         self._started=False
     def __enter__(self):
-        if self._started: raise PrinterError(self,"Nested call to start()")
+        if self._started:
+            raise PrinterError(self,"Nested call to __enter__()")
         log.info("%s: start",self._name)
-        self._started=True
+        self._started = True
         return self
     def __exit__(self,type,value,tb):
-        log.info("%s: end",self._name)
+        log.info("%s: end", self._name)
         if not self._started:
-            raise PrinterError(self,"end() called without start()")
-        self._started=False
+            raise PrinterError(self,"__exit__() called without __enter__()")
+        self._started = False
     def offline(self):
         return
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
     def printline(self,l="",justcheckfit=False,allowwrap=True,
                   colour=None,font=None,emph=None,underline=None):
+        assert isinstance(l, str)
         if not justcheckfit:
             log.info("%s: printline: %s",self._name,l)
         return True
@@ -149,14 +157,14 @@ class fileprinter(object):
         """
         if self._file: return 
         try:
-            f=file(self._getfilename(),'a')
+            f = open(self._getfilename(), 'a')
             f.close()
         except IOError as e:
             return str(e)
     def __enter__(self):
         if self._file:
             raise PrinterError(self,"Already started in start()")
-        self._file=file(self._getfilename(),'a')
+        self._file = open(self._getfilename(), 'a')
         return self._driver.start(self._file,self)
     def __exit__(self,type,value,tb):
         try:
@@ -191,7 +199,7 @@ class linux_lpprinter(fileprinter):
     def offline(self):
         if self._file: return 
         try:
-            f=file(self._getfilename(),'a')
+            f = open(self._getfilename(), 'a')
             buf=array.array(str('b'),[0])
             fcntl.ioctl(f,self.LPGETSTATUS,buf)
             f.close()
@@ -210,15 +218,17 @@ class netprinter(object):
         self._description=description
         self._socket=None
         self._file=None
-    def __unicode__(self):
-        return self._description or "Print to network {}".format(self._connection)
+    def __str__(self):
+        return self._description or \
+            "Print to network {}".format(self._connection)
     def offline(self):
         """
         If the printer is unavailable for any reason, return a description
         of that reason; otherwise return None.
 
         """
-        if self._file: return
+        if self._file:
+            return
         host=self._connection[0]
         if not test_ping(host):
             return "Printer {} did not respond to ping".format(host)
@@ -287,7 +297,7 @@ class commandprinter(tmpfileprinter):
     def __init__(self,printcmd,*args,**kwargs):
         tmpfileprinter.__init__(self,*args,**kwargs)
         self._printcmd=printcmd
-    def __unicode__(self):
+    def __str__(self):
         return self._description or "Print to command '{}'".format(self._printcmd)
     def finish(self,filename):
         with open('/dev/null','w') as null:
@@ -332,10 +342,10 @@ def ep_2d_cmd(*params):
     assumed to be sequences of bytes here!
 
     """
-    p=string.join([chr(x) if isinstance(x,int) else x for x in params],"")
-    pL=len(p)&0xff
-    pH=(len(p)>>8)&0xff
-    return string.join([chr(29),'(','k',chr(pL),chr(pH),p],"")
+    p = bytes(params)
+    pL = len(p) & 0xff
+    pH = (len(p) >> 8) & 0xff
+    return bytes([29, ord('('), ord('k'), pL, pH]) + p
 
 class escpos(object):
     """
@@ -515,13 +525,14 @@ class escpos(object):
 
         # Print the QR code
         self.f.write(ep_2d_cmd(49,81,48))
-    def printqrcode(self,data):
-        self._printed=True
+    def printqrcode(self, data):
+        self._printed = True
         if self.native_qrcode_support:
             return self.printqrcode_native(data)
         if not _qrcode_supported:
             self.printline("qrcode library not installed")
             return
+        # XXX this code is known not to work at the moment!
         q=qrcode.QRCode(border=2)
         q.add_data(data)
         code=q.get_matrix()

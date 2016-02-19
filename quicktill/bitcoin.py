@@ -122,7 +122,7 @@ class btcpopup(ui.dismisspopup):
         self._pm=pm
         self._reg=reg
         self._paymentid=payment.id
-        (mh,mw)=ui.stdwin.getmaxyx()
+        mh, mw = ui.maxwinsize()
         self.h=mh
         self.w=mh*2
         self.response={}

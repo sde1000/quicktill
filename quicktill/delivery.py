@@ -56,7 +56,7 @@ class delivery(ui.basicpopup):
 
     """
     def __init__(self,dn=None):
-        (mh,mw)=ui.stdwin.getmaxyx()
+        mh, mw = ui.maxwinsize()
         if mw<80 or mh<14:
             ui.infopopup(["Error: the screen is too small to display "
                           "the delivery dialog box.  It must be at least "

@@ -36,7 +36,7 @@ class lockpage(ui.basicpage):
             self.line("Kitchen printer problem: {}".format(kpproblem))
             log.info("Kitchen printer problem: %s",kpproblem)
         self.addstr(self.h-1,0,"Till version: {}".format(version.version))
-        self.win.move(0,0)
+        self.move(0, 0)
         log.info("lockpage gc stats: %s, len(gc.garbage)=%d",gc.get_count(),
                  len(gc.garbage))
     def line(self,s):

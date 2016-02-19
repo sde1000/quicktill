@@ -22,14 +22,14 @@ configurlfile="/etc/quicktill/configurl"
 class intropage(ui.basicpage):
     def __init__(self):
         ui.basicpage.__init__(self)
-        self.win.addstr(1,1,"This is quicktill version %s"%version)
+        self.addstr(1, 1, "This is quicktill version {}".format(version))
         if tillconfig.hotkeys:
-            self.win.addstr(3,1,"To continue, press one of these keys:")
-            y=5
+            self.addstr(3, 1, "To continue, press one of these keys:")
+            y = 5
             for k in tillconfig.hotkeys:
-               self.win.addstr(y,3,k.keycap)
-               y=y+1
-        self.win.move(0,0)
+               self.addstr(y, 3, str(k))
+               y = y + 1
+        self.move(0, 0)
 
 def start(stdwin):
     """

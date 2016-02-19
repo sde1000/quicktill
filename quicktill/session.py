@@ -272,13 +272,13 @@ class record(ui.dismisspopup):
         self.addstr(self.total_y,2,' '*28)
         self.addstr(self.total_y,2,
                     description.format(tillconfig.fc(difference)),
-                    ui.curses.color_pair(colour))
+                    ui.attr(colour))
         self.addstr(self.total_y,self.ttx,
                     self.ff.format(tillconfig.fc(self.till_total)),
-                    ui.curses.color_pair(ui.colour_confirm))
+                    ui.attr(ui.colour_confirm))
         self.addstr(self.total_y,self.atx,
                     self.ff.format(tillconfig.fc(total)),
-                    ui.curses.color_pair(ui.colour_confirm))
+                    ui.attr(ui.colour_confirm))
     def session_valid(self):
         """
         Check that the session is still eligible to have its totals

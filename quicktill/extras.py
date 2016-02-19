@@ -276,7 +276,7 @@ class Tweet(ui.lrline):
 class twitter_client(user.permission_checked,ui.dismisspopup):
     permission_required=("twitter","Use the Twitter client")
     def __init__(self,tapi):
-        (mh,mw)=ui.stdwin.getmaxyx()
+        (mh,mw)=ui.maxwinsize()
         # We want to make our window very-nearly full screen
         w=mw-4
         h=mh-2

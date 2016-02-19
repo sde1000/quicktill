@@ -1,6 +1,5 @@
 """Implements the 'Manage Stock' menu."""
 
-import curses,curses.ascii,time
 from . import ui,td,keyboard,printer,user,usestock
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType,StockAnnotation

@@ -81,8 +81,7 @@ class cardpopup(ui.dismisspopup):
             cba=zero
         if cba>self.max_cashback:
             self.addstr(self._total_line,2,"Maximum cashback is %s"%(
-                    tillconfig.fc(self.max_cashback)),ui.curses.color_pair(
-                    ui.colour_error))
+                tillconfig.fc(self.max_cashback)),ui.attr(ui.colour_error))
         else:
             self.addstr(self._total_line,2,"Total card payment: %s"%(
                     tillconfig.fc(self.amount+cba)))

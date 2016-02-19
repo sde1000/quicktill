@@ -31,9 +31,8 @@ Cash register page.  Allows transaction entry, voiding of lines.
 # is implemented as a notional "last entry" in the display list, and
 # will only be redrawn when the display list is redrawn.
 
-from __future__ import unicode_literals
 from . import tillconfig
-import curses,textwrap
+import textwrap
 from . import td,ui,keyboard,printer
 from . import stocktype,linekeys,modifiers
 from . import payment
@@ -42,7 +41,7 @@ from . import event
 import logging
 import datetime
 import time
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline,Transaction,Session,StockOut,Transline,penny
 from .models import Payment,zero,User,Department,desc,RemoveCode
@@ -110,10 +109,11 @@ class bufferline(ui.lrline):
                 "Marked lines total",
                 tillconfig.fc(self.reg._total_value_of_marked_translines()))
         else:
-            self.rtext="{} {}".format(
-                "Amount to pay" if self.reg.balance>=zero else "Refund amount",
+            log.debug("bal %s", repr(tillconfig.fc(self.reg.balance)))
+            self.rtext = "{} {}".format(
+                "Amount to pay" if self.reg.balance >= zero else "Refund amount",
                 tillconfig.fc(self.reg.balance)) \
-                if self.reg.balance!=zero else ""
+                if self.reg.balance != zero else ""
         # Add the expected blank line
         l=['']+ui.lrline.display(self,width)
         self.cursor=(cursorx,len(l)-1)
@@ -137,10 +137,10 @@ class tline(ui.lrline):
         return datetime.datetime.now() - self.transtime
     def update_mark(self,ml):
         if self in ml:
-            self.colour=curses.color_pair(ui.colour_cancelline)
+            self.colour = ui.attr(ui.colour_cancelline)
         else:
-            self.colour=curses.color_pair(0)
-        self.cursor_colour=self.colour|curses.A_REVERSE
+            self.colour = ui.attr(0)
+        self.cursor_colour = ui.attr_reverse(self.colour)
 
 class edittransnotes(user.permission_checked,ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
@@ -465,12 +465,13 @@ class page(ui.basicpage):
         self.s.redraw()
         self.updateheader()
     def update_note(self):
-        note=self.trans.notes if self.trans is not None else None
-        if note is None: note=""
-        note=note+" "*(self.w-len(note))
-        c=self.win.getyx()
-        self.win.addstr(0,0,note,ui.curses.color_pair(ui.colour_changeline))
-        self.win.move(*c)
+        note = self.trans.notes if self.trans is not None else None
+        if note is None:
+            note=""
+        note = note + " " * (self.w - len(note))
+        c = self.getyx()
+        self.addstr(0, 0, note, ui.attr(ui.colour_changeline))
+        self.move(*c)
     def cursor_off(self):
         # Returns the cursor to the buffer line.  Does not redraw (because
         # the caller is almost certainly going to do other things first).
@@ -1987,7 +1988,7 @@ class page(ui.basicpage):
             return foodorder.popup(self.deptlines,transid=trans.id)
         if k==keyboard.K_CANCELFOOD or k==keyboard.K_FOODMESSAGE:
             return foodorder.message()
-        curses.beep()
+        ui.beep()
     def hotkeypress(self,k):
         # Fetch the current user from the database.  We don't recreate
         # the user.database_user object because that's unlikely to

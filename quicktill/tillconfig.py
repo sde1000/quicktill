@@ -24,7 +24,7 @@ payment_methods=[]
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None: return "None"
-    return "%s%s"%(currency,a.quantize(penny))
+    return "".join([currency, str(a.quantize(penny))])
 
 def priceguess(stocktype,stockunit,cost):
     """

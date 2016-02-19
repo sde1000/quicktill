@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
-
 import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
@@ -282,7 +280,7 @@ std={
     'pubname':"The Haymakers",
     'pubnumber':"01223 311077",
     'pubaddr':("54 High Street, Chesterton","Cambridge CB4 1NG"),
-    'currency':u"£",
+    'currency':"£",
     'all_payment_methods':all_payment_methods,
     'payment_methods':payment_methods,
     'priceguess':haymakers_priceguess,
@@ -308,7 +306,7 @@ pdfprinter={
     'printer': cupsprinter("barprinter",driver=pdf_driver()),
     }
 xpdfprinter={
-    'printer': commandprinter("xpdf %s",driver=pdf_driver()),
+    'printer': commandprinter("evince %s",driver=pdf_driver()),
     }
 # across, down, width, height, horizgap, vertgap, pagesize
 staples_2by4=[2,4,"99.1mm","67.7mm","3mm","0mm",A4]
@@ -518,14 +516,14 @@ config1={'description':"Haymakers main bar",
          'hotkeys':global_hotkeys}
 config1.update(std)
 config1.update(kb1)
-config1.update(localprinter)
+config1.update(xpdfprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
 
 config2={'description':"Stock-control terminal, card reader"}
 config2.update(std)
 config2.update(stockcontrol_terminal)
-config2.update(pdfprinter)
+config2.update(xpdfprinter)
 config2.update(labelprinter)
 
 config3={'description':"Test menu file 'testmenu.py' in current directory",

@@ -231,7 +231,7 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
         We are passed a StockType that may not be in the current session.
 
         """
-        (mh,mw)=ui.stdwin.getmaxyx()
+        mh, mw = ui.maxwinsize()
         self.st=st
         td.s.add(st)
         name=st.format()

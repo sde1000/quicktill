@@ -1,10 +1,15 @@
 import urllib.request, urllib.parse, urllib.error
-import imp, textwrap, curses, sys, traceback, math, datetime
-from . import ui,keyboard,td,printer,tillconfig,pdrivers,user
-from .models import zero,penny
-from decimal import Decimal
+import urllib
+import imp
+import textwrap
+import sys
+import traceback
+import datetime
 import hashlib
 import logging
+from . import ui, keyboard, td, printer, tillconfig, pdrivers, user
+from .models import zero, penny
+from decimal import Decimal
 log=logging.getLogger(__name__)
 
 kitchenprinter=pdrivers.nullprinter(name="default_kitchenprinter")
@@ -136,7 +141,7 @@ class subopts_dialog(ui.dismisspopup):
         if len(w)>4: self.atmost=len(self.ol)-1 # stop sillyness!
         w=["%s%s"%(x,' '*(self.w-4-len(x))) for x in w]
         y=2
-        attr=curses.color_pair(ui.colour_line)|curses.A_REVERSE
+        attr = ui.attr_reverse(ui.attr(ui.colour_line))
         for i in w:
             self.addstr(y,2,i,attr)
             y=y+1
@@ -148,7 +153,7 @@ class subopts_dialog(ui.dismisspopup):
                             "Choose options, and press Cash/Enter to confirm.")
         else:
             self.addstr(7,2,"Press Cash/Enter to confirm.")
-        self.win.move(2,2)
+        self.move(2, 2)
     def newsubopt(self,so):
         if len(self.ol)<self.atmost or self.atmost is None:
             if isinstance(so[1],float):

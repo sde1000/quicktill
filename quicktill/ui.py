@@ -1,18 +1,22 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
-import curses.panel
-from . import keyboard,event,tillconfig,td,version
-
+import time
 import datetime
+import math
+import sys
+import textwrap
+import traceback
+import locale
+import curses, curses.ascii, curses.panel
+from . import keyboard, event, tillconfig, td
 
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # curses requires unicode strings to be encoded before being passed
 # to functions like addstr() and addch().  Very tedious!
-c=locale.getpreferredencoding()
+c = locale.getpreferredencoding()
 
 colour_header=1
 colour_error=1 # white on red
@@ -24,6 +28,19 @@ colour_changeline=6
 colour_cancelline=7
 colour_confirm=8 # black on cyan
 
+def attr(colour):
+    """Convert a colour number to a value suitable to be passed as attr
+    """
+    return curses.color_pair(colour)
+
+def attr_reverse(attr=0):
+    return attr | curses.A_REVERSE
+
+def maxwinsize():
+    """Maximum window height and width, in characters
+    """
+    return stdwin.getmaxyx()
+
 class clockheader(object):
     """
     A single-line header at the top of the screen, with a clock at the
@@ -34,6 +51,7 @@ class clockheader(object):
     """
     def __init__(self,win,left="Quicktill",middle=""):
         self.stdwin=win
+        my, self.mx = maxwinsize()
         self.left=left
         self.middle=middle
         self.alarm()
@@ -50,15 +68,15 @@ class clockheader(object):
         m=self.left
         s=self.middle
         t=time.strftime("%a %d %b %Y %H:%M:%S %Z")
-        (my,mx)=stdwin.getmaxyx()
         def cat(m,s,t):
             w=len(m)+len(s)+len(t)
-            pad1 = (mx-w) // 2
+            pad1 = (self.mx-w) // 2
             pad2 = pad1
-            if w+pad1+pad2!=mx: pad1=pad1+1
-            return "%s%s%s%s%s"%(m,' '*pad1,s,' '*pad2,t)
+            if w + pad1 + pad2 != self.mx:
+                pad1 = pad1 + 1
+            return ''.join([m,' '*pad1,s,' '*pad2,t])
         x=cat(m,s,t)
-        while len(x)>mx:
+        while len(x) > self.mx:
             if len(s)>0: s=s[:-1]
             elif len(m)>0: m=m[:-1]
             else: t=t[1:]
@@ -120,6 +138,12 @@ class winobject(object):
                 self.win.addstr(y,x,s.encode(c),attr)
         except curses.error:
             log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
+    def getyx(self):
+        return self.win.getyx()
+    def move(self, y, x):
+        return self.win.move(y, x)
+    def erase(self):
+        return self.win.erase()
 
 class _toastmaster(winobject):
     """Manages a queue of messages to be displayed to the user without
@@ -173,7 +197,7 @@ class _toastmaster(winobject):
         # vertically.  If a toast ends up particularly high, make sure
         # we always have at least one blank line at the bottom of the
         # screen.
-        (mh,mw)=stdwin.getmaxyx()
+        mh, mw = maxwinsize()
         w = min((mw * 2) // 3, len(message))
         lines=textwrap.wrap(message,w)
         w=max(len(l) for l in lines)+4
@@ -398,7 +422,7 @@ class basicpopup(basicwin):
         # child UI elements
         self.focus()
         self.keymap=keymap
-        (mh,mw)=stdwin.getmaxyx()
+        mh, mw = maxwinsize()
         if title: w=max(w,len(title)+3)
         if cleartext: w=max(w,len(cleartext)+3)
         w=min(w,mw)
@@ -480,7 +504,7 @@ class listpopup(dismisspopup):
             w=max(len(title)+3,w)
         # We know that the created window will not be wider than the
         # width of the screen.
-        (mh,mw)=stdwin.getmaxyx()
+        mh, mw = maxwinsize()
         w=min(w,mw)
         h=sum(len(x.display(w-2)) for x in hl+dl)+2
         dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
@@ -519,7 +543,7 @@ class infopopup(listpopup):
     def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={}):
         cleartext=self.get_cleartext(cleartext,dismiss)
-        (mh,mw)=stdwin.getmaxyx()
+        mh, mw = maxwinsize()
         maxw=mw-4
         maxh=mh-5
         # We want the window to end up as close to 2/3 the maximum width
@@ -1551,9 +1575,8 @@ def _doupdate():
     curses.doupdate()
 
 def init(w):
-    global stdwin,header,toaster
-    stdwin=w
-    (my,mx)=stdwin.getmaxyx()
+    global stdwin, header
+    stdwin = w
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
     curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
     curses.init_pair(3,curses.COLOR_WHITE,curses.COLOR_BLUE)
@@ -1562,9 +1585,9 @@ def init(w):
     curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
-    header=clockheader(stdwin)
+    header = clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
     event.preselectlist.append(_doupdate)
     toaster.notify_curses_initialised()
 
-beep=curses.beep
+beep = curses.beep
