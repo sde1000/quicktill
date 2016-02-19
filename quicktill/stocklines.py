@@ -1,11 +1,10 @@
-from __future__ import unicode_literals
 import logging
-from . import keyboard,ui,td,tillconfig,printer,user,linekeys,modifiers
-from .models import Department,StockLine,KeyboardBinding
-from .models import StockType,StockLineTypeLog
+from . import keyboard, ui, td, tillconfig, printer, user, linekeys, modifiers
+from .models import Department, StockLine, KeyboardBinding
+from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
 from decimal import Decimal
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 def restock_list(stockline_list):
     # Print out list of things to fetch and put on display

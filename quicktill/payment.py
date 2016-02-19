@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
-from . import ui,tillconfig,td
-from .models import PayType,Payment,zero
+from . import ui, tillconfig, td
+from .models import PayType, Payment, zero
 import datetime
 
 class DuplicatePayType(Exception):

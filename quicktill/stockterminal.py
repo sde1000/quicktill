@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import time
 import logging
 from . import ui,event,td,keyboard,usestock,stocklines,user,tillconfig
@@ -7,7 +6,7 @@ from .models import StockLine,StockAnnotation,StockItem
 from sqlalchemy.sql.expression import tuple_,func,null
 from sqlalchemy.sql import select,not_
 from sqlalchemy.orm import joinedload,undefer_group
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class page(ui.basicpage):
     def __init__(self,hotkeys,locations=None,user=None,
@@ -131,5 +130,6 @@ def handle_usertoken(t,*args,**kwargs):
 
     """
     u=user.user_from_token(t)
-    if u is None: return # Should already have popped up a dialog box
+    if u is None:
+        return # Should already have toasted
     return page(*args,user=u,**kwargs)

@@ -2,8 +2,8 @@
 
 """
 
-from __future__ import unicode_literals
-import sys,os
+import sys
+import os
 from . import ui,keyboard,td,printer,session,user
 from . import tillconfig,linekeys,stocklines,plu,modifiers,event
 from .version import version
@@ -101,6 +101,7 @@ class slmenu(ui.keymenu):
         else:
             modifiers.modify(kb.modifier)
 
+@user.permission_required('netinfo','See network information')
 def netinfo():
     log.info("Net info popup")
     v4=subprocess.check_output(["ip","-4","addr"]).decode('ascii')

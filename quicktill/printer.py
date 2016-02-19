@@ -1,15 +1,14 @@
-from __future__ import unicode_literals
-import string,time
-from . import td,ui,tillconfig,payment
+from . import td, ui, tillconfig, payment
 from decimal import Decimal
 from .models import Delivery,VatBand,Business,Transline,Transaction
 from .models import zero,penny
 
 import datetime
-now=datetime.datetime.now
+now = datetime.datetime.now
 
-driver=None
-labelprinters=[]
+# XXX should be in tillconfig?
+driver = None
+labelprinters = []
 
 # All of these functions assume there's a database session in td.s
 # This should be the case if called during a keypress!  If being used

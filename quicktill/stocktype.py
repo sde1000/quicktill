@@ -3,11 +3,10 @@ Create and modify stocktypes.
 
 """
 
-from __future__ import unicode_literals
 import logging
-log=logging.getLogger(__name__)
-from . import ui,td,keyboard,stocklines,tillconfig,user
-from .models import Department,UnitType,StockType,StockItem,Delivery,penny
+log = logging.getLogger(__name__)
+from . import ui, td, keyboard, stocklines, tillconfig, user
+from .models import Department, UnitType, StockType, StockItem, Delivery, penny
 from decimal import Decimal
 import datetime
 

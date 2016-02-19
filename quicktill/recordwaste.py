@@ -3,9 +3,8 @@ Record waste against a stock item or stock line.
 
 """
 
-from __future__ import unicode_literals
-from . import ui,td,keyboard,stock,stocklines,department,user
-from .models import StockItem,StockType,RemoveCode,StockOut,StockLine
+from . import ui, td, keyboard, stock, stocklines, department, user
+from .models import StockItem, StockType, RemoveCode, StockOut, StockLine
 from decimal import Decimal
 
 # There are two types of thing against which waste can be recorded:

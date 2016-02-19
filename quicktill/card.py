@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 from . import payment,ui,td,tillconfig,keyboard,printer
 from .models import Session,Payment,zero,penny
 from decimal import Decimal

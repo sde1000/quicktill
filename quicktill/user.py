@@ -618,6 +618,7 @@ class default_groups(object):
         "record-waste",
         "current-session-summary",
         "version",
+        "netinfo",
         "kitchen-message",
         "kitchen-order",
         "edit-transaction-note",

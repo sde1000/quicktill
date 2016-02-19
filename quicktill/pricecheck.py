@@ -2,8 +2,7 @@
 
 """
 
-from __future__ import unicode_literals
-from . import td,ui,keyboard,stock,linekeys,user,modifiers,tillconfig
+from . import td, ui, keyboard, stock, linekeys, user, modifiers, tillconfig
 
 class pricecheck_keypress(object):
     """

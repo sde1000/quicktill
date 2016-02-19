@@ -3,7 +3,6 @@ Deals with connecting stock items with stock lines.
 
 """
 
-from __future__ import unicode_literals
 from . import ui,td,keyboard,stock,stocklines,tillconfig,user,linekeys
 from .models import StockLine,FinishCode,StockItem,Department,Delivery
 from .models import StockType,StockAnnotation,StockLineTypeLog
@@ -12,7 +11,7 @@ from sqlalchemy.sql import select
 import datetime
 
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # The "Use Stock" popup has several different functions:
 

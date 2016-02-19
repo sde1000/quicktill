@@ -14,8 +14,6 @@ from . import keyboard, event, tillconfig, td
 import logging
 log = logging.getLogger(__name__)
 
-# curses requires unicode strings to be encoded before being passed
-# to functions like addstr() and addch().  Very tedious!
 c = locale.getpreferredencoding()
 
 colour_header=1
@@ -106,7 +104,7 @@ def handle_keyboard_input(k):
     We can be passed a variety of things as keyboard input:
 
     keycode objects from keyboard.py
-    unicode strings
+    strings
     user tokens
 
     They don't always have a 'keycap' method - check the type first!

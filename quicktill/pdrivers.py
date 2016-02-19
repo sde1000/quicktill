@@ -263,7 +263,7 @@ class tmpfileprinter(object):
         self._driver=driver
         self._file=None
         self._description=description
-    def __unicode__(self):
+    def __str__(self):
         return self._description or "Print to temporary file"
     def offline(self):
         return
@@ -315,10 +315,11 @@ class cupsprinter(tmpfileprinter):
         tmpfileprinter.__init__(self,driver,description=description)
         self._printername=printername
         self._options=options
-    def __unicode__(self):
-        x=self._description or "Print to '{}'".format(self._printername)
-        o=self.offline()
-        if o: x=x+" (offline: {})".format(o)
+    def __str__(self):
+        x = self._description or "Print to '{}'".format(self._printername)
+        o = self.offline()
+        if o:
+            x = x + " (offline: {})".format(o)
         return x
     def offline(self):
         try:

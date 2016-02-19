@@ -5,7 +5,6 @@ module.
 
 """
 
-from __future__ import print_function,unicode_literals
 import urllib.request, urllib.parse, urllib.error
 import sys,os,curses,logging,logging.config,locale,argparse,yaml
 import termios,fcntl,array

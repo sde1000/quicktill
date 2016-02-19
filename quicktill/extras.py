@@ -1,4 +1,3 @@
-from __future__ import print_function,unicode_literals
 from . import ui,keyboard,printer,tillconfig,event,td,user,cmdline
 import twython
 from .models import VatBand

@@ -3,9 +3,8 @@ Help with populating the database with basic configuration information
 like the name of the business, the various departments, and VAT rates.
 
 """
-from __future__ import print_function,unicode_literals
 
-template=r"""
+template = r"""
 # This is a database setup file for quicktill.  It is written in YAML
 # (see http://en.wikipedia.org/wiki/YAML)
 
@@ -183,13 +182,13 @@ from . import models
 from . import td
 
 def setup(f):
-    t=yaml.load(f)
+    t = yaml.load(f)
 
     for m in t:
         if 'model' not in m:
             print("Missing model from %s"%m)
             continue
-        model=models.__dict__[m['model']]
+        model = models.__dict__[m['model']]
         del m['model']
         td.s.merge(model(**m))
         td.s.flush()

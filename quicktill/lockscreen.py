@@ -1,11 +1,10 @@
-from __future__ import unicode_literals
-from . import ui,version,printer,foodorder
+from . import ui, version, printer, foodorder
 from . import event
 from . import tillconfig
 import time
 import gc
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class lockpage(ui.basicpage):
     def __init__(self):

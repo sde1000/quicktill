@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
-from . import payment,td,printer,ui
-from .models import Payment,PayType,zero
+from . import payment, td, printer, ui
+from .models import Payment, PayType, zero
 from decimal import Decimal
 
 class CashPayment(payment.PaymentMethod):

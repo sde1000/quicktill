@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
 import requests
-from . import ui,keyboard
+from . import ui, keyboard
 
 pinlength = 8
 

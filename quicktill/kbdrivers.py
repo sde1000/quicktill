@@ -80,9 +80,9 @@ class prehkeyboard(curseskeyboard):
         self.decode = False
         self.ibuf = []
     def handle_input(self, k):
-        # We get a unicode string or internal keycode.  We interpret
-        # these further, then pass them to the parent class's
-        # handle_input method.
+        # We get a string or internal keycode.  We interpret these
+        # further, then pass them to the parent class's handle_input
+        # method.
         if self.decode:
             if k == ']':
                 s = ''.join(self.ibuf)

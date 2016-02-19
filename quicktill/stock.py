@@ -2,14 +2,13 @@
 
 """
 
-from __future__ import unicode_literals
 import logging
 from decimal import Decimal
 from . import ui,td,keyboard,tillconfig,linekeys,department,user
 from .models import Department,StockType,StockItem,StockAnnotation
 from .models import AnnotationType,Delivery,desc,StockLineTypeLog
 from sqlalchemy.orm import joinedload,undefer
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 def stockinfo_linelist(sn):
     s=td.s.query(StockItem).get(sn)

@@ -1,17 +1,9 @@
-from __future__ import unicode_literals
-
 from . import pricecheck
-from . import ui,td,keyboard,user,tillconfig,linekeys,modifiers
+from . import ui, td, keyboard, user, tillconfig, linekeys, modifiers
 from .models import PriceLookup,Department,KeyboardBinding
 from decimal import Decimal
 import logging
-log=logging.getLogger(__name__)
-
-# XXX remove this after all till configurations have been updated
-def popup():
-    log.warning(
-        "Config file needs updating: import popup from pricecheck not plu")
-    pricecheck.popup()
+log = logging.getLogger(__name__)
 
 def _decimal_or_none(x):
     return Decimal(x) if x else None
