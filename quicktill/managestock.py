@@ -1,6 +1,5 @@
 """Implements the 'Manage Stock' menu."""
 
-from __future__ import unicode_literals
 import curses,curses.ascii,time
 from . import ui,td,keyboard,printer,user,usestock
 from . import stock,delivery,department,stocklines,stocktype
@@ -55,7 +54,7 @@ def finishstock(dept=None):
 def print_stocklist_menu(sinfo,title):
     td.s.add_all(sinfo)
     menu=[("Print list",printer.print_stocklist,(sinfo,title))]+\
-        [("Print labels on {}".format(unicode(x)),
+        [("Print labels on {}".format(str(x)),
           printer.stocklabel_print,(x,sinfo))
          for x in printer.labelprinters]
     ui.automenu(menu,title="Stock print options",colour=ui.colour_confirm)
@@ -289,7 +288,7 @@ def reprint_stocklabel_choose_printer(item):
     if len(printer.labelprinters)==1:
         printer.stocklabel_print(printer.labelprinters[0],[item])
         return
-    menu=[("Print label on {}".format(unicode(x)),
+    menu=[("Print label on {}".format(str(x)),
            printer.stocklabel_print,(x,[item]))
           for x in printer.labelprinters]
     ui.automenu(menu,title="Choose where to print label",colour=ui.colour_confirm)

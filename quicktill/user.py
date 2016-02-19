@@ -18,7 +18,6 @@ indicate restricted functionality.
 
 """
 
-from __future__ import print_function,unicode_literals
 from . import ui,td,event,keyboard,tillconfig,cmdline
 from .models import User,UserToken,Permission
 from sqlalchemy.orm import joinedload
@@ -40,10 +39,7 @@ class ActionDescriptionRegistry(dict):
 action_descriptions=ActionDescriptionRegistry()
 
 class _permission_checked_metaclass(type):
-    """
-    Metaclass for permission_checked classes.
-
-    """
+    """Metaclass for permission_checked classes."""
     def __new__(meta,name,bases,dct):
         # Called when a permission_checked class is defined.  Look at
         # the permission_required and register its action description.
@@ -71,7 +67,7 @@ class _permission_checked_metaclass(type):
                             req=cls.permission_required[0])],
                     title="Not allowed")
 
-class permission_checked(object):
+class permission_checked(object, metaclass=_permission_checked_metaclass):
     """
     Inherit from this class if you want your class to check
     permissions before allowing itself to be initialised.
@@ -80,7 +76,6 @@ class permission_checked(object):
     describe the permission required.
 
     """
-    __metaclass__=_permission_checked_metaclass
     @classmethod
     def allowed(cls,user=None):
         """
@@ -99,18 +94,18 @@ class _permission_check(object):
 
     """
     def __init__(self,action,description=None,func=None):
+        if func:
+            self.__doc__ = func.__doc__
+            self.__name__ = func.__name__
+            self.__module__ = func.__module__
+            self.__defaults__ = func.__defaults__
+            self.__code__ = func.__code__
+            self.__globals__ = func.__globals__
+            self.__dict__ = func.__dict__
+            self.__closure__ = func.__closure__
         self._action=action
         action_descriptions[action]=description
         self._func=func
-        if func:
-            self.func_doc=func.func_doc
-            self.func_name=func.func_name
-            self.__module__=func.__module__
-            self.func_defaults=func.func_defaults
-            self.func_code=func.func_code
-            self.func_globals=func.func_globals
-            self.func_dict=func.func_dict
-            self.func_closure=func.func_closure
     def allowed(self,user=None):
         """
         Can the specified user (or the current user if None) do this
@@ -153,7 +148,7 @@ class permission_required(object):
     Use as follows:
     @permission_required('test','Perform tests')
     def do_test(...):
-    pass
+        pass
 
     Don't use this on the __init__ method of classes; subclass
     permission_checked and set the permission_required class attribute

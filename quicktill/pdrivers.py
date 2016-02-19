@@ -5,7 +5,12 @@ from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
 import cups
 import glob
-import qrcode
+try:
+    import qrcode
+    _qrcode_supported = True
+except ImportError:
+    _qrcode_supported = False
+
 import logging
 log=logging.getLogger(__name__)
 
@@ -55,7 +60,7 @@ def test_ping(host):
     return False
 
 def l2s(l):
-    return string.join([chr(x) for x in l],"")
+    return bytes(l)
 
 def lrwrap(l,r,width):
     w=textwrap.wrap(l,width)
@@ -107,7 +112,7 @@ class nullprinter(object):
         return self.printline(l,justcheckfit=True)
     def kickout(self):
         log.info("%s: kickout",self._name)
-    def __unicode__(self):
+    def __str__(self):
         return self._description or self._name
 
 class badprinter(nullprinter):
@@ -129,7 +134,7 @@ class fileprinter(object):
         self._driver=driver
         self._description=description
         self._file=None
-    def __unicode__(self):
+    def __str__(self):
         return self._description or "Print to file {}".format(self._fileprinter)
     def _getfilename(self):
         gi=glob.iglob(self._filename)
@@ -178,10 +183,10 @@ class linux_lpprinter(fileprinter):
         if ~status & 0x10: return "off-line" # LP_PSELECD
         if ~status & 0x08: return "error light is on" # LP_PERRORP
     def __init__(self,*args,**kwargs):
-        if sys.platform!="linux2":
+        if not sys.platform.startswith("linux"):
             raise PrinterError(
                 self,"linux_lpprinter: wrong platform '{}' "
-                "(expected 'linux2')".format(sys.platform))
+                "(expected 'linux...')".format(sys.platform))
         fileprinter.__init__(self,*args,**kwargs)
     def offline(self):
         if self._file: return 
@@ -514,6 +519,9 @@ class escpos(object):
         self._printed=True
         if self.native_qrcode_support:
             return self.printqrcode_native(data)
+        if not _qrcode_supported:
+            self.printline("qrcode library not installed")
+            return
         q=qrcode.QRCode(border=2)
         q.add_data(data)
         code=q.get_matrix()

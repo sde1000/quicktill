@@ -1,14 +1,16 @@
-from __future__ import unicode_literals
 import json
-import httplib
-import urllib
-import urllib2
+import http.client
+import urllib.request, urllib.error, urllib.parse
 import ssl
 import socket
 from decimal import Decimal
 from . import payment,ui,tillconfig,printer,td,keyboard
 from .models import zero,penny,Payment,Transaction
-import qrcode
+try:
+    import qrcode
+    _qrcode_available = True
+except ImportError:
+    _qrcode_available = False
 import logging
 log=logging.getLogger(__name__)
 
@@ -60,29 +62,29 @@ class Api(object):
     def __init__(self,
                  username,password,site,base_url):
         self._base_url=base_url+site+"/"
-        password_mgr=urllib2.HTTPPasswordMgrWithDefaultRealm()
+        password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         password_mgr.add_password(None,base_url,username,password)
-        auth=urllib2.HTTPBasicAuthHandler(password_mgr)
-        no_proxy=urllib2.ProxyHandler({})
+        auth = urllib.request.HTTPBasicAuthHandler(password_mgr)
+        no_proxy = urllib.request.ProxyHandler({})
 #        https=BTCMerchHTTPSHandler()
 #        self._opener=urllib2.build_opener(https,auth,no_proxy)
-        self._opener=urllib2.build_opener(auth,no_proxy)
+        self._opener = urllib.request.build_opener(auth,no_proxy)
     def _sendrequest(self,url,**parameters):
         if parameters:
-            data=urllib.urlencode(parameters,doseq=True)
-            request=urllib2.Request(self._base_url+url,data)
+            data = urllib.parse.urlencode(parameters, doseq=True)
+            request=urllib.request.Request(self._base_url + url, data)
         else:
-            request=urllib2.Request(self._base_url+url)
+            request=urllib.request.Request(self._base_url + url)
         try:
             u=self._opener.open(request)
             response=u.read()
             u.close()
             return response.strip("\r\n\t ")
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             raise HTTPError(e)
-        except urllib2.URLError as e:
+        except urllib.error.URLError as e:
             raise URLError(e)
-        except httplib.InvalidURL as e:
+        except http.client.InvalidURL as e:
             raise URLError(e)
     def request_payment(self,ref,description,amount):
         response=self._sendrequest("payment.json",
@@ -131,6 +133,9 @@ class btcpopup(ui.dismisspopup):
                 keyboard.K_PRINT:(self.printout,None,False)})
         self.refresh()
     def draw_qrcode(self):
+        if not _qrcode_available:
+            self.addstr(2, 2, "QR code library not installed. Press Print.")
+            return
         q=qrcode.QRCode(border=2)
         q.add_data("bitcoin:{}?amount={}".format(
                 self.response['pay_to_address'],

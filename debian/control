@@ -8,7 +8,7 @@ Standards-Version: 3.7.2
 
 Package: quicktill3
 Architecture: all
-Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml, python-odf, python-twitter, python-requests-oauthlib, python-cups
+Depends: ${python:Depends}, python-psycopg2, python-reportlab, python-httplib2, python-sqlalchemy, python-qrcode, python-yaml, python-odf, python-twython, python-requests-oauthlib, python-cups
 Conflicts: quicktill, quicktill1, quicktill2
 Replaces: quicktill, quicktill1, quicktill2
 Suggests: apgdiff

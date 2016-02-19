@@ -95,7 +95,7 @@ class delivery(ui.basicpopup):
         self.addstr(4,2,"Document number:")
         self.addstr(6,1,"StockNo Stock Type........................... "
                         "Unit.... Cost.. Sale  BestBefore")
-        self.supfield=ui.popupfield(2,19,59,selectsupplier,lambda x:unicode(x),
+        self.supfield=ui.popupfield(2,19,59,selectsupplier,lambda x:str(x),
                                     f=d.supplier if d else None,
                                     readonly=readonly)
         # If there is not yet an underlying Delivery object, the window
@@ -202,7 +202,7 @@ class delivery(ui.basicpopup):
     def printout(self):
         if self.dn is None: return
         menu=[("Print list of items",printer.print_delivery,(self.dn,))]+\
-            [("Print labels on {}".format(unicode(x)),
+            [("Print labels on {}".format(str(x)),
               printer.label_print_delivery,(x,self.dn))
              for x in printer.labelprinters]
         ui.automenu(menu,title="Delivery print options",

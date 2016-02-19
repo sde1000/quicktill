@@ -1,8 +1,6 @@
 # This module manages the display - the header line, clock, popup
 # windows, and so on.
 
-from __future__ import unicode_literals, division
-# / is true division, // is floor division - see PEP 238
 import curses,curses.ascii,time,math,sys,string,textwrap,traceback,locale
 import curses.panel
 from . import keyboard,event,tillconfig,td,version
@@ -1018,7 +1016,7 @@ class _tableline(emptyline):
     def __init__(self,formatter,fields,colour=None,userdata=None):
         emptyline.__init__(self,colour,userdata)
         self._formatter=formatter
-        self.fields=[unicode(x) for x in fields]
+        self.fields=[str(x) for x in fields]
     def update(self):
         emptyline.update(self)
         self._formatter._update(self)
@@ -1407,10 +1405,10 @@ class listfield(popupfield):
 
     A function d can be provided; if it is, then d(model) is expected
     to return a suitable string for display.  If it is not then
-    unicode(model) is called to obtain a string.
+    str(model) is called to obtain a string.
 
     """
-    def __init__(self,y,x,w,l,d=unicode,f=None,keymap={},readonly=False):
+    def __init__(self,y,x,w,l,d=str,f=None,keymap={},readonly=False):
         # We copy the list because we're going to modify it in-place
         # whenever we refresh from the database
         self.l=list(l)

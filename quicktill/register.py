@@ -296,7 +296,7 @@ class repeatinfo(object):
 
     """
     def __init__(self,**kwargs):
-        for k,v in kwargs.iteritems():
+        for k,v in kwargs.items():
             setattr(self,k,v)
 
 class _update_timeout_scrollable(ui.scrollable):

@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from . import ui,td,user,linekeys,keyboard
 from .models import KeyboardBinding
 from decimal import Decimal
@@ -54,14 +52,14 @@ class RegisterSimpleModifier(type):
         if name!="SimpleModifier":
             cls(name=name)
 
-class SimpleModifier(BaseModifier):
+class SimpleModifier(BaseModifier, metaclass=RegisterSimpleModifier):
     """Modifiers created as a subclass of this register themselves
     automatically using the class name.  They shouldn't have their own
     __init__ methods.  Their methods can access the modifier name as
     self.name.
 
     """
-    __metaclass__=RegisterSimpleModifier
+    pass
 
 class modify(user.permission_checked,ui.listpopup):
     permission_required=('alter-modifier','Alter the key bindings for a modifier')

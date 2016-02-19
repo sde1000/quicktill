@@ -103,8 +103,8 @@ class slmenu(ui.keymenu):
 
 def netinfo():
     log.info("Net info popup")
-    v4=subprocess.check_output(["ip","-4","addr"])
-    v6=subprocess.check_output(["ip","-6","addr"])
+    v4=subprocess.check_output(["ip","-4","addr"]).decode('ascii')
+    v6=subprocess.check_output(["ip","-6","addr"]).decode('ascii')
     ui.infopopup(["IPv4:"]+v4.split('\n')+["IPv6:"]+v6.split('\n'),
                  title="Network information",colour=ui.colour_info)
 

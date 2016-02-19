@@ -1,7 +1,6 @@
 from __future__ import print_function,unicode_literals
 from . import ui,keyboard,printer,tillconfig,event,td,user,cmdline
-import twitter
-import urlparse
+import twython
 from .models import VatBand
 import traceback,sys,os,time,datetime
 from requests_oauthlib import OAuth1Session
@@ -185,9 +184,10 @@ class twitter_auth(cmdline.command):
         parser.set_defaults(command=twitter_auth.run)
     @staticmethod
     def run(args):
-        if not args.consumer_key: args.consumer_key=raw_input("Consumer key: ")
+        if not args.consumer_key:
+            args.consumer_key = input("Consumer key: ")
         if not args.consumer_secret:
-            args.consumer_secret=raw_input("Consumer secret: ")
+            args.consumer_secret = input("Consumer secret: ")
         request_token_url='https://api.twitter.com/oauth/request_token'
         base_authorize_url = 'https://api.twitter.com/oauth/authorize'
         access_token_url = 'https://api.twitter.com/oauth/access_token'
@@ -197,7 +197,7 @@ class twitter_auth(cmdline.command):
         resource_owner_secret=fetch_response.get('oauth_token_secret')
         authorize_url=oauth.authorization_url(base_authorize_url)
         print("Please visit this URL: {}".format(authorize_url))
-        verifier=raw_input("Enter the PIN from Twitter: ")
+        verifier = input("Enter the PIN from Twitter: ")
         oauth=OAuth1Session(args.consumer_key,
                             client_secret=args.consumer_secret,
                             resource_owner_key=resource_owner_key,
@@ -207,11 +207,12 @@ class twitter_auth(cmdline.command):
         resource_owner_key=oauth_tokens.get('oauth_token')
         resource_owner_secret=oauth_tokens.get('oauth_token_secret')
 
-        tapi=twitter.Api(consumer_key=args.consumer_key,
-                         consumer_secret=args.consumer_secret,
-                         access_token_key=resource_owner_key,
-                         access_token_secret=resource_owner_secret)
-        user=tapi.VerifyCredentials()
+        tapi = twython.Twython(
+            app_key=args.consumer_key,
+            app_secret=args.consumer_secret,
+            oauth_token=resource_owner_key,
+            oauth_token_secret=resource_owner_secret)
+        user = tapi.verify_credentials()
 
         print("Paste the following to enable Twitter access as @{}:".format(
             user.screen_name))
@@ -225,15 +226,16 @@ class twitter_auth(cmdline.command):
                 args.consumer_key,args.consumer_secret))
 
 def twitter_api(token,token_secret,consumer_key,consumer_secret):
-    return twitter.Api(consumer_key=consumer_key,
-                       consumer_secret=consumer_secret,
-                       access_token_key=token,
-                       access_token_secret=token_secret)
+    return twython.Twython(
+        app_key=consumer_key,
+        app_secret=consumer_secret,
+        oauth_token=token,
+        oauth_token_secret=token_secret)
 
 class twitter_post(ui.dismisspopup):
     def __init__(self,tapi,default_text="",fail_silently=False):
         try:
-            user=tapi.VerifyCredentials()
+            user=tapi.verify_credentials()
         except:
             if not fail_silently:
                 ui.infopopup(["Unable to connect to Twitter"],
@@ -257,7 +259,7 @@ class twitter_post(ui.dismisspopup):
                     "That's too short!  Try typing some more."])
             return
         try:
-            self.tapi.PostUpdate(ttext)
+            self.tapi.update_status(status=ttext)
             self.dismiss()
             ui.infopopup(title="Tweeted",text=["Your update has been posted."],
                          dismiss=keyboard.K_CASH,colour=ui.colour_confirm)
@@ -280,7 +282,7 @@ class twitter_client(user.permission_checked,ui.dismisspopup):
         h=mh-2
         self.tapi=tapi
         try:
-            user=tapi.VerifyCredentials()
+            user=tapi.verify_credentials()
         except:
             ui.infopopup(["Unable to connect to Twitter"],
                          title="Error")
@@ -310,7 +312,7 @@ class twitter_client(user.permission_checked,ui.dismisspopup):
             ui.infopopup(title="Twitter Problem",text=[
                     "That's too short!  Try typing some more."])
             return
-        status=self.tapi.PostUpdate(ttext)
+        status=self.tapi.update_status(status=ttext)
         self.tfield.set("")
         self.timeline.insert(0,status)
         self.tl.insert(0,Tweet(status))
@@ -322,7 +324,7 @@ class twitter_client(user.permission_checked,ui.dismisspopup):
                         user.screen_name)
         self.tfield.focus()
     def refresh(self):
-        self.timeline=self.tapi.GetHomeTimeline(count=20)
+        self.timeline=self.tapi.get_home_timeline(count=20)
         #self.timeline=self.timeline+self.tapi.GetReplies()
         self.timeline.sort(key=lambda x:x.created_at_in_seconds)
         self.timeline.reverse()

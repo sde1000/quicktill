@@ -6,7 +6,8 @@ module.
 """
 
 from __future__ import print_function,unicode_literals
-import sys,os,curses,logging,logging.config,locale,argparse,urllib,yaml
+import urllib.request, urllib.parse, urllib.error
+import sys,os,curses,logging,logging.config,locale,argparse,yaml
 import termios,fcntl,array
 import socket
 import time
@@ -195,7 +196,7 @@ class flushdb(cmdline.command):
             print("There is some data (%d sessions) in the database.  "
                   "Are you sure you want to remove all the data and tables?"%(
                     sessions,))
-            ok=raw_input("Sure? (y/n) ")
+            ok=input("Sure? (y/n) ")
             if ok!='y': return 1
         td.remove_tables()
         print("Finished.")
@@ -262,7 +263,7 @@ class checkdb(cmdline.command):
         if u.host:
             opts=opts+["-h",u.host]
         if u.port:
-            opts=opts+["-p",unicode(u.port)]
+            opts=opts+["-p",str(u.port)]
         if u.username:
             opts=opts+["U",u.username]
         return opts
@@ -451,11 +452,13 @@ def main():
                         interactive=False,disable_printer=False)
     args=parser.parse_args()
 
+    if not hasattr(args, 'command'):
+        parser.error("No command supplied")
     if not args.configurl:
         parser.error("No configuration URL provided in "
                      "%s or on command line"%configurlfile)
     tillconfig.configversion=args.configurl
-    f=urllib.urlopen(args.configurl)
+    f=urllib.request.urlopen(args.configurl)
     globalconfig=f.read()
     f.close()
 
