@@ -48,22 +48,27 @@ alarm_time_guard = time_guard("alarm",0.5)
 
 def eventloop():
     while shutdowncode is None:
+        # Code in ticklist may update the display
         for i in ticklist:
             with tick_time_guard:
                 i()
-        # Work out what the earliest timeout is
-        timeout=None
-        t=time.time()
-        for i in eventlist:
-            nt=i.nexttime
-            i.mainloopnexttime=nt
-            if nt is None: continue
-            if timeout is None or (nt-t)<timeout:
-                timeout=nt-t
+        # Code in preselect list may not update the display
         for i in preselectlist:
             with preselect_time_guard:
                 i()
-        (rd,wr,ex)=select.select(rdlist,[],[],timeout)
+        # Work out what the earliest timeout is
+        timeout = None
+        t = time.time()
+        for i in eventlist:
+            nt = i.nexttime
+            i.mainloopnexttime = nt
+            if nt is None:
+                continue
+            if timeout is None or (nt - t) < timeout:
+                timeout = nt - t
+        if timeout < 0.0:
+            timeout = 0.0
+        rd, wr, ex = select.select(rdlist, [], [], timeout)
         for i in rd:
             with doread_time_guard:
                 i.doread()
@@ -74,9 +79,10 @@ def eventloop():
             with doexcept_time_guard:
                 i.doexcept()
         # Process any events whose time has come
-        t=time.time()
+        t = time.time()
         for i in eventlist:
-            if not hasattr(i,'mainloopnexttime'): continue
-            if i.mainloopnexttime and t>=i.mainloopnexttime:
+            if not hasattr(i,'mainloopnexttime'):
+                continue
+            if i.mainloopnexttime and t >= i.mainloopnexttime:
                 with alarm_time_guard:
                     i.alarm()
