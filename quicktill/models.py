@@ -495,6 +495,7 @@ class Department(Base):
                     "single unit of stock in this department.")
     maxprice=Column(Numeric(5,2),nullable=True,doc="Maximum price of a "
                     "single unit of stock in this department.")
+    accinfo=Column(String(), nullable=True, doc="Accounting system info")
     vat=relationship(VatBand)
     def __unicode__(self):
         return u"%s"%(self.description,)

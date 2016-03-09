@@ -20,6 +20,8 @@ from quicktill.cash import CashPayment
 from quicktill.card import CardPayment
 from quicktill.bitcoin import BitcoinPayment
 from quicktill import modifiers
+from quicktill import td
+import quicktill.xero
 from decimal import Decimal,ROUND_UP
 import datetime
 
@@ -247,6 +249,60 @@ tsapi=timesheets.Api("haymakers","not-a-valid-password",
                      "https://www.individualpubs.co.uk",
                      "/schedule/haymakers/api/users/")
 
+# This key is for a Xero demo app and will cease working sometime
+# around mid-March 2016.  To generate a new one:
+# openssl genrsa -out privatekey.pem 2048
+# openssl req -new -x509 -key privatekey.pem -out publickey.cer -days 3650
+
+# Use privatekey.pem below; use publickey.cer when registering a
+# private app in Xero, and copy the resulting consumer key here.
+xapi = quicktill.xero.Api(consumer_key="APKANUE3C8U0LRXMX8PIAZZCPMTMUL",
+                          private_key="""
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEA5VrQcB8Yntg2HpDGHtcpuyorrVHglz1FgIfIjVsbZVn6Syyg
+wavErWQu4YPwxi6o9iaF/fysyYa3RBzcDPvKXs3gymxEgvzZMo3msOqcj4wNuCTC
+XStFJ343ktYA+p15o+JRzX+c87se2wjxeinUm+IkFk7sUcI+osORxLhrdae6aGU2
+RQs/0MbI8Kx2sbRo4GorRgxArNRAlbEwODV/eB2tgzPc8g6+UaGp4sIxn0h2Z6YX
+hYaS+6ELuV946wn7OfloEo4oQWTvy8ovTarJcpS3tHankTV3RYhsTYDUDCI0a+Sy
+ma898lrmC3JxhZMZPDz/RJTPQ7auvaxGiaru6wIDAQABAoIBABvijrUTEss9Plc5
+At19C3XWCrln2waITIrz9044ZXxNFEFPi7wARklOhOSmRf/SbHiA9omKzvcxidae
+K6LoehJMtafmwe2rED01Q3b/D0nknUZmMbtiJ2ZF0jvoCPZvbvqd6ZQyj8KSXY4D
+6FgR/ed19y0/KzxFgZgIbxCb23TSVL8lejJ8KsN+sIZ539pc1kFqA/S/Jcg1dG0F
+xc6lsy67ADMZQblciz2QHRY2MiLUoZ+cmoI7VKG+ub6Oq5YulYJGhV8W4skzDgW2
+i5LFBpcm49QFHSWzfwWN7T4xDqBzBKUpCf2DS7k5hfLQTFVQQecffPUTMKL4x1su
+T1liMAECgYEA/Gl9nUI5hqGSy3frd6hn+n4AY/D5Y/js8bNPyL7y1lmhxhxIESAE
+dKHul7BKZFPG9t7onkaCbocUklGAZuWzo+u8OPZmbFrDXUjADCclOIWNOPFubWlE
+BWntj3Hre1WQEBVSSdhK+uzzCi0ak3G417MlfJ00xfUH3+hgv+NLt8ECgYEA6J1r
+aPKt0+0ZpONX7OiBW+9Bgn0SAoGt14stZMLqLyU5oAJgVP1GzHIpedVRflq1ye+b
+vBxjBbSyqMlFjkQ9Sm01vdZdIrWbr4gIjcZfvUHt9CFUyLdYGrEJS4EqAtE/urGi
+X0q7WseM5cDXYX7iw1rINvDhZSAdgyPDehC7casCgYEAg1aMwygzcKdgD7ldb4zU
+VdX8dARucCOVfwqziBw7lWdcMw6CPU7wopOj55AWlW+2RrykQ78inUpyXNRFwMTj
+HXdLIESt9NGheEejjm9MAcYUPr35nLq6ZyrALvSy+CEEbin6AGyoTzq+F9xySKhS
+6wHPjrDqRdsC9vIebZpiysECgYEAh4hZMe/cGlPWkj0oWM/rt05DJC2NVcqLKMBd
+9Yyf+FI/LhzUVhCwtKR7yBHjhrSBoSQr4EHF7GgphLCpB0h5UakqG+8Pmw6npHGl
+Uj3YQKRuacUV6lDxU7P9D3I1sSiMclHXoqAfY7hLPv7KP3M32s1FRMW6/jnlGCi5
+V6DyJjsCgYEAzCGASs6+t6uLLj9DGX5K4/RsHsBUqrcX8F3L/hpXpS2LVrOD8+sY
+S3BziR7Sy4+walBB2lzuZvhmwAdhjh++F3WCed2FdE2EAi/pObzuw2QgtPpWnYNi
+CPLtmOFqWabEiz0lMbyDL3j1D0O6GtYmWJreoPSNwZItqQfQ24hNw3k=
+-----END RSA PRIVATE KEY-----
+""")
+
+from quicktill import session
+def finish_send_to_xero(session):
+    td.s.add(session)
+    rv = quicktill.xero.send_session_totals(
+        xapi, session, "Haymakers sales",
+        differences_account="200",
+        reference="Haymakers session {}".format(session.id))
+    ui.toast(rv)
+
+def send_to_xero():
+    m = session.sessionlist(finish_send_to_xero, maxlen=100, closedonly=True)
+    ui.menu(m,
+            title="Send to Xero",
+            blurb="Select a session and "
+            "press Cash/Enter to send it to Xero.",
+            dismiss_on_select=True)
 
 def appsmenu():
     menu=[
@@ -255,6 +311,8 @@ def appsmenu():
     if configname=='mainbar':
         menu.append(
             (keyboard.K_TWO,"Timesheets",timesheets.popup,(tsapi,)))
+    menu.append(
+        (keyboard.K_THREE, "Send session to Xero", send_to_xero, ()))
     ui.keymenu(menu,title="Apps")
 
 register_hotkeys={
