@@ -96,9 +96,8 @@ def stockcheck(dept=None):
     # We might want to sort the list at this point... sorting by ascending
     # amount remaining will put the things that are closest to running out
     # near the start - handy!
-    remfunc=lambda a:reduce(lambda x,y:x+y,[x.remaining for x in a])
-    cmpfunc=lambda a,b:(0,-1)[remfunc(a)<remfunc(b)]
-    st.sort(cmpfunc)
+    remfunc = lambda a: reduce(lambda x, y: x + y, [x.remaining for x in a])
+    st.sort(key=remfunc)
     # We want to show name, remaining, items in each line
     # and when a line is selected we want to pop up the list of individual
     # items.
