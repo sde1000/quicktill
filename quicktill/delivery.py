@@ -200,12 +200,12 @@ class delivery(ui.basicpopup):
                 title="Confirm Delete",
                 keymap={keyboard.K_CASH:(self.reallydeleteline,None,True)})
     def printout(self):
-        if self.dn is None: return
-        menu=[("Print list of items",printer.print_delivery,(self.dn,))]+\
-            [("Print labels on {}".format(str(x)),
-              printer.label_print_delivery,(x,self.dn))
-             for x in printer.labelprinters]
-        ui.automenu(menu,title="Delivery print options",
+        if self.dn is None:
+            return
+        menu = [("Print labels on {}".format(str(x)),
+                 printer.label_print_delivery,(x,self.dn))
+                for x in printer.labelprinters]
+        ui.automenu(menu, title="Delivery print options",
                     colour=ui.colour_confirm)
     def reallyconfirm(self):
         if not self.dn: return

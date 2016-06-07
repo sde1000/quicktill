@@ -225,28 +225,6 @@ def stocklabel_print(p,sl):
         for sd in sl:
             stock_label(d,sd)
 
-def print_delivery(delivery):
-    d=td.s.query(Delivery).get(delivery)
-    with driver as dr:
-        dr.printline("\t%s"%tillconfig.pubname,emph=1)
-        dr.printline("\tDelivery %d"%d.id,colour=1)
-        dr.printline("Supplier: %s"%d.supplier.name)
-        dr.printline("Date: %s"%ui.formatdate(d.date))
-        dr.printline("Delivery note: %s"%d.docnumber)
-        if not d.checked:
-            dr.printline("Details not yet confirmed -")
-            dr.printline("may still be edited.")
-        dr.printline()
-        for s in d.items:
-            dr.printline("Stock number %d"%s.id,colour=1)
-            dr.printline(s.stocktype.format(maxw=dr.checkwidth))
-            dr.printline("%s cost %s"%(
-                    s.stockunit.name,tillconfig.fc(s.costprice)))
-            dr.printline("sale %s BB %s"%(
-                    tillconfig.fc(s.stocktype.saleprice),ui.formatdate(s.bestbefore)))
-            dr.printline()
-        dr.printline("\tEnd of list")
-
 def print_stocklist(sl,title="Stock List"):
     with driver as d:
         d.printline("\t%s"%tillconfig.pubname,emph=1)
