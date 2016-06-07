@@ -1071,7 +1071,7 @@ class StockItem(Base):
         a particular item of stock in front of them.
         
         """
-        a=hashlib.sha1("quicktill-%d-quicktill"%self.id)
+        a=hashlib.sha1(("quicktill-%d-quicktill"%self.id).encode('utf-8'))
         return str(int(a.hexdigest(),16))[-3:]
     @property
     def removed(self):
