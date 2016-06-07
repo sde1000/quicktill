@@ -157,14 +157,14 @@ class fileprinter(object):
         """
         if self._file: return 
         try:
-            f = open(self._getfilename(), 'a')
+            f = open(self._getfilename(), 'ab')
             f.close()
         except IOError as e:
             return str(e)
     def __enter__(self):
         if self._file:
             raise PrinterError(self,"Already started in start()")
-        self._file = open(self._getfilename(), 'a')
+        self._file = open(self._getfilename(), 'ab')
         return self._driver.start(self._file,self)
     def __exit__(self,type,value,tb):
         try:
@@ -199,7 +199,7 @@ class linux_lpprinter(fileprinter):
     def offline(self):
         if self._file: return 
         try:
-            f = open(self._getfilename(), 'a')
+            f = open(self._getfilename(), 'ab')
             buf=array.array(str('b'),[0])
             fcntl.ioctl(f,self.LPGETSTATUS,buf)
             f.close()
@@ -396,7 +396,7 @@ class escpos(object):
         if self._printed:
             self.f.write(escpos.ep_ff)
             if self.has_cutter:
-                self.f.write('\n'*self.lines_before_cut+escpos.ep_left)
+                self.f.write(b'\n'*self.lines_before_cut+escpos.ep_left)
                 self.f.write(escpos.ep_fullcut)
             self.f.flush()
         self.f=None
