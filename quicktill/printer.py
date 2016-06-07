@@ -225,23 +225,6 @@ def stocklabel_print(p,sl):
         for sd in sl:
             stock_label(d,sd)
 
-def print_stocklist(sl,title="Stock List"):
-    with driver as d:
-        d.printline("\t%s"%tillconfig.pubname,emph=1)
-        d.printline("\t%s"%title,colour=1)
-        d.printline("\t Printed %s"%ui.formattime(now()))
-        d.printline()
-        for s in sl:
-            td.s.add(s)
-            d.printline("Stock number %d"%s.id,colour=1)
-            d.printline(s.stocktype.format(maxw=d.checkwidth))
-            d.printline("%s cost %s"%(
-                s.stockunit_id,tillconfig.fc(s.costprice)))
-            d.printline("sale %s BB %s"%(
-                tillconfig.fc(s.stocktype.saleprice),ui.formatdate(s.bestbefore)))
-            d.printline()
-        d.printline("\tEnd of list")
-
 def print_restock_list(rl):
     """
     Print a list of (stockline,stockmovement) tuples.

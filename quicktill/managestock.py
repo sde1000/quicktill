@@ -52,11 +52,10 @@ def finishstock(dept=None):
                           'Print a list of stock')
 def print_stocklist_menu(sinfo,title):
     td.s.add_all(sinfo)
-    menu=[("Print list",printer.print_stocklist,(sinfo,title))]+\
-        [("Print labels on {}".format(str(x)),
-          printer.stocklabel_print,(x,sinfo))
-         for x in printer.labelprinters]
-    ui.automenu(menu,title="Stock print options",colour=ui.colour_confirm)
+    menu =[("Print labels on {}".format(str(x)),
+            printer.stocklabel_print, (x, sinfo))
+           for x in printer.labelprinters]
+    ui.automenu(menu, title="Stock print options", colour=ui.colour_confirm)
 
 def stockdetail(sinfo):
     # We are now passed a list of StockItem objects
@@ -136,11 +135,9 @@ def stockhistory(dept=None):
          stock.stockinfo_popup,(x.id,)) for x in sinfo]
     title=("Stock History" if dept is None
            else "Stock History department %d"%dept)
-    ui.menu(sl,title=title,blurb="Select a stock item and press "
+    ui.menu(sl, title=title, blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
-            "when the stock was finished is shown.",dismiss_on_select=False,
-            keymap={
-            keyboard.K_PRINT: (printer.print_stocklist,(sinfo,title),False)})
+            "when the stock was finished is shown.", dismiss_on_select=False)
 
 @user.permission_required('update-supplier','Update supplier details')
 def updatesupplier():
