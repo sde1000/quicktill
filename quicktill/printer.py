@@ -117,15 +117,27 @@ def print_sessioncountup(s):
         d.printline("management menu option 1,3.")
 
 def print_sessiontotals(s):
-    """
-    Print a session totals report given a Session object.
-
+    """Print a session totals report given a Session object.
     """
     td.s.add(s)
-    depts=s.dept_totals
-    paytotals=dict(s.payment_totals)
-    payments=dict([(x.paytype,x) for x in s.actual_totals])
-    paytypes=set(list(paytotals.keys())+list(payments.keys()))
+    depts = s.dept_totals
+    # Let's use the payment type (String(8)) as the dict key
+    till_totals = dict((x.paytype, y) for x, y in s.payment_totals)
+    actual_totals = dict((x.paytype_id, x.amount) for x in s.actual_totals)
+
+    # Use the configured list of payment types so that we print in a
+    # consistent order; any payment types not in this list are
+    # appended to it and printed last, because they will be for
+    # historical payment types not currently configured
+    all_paytypes = list(set(list(till_totals.keys()) +
+                            list(actual_totals.keys())))
+    pms = list(tillconfig.all_payment_methods)
+    pts = [pm.paytype for pm in pms]
+
+    for pt in all_paytypes:
+        if pt not in pts:
+            pms.append(payment.methods[pt])
+
     with driver as d:
         d.printline("\t%s"%tillconfig.pubname,emph=1)
         d.printline("\tSession %d"%s.id,colour=1)
@@ -137,37 +149,39 @@ def print_sessiontotals(s):
         else:
             d.printline("  Ended %s"%ui.formattime(s.endtime))
         d.printline("Till total:\t\tActual total:")
-        ttt=Decimal("0.00")
-        att=Decimal("0.00")
-        for i in paytypes:
-            desc=i.description
-            if i in paytotals:
-                tt=tillconfig.fc(paytotals[i])
-                ttt=ttt+paytotals[i]
+        ttt = Decimal("0.00")
+        att = Decimal("0.00")
+        for pm in pms:
+            desc = pm.description
+            pt = pm.paytype
+            if pt in till_totals:
+                tt = tillconfig.fc(till_totals[pt])
+                ttt = ttt + till_totals[pt]
             else:
-                tt=""
-            if i in payments:
-                at=tillconfig.fc(payments[i].amount)
-                att=att+payments[i].amount
+                tt = ""
+            if pt in actual_totals:
+                at = tillconfig.fc(actual_totals[pt])
+                att = att + actual_totals[pt]
             else:
-                at=""
-            d.printline("%s: %s\t\t%s"%(desc,tt,at))
-        if len(paytypes)>1:
-            tt=tillconfig.fc(ttt)
-            if att>Decimal("0.00"):
-                at=tillconfig.fc(att)
+                at = ""
+            if tt or at:
+                d.printline("%s: %s\t\t%s" % (desc, tt, at))
+        if len(pms) > 1:
+            tt = tillconfig.fc(ttt)
+            if att > Decimal("0.00"):
+                at = tillconfig.fc(att)
             else:
-                at=""
-            d.printline("Total: %s\t\t%s"%(tt,at),colour=1,emph=1)
+                at = ""
+            d.printline("Total: %s\t\t%s" % (tt, at), colour=1, emph=1)
         d.printline()
-        dt=Decimal("0.00")
-        for dept,total in depts:
-            d.printline("%2d %s\t\t%s"%(dept.id,dept.description,
-                                        tillconfig.fc(total)))
-            dt=dt+total
-        d.printline("\t\tTotal: %s"%tillconfig.fc(dt),colour=1,emph=1)
+        dt = Decimal("0.00")
+        for dept, total in depts:
+            d.printline("%2d %s\t\t%s" % (dept.id, dept.description,
+                                          tillconfig.fc(total)))
+            dt = dt + total
+        d.printline("\t\tTotal: %s" % tillconfig.fc(dt), colour=1, emph=1)
         d.printline()
-        d.printline("\tPrinted %s"%ui.formattime(now()))
+        d.printline("\tPrinted %s" % ui.formattime(now()))
 
 def label_print_delivery(p,delivery):
     d=td.s.query(Delivery).get(delivery)
