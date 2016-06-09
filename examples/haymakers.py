@@ -4,7 +4,7 @@ import quicktill.keyboard as keyboard
 import quicktill.extras as extras
 import quicktill.foodcheck as foodcheck
 from quicktill.keyboard import *
-from quicktill.pdrivers import nullprinter,linux_lpprinter,netprinter,commandprinter,Epson_TM_U220_driver,Epson_TM_T20_driver,pdf_driver,pdf_page,pdf_labelpage,A4,cupsprinter
+from quicktill.pdrivers import nullprinter,linux_lpprinter,fileprinter,netprinter,commandprinter,Epson_TM_U220_driver,Epson_TM_T20_driver,pdf_driver,pdf_page,pdf_labelpage,A4,cupsprinter
 from quicktill import register,ui,kbdrivers,stockterminal,user
 from quicktill.managetill import popup as managetill
 from quicktill.managestock import popup as managestock
@@ -245,15 +245,21 @@ tsapi=timesheets.Api("haymakers","not-a-valid-password",
                      "https://www.individualpubs.co.uk",
                      "/schedule/haymakers/api/users/")
 
+def qr():
+    import quicktill.printer as printer
+    with printer.driver as p:
+        p.printqrcode(bytes("https://www.individualpubs.co.uk/", "utf-8"))
 
 def appsmenu():
     menu=[
-        (keyboard.K_ONE,"Twitter",extras.twitter_client,(tapi,)),
+        ("1", "Twitter", extras.twitter_client, (tapi,)),
         ]
-    if configname=='mainbar':
+    if configname == 'mainbar':
         menu.append(
-            (keyboard.K_TWO,"Timesheets",timesheets.popup,(tsapi,)))
-    ui.keymenu(menu,title="Apps")
+            ("2", "Timesheets", timesheets.popup, (tsapi,)))
+    menu.append(
+        ("3", "QR code print", qr, ()))
+    ui.keymenu(menu, title="Apps")
 
 register_hotkeys={
     K_PRICECHECK: pricecheck,
@@ -300,7 +306,10 @@ noprinter={
     'printer': nullprinter(),
     }
 localprinter={
-    'printer': linux_lpprinter("/dev/usb/lp?",driver=Epson_TM_T20_driver(80)),
+    'printer': linux_lpprinter("/dev/epson-tm-t20",
+                               driver=Epson_TM_T20_driver(80)),
+#    'printer': fileprinter("/dev/epson-tm-u220",
+#                           driver=Epson_TM_U220_driver(57, has_cutter=True)),
     }
 pdfprinter={
     'printer': cupsprinter("barprinter",driver=pdf_driver()),
@@ -315,13 +324,13 @@ label11356=(252,118)
 label99015=(198,154)
 labelprinter={
     'labelprinters': [
-        cupsprinter("barprinter",
-                    driver=pdf_labelpage(*staples_3by6),
-                    options={"MediaType":"Labels"},
-                    description="A4 sheets of 18 labels per sheet"),
-#        cupsprinter("DYMO-LabelWriter-450",
-#                    driver=pdf_page(pagesize=label99015),
-#                    description="DYMO label printer"),
+#        cupsprinter("barprinter",
+#                    driver=pdf_labelpage(*staples_3by6),
+#                    options={"MediaType":"Labels"},
+#                    description="A4 sheets of 18 labels per sheet"),
+        cupsprinter("LabelWriter-450",
+                    driver=pdf_page(pagesize=label11356),
+                    description="DYMO label printer"),
         ],
 }
 
@@ -516,7 +525,7 @@ config1={'description':"Haymakers main bar",
          'hotkeys':global_hotkeys}
 config1.update(std)
 config1.update(kb1)
-config1.update(xpdfprinter)
+config1.update(localprinter)
 config1.update(labelprinter)
 config1.update(kitchen)
 
