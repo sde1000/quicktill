@@ -14,8 +14,10 @@ To upgrade the database:
 
 ```
 BEGIN;
-# Remove UNIQUE constraint on stockout.translineid
-# Rename K_ONE to 1 etc. in keyboard.menukey
+-- Remove UNIQUE constraint on stockout.translineid
+ALTER TABLE stockout DROP CONSTRAINT stockout_translineid_key;
+
+-- Rename K_ONE to 1 etc. in keyboard.menukey
 UPDATE keyboard SET menukey='1' WHERE menukey='K_ONE';
 UPDATE keyboard SET menukey='2' WHERE menukey='K_TWO';
 UPDATE keyboard SET menukey='3' WHERE menukey='K_THREE';
