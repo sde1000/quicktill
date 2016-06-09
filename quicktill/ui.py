@@ -1086,28 +1086,31 @@ class _keymenuline(emptyline):
     """A line for use in a keymenu.  Used internally by keymenu.
 
     """
-    def __init__(self,keymenu,keycode,desc,func,args):
-        self._keymenu=keymenu
-        colour=keymenu._colour
-        if hasattr(func,"allowed"):
-            if not func.allowed(): colour=keymenu._not_allowed_colour
-        self.colour=curses.color_pair(colour)
-        self.cursor_colour=self.colour
-        self.prompt=" "+str(keycode)+". "
-        self.desc=desc if isinstance(desc,emptyline) else line(desc)
+    def __init__(self, keymenu, keycode, desc, func, args):
+        self._keymenu = keymenu
+        colour = keymenu._colour
+        if hasattr(func, "allowed"):
+            if not func.allowed():
+                colour = keymenu._not_allowed_colour
+        self.colour = curses.color_pair(colour)
+        self.cursor_colour = self.colour
+        self.prompt = " " + str(keycode) + ". "
+        self.desc = desc if isinstance(desc, emptyline) else line(desc)
     def update(self):
         pass
     def idealwidth(self):
-        return self._keymenu.promptwidth+self.desc.idealwidth()+1
-    def display(self,width):
-        self.cursor=(0,0)
-        dl=self.desc.display(width-self._keymenu.promptwidth)
-        # First line is the prompt followed by the first line of the
-        # description
-        ll=[self.prompt+dl.pop(0)]
+        return self._keymenu.promptwidth + self.desc.idealwidth() + 1
+    def display(self, width):
+        self.cursor = (0, 0)
+        dl = self.desc.display(width - self._keymenu.promptwidth)
+        # First line is the prompt padded to promptwidth followed by
+        # the first line of the description
+        ll = [" " * (self._keymenu.promptwidth - len(self.prompt)) +
+              self.prompt +
+              dl.pop(0)]
         # Subsequent lines are an indentation of the width of the
         # prompt followed by the line of the description
-        ll=ll+[" "*len(self.prompt)+x for x in dl]
+        ll = ll + [" " * self._keymenu.promptwidth + x for x in dl]
         return ll
 
 class keymenu(listpopup):
