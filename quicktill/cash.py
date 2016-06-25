@@ -57,8 +57,9 @@ class CashPayment(payment.PaymentMethod):
     @property
     def total_fields(self):
         return self._total_fields
-    def total(self,session,fields):
+    def total(self, session, fields):
         try:
-            return sum(Decimal(x) if len(x)>0 else zero for x in fields)
+            return sum(Decimal(x) if len(x) > 0 else zero for x in fields)
         except:
-            return zero
+            return "One or more of the total fields has something " \
+                "other than a number in it."

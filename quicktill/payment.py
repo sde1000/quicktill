@@ -94,11 +94,19 @@ class PaymentMethod(object):
         """
         return []
     def total(self,session,fields):
-        """
+        """Total to record for session
+
         Given a Session and the contents of the fields defined in the
         total_fields property, return the total that should be
         recorded for this payment method.
 
+        If we return anything other than a Decimal then no total will
+        be displayed and it will not be possible for the user to
+        record session totals; this should be done if the payment
+        method is temporarily unable to calculate the total.
+
+        If we return a string, this will be displayed to the user as
+        the reason they can't record session totals.
         """
         return zero
     def commit_total(self,session,amount):

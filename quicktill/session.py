@@ -171,9 +171,13 @@ class _PMWrapper(object):
         self.fields=[]
         self.popup=popup
     def display_total(self):
-        self.popup.addstr(
-            self.y,self.popup.atx,
-            self.popup.ff.format(tillconfig.fc(self.actual_total)))
+        if isinstance(self.actual_total, Decimal):
+            self.popup.addstr(
+                self.y,self.popup.atx,
+                self.popup.ff.format(tillconfig.fc(self.actual_total)))
+        else:
+            self.popup.addstr(
+                self.y, self.popup.atx, self.popup.ff.format("Error"))
     def update_total(self):
         # One of the fields has been changed; redraw the total
         self.actual_total=self.pm.total(self.popup.session,
@@ -261,24 +265,32 @@ class record(ui.dismisspopup):
         total.  Redraw the total line at the bottom of the window.
 
         """
-        total=sum(pm.actual_total for pm in self.pms)
-        difference=self.till_total-total
-        description="Total (DOWN by {})"
-        if difference==zero: description="Total (correct)"
-        elif difference<zero:
-            difference=-difference
-            description="Total (UP by {})"
-        colour=ui.colour_error if difference>Decimal(20) else ui.colour_input
         self.addstr(self.total_y,2,' '*28)
-        self.addstr(self.total_y,2,
-                    description.format(tillconfig.fc(difference)),
-                    ui.attr(colour))
-        self.addstr(self.total_y,self.ttx,
+        self.addstr(self.total_y, self.ttx,
                     self.ff.format(tillconfig.fc(self.till_total)),
                     ui.attr(ui.colour_confirm))
-        self.addstr(self.total_y,self.atx,
-                    self.ff.format(tillconfig.fc(total)),
-                    ui.attr(ui.colour_confirm))
+        try:
+            total = sum(pm.actual_total for pm in self.pms)
+            difference = self.till_total - total
+            description = "Total (DOWN by {})"
+            if difference == zero:
+                description = "Total (correct)"
+            elif difference < zero:
+                difference = -difference
+                description = "Total (UP by {})"
+            colour = ui.colour_error if difference > Decimal(20) \
+                     else ui.colour_input
+            self.addstr(self.total_y, 2,
+                        description.format(tillconfig.fc(difference)),
+                        ui.attr(colour))
+            self.addstr(self.total_y, self.atx,
+                        self.ff.format(tillconfig.fc(total)),
+                        ui.attr(ui.colour_confirm))
+        except:
+            self.addstr(self.total_y, 2, "Can't calculate total",
+                        ui.attr(ui.colour_error))
+            self.addstr(self.total_y, self.atx, self.ff.format("Error"),
+                        ui.attr(ui.colour_error))
     def session_valid(self):
         """
         Check that the session is still eligible to have its totals
@@ -300,12 +312,23 @@ class record(ui.dismisspopup):
         return True
     def finish(self):
         td.s.add(self.session)
-        if not self.session_valid(): return
+        if not self.session_valid():
+            return
         for pm in self.pms:
-            if pm.actual_total!=zero:
+            if isinstance(pm.actual_total, Decimal):
                 td.s.add(SessionTotal(session=self.session,
                                       paytype=pm.pm.get_paytype(),
                                       amount=pm.actual_total))
+            else:
+                ui.infopopup(
+                    ["The {} payment method can't supply an actual total "
+                     "at the moment.".format(pm.pm.description), "",
+                     "Its error message is:",
+                     str(pm.actual_total), "",
+                     "Please try again later."],
+                    title="Payment method error")
+                td.s.rollback()
+                return
         td.s.flush()
         for pm in self.pms:
             r=pm.pm.commit_total(self.session,pm.actual_total)
@@ -313,7 +336,7 @@ class record(ui.dismisspopup):
                 td.s.rollback()
                 ui.infopopup(["Totals not recorded: {} payment method "
                               "says {}".format(pm.pm.description,r)],
-                             title="Error")
+                             title="Payment method error")
                 return
         self.dismiss()
         ui.toast("Printing the confirmed session totals.")
