@@ -64,6 +64,8 @@ user.action_descriptions['cancel-line-in-open-transaction'] = (
     "Delete or reverse a line in an open transaction")
 user.action_descriptions['void-from-closed-transaction'] = (
     "Create a transaction voiding lines from a closed transaction")
+user.action_descriptions['sell-dept'] = (
+    "Sell items using a department key")
 
 # Whenever the register is started it generates a new unique ID for
 # itself.  This is used to distinguish register instances that are
@@ -514,7 +516,9 @@ class page(ui.basicpage):
             self.mod=mod
             self.cursor_off()
             self._redraw()
-    def _read_explicitprice(self,buf,department):
+    def _read_explicitprice(
+            self, buf, department,
+            permission_required="override-price"):
         """Code shared between sales made through stocklines and PLUs to check
         whether the user has entered a valid price override.
 
@@ -528,7 +532,7 @@ class page(ui.basicpage):
                      keyboard.K_WASTE.keycap)],
                 title="Zero price not allowed")
             return
-        if not self.user.may('override-price'):
+        if not self.user.may(permission_required):
             ui.infopopup(
                 ["You don't have permission to override the price of "
                  "this item to {}.  Did you mean to press the {} key "
@@ -580,8 +584,16 @@ class page(ui.basicpage):
         # Check for an explicit price
         explicitprice=None
         if buf:
-            explicitprice=self._read_explicitprice(buf,plu.department)
-            if not explicitprice: return # Error popup already in place
+            # If the PLU has no price set, it is treated as an
+            # old-style department key and the permission required is
+            # "sell-dept".
+            if plu.price:
+                explicitprice = self._read_explicitprice(buf, plu.department)
+            else:
+                explicitprice = self._read_explicitprice(
+                    buf, plu.department, permission_required="sell-dept")
+            if not explicitprice:
+                return # Error popup already in place
 
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
@@ -624,8 +636,8 @@ class page(ui.basicpage):
 
         # If we still don't have a price, we can't continue
         if tl.amount is None:
-            if self.user.may('override-price'):
-                msg="'{}' doesn't have a price set.  You can enter a " \
+            if self.user.may('sell-dept'):
+                msg="'{}' doesn't have a price set.  You must enter a " \
                     "price before choosing the item.".format(plu.description)
             else:
                 msg="This item doesn't have a price set, and you don't have " \
