@@ -6,7 +6,7 @@ module.
 """
 
 import urllib.request, urllib.parse, urllib.error
-import sys,os,curses,logging,logging.config,locale,argparse,yaml
+import sys, os, logging, logging.config, locale, argparse, yaml
 import termios,fcntl,array
 import socket
 import time
@@ -29,20 +29,6 @@ class intropage(ui.basicpage):
                self.addstr(y, 3, str(k))
                y = y + 1
         self.move(0, 0)
-
-def start(stdwin):
-    """
-    ncurses has been initialised, and calls us with the root window.
-
-    When we leave this function for whatever reason, ncurses will shut
-    down and return the display to normal mode.  If we're leaving with
-    an exception, ncurses will reraise it.
-
-    """
-    stdwin.nodelay(1) # Make getch() non-blocking
-    ui.init(stdwin)
-    tillconfig.kb.curses_init(stdwin)
-    event.eventloop()
 
 class ValidateExitOption(argparse.Action):
     def __call__(self, parser, args, values, option_string=None):
@@ -112,7 +98,7 @@ class runtill(cmdline.command):
             tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
             tillconfig.start_time = time.time()
             td.init(tillconfig.database)
-            curses.wrapper(start)
+            ui.run()
         except:
             log.exception("Exception caught at top level")
 
@@ -461,6 +447,40 @@ def main():
     globalconfig=f.read()
     f.close()
 
+    # Logging configuration.  If we have a log configuration file,
+    # read it and apply it.  This is done before the main
+    # configuration file is imported so that log output from the
+    # import can be directed appropriately.
+    rootlog = logging.getLogger()
+    if args.logconfig:
+        logconfig = yaml.load(args.logconfig)
+        args.logconfig.close()
+        logging.config.dictConfig(logconfig)
+    else:
+        formatter = logging.Formatter(
+            '%(asctime)s %(levelname)s %(name)s\n  %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        handler.setLevel(logging.ERROR)
+        rootlog.addHandler(handler)
+    if args.logfile:
+        loglevel = logging.DEBUG if args.debug else logging.INFO
+        loghandler = logging.StreamHandler(args.logfile)
+        loghandler.setFormatter(formatter)
+        loghandler.setLevel(logging.DEBUG if args.debug else logging.INFO)
+        rootlog.addHandler(loghandler)
+        rootlog.setLevel(loglevel)
+    if args.debug:
+        rootlog.setLevel(logging.DEBUG)
+    if args.logsql:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    # Set up handler to direct warnings to toaster UI
+    toasthandler = ToastHandler()
+    toastformatter = logging.Formatter('%(levelname)s: %(message)s')
+    toasthandler.setFormatter(toastformatter)
+    toasthandler.setLevel(logging.WARNING)
+    rootlog.addHandler(toasthandler)
+
     import imp
     g=imp.new_module("globalconfig")
     g.configname=args.configname
@@ -474,40 +494,8 @@ def main():
             print("%s: %s"%(i,g.configurations[i]['description']))
         sys.exit(1)
 
-    # Logging configuration.  If we have a log configuration file,
-    # read it and apply it
-    if args.logconfig:
-        logconfig=yaml.load(args.logconfig)
-        args.logconfig.close()
-        logging.config.dictConfig(logconfig)
-    else:
-        log=logging.getLogger()
-        formatter=logging.Formatter('%(asctime)s %(levelname)s %(name)s\n  %(message)s')
-        handler=logging.StreamHandler()
-        handler.setFormatter(formatter)
-        handler.setLevel(logging.ERROR)
-        log.addHandler(handler)
-    if args.logfile:
-        log=logging.getLogger()
-        loglevel=logging.DEBUG if args.debug else logging.INFO
-        loghandler=logging.StreamHandler(args.logfile)
-        loghandler.setFormatter(formatter)
-        loghandler.setLevel(logging.DEBUG if args.debug else logging.INFO)
-        log.addHandler(loghandler)
-        log.setLevel(loglevel)
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-    if args.logsql:
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     if args.user:
         tillconfig.default_user=args.user
-    # Set up handler to direct warnings to toaster UI
-    log=logging.getLogger()
-    toasthandler=ToastHandler()
-    toastformatter=logging.Formatter('%(levelname)s: %(message)s')
-    toasthandler.setFormatter(toastformatter)
-    toasthandler.setLevel(logging.WARNING)
-    log.addHandler(toasthandler)
     if 'printer' in config:
         printer.driver=config['printer']
     else:
@@ -519,7 +507,6 @@ def main():
         printer.labelprinters=config['labelprinters']
     tillconfig.database=config.get('database')
     if args.database is not None: tillconfig.database=args.database
-    tillconfig.kb=config['kbdriver']
     if 'kitchenprinter' in config:
         foodorder.kitchenprinter=config['kitchenprinter']
     foodorder.menuurl=config.get('menuurl')
@@ -529,6 +516,9 @@ def main():
     tillconfig.currency=config['currency']
     tillconfig.all_payment_methods=config['all_payment_methods']
     tillconfig.payment_methods=config['payment_methods']
+    if 'kbdriver' in config:
+        # Perhaps we should support multiple filters...
+        ui.keyboard_filter_stack.insert(0, config['kbdriver'])
     if 'pricepolicy' in config:
         log.warning("Obsolete 'pricepolicy' key present in configuration")
     if 'format_currency' in config:

@@ -114,6 +114,21 @@ def handle_keyboard_input(k):
     log.debug("Keypress %s", k)
     basicwin._focus.hotkeypress(k)
 
+# Keypresses are passed to each filter in this stack in order.
+keyboard_filter_stack = []
+
+def handle_raw_keyboard_input(k):
+    global keyboard_filter_stack
+
+    input = [k]
+
+    for f in keyboard_filter_stack:
+        input = f(input)
+
+    for k in input:
+        with td.orm_session():
+            handle_keyboard_input(k)
+
 def current_user():
     """
     Look up the focus stack and return the first user information
@@ -1711,9 +1726,60 @@ def _doupdate():
     curses.panel.update_panels()
     curses.doupdate()
 
-def init(w):
+class curseskeyboard:
+    def fileno(self):
+        return sys.stdin.fileno()
+    def doread(self):
+        global stdwin
+        i = stdwin.getch()
+        if i == -1:
+            return
+        handle_raw_keyboard_input(i)
+
+class cursesfilter:
+    """Keyboard input filter that converts curses keycodes to internal
+    keycodes"""
+    # curses codes and their till keycode equivalents
+    kbcodes = {
+        curses.KEY_LEFT: keyboard.K_LEFT,
+        curses.KEY_RIGHT: keyboard.K_RIGHT,
+        curses.KEY_UP: keyboard.K_UP,
+        curses.KEY_DOWN: keyboard.K_DOWN,
+        curses.KEY_ENTER: keyboard.K_CASH,
+        curses.KEY_BACKSPACE: keyboard.K_BACKSPACE,
+        curses.KEY_DC: keyboard.K_DEL,
+        curses.KEY_HOME: keyboard.K_HOME,
+        curses.KEY_END: keyboard.K_END,
+        curses.KEY_EOL: keyboard.K_EOL,
+        1: keyboard.K_HOME, # Ctrl-A
+        4: keyboard.K_DEL, # Ctrl-D
+        5: keyboard.K_END, # Ctrl-E
+        10: keyboard.K_CASH,
+        11: keyboard.K_EOL, # Ctrl-K
+        15: keyboard.K_QUANTITY, # Ctrl-O
+        16: keyboard.K_PRINT, # Ctrl-P
+        20: keyboard.K_MANAGETRANS, # Ctrl-T
+        24: keyboard.K_CLEAR, # Ctrl-X
+        25: keyboard.K_CANCEL, # Ctrl-Y
+        }
+    def _curses_to_internal(self, i):
+        if i in self.kbcodes:
+            return self.kbcodes[i]
+        elif curses.ascii.isprint(i):
+            return chr(i)
+    def __call__(self, keys):
+        return [self._curses_to_internal(key) for key in keys]
+
+def _init(w):
+    """ncurses has been initialised, and calls us with the root window.
+
+    When we leave this function for whatever reason, ncurses will shut
+    down and return the display to normal mode.  If we're leaving with
+    an exception, ncurses will reraise it.
+    """
     global stdwin, header
     stdwin = w
+    stdwin.nodelay(1)
     curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
     curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
     curses.init_pair(3,curses.COLOR_WHITE,curses.COLOR_BLUE)
@@ -1725,6 +1791,12 @@ def init(w):
     header = clockheader(stdwin)
     event.ticklist.append(basicpage._ensure_page_exists)
     event.preselectlist.append(_doupdate)
+    keyboard_filter_stack.insert(0, cursesfilter())
+    event.rdlist.append(curseskeyboard())
     toaster.notify_curses_initialised()
+    event.eventloop()
+
+def run():
+    curses.wrapper(_init)
 
 beep = curses.beep

@@ -481,14 +481,12 @@ global_hotkeys={
 }
 
 stockcontrol={
-    'kbdriver':kbdrivers.curseskeyboard(),
     'firstpage': lambda: stockterminal.page(
         stock_hotkeys,["Bar"],user=user.built_in_user(
             "Stock Terminal","Stock Terminal",['manager'])),
 }
 
 stockcontrol_terminal={
-    'kbdriver':kbdrivers.curseskeyboard(),
     'firstpage': lockscreen.lockpage,
     'usertoken_handler': lambda t:stockterminal.handle_usertoken(
         t,register_hotkeys,["Bar"],max_unattended_updates=5),
@@ -516,7 +514,6 @@ config2.update(xpdfprinter)
 config2.update(labelprinter)
 
 config3={'description':"Test menu file 'testmenu.py' in current directory",
-         'kbdriver':kbdrivers.curseskeyboard(),
          'menuurl':"file:testmenu.py",
          'kitchenprinter':nullprinter("kitchen"),
          'printer':nullprinter("bar"),
