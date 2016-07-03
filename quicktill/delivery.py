@@ -95,9 +95,9 @@ class delivery(ui.basicpopup):
         self.addstr(4,2,"Document number:")
         self.addstr(6,1,"StockNo Stock Type........................... "
                         "Unit.... Cost.. Sale  BestBefore")
-        self.supfield=ui.popupfield(2,19,59,selectsupplier,lambda x:str(x),
-                                    f=d.supplier if d else None,
-                                    readonly=readonly)
+        self.supfield = ui.modelfield(
+            2, 19, 59, Supplier, 'name', default=d.supplier if d else None,
+            create=createsupplier, readonly=readonly)
         # If there is not yet an underlying Delivery object, the window
         # can be dismissed by pressing Clear on the supplier field
         if self.dn is None:
@@ -134,7 +134,6 @@ class delivery(ui.basicpopup):
                 self.s.focus()
             else:
                 self.supfield.focus()
-                self.supfield.popup()
     def update_model(self):
         # Called whenever one of the three fields at the top changes.
         # If the three fields are valid and we have a Delivery model,
@@ -436,48 +435,41 @@ class stockitem(ui.basicpopup):
         else:
             ui.basicpopup.keypress(self,k)
 
-def selectsupplier(func,default=None,allow_new=True):
-    """Choose a supplier; return the appropriate Supplier model,
-    detached, by calling func with it as the only argument.
-
-    """
-    sl=td.s.query(Supplier).order_by(Supplier.id).all()
-    if allow_new: m=[("New supplier",editsupplier,(func,))]
-    else: m=[]
-    m=m+[(x.name,func,(x,)) for x in sl]
-    # XXX Deal with default processing here
-    ui.menu(m,blurb="Select a supplier from the list and press Cash/Enter.",
-            title="Select Supplier")
+def createsupplier(field, name):
+    # Called by the select supplier field if it decides we need to create
+    # a new supplier record.
+    editsupplier(lambda supplier: field.set(supplier), defaultname=name)
 
 class editsupplier(ui.basicpopup):
     @user.permission_required('edit-supplier',"Create or edit supplier details")
-    def __init__(self,func,supplier=None):
-        if supplier: td.s.add(supplier)
-        self.func=func
-        self.sn=supplier.id if supplier else None
-        ui.basicpopup.__init__(self,11,70,title="Supplier Details",
-                               colour=ui.colour_input,cleartext=
-                               "Press Clear to go back")
-        self.addstr(2,2,"Please enter the supplier's details. You may ")
-        self.addstr(3,2,"leave the telephone and email fields blank if you wish.")
-        self.addstr(5,2,"     Name:")
-        self.addstr(6,2,"Telephone:")
-        self.addstr(7,2,"    Email:")
-        self.addstr(8,2,"      Web:")
-        self.namefield=ui.editfield(
-            5,13,55,flen=60,keymap={
-                keyboard.K_CLEAR: (self.dismiss,None)},
-            f=supplier.name if supplier else "")
-        self.telfield=ui.editfield(
-            6,13,20,f=supplier.tel if supplier else "")
-        self.emailfield=ui.editfield(
-            7,13,55,flen=60,f=supplier.email if supplier else "")
-        self.webfield=ui.editfield(
-            8,13,55,flen=120,f=supplier.web if supplier else "",
+    def __init__(self, func, supplier=None, defaultname=None):
+        if supplier:
+            td.s.add(supplier)
+        self.func = func
+        self.sn = supplier.id if supplier else None
+        ui.basicpopup.__init__(
+            self, 11, 70, title="Supplier Details",
+            colour=ui.colour_input, cleartext="Press Clear to go back")
+        self.addstr(2, 2, "Please enter the supplier's details. You may ")
+        self.addstr(3, 2, "leave the fields other than Name blank if you wish.")
+        self.addstr(5, 2, "     Name:")
+        self.addstr(6, 2, "Telephone:")
+        self.addstr(7, 2, "    Email:")
+        self.addstr(8, 2, "      Web:")
+        self.namefield = ui.editfield(
+            5, 13, 55, flen=60, keymap={
+                keyboard.K_CLEAR: (self.dismiss, None)},
+            f=supplier.name if supplier else defaultname)
+        self.telfield = ui.editfield(
+            6, 13, 20, f=supplier.tel if supplier else "")
+        self.emailfield = ui.editfield(
+            7, 13, 55, flen=60, f=supplier.email if supplier else "")
+        self.webfield = ui.editfield(
+            8, 13, 55, flen=120, f=supplier.web if supplier else "",
             keymap={
                 keyboard.K_CASH:(self.confirmwin if supplier is None
-                                 else self.confirmed,None)})
-        ui.map_fieldlist([self.namefield,self.telfield,self.emailfield,
+                                 else self.confirmed, None)})
+        ui.map_fieldlist([self.namefield, self.telfield, self.emailfield,
                           self.webfield])
         self.namefield.focus()
     def confirmwin(self):
@@ -491,17 +483,19 @@ class editsupplier(ui.basicpopup):
                       "Web: {}".format(self.webfield.f)],
                      title="Confirm New Supplier Details",
                      colour=ui.colour_input,keymap={
-            keyboard.K_CASH: (self.confirmed,None,True)})
+            keyboard.K_CASH: (self.confirmed, None, True)})
     def confirmed(self):
         if self.sn:
-            supplier=td.s.query(Supplier).get(self.sn)
+            supplier = td.s.query(Supplier).get(self.sn)
         else:
-            supplier=Supplier()
+            supplier = Supplier()
             td.s.add(supplier)
-        supplier.name=self.namefield.f
-        supplier.tel=self.telfield.f
-        supplier.email=self.emailfield.f
-        supplier.web=self.webfield.f
+        supplier.name = self.namefield.f.strip()
+        supplier.tel = self.telfield.f.strip()
+        supplier.email = self.emailfield.f.strip()
+        supplier.web = self.webfield.f.strip()
         td.s.flush()
-        if self.sn is not None: self.dismiss()
+        if self.sn is not None:
+            # note: if self.sn is None then the popup is dismissed in confirmwin
+            self.dismiss()
         self.func(supplier)

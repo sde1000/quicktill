@@ -10,6 +10,7 @@ import traceback
 import locale
 import curses, curses.ascii, curses.panel
 from . import keyboard, event, tillconfig, td
+from .td import func
 
 import logging
 log = logging.getLogger(__name__)
@@ -617,26 +618,6 @@ def validate_lowercase(s,c):
     return s.lower()
 def validate_title(s,c):
     return s.title()
-def validate_date(s,c):
-    def checkdigit(i):
-        a=s[i:i+1]
-        if len(a)==0: return True
-        return a.isdigit()
-    def checkdash(i):
-        a=s[i:i+1]
-        if len(a)==0: return True
-        return a=='-'
-    if (checkdigit(0) and
-        checkdigit(1) and
-        checkdigit(2) and
-        checkdigit(3) and
-        checkdash(4) and
-        checkdigit(5) and
-        checkdigit(6) and
-        checkdash(7) and
-        checkdigit(8) and
-        checkdigit(9)): return s
-    return None
 
 class field(basicwin):
     def __init__(self,keymap={}):
@@ -1204,106 +1185,135 @@ class booleanfield(field):
             field.keypress(self, k)
                 
 class editfield(field):
-    """Accept input in a field.  Processes an implicit set of keycodes; when an
-    unrecognised code is found processing moves to the standard keymap."""
-    def __init__(self,y,x,w,keymap={},f=None,flen=None,validate=None,
-                 readonly=False):
-        """flen, if not None, is the maximum length of input allowed in the
-        field.  If this is greater than w then the field will scroll
-        if necessary.  If validate is not none it will be called on
-        every insertion into the field; it should return either a
-        (potentially updated) string or None if the input is not
-        allowed.
+    """Accept typed-in input in a field.
 
-        """
-        self.y=y
-        self.x=x
-        self.w=w
-        if flen is None: flen=w
-        self.flen=flen
-        self.validate=validate
-        self.readonly=readonly
-        field.__init__(self,keymap)
-        self.set(f)
+    Processes an implicit set of keycodes; when an unrecognised code
+    is found processing moves to the standard keymap.
+
+    Special parameters:
+
+    f: the default contents
+
+    flen: maximum length of the field
+
+    validate: a function called on every insertion into the field.  It
+    is passed the proposed new contents and the cursor index, and
+    should return either a (potentially updated) string or None if the
+    input is not allowed
+    """
+    def __init__(self, y, x, w, keymap={}, f=None, flen=None, validate=None,
+                 readonly=False):
+        self.y = y
+        self.x = x
+        self.w = w
+        if flen is None:
+            # XXX this doesn't allow for unlimited length fields.  It
+            # should be changed so that if unspecified the maximum
+            # length is the width, and if zero the maximum length is
+            # unlimited
+            flen = w
+        self.flen = flen
+        self.validate = validate
+        self.readonly = readonly
+        field.__init__(self, keymap)
+        editfield.set(self, f)
+    # Internal attributes:
+    # c - cursor position
+    # i - amount by which contents have scrolled left to fit width
+    # _f - current contents
+    @property
+    def f(self):
+        return self._f
     def focus(self):
         field.focus(self)
-        if self.c>len(self.f): self.c=len(self.f)
+        if self.c > len(self._f):
+            self.c = len(self._f)
         self.draw()
-    def set(self,l):
-        if l is None: l=""
-        l=str(l)
-        if len(l)>self.flen: l=l[:self.flen]
-        self.f=l
-        self.c=len(self.f)
-        self.i=0 # will be updated by draw() if necessary
+    def set(self, l):
+        if l is None:
+            l = ""
+        l = str(l)
+        if len(l) > self.flen:
+            l = l[:self.flen]
+        self._f = l
+        self.c = len(self._f)
+        self.i = 0 # will be updated by draw() if necessary
         self.sethook()
         self.draw()
     def draw(self):
-        if self.c-self.i>self.w:
-            self.i=self.c-self.w
-        if self.c<self.i: self.i=self.c
-        self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
-        self.addstr(self.y,self.x,self.f[self.i:self.i+self.w],
-                        curses.A_REVERSE)
-        self.win.move(self.y,self.x+self.c-self.i)
-    def insert(self,s):
+        if self.c -self.i > self.w:
+            self.i = self.c - self.w
+        if self.c < self.i:
+            self.i = self.c
+        self.addstr(self.y, self.x, ' ' * self.w, curses.A_REVERSE)
+        self.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
+                    curses.A_REVERSE)
+        self.win.move(self.y, self.x + self.c - self.i)
+    def insert(self, s):
         if self.readonly:
             curses.beep()
             return
-        trial=self.f[:self.c]+s+self.f[self.c:]
-        if self.validate is not None: trial=self.validate(trial,self.c)
-        if trial is not None and len(trial)>self.flen: trial=None
+        trial = self._f[:self.c] + s + self._f[self.c:]
+        if self.validate:
+            trial = self.validate(trial, self.c)
+        if trial is not None and len(trial) > self.flen:
+            trial = None
         if trial is not None:
-            self.f=trial
-            self.c=self.c+len(s)
-            if self.c>len(self.f):
-                self.c=len(self.f)
+            self._f = trial
+            self.c = self.c + len(s)
+            if self.c > len(self._f):
+                self.c = len(self._f)
             self.sethook()
             self.draw()
         else:
             curses.beep()
     def backspace(self):
         "Delete the character to the left of the cursor"
-        if self.c>0 and not self.readonly:
-            self.f=self.f[:self.c-1]+self.f[self.c:]
+        if self.c > 0 and not self.readonly:
+            self._f = self._f[:self.c - 1] + self._f[self.c:]
             self.move_left()
             self.sethook()
             self.draw()
-        else: curses.beep()
+        else:
+            curses.beep()
     def delete(self):
         "Delete the character under the cursor"
-        if self.c<len(self.f) and not self.readonly:
-            self.f=self.f[:self.c]+self.f[self.c+1:]
+        if self.c < len(self._f) and not self.readonly:
+            self._f = self._f[:self.c] + self._f[self.c + 1:]
             self.sethook()
             self.draw()
-        else: curses.beep()
+        else:
+            curses.beep()
     def move_left(self):
-        if self.c==0: curses.beep()
-        self.c=max(self.c-1,0)
+        if self.c == 0:
+            curses.beep()
+        self.c = max(self.c - 1, 0)
         self.draw()
     def move_right(self):
-        if self.c==len(self.f): curses.beep()
-        self.c=min(self.c+1,len(self.f))
+        if self.c == len(self._f):
+            curses.beep()
+        self.c = min(self.c + 1, len(self._f))
         self.draw()
     def home(self):
-        self.c=0
+        self.c = 0
         self.draw()
     def end(self):
-        self.c=len(self.f)
+        self.c = len(self._f)
         self.draw()
     def clear(self):
-        self.f=""
-        self.c=0
+        self._f = ""
+        self.c = 0
+        self.i = 0
         self.sethook()
         self.draw()
     def killtoeol(self):
         if self.readonly:
             curses.beep()
             return
-        self.f=self.f[:self.c]
+        self._f = self._f[:self.c]
         self.sethook()
         self.draw()
-    def keypress(self,k):
+    def keypress(self, k):
         if isinstance(k, str):
             self.insert(k)
         elif k == keyboard.K_BACKSPACE:
@@ -1320,36 +1330,162 @@ class editfield(field):
             self.end()
         elif k == keyboard.K_EOL:
             self.killtoeol()
-        elif k==keyboard.K_CLEAR and self.f!="" and not self.readonly:
+        elif k == keyboard.K_CLEAR and self._f != "" and not self.readonly:
             self.clear()
         else:
-            field.keypress(self,k)
+            field.keypress(self, k)
 
 class datefield(editfield):
-    def __init__(self,y,x,keymap={},f=None,flen=None,readonly=False):
+    """A field for entry of dates
+
+    The f attribute is a valid date or None
+    """
+    def __init__(self, y, x, keymap={}, f=None, readonly=False):
         if f is not None:
-            f=formatdate(f)
-        editfield.__init__(self,y,x,10,keymap=keymap,f=f,flen=10,
-                           readonly=readonly,validate=validate_date)
-    def set(self,v):
-        if hasattr(v,'strftime'):
-            editfield.set(self,formatdate(v))
+            f = formatdate(f)
+        editfield.__init__(self, y, x, 10, keymap=keymap, f=f, flen=10,
+                           readonly=readonly, validate=self.validate_date)
+    @staticmethod
+    def validate_date(s, c):
+        def checkdigit(i):
+            a=s[i : i + 1]
+            if len(a) == 0:
+                return True
+            return a.isdigit()
+        def checkdash(i):
+            a = s[i : i + 1]
+            if len(a) == 0:
+                return True
+            return a == '-'
+        if (checkdigit(0) and
+            checkdigit(1) and
+            checkdigit(2) and
+            checkdigit(3) and
+            checkdash(4) and
+            checkdigit(5) and
+            checkdigit(6) and
+            checkdash(7) and
+            checkdigit(8) and
+            checkdigit(9)):
+            return s
+        return None
+    def set(self, v):
+        if hasattr(v, 'strftime'):
+            editfield.set(self, formatdate(v))
         else:
-            editfield.set(self,v)
+            editfield.set(self, v)
     def read(self):
         try:
-            d=datetime.datetime.strptime(self.f,"%Y-%m-%d")
+            d = datetime.datetime.strptime(self._f,"%Y-%m-%d")
         except:
-            d=None
+            d = None
         return d
+    @property
+    def f(self):
+        # XXX maybe cache this?
+        return self.read()
     def draw(self):
-        self.addstr(self.y,self.x,'YYYY-MM-DD',curses.A_REVERSE)
-        self.addstr(self.y,self.x,self.f,curses.A_REVERSE)
-        self.win.move(self.y,self.x+self.c)
-    def insert(self,s):
-        editfield.insert(self,s)
-        if len(self.f)==4 or len(self.f)==7:
-            self.set(self.f+'-')
+        self.addstr(self.y, self.x, 'YYYY-MM-DD', curses.A_REVERSE)
+        self.addstr(self.y, self.x, self._f, curses.A_REVERSE)
+        self.win.move(self.y, self.x + self.c)
+    def insert(self, s):
+        editfield.insert(self, s)
+        if len(self._f) == 4 or len(self._f) == 7:
+            self.set(self._f + '-')
+
+class modelfield(editfield):
+    """A field that allows a model instance to be chosen
+
+    The instance is chosen based on a string field.  The user types
+    into the field; what they type is autocompleted.  If there's an
+    ambiguity when they press Enter, a popup is used to finalise their
+    selection.
+
+    model: the database model for the table
+
+    field: the model attribute to search on, which must be a String type
+
+    filter: an expression to use to select from a subset of rows
+
+    default: a model instance to use as the default value
+
+    create: a function to call to create a new row; it is called with
+    the modelfield instance and current field contents as parameters
+    """
+    def __init__(self, y, x, w, model, field, filter=None, default=None,
+                 create=None, keymap={}, readonly=False):
+        self._model = model
+        self._attr = field
+        self._field = getattr(self._model, self._attr)
+        self._filter = filter
+        self._create = create
+        self._instance = None
+        editfield.__init__(self, y, x, w, keymap=keymap,
+                           flen=self._field.type.length,
+                           validate=self._validate_autocomplete,
+                           readonly=readonly)
+        if default:
+            self.set(default)
+    def _complete(self, m):
+        q = td.s.query(self._field)
+        if self._filter:
+            q = q.filter(self._filter)
+        q = q.filter(self._field.ilike("{}%".format(m)))
+        q = q.order_by(func.length(self._field), self._field)
+        return [x[0] for x in q.all()]
+    def _validate_autocomplete(self, s, c):
+        t = s[:c + 1]
+        l = self._complete(t)
+        if l:
+            return l[0]
+        # If we can't create new entries, don't allow the user to continue
+        # typing if there are no matches
+        if not self._create:
+            return None
+        # If a string one character shorter matches then we know we
+        # filled it in last time, so we should return the string with
+        # the rest chopped off rather than just returning the whole
+        # thing unedited.
+        if self._complete(t[:-1]):
+            return t
+        return s
+    def set(self, instance):
+        self._instance = instance
+        if instance:
+            editfield.set(self, getattr(instance, self._attr))
+        else:
+            editfield.set(self, None)
+    @property
+    def f(self):
+        return self._instance
+    def read(self):
+        if self._instance:
+            self._instance = td.s.merge(self._instance)
+        return self._instance
+    def update_instance_if_matched(self):
+        """Update instance to match field contents if possible
+
+        If not possible, instance is set to None
+        """
+        oi = self._instance
+        i = td.s.query(self._model).\
+            filter(self._field == self._f).\
+            all()
+        if len(i) == 1:
+            self._instance = i[0]
+        else:
+            self._instance = None
+        if self._instance != oi:
+            self.sethook()
+    def defocus(self):
+        self.update_instance_if_matched()
+        if self._f and not self._instance and self._create:
+            t = self._f
+            self.set(None)
+            self._create(self, t)
+    def clear(self):
+        self._instance = None
+        editfield.clear(self)
 
 class popupfield(field):
     """

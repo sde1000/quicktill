@@ -4,6 +4,7 @@ from . import ui,td,keyboard,printer,user,usestock
 from . import stock,delivery,department,stocklines,stocktype
 from .models import Department,FinishCode,StockLine,StockType,StockAnnotation
 from .models import StockItem,Delivery,StockOut,func,desc
+from .models import Supplier
 from sqlalchemy.orm import lazyload,joinedload,undefer,contains_eager
 from sqlalchemy.orm import joinedload_all
 from sqlalchemy.sql import not_
@@ -141,8 +142,10 @@ def stockhistory(dept=None):
 @user.permission_required('update-supplier','Update supplier details')
 def updatesupplier():
     log.info("Update supplier")
-    delivery.selectsupplier(
-        lambda x:delivery.editsupplier(lambda a:None,x),allow_new=False)
+    sl = td.s.query(Supplier).order_by(Supplier.name).all()
+    m=[(x.name, delivery.editsupplier, (lambda a:None, x)) for x in sl]
+    ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
+            title="Edit Supplier")
 
 class stocklevelcheck(user.permission_checked,ui.dismisspopup):
     permission_required=('stock-level-check','Check stock levels')
