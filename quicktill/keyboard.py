@@ -35,36 +35,6 @@ class notekey(paymentkey):
         paymentkey.__init__(self,name,keycap,method)
         self.notevalue=notevalue
 
-def modkey(name,keycap,qty,unittypes):
-    raise Exception("Obsolete modifier '{}' defined in config file; to fix "
-                    "this, redefine it as a line key".format(name))
-
-class deptkey(keycode):
-    def __new__(cls,dept,checkfunction=None):
-        existing=globals().get("K_DEPT%d"%dept)
-        if existing: return existing
-        self=object.__new__(cls)
-        self._dept=dept
-        self.checkfunction=checkfunction
-        self._register()
-        return self
-    def __init__(self,*args,**kwargs):
-        pass
-    @property
-    def name(self):
-        return "K_DEPT%d"%self._dept
-    @property
-    def keycap(self):
-        from . import td,models
-        dept=td.s.query(models.Department).get(self._dept)
-        if dept: return dept.description
-        return "Department %d"%self._dept
-    @property
-    def department(self):
-        return self._dept
-    def __repr__(self):
-        return "deptkey(%d)"%self._dept
-
 class linekey(keycode):
     def __new__(cls,line):
         existing=globals().get("K_LINE%d"%line)

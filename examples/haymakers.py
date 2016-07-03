@@ -142,26 +142,6 @@ Wine("Small","125ml glass","altprice1")
 Wine("Medium","175ml glass","altprice2")
 Wine("Large","250ml glass","altprice3")
 
-def check_soft_drinks(dept,price):
-    return ["Please use the new Draught Soft or Soft Carton buttons "
-            "instead.",
-            "",
-            "You don't need to enter a price first.",
-            "",
-            "For a half pint, press the Half button first.  "
-            "For a mixer, press the Mixer button first."]
-
-def check_wine(dept,price):
-    return ["Please use the new White Wine, Red Wine or Other Wine buttons "
-            "instead.",
-            "",
-            "You don't need to enter a price first.",
-            "",
-            "For a bottle, just choose the appropriate wine.",
-            "",
-            "For a glass, press Small, Medium or Large before choosing "
-            "the wine."]
-
 # Suggested sale price algorithm
 
 # We are passed a StockType (from which we can get manufacturer, name,
@@ -382,9 +362,9 @@ kb1={
             ("A02", K_MARK),
             # Departments
             ("G12", K_DRINKIN), # Not a department!
-            ("G13", deptkey(9,checkfunction=check_wine)),
-            ("F12", deptkey(7,checkfunction=check_soft_drinks)),
-            ("F13", deptkey(10)),
+            ("G13", None), # was Wine dept key
+            ("F12", None), # was Soft Drinks dept key
+            ("F13", None), # was Food dept key
             # All line keys
             ("H03", linekey(1)),
             ("H04", linekey(2)),

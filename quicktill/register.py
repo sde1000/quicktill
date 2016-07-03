@@ -845,87 +845,6 @@ class page(ui.basicpage):
         self.cursor_off()
         self._redraw()
 
-    @user.permission_required("sell-dept","Sell items using a department key")
-    def deptkey(self,k):
-        dept=k.department
-        if self.repeat and hasattr(self.repeat,'dept') and \
-                self.repeat.dept==dept \
-                and self.dl[-1].age()<max_transline_modify_age:
-            # Increase the number of items of the most recent entry
-            tl=td.s.query(Transline).get(self.dl[-1].transline)
-            # The transline must be for the correct department and
-            # have no stockref
-            if tl.dept_id==dept and not tl.stockref:
-                log.info("deptkey: adding to transline %d",tl.id)
-                tl.items=tl.items+1
-                td.s.flush()
-                self.dl[-1].update()
-                td.s.expire(self.trans,['total'])
-                self.update_balance()
-                self.cursor_off()
-                self._redraw()
-                return
-        if not self.buf:
-            log.info("Register: deptkey: no amount entered")
-            ui.infopopup(["You must enter the amount before pressing "
-                          "a department button.  Please try again.","",
-                          "Optionally you may enter a quantity, press "
-                          "the 'Quantity' button, and then enter the "
-                          "price of a single item before pressing the "
-                          "department button."],title="Error")
-            return
-        price=strtoamount(self.buf)
-        if self.mod:
-            ui.infopopup(["You can't use the '{}' modifier with a "
-                          "department button.".format(self.mod.name)],
-                         title="Error")
-            return
-        items=self.qty or 1
-        department=td.s.query(Department).get(dept)
-        if not department:
-            ui.infopopup(["Department {} does not exist!".format(dept)],
-                         title="Configuration error")
-            return
-        self.prompt=self.defaultprompt
-        self.clearbuffer()
-        self.cursor_off()
-        priceproblem=k.checkfunction and k.checkfunction(department,price)
-        if priceproblem:
-            self._redraw()
-            if not isinstance(priceproblem,list):
-                priceproblem=[priceproblem]
-            ui.infopopup(priceproblem,title="Error")
-            return
-        if department.minprice and price<department.minprice:
-            self._redraw()
-            ui.infopopup(["The minimum price for {} is {}.".format(
-                        department.description,
-                        tillconfig.fc(department.minprice))],
-                         title="Price too low")
-            return
-        if department.maxprice and price>department.maxprice:
-            self._redraw()
-            ui.infopopup(["The maximum price for {} is {}.".format(
-                        department.description,
-                        tillconfig.fc(department.maxprice))],
-                         title="Price too high")
-            return
-        trans=self.gettrans()
-        if trans is None: return
-        tl=Transline(transaction=trans,dept_id=dept,items=items,amount=price,
-                     transcode='S',user=self.user.dbuser)
-        td.s.add(tl)
-        td.s.flush()
-        td.s.expire(tl,['time'])
-        log.info("deptkey: trans=%d,lid=%d,dept=%d,items=%d,"
-                 "price=%f",trans.id,tl.id,dept,items,price)
-        self.dl.append(tline(tl.id))
-        td.s.expire(self.trans,['total'])
-        self._clear_marks()
-        self.update_balance()
-        self.cursor_off()
-        self._redraw()
-        self.repeat=repeatinfo(dept=dept)
     def deptlines(self,lines):
         """Accept multiple transaction lines from an external source.
 
@@ -1972,8 +1891,6 @@ class page(ui.basicpage):
             linekeys.linemenu(k,self.linekey,allow_stocklines=True,
                               allow_plus=True,allow_mods=True)
             return
-        elif hasattr(k,'department'):
-            return self.deptkey(k)
         self.repeat=None
         if hasattr(k,'notevalue'):
             return self.notekey(k)
