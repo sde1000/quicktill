@@ -91,9 +91,12 @@ class cardpopup(ui.dismisspopup):
             cba=zero
         if cba>self.max_cashback:
             self.cbfield.set("")
-            return ui.infopopup(["Cashback is limited to a maximum of %s per "
-                                 "transaction."%tillconfig.fc(
-                        tillconfig.cashback_limit)],title="Error")
+            self.cbfield.focus()
+            return ui.infopopup(
+                ["Cashback is limited to a maximum of {} per "
+                 "transaction.".format(tillconfig.fc(
+                     self.max_cashback))],
+                title="Error")
         receiptno=self.rnfield.f
         if receiptno=="":
             return ui.infopopup(["You must enter a receipt number."],
