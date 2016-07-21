@@ -317,7 +317,7 @@ class Transaction(Base):
                 primary_key=True)
     sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
                        nullable=True) # Null sessionid for deferred transactions
-    notes = Column(String(60))
+    notes = Column(String(60), nullable=False, default='', server_default='')
     closed = Column(Boolean, nullable=False, default=False)
     session = relationship(Session, backref=backref('transactions', order_by=id))
     # total is a column property defined below
