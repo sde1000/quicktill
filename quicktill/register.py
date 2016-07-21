@@ -1,7 +1,4 @@
-"""
-Cash register page.  Allows transaction entry, voiding of lines.
-
-"""
+"""Cash register page.  Allows transaction entry, voiding of lines."""
 
 # A brief word about how redrawing the screen works:
 #
@@ -32,8 +29,10 @@ Cash register page.  Allows transaction entry, voiding of lines.
 
 from . import tillconfig
 import textwrap
+import math
 from . import td, ui, keyboard, printer
-from . import stocktype, linekeys, modifiers
+import quicktill.stocktype
+from . import linekeys, modifiers
 from . import payment
 from . import user
 from . import event
@@ -44,6 +43,7 @@ log = logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
 from .models import Payment, zero, User, Department, desc, RemoveCode
+from .models import StockType
 from sqlalchemy.sql import func
 from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -278,7 +278,7 @@ def strtoamount(s):
         return Decimal(s).quantize(penny)
     return int(s) * penny
 
-def no_saleprice_popup(user, item):
+def no_saleprice_popup(user, stocktype):
     """The user tried to sell an item that doesn't have a price set
 
     Pop up an appropriate error message for an item of stock with a
@@ -286,28 +286,28 @@ def no_saleprice_popup(user, item):
     appropriate permissions.
     """
     if user.may('override-price') and user.may('reprice-stock'):
-        ist = item.stocktype
+        ist = stocktype
         ui.infopopup(
             ["No sale price has been set for {}.  You can enter a price "
              "before pressing the line key to set the price just this once, "
              "or you can press {} now to set the price permanently.".format(
-                 item.stocktype.format(),
+                 ist.format(),
                  keyboard.K_MANAGESTOCK.keycap)],
             title="Unpriced item found", keymap={
                 keyboard.K_MANAGESTOCK: (
-                    lambda: stocktype.reprice_stocktype(ist),
+                    lambda: quicktill.stocktype.reprice_stocktype(ist),
                     None, True)})
     elif user.may('override-price'):
         ui.infopopup(
             ["No sale price has been set for {}.  You can enter a price "
              "before pressing the line key to set the price just this once.".\
-             format(item.stocktype.format())],
+             format(ist.format())],
             title="Unpriced item found")
     else:
         ui.infopopup(
             ["No sale price has been set for {}.  You must ask a manager "
              "to set a price for it before you can sell it.".format(
-                 item.stocktype.format())],
+                 ist.format())],
             title="Unpriced item found")
 
 def record_pullthru(stockid, qty):
@@ -327,6 +327,58 @@ class _update_timeout_scrollable(ui.scrollable):
     def focus(self):
         super(_update_timeout_scrollable, self).focus()
         self.parent._update_timeout()
+
+class InvalidSale(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+class ProposedSale:
+    """A proposed sale of a single item.
+
+    Details of the sale are collected in an instance of this class.
+    When complete, the instance may be passed to a modifier which may
+    mutate it as it likes.
+
+    Instance attributes:
+
+    description - the text visible on the register display and receipt
+    for this sale
+
+    price - the price that will be charged for the item.  May be None
+    if unknown.
+
+    qty - the number of units of stock being sold.  Must be a Decimal,
+    or None if no stock is associated with the sale.
+
+    stocktype (read only) - the type of stock being sold.  May be None
+    if no stock is associated with the sale.
+    """
+    def __init__(self, description="", price=None, qty=None, stocktype=None,
+                 whole_items=False):
+        self.description = description
+        self.price = price
+        self.qty = qty
+        self._stocktype = stocktype
+        self._whole_items = whole_items
+    @property
+    def stocktype(self):
+        return self._stocktype
+    def validate(self):
+        if not self.description:
+            raise InvalidSale("No description")
+        if self.stocktype:
+            if not isinstance(self.qty, Decimal):
+                raise InvalidSale("qty is not a Decimal")
+            if self._whole_items and math.floor(self.qty) != self.qty:
+                raise InvalidSale("qty is not a whole number")
+            if not isinstance(self.stocktype, StockType):
+                raise InvalidSale("stocktype is not a StockType")
+        else:
+            if self._whole_items:
+                raise InvalidSale("stocktype missing for sale of whole number "
+                                  "of items")
+            if self.qty is not None:
+                raise InvalidSale("qty present with no stocktype")
 
 class page(ui.basicpage):
     def __init__(self, user, hotkeys, autolock=None, timeout=300):
@@ -640,7 +692,7 @@ class page(ui.basicpage):
 
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
-        if may_repeat and len(self.dl)>0 and \
+        if may_repeat and len(self.dl) > 0 and \
            self.dl[-1].age() < max_transline_modify_age:
             otl = td.s.query(Transline).get(self.dl[-1].transline)
             otl.items = otl.items + 1
@@ -652,45 +704,59 @@ class page(ui.basicpage):
             self._redraw()
             return
 
-        # Create a draft transaction line.  The price from the PLU is
-        # used here; if there is an override it will be applied after
-        # the modifier has taken effect.
-        tl = Transline(transaction=trans, items=items, amount=plu.price,
-                       department=plu.department, user=self.user.dbuser,
-                       transcode='S', text=plu.description)
-        # Ensure the draft transaction line is not in the ORM session
-        # until we are ready to commit it
-        if tl in td.s:
-            td.s.expunge(tl)
+        # Create the proposed sale object
+        sale = ProposedSale(description=plu.description, price=plu.price)
 
-        # Pass the draft to the modifier to let it change it or reject it
+        sale.validate()
+
+        # Pass the proposed sale to the modifier to let it change it or reject it
         if mod:
             try:
-                mod.mod_plu(plu, tl)
-            except modifiers.Incompatible as i:
-                msg = "The '{}' modifier can't be used with " \
-                      "the '{}' price lookup.".format(mod.name, plu.description)
-                ui.infopopup([i.msg if i.msg else msg],
-                             title="Incompatible modifier",
-                             colour=ui.colour_error)
+                with ui.exception_guard(
+                        "running the '{}' modifier".format(mod.name),
+                        suppress_exception=False):
+                    try:
+                        mod.mod_plu(plu, sale)
+                        sale.validate()
+                    except modifiers.Incompatible as i:
+                        msg = "The '{}' modifier can't be used with " \
+                              "the '{}' price lookup." \
+                              .format(mod.name, plu.description)
+                        ui.infopopup([i.msg if i.msg else msg],
+                                     title="Incompatible modifier",
+                                     colour=ui.colour_error)
+                        return
+                    except InvalidSale as i:
+                        ui.infopopup(
+                            ["The '{}' modifier left the Proposed Sale object "
+                             "in an invalid state.  This is an error in the "
+                             "till configuration.  The invalid state is: {}"
+                             .format(mod.name, i.msg)],
+                            title="Till configuration error")
+                        return
+            except Exception as e:
+                # ui.exception_guard() will already have popped up the error.
                 return
 
         # If we have an explicit price, apply it now
         if explicitprice:
-            tl.amount=explicitprice
+            sale.price = explicitprice
 
         # If we still don't have a price, we can't continue
-        if tl.amount is None:
+        if sale.price is None:
             if self.user.may('sell-dept'):
-                msg="'{}' doesn't have a price set.  You must enter a " \
-                    "price before choosing the item.".format(plu.description)
+                msg = "'{}' doesn't have a price set.  You must enter a " \
+                      "price before choosing the item.".format(plu.description)
             else:
-                msg="This item doesn't have a price set, and you don't have " \
-                    "permission to override it.  You must ask your manager " \
-                    "to set a price on the item before you can sell it."
-            ui.infopopup([msg], title="Price not set")
+                msg = "This item doesn't have a price set, and you don't have " \
+                      "permission to override it.  You must ask your manager " \
+                      "to set a price on the item before you can sell it."
+                ui.infopopup([msg], title="Price not set")
             return
 
+        tl = Transline(transaction=trans, items=items, amount=sale.price,
+                       department=plu.department, user=self.user.dbuser,
+                       transcode='S', text=sale.description)
         td.s.add(tl)
         td.s.flush()
         td.s.refresh(tl, ['time']) # load time from database
@@ -715,12 +781,77 @@ class page(ui.basicpage):
         self.clearbuffer()
         self._redraw()
 
-        # Work out what we need to do to sell this many items.  At
-        # this point we don't care what size items we are selling; if
-        # we're counting individual items on a "display" stockline
-        # then it will be 1, and if we're on a "regular" stockline it
-        # won't affect the result.
-        sell, unallocated, stockremain = stockline.calculate_sale(items)
+        st = stockline.sale_stocktype
+        # A regular stockline with no stock won't be able to give us a
+        # stocktype.  Bail early in this case with a suitable error.
+        # Note that we may have to pop up the same error later on if
+        # we discover there's no stock on a display stockline.
+        if not st:
+            log.info("linekey: no stock in use for %s", stockline.name)
+            ui.infopopup(
+                ["No stock is registered for {}.".format(stockline.name),
+                 "To tell the till about stock on sale, "
+                 "press the '{}' button after "
+                 "dismissing this message.".format(keyboard.K_USESTOCK.keycap)],
+                title="{} has no stock".format(stockline.name))
+            return
+        sale = ProposedSale(stocktype=st,
+                            qty=Decimal("1.0"),
+                            description=st.format(),
+                            price=st.saleprice,
+                            whole_items=(stockline.linetype == "display"))
+
+        sale.validate()
+
+        # Pass the proposed sale to the modifier to let it change it or reject it
+        if mod:
+            try:
+                with ui.exception_guard(
+                        "running the '{}' modifier".format(mod.name),
+                        suppress_exception=False):
+                    try:
+                        mod.mod_stockline(stockline, sale)
+                        sale.validate()
+                    except modifiers.Incompatible as i:
+                        msg = "The '{}' modifier can't be used with " \
+                              "the '{}' stockline." \
+                              .format(mod.name, stockline.name)
+                        ui.infopopup([i.msg if i.msg else msg],
+                                     title="Incompatible modifier",
+                                     colour=ui.colour_error)
+                        return
+                    except InvalidSale as i:
+                        ui.infopopup(
+                            ["The '{}' modifier left the Proposed Sale object "
+                             "in an invalid state.  This is an error in the "
+                             "till configuration.  The invalid state is: {}"
+                             .format(mod.name, i.msg)],
+                            title="Till configuration error")
+                        return
+            except Exception as e:
+                # ui.exception_guard() will already have popped up the error.
+                return
+
+        explicitprice = None
+        if buf:
+            explicitprice = self._read_explicitprice(
+                buf, sale.stocktype.department)
+            if not explicitprice:
+                return # Error popup already in place
+
+        if not explicitprice:
+            if sale.price is None:
+                no_saleprice_popup(self.user, sale.stocktype)
+                return
+
+        if explicitprice:
+            sale.price = explicitprice
+
+        total_qty = items * sale.qty
+        if stockline.linetype == "display":
+            total_qty = int(total_qty)
+        sell, unallocated, stockremain = stockline.calculate_sale(
+            total_qty)
 
         if stockline.linetype == "display" and unallocated > 0:
             ui.infopopup(
@@ -728,7 +859,7 @@ class page(ui.basicpage):
                  "If you have recently put more stock on display you "
                  "must tell the till about it using the 'Use Stock' "
                  "button after dismissing this message.".format(
-                        items, stockline.name)],
+                        total_qty, stockline.name)],
                 title="Not enough stock on display")
             return
         if len(sell) == 0:
@@ -741,76 +872,49 @@ class page(ui.basicpage):
                 title="{} has no stock".format(stockline.name))
             return
 
-        explicitprice = None
-        # The items may be in different departments.  If the user is
-        # attempting to override the price, check that this is valid
-        # for all the relevant departments.
-        if buf:
-            for item, qty in sell:
-                explicitprice = self._read_explicitprice(
-                    buf, item.stocktype.department)
-                if not explicitprice:
-                    return # Error popup already in place
-
-        # If we don't have a price override, check all the items to
-        # make sure their stocktype has a sale price set.
-        if not explicitprice:
-            for item, qty in sell:
-                if not item.stocktype.saleprice:
-                    no_saleprice_popup(self.user, item)
-                    return
-
         # NB gettrans() may call _clear() and will zap self.repeat when
         # it creates a new transaction!
         may_repeat = self.repeat and hasattr(self.repeat, 'stocklineid') \
-                     and self.repeat.stocklineid==stockline.id \
-                     and self.repeat.mod==mod
+                     and self.repeat.stocklineid == stockline.id \
+                     and self.repeat.mod == mod
 
         trans = self.gettrans()
         if trans is None:
             return # Will already be displaying an error.
 
-        # Create draft versions of the Transline and StockOut objects
-        # and pass them to the modifier.  We use the item's default
-        # price before calling the modifier (which may be None if no
-        # price is set) and then update the Transline object with the
-        # explicit price if one has been specified.
-        tll = []
-        for stockitem, items_to_sell in sell:
-            tl = Transline(
-                transaction=self.trans, items=items_to_sell,
-                amount=stockitem.stocktype.saleprice,
-                department=stockitem.stocktype.department,
-                transcode='S', user=self.user.dbuser)
-            so=StockOut(
-                transline=tl, stockitem=stockitem,
-                qty=items_to_sell, removecode_id='sold')
-            # Ensure they are not included in the ORM session until we are
-            # ready to commit them
-            if tl in td.s:
-                td.s.expunge(tl)
-            if so in td.s:
-                td.s.expunge(so)
-            if mod:
-                try:
-                    mod.mod_stockline(stockline, tl)
-                except modifiers.Incompatible as i:
-                    msg = "The '{}' modifier can't be used with " \
-                          "the '{}' stockline.".format(mod.name, stockline.name)
-                    ui.infopopup([i.msg if i.msg else msg],
-                                 title="Incompatible modifier",
-                                 colour=ui.colour_error)
-                    return
-            if explicitprice:
-                tl.amount=explicitprice
-            tll.append((tl, so))
+        # Consider adding on to the previous transaction line if the
+        # same stockline key has been pressed again.
+        repeated = False
+        if may_repeat and len(self.dl) > 0 \
+           and self.dl[-1].age() < max_transline_modify_age \
+           and len(sell) == 1:
+            otl = td.s.query(Transline).get(self.dl[-1].transline)
+            # If the stockref has more than one item, we don't repeat
+            # because we are probably at the changeover between two
+            # stockitems
+            if otl.stockref \
+               and otl.stockref[0].stockitem == sell[0][0] \
+               and len(otl.stockref) == 1:
+                # It's the same stockitem.  Add one item and one qty.
+                # It's the same stockitem, but are the quantities compatible?
+                so = otl.stockref[0]
+                orig_stockqty = so.qty / otl.items
+                if orig_stockqty == sell[0][1]:
+                    so.qty += orig_stockqty
+                    otl.items += 1
+                    td.s.flush()
+                    td.s.expire(so.stockitem, ['used', 'sold', 'remaining'])
+                    log.info("linekey: updated transline %d and stockout %d",
+                             otl.id, otl.stockref[0].id)
+                    self.dl[-1].update()
+                    repeated = True
 
         if stockline.linetype == "regular" and stockline.pullthru:
             # Check first to see whether we may need to record a
             # pullthrough; the lastsale time will change once we start
             # committing StockOut objects to the database.
             item = sell[0][0]
-            if td.stock_checkpullthru(item.id,'11:00:00'):
+            if td.stock_checkpullthru(item.id, '11:00:00'):
                 ui.infopopup(
                     ["According to the till records, {} hasn't been "
                      "sold or pulled through in the last 11 hours.  "
@@ -823,48 +927,37 @@ class page(ui.basicpage):
                      "Press '{}' if you do, or {} if you don't.".format(
                          keyboard.K_WASTE.keycap,
                          keyboard.K_CLEAR.keycap)],
-                    title="Pull through?",colour=ui.colour_input,
+                    title="Pull through?", colour=ui.colour_input,
                     keymap={
                         keyboard.K_WASTE:
                         (record_pullthru, (item.id, stockline.pullthru),
                          True)})
 
-        if may_repeat and len(self.dl) > 0 \
-           and self.dl[-1].age() < max_transline_modify_age:
-            tl, so = tll[0]
-            otl = td.s.query(Transline).get(self.dl[-1].transline)
-            # If the stockref has more than one item, we don't repeat
-            # because we have probably moved on to using the next
-            # stockitem
-            if otl.stockref and otl.stockref[0].stockitem == so.stockitem \
-               and len(otl.stockref) == 1:
-                # It's the same stockitem, but are the quantities compatible?
-                orig_stockqty = otl.stockref[0].qty / otl.items
-                new_stockqty = so.qty / tl.items
-                if orig_stockqty == new_stockqty:
-                    # Yes, they are.  Just add items and qty together.
-                    otl.items = otl.items + tl.items
-                    otl.stockref[0].qty = otl.stockref[0].qty + so.qty
-                    td.s.flush()
-                    td.s.expire(so.stockitem, ['used', 'sold', 'remaining'])
-                    log.info("linekey: updated transline %d and stockout %d",
-                             otl.id, otl.stockref[0].id)
-                    self.dl[-1].update()
-                    tll.pop(0)
-
-        for tl, so in tll:
-            td.s.add_all([tl, so])
+        if not repeated:
+            tl = Transline(
+                transaction=self.trans, items=items,
+                amount=sale.price,
+                department=sale.stocktype.department,
+                transcode='S', text=sale.description,
+                user=self.user.dbuser)
+            td.s.add(tl)
+            for stockitem, items_to_sell in sell:
+                so = StockOut(
+                    transline=tl, stockitem=stockitem,
+                    qty=items_to_sell, removecode_id='sold')
+                td.s.add(so)
+                td.s.expire(
+                    stockitem,
+                    ['used', 'sold', 'remaining', 'firstsale', 'lastsale'])
             td.s.flush()
-            td.s.expire(so.stockitem,
-                        ['used', 'sold', 'remaining', 'firstsale', 'lastsale'])
             td.s.refresh(tl, ['time']) # load time from database
             self.dl.append(tline(tl.id))
 
         self.repeat = repeatinfo(stocklineid=stockline.id, mod=mod)
 
         if stockline.linetype == "regular":
-            # We are using the last value of so from the previous
-            # for loop, or from the handling of may_repeat
+            # We are using the last value of so from either the
+            # previous for loop, or the handling of may_repeat
             stockitem = so.stockitem
             self.prompt = "{}: {} {}s of {} remaining".format(
                 stockline.name, stockitem.remaining,

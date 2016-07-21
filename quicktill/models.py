@@ -711,9 +711,16 @@ class StockLine(Base):
             name="line_type_constraint"),)
     @property
     def linetype(self):
-        """Return the type of the stockline as a string.
-        """
+        """Return the type of the stockline as a string."""
         return "display" if self.capacity else "regular"
+    @property
+    def sale_stocktype(self):
+        """Return the type of stock that is currently sold through this
+        stockline.
+        """
+        if len(self.stockonsale) == 0:
+            return None
+        return self.stockonsale[0].stocktype
     @property
     def tillweb_url(self):
         return "stockline/%d/" % self.id

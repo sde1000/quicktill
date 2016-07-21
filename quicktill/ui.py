@@ -1712,15 +1712,16 @@ class exception_guard(object):
     should be reported to the user.
 
     """
-    def __init__(self,description,title=None):
+    def __init__(self, description, title=None, suppress_exception=True):
         self._description="There was a problem while {}.".format(description)
         self._title=title if title else "Error"
+        self._suppress_exception = suppress_exception
     def __enter__(self):
         return self
     def __exit__(self,type,value,tb):
         if tb is None: return
         exception_popup(self._description,self._title,type,value,tb)
-        return True
+        return self._suppress_exception
 
 def _doupdate():
     curses.panel.update_panels()
