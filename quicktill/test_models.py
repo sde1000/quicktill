@@ -91,19 +91,84 @@ class ModelTest(unittest.TestCase):
         self.s.add_all([business, vatband, dept])
         self.s.commit()
 
+    def template_stocktype_setup(self):
+        """Add a stocktype to the database to make other tests shorter."""
+        pint = models.UnitType(id='pt', name='pint')
+        beer = models.StockType(
+            manufacturer="A Brewery", name="A Beer", shortname="A Beer",
+            abv=5, unit=pint, dept_id=1)
+        self.s.add(beer)
+        self.s.commit()
+        return beer
+
     def template_stockline_and_plu_setup(self):
         self.template_setup()
-        stockline = models.StockLine(name="Test SL", location="Test", dept_id=1)
+        stockline = models.StockLine(name="Test SL", location="Test",
+                                     linetype="regular", dept_id=1)
         plu = models.PriceLookup(description="Test PLU", note="", dept_id=1,
                                  price=1.00)
         self.s.add_all([stockline, plu])
         self.s.commit()
         return stockline, plu
 
-    def test_stockline_constraint(self):
+    def test_stockline_linetype_constraint(self):
         self.template_setup()
-        self.s.add(models.StockLine(name="Test", location="Test", dept_id=1,
-                                    capacity=10, pullthru=1))
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="unknown"))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_regular_stockline_capacity_constraint(self):
+        self.template_setup()
+        # Try it with a capacity
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="regular", dept_id=1,
+            capacity=10, pullthru=1))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_regular_stockline_stocktype_constraint(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        # Try it with a stocktype
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="regular", dept_id=1,
+            stocktype=beer, pullthru=1))
+        self.s.commit()
+
+    def test_display_stockline_pullthru_constraint(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        # Try it with a pullthru
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="display",
+            capacity=10, pullthru=1, stocktype=beer))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_display_stockline_capacity_constraint(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        # Try it without a capacity
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="display",
+            stocktype=beer))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_display_stockline_stocktype_constraint(self):
+        self.template_setup()
+        # Try it without a stocktype
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="display",
+            capacity=10))
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_continuous_stockline_constraint(self):
+        self.template_setup()
+        self.s.add(models.StockLine(
+            name="Test", location="Test", linetype="continuous"))
         with self.assertRaises(IntegrityError):
             self.s.commit()
 

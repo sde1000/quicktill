@@ -30,8 +30,39 @@ UPDATE keyboard SET menukey='9' WHERE menukey='K_NINE';
 UPDATE keyboard SET menukey='0' WHERE menukey='K_ZERO';
 UPDATE keyboard SET menukey='00' WHERE menukey='K_ZEROZERO';
 UPDATE keyboard SET menukey='.' WHERE menukey='K_POINT';
+
+-- Add NOT NULL constraint to transaction notes
+UPDATE transactions SET notes='' WHERE notes IS NULL;
+ALTER TABLE transactions ALTER COLUMN notes SET NOT NULL;
+
+-- Add new columns to stocklines table and figure out line types
+ALTER TABLE stocklines
+	ADD COLUMN linetype character varying(20),
+	ADD COLUMN stocktype integer,
+	ALTER COLUMN dept DROP NOT NULL;
+
+UPDATE stocklines SET linetype='regular' WHERE capacity IS NULL;
+UPDATE stocklines SET linetype='display' WHERE capacity IS NOT NULL;
+ALTER TABLE stocklines ALTER COLUMN linetype SET NOT NULL;
+-- For display stocklines, guess the stocktype of the existing
+-- display stock.  Display stocklines with no stock get a random stocktype,
+-- which the user will have to change later.
+UPDATE stocklines SET stocktype=(
+  SELECT st.stocktype FROM stock s
+    LEFT JOIN stocktypes st ON s.stocktype=st.stocktype
+    WHERE stocklines.stocklineid=s.stocklineid
+    LIMIT 1)
+  WHERE linetype='display';
+UPDATE stocklines SET stocktype=(
+  SELECT stocktype FROM stocktypes LIMIT 1)
+  WHERE linetype='display' AND stocktype IS NULL;
+UPDATE stocklines SET dept=null WHERE linetype='display';
 COMMIT;
 ```
+
+ - run "runtill checkdb", check that the output looks sensible, then
+   pipe it or paste it in to psql
+ - run "runtill checkdb" again and check it produces no output
 
 In the configuration file you must make the following changes:
 

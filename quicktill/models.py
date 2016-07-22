@@ -317,7 +317,7 @@ class Transaction(Base):
                 primary_key=True)
     sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
                        nullable=True) # Null sessionid for deferred transactions
-    notes = Column(String(60), nullable=False, default='', server_default='')
+    notes = Column(String(60), nullable=False, default='')
     closed = Column(Boolean, nullable=False, default=False)
     session = relationship(Session, backref=backref('transactions', order_by=id))
     # total is a column property defined below
@@ -658,32 +658,50 @@ class StockLine(Base):
     implicitly in the keyboard binding can alter things like quantity
     and price.
 
-    There are currently two types of stockline:
+    There are currently three types of stockline:
 
     1. "Regular" stocklines.  These can have at most one stock item on
     sale at any one time.  Finishing that stock item and putting
-    another item on sale are done explicitly by the staff.  These
-    stocklines have a null "capacity".  They are typically used where
-    units are dispensed directly from the stock item to the customer
-    and it's obvious to the member of staff when the stock item is
-    empty, for example casks/kegs through a pump, bottles of spirits,
-    cards or boxes of snacks, and so on.
+    another item on sale are done explicitly by the staff.  They are
+    typically used where units are dispensed directly from the stock
+    item to the customer and it's obvious to the member of staff when
+    the stock item is empty, for example casks/kegs through a pump,
+    bottles of spirits, cards or boxes of snacks, and so on.
+
+    If a regular stockline has dept and/or stocktype set then these
+    are used to filter the list of stock available to be put on sale.
+
+    If the "pullthru" field is set, then whenever the stock item is
+    sold the time of the last use of the item is checked and if it's
+    too large then the user is prompted to throw away a quantity of
+    stock and record it as waste.
 
     2. "Display" stocklines.  These can have several stock items on
     sale at once.  Moving from one stock item to the next is
     automatic; when one item is empty the next is used.  These
-    stocklines have a non-null "capacity", and the system keeps track
-    of how many units of each stock item are "on display" and
-    available to be sold; the "capacity" is the number of units that
-    can be on display at any one time (for example, in a fridge).
-    Display stocklines are typically used where it isn't obvious to
-    the member of staff where one stock item finishes and another one
-    starts; for example, the bottles on display in a fridge may come
-    from several different stock items.
+    stocklines have a "capacity", and the system keeps track of how
+    many units of each stock item are "on display" and available to be
+    sold; the "capacity" is the number of units that can be on display
+    at any one time (for example, in a fridge).  Display stocklines
+    are typically used where it isn't obvious to the member of staff
+    where one stock item finishes and another one starts; for example,
+    the bottles on display in a fridge may come from several different
+    stock items.
 
-    Code that needs to know the type should use the "linetype"
-    property; this will enable new types to be added in the future
-    without disturbing existing code.
+    Display stocklines must have the stocktype field set; this is used
+    to put new items of stock on display automatically.  Stock can
+    only be sold through a display stockline in whole numbers of
+    units.
+
+    3. "Continuous" stocklines.  These never have any stock items on
+    sale.  Instead, when a sale is made the stockline searches for
+    stock of the specified type that is not already on sale on another
+    stockline, and uses that.  If a particular stock item doesn't have
+    enough stock left for the whole sale, multiple stock items are
+    used.  Continuous stocklines are typically used where a single
+    sale (for example of a glass of wine) can come from multiple stock
+    items (eg. where a wine bottle finishes, and the next bottle is
+    from a different case).
     """
     __tablename__ = 'stocklines'
     id = Column('stocklineid', Integer, stocklines_seq,
@@ -692,27 +710,50 @@ class StockLine(Base):
                   doc="User-visible name of this stockline")
     location = Column(String(20), nullable=False,
                       doc="Used for grouping stocklines together in the UI")
+    linetype = Column(String(20), nullable=False,
+                      doc="Type of the stockline as a string")
     capacity = Column(Integer, doc='If a "Display" stockline, the number of '
                       'units of stock that can be ready to sell to customers '
                       'at once, for example space in a fridge.')
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
-                     nullable=False)
+                     nullable=True)
     pullthru = Column(Numeric(5,1), doc='If a "Regular" stockline, the amount '
                       'of stock that should be disposed of the first time the '
                       'stock is sold each day.')
+    stocktype_id = Column(
+        'stocktype', Integer, ForeignKey('stocktypes.stocktype'), nullable=True)
     department = relationship(
         Department, lazy='joined',
-        doc="All stock items on sale on this line must belong to this "
+        doc="Stock items put on sale on this line are restricted to this "
         "department.")
+    stocktype = relationship(
+        "StockType", backref=backref('stocklines', order_by=id),
+        doc="Stock items put on sale on this line are restricted to this "
+        "stocktype.")
     # capacity and pullthru can't both be non-null at the same time
     __table_args__ = (
         CheckConstraint(
-            "capacity IS NULL OR pullthru IS NULL",
-            name="line_type_constraint"),)
-    @property
-    def linetype(self):
-        """Return the type of the stockline as a string."""
-        return "display" if self.capacity else "regular"
+            "linetype='regular' OR linetype='display' OR linetype='continuous'",
+            name="linetype_name_constraint"),
+        # linetype != 'display' implies capacity is null
+        CheckConstraint(
+            "NOT(linetype!='display') OR (capacity IS NULL)",
+            name="capacity_constraint"),
+        # linetype != 'regular' implies pullthru and dept are null
+        CheckConstraint(
+            "NOT(linetype!='regular') OR (pullthru IS NULL "
+            "AND dept IS NULL)",
+            name="pullthru_and_dept_constraint"),
+        # linetype == 'display' implies capacity and stocktype both not null
+        CheckConstraint(
+            "NOT(linetype='display') OR (capacity IS NOT NULL "
+            "AND stocktype IS NOT NULL)",
+            name="linetype_display_constraint"),
+        # linetype == 'continuous' implies stocktype not null
+        CheckConstraint(
+            "NOT(linetype='continuous') OR (stocktype IS NOT NULL)",
+            name="linetype_continuous_constraint"),
+        )
     @property
     def sale_stocktype(self):
         """Return the type of stock that is currently sold through this
