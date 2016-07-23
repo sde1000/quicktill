@@ -152,6 +152,22 @@ class winobject(object):
                 self.win.addstr(y,x,s.encode(c),attr)
         except curses.error:
             log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
+
+    def wrapstr(self, y, x, width, s, attr=None):
+        """Display a string wrapped to specified width.
+
+        Returns the number of lines that the string was wrapped over.
+        """
+        lines = 0
+        for line in s.splitlines():
+            if line:
+                for wrappedline in textwrap.wrap(line, width):
+                    self.addstr(y + lines, x, wrappedline, attr)
+                    lines += 1
+            else:
+                lines += 1
+        return lines
+
     def getyx(self):
         return self.win.getyx()
     def move(self, y, x):
