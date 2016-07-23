@@ -759,9 +759,11 @@ class StockLine(Base):
         """Return the type of stock that is currently sold through this
         stockline.
         """
-        if len(self.stockonsale) == 0:
-            return None
-        return self.stockonsale[0].stocktype
+        if self.linetype == "regular":
+            if len(self.stockonsale) == 0:
+                return None
+            return self.stockonsale[0].stocktype
+        return self.stocktype
     @property
     def tillweb_url(self):
         return "stockline/%d/" % self.id

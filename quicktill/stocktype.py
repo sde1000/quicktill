@@ -1,9 +1,8 @@
-"""Create and modify stocktypes.
-"""
+"""Create and modify stocktypes."""
 
 import logging
 log = logging.getLogger(__name__)
-from . import ui, td, keyboard, stocklines, tillconfig, user
+from . import ui, td, keyboard, tillconfig, user
 from .models import Department, UnitType, StockType, StockItem, Delivery, penny
 from decimal import Decimal
 import datetime

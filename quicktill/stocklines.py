@@ -1,5 +1,6 @@
 import logging
 from . import keyboard, ui, td, tillconfig, printer, user, linekeys, modifiers
+from . import stocktype
 from .models import Department, StockLine, KeyboardBinding
 from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
@@ -72,7 +73,7 @@ class stockline_associations(user.permission_checked,ui.listpopup):
     """
     permission_required=('manage-stockline-associations',
                          "View and delete stocktype <-> stockline links")
-    def __init__(self,stocklines=None,
+    def __init__(self, stocklines=None,
                  blurb="To create a new association, use the 'Use Stock' "
                  "button to assign stock to a line."):
         """
@@ -148,238 +149,367 @@ def validate_location(s,c):
         return t
     return s
 
-class create(user.permission_checked,ui.dismisspopup):
-    """
-    Create a new stockline.
+@user.permission_required('create-stockline', "Create a new stock line")
+def create(func):
+    menu = [
+        ("1", ui.lrline(
+            "Regular.\n\nThese stock lines can have at most one stock item "
+            "on sale at any one time.  Finishing that stock item and "
+            "putting another item on sale are done explicitly using "
+            "the 'Use Stock' button.  Typically used where it's obvious "
+            "to the person serving when a stock item comes to an end: "
+            "casks/kegs, bottles of spirits, snacks from cards or boxes, "
+            "and so on.\n"), _create_stockline_popup, ('regular', func)),
+        ("2", ui.lrline(
+            "Display.\n\nThese can have several stock items, all of the "
+            "same type, on sale at once.  The number of items 'on display' "
+            "and 'in stock' are tracked separately; stock is only sold "
+            "from the items on display.  The 'Use Stock' button is used "
+            "to print a restocking list which shows how many items need "
+            "to be moved from stock to fill up the display.  Typically "
+            "used for bottles supplied in cases but displayed in "
+            "fridges.  May also be used for snacks where the display "
+            "space is small and the boxes the snacks are supplied in "
+            "won't fit.  Can't be used where items are not sold in "
+            "whole numbers.\n"), _create_stockline_popup, ('display', func)),
+        ("3", ui.lrline(
+            "Continuous.\n\nThese are used when selling variable sized "
+            "measures where it's not obvious to the person serving where "
+            "one stock item ends and another starts.  Typically used for "
+            "wine from bottles and soft drinks from cartons: if a glass "
+            "is filled from more than one bottle it won't be obvious "
+            "whether the two bottles were originally in the same case."),
+            _create_stockline_popup, ('continuous', func)),
+        ]
+    ui.keymenu(menu, blurb="Choose the type of stockline to create:",
+               title="Create Stock Line", blank_line_between_items=True)
 
-    """
-    permission_required=('create-stockline',"Create a new stock line")
-    def __init__(self,func):
-        ui.dismisspopup.__init__(self,12,55,title="Create Stock Line",
-                                 colour=ui.colour_input,
-                                 dismiss=keyboard.K_CLEAR)
-        self.func=func
-        depts=td.s.query(Department).order_by(Department.id).all()
-        self.addstr(2,2,"    Stock line name:")
-        self.addstr(3,2,"           Location:")
-        self.addstr(4,2,"         Department:")
-        self.addstr(5,2,"   Display capacity:")
-        self.addstr(6,2,"Pull-through amount:")
-        self.addstr(8,2,"Leave \"Display capacity\" blank unless you are")
-        self.addstr(9,2,"creating a stockline for the fridge.")
-        self.namefield=ui.editfield(2,23,30,keymap={
-            keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield=ui.editfield(3,23,20,validate=validate_location)
-        self.deptfield=ui.listfield(4,23,20,depts,d=lambda x:x.description)
-        self.capacityfield=ui.editfield(5,23,5,validate=ui.validate_int)
-        self.pullthrufield=ui.editfield(
-            6,23,5,validate=ui.validate_float,keymap={
-                keyboard.K_CASH: (self.enter,None)})
-        ui.map_fieldlist([self.namefield,self.locfield,self.deptfield,
-                          self.capacityfield,self.pullthrufield])
+class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
+    """Create a new stockline."""
+    permission_required = ('create-stockline', "Create a new stock line")
+
+    def __init__(self, linetype, func):
+        heights = {
+            'regular': 8,
+            'display': 10,
+            'continuous': 9,
+        }
+        ui.dismisspopup.__init__(
+            self, heights[linetype],
+            52 if linetype == 'regular' else 75,
+            title="Create {} stock line".format(linetype),
+            colour=ui.colour_input,
+            dismiss=keyboard.K_CLEAR)
+        self.linetype = linetype
+        self.func = func
+        self.addstr(2,2," Stock line name:")
+        self.namefield = ui.editfield(2, 20, 30, keymap={
+            keyboard.K_CLEAR: (self.dismiss, None)})
+        self.addstr(3,2,"        Location:")
+        self.locfield = ui.editfield(3, 20, 20, validate=validate_location)
+        self.fields = [self.namefield, self.locfield]
+        y = 4
+        if linetype == "display":
+            self.addstr(y,2,"Display capacity:")
+            self.capacityfield = ui.editfield(y, 20, 5, validate=ui.validate_int)
+            self.fields.append(self.capacityfield)
+            y += 1
+        if linetype == "display" or linetype == "continuous":
+            self.addstr(y,2,"      Stock type:")
+            self.stocktypefield = ui.popupfield(
+                y, 20, 52, stocktype.choose_stocktype, lambda si: si.format())
+            self.fields.append(self.stocktypefield)
+            y += 1
+        self.createfield = ui.buttonfield(
+            y + 1, 21 if linetype == 'regular' else 33, 10, "Create",
+            keymap={keyboard.K_CASH: (self.enter, (), False)})
+        self.fields.append(self.createfield)
+        ui.map_fieldlist(self.fields)
         self.namefield.focus()
+
     def enter(self):
-        if (self.namefield.f=='' or
-            self.locfield.f=='' or
-            self.deptfield.f is None):
-            ui.infopopup(["You must enter values in the first three fields."],
-                         title="Error")
-            return
-        if self.capacityfield.f!='': cap=int(self.capacityfield.f)
-        else: cap=None
-        if self.pullthrufield.f!='': pullthru=float(self.pullthrufield.f)
-        else: pullthru=None
-        if pullthru is not None and cap is not None:
-            ui.infopopup(["You may specify display capacity or quantity "
-                          "to pull through, but not both."],title="Error")
-            return
-        sl=StockLine(name=self.namefield.f,
-                     location=self.locfield.f,
-                     department=self.deptfield.read(),
-                     capacity=cap,pullthru=pullthru)
+        for f in self.fields:
+            if not f.f:
+                ui.infopopup(["You must fill in all the fields."], title="Error")
+                return
+        sl = StockLine(name=self.namefield.f,
+                       location=self.locfield.f,
+                       linetype=self.linetype)
+        if self.linetype == 'display':
+            sl.capacity = int(self.capacityfield.f)
+        if self.linetype == 'display' or self.linetype == 'continuous':
+            sl.stocktype = self.stocktypefield.read()
         td.s.add(sl)
         try:
             td.s.flush()
         except td.IntegrityError:
             td.s.rollback()
-            ui.infopopup(["Could not create display space '%s'; there is "
-                          "a display space with that name already."%(
-                        self.namefield.f,)],
+            ui.infopopup(["Could not create stock line '{}'; there is "
+                          "a stock line with that name already.".format(
+                              self.namefield.f,)],
                          title="Error")
             return
         self.dismiss()
         self.func(sl)
-        if sl.linetype=="regular":
+        if sl.linetype == "regular":
             # If creating a regular stock line, prompt the user for the
             # initial stock item - if they don't want to specify one they
             # can just dismiss the popup
             ui.handle_keyboard_input(keyboard.K_USESTOCK)
+        if sl.linetype == "display":
+            # XXX
+            # Find all items of the specified stocktype not already on a
+            # stockline and put them on sale on this stockline;
+            # i.e. run auto-allocate on this stockline
+            pass
+
+    def keypress(self, k):
+        # If the user starts typing into the stocktype field, be nice
+        # to them and pop up the stock type entry dialog.  Then
+        # synthesise the keypress again to enter it into the
+        # manufacturer field.
+        if self.linetype != 'regular' \
+           and self.stocktypefield.focused \
+           and self.stocktypefield.f is None \
+           and isinstance(k, str) \
+           and k:
+            self.stocktypefield.popup() # Grabs the focus
+            ui.handle_keyboard_input(k)
+        else:
+            super(_create_stockline_popup, self).keypress(k)
 
 class modify(user.permission_checked,ui.dismisspopup):
-    """
-    Modify a stockline.  Shows the name and location, and allows any
-    pull-through amount or display capacity to be edited.
+    """Modify a stockline.
 
+    Shows the name, location and other fields relevant to the type of
+    stockline, and allows them to be edited.
     """
-    permission_required=('alter-stockline','Modify or delete an existing stock line')
-    def __init__(self,stockline):
+    permission_required = (
+        'alter-stockline', 'Modify or delete an existing stock line')
+
+    def __init__(self, stockline):
+        h = 24
         td.s.add(stockline)
-        self.stockline=stockline
-        ui.dismisspopup.__init__(self,22,58,title="Stock Line",
-                                 colour=ui.colour_input,
-                                 dismiss=keyboard.K_CLEAR)
-        # Can change name, location, capacity or pullthru,
-        # but not any other property.  Also, capacity cannot be set from
-        # non-null to null or null to non-null.
-        self.addstr(2,2,"    Stock line name:")
-        self.addstr(3,2,"           Location:")
-        self.addstr(4,2,"         Department: %s"%stockline.department)
-        if stockline.capacity is None:
-            self.addstr(5,2,"Pull-through amount:")
-        else:
-            self.addstr(5,2,"   Display capacity:")
-        self.namefield=ui.editfield(2,23,30,f=stockline.name,keymap={
-            keyboard.K_CLEAR: (self.dismiss,None)})
-        self.locfield=ui.editfield(3,23,20,f=stockline.location,
+        self.stockline = stockline
+        self.sid = stockline.id
+        ui.dismisspopup.__init__(
+            self, h, 77,
+            title="Modify {} stock line".format(self.stockline.linetype),
+            colour=ui.colour_input,
+            dismiss=keyboard.K_CLEAR)
+        self.addstr(2, 2, "    Stock line name:")
+        self.namefield = ui.editfield(2, 23, 30, f=stockline.name, keymap={
+            keyboard.K_CLEAR: (self.dismiss, None)})
+        self.addstr(3, 2, "           Location:")
+        self.locfield=ui.editfield(3, 23, 20, f=stockline.location,
                                    validate=validate_location)
-        fl=[self.namefield,self.locfield]
-        if stockline.capacity is None:
-            self.pullthrufield=ui.editfield(
-                5,23,5,f=stockline.pullthru,validate=ui.validate_float)
-            fl.append(self.pullthrufield)
-        else:
-            self.capacityfield=ui.editfield(
-                5,23,5,f=stockline.capacity,validate=ui.validate_int)
-            fl.append(self.capacityfield)
-        self.savebutton=ui.buttonfield(7,2,8,"Save",keymap={
-                keyboard.K_CASH: (self.save,None)})
-        self.deletebutton=ui.buttonfield(7,12,10,"Delete",keymap={
-                keyboard.K_CASH: (self.delete,None)})
+        self.fields = [self.namefield, self.locfield]
+        y = 4
+        if stockline.linetype == 'regular':
+            self.addstr(y, 2, "Pull-through amount:")
+            self.pullthrufield = ui.editfield(
+                y, 23, 5, f=stockline.pullthru, validate=ui.validate_float)
+            self.fields.append(self.pullthrufield)
+            y += 1
+            self.addstr(y, 2, "         Department:")
+            depts = td.s.query(Department).order_by(Department.id).all()
+            self.deptfield = ui.listfield(
+                y, 23, 20, depts, d=lambda x:x.description)
+            self.fields.append(self.deptfield)
+            y += 1
+        if stockline.linetype == 'display':
+            self.addstr(y, 2, "   Display capacity:")
+            self.capacityfield = ui.editfield(
+                y, 23, 5, f=stockline.capacity, validate=ui.validate_int)
+            self.fields.append(self.capacityfield)
+            y += 1
+        self.addstr(y, 2, "         Stock type:")
+        self.stocktypefield = ui.popupfield(
+            y, 23, 52, stocktype.choose_stocktype, lambda si: si.format(),
+            f=stockline.stocktype)
+        self.fields.append(self.stocktypefield)
+        y += 1
+        if stockline.linetype == 'regular':
+            y += self.wrapstr(
+                y, 2, 73,
+                "Setting department or stock type will restrict "
+                "the types of stock allowed to be put on sale on "
+                "this stock line in the future.")
+        if stockline.linetype == 'display':
+            y += self.wrapstr(
+                y, 2, 73,
+                "Changing the stock type will remove all stock items "
+                "currently on sale on this line and add all unallocated "
+                "stock items of the new stock type.")
+        y += 1
+        self.fields.append(ui.buttonfield(y, 2, 8,"Save", keymap={
+            keyboard.K_CASH: (self.save, None)}))
+        self.fields.append(ui.buttonfield(y, 12, 10, "Delete", keymap={
+            keyboard.K_CASH: (self.delete, None)}))
         # Stock control terminals won't have a dedicated "Use Stock"
-        # button.  This button fakes that keypress.
-        self.usestockbutton=ui.buttonfield(7,25,13,"Use Stock",keymap={
+        # button.  This button fakes that keypress.  It isn't relevant
+        # for continuous stock lines.
+        if stockline.linetype != "continuous":
+            self.fields.append(ui.buttonfield(
+                y, 25, 13, "Use Stock", keymap={
+                    keyboard.K_CASH: (
+                        lambda: ui.handle_keyboard_input(keyboard.K_USESTOCK),
+                        None)}))
+        self.fields.append(ui.buttonfield(
+            y, 25 if stockline.linetype == "continuous" else 40, 16,
+            "Associations", keymap={
                 keyboard.K_CASH: (
-                    lambda:ui.handle_keyboard_input(keyboard.K_USESTOCK),None)})
-        sid=stockline.id
-        self.associationbutton=ui.buttonfield(
-            7,40,16,"Associations",keymap={
-                keyboard.K_CASH: (
-                    lambda:stockline_associations(stocklines=[sid]),None)})
-        fl.append(self.savebutton)
-        fl.append(self.deletebutton)
-        fl.append(self.usestockbutton)
-        fl.append(self.associationbutton)
-        self.addstr(9,2,'Press "Use Stock" to add or remove stock.')
-        self.addstr(11,2,"To add a keyboard binding, press a line key now.")
-        self.addstr(12,2,"To edit or delete a keyboard binding, choose it")
-        self.addstr(13,2,"below and press Enter or Cancel.")
-        self.kbs=ui.scrollable(16,1,56,4,[],keymap={
-                keyboard.K_CASH: (self.editbinding,None),
-                keyboard.K_CANCEL: (self.deletebinding,None)})
-        fl.append(self.kbs)
-        ui.map_fieldlist(fl)
+                    lambda: stockline_associations(stocklines=[self.sid]),
+                    None)}))
+        y += 2
+        y += self.wrapstr(
+            y, 2, 73,
+            "To add a keyboard binding, press a line key now.\n\n"
+            "To edit or delete a keyboard binding, choose it "
+            "below and press Enter or Cancel.")
+        y += 1
+        self.bindings_header_y = y
+        y += 1
+        self.kbs = ui.scrollable(y, 1, 56, h - y - 1, [], keymap={
+            keyboard.K_CASH: (self.editbinding, None),
+            keyboard.K_CANCEL: (self.deletebinding, None)})
+        self.fields.append(self.kbs)
+        ui.map_fieldlist(self.fields)
         self.reload_bindings()
         self.namefield.focus()
+
     def keypress(self,k):
         # Handle keypresses that the fields pass up to the main popup
-        if k==keyboard.K_USESTOCK:
+        if self.stocktypefield.focused \
+           and self.stocktypefield.f is None \
+           and isinstance(k, str) \
+           and k:
+            self.stocktypefield.popup() # Grabs the focus
+            ui.handle_keyboard_input(k)
+        elif k == keyboard.K_USESTOCK:
             from . import usestock
             usestock.line_chosen(self.stockline)
-        elif hasattr(k,'line'):
-            linekeys.addbinding(self.stockline,k,
+        elif hasattr(k, 'line'):
+            linekeys.addbinding(self.stockline, k,
                                 self.reload_bindings,
                                 modifiers.defined_modifiers())
+
     def save(self):
-        td.s.add(self.stockline)
-        if (self.namefield.f=='' or self.locfield.f==''):
-            ui.infopopup(["You may not make either of the first two fields"
-                          "blank."],
+        if self.namefield.f == '' or self.locfield.f == '':
+            ui.infopopup(["You may not make the name or location fields blank."],
                          title="Error")
             return
-        if self.stockline.capacity is None:
-            cap=None
-            pullthru=(Decimal(self.pullthrufield.f) if self.pullthrufield.f!=''
-                      else None)
-        else:
-            cap=(int(self.capacityfield.f) if self.capacityfield.f!=''
-                 else None)
-            pullthru=None
-        if self.stockline.capacity is not None and cap is None:
-            ui.infopopup(["You may not change a line from one with "
-                          "display space to one that does not have display "
-                          "space.  You should delete and re-create it "
-                          "instead."],title="Error")
-            return
-        capmsg=("  The change in display capacity will take effect next "
-                "time the line is re-stocked." if cap!=self.stockline.capacity
-                else "")
-        self.stockline.name=self.namefield.f
-        self.stockline.location=self.locfield.f
-        self.stockline.capacity=cap
-        self.stockline.pullthru=pullthru
+        td.s.add(self.stockline)
+        if self.stockline.linetype == "display":
+            if self.capacityfield.f == '':
+                ui.infopopup(["You may not make the capacity field blank.",
+                              "",
+                              "If you want to change this stock line to be "
+                              "a different type, you should delete it and "
+                              "create it again."],
+                             title="Error")
+                return
+        if self.stockline.linetype == "display" \
+           or self.stockline.linetype == "continuous":
+            if self.stocktypefield.read() is None:
+                ui.infopopup(["You may not make the stock type field blank."],
+                             title="Error")
+                return
+
+        if self.stockline.linetype == "regular":
+            self.stockline.pullthru = Decimal(self.pullthrufield.f) \
+                                      if self.pullthrufield.f != '' else None
+        additional = []
+        if self.stockline.linetype == "display":
+            newcap = int(self.capacityfield.f)
+            if newcap != self.stockline.capacity:
+                additional.append(
+                    "The change in display capacity will take effect next "
+                    "time the line is re-stocked.")
+                self.stockline.capacity = newcap
+
+        oldstocktype = self.stockline.stocktype
+        self.stockline.stocktype = self.stocktypefield.read()
+        if self.stockline.linetype == 'display':
+            if self.stockline.stockonsale:
+                for si in self.stockline.stockonsale:
+                    si.displayqty = None
+                    si.stockline = None
+                additional.append(
+                    "The stock type has been changed.  All stock items "
+                    "that were attached to the stock line have been "
+                    "removed.")
+                # XXX call auto-allocate to add new items
+
+        self.stockline.name = self.namefield.f
+        self.stockline.location = self.locfield.f
         try:
             td.s.flush()
         except:
-            ui.infopopup(["Could not update stock line '%s'."%(
-                        self.stockline.name,)],title="Error")
+            ui.infopopup(["Could not update stock line '{}'.".format(
+                self.stockline.name)], title="Error")
             return
         self.dismiss()
-        ui.infopopup(["Updated stock line '%s'.%s"%(
-                    self.stockline.name,capmsg)],
-                     colour=ui.colour_info,dismiss=keyboard.K_CASH,
+        ui.infopopup(["Updated stock line '{}'.".format(self.stockline.name),
+                      ""] + additional,
+                     colour=ui.colour_info, dismiss=keyboard.K_CASH,
                      title="Confirmation")
+
     def delete(self):
         self.dismiss()
         td.s.add(self.stockline)
-        if len(self.stockline.stockonsale)>0:
+        if len(self.stockline.stockonsale) > 0:
             # Set displayqtys to none - if we don't do this explicitly here
             # then setting the stockline field to null will violate the
             # displayqty_null_if_no_stockline constraint
             for si in self.stockline.stockonsale:
-                si.displayqty=None
-            message=["The stock line has been deleted.  Note that it still "
-                     "had stock attached to it; this stock is now available "
-                     "to be attached to another stock line.  The stock items "
-                     "affected are shown below.",""]
-            message=message+[
-                "  %d %s"%(x.id,x.stocktype.format())
+                si.displayqty = None
+            message = ["The stock line has been deleted.  Note that it still "
+                       "had stock attached to it; this stock is now available "
+                       "to be attached to another stock line.  The stock items "
+                       "affected are shown below.",""]
+            message = message + [
+                "  {} {}".format(x.id, x.stocktype.format())
                 for x in self.stockline.stockonsale]
         else:
-            message=["The stock line has been deleted."]
+            message = ["The stock line has been deleted."]
         td.s.delete(self.stockline)
         # Any StockItems that point to this stockline should have their
-        # stocklineid set to null by the database.  XXX check that sqlalchemy
-        # isn't trying to delete StockItems here!
+        # stocklineid set to null by the database.
         td.s.flush()
-        ui.infopopup(message,title="Stock line deleted",colour=ui.colour_info,
+        ui.infopopup(message, title="Stock line deleted", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
+
     def editbinding(self):
-        if self.kbs.cursor is None: return
-        line=self.kbs.dl[self.kbs.cursor]
-        linekeys.changebinding(line.userdata,self.reload_bindings,
+        if self.kbs.cursor is None:
+            return
+        line = self.kbs.dl[self.kbs.cursor]
+        linekeys.changebinding(line.userdata, self.reload_bindings,
                                modifiers.defined_modifiers())
+
     def deletebinding(self):
         # We should only be called when the scrollable has the focus
-        if self.kbs.cursor is None: return
-        line=self.kbs.dl.pop(self.kbs.cursor)
+        if self.kbs.cursor is None:
+            return
+        line = self.kbs.dl.pop(self.kbs.cursor)
         self.kbs.redraw()
         td.s.add(line.userdata)
         td.s.delete(line.userdata)
         td.s.flush()
+
     def reload_bindings(self):
         td.s.add(self.stockline)
-        f=ui.tableformatter(' l   c   l ')
-        kbl=linekeys.keyboard_bindings_table(self.stockline.keyboard_bindings,f)
-        self.addstr(15,1," "*56)
-        self.addstr(15,1,f("Line key","Menu key","Default modifier").
-                    display(56)[0])
+        f = ui.tableformatter(' l   c   l ')
+        kbl = linekeys.keyboard_bindings_table(
+            self.stockline.keyboard_bindings, f)
+        self.addstr(self.bindings_header_y, 1, " " * 75)
+        self.addstr(self.bindings_header_y, 1, f(
+            "Line key","Menu key","Default modifier").
+                    display(75)[0])
         self.kbs.set(kbl)
 
 class listunbound(ui.listpopup):
-    """
-    Pop up a list of stock lines with no key bindings on any keyboard.
-
-    """
+    """Pop up a list of stock lines with no key bindings on any keyboard."""
     def __init__(self):
         l=td.s.query(StockLine).outerjoin(KeyboardBinding).\
             filter(KeyboardBinding.stocklineid==None).\
@@ -399,6 +529,7 @@ class listunbound(ui.listpopup):
                    userdata=x) for x in l]
         ui.listpopup.__init__(self,self.ll,title="Unbound stock lines",
                               colour=ui.colour_info,header=[headerline])
+
     def keypress(self,k):
         if k==keyboard.K_CASH:
             self.dismiss()
