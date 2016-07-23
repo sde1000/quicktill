@@ -906,36 +906,43 @@ class marginline(emptyline):
         return ll
 
 class lrline(emptyline):
-    """
-    A line for use in a scrollable.  Has a natural colour, a "cursor
-    is here" colour, an optional "selected" colour, some left-aligned
-    text (which will be wrapped if it is too long) and optionally some
-    right-aligned text.
+    """A line for use in a scrollable.
 
+    Has a natural colour, a "cursor is here" colour, an optional
+    "selected" colour, some left-aligned text (which will be wrapped
+    if it is too long) and optionally some right-aligned text.
     """
-    def __init__(self,ltext="",rtext="",colour=None,userdata=None):
-        emptyline.__init__(self,colour)
-        self.ltext=ltext
-        self.rtext=rtext
+    def __init__(self, ltext="", rtext="", colour=None, userdata=None):
+        emptyline.__init__(self, colour)
+        self.ltext = ltext
+        self.rtext = rtext
     def idealwidth(self):
-        return len(self.ltext)+(len(self.rtext)+1 if len(self.rtext)>0 else 0)
-    def display(self,width):
-        """
+        return len(self.ltext) + (len(self.rtext) + 1 \
+                                  if len(self.rtext) > 0 else 0)
+    def display(self, width):
+        """Format for display.
+
         Returns a list of lines, formatted to the specified maximum
         width.  If there is right-aligned text it is included along
         with the text on the last line if there is space; otherwise a
         new line is added with the text at the right.
-
         """
         # After display has been called, the caller can read 'cursor' to
         # find our preferred location for the cursor if we are selected.
-        # It's a (x,y) tuple where y is 0 for the first line.
-        self.cursor=(0,0)
-        w=textwrap.wrap(self.ltext,width)
-        if len(w)==0: w=[""]
-        if len(w[-1])+len(self.rtext)>=width:
+        # It's a (x, y) tuple where y is 0 for the first line.
+        self.cursor = (0, 0)
+        w = []
+        for l in self.ltext.splitlines():
+            if l:
+                w = w + textwrap.wrap(l, width)
+            else:
+                w = w + [""]
+        if len(w) == 0:
+            w = [""]
+        if len(w[-1]) + len(self.rtext) >= width:
             w.append("")
-        w[-1]=w[-1]+(' '*(width-len(w[-1])-len(self.rtext)))+self.rtext
+        w[-1] = w[-1] + (' ' * (width - len(w[-1]) - len(self.rtext))) \
+                + self.rtext
         return w
 
 class tableformatter(object):
@@ -1079,8 +1086,9 @@ class menu(listpopup):
             listpopup.keypress(self,k)
 
 class _keymenuline(emptyline):
-    """A line for use in a keymenu.  Used internally by keymenu.
+    """A line for use in a keymenu.
 
+    Used internally by keymenu.
     """
     def __init__(self, keymenu, keycode, desc, func, args):
         self._keymenu = keymenu
@@ -1116,22 +1124,31 @@ class keymenu(listpopup):
     itemlist is a list of (key,desc,func,args) tuples.  If desc is a
     string it will be converted to a line(); otherwise it is assumed
     to be some subclass of emptyline().
-
     """
-    def __init__(self,itemlist,blurb=[],title="Press a key",colour=colour_input,
-                 w=None,dismiss_on_select=True):
-        if not isinstance(blurb,list): blurb=[blurb]
-        km={}
-        self._colour=colour
-        self._not_allowed_colour=colour_error
-        lines=[_keymenuline(self,*x) for x in itemlist]
-        self.promptwidth=max(len(l.prompt) for l in lines)
-        for keycode,desc,func,args in itemlist:
-            km[keycode]=(func,args,dismiss_on_select)
-        self.menukeys=km
-        listpopup.__init__(self,[emptyline()]+lines+[emptyline()],
-                           header=blurb,title=title,
-                           colour=colour,w=w,keymap=km,show_cursor=False)
+    def __init__(self, itemlist, blurb=[], title="Press a key",
+                 colour=colour_input, w=None, dismiss_on_select=True,
+                 blank_line_between_items=False):
+        if not isinstance(blurb, list):
+            blurb = [blurb]
+        km = {}
+        self._colour = colour
+        self._not_allowed_colour = colour_error
+        lines = [_keymenuline(self, *x) for x in itemlist]
+        self.promptwidth = max(len(l.prompt) for l in lines)
+        for keycode, desc, func, args in itemlist:
+            km[keycode] = (func, args, dismiss_on_select)
+        self.menukeys = km
+        if blank_line_between_items:
+            def yl(lines):
+                for l in lines:
+                    yield l
+                    yield emptyline()
+            lines = [emptyline()] + list(yl(lines))
+        else:
+            lines = [emptyline()] + lines + [emptyline()]
+        listpopup.__init__(self, lines,
+                           header=blurb, title=title,
+                           colour=colour, w=w, keymap=km, show_cursor=False)
 
 def automenu(itemlist,spill="menu",**kwargs):
     """Pop up a dialog to choose an item from the itemlist, which consists
@@ -1659,6 +1676,9 @@ class buttonfield(field):
     def defocus(self):
         field.defocus(self)
         self.draw()
+    @property
+    def f(self):
+        return self.focused
     def draw(self):
         if self.focused: s="[%s]"%self.t
         else: s=" %s "%self.t
