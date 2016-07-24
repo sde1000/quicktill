@@ -257,11 +257,8 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             # can just dismiss the popup
             ui.handle_keyboard_input(keyboard.K_USESTOCK)
         if sl.linetype == "display":
-            # XXX
-            # Find all items of the specified stocktype not already on a
-            # stockline and put them on sale on this stockline;
-            # i.e. run auto-allocate on this stockline
-            pass
+            from . import usestock
+            usestock.add_display_line_stock(sl)
 
     def keypress(self, k):
         # If the user starts typing into the stocktype field, be nice
@@ -290,6 +287,7 @@ class modify(user.permission_checked,ui.dismisspopup):
     def __init__(self, stockline):
         h = 24
         td.s.add(stockline)
+        sanity_check_stock_on_sale(stockline)
         self.stockline = stockline
         self.sid = stockline.id
         ui.dismisspopup.__init__(
@@ -314,7 +312,8 @@ class modify(user.permission_checked,ui.dismisspopup):
             self.addstr(y, 2, "         Department:")
             depts = td.s.query(Department).order_by(Department.id).all()
             self.deptfield = ui.listfield(
-                y, 23, 20, depts, d=lambda x:x.description)
+                y, 23, 20, depts, f=stockline.department,
+                d=lambda x: x.description)
             self.fields.append(self.deptfield)
             y += 1
         if stockline.linetype == 'display':
@@ -431,7 +430,8 @@ class modify(user.permission_checked,ui.dismisspopup):
         oldstocktype = self.stockline.stocktype
         self.stockline.stocktype = self.stocktypefield.read()
         if self.stockline.linetype == 'display':
-            if self.stockline.stockonsale:
+            if self.stockline.stocktype != oldstocktype \
+               and self.stockline.stockonsale:
                 for si in list(self.stockline.stockonsale):
                     si.displayqty = None
                     si.stockline = None
@@ -443,6 +443,8 @@ class modify(user.permission_checked,ui.dismisspopup):
 
         self.stockline.name = self.namefield.f
         self.stockline.location = self.locfield.f
+        if self.stockline.linetype == "regular":
+            self.stockline.department = self.deptfield.read()
         try:
             td.s.flush()
         except:
@@ -617,3 +619,12 @@ def selectlocation(func,title="Stock Locations",blurb="Choose a location",
         else: l[sl.location]=[sl]
     ml=[(x,func,(l[x],)) for x in list(l.keys())]
     ui.menu(ml,title=title,blurb=blurb)
+
+def sanity_check_stock_on_sale(stockline):
+    """Remove any stock on sale of an inappropriate type."""
+    if stockline.linetype != "display":
+        return
+    for s in list(stockline.stockonsale):
+        if s.stocktype != stockline.stocktype:
+            s.displayqty = None
+            s.stockline = None

@@ -861,6 +861,18 @@ class StockLine(Base):
                 sell.append((item, sellqty))
         return (sell, unallocated, (leftondisplay, totalinstock - leftondisplay))
 
+    def other_lines_same_stocktype(self, s):
+        """Return other stocklines with the same linetype and stocktype.
+
+        You must pass in a database session to this method.
+        """
+        return s.query(StockLine)\
+                .filter(StockLine.linetype == self.linetype)\
+                .filter(StockLine.stocktype == self.stocktype)\
+                .filter(StockLine.id != self.id)\
+                .all()
+
+
 plu_seq = Sequence('plu_seq')
 
 class PriceLookup(Base):

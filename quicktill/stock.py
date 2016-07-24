@@ -98,84 +98,101 @@ class annotate(user.permission_checked,ui.dismisspopup):
                      colour=ui.colour_info)
 
 class stockfilter(object):
-    """
+    """Filter and sort available stock items.
+
     Filter and sort available stock items according to various
     criteria.  Stock items that are in unchecked deliveries can never
     be returned.
-
     """
-    def __init__(self,department=None,allow_on_sale=True,allow_finished=False,
+    def __init__(self,
+                 department=None,
+                 stocktype_id=None,
+                 allow_on_sale=True,
+                 allow_finished=False,
                  allow_has_bestbefore=True,
-                 stockline_affinity=None,sort_descending_stockid=False,
+                 stockline_affinity=None,
+                 sort_descending_stockid=False,
                  require_finished=False):
-        self.department=department
-        self.allow_on_sale=allow_on_sale
-        self.allow_finished=allow_finished
-        self.allow_has_bestbefore=allow_has_bestbefore
-        self.stockline_affinity=stockline_affinity
-        self.sort_descending_stockid=sort_descending_stockid
-        self.require_finished=require_finished
+        self.department = department
+        self.stocktype_id = stocktype_id
+        self.allow_on_sale = allow_on_sale
+        self.allow_finished = allow_finished
+        self.allow_has_bestbefore = allow_has_bestbefore
+        self.stockline_affinity = stockline_affinity
+        self.sort_descending_stockid = sort_descending_stockid
+        self.require_finished = require_finished
         if self.require_finished:
-            self.allow_finished=True
+            self.allow_finished = True
+
     @property
     def is_single_department(self):
-        return self.department is not None
-    def query_items(self,department=None):
-        """
-        Return a query that lists matching items.  If a department is
-        passed, this overrides the department restriction in the
-        object.
+        return self.department is not None or self.stocktype_id is not None
 
+    def query_items(self, department=None):
+        """Return a query that lists matching items.
+
+        If a department is passed, this overrides the department
+        restriction in the object.
         """
         if department is None:
-            department=td.s.merge(self.department) if self.department else None
-        q=td.s.query(StockItem).join(Delivery).filter(Delivery.checked==True)
+            department = td.s.merge(self.department) if self.department else None
+        q = td.s.query(StockItem).join(Delivery).filter(Delivery.checked == True)
         # Unfinished items are sorted to the top
-        q=q.order_by(StockItem.finished!=None)
+        q = q.order_by(StockItem.finished != None)
         if department:
             td.s.add(department)
-            q=q.join(StockType)
-            q=q.filter(StockType.department==department)
+            q = q.join(StockType)
+            q = q.filter(StockType.department == department)
+        if self.stocktype_id:
+            q = q.filter(StockItem.stocktype_id == self.stocktype_id)
         if not self.allow_on_sale:
-            q=q.filter(StockItem.stocklineid==None)
+            q = q.filter(StockItem.stocklineid == None)
         if not self.allow_finished:
-            q=q.filter(StockItem.finished==None)
+            q = q.filter(StockItem.finished == None)
         if self.require_finished:
-            q=q.filter(StockItem.finished!=None)
+            q = q.filter(StockItem.finished != None)
         if not self.allow_has_bestbefore:
-            q=q.filter(StockItem.bestbefore==None)
+            q = q.filter(StockItem.bestbefore == None)
         if self.stockline_affinity:
             td.s.add(self.stockline_affinity)
-            q=q.order_by(desc(StockItem.stocktype_id.in_(
-                        td.select([StockLineTypeLog.stocktype_id],
-                                  whereclause=(
-                                StockLineTypeLog.stocklineid==self.stockline_affinity.id),
-                                  correlate=True))))
+            q = q.order_by(desc(StockItem.stocktype_id.in_(
+                td.select([StockLineTypeLog.stocktype_id],
+                          whereclause=(
+                              StockLineTypeLog.stocklineid
+                              == self.stockline_affinity.id),
+                          correlate=True))))
         if self.sort_descending_stockid:
-            q=q.order_by(desc(StockItem.id))
+            q = q.order_by(desc(StockItem.id))
         else:
-            q=q.order_by(StockItem.id)
+            q = q.order_by(StockItem.id)
         return q
-    def item_problem(self,item):
-        """
+
+    def item_problem(self, item):
+        """Why doesn't the item pass the filter?
+
         If the passed item matches the criteria, returns None.
         Otherwise returns a string describing at least one problem
         with the item.  The item is expected to be attached to an ORM
         session.
-
         """
-        if not item.delivery.checked: return "delivery not checked"
+        if not item.delivery.checked:
+            return "delivery not checked"
         if self.department:
-            d=td.s.merge(self.department)
-            if item.stocktype.department!=d: return "wrong department"
+            d = td.s.merge(self.department)
+            if item.stocktype.department != d:
+                return "wrong department"
+        if self.stocktype_id:
+            if item.stocktype_id != self.stocktype_id:
+                return "wrong type of stock"
         if item.stocklineid is not None and not self.allow_on_sale:
-            return "already on sale on %s"%item.stockline.name
+            return "already on sale on {}".format(item.stockline.name)
         if item.finished is not None and not self.allow_finished:
-            return "finished at %s"%ui.formattime(item.finished)
+            return "finished at {}".format(ui.formattime(item.finished))
         if item.finished is None and self.require_finished:
             return "not finished"
         if item.bestbefore is not None and not self.allow_has_bestbefore:
-            return "already has a best-before date: %s"%ui.formatdate(item.bestbefore)
+            return "already has a best-before date: {}".format(
+                ui.formatdate(item.bestbefore))
 
 class stockpicker(ui.dismisspopup):
     """
@@ -256,7 +273,8 @@ class stockpicker(ui.dismisspopup):
                 f=ui.tableformatter(' r l ')
                 lines=[(f(d.id,d.description),
                         self.popup_menu,(d,)) for d in depts]
-                ui.menu(lines)
+                ui.menu(lines, blurb="Choose the department the stock item "
+                        "belongs to and press Cash/Enter:")
     def popup_menu(self,department):
         items=self.filter.query_items(department).\
             options(joinedload('stocktype')).\
