@@ -432,7 +432,7 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.stockline.stocktype = self.stocktypefield.read()
         if self.stockline.linetype == 'display':
             if self.stockline.stockonsale:
-                for si in self.stockline.stockonsale:
+                for si in list(self.stockline.stockonsale):
                     si.displayqty = None
                     si.stockline = None
                 additional.append(
