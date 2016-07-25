@@ -192,6 +192,10 @@ def put_on_sale(line, si):
 def add_display_line_stock(line):
     """Add stock to a display stock line.
 
+    Given a stock line, find stock to put on it.  (See also
+    auto_allocate which finds a stock line to put stock on when given
+    stock.)
+
     Entered from the Use Stock popup for the line or the Modify Stock
     Line popup for the line.
     """
@@ -278,80 +282,6 @@ def remove_display_line_stockitem(line, item):
                  title="Stock removed from line",
                  colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
-def _auto_allocate_old_internal(
-        deliveryid=None, message_on_no_work=True):
-    """Automatically allocate stock to display stock lines.
-
-    If there's a potential clash (the same type of stock has been
-    allocated to more than one stock line) refuse to do anything and
-    prompt the user to sort out the mess.
-    """
-    q = td.s.query(StockItem, StockLine).\
-        join(StockType).\
-        join(Delivery).\
-        filter(StockLine.id.in_(
-            select([StockLineTypeLog.stocklineid],
-                   whereclause=(
-                       StockLineTypeLog.stocktype_id==StockItem.stocktype_id)).\
-            correlate(StockItem.__table__))).\
-            filter(StockItem.finished==None).\
-            filter(StockItem.stocklineid==None).\
-            filter(Delivery.checked==True).\
-            filter(StockLine.capacity!=None).\
-            options(contains_eager(StockItem.stocktype)).\
-            options(undefer(StockItem.used)).\
-            order_by(StockItem.id)
-    if deliveryid:
-        q=q.filter(Delivery.id==deliveryid)
-    cl=q.all()
-    # Check for duplicate stockids
-    seen={}
-    duplines={}
-    for item,line in cl:
-        if item in seen:
-            duplines[line.id]=item
-            duplines[seen[item].id]=item
-        seen[item]=line
-    if duplines:
-        # Oops, there were duplicate stockids.  Dump the user into the
-        # stockline associations editor to sort it out.
-        stocklines.stockline_associations(
-            list(duplines.keys()),"The following stock line and stock type "
-            "associations meant an item of stock could not be allocated "
-            "unambiguously.  Delete associations from the list below "
-            "until there is only one stock line per stock type, then "
-            "press Clear and re-try the stock allocation using 'Use Stock' "
-            "option 3.")
-        return
-    dbu=user.current_dbuser()
-    if len(cl)>0:
-        for item,line in cl:
-            item.stockline=line
-            item.displayqty=item.used
-            item.onsale=datetime.datetime.now()
-            td.s.add(StockAnnotation(
-                    stockitem=item,atype="start",
-                    text="{} (auto-allocate)".format(line.name),
-                    user=dbu))
-        td.s.flush()
-        ui.infopopup([
-                "The following stock items have been allocated to "
-                "display lines:",""]+[
-                "{} {} -> {}".format(item.id,item.stocktype.format(),
-                                     line.name) for item,line in cl],
-                     title="Auto-allocate confirmation",
-                     colour=ui.colour_confirm,
-                     dismiss=keyboard.K_CASH)
-    elif message_on_no_work:
-        ui.infopopup([
-                "There was nothing available for automatic allocation.  "
-                "To allocate stock to a stock line manually, press the "
-                "'Use Stock' button, then the button for the stock line, "
-                "and choose option 2."],
-                     title="Auto-allocate confirmation",
-                     colour=ui.colour_confirm,
-                     dismiss=keyboard.K_CASH)
-
 def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     """Automatically allocate stock to display stock lines.
 
@@ -359,7 +289,71 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     stock line, prompt the user to allocate stock to those lines
     manually.
     """
-    pass
+    log.debug("Start auto_allocate")
+    # Find candidate stock
+    q = td.s.query(StockItem)\
+            .join(Delivery)\
+            .filter(StockItem.finished == None)\
+            .filter(Delivery.checked==True)\
+            .filter(StockItem.stockline == None)
+    if deliveryid:
+        q = q.filter(Delivery.id == deliveryid)
+    stock = q.all()
+    # Find candidate stock lines
+    stocklines = td.s.query(StockLine)\
+                 .filter(StockLine.linetype == "display")\
+                 .all()
+    # Build dictionary of stocktypes
+    st = {}
+    for sl in stocklines:
+        if sl.stocktype in st:
+            st[sl.stocktype].append(sl)
+        else:
+            st[sl.stocktype] = [sl]
+    done = []
+    manual = []
+    dbu = user.current_dbuser()
+    for item in stock:
+        if item.stocktype in st:
+            if len(st[item.stocktype]) == 1:
+                line = st[item.stocktype][0]
+                item.stockline = line
+                item.displayqty = item.used
+                item.onsale = datetime.datetime.now()
+                td.s.add(StockAnnotation(
+                    stockitem=item, atype="start",
+                    text="{} (auto-allocate)".format(line.name),
+                    user=dbu))
+                done.append(item)
+            else:
+                manual.append(item)
+    td.s.flush()
+    msg = []
+    if done or manual:
+        if done:
+            msg = msg \
+                  + ["The following stock items have been allocated to "
+                     "display lines:", ""]
+            msg = msg + ["{} {} -> {}".format(
+                item.id, item.stocktype.format(), item.stockline.name)
+                         for item in done]
+        if done and manual:
+            msg = msg + [""]
+        if manual:
+            msg = msg \
+                  + ["The following stock items can be allocated to "
+                     "display lines, but you must choose which lines "
+                     "they go on manually because there is more than "
+                     "one possible choice:", ""]
+            msg = msg + ["{} {} -> {}".format(
+                item.id, item.stocktype.format(),
+                " or ".join(line.name for line in st[item.stocktype]))
+                         for item in manual]
+    else:
+        msg = ["There was nothing available for automatic allocation."]
+
+    ui.infopopup(msg, title="Auto-allocate confirmation",
+                 colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
 
 auto_allocate = user.permission_required(
     'auto-allocate', 'Automatically allocate stock to lines')(
