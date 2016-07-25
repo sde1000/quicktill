@@ -36,10 +36,10 @@ def stockinfo_linelist(sn):
         l.append(ui.lrline("{:%c}{}: {}".format(a.time,a.type.description,a.text)))
     return l
 
-def stockinfo_popup(sn,keymap={}):
+def stockinfo_popup(sn, keymap={}):
     keymap=keymap.copy()
     ui.listpopup(stockinfo_linelist(sn),
-                 title="Stock Item %d"%sn,
+                 title="Stock Item {}".format(sn),
                  dismiss=keyboard.K_CASH,
                  show_cursor=False,
                  colour=ui.colour_info,keymap=keymap)
