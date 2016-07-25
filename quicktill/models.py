@@ -796,6 +796,19 @@ class StockLine(Base):
         if self.linetype != "display":
             return None
         return sum(sos.instock for sos in self.stockonsale)
+    @property
+    def remaining(self):
+        """Amount of unsold stock on the stock line."""
+        if self.linetype == "regular":
+            if self.stockonsale:
+                return self.stockonsale[0].remaining
+            else:
+                return Decimal("0.0")
+        elif self.linetype == "display":
+            return self.ondisplay + self.instock
+        elif self.linetype == "continuous":
+            return self.stocktype.remaining
+
     def calculate_restock(self, target=None):
         """Prepare list of stock movements
 
@@ -833,6 +846,16 @@ class StockLine(Base):
             if move != 0:
                 sm.append((i, move, newdisplayqty, instock_after_move))
         return sm
+
+    def continuous_stockonsale(self):
+        return object_session(self)\
+            .query(StockItem)\
+            .join(Delivery)\
+            .filter(Delivery.checked == True)\
+            .filter(StockItem.stocktype == self.stocktype)\
+            .order_by(StockItem.id)\
+            .all()
+
     def calculate_sale(self, qty):
         """Work out a plan to remove a quantity of stock from the stock line.
 
@@ -873,12 +896,7 @@ class StockLine(Base):
             return (sell, unallocated, (leftondisplay,
                                         totalinstock - leftondisplay))
         elif self.linetype == "continuous":
-            stock = object_session(self).query(StockItem)\
-                    .join(Delivery)\
-                    .filter(Delivery.checked == True)\
-                    .filter(StockItem.stocktype == self.stocktype)\
-                    .order_by(StockItem.id)\
-                    .all()
+            stock = self.continuous_stockonsale()
             if len(stock) == 0:
                 # There's no unfinished stock of the appropriate type
                 # at all - we can't do anything.
@@ -1130,7 +1148,7 @@ class StockItem(Base):
     stocklineid = Column(Integer, ForeignKey('stocklines.stocklineid',
                                              ondelete='SET NULL'),
                          nullable=True)
-    displayqty = Column(Integer, nullable=True)
+    displayqty = Column(quantity, nullable=True)
     __table_args__ = (
         CheckConstraint(
             "not(stocklineid is null) or displayqty is null",
@@ -1177,14 +1195,14 @@ class StockItem(Base):
         """
         if self.stockline.capacity is None:
             return None
-        return int(self.displayqty_or_zero - self.used)
+        return self.displayqty_or_zero - self.used
     @property
     def instock(self):
         """The number of units of stock not yet on display.
         """
         if self.stockline.capacity is None:
             return None
-        return int(self.stockunit.size) - self.displayqty_or_zero
+        return self.stockunit.size - self.displayqty_or_zero
 
     # used and remaining column properties are added after the
     # StockOut class is defined
@@ -1337,6 +1355,9 @@ StockItem.lastsale = column_property(
 
 # Similarly, this is added to the StockType class here because it
 # refers to Stock
+
+# XXX should this be renamed to StockType.remaining?  It appears to be
+# doing that job.  Let's add an alias.
 StockType.instock = column_property(
     select([func.coalesce(func.sum(
                     select([func.sum(StockUnit.size)],
@@ -1354,6 +1375,7 @@ StockType.instock = column_property(
         label('instock'),
     deferred=True,
     doc="Amount remaining in stock")
+StockType.remaining = StockType.instock
 StockType.lastsale = column_property(
     select([func.max(StockOut.time)],
            and_(StockItem.stocktype_id == StockType.id,
