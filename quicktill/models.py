@@ -20,6 +20,10 @@ from decimal import Decimal
 zero = Decimal("0.00")
 penny = Decimal("0.01")
 
+# Common column types
+money = Numeric(10, 2)
+quantity = Numeric(8, 1)
+
 metadata = MetaData()
 
 class _unistr(object):
@@ -293,7 +297,7 @@ class SessionTotal(Base):
                        primary_key=True)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
                       primary_key=True)
-    amount = Column(Numeric(10, 2), nullable=False)
+    amount = Column(money, nullable=False)
     session = relationship(Session, backref=backref(
         'actual_totals', order_by=desc('paytype')))
     paytype = relationship(PayType)
@@ -461,7 +465,7 @@ class Payment(Base):
                 primary_key=True)
     transid = Column(Integer, ForeignKey('transactions.transid'),
                      nullable=False)
-    amount = Column(Numeric(10, 2), nullable=False)
+    amount = Column(money, nullable=False)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
                         nullable=False)
     ref = Column(String())
@@ -502,9 +506,9 @@ class Department(Base):
     vatband = Column(CHAR(1), ForeignKey('vat.band'), nullable=False)
     notes = Column(Text, nullable=True, doc="Information on this department "
                    "for printing on price lists.")
-    minprice = Column(Numeric(5,2), nullable=True, doc="Minimum price of a "
+    minprice = Column(money, nullable=True, doc="Minimum price of a "
                       "single item in this department.")
-    maxprice = Column(Numeric(5,2), nullable=True, doc="Maximum price of a "
+    maxprice = Column(money, nullable=True, doc="Maximum price of a "
                       "single item in this department.")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     vat = relationship(VatBand)
@@ -534,7 +538,7 @@ class Transline(Base):
     transid = Column(Integer, ForeignKey('transactions.transid'),
                      nullable=False)
     items = Column(Integer, nullable=False)
-    amount = Column(Numeric(10, 2), nullable=False)
+    amount = Column(money, nullable=False)
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
                      nullable=False)
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
@@ -717,7 +721,7 @@ class StockLine(Base):
                       'at once, for example space in a fridge.')
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
                      nullable=True)
-    pullthru = Column(Numeric(5,1), doc='If a "Regular" stockline, the amount '
+    pullthru = Column(quantity, doc='If a "Regular" stockline, the amount '
                       'of stock that should be disposed of the first time the '
                       'stock is sold each day.')
     stocktype_id = Column(
@@ -829,49 +833,81 @@ class StockLine(Base):
             if move != 0:
                 sm.append((i, move, newdisplayqty, instock_after_move))
         return sm
-    def calculate_sale(self, items):
-        """Work out a plan to remove a number of items from display.
+    def calculate_sale(self, qty):
+        """Work out a plan to remove a quantity of stock from the stock line.
 
         They may be sold, wasted, etc. - this is not just for
         calculating a sale!
 
-        Returns (list of (stockitem, items) pairs, the number of items
-        that could not be allocated, and remaining stock (ondisplay,
+        Returns (list of (stockitem, qty) pairs, the number of items
+        that could not be allocated, remaining stock).  For display
+        stocklines the remaining stock is a tuple (ondisplay,
         instock)).
+
+        With display stock lines, only considers the stock that is
+        "ondisplay"; will not take from the stock "instock".  On other
+        types of stock line, will let the stock go into negative
+        amounts "remaining".
         """
-        if len(self.stockonsale) == 0:
-            return ([], items, (0, 0))
-        # If the stockline is a regular stockline with no display
-        # capacity, just sell the appropriate number of items from the
-        # only stockitem in the list.
+        # Reject negative quantities
+        if qty < Decimal("0.0"):
+            return ([], qty, None)
         if self.linetype == "regular":
-            return ([(self.stockonsale[0], items)], 0, None)
-        # Here we assume it's a "display" stockline.
-        unallocated = items
-        leftondisplay = 0
-        totalinstock = 0
-        sell = []
-        for item in self.stockonsale:
-            ondisplay = item.ondisplay
-            sellqty = min(unallocated, ondisplay)
-            unallocated = unallocated - sellqty
-            leftondisplay = leftondisplay + ondisplay - sellqty
-            totalinstock = totalinstock + item.remaining - sellqty
-            if sellqty > 0:
-                sell.append((item, sellqty))
-        return (sell, unallocated, (leftondisplay, totalinstock - leftondisplay))
+            if len(self.stockonsale) == 0:
+                return ([], qty, Decimal("0.0"))
+            return ([(self.stockonsale[0], qty)], Decimal("0.0"),
+                    self.stockonsale[0].remaining - qty)
+        elif self.linetype == "display":
+            unallocated = qty
+            leftondisplay = Decimal("0.0")
+            totalinstock = Decimal("0.0")
+            sell = []
+            for item in self.stockonsale:
+                ondisplay = item.ondisplay
+                sellqty = min(unallocated, ondisplay)
+                unallocated = unallocated - sellqty
+                leftondisplay = leftondisplay + ondisplay - sellqty
+                totalinstock = totalinstock + item.remaining - sellqty
+                if sellqty > Decimal("0.0"):
+                    sell.append((item, sellqty))
+            return (sell, unallocated, (leftondisplay,
+                                        totalinstock - leftondisplay))
+        elif self.linetype == "continuous":
+            stock = object_session(self).query(StockItem)\
+                    .join(Delivery)\
+                    .filter(Delivery.checked == True)\
+                    .filter(StockItem.stocktype == self.stocktype)\
+                    .order_by(StockItem.id)\
+                    .all()
+            if len(stock) == 0:
+                # There's no unfinished stock of the appropriate type
+                # at all - we can't do anything.
+                return ([], qty, Decimal("0.0"))
+            unallocated = qty
+            sell = []
+            remaining = Decimal("0.0")
+            for item in stock:
+                sellqty = min(unallocated, item.remaining)
+                unallocated = unallocated - sellqty
+                remaining += item.remaining - sellqty
+                if sellqty > Decimal("0.0"):
+                    sell.append((item, sellqty))
+            # If there wasn't enough, sell some more of the last item
+            # anyway putting it into negative "remaining"
+            if unallocated > Decimal("0.0"):
+                sell.append((item, unallocated))
+                remaining -= unallocated
+                unallocated = Decimal("0.0")
+            return (sell, unallocated, remaining)
 
-    def other_lines_same_stocktype(self, s):
-        """Return other stocklines with the same linetype and stocktype.
-
-        You must pass in a database session to this method.
-        """
-        return s.query(StockLine)\
-                .filter(StockLine.linetype == self.linetype)\
-                .filter(StockLine.stocktype == self.stocktype)\
-                .filter(StockLine.id != self.id)\
-                .all()
-
+    def other_lines_same_stocktype(self):
+        """Return other stocklines with the same linetype and stocktype."""
+        return object_session(self)\
+            .query(StockLine)\
+            .filter(StockLine.linetype == self.linetype)\
+            .filter(StockLine.stocktype == self.stocktype)\
+            .filter(StockLine.id != self.id)\
+            .all()
 
 plu_seq = Sequence('plu_seq')
 
@@ -896,10 +932,10 @@ class PriceLookup(Base):
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
                      nullable=False)
     # A PLU with a null price will act very much like a department key
-    price = Column(Numeric(5, 2))
-    altprice1 = Column(Numeric(5, 2))
-    altprice2 = Column(Numeric(5, 2))
-    altprice3 = Column(Numeric(5, 2))
+    price = Column(money)
+    altprice1 = Column(money)
+    altprice2 = Column(money)
+    altprice3 = Column(money)
     department = relationship(Department, lazy='joined')
     @property
     def name(self):
@@ -961,7 +997,7 @@ class StockUnit(Base):
     name = Column(String(30), nullable=False)
     unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
                      nullable=False)
-    size = Column(Numeric(5, 1), nullable=False)
+    size = Column(quantity, nullable=False)
     unit = relationship(UnitType)
     def __repr__(self):
         return "<StockUnit('%s',%s)>" % (self.id, self.size)
@@ -982,7 +1018,7 @@ class StockType(Base):
     abv = Column(Numeric(3, 1))
     unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
                      nullable=False)
-    saleprice = Column(Numeric(5, 2), nullable=True) # inc VAT
+    saleprice = Column(money, nullable=True) # inc VAT
     pricechanged = Column(DateTime, nullable=True) # Last time price was changed
     department = relationship(Department, lazy="joined")
     unit = relationship(UnitType, lazy="joined")
@@ -1081,7 +1117,7 @@ class StockItem(Base):
                           ForeignKey('stocktypes.stocktype'), nullable=False)
     stockunit_id = Column('stockunit', String(8),
                           ForeignKey('stockunits.stockunit'), nullable=False)
-    costprice = Column(Numeric(7, 2)) # ex VAT
+    costprice = Column(money) # ex VAT
     onsale = Column(DateTime)
     finished = Column(DateTime)
     finishcode_id = Column('finishcode', String(8),
@@ -1239,7 +1275,7 @@ class StockOut(Base):
     id = Column('stockoutid', Integer, stockout_seq,
                 nullable=False, primary_key=True)
     stockid = Column(Integer, ForeignKey('stock.stockid'), nullable=False)
-    qty = Column(Numeric(5, 1), nullable=False)
+    qty = Column(quantity, nullable=False)
     removecode_id = Column('removecode', String(8),
                            ForeignKey('stockremove.removecode'), nullable=False)
     translineid = Column(Integer, ForeignKey('translines.translineid',

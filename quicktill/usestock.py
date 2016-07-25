@@ -206,7 +206,7 @@ def add_display_line_stock(line):
                     .filter(StockItem.stockline == None)\
                     .filter(StockItem.stocktype == line.stocktype)\
                     .all()
-    other_lines = line.other_lines_same_stocktype(td.s)
+    other_lines = line.other_lines_same_stocktype()
     if other_lines:
         # There's more than one display stock line with the same stock
         # type.  The user will have to choose stock items
@@ -349,11 +349,15 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
                 item.id, item.stocktype.format(),
                 " or ".join(line.name for line in st[item.stocktype]))
                          for item in manual]
+        ui.infopopup(msg, title="Auto-allocate confirmation",
+                     colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
     else:
-        msg = ["There was nothing available for automatic allocation."]
+        if message_on_no_work:
+            ui.infopopup(["There was nothing available for automatic "
+                          "allocation."],
+                         title="Auto-allocate confirmation",
+                         colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
 
-    ui.infopopup(msg, title="Auto-allocate confirmation",
-                 colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
 
 auto_allocate = user.permission_required(
     'auto-allocate', 'Automatically allocate stock to lines')(

@@ -848,12 +848,11 @@ class page(ui.basicpage):
             sale.price = explicitprice
 
         total_qty = items * sale.qty
-        if stockline.linetype == "display":
-            total_qty = int(total_qty)
-        sell, unallocated, stockremain = stockline.calculate_sale(
+        sell, unallocated, remaining = stockline.calculate_sale(
             total_qty)
 
-        if stockline.linetype == "display" and unallocated > 0:
+        # This _should_ only be the case with display stocklines.
+        if unallocated > 0:
             ui.infopopup(
                 ["There are fewer than {} items of {} on display.  "
                  "If you have recently put more stock on display you "
@@ -896,7 +895,6 @@ class page(ui.basicpage):
                and otl.stockref[0].stockitem == sell[0][0] \
                and len(otl.stockref) == 1:
                 # It's the same stockitem.  Add one item and one qty.
-                # It's the same stockitem, but are the quantities compatible?
                 so = otl.stockref[0]
                 orig_stockqty = so.qty / otl.items
                 if orig_stockqty == sell[0][1]:
@@ -979,7 +977,27 @@ class page(ui.basicpage):
                              title="Warning", dismiss=keyboard.K_USESTOCK)
         elif stockline.linetype == "display":
             self.prompt = "{}: {} left on display; {} in stock".format(
-                stockline.name, stockremain[0], int(stockremain[1]))
+                stockline.name, int(remaining[0]), int(remaining[1]))
+        elif stockline.linetype == "continuous":
+            self.prompt = "{}: {} {}s of {} remaining".format(
+                stockline.name, remaining, stockline.stocktype.unit.name,
+                stockline.stocktype.format())
+            if remaining < Decimal("0.0"):
+                ui.infopopup([
+                    "There appears to be {} {}s of {} left!  Please "
+                    "check that you're still using {}; if you've "
+                    "started using a new type of stock, tell the till "
+                    "about it by changing the stock type of the "
+                    "'{}' stock line after dismissing this message.".format(
+                        remaining,
+                        stockline.stocktype.unit.name,
+                        stockline.stocktype.format(),
+                        stockline.stocktype.format(),
+                        stockline.name),
+                    "", "If you don't understand this message, you MUST "
+                    "call your manager to deal with it."],
+                             title="Warning", dismiss=keyboard.K_USESTOCK)
+
         # Adding and altering translines changes the total
         td.s.expire(self.trans, ['total'])
         self._clear_marks()
