@@ -795,11 +795,13 @@ class page(ui.basicpage):
                  "dismissing this message.".format(keyboard.K_USESTOCK.keycap)],
                 title="{} has no stock".format(stockline.name))
             return
-        sale = ProposedSale(stocktype=st,
-                            qty=Decimal("1.0"),
-                            description=st.format(),
-                            price=st.saleprice,
-                            whole_items=(stockline.linetype == "display"))
+        sale = ProposedSale(
+            stocktype=st,
+            qty=st.saleprice_units,
+            description=st.format() + (
+                " {}".format(st.unit.name) if st.saleprice_units == 1 else ""),
+            price=st.saleprice,
+            whole_items=(stockline.linetype == "display"))
 
         sale.validate()
 

@@ -124,7 +124,8 @@ class record_line_waste(ui.dismisspopup):
             self.addstr(3, 2, "  Amount in stock: {} {}s".format(
                 stockline.remaining, stockline.stocktype.unit.name))
         self.addstr(5, 2, "Waste description:")
-        self.addstr(6, 2, "    Amount wasted:")
+        self.addstr(6, 2, "    Amount wasted:      {}s".format(
+            stockline.stocktype.unit.name))
         wastelist = td.s.query(RemoveCode).filter(RemoveCode.id != 'sold').all()
         self.wastedescfield = ui.listfield(
             5, 21, 30, wastelist, lambda rc: rc.reason, keymap={

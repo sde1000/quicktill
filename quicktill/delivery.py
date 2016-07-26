@@ -282,148 +282,176 @@ class delivery(ui.basicpopup):
             self.dismiss()
 
 class stockitem(ui.basicpopup):
-    """
-    Create a number of stockitems, or edit a single stockitem.
+    """Create a number of stockitems, or edit a single stockitem."""
 
-    """
-    def __init__(self,func,deliveryid,item=None):
-        """
-        If item is provided then we edit it; otherwise we create one
-        or more StockItems and call func with the StockItem as an
+    def __init__(self, func, deliveryid, item=None):
+        """If item is provided then we edit it; otherwise we create one or
+        more StockItems and call func with the StockItem as an
         argument (possibly multiple times).  The StockItem we call
         func with is in the current ORM session.
-
         """
-        self.func=func
-        self.item=item
-        self.deliveryid=deliveryid
+        self.func = func
+        self.item = item
+        self.deliveryid = deliveryid
         cleartext=(
             "Press Clear to exit, forgetting all changes" if item else
             "Press Clear to exit without creating a new stock item")
-        ui.basicpopup.__init__(self,13,78,title="Stock Item",
-                               cleartext=cleartext,colour=ui.colour_line)
+        ui.basicpopup.__init__(self, 13, 78, title="Stock Item",
+                               cleartext=cleartext, colour=ui.colour_line)
         if item is None:
-            self.addstr(2,2,"     Number of items:")
+            self.addstr(2, 2, "     Number of items:")
         else:
-            self.addstr(2,2,"        Stock number: %d"%item.id)
-        self.addstr(3,2,"          Stock type:")
-        self.addstr(4,2,"                Unit:")
-        self.addstr(5,2," Cost price (ex VAT): %s"%tillconfig.currency)
-        self.addstr(6,2,"Suggested sale price:")
-        self.addstr(7,2,"Sale price (inc VAT): %s"%tillconfig.currency)
-        self.addstr(8,2,"         Best before:")
+            self.addstr(2, 2, "        Stock number: {}".format(item.id))
+        self.addstr(3, 2, "          Stock type:")
+        self.addstr(4, 2, "                Unit:")
+        self.addstr(5, 2, " Cost price (ex VAT): {}".format(tillconfig.currency))
+        self.addstr(6, 2, "Suggested sale price:")
+        self.addstr(7, 2, "Sale price (inc VAT): {}".format(tillconfig.currency))
+        self.addstr(7, 31 + len(tillconfig.currency), "per")
+        self.addstr(8, 2, "         Best before:")
         if not item:
-            self.qtyfield=ui.editfield(2,24,5,f=1,
-                                       validate=ui.validate_positive_int)
-            self.qtyfield.sethook=self.update_suggested_price
-        self.typefield=ui.popupfield(
-            3,24,52,stocktype.choose_stocktype,lambda si:si.format(),
-            keymap={keyboard.K_CLEAR: (self.dismiss,None)})
-        self.typefield.sethook=self.typefield_changed
-        self.unitfield=ui.listfield(4,24,30,[],lambda x:x.name)
-        self.unitfield.sethook=self.update_suggested_price
-        self.costfield=ui.editfield(5,24+len(tillconfig.currency),10,
-                                    validate=ui.validate_float)
-        self.costfield.sethook=self.update_suggested_price
-        self.salefield=ui.editfield(7,24+len(tillconfig.currency),6,
-                                    validate=ui.validate_float)
-        self.bestbeforefield=ui.datefield(8,24)
-        self.acceptbutton=ui.buttonfield(10,28,21,"Accept values",keymap={
-                keyboard.K_CASH: (self.accept,None)})
-        fieldlist=[self.typefield,self.unitfield,self.costfield,self.salefield,
-                   self.bestbeforefield,self.acceptbutton]
-        if not item: fieldlist.insert(0,self.qtyfield)
+            self.qtyfield = ui.editfield(2, 24, 5, f=1,
+                                         validate=ui.validate_positive_int)
+            self.qtyfield.sethook = self.update_suggested_price
+        self.typefield = ui.popupfield(
+            3, 24, 52, stocktype.choose_stocktype, lambda si: si.format(),
+            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
+        self.typefield.sethook = self.typefield_changed
+        self.unitfield = ui.listfield(4, 24, 30, [], lambda x: x.name)
+        self.unitfield.sethook = self.update_suggested_price
+        self.costfield = ui.editfield(5, 24 + len(tillconfig.currency), 10,
+                                      validate=ui.validate_float)
+        self.costfield.sethook = self.update_suggested_price
+        self.salefield = ui.editfield(7, 24 + len(tillconfig.currency), 6,
+                                      validate=ui.validate_float)
+        self.saleunitsfield = ui.editfield(7, 34 + len(tillconfig.currency)*2,
+                                           6, validate=ui.validate_float)
+        self.bestbeforefield = ui.datefield(8, 24)
+        self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
+                keyboard.K_CASH: (self.accept, None)})
+        fieldlist = [self.typefield, self.unitfield, self.costfield,
+                     self.salefield, self.saleunitsfield,
+                     self.bestbeforefield, self.acceptbutton]
+        if not item:
+            fieldlist.insert(0, self.qtyfield)
         ui.map_fieldlist(fieldlist)
         if item:
             self.typefield.set(item.stocktype)
             self.unitfield.set(item.stockunit)
             self.costfield.set(item.costprice)
             self.salefield.set(item.stocktype.saleprice)
+            self.saleunitsfield.set(item.stocktype.saleprice_units)
             self.bestbeforefield.set(item.bestbefore)
-            if self.bestbeforefield.f=="":
+            if self.bestbeforefield.f == "":
                 self.bestbeforefield.focus()
             else:
                 self.acceptbutton.focus()
             self.updateunitfield()
         else:
             self.typefield.focus()
+
     def typefield_changed(self):
         self.updateunitfield()
         self.update_suggested_price()
-        self.salefield.set(self.typefield.read().saleprice if self.typefield.f
-                           else "")
+        self.addstr(7, 40 + len(tillconfig.currency) * 2, ' ' * 15)
+        newtype = self.typefield.read()
+        if newtype:
+            self.addstr(7, 41 + len(tillconfig.currency) * 2, "{}s".format(
+                newtype.unit.name))
+            self.salefield.set(newtype.saleprice)
+            self.saleunitsfield.set(newtype.saleprice_units)
+        else:
+            self.salefield.set("")
+            self.saleunitsfield.set("")
+
     def updateunitfield(self):
-        if self.typefield.f==None:
+        if self.typefield.f == None:
             self.unitfield.change_list([])
             return
-        ul=td.s.query(StockUnit).\
-            filter(StockUnit.unit==self.typefield.read().unit).\
-            order_by(StockUnit.size).\
-            all()
+        ul = td.s.query(StockUnit).\
+             filter(StockUnit.unit == self.typefield.read().unit).\
+             order_by(StockUnit.size).\
+             all()
         self.unitfield.change_list(ul)
+
     def update_suggested_price(self):
-        self.addstr(6,24,' '*10)
-        if self.typefield.read() is None: return
-        if self.unitfield.read() is None: return
-        if len(self.costfield.f)==0: return
-        if not self.item and len(self.qtyfield.f)==0: return
-        if self.item: qty=1
-        else: qty=int(self.qtyfield.f)
-        wholeprice=Decimal(self.costfield.f)
-        g=tillconfig.priceguess(
-            self.typefield.read(),self.unitfield.read(),wholeprice/qty)
+        self.addstr(6, 24, ' ' * 10)
+        if self.typefield.read() is None:
+            return
+        if self.unitfield.read() is None:
+            return
+        if len(self.costfield.f) == 0:
+            return
+        if not self.item and len(self.qtyfield.f) == 0:
+            return
+        if self.item:
+            qty = 1
+        else:
+            qty = int(self.qtyfield.f)
+        wholeprice = Decimal(self.costfield.f)
+        g = tillconfig.priceguess(
+            self.typefield.read(), self.unitfield.read(), wholeprice / qty)
         if g is not None:
-            g=g.quantize(penny)
-            self.addstr(6,24,tillconfig.fc(g))
+            if isinstance(g, Decimal):
+                g = g.quantize(penny)
+                self.addstr(6, 24, tillconfig.fc(g))
+            else:
+                self.addstr(6, 24, g)
+
     def accept(self):
-        if ((not self.item and len(self.qtyfield.f)==0) or
-            self.typefield.f is None or
-            self.unitfield.f is None or
-            len(self.salefield.f)==0):
+        if (not self.item and len(self.qtyfield.f) == 0) \
+           or self.typefield.f is None \
+           or self.unitfield.f is None \
+           or len(self.salefield.f) == 0 \
+           or len(self.saleunitsfield.f) == 0:
             ui.infopopup(["You have not filled in all the fields.  "
                           "The only optional fields are 'Best Before' "
                           "and 'Cost Price'."],
                          title="Error")
             return
         self.dismiss()
-        if len(self.costfield.f)==0:
-            cost=None
+        if len(self.costfield.f) == 0:
+            cost = None
         else:
-            cost=Decimal(self.costfield.f).quantize(penny)
-        saleprice=Decimal(self.salefield.f).quantize(penny)
-        stocktype=self.typefield.read()
-        stockunit=self.unitfield.read()
+            cost = Decimal(self.costfield.f).quantize(penny)
+        saleprice = Decimal(self.salefield.f).quantize(penny)
+        saleunits = Decimal(self.saleunitsfield.f)
+        stocktype = self.typefield.read()
+        stockunit = self.unitfield.read()
         if self.item:
             td.s.add(self.item)
-            self.item.stocktype=stocktype
-            self.item.stockunit=stockunit
-            self.item.costprice=cost
-            if stocktype.saleprice!=saleprice:
-                stocktype.saleprice=saleprice
-                stocktype.pricechanged=datetime.datetime.now()
-            self.item.bestbefore=self.bestbeforefield.read()
+            self.item.stocktype = stocktype
+            self.item.stockunit = stockunit
+            self.item.costprice = cost
+            if stocktype.saleprice != saleprice \
+               or stocktype.saleprice_units != saleunits:
+                stocktype.saleprice = saleprice
+                stocktype.saleprice_units = saleunits
+                stocktype.pricechanged = datetime.datetime.now()
+            self.item.bestbefore = self.bestbeforefield.read()
             td.s.flush()
             self.func(self.item)
         else:
-            qty=int(self.qtyfield.f)
-            costper=(cost/qty).quantize(penny) if cost else None
-            remaining_cost=cost
-            if stocktype.saleprice!=saleprice:
-                stocktype.saleprice=saleprice
-                stocktype.pricechanged=datetime.datetime.now()
+            qty = int(self.qtyfield.f)
+            costper = (cost/qty).quantize(penny) if cost else None
+            remaining_cost = cost
+            if stocktype.saleprice != saleprice:
+                stocktype.saleprice = saleprice
+                stocktype.pricechanged = datetime.datetime.now()
             for i in range(qty):
-                thiscost=remaining_cost if i==(qty-1) else costper
-                remaining_cost=remaining_cost-thiscost if cost else None
-                item=StockItem()
-                item.deliveryid=self.deliveryid
-                item.stocktype=stocktype
-                item.stockunit=stockunit
-                item.costprice=thiscost
-                item.bestbefore=self.bestbeforefield.read()
+                thiscost = remaining_cost if i == (qty - 1) else costper
+                remaining_cost = remaining_cost - thiscost if cost else None
+                item = StockItem()
+                item.deliveryid = self.deliveryid
+                item.stocktype = stocktype
+                item.stockunit = stockunit
+                item.costprice = thiscost
+                item.bestbefore = self.bestbeforefield.read()
                 td.s.add(item)
                 td.s.flush()
                 self.func(item)
-    def keypress(self,k):
+
+    def keypress(self, k):
         # If the user starts typing into the stocktype field, be nice
         # to them and pop up the stock type entry dialog.  Then
         # synthesise the keypress again to enter it into the

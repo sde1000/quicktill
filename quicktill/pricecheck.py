@@ -36,10 +36,10 @@ class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
         f = ui.tableformatter(' r r+l ')
         sl = [(f(x.id, x.ondisplay, x.instock),
                stock.stockinfo_popup, (x.id,)) for x in sos]
-        blurb = ["This line sells {} at {}/{}.".format(
+        blurb = ["This line sells {} at {}{}.".format(
             stockline.stocktype.format(),
-            tillconfig.fc(stockline.stocktype.saleprice),
-            stockline.stocktype.unit.name),
+            tillconfig.currency,
+            stockline.stocktype.pricestr),
                  "",
                  "There are {} {}s on display and {} in stock.".format(
                      stockline.ondisplay, stockline.stocktype.unit.name,
@@ -61,10 +61,10 @@ class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
         f = ui.tableformatter(' r r ')
         sl = [(f(x.id, x.remaining), stock.stockinfo_popup, (x.id,))
               for x in sos]
-        blurb = ["This line sells {} at {}/{}.".format(
+        blurb = ["This line sells {} at {}{}.".format(
             stockline.stocktype.format(),
-            tillconfig.fc(stockline.stocktype.saleprice),
-            stockline.stocktype.unit.name),
+            tillconfig.currency,
+            stockline.stocktype.pricestr),
                  "",
                  "There are {} {}s remaining in stock.".format(
                      stockline.remaining, stockline.stocktype.unit.name),

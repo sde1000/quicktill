@@ -1037,6 +1037,7 @@ class StockType(Base):
     unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
                      nullable=False)
     saleprice = Column(money, nullable=True) # inc VAT
+    saleprice_units = Column(quantity, nullable=False, default=Decimal("1.0"))
     pricechanged = Column(DateTime, nullable=True) # Last time price was changed
     department = relationship(Department, lazy="joined")
     unit = relationship(UnitType, lazy="joined")
@@ -1055,6 +1056,14 @@ class StockType(Base):
     def abvstr(self):
         if self.abv:
             return "{}%".format(self.abv)
+        return ""
+    @property
+    def pricestr(self):
+        if self.saleprice is not None:
+            if self.saleprice_units == 1:
+                return "{}/{}".format(self.saleprice, self.unit.name)
+            return "{}/{} {}s".format(
+                self.saleprice, self.saleprice_units, self.unit.name)
         return ""
     @property
     def descriptions(self):
