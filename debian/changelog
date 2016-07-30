@@ -1,3 +1,115 @@
+quicktill (0.12.0alpha1) stable; urgency=low
+
+  * New release 0.12.0alpha1
+
+  * Update release scripts
+
+  * tillweb updates for django-1.9
+
+  * Add column to stocktypes specifying default sale unit
+
+  * Price lookup support for continuous stocklines
+
+  * Record waste against continuous stock lines too
+
+  * StockItem.displayqty is now a Numeric() not an Int()
+
+  * WIP: sales on continuous stock lines
+
+  * New, simpler auto_allocate function
+
+  * WIP: revamp usestock for new stockline types
+
+  * Copy list before deleting from it!
+
+  * WIP: allow creation and editing of new types of stockline
+
+  * New convenience function to display wrapped text
+
+  * Permit blank lines in keymenu and lrline
+
+  * WIP: introduce new "continuous" stockline type
+
+  * Change modifier interface to use new ProposedSale object
+
+  * PEP8 pass on modifiers.py
+
+  * PEP8 cleanup of register
+
+  * Prevent null transaction notes
+
+  * Fix crash on cashback error popup
+
+  * Refactor to move curses-specific code to the ui module
+
+  * Remove "department key" functionality
+
+  * Make PLUs act like department keys when no price is set
+
+  * Autocomplete for supplier select
+
+  * Improve stock type selection dialog
+
+  * Update Bitcoin payment method to use python-requests
+
+  * Allow payment methods to refuse to provide a total
+
+  * PEP8 and minor cleanups for models
+
+  * Update example config script - fix apps menu
+
+  * Right-align prompts and left-align descriptions in keymenu
+
+  * Update release notes to fix database update script
+
+  * Add accounting system info column to departments table
+
+  * Fix QR code printing
+
+  * Explicitly encode string as utf-8 before hashing for check digits
+
+  * Fix stock check popup
+
+  * Remove "print stock list" option
+
+  * Remove "print delivery on receipt printer" option
+
+  * Print payment types in consistent order
+
+  * Open printer device in binary mode
+
+  * It's 2016!
+
+  * Treat default version string as utf-8
+
+  * Prevent negative timeouts in event loop
+
+  * Python 3 - remove references to unicode
+
+  * Python 3 fixes - permission_checked and usertoken
+
+  * Merge branch 'python3'
+
+  * Reduce curses dependencies part 1: keycodes
+
+  * Add __str__ compatibility in models
+
+  * Use future division in ui
+
+  * First working python 3 version
+
+  * Merge branch 'stable'
+
+  * Various updates from 2to3
+
+  * Move curses update functions from event loop to ui
+
+  * Remove old default exit options
+
+  * Change Transline.stockref to be a list
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 30 Jul 2016 14:44:24 +0100
+
 quicktill (0.11.9) stable; urgency=low
 
   * New release 0.11.9
