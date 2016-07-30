@@ -6,7 +6,6 @@ from django.template import RequestContext,Context
 from django.template.loader import get_template
 from django.conf import settings
 from django import forms
-from django.forms.util import ErrorList
 from .models import *
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload,subqueryload_all
@@ -20,6 +19,7 @@ from sqlalchemy import distinct
 from quicktill.models import *
 from quicktill.version import version
 from . import spreadsheets
+import io
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
@@ -59,71 +59,72 @@ def publist(request):
 # session - sqlalchemy database session
 
 def tillweb_view(view):
-    single_site=getattr(settings,'TILLWEB_SINGLE_SITE',False)
-    tillweb_login_required=getattr(settings,'TILLWEB_LOGIN_REQUIRED',True)
-    def new_view(request,pubname,*args,**kwargs):
+    single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
+    tillweb_login_required = getattr(settings, 'TILLWEB_LOGIN_REQUIRED', True)
+    def new_view(request, pubname="", *args, **kwargs):
         if single_site:
-            till=None
-            tillname=settings.TILLWEB_PUBNAME
-            access=settings.TILLWEB_DEFAULT_ACCESS
-            session=settings.TILLWEB_DATABASE()
-            base='/'
+            till = None
+            tillname = settings.TILLWEB_PUBNAME
+            access = settings.TILLWEB_DEFAULT_ACCESS
+            session = settings.TILLWEB_DATABASE()
+            base = "/{}/".format(pubname) if pubname else "/"
         else:
             try:
-                till=Till.objects.get(slug=pubname)
+                till = Till.objects.get(slug=pubname)
             except Till.DoesNotExist:
                 raise Http404
             try:
-                access=Access.objects.get(user=request.user,till=till)
+                access = Access.objects.get(user=request.user, till=till)
             except Access.DoesNotExist:
                 # Pretend it doesn't exist!
                 raise Http404
             try:
-                session=settings.SQLALCHEMY_SESSIONS[till.database]()
+                session = settings.SQLALCHEMY_SESSIONS[till.database]()
             except ValueError:
                 # The database doesn't exist
                 raise Http404
-            base=till.get_absolute_url()
-            tillname=till.name
-            access=access.permission
+            base = till.get_absolute_url()
+            tillname = till.name
+            access = access.permission
         try:
-            info={
-                'base':base,
-                'access':access,
-                'tillname':tillname,
+            info = {
+                'base': base,
+                'access': access,
+                'tillname': tillname,
                 }
-            result=view(request,info,session,*args,**kwargs)
-            if isinstance(result,HttpResponse): return result
-            t,d=result
+            result = view(request, info, session, *args, **kwargs)
+            if isinstance(result, HttpResponse):
+                return result
+            t, d = result
             # object is the Till object, possibly used for a nav menu
             # (it's None if we are set up for a single site)
             # till is the name of the till
             # access is 'R','M','F'
             # u is the base URL for the till website including trailing /
-            defaults={'object':till,
-                      'till':tillname,'access':access,'u':base,
-                      'dtf':dtf,'pubname':pubname,
-                      'version':version}
+            defaults = {'object': till,
+                        'till':tillname, 'access':access, 'u':base,
+                        'dtf':dtf, 'pubname': pubname,
+                        'version': version}
             if t.endswith(".ajax"):
                 # AJAX content typically is not a fully-formed HTML document.
                 # If requested in a non-AJAX context, add a HTML container.
                 if not request.is_ajax():
-                    defaults['ajax_content']='tillweb/'+t
-                    t='non-ajax-container.html'
+                    defaults['ajax_content'] = 'tillweb/' + t
+                    t = 'non-ajax-container.html'
             defaults.update(d)
             return render_to_response(
-                'tillweb/'+t,defaults,
+                'tillweb/' + t, defaults,
                 context_instance=RequestContext(request))
         except OperationalError as oe:
-            t=get_template('tillweb/operationalerror.html')
+            t = get_template('tillweb/operationalerror.html')
             return HttpResponse(
                 t.render(RequestContext(
-                        request,{'object':till,'access':access,'error':oe})),
+                        request, {'object':till, 'access':access, 'error':oe})),
                 status=503)
         finally:
             session.close()
     if tillweb_login_required or not single_site:
-        new_view=login_required(new_view)
+        new_view = login_required(new_view)
     return new_view
 
 def business_totals(session,firstday,lastday):
@@ -223,8 +224,7 @@ def sessionfinder(request,info,session):
             s=session.query(Session).get(form.cleaned_data['session'])
             if s:
                 return HttpResponseRedirect(info['base']+s.tillweb_url)
-            errors=form._errors.setdefault("session",ErrorList())
-            errors.append("This session does not exist.")
+            form.add_error(None, "This session does not exist.")
     else:
         form=SessionFinderForm()
     if request.method=='POST' and "submit_sheet" in request.POST:
@@ -665,7 +665,12 @@ def session_sales_pie_chart(request,info,session,sessionid):
     for t in texts:
         t.set_fontsize(8)
     response = HttpResponse(content_type="image/svg+xml")
-    fig.savefig(response,transparent=True)
+    # XXX the use of the io.StringIO wrapper is temporary until django's
+    # HttpResponse object is fixed, possibly in django-1.10
+    # See https://code.djangoproject.com/ticket/25576
+    wrapper = io.StringIO()
+    fig.savefig(wrapper, format="svg", transparent=True)
+    response.write(wrapper.getvalue())
     return response
 
 @tillweb_view
@@ -686,5 +691,10 @@ def session_users_pie_chart(request,info,session,sessionid):
     for t in texts:
         t.set_fontsize(8)
     response = HttpResponse(content_type="image/svg+xml")
-    fig.savefig(response,transparent=True)
+    # XXX the use of the io.StringIO wrapper is temporary until django's
+    # HttpResponse object is fixed, possibly in django-1.10
+    # See https://code.djangoproject.com/ticket/25576
+    wrapper = io.StringIO()
+    fig.savefig(wrapper, format="svg", transparent=True)
+    response.write(wrapper.getvalue())
     return response
