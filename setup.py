@@ -1,17 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from distutils.core import setup
 
-setup(name='quicktill',
+setup(name='quicktill3',
       version='0.11.9',
       description='Quick till and stock control library',
       author='Stephen Early',
-      author_email='steve@greenend.org.uk',
+      author_email='steve@assorted.org.uk',
       url='https://github.com/sde1000/quicktill',
-      packages=['quicktill','quicktill.tillweb'],
+      packages=['quicktill', 'quicktill.tillweb'],
       package_data={'quicktill.tillweb':
-                        ['static/tillweb/*.js','templates/tillweb/*.html',
+                        ['static/tillweb/*.js', 'templates/tillweb/*.html',
                          'templates/tillweb/*.ajax',
-                         'static/tillweb/*.css','static/tillweb/images/*']},
+                         'static/tillweb/*.css', 'static/tillweb/images/*']},
       scripts=['runtill'],
       )
