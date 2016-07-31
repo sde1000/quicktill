@@ -114,7 +114,7 @@ git add setup.py debian/changelog
 git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
 
-The following files should be put in the "incoming" directory:
-cp ${tmpdir}/${packagename}_* ${tmpdir}/${packagename}3_* ~packages/incoming/
-
+Run the following to update the package repository:
+scp ${tmpdir}/${packagename}_* ${tmpdir}/${packagename}3_* sde@ur.individualpubs.co.uk:~packages/incoming/
+ssh sde@ur.individualpubs.co.uk userv packages processincoming
 EOF
