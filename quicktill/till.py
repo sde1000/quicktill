@@ -393,11 +393,10 @@ def main():
     """
     
     try:
-        f=file(configurlfile)
-        configurl=f.readline()
-        f.close()
-    except:
-        configurl=None
+        with open(configurlfile) as f:
+            configurl = f.readline()
+    except FileNotFoundError:
+        configurl = None
     parser=argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
     parser.add_argument("--version", action="version", version=version)
