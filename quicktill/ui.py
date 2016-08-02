@@ -342,22 +342,22 @@ class basicpage(basicwin):
         the start of the __init__ function of any subclass.
 
         Newly-created pages are always selected.
-
         """
         # We need to deselect any current page before creating our
         # panel, because creating a panel implicitly puts it on top of
         # the panel stack.
-        if basicpage._basepage: basicpage._basepage.deselect()
-        (my,mx)=stdwin.getmaxyx()
-        self.win=curses.newwin(my-1,mx,1,0)
-        self.pan=curses.panel.new_panel(self.win)
+        if basicpage._basepage:
+            basicpage._basepage.deselect()
+        (my, mx) = stdwin.getmaxyx()
+        self.win = curses.newwin(my - 1, mx, 1, 0)
+        self.pan = curses.panel.new_panel(self.win)
         self.pan.set_userptr(self)
         basicpage._pagelist.append(self)
-        (self.h,self.w)=self.win.getmaxyx()
-        self.savedfocus=self
-        self.stack=None
-        basicpage._basepage=self
-        basicwin._focus=self
+        (self.h, self.w) = self.win.getmaxyx()
+        self.savedfocus = self
+        self.stack = None
+        basicpage._basepage = self
+        basicwin._focus = self
         basicwin.__init__(self) # Sets self.parent to self - ok!
         toaster.to_top()
     def pagename(self):
@@ -365,67 +365,74 @@ class basicpage(basicwin):
     def pagesummary(self):
         return ""
     def select(self):
-        if basicpage._basepage==self: return # Nothing to do
+        if basicpage._basepage == self:
+            return # Nothing to do
         # Tell the current page we're switching away
-        if basicpage._basepage: basicpage._basepage.deselect()
-        basicpage._basepage=self
-        basicwin._focus=self.savedfocus
+        if basicpage._basepage:
+            basicpage._basepage.deselect()
+        basicpage._basepage = self
+        basicwin._focus = self.savedfocus
         self.pan.show()
         if self.stack:
             for i in self.stack:
                 i.show()
-        self.savedfocus=None
-        self.stack=None
+        self.savedfocus = None
+        self.stack = None
         self.updateheader()
         toaster.to_top()
     def deselect(self):
-        """
+        """Deselect this page.
+
         Deselect this page if it is currently selected.  Save the
         panel stack so we can restore it next time we are selected.
-
         """
-        if basicpage._basepage!=self: return
-        self.savedfocus=basicwin._focus
-        l=[]
-        t=curses.panel.top_panel()
-        while t.userptr()!=self:
-            if t.userptr()==toaster:
-                t=t.below()
+        if basicpage._basepage != self:
+            return
+        self.savedfocus = basicwin._focus
+        l = []
+        t = curses.panel.top_panel()
+        while t.userptr() != self:
+            if t.userptr() == toaster:
+                t = t.below()
                 continue # Ignore any toast
-            st=t
+            st = t
             l.append(t)
-            t=t.below()
+            t = t.below()
             st.hide()
         l.reverse()
-        self.stack=l
+        self.stack = l
         self.pan.hide()
         basicpage._basepage=None
         basicwin._focus=None
-    def dismiss(self):
-        """
-        Remove this page.
 
-        """
-        if basicpage._basepage==self: self.deselect()
-        del self.pan,self.win,self.stack
+    def dismiss(self):
+        """Remove this page."""
+        if basicpage._basepage == self:
+            self.deselect()
+        del self.pan, self.win, self.stack
         del basicpage._pagelist[basicpage._pagelist.index(self)]
+
     @staticmethod
     def updateheader():
         global header
-        m=""
-        s=""
+        m = ""
+        s = ""
         for i in basicpage._pagelist:
-            if i==basicpage._basepage: m=i.pagename()+' '
+            if i == basicpage._basepage:
+                m = i.pagename() + ' '
             else:
-                ps=i.pagesummary()
-                if ps: s=s+i.pagesummary()+' '
-        header.update(m,s)
+                ps = i.pagesummary()
+                if ps:
+                    s = s + i.pagesummary() + ' '
+        header.update(m, s)
+
     @staticmethod
     def _ensure_page_exists():
-        if basicpage._basepage==None:
+        if basicpage._basepage == None:
             with td.orm_session():
                 tillconfig.firstpage()
-    def hotkeypress(self,k):
+
+    def hotkeypress(self, k):
         """Since this is a page, it is always at the base of the stack of
         windows - it does not have a parent to pass keypresses on to.
         By default we look at the configured hotkeys and call if
@@ -434,11 +441,10 @@ class basicpage(basicwin):
 
         If there is no current input focus then one will be set in
         _ensurepage_exists() the next time around the event loop.
-
         """
         if k in tillconfig.hotkeys:
             tillconfig.hotkeys[k]()
-        elif hasattr(k,'usertoken'):
+        elif hasattr(k, 'usertoken'):
             tillconfig.usertoken_handler(k)
         else:
             if basicwin._focus:

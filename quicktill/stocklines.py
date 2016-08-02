@@ -554,6 +554,7 @@ class selectline(ui.listpopup):
         to func(None)
 
     """
+    # XXX caponly and exccap should be renamed and changed to use the linetype
     def __init__(self,func,title="Stock Lines",blurb=None,caponly=False,
                  exccap=False,keymap={},create_new=False,select_none=None):
         self.func=func
