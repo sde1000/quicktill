@@ -1,3 +1,15 @@
+quicktill (0.12.0alpha3) stable; urgency=low
+
+  * New release 0.12.0alpha3
+
+  * Fix closing </div> in tillweb index when nothing on the bar
+
+  * More helpful message after building package
+
+  * Add python3-sqlalchemy to build-depends
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 02 Aug 2016 13:09:52 +0100
+
 quicktill (0.12.0alpha2) stable; urgency=low
 
   * New release 0.12.0alpha2
