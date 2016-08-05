@@ -214,7 +214,7 @@ class twitter_auth(cmdline.command):
         user = tapi.verify_credentials()
 
         print("Paste the following to enable Twitter access as @{}:".format(
-            user.screen_name))
+            user['screen_name']))
         print("""
         tapi=extras.twitter_api(
             token='{}',
@@ -241,7 +241,7 @@ class twitter_post(ui.dismisspopup):
                              title="Error")
             return
         ui.dismisspopup.__init__(self,7,76,
-                                 title="@%s Twitter"%user.screen_name,
+                                 title="@%s Twitter"%user["screen_name"],
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         self.tapi=tapi
@@ -286,7 +286,7 @@ class twitter_client(user.permission_checked,ui.dismisspopup):
             ui.infopopup(["Unable to connect to Twitter"],
                          title="Error")
             return
-        ui.dismisspopup.__init__(self,h,w,title="@%s Twitter"%user.screen_name,
+        ui.dismisspopup.__init__(self,h,w,title="@%s Twitter"%user["screen_name"],
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         self.tl=[]
@@ -320,7 +320,7 @@ class twitter_client(user.permission_checked,ui.dismisspopup):
     def reply(self):
         # Fill field with reply info
         self.tfield.set("@%s: "%self.timeline[self.tweets.cursor].
-                        user.screen_name)
+                        user["screen_name"])
         self.tfield.focus()
     def refresh(self):
         self.timeline=self.tapi.get_home_timeline(count=20)
