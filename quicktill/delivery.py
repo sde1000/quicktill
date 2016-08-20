@@ -5,6 +5,9 @@ from .models import Delivery, Supplier, StockUnit, StockItem, desc
 from .models import penny
 import datetime
 
+import logging
+log = logging.getLogger(__name__)
+
 @user.permission_required('deliveries',"List deliveries")
 def deliverymenu():
     """
@@ -527,3 +530,11 @@ class editsupplier(ui.basicpopup):
             # note: if self.sn is None then the popup is dismissed in confirmwin
             self.dismiss()
         self.func(supplier)
+
+@user.permission_required('update-supplier', 'Update supplier details')
+def updatesupplier():
+    log.info("Update supplier")
+    sl = td.s.query(Supplier).order_by(Supplier.name).all()
+    m=[(x.name, editsupplier, (lambda a:None, x)) for x in sl]
+    ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
+            title="Edit Supplier")
