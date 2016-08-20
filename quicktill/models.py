@@ -853,6 +853,7 @@ class StockLine(Base):
             .join(Delivery)\
             .filter(Delivery.checked == True)\
             .filter(StockItem.stocktype == self.stocktype)\
+            .filter(StockItem.finished == None)\
             .order_by(StockItem.id)\
             .all()
 
@@ -905,7 +906,7 @@ class StockLine(Base):
             sell = []
             remaining = Decimal("0.0")
             for item in stock:
-                sellqty = min(unallocated, item.remaining)
+                sellqty = min(unallocated, max(item.remaining, Decimal("0.0")))
                 unallocated = unallocated - sellqty
                 remaining += item.remaining - sellqty
                 if sellqty > Decimal("0.0"):
