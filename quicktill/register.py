@@ -156,10 +156,10 @@ class edittransnotes(user.permission_checked, ui.dismisspopup):
     permission_required = ("edit-transaction-note",
                            "Alter a transactions's note")
 
-    def __init__(self, trans, func):
-        td.s.add(trans)
-        self.transid = trans.id
+    def __init__(self, transid, func):
+        self.transid = transid
         self.func = func
+        trans = td.s.query(Transaction).get(transid)
         ui.dismisspopup.__init__(
             self, 5, 60, title="Notes for transaction {}".format(trans.id),
             colour=ui.colour_input)
@@ -522,26 +522,12 @@ class page(ui.basicpage):
         if self.trans is None:
             return self.user.shortname
         try:
-            td.s.add(self.trans)
+            self.trans = td.s.merge(self.trans, load=False)
             return "{0} - Transaction {1} ({2})".format(
                 self.user.shortname, self.trans.id,
                 ("open", "closed")[self.trans.closed])
         except ObjectDeletedError:
             return self.user.shortname
-
-    # XXX this code is obsolete
-    def pagesummary(self):
-        if self.trans is None:
-            return ""
-        try:
-            td.s.add(self.trans)
-            if self.trans.closed: return ""
-            return "{0}:{1}".format(self.user.shortname,self.trans.id)
-        except ObjectDeletedError:
-            # NB the ObjectDeletedError won't happen during the add(),
-            # it'll happen on the first database access to refresh the
-            # object.
-            return ""
 
     def _redraw(self):
         """Updates the screen, scrolling until the cursor is visible."""
@@ -587,7 +573,6 @@ class page(ui.basicpage):
         # transaction.
         if not self.entry():
             return
-        td.s.add(kb)
         # Look up the modifier from the binding; it's an error if it's unknown
         mod = None
         if kb.modifier:
@@ -2040,7 +2025,7 @@ class page(ui.basicpage):
                  self.settransnote, (self.user.fullname,)),
                 ("5", "Change this transaction's notes "
                  "(free text entry)",
-                 edittransnotes, (self.trans, self.settransnote)),
+                 edittransnotes, (self.trans.id, self.settransnote)),
                 ("6", "Choose payment method",
                  self._payment_method_menu, None),
             ]
@@ -2114,15 +2099,24 @@ class page(ui.basicpage):
             # is printing the current transaction if it is closed.
             # All other keypresses are ignored.
             if self.trans:
-                td.s.add(self.trans)
+                self.trans = td.s.merge(self.trans, load=False)
             if self.trans and self.trans.closed and k==keyboard.K_PRINT:
                 self.printkey()
             return
         if not self.entry():
             return
         if hasattr(k, 'line'):
+            def add_query_options(q):
+                return q.options(joinedload('stockline'))\
+                        .options(joinedload('stockline.stockonsale'))\
+                        .options(joinedload('stockline.stockonsale.stocktype'))\
+                        .options(joinedload('stockline.stocktype'))\
+                        .options(joinedload('plu'))\
+                        .options(undefer('stockline.stockonsale.used'))\
+                        .options(undefer('stockline.stockonsale.remaining'))
             linekeys.linemenu(k, self.linekey, allow_stocklines=True,
-                              allow_plus=True, allow_mods=True)
+                              allow_plus=True, allow_mods=True,
+                              add_query_options=add_query_options)
             return
         self.repeat = None
         if hasattr(k, 'notevalue'):
@@ -2160,7 +2154,9 @@ class page(ui.basicpage):
         # the user.database_user object because that's unlikely to
         # change often; we're just interested in the transaction and
         # register fields.
-        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        self.user.dbuser = td.s.query(User)\
+                               .options(joinedload('transaction'))\
+                               .get(self.user.userid)
 
         # Check that the user hasn't moved to another terminal.  If
         # they have, lock immediately.

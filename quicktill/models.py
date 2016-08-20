@@ -8,6 +8,7 @@ from sqlalchemy.sql.expression import text,alias
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
 from sqlalchemy.orm import contains_eager,column_property
+from sqlalchemy.orm import undefer
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
@@ -854,6 +855,8 @@ class StockLine(Base):
             .filter(Delivery.checked == True)\
             .filter(StockItem.stocktype == self.stocktype)\
             .filter(StockItem.finished == None)\
+            .filter(StockItem.stockline == None)\
+            .options(undefer('remaining'))\
             .order_by(StockItem.id)\
             .all()
 

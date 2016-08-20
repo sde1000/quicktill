@@ -1,5 +1,7 @@
 from . import keyboard, ui, td, user
 from .models import KeyCap, KeyboardBinding, StockLine, PriceLookup
+from sqlalchemy.orm import joinedload
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -155,34 +157,49 @@ def _finish_changebinding(binding,func,mod):
     func()
 
 def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
-             allow_mods=False):
-    """Given a keycode, find out what is bound to it.  If there's more
+             allow_mods=False, add_query_options=None):
+    """Resolve a keycode to a keyboard binding
+
+    Given a keycode, find out what is bound to it.  If there's more
     than one thing, pop up a menu to select a particular binding.
     Call func with the keyboard binding as an argument when a
-    selection is made (NB at this point, the binding may be a detached
-    instance).  No call is made if Clear is pressed.  If there's only
-    one keyboard binding in the list, shortcut to the function.
+    selection is made.  No call is made if Clear is pressed.  If
+    there's only one keyboard binding in the list, shortcut to the
+    function.
 
     This function returns the number of keyboard bindings found.  Some
     callers may wish to use this to inform the user that a key has no
     bindings rather than having an uninformative empty menu pop up.
-
     """
-    # Find the keyboard bindings associated with this keycode
-    kb=td.s.query(KeyboardBinding).\
-        filter(KeyboardBinding.keycode==keycode.name)
+    kb = td.s.query(KeyboardBinding)\
+             .filter(KeyboardBinding.keycode == keycode.name)
     if not allow_stocklines:
-        kb=kb.filter(KeyboardBinding.stocklineid==None)
+        kb = kb.filter(KeyboardBinding.stocklineid == None)
     if not allow_plus:
-        kb=kb.filter(KeyboardBinding.pluid==None)
+        kb = kb.filter(KeyboardBinding.pluid == None)
     if not allow_mods:
-        kb=kb.filter((KeyboardBinding.stocklineid!=None)|(KeyboardBinding.pluid!=None))
-    kb=kb.all()
+        kb = kb.filter((KeyboardBinding.stocklineid != None)
+                       | (KeyboardBinding.pluid != None))
+    if add_query_options:
+        kb = add_query_options(kb)
+    kb = kb.all()
 
-    if len(kb)==1: func(kb[0])
-    elif len(kb)>1:
+    if len(kb) == 1:
+        func(kb[0])
+    elif len(kb) > 1:
         il = sorted([(keyboard.__dict__.get(x.menukey, x.menukey),
-                      x.name, func, (x,))
+                      x.name, _linemenu_chosen,
+                      (x.keycode, x.menukey, func, add_query_options))
                      for x in kb], key=lambda x:str(x[0]))
         ui.keymenu(il, title=keycode.keycap, colour=ui.colour_line)
     return len(kb)
+
+def _linemenu_chosen(keycode, menukey, func, add_query_options):
+    kb = td.s.query(KeyboardBinding)\
+         .filter(KeyboardBinding.keycode == keycode)\
+         .filter(KeyboardBinding.menukey == menukey)
+    if add_query_options:
+        kb = add_query_options(kb)
+    kb = kb.one_or_none()
+    if kb:
+        func(kb)
