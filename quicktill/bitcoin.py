@@ -192,7 +192,8 @@ class BitcoinPayment(payment.PaymentMethod):
         if self.payment_is_pending(pline_instance):
             p = td.s.query(Payment).get(pline_instance.payment_id)
             btcpopup(self, reg, p)
-    def start_payment(self, reg, trans, amount, outstanding):
+    def start_payment(self, reg, transid, amount, outstanding):
+        trans = td.s.query(Transaction).get(transid)
         # Search the transaction for an unfinished Bitcoin payment; if
         # there is one, check to see if it's already been paid.
         for p in trans.payments:
@@ -226,7 +227,7 @@ class BitcoinPayment(payment.PaymentMethod):
                     ref=str(amount), amount=zero, user=ui.current_user().dbuser)
         td.s.add(p)
         td.s.flush()
-        reg.add_payments(trans, [payment.pline(p, method=self)])
+        reg.add_payments(transid, [payment.pline(p, method=self)])
         btcpopup(self, reg, p)
     def _finish_payment(self, reg, payment, btcamount):
         amount = Decimal(payment.ref)

@@ -11,7 +11,7 @@
 # from open to closed.  It is updated by calling self.updateheader().
 #
 # The transaction note shows whatever note is set for the current
-# transaction.  It is updated by calling self.update_note().
+# transaction.  It is updated by calling self._redraw_note().
 #
 # The display list is a list of line() objects, that correspond to
 # lines in a transaction.  When a transaction line is modified you
@@ -32,7 +32,8 @@ import textwrap
 import math
 from . import td, ui, keyboard, printer
 import quicktill.stocktype
-from . import linekeys, modifiers
+from . import linekeys
+from . import modifiers
 from . import payment
 from . import user
 from . import event
@@ -96,8 +97,10 @@ class bufferline(ui.lrline):
         if self.reg.buf is not None:
             m = m + self.reg.buf
         if len(m) > 0:
-            self.ltext = m
             cursorx = len(m)
+            if self.reg.locked:
+                m = m + " (locked)"
+            self.ltext = m
         else:
             self.ltext = "Locked" if self.reg.locked else self.reg.prompt
             cursorx = 0
@@ -393,7 +396,8 @@ class page(ui.basicpage):
         """
         # trans and user are needed for "pagename" which is called in
         # basicpage.__init__()
-        self.trans = None
+        # transid is now a transaction ID, not a models.Transaction object
+        self.transid = None
         self.user = user
         log.info("Page created for %s", self.user.fullname)
         ui.basicpage.__init__(self)
@@ -420,7 +424,7 @@ class page(ui.basicpage):
             session = Session.current(td.s)
             if candidate_trans.session == session:
                 # It's a transaction in the current session - load it
-                self._loadtrans(candidate_trans)
+                self._loadtrans(candidate_trans.id)
             else:
                 # The session has expired
                 log.info("User's transaction %d is for a different session",
@@ -435,6 +439,18 @@ class page(ui.basicpage):
                 self.user.dbuser.message = None
         td.s.flush()
         self._redraw()
+
+    def _gettrans(self):
+        """Obtain the Transaction object for the current transaction
+
+        Queries the database if the Transaction has not been loaded,
+        otherwise loads it from the database session's identity map.
+
+        If there is no current transaction (self.transid is None or the
+        referenced transaction doesn't exist) returns None.
+        """
+        if self.transid:
+            return td.s.query(Transaction).get(self.transid)
 
     def _update_timeout(self):
         if self._timeout:
@@ -462,14 +478,14 @@ class page(ui.basicpage):
         if hasattr(self, 's'):
             self.s.set(self.dl) # Tell the scrollable about the new display list
         self.ml = set() # Set of marked tlines
-        self.trans = None # Current transaction
+        self.transid = None # Current transaction
         self.user.dbuser.transaction = None
         self.repeat = None # If dept/line button pressed, update this transline
         self.keyguard = False
         self.clearbuffer()
         self.balance = zero # Balance of current transaction
         self.prompt = self.defaultprompt
-        self.update_note()
+        self._redraw_note()
         td.s.flush()
 
     def _clear_marks(self):
@@ -480,34 +496,32 @@ class page(ui.basicpage):
                     l.update_mark(self.ml)
             self.prompt = self.defaultprompt
 
-    def _loadtrans(self, trans):
+    def _loadtrans(self, transid):
         """Load a transaction, overwriting all our existing state.
-
-        The transaction object is assumed already to be mapped.
         """
-        log.debug("Register: loadtrans %s", trans)
+        log.debug("Register: loadtrans %s", transid)
         # Reload the transaction and its related objects
         trans = td.s.query(Transaction).\
-                filter_by(id=trans.id).\
+                filter_by(id=transid).\
                 options(subqueryload_all('payments')).\
                 options(joinedload_all('lines.stockref.stockitem.stocktype')).\
                 options(joinedload('lines.user')).\
                 options(undefer('total')).\
                 one()
-        self.trans = trans
-        if self.trans.user:
+        self.transid = trans.id
+        if trans.user:
             # There is a unique constraint on User.trans_id - if
             # another user has this transaction, remove it from them
             # before claiming it for the current user otherwise we
             # will receive an integrity exception.
             self.trans.user = None
             td.s.flush()
-        self.trans.user = self.user.dbuser
+        trans.user = self.user.dbuser
         self.dl = [tline(l.id) for l in trans.lines] \
                   + [payment.pline(i) for i in trans.payments]
         self.s.set(self.dl)
         self.ml = set()
-        self.update_note()
+        self._redraw_note()
         self.close_if_balanced()
         self.repeat = None
         self.update_balance()
@@ -519,23 +533,21 @@ class page(ui.basicpage):
         self._redraw()
 
     def pagename(self):
-        if self.trans is None:
-            return self.user.shortname
-        try:
-            self.trans = td.s.merge(self.trans, load=False)
+        trans = self._gettrans()
+        if trans:
             return "{0} - Transaction {1} ({2})".format(
-                self.user.shortname, self.trans.id,
-                ("open", "closed")[self.trans.closed])
-        except ObjectDeletedError:
-            return self.user.shortname
+                self.user.shortname, trans.id,
+                ("open", "closed")[trans.closed])
+        return self.user.shortname
 
     def _redraw(self):
         """Updates the screen, scrolling until the cursor is visible."""
         self.s.redraw()
         self.updateheader()
 
-    def update_note(self):
-        note = self.trans.notes if self.trans is not None else ""
+    def _redraw_note(self):
+        trans = self._gettrans()
+        note = trans.notes if trans else ""
         note = note + " " * (self.w - len(note))
         c = self.getyx()
         self.addstr(0, 0, note, ui.attr(ui.colour_changeline))
@@ -547,17 +559,16 @@ class page(ui.basicpage):
         self.s.cursor = len(self.dl)
 
     def update_balance(self):
-        if self.trans:
-            self.balance = self.trans.balance
-        else:
-            self.balance = zero
+        trans = self._gettrans()
+        self.balance = trans.balance if trans else zero
 
     def close_if_balanced(self):
-        if (self.trans and not self.trans.closed and (
-                self.trans.lines or self.trans.payments)
-            and self.trans.total == self.trans.payments_total):
+        trans = self._gettrans()
+        if (trans and not trans.closed and (
+                trans.lines or trans.payments)
+            and trans.total == trans.payments_total):
             # Yes, it's balanced!
-            self.trans.closed = True
+            trans.closed = True
             td.s.flush()
             self._clear_marks()
             if self._autolock:
@@ -578,9 +589,10 @@ class page(ui.basicpage):
         if kb.modifier:
             if kb.modifier not in modifiers.all:
                 log.error("Missing modifier '%s'", kb.modifier)
-                ui.infopopup(["The modifer '{}' can't be found.  This is a till "
-                              "configuration error.".format(kb.modifier)],
-                             title="Missing modifier")
+                ui.infopopup(
+                    ["The modifer '{}' can't be found.  This is a till "
+                     "configuration error.".format(kb.modifier)],
+                    title="Missing modifier")
                 return
             mod = modifiers.all[kb.modifier]
 
@@ -599,7 +611,6 @@ class page(ui.basicpage):
             permission_required="override-price"):
         """Code shared between sales made through stocklines and PLUs to check
         whether the user has entered a valid price override.
-
         """
         explicitprice = strtoamount(buf)
         if explicitprice == zero:
@@ -657,8 +668,8 @@ class page(ui.basicpage):
                      and self.repeat.plu == plu.id \
                      and self.repeat.mod == mod
 
-        trans = self.gettrans() # Zaps self.repeat
-        if trans is None:
+        trans = self.get_open_trans() # Zaps self.repeat
+        if not trans:
             return # Will already be displaying an error.
 
         # Check for an explicit price
@@ -747,7 +758,7 @@ class page(ui.basicpage):
         td.s.refresh(tl, ['time']) # load time from database
         self.dl.append(tline(tl.id))
         self.repeat = repeatinfo(plu=plu.id, mod=mod)
-        td.s.expire(self.trans, ['total'])
+        td.s.expire(trans, ['total'])
         self._clear_marks()
         self.update_balance()
         self.cursor_off()
@@ -858,13 +869,13 @@ class page(ui.basicpage):
                 title="{} has no stock".format(stockline.name))
             return
 
-        # NB gettrans() may call _clear() and will zap self.repeat when
+        # NB get_open_trans() may call _clear() and will zap self.repeat when
         # it creates a new transaction!
         may_repeat = self.repeat and hasattr(self.repeat, 'stocklineid') \
                      and self.repeat.stocklineid == stockline.id \
                      and self.repeat.mod == mod
 
-        trans = self.gettrans()
+        trans = self.get_open_trans()
         if trans is None:
             return # Will already be displaying an error.
 
@@ -920,7 +931,7 @@ class page(ui.basicpage):
 
         if not repeated:
             tl = Transline(
-                transaction=self.trans, items=items,
+                transaction=trans, items=items,
                 amount=sale.price,
                 department=sale.stocktype.department,
                 transcode='S', text=sale.description,
@@ -986,7 +997,7 @@ class page(ui.basicpage):
                              title="Warning", dismiss=keyboard.K_USESTOCK)
 
         # Adding and altering translines changes the total
-        td.s.expire(self.trans, ['total'])
+        td.s.expire(trans, ['total'])
         self._clear_marks()
         self.update_balance()
         self.cursor_off()
@@ -995,8 +1006,7 @@ class page(ui.basicpage):
     def deptlines(self, lines):
         """Accept multiple transaction lines from an external source.
 
-        lines is a list of (dept, text, items, amount) tuples; text
-        may be None if the department name is to be used.
+        lines is a list of (dept, text, items, amount) tuples.
 
         Returns True on success; on failure, returns an error message
         as a string or None if it was a self.entry() error that will
@@ -1007,7 +1017,7 @@ class page(ui.basicpage):
         self.prompt = self.defaultprompt
         self._clear_marks()
         self.clearbuffer()
-        trans = self.gettrans()
+        trans = self.get_open_trans()
         if trans is None:
             return "Transaction cannot be started."
         for dept, text, items, amount in lines:
@@ -1021,31 +1031,41 @@ class page(ui.basicpage):
             self.dl.append(tline(tl.id))
         self.repeat = None
         self.cursor_off()
-        td.s.expire(self.trans, ['total'])
+        td.s.expire(trans, ['total'])
         self.update_balance()
         self._redraw()
         return True
 
-    def gettrans(self):
-        if self.trans:
-            if not self.trans.closed:
-                return self.trans
+    def get_open_trans(self):
+        """Return an open transaction if possible
+
+        If the current transaction is still open, returns it.  If it
+        is closed, or there is no current transaction, attempts to
+        start a new transaction.  If this is not possible, returns
+        None after popping up an error message.
+        """
+        trans = self._gettrans()
+        if trans and not trans.closed:
+            return trans
+        # Transaction is closed or absent
         self._clear()
         session = Session.current(td.s)
         if session is None:
-            log.info("Register: gettrans: no session active")
+            log.info("Register: get_open_trans: no session active")
+            self._redraw()
             ui.infopopup(["No session is active.",
                           "You must use the Management menu "
                           "to start a session before you "
                           "can sell anything."],
                          title="Error")
-        else:
-            self.trans = Transaction(session=session)
-            td.s.add(self.trans)
-            self.user.dbuser.transaction = self.trans
-            td.s.flush()
+            return
+        trans = Transaction(session=session)
+        td.s.add(trans)
+        self.user.dbuser.transaction = trans
+        td.s.flush()
+        self.transid = trans.id
         self._redraw()
-        return self.trans
+        return trans
 
     @user.permission_required('drink-in', 'Use the "Drink In" function')
     def drinkinkey(self):
@@ -1070,7 +1090,8 @@ class page(ui.basicpage):
                           "'Drink In' button."], title="Error")
             return
         amount = strtoamount(self.buf)
-        if self.trans is None or self.trans.closed:
+        trans = self._gettrans()
+        if trans is None or trans.closed:
             ui.infopopup(["A Drink 'In' can't be the only item in a "
                           "transaction; it must be added to a transaction "
                           "that is already open."], title="Error")
@@ -1087,7 +1108,7 @@ class page(ui.basicpage):
             ui.infopopup(["The %s payment method doesn't support change."%
                           pm.description], title="Error")
             return
-        p = pm.add_change(self.trans, description="Drink 'In'", amount=-amount)
+        p = pm.add_change(trans, description="Drink 'In'", amount=-amount)
         self.dl.append(p)
         self._clear_marks()
         self.cursor_off()
@@ -1098,8 +1119,8 @@ class page(ui.basicpage):
         """The CASH/ENTER key was pressed.
 
         The CASH/ENTER key is used to complete the "no sale" action as
-        well as potentially as a payment method key.  Check for that
-        first.  It's also used to cancel an empty open transaction.
+        well as potentially as a payment method key.  It's also used
+        to cancel an empty open transaction.
         """
         if self.qty is not None:
             log.info("Register: cash/enter with quantity not allowed")
@@ -1108,7 +1129,8 @@ class page(ui.basicpage):
                           "this message, press Clear and try again."],
                          title="Error")
             return
-        if self.trans is None or self.trans.closed:
+        trans = self._gettrans()
+        if trans is None or trans.closed:
             if not self.buf:
                 log.info("Register: cashkey: NO SALE")
                 if self.user.may('nosale'):
@@ -1126,11 +1148,11 @@ class page(ui.basicpage):
             self.clearbuffer()
             self._redraw()
             return
-        if len(self.trans.lines) == 0 and len(self.trans.payments) == 0:
+        if len(trans.lines) == 0 and len(trans.payments) == 0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
-            td.s.delete(self.trans)
-            self.trans = None
+            td.s.delete(trans)
+            self.transid = None
             td.s.flush()
             self._clear()
             self._redraw()
@@ -1152,12 +1174,13 @@ class page(ui.basicpage):
               and p.is_pending()]
         log.debug("Pending payments: %s", ml)
         if ml:
-            ui.menu(ml,blurb="This transaction has one or more pending payments."
-                    "  Choose a payment to resume from this list.  If you would "
-                    "like to add a new payment, dismiss this menu and then "
-                    "press Manage Transaction, choose option 6, then choose "
-                    "the type of payment to take.",
-                    title="Resume pending payment")
+            ui.menu(
+                ml, blurb="This transaction has one or more pending payments."
+                "  Choose a payment to resume from this list.  If you would "
+                "like to add a new payment, dismiss this menu and then "
+                "press Manage Transaction, choose option 6, then choose "
+                "the type of payment to take.",
+                title="Resume pending payment")
             return
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
@@ -1181,7 +1204,7 @@ class page(ui.basicpage):
                     title=title, spill="keymenu")
 
     @user.permission_required("take-payment", "Take a payment")
-    def paymentkey(self,method):
+    def paymentkey(self, method):
         """Deal with a payment.
 
         Deal with a keypress that might be a payment key.  We might be
@@ -1205,7 +1228,8 @@ class page(ui.basicpage):
             return
         if not self.entry():
             return
-        if self.trans is None or self.trans.closed:
+        trans = self._gettrans()
+        if trans is None or trans.closed:
             log.info("Register: paymentkey: closed or no transaction")
             ui.infopopup(["There is no transaction in progress."],
                          title="Error")
@@ -1213,7 +1237,7 @@ class page(ui.basicpage):
             self._redraw()
             return
         self.prompt = self.defaultprompt
-        self.balance = self.trans.balance
+        self.balance = trans.balance
         if self.buf:
             amount = strtoamount(self.buf)
             if self.balance < zero:
@@ -1245,9 +1269,9 @@ class page(ui.basicpage):
             return
         # We have a non-zero amount and we're happy to proceed.  Pass
         # to the payment method.
-        method.start_payment(self, self.trans, amount, self.balance)
+        method.start_payment(self, trans.id, amount, self.balance)
 
-    def add_payments(self, trans, payments):
+    def add_payments(self, transid, payments):
         """Payments have been added to a transaction.
 
         Called by a payment method when payments have been added to a
@@ -1257,8 +1281,8 @@ class page(ui.basicpage):
         """
         if not self.entry():
             return
-        if trans != self.trans:
-            return # XXX merge because pm might have done td.s.merge()
+        if transid != self.transid:
+            return
         for p in payments:
             self.dl.append(p)
         self.close_if_balanced()
@@ -1270,11 +1294,12 @@ class page(ui.basicpage):
         """Called by a payment method when payments have been updated."""
         if not self.entry():
             return
-        if not self.trans or self.trans.closed:
+        trans = self._gettrans()
+        if not trans or trans.closed:
             return
         # Expire the transaction because the wrong balance may have
         # been cached.
-        td.s.expire(self.trans)
+        td.s.expire(trans)
         # Update all the payment lines in our display list
         for d in self.dl:
             if isinstance(d, payment.pline):
@@ -1298,8 +1323,9 @@ class page(ui.basicpage):
 
     def numkey(self, n):
         """A number key was pressed."""
+        trans = self._gettrans()
         if (not self.buf and self.qty == None and
-            self.trans is not None and self.trans.closed):
+            trans and trans.closed):
             log.info("Register: numkey on closed transaction; "
                      "clearing display")
             self._clear()
@@ -1357,8 +1383,9 @@ class page(ui.basicpage):
 
     def clearkey(self):
         """The Clear key was pressed."""
+        trans = self._gettrans()
         if (not self.buf and self.qty == None and
-            self.trans is not None and self.trans.closed):
+            trans and trans.closed):
             log.info("Register: clearkey on closed transaction; "
                      "clearing display")
             self._clear()
@@ -1374,7 +1401,8 @@ class page(ui.basicpage):
 
     @user.permission_required("print-receipt", "Print a receipt")
     def printkey(self):
-        if self.trans is None:
+        trans = self._gettrans()
+        if not trans:
             log.info("Register: printkey without transaction")
             ui.infopopup(["There is no transaction currently selected to "
                           "print.  You can recall old transactions using "
@@ -1382,9 +1410,9 @@ class page(ui.basicpage):
                           "if you have its number using the option under "
                           "'Manage Till'."], title="Error")
             return
-        log.info("Register: printing transaction %d", self.trans.id)
+        log.info("Register: printing transaction %d", trans.id)
         ui.toast("The receipt is being printed.")
-        printer.print_receipt(self.trans.id)
+        printer.print_receipt(trans.id)
 
     def cancelkey(self):
         """The cancel key was pressed.
@@ -1404,7 +1432,8 @@ class page(ui.basicpage):
         transaction only; on a closed transaction pops up info telling
         the user to mark relevant lines first)
         """
-        if self.trans is None:
+        trans = self._gettrans()
+        if not trans:
             log.info("Register: cancelkey help message")
             ui.infopopup(
                 ["The Cancel key is used for cancelling whole transactions, "
@@ -1424,7 +1453,7 @@ class page(ui.basicpage):
                 title="Help on Cancel",
                 colour=ui.colour_info)
             return
-        closed = self.trans.closed
+        closed = trans.closed
         if closed and not self.user.may("void-from-closed-transaction"):
             ui.infopopup(
                 ["You don't have permission to void lines from a closed "
@@ -1459,11 +1488,11 @@ class page(ui.basicpage):
                     title="Cancel Transaction")
                 return
             log.info("Register: cancelkey confirm kill "
-                     "transaction %d", self.trans.id)
+                     "transaction %d", trans.id)
             ui.infopopup(["Are you sure you want to {} all of "
                           "transaction number {}?  Press Cash/Enter "
                           "to confirm, or Clear to go back.".format(
-                              ("cancel", "void")[closed], self.trans.id)],
+                              ("cancel", "void")[closed], trans.id)],
                          title="Confirm Transaction Cancel",
                          colour=ui.colour_confirm,
                          keymap={
@@ -1506,7 +1535,8 @@ class page(ui.basicpage):
         if not self.entry():
             return
         tl = list(self.ml)
-        if self.trans.closed:
+        trans = self._gettrans()
+        if trans.closed:
             if not self.user.may("void-from-closed-transaction"):
                 ui.infopopup(
                     ["You don't have permission to void lines from a closed "
@@ -1514,8 +1544,8 @@ class page(ui.basicpage):
                     title="Not allowed")
                 return
             self._clear()
-            trans = self.gettrans()
-            if trans is None:
+            trans = self.get_open_trans()
+            if not trans:
                 return
             log.info("Register: cancelmarked %s; new trans=%d",
                      str(tl), trans.id)
@@ -1553,12 +1583,13 @@ class page(ui.basicpage):
         """Cancel the whole transaction"""
         if not self.entry():
             return
-        if self.trans.closed:
-            log.info("Register: cancel closed transaction %d", self.trans.id)
+        trans = self._gettrans()
+        if trans.closed:
+            log.info("Register: cancel closed transaction %d", trans.id)
             tl = self.dl
             self._clear()
-            trans = self.gettrans()
-            if trans is None:
+            trans = self.get_open_trans()
+            if not trans:
                 return
             for l in tl:
                 if isinstance(l, tline):
@@ -1570,16 +1601,16 @@ class page(ui.basicpage):
                 title="Choose refund type, or press Clear to add more items")
         else:
             # Delete this transaction and everything to do with it
-            tn = self.trans.id
-            log.info("Register: cancel open transaction %d"%tn)
-            payments = self.trans.payments_total
-            for p in self.trans.payments:
+            tn = trans.id
+            log.info("Register: cancel open transaction %d" % tn)
+            payments = trans.payments_total
+            for p in trans.payments:
                 td.s.delete(p)
-            for l in self.trans.lines:
+            for l in trans.lines:
                 td.s.delete(l)
             # stockout objects should be deleted implicitly in cascade
-            td.s.delete(self.trans)
-            self.trans = None
+            td.s.delete(trans)
+            self.transid = None
             td.s.flush()
             if payments > zero:
                 printer.kickout()
@@ -1612,12 +1643,13 @@ class page(ui.basicpage):
         self._redraw()
 
     def _delete_line(self, l):
+        trans = self._gettrans()
         # l is a tline
         tl = td.s.query(Transline).get(l.transline)
         td.s.delete(tl)
         td.s.flush()
         del self.dl[self.dl.index(l)]
-        td.s.expire(self.trans, ['total'])
+        td.s.expire(trans, ['total'])
 
     def _void_line(self, tl):
         """Add a line reversing the supplied transaction line to the current
@@ -1626,7 +1658,7 @@ class page(ui.basicpage):
         The caller is responsible for updating the balance and
         redrawing.
         """
-        trans = self.gettrans()
+        trans = self.get_open_trans()
         transline = td.s.query(Transline).get(tl)
         ntl = Transline(
             transaction=trans, items=-transline.items,
@@ -1652,6 +1684,7 @@ class page(ui.basicpage):
         If a transaction line is selected, toggles the selection
         status of that line and updates the prompt.
         """
+        trans = self._gettrans()
         if self.s.cursor >= len(self.dl):
             ui.infopopup(
                 ["Use the Up/Down keys to choose a line, and press Mark "
@@ -1662,14 +1695,14 @@ class page(ui.basicpage):
                 title="Mark key help")
             return
         l = self.dl[self.s.cursor]
-        if isinstance(l,tline):
+        if isinstance(l, tline):
             if l in self.ml:
                 self.ml.remove(l)
             else:
                 self.ml.add(l)
             l.update_mark(self.ml)
             if self.ml:
-                if self.trans.closed:
+                if trans.closed:
                     self.prompt = ""
                 else:
                     self.prompt = "Press Clear to remove all the marks.  " \
@@ -1706,21 +1739,16 @@ class page(ui.basicpage):
         td.s.flush()
         self.deselect()
 
-    def recalltrans(self, trans):
+    def recalltrans(self, transid):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
         # transaction anyway!
         self.user.dbuser = td.s.query(User).get(self.user.userid)
         self._clear()
-        # XXX now that pagesummary() is obsolete, does this still matter?
-        # All other active pages pagesummary() methods will be called
-        # during a redraw.  This will get them to add their
-        # currently-loaded transactions to the identity map, meaning
-        # we'll get the right one when we query.
         self._redraw()
-        if trans is not None:
-            log.info("Register: recalltrans %d", trans)
-            trans = td.s.query(Transaction).get(trans)
+        if transid:
+            log.info("Register: recalltrans %d", transid)
+            trans = td.s.query(Transaction).get(transid)
             # Leave a message if the transaction belonged to another
             # user.
             user = td.s.query(User).filter(User.transaction == trans).first()
@@ -1730,11 +1758,11 @@ class page(ui.basicpage):
                                "using the Recall Transaction function.".format(
                                    trans.id, trans.notes or "no notes",
                                    self.user.fullname)
-            self._loadtrans(trans)
+            self._loadtrans(trans.id)
             self.keyguard = True
             self.close_if_balanced()
-            if not self.trans.closed:
-                age = self.trans.age
+            if not trans.closed:
+                age = trans.age
                 if age > 2:
                     ui.infopopup(["This transaction is {} days old.  Please "
                                   "arrange for it to be paid soon.".format(age)],
@@ -1754,7 +1782,8 @@ class page(ui.basicpage):
                           "current session."], title="Error")
             return
         log.info("recalltrans")
-        if self.trans and not self.trans.closed and not self.trans.notes:
+        trans = self._gettrans()
+        if trans and not trans.closed and not trans.notes:
             ui.infopopup(
                 ["Recalling another transaction will hide the current one "
                  "away.  You must set a note on the current transaction first "
@@ -1774,7 +1803,7 @@ class page(ui.basicpage):
                  tillconfig.fc(x.total),
                  x.user.shortname if x.user else "", x.notes),
                self.recalltrans, (x.id,)) for x in transactions]
-        if self.trans and not self.trans.closed:
+        if trans and not trans.closed:
             firstline = ("Save current transaction and lock register",
                          self.clear_and_lock_register, None)
         else:
@@ -1784,18 +1813,19 @@ class page(ui.basicpage):
                 blurb="Select a transaction and press Cash/Enter.",
                 colour=ui.colour_input)
 
-    @user.permission_required("defer-trans","Defer a transaction to a "
+    @user.permission_required("defer-trans", "Defer a transaction to a "
                               "later session")
     def defertrans(self):
         if not self.entry():
             return
-        if not self.trans:
+        trans = self._gettrans()
+        if not trans:
             return
-        if self.trans.closed:
+        if trans.closed:
             ui.infopopup(["Transaction {} has been closed, and cannot now "
                           "be deferred.".format(trans.id)], title="Error")
             return
-        amount = self.trans.payments_total
+        amount = trans.payments_total
         if amount != zero:
             # Check that there is a default payment method
             if len(tillconfig.payment_methods) < 1:
@@ -1815,17 +1845,19 @@ class page(ui.basicpage):
                     title="Error")
                 return
             # Refund the amount paid so far and ask the user to set it aside
-            pm.add_change(self.trans, "Deferred", zero-amount)
+            # XXX consider printing out a ticket on the receipt printer
+            # to be stored with the money.
+            pm.add_change(trans, "Deferred", zero - amount)
             printer.kickout()
-        transid = self.trans.id
-        self.trans.session = None
+        transid = trans.id
+        trans.session = None
         td.s.flush()
         self._clear()
         self._redraw()
-        message=["Transaction {} has been deferred to the next "
-                 "session.  Make sure you keep a note of the "
-                 "transaction number and the name of the person "
-                 "responsible for paying it!".format(transid)]
+        message = ["Transaction {} has been deferred to the next "
+                   "session.  Make sure you keep a note of the "
+                   "transaction number and the name of the person "
+                   "responsible for paying it!".format(transid)]
         if amount:
             message = message \
                       + ["", "{} had been paid towards this transaction. "
@@ -1843,20 +1875,21 @@ class page(ui.basicpage):
         """Convert the current transaction to free drinks."""
         if not self.entry():
             return
-        if not self.trans:
+        trans = self._gettrans()
+        if not trans:
             ui.infopopup(["There is no current transaction."],
                          title="Error")
             return
-        if self.trans.closed:
+        if trans.closed:
             ui.infopopup(["The transaction is already closed."],
                          title="Error")
             return
-        if len(self.trans.payments) > 0:
+        if len(trans.payments) > 0:
             ui.infopopup(["This transaction has already had payments entered "
                           "against it, so cannot be converted to free drinks."],
                          title="Error")
             return
-        if not self.trans.notes or "free" not in self.trans.notes.lower():
+        if not trans.notes or "free" not in trans.notes.lower():
             ui.infopopup(
                 ["The transaction notes must include the word 'free' "
                  "before the transaction can be converted to free drinks.",
@@ -1870,16 +1903,15 @@ class page(ui.basicpage):
             ui.infopopup(["The database does not include a 'free drink' "
                           "waste code."], title="Error")
             return
-        for l in self.trans.lines:
+        for l in trans.lines:
             for sr in l.stockref:
                 sr.removecode = freebie
                 sr.transline = None
         td.s.flush()
-        td.s.refresh(self.trans) # remove references to stockout objects
-        for l in self.trans.lines:
+        td.s.refresh(trans) # remove references to stockout objects
+        for l in trans.lines:
             td.s.delete(l)
-        td.s.delete(self.trans)
-        self.trans = None
+        td.s.delete(trans)
         td.s.flush()
         self._clear()
         self._redraw()
@@ -1895,10 +1927,11 @@ class page(ui.basicpage):
         if not sc:
             ui.infopopup(["There is no session active."], title="Error")
             return False
-        if not self.trans:
+        trans = self._gettrans()
+        if not trans:
             ui.infopopup(["There is no current transaction."], title="Error")
             return False
-        if self.trans.closed:
+        if trans.closed:
             ui.infopopup(["The current transaction is closed and can't "
                           "be merged with another transaction."],
                          title="Error")
@@ -1913,7 +1946,7 @@ class page(ui.basicpage):
         tl = [t for t in sc.transactions if not t.closed]
         f = ui.tableformatter(' r r l ')
         sl = [(f(x.id, tillconfig.fc(x.total), x.notes or ""),
-               self._mergetrans, (x.id,)) for x in tl if x != self.trans]
+               self._mergetrans, (x.id,)) for x in tl if x.id != self.transid]
         ui.menu(sl,
                 title="Merge with transaction",
                 blurb="Select a transaction to merge this one into, "
@@ -1924,12 +1957,13 @@ class page(ui.basicpage):
         sc = self._check_session_and_open_transaction()
         if not sc:
             return
+        trans = self._gettrans()
         othertrans = td.s.query(Transaction).get(othertransid)
-        if len(self.trans.payments) > 0:
+        if len(trans.payments) > 0:
             ui.infopopup(
                 ["Some payments have already been entered against "
                  "transaction {}, so it can't be merged with another "
-                 "transaction.".format(self.trans.id)],
+                 "transaction.".format(trans.id)],
                 title="Error")
             return
         if othertrans.closed:
@@ -1948,60 +1982,56 @@ class page(ui.basicpage):
                            .format(
                                othertrans.id, othertrans.notes or "no notes",
                                self.user.fullname)
-        for line in self.trans.lines:
-            line.transid = othertrans.id
-        td.s.flush()
-        # At this point the ORM still believes the translines belong
-        # to the original transaction, and will attempt to set their transid
-        # fields to NULL when we delete it.  Refresh here!
-        # XXX is it possible to get the ORM to update this automatically?
-        td.s.refresh(self.trans)
+        for line in list(trans.lines):
+            line.transaction = othertrans
         td.s.delete(self.trans)
         td.s.flush()
         td.s.expire(othertrans)
-        self._loadtrans(othertrans)
+        self._loadtrans(othertrans.id)
 
     def _splittrans(self, notes):
         if not self.entry():
             return
         if not self.ml:
             return
+        trans = self._gettrans()
         # Create a new transaction with the supplied notes
-        nt = Transaction(session=self.trans.session, notes=notes)
+        nt = Transaction(session=trans.session, notes=notes)
         td.s.add(nt)
         for l in self.ml:
             t = td.s.query(Transline).get(l.transline)
             t.transaction = nt
             del self.dl[self.dl.index(l)]
         td.s.flush()
-        td.s.expire(self.trans, ['total'])
+        td.s.expire(trans, ['total'])
         self._clear_marks()
         self.cursor_off()
         self.update_balance()
         self._redraw()
         ui.infopopup(["The selected lines were moved to a new transaction, "
                       "number {}, called '{}'.  You can find it using the "
-                      "Recall Trans button.".format(nt.id,nt.notes)],
-                     title="Transaction split", colour=ui.colour_info)
+                      "Recall Trans button.".format(nt.id, nt.notes)],
+                     title="Transaction split", colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
 
     def settransnote(self, notes):
         if not self.entry():
             return
-        if not self.trans or self.trans.closed:
+        trans = self._gettrans()
+        if not trans or trans.closed:
             return
-        if notes == "":
-            notes = None
-        self.trans.notes = notes
-        self.update_note()
+        trans.notes = notes
+        self._redraw_note()
 
     def managetranskey(self):
+        trans = self._gettrans()
         if self.ml:
             marked_total = tillconfig.fc(
                 self._total_value_of_marked_translines())
             menu = [
                 ("1", "Void the marked lines", self.cancelmarked, None),
             ]
-            if self.trans and not self.trans.closed:
+            if trans and not trans.closed:
                 menu += [("3", "Split the marked lines out "
                           "into a separate transaction",
                           splittrans, (marked_total, self._splittrans)),
@@ -2012,7 +2042,7 @@ class page(ui.basicpage):
                 blurb=["", "The value of the marked lines is {}".format(
                     marked_total)])
             return
-        if self.trans and not self.trans.closed:
+        if trans and not trans.closed:
             menu = [
                 ("1", "Defer transaction to next session",
                  self.defertrans, None),
@@ -2025,7 +2055,7 @@ class page(ui.basicpage):
                  self.settransnote, (self.user.fullname,)),
                 ("5", "Change this transaction's notes "
                  "(free text entry)",
-                 edittransnotes, (self.trans.id, self.settransnote)),
+                 edittransnotes, (trans.id, self.settransnote)),
                 ("6", "Choose payment method",
                  self._payment_method_menu, None),
             ]
@@ -2034,6 +2064,7 @@ class page(ui.basicpage):
         menu.append(("7", "Add a custom transaction line",
                      addtransline, (self.deptlines,)))
         ui.keymenu(menu, title="Transaction options")
+
     def entry(self):
         """Check for valid transaction.
 
@@ -2073,7 +2104,7 @@ class page(ui.basicpage):
             td.s.flush()
             return False
 
-        if self.trans and not self.user.dbuser.transaction:
+        if self.transid and not self.user.dbuser.transaction:
             # Someone has taken our transaction without leaving a
             # message.  How rude!  Give them a default message.
             ui.infopopup(["Your transaction has gone away."],
@@ -2082,12 +2113,12 @@ class page(ui.basicpage):
             td.s.flush()
             return False
 
-        # At this point, self.trans and self.user.dbuser.transaction
-        # should either both be None or both be the current
-        # transaction.  self.trans may be detached from the current
-        # sqlalchemy session.  Replace it with the one from
-        # self.user.dbuser.transaction
-        self.trans = self.user.dbuser.transaction
+        # At this point, self.transid and self.user.dbuser.transaction
+        # should either both be None or both refer to the current
+        # transaction.
+        self.transid = self.user.dbuser.transaction.id \
+                       if self.user.dbuser.transaction \
+                          else None
         self._update_timeout()
         return True
 
@@ -2098,9 +2129,8 @@ class page(ui.basicpage):
             # When we are locked, the only operation that's permitted
             # is printing the current transaction if it is closed.
             # All other keypresses are ignored.
-            if self.trans:
-                self.trans = td.s.merge(self.trans, load=False)
-            if self.trans and self.trans.closed and k==keyboard.K_PRINT:
+            trans = self._gettrans()
+            if trans and trans.closed and k == keyboard.K_PRINT:
                 self.printkey()
             return
         if not self.entry():
@@ -2141,8 +2171,8 @@ class page(ui.basicpage):
         if k in self.hotkeys:
             return self.hotkeys[k]()
         if k == keyboard.K_FOODORDER:
-            trans = self.gettrans()
-            if trans is None:
+            trans = self.get_open_trans()
+            if not trans:
                 return
             return foodorder.popup(self.deptlines, transid=trans.id)
         if k == keyboard.K_CANCELFOOD or k == keyboard.K_FOODMESSAGE:

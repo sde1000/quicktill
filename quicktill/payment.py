@@ -14,7 +14,7 @@ class PaymentMethodRegistry(dict):
         if key in self: raise DuplicatePayType()
         dict.__setitem__(self,key,val)
 
-methods=PaymentMethodRegistry()
+methods = PaymentMethodRegistry()
 
 class pline(ui.line):
     """
@@ -56,10 +56,10 @@ class PaymentMethod(object):
         self.paytype=paytype
         self.description=description
         methods[paytype]=self
-    def start_payment(self,register,transaction,amount,outstanding):
+    def start_payment(self, register, transid, amount, outstanding):
         # We don't permit new payments of the default type
         ui.infopopup(["New {} payments are not supported.".format(
-                    self.description)],title="Payment type not supported")
+            self.description)], title="Payment type not supported")
     def describe_payment(self,payment):
         return payment.paytype.description
     def payment_is_pending(self,pline_instance):

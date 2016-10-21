@@ -1,5 +1,5 @@
 from . import payment, td, printer, ui
-from .models import Payment, PayType, zero
+from .models import Payment, PayType, Transaction, zero
 from decimal import Decimal
 
 class CashPayment(payment.PaymentMethod):
@@ -29,31 +29,34 @@ class CashPayment(payment.PaymentMethod):
         td.s.add(p)
         td.s.flush()
         return payment.pline(p,method=self)
-    def start_payment(self,reg,trans,amount,outstanding):
-        description=self.description
-        if amount<zero:
-            if amount<outstanding:
+    def start_payment(self, reg, transid, amount, outstanding):
+        trans = td.s.query(Transaction).get(transid)
+        description = self.description
+        if amount < zero:
+            if amount < outstanding:
                 ui.infopopup(["You can't refund more than the amount we owe."],
                              title="Refund too large")
                 return
-            description=description+" refund"
-        user=ui.current_user().dbuser
+            description = description + " refund"
+        user = ui.current_user().dbuser
         td.s.add(user)
-        p=Payment(transaction=trans,paytype=self.get_paytype(),
-                  ref=description,amount=amount,user=user)
+        p = Payment(transaction=trans, paytype=self.get_paytype(),
+                    ref=description, amount=amount, user=user)
         td.s.add(p)
-        c=None
-        if amount>zero:
-            change=outstanding-amount
-            if change<zero:
-                c=Payment(transaction=trans,paytype=self.get_paytype(),
-                          ref=self._change_description,amount=change,user=user)
+        c = None
+        if amount > zero:
+            change = outstanding - amount
+            if change < zero:
+                c = Payment(transaction=trans, paytype=self.get_paytype(),
+                            ref=self._change_description, amount=change,
+                            user=user)
                 td.s.add(c)
         td.s.flush()
-        r=[payment.pline(p,method=self)]
-        if c: r.append(payment.pline(c,method=self))
+        r = [payment.pline(p, method=self)]
+        if c:
+            r.append(payment.pline(c, method=self))
         printer.kickout()
-        reg.add_payments(trans,r)
+        reg.add_payments(transid, r)
     @property
     def total_fields(self):
         return self._total_fields
