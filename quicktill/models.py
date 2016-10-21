@@ -891,7 +891,7 @@ class StockLine(Base):
             sell = []
             for item in self.stockonsale:
                 ondisplay = item.ondisplay
-                sellqty = min(unallocated, ondisplay)
+                sellqty = min(unallocated, max(ondisplay, Decimal("0.0")))
                 unallocated = unallocated - sellqty
                 leftondisplay = leftondisplay + ondisplay - sellqty
                 totalinstock = totalinstock + item.remaining - sellqty
