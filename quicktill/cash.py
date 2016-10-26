@@ -9,13 +9,15 @@ class CashPayment(payment.PaymentMethod):
                  countup=["50","20","10","5","2","1",
                           "0.50","0.20","0.10",
                           "0.05","0.02","0.01",
-                          "Bags","Misc","-Float"]):
+                          "Bags","Misc","-Float"],
+                 account_code=None):
         payment.PaymentMethod.__init__(self,paytype,description)
         self._change_description=change_description
         self._drawers=drawers
         self._total_fields=[("Tray {t}".format(t=t+1),
                              ui.validate_float,countup)
                             for t in range(self._drawers)]
+        self.account_code = account_code
     def describe_payment(self,payment):
         # Cash payments use the 'ref' field to store a description,
         # because they can be for many purposes: cash, change,
@@ -66,3 +68,7 @@ class CashPayment(payment.PaymentMethod):
         except:
             return "One or more of the total fields has something " \
                 "other than a number in it."
+
+    def accounting_info(self, sessiontotal):
+        return self.account_code, sessiontotal.session.date, \
+            "{} takings".format(self.description)

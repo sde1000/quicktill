@@ -50,8 +50,8 @@ class pline(ui.line):
         return self.method.resume_payment(register,self)
 
 class PaymentMethod(object):
-    change_given=False
-    refund_supported=False
+    change_given = False
+    refund_supported = False
     def __init__(self,paytype,description):
         self.paytype=paytype
         self.description=description
@@ -116,5 +116,14 @@ class PaymentMethod(object):
         the commit will be aborted and whatever we return will be
         displayed.
 
+        """
+        return
+
+    def accounting_info(self, session):
+        """Return accounting system information
+
+        If supported, returns account code, payment date and payment
+        reference for the session total for this payment method.  If
+        unsupported, returns None or raises an exception.
         """
         return

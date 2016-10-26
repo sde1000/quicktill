@@ -173,11 +173,13 @@ class btcpopup(ui.dismisspopup):
 class BitcoinPayment(payment.PaymentMethod):
     def __init__(self, paytype, description,
                  username, password, site, base_url,
-                 currency="BTC", min_payment=Decimal("1.00")):
+                 currency="BTC", min_payment=Decimal("1.00"),
+                 account_code = None):
         payment.PaymentMethod.__init__(self, paytype, description)
         self._api = Api(username, password, site, base_url)
         self._min_payment = min_payment
         self._currency = currency
+        self.account_code = account_code
     def describe_payment(self, payment):
         if payment.amount == zero:
             # It's a pending payment.  The ref field is the amount in
@@ -269,3 +271,7 @@ class BitcoinPayment(payment.PaymentMethod):
                 str(session.id), payment_ref_list)
         except Exception as e:
             return str(e)
+
+    def accounting_info(self, sessiontotal):
+        return self.account_code, sessiontotal.session.date, \
+            "{} takings".format(self.description)

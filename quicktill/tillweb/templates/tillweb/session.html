@@ -64,4 +64,12 @@ $(function() {
 });
 </script>
 
+{% if session.notes %}
+<ul>
+  {% for note in session.notes %}
+  <li>{{note.type.description}}: {{note.text}}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
 {% endblock %}

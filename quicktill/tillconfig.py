@@ -80,3 +80,5 @@ minimum_lock_screen_time = 300
 
 # The time at which this instance of the till was started
 start_time = 0.0
+
+accounting_hooks = None

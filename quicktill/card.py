@@ -115,7 +115,8 @@ class CardPayment(payment.PaymentMethod):
     refund_supported = True
     def __init__(self, paytype, description, machines=1, cashback_method=None,
                  max_cashback=zero, cashback_first=True, kickout=False,
-                 rollover_guard_time=None):
+                 rollover_guard_time=None,
+                 account_code=None, account_date_policy=None):
         """Accept payments using a manual PDQ machine.
 
         This payment method records the receipt number ("reference")
@@ -158,6 +159,8 @@ class CardPayment(payment.PaymentMethod):
                                ui.validate_float, None)
                               for t in range(self._machines)]
         self._rollover_guard_time = rollover_guard_time
+        self.account_code = account_code
+        self.account_date_policy = account_date_policy
 
     def describe_payment(self, payment):
         # Card payments use the 'ref' field for the card receipt number
@@ -252,3 +255,12 @@ class CardPayment(payment.PaymentMethod):
         except:
             return "One or more of the total fields has something " \
                 "other than a number in it."
+
+    def accounting_info(self, sessiontotal):
+        if not self.account_code:
+            return
+        if self.account_date_policy:
+            date = self.account_date_policy(sessiontotal.session.date)
+        else:
+            date = sessiontotal.session.date
+        return self.account_code, date, "{} takings".format(self.description)

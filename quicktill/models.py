@@ -1,3 +1,4 @@
+# This module needs to work with python2 and python3
 from __future__ import unicode_literals
 from __future__ import division
 
@@ -40,8 +41,7 @@ def add_ddl(target, create, drop):
     """Add DDL explicitly
 
     Convenience function to add CREATE and DROP statements for
-    postgresql database rules; can also be used to create nonstandard
-    indexes.
+    postgresql database rules.
     """
     if create:
         event.listen(target, "after_create",
@@ -457,6 +457,37 @@ permission_association_table = Table(
     Column('user', Integer, ForeignKey('users.id'), primary_key=True),
     Column('permission', String(), ForeignKey('permissions.id'),
            primary_key=True))
+
+class SessionNoteType(Base):
+    __tablename__ = 'session_note_types'
+    id = Column('ntype', String(8), nullable=False, primary_key=True)
+    description = Column(String(20), nullable=False)
+    def __unicode__(self):
+        return self.description
+    def __repr__(self):
+        return "<SessionNoteType('{}','{}')>".format(self.id, self.description)
+
+session_note_seq = Sequence('session_note_seq');
+
+class SessionNote(Base):
+    __tablename__ = 'session_notes'
+    id = Column(Integer, session_note_seq, nullable=False, primary_key=True)
+    sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
+                       nullable=False)
+    ntype = Column(String(8), ForeignKey('session_note_types.ntype'),
+                   nullable=False)
+    time = Column(DateTime, nullable=False,
+                  server_default=func.current_timestamp())
+    text = Column(String(), nullable=False)
+    user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
+                     doc="User who created this note")
+    session = relationship(Session, backref=backref(
+        'notes', order_by=time))
+    type = relationship(SessionNoteType)
+    user = relationship(User, backref=backref("session_notes", order_by=time))
+    def __repr__(self):
+        return "<SessionNote({}, {}, '{}', '{}')>".format(
+            self.id, self.sessionid, self.ntype, self.text)
 
 payments_seq = Sequence('payments_seq', start=1)
 

@@ -138,12 +138,17 @@ def end():
                       "session number {}.".format(r.id)], title="Session End",
                      keymap=km, colour=ui.colour_confirm)
 
-def sessionlist(cont, unpaidonly=False, closedonly=False, maxlen=None):
+def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
+                maxlen=None):
     """Return a list of sessions suitable for a menu.
     """
     q = td.s.query(Session)\
             .order_by(desc(Session.id))\
             .options(undefer('total'))
+    if paidonly:
+        q = q.filter(select([func.count(SessionTotal.sessionid)],
+                            whereclause=SessionTotal.sessionid == Session.id)\
+                     .correlate(Session.__table__).as_scalar() != 0)
     if unpaidonly:
         q = q.filter(select([func.count(SessionTotal.sessionid)],
                             whereclause=SessionTotal.sessionid == Session.id)\
@@ -153,7 +158,7 @@ def sessionlist(cont, unpaidonly=False, closedonly=False, maxlen=None):
     if maxlen:
         q = q[:maxlen]
     f = ui.tableformatter(' r  l  r ')
-    return [(f(x.id, x.date, tillconfig.fc(x.total)), cont, (x,)) for x in q]
+    return [(f(x.id, x.date, tillconfig.fc(x.total)), cont, (x.id,)) for x in q]
 
 class _PMWrapper(object):
     """Payment method wrapper for record session takings popup.
@@ -190,17 +195,20 @@ class record(ui.dismisspopup):
     This popup queries all the payment methods to find out which
     fields need to be displayed.
 
-    Pass a Session object to this class.
+    Pass a Session ID to this class.
     """
     ttx = 30
     atx = 45
     ff = "{:>13}"
 
-    def __init__(self, s):
-        td.s.add(s)
+    def __init__(self, sessionid):
+        s = td.s.query(Session).get(sessionid)
         log.info("Record session takings popup: session %d", s.id)
         self.session = s
         if not self.session_valid():
+            return
+        if tillconfig.accounting_hooks \
+           and tillconfig.accounting_hooks.preRecordSessionTakings(s.id):
             return
         paytotals = dict([(x.paytype, y) for x, y in s.payment_totals])
         self.pms = [_PMWrapper(pm, paytotals.get(pm.paytype, zero), self)
@@ -347,6 +355,8 @@ class record(ui.dismisspopup):
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
+        if tillconfig.accounting_hooks:
+            tillconfig.accounting_hooks.postRecordSessionTakings(self.session.id)
 
 @user.permission_required('record-takings', "Record takings for a session")
 def recordtakings():
@@ -363,10 +373,10 @@ def recordtakings():
                 blurb="Select the session that you "
                 "want to record the takings for, and press Cash/Enter.")
 
-def totalpopup(s):
-    """Display popup session totals given a Session object.
+def totalpopup(sessionid):
+    """Display popup session totals given a Session ID.
     """
-    s = td.s.merge(s)
+    s = td.s.query(Session).get(sessionid)
     w = 33
     log.info("Totals popup for session %d", s.id)
 
@@ -456,6 +466,57 @@ def restore_deferred():
         ui.infopopup(["There were no deferred transactions to be restored."],
                      title="No transactions restored", colour=ui.colour_confirm,
                      dismiss=keyboard.K_CASH)
+
+class AccountingHooks:
+    """Hooks for accounting integration plugins
+
+    Accounting integration plugins should subclass this and register
+    the subclass instance in tillconfig.accounting_hooks.
+    """
+    def preRecordSessionTakings(sessionid):
+        """Called before the Record Session Takings popup appears
+
+        To prevent the popup from appearing, return True.  You may pop
+        up your own information box in this case.
+        """
+        pass
+
+    def postRecordSessionTakings(sessionid):
+        """Called after the Record Session Takings popup is completed.
+
+        The session takings will have been flushed to the database,
+        but the transaction will not yet have been committed.  Some
+        payment methods may have confirmed the session takings with
+        external services.
+        """
+        pass
+
+    def preUpdateSessionTakings(sessionid):
+        """Called before the Update Session Takings popup appears
+
+        To prevent the popup from appearing, return True.  You may pop
+        up your own information box in this case.
+        """
+        pass
+
+    def fetchReconciledSessionTakings(sessionid):
+        """Called during setup of the Update Session Takings popup
+
+        The accounting system can provide a list of payment types that
+        are already reconciled for this session and which must not be
+        changed.
+        """
+        return []
+
+    def postUpdateSessionTakings(sessionid):
+        """Called after the Update Session Takings popup is finished
+
+        The session takings will have been flushed to the database,
+        but the transaction will not yet have been committed.  Some
+        payment methods may have confirmed the session takings with
+        external services.
+        """
+        pass
 
 def menu():
     """Session management menu."""
