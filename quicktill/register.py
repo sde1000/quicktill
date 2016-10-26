@@ -136,23 +136,37 @@ class tline(ui.lrline):
     def __init__(self, transline):
         ui.lrline.__init__(self)
         self.transline = transline
+        self.marked = False
         self.update()
 
     def update(self):
         tl = td.s.query(Transline).get(self.transline)
         self.transtime = tl.time
-        self.ltext = tl.description
+        if tl.voided_by_id:
+            self.voided = True
+            self.ltext = "(Voided) " + tl.description
+        else:
+            self.voided = False
+            self.ltext = tl.description
         self.rtext = tl.regtotal(tillconfig.currency)
+        self.update_colour()
+
+    def update_colour(self):
+        if self.marked:
+            self.colour = ui.attr(ui.colour_cancelline)
+        else:
+            if self.voided:
+                self.colour = ui.attr(ui.colour_error)
+            else:
+                self.colour = ui.attr(0)
+        self.cursor_colour = ui.attr_reverse(self.colour)
 
     def age(self):
         return datetime.datetime.now() - self.transtime
 
     def update_mark(self, ml):
-        if self in ml:
-            self.colour = ui.attr(ui.colour_cancelline)
-        else:
-            self.colour = ui.attr(0)
-        self.cursor_colour = ui.attr_reverse(self.colour)
+        self.marked = self in ml
+        self.update_colour()
 
 class edittransnotes(user.permission_checked, ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
@@ -1508,7 +1522,7 @@ class page(ui.basicpage):
                 colour=ui.colour_info)
             return
         l = self.dl[self.s.cursor]
-        if isinstance(l, tline):
+        if isinstance(l, tline) and not l.voided:
             log.info("Register: cancelline: confirm cancel")
             ui.infopopup(["Are you sure you want to cancel this line? "
                           "Press Cash/Enter to confirm."],
@@ -1516,6 +1530,11 @@ class page(ui.basicpage):
                          colour=ui.colour_confirm,
                          keymap={
                              keyboard.K_CASH: (self.cancelline, (l,), True)})
+        elif isinstance(l, tline) and l.voided:
+            ui.infopopup(["This line has already been voided.  You can't "
+                          "cancel it unless you cancel the line that voids "
+                          "it first."],
+                         title="Line already voided")
         else:
             log.info("Register: cancelline: can't cancel payments")
             ui.infopopup(["You can't cancel payments.  Cancel the whole "
@@ -1550,7 +1569,7 @@ class page(ui.basicpage):
             log.info("Register: cancelmarked %s; new trans=%d",
                      str(tl), trans.id)
             for l in tl:
-                self._void_line(l.transline)
+                self._void_line(l)
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -1568,7 +1587,7 @@ class page(ui.basicpage):
                 if can_delete:
                     self._delete_line(l)
                 else:
-                    self._void_line(l.transline)
+                    self._void_line(l)
             if len(self.dl) == 0:
                 # The last transaction line was deleted, so also
                 # delete the transaction.
@@ -1593,7 +1612,7 @@ class page(ui.basicpage):
                 return
             for l in tl:
                 if isinstance(l, tline):
-                    self._void_line(l.transline)
+                    self._void_line(l)
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -1632,7 +1651,7 @@ class page(ui.basicpage):
         if l.age() < max_transline_modify_age:
             self._delete_line(l)
         else:
-            self._void_line(l.transline)
+            self._void_line(l)
         if len(self.dl) == 0:
             # The last transaction line was deleted, so also
             # delete the transaction.
@@ -1643,35 +1662,44 @@ class page(ui.basicpage):
         self._redraw()
 
     def _delete_line(self, l):
+        """Delete a line from the current transaction
+
+        l is a tline object"""
         trans = self._gettrans()
-        # l is a tline
         tl = td.s.query(Transline).get(l.transline)
+        assert tl.transaction == trans
+        voided_line = tl.voids
         td.s.delete(tl)
         td.s.flush()
         del self.dl[self.dl.index(l)]
+        if voided_line:
+            # This line may have been voiding a line in the current
+            # transaction.  Search through and update the line if
+            # found.
+            for tl in self.dl:
+                if tl.transline == voided_line.id:
+                    tl.update()
         td.s.expire(trans, ['total'])
 
-    def _void_line(self, tl):
-        """Add a line reversing the supplied transaction line to the current
-        transaction.  tl is a Transline id.
+    def _void_line(self, l):
+        """Void a line
 
-        The caller is responsible for updating the balance and
-        redrawing.
+        Add a line reversing the supplied transaction line to the
+        current transaction.  l is a tline object, but may not be in
+        the current transaction.
+
+        The caller is responsible for ensuring that the current
+        transaction is open, updating the balance and redrawing.
         """
-        trans = self.get_open_trans()
-        transline = td.s.query(Transline).get(tl)
-        ntl = Transline(
-            transaction=trans, items=-transline.items,
-            amount=transline.amount, department=transline.department,
-            transcode='V', text=transline.text, user=self.user.dbuser)
+        trans = self._gettrans()
+        transline = td.s.query(Transline).get(l.transline)
+        ntl = transline.void(trans, self.user.dbuser)
+        if not ntl:
+            # Original line was already voided; do nothing
+            return
         td.s.add(ntl)
-        for stockout in transline.stockref:
-            nso = StockOut(
-                transline=ntl,
-                stockitem=stockout.stockitem, qty=-stockout.qty,
-                removecode=stockout.removecode)
-            td.s.add(nso)
         td.s.flush()
+        l.update()
         self.dl.append(tline(ntl.id))
 
     def markkey(self):
@@ -1681,8 +1709,8 @@ class page(ui.basicpage):
 
         If a payment line is selected, pops up an error box.
 
-        If a transaction line is selected, toggles the selection
-        status of that line and updates the prompt.
+        If a non-voided transaction line is selected, toggles the
+        selection status of that line and updates the prompt.
         """
         trans = self._gettrans()
         if self.s.cursor >= len(self.dl):
@@ -1695,7 +1723,7 @@ class page(ui.basicpage):
                 title="Mark key help")
             return
         l = self.dl[self.s.cursor]
-        if isinstance(l, tline):
+        if isinstance(l, tline) and not l.voided:
             if l in self.ml:
                 self.ml.remove(l)
             else:
@@ -1717,8 +1745,8 @@ class page(ui.basicpage):
             self.s.drawdl()
         else:
             ui.infopopup(
-                ["You can only mark transaction lines.  You can't mark "
-                 "payments."],
+                ["You can only mark non-voided transaction lines.  "
+                 "You can't mark payments or voided transaction lines."],
                 title="Mark error")
             return
 

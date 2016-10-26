@@ -575,6 +575,11 @@ class Transline(Base):
                      nullable=False)
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this transaction line")
+    voided_by_id = Column(
+        'voided_by', Integer,
+        ForeignKey('translines.translineid', ondelete="SET NULL"),
+        nullable=True, unique=True,
+        doc="Transaction line that voids this one")
     transcode = Column(CHAR(1), ForeignKey('transcodes.transcode'),
                        nullable=False)
     time = Column(DateTime, nullable=False,
@@ -584,6 +589,8 @@ class Transline(Base):
                                backref=backref('lines', order_by=id))
     department = relationship(Department)
     user = relationship(User)
+    voided_by = relationship("Transline", remote_side=[id], uselist=False,
+                             backref=backref('voids', uselist=False))
     @hybrid_property
     def total(self):
         return self.items * self.amount
@@ -633,11 +640,42 @@ class Transline(Base):
             self.items, currency, self.amount, currency,
             self.items * self.amount)
 
+    def void(self, transaction, user):
+        """Void this transaction line
+
+        Create a new transaction line in the specified transaction
+        (not necessarily the same as this line's transaction) that
+        voids this line and return it.
+
+        If this transaction line has already been voided, returns
+        None.
+        """
+        if self.voided_by:
+            return
+        v = Transline(transaction=transaction, items=-self.items,
+                      amount=self.amount, department=self.department,
+                      user=user, transcode='V', text=self.text)
+        self.voided_by = v
+        for stockout in self.stockref:
+            v.stockref.append(StockOut(
+                stockitem=stockout.stockitem, qty=-stockout.qty,
+                removecode=stockout.removecode))
+        return v
+
 add_ddl(Transline.__table__, """
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %% line', NEW.transid;
+    AND (OLD.translineid != NEW.translineid
+      OR OLD.transid != NEW.transid
+      OR OLD.items != NEW.items
+      OR OLD.amount != NEW.amount
+      OR OLD.dept != NEW.dept
+      OR OLD.user != NEW.user
+      OR OLD.transcode != NEW.transcode
+      OR OLD.time != NEW.time
+      OR OLD.text != NEW.text)
+    THEN RAISE EXCEPTION 'attempt to modify closed transaction %% line', NEW.transid;
   END IF;
   RETURN NULL;
 END;

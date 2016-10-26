@@ -88,7 +88,9 @@ class ModelTest(unittest.TestCase):
             id=1, name='Test', abbrev='TEST', address='An address')
         vatband = models.VatBand(band='A', business=business, rate=0.2)
         dept = models.Department(id=1, description="Test", vat=vatband)
-        self.s.add_all([business, vatband, dept])
+        sale = models.TransCode(code='S', description='Sale')
+        void = models.TransCode(code='V', description='Void')
+        self.s.add_all([business, vatband, dept, sale, void])
         self.s.commit()
 
     def template_stocktype_setup(self):
@@ -185,6 +187,29 @@ class ModelTest(unittest.TestCase):
             keycode='FOO', menukey='BAR'))
         with self.assertRaises(IntegrityError):
             self.s.commit()
+
+    def test_transline_void(self):
+        self.template_setup()
+        session = models.Session(datetime.date.today())
+        self.s.add(session)
+        self.s.commit()
+        trans = models.Transaction(session=session)
+        transline = models.Transline(
+            transaction=trans, items=1,
+            amount=Decimal("10.00"), dept_id=1,
+            transcode='S', text="Test sale")
+        self.s.add(transline)
+        self.s.commit()
+        self.assertEqual(trans.balance, Decimal("10.00"))
+        void = transline.void(trans, None)
+        self.s.add(void)
+        self.s.commit()
+        self.assertEqual(transline.voided_by_id, void.id)
+        self.assertEqual(trans.balance, Decimal("0.00"))
+        self.s.delete(void)
+        self.s.commit()
+        self.assertIsNone(transline.voided_by_id)
+        self.assertEqual(trans.balance, Decimal("10.00"))
 
 if __name__ == '__main__':
     unittest.main()

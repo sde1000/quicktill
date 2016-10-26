@@ -57,7 +57,6 @@ UPDATE stocklines SET stocktype=(
   SELECT stocktype FROM stocktypes LIMIT 1)
   WHERE linetype='display' AND stocktype IS NULL;
 UPDATE stocklines SET dept=null WHERE linetype='display';
-COMMIT;
 
 -- Add the saleprice_units column to stocktypes
 ALTER TABLE stocktypes
@@ -65,6 +64,8 @@ ALTER TABLE stocktypes
 UPDATE stocktypes SET saleprice_units=1.0;
 ALTER TABLE stocktypes
         ALTER COLUMN saleprice_units SET NOT NULL;
+
+COMMIT;
 ```
 
  - run "runtill checkdb", check that the output looks sensible, then
