@@ -1045,6 +1045,7 @@ class Supplier(Base):
     tel = Column(String(20))
     email = Column(String(60))
     web = Column(String())
+    accinfo = Column(String(), nullable=True, doc="Accounting system info")
     def __repr__(self):
         return "<Supplier(%s,'%s')>" % (self.id, self.name)
     def __unicode__(self):
@@ -1067,6 +1068,7 @@ class Delivery(Base):
     supplier = relationship(Supplier, backref=backref(
         'deliveries', order_by=desc(id)),
                             lazy="joined")
+    accinfo = Column(String(), nullable=True, doc="Accounting system info")
     @property
     def tillweb_url(self):
         return "delivery/%d/" % (self.id,)
