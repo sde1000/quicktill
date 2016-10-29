@@ -3,6 +3,7 @@
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
 from .models import Session, SessionTotal, PayType, Transaction, penny, zero
 from .td import undefer, func, desc, select
+from .plugins import PluginMount
 from decimal import Decimal
 import datetime
 
@@ -207,9 +208,9 @@ class record(ui.dismisspopup):
         self.session = s
         if not self.session_valid():
             return
-        if tillconfig.accounting_hooks \
-           and tillconfig.accounting_hooks.preRecordSessionTakings(s.id):
-            return
+        for i in AccountingHooks.instances:
+            if i.preRecordSessionTakings(s.id):
+                return
         paytotals = dict([(x.paytype, y) for x, y in s.payment_totals])
         self.pms = [_PMWrapper(pm, paytotals.get(pm.paytype, zero), self)
                     for pm in tillconfig.all_payment_methods]
@@ -355,8 +356,8 @@ class record(ui.dismisspopup):
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
-        if tillconfig.accounting_hooks:
-            tillconfig.accounting_hooks.postRecordSessionTakings(self.session.id)
+        for i in AccountingHooks.instances:
+            i.postRecordSessionTakings(self.session.id)
 
 @user.permission_required('record-takings', "Record takings for a session")
 def recordtakings():
@@ -467,13 +468,14 @@ def restore_deferred():
                      title="No transactions restored", colour=ui.colour_confirm,
                      dismiss=keyboard.K_CASH)
 
-class AccountingHooks:
-    """Hooks for accounting integration plugins
+class SessionHooks(metaclass=PluginMount):
+    """Hooks for sessions
 
-    Accounting integration plugins should subclass this and register
-    the subclass instance in tillconfig.accounting_hooks.
+    Accounting integration plugins should subclass this.  Subclass
+    instances will be called in order of creation.  Calls will stop if
+    an instance indicates that the action should not be taken.
     """
-    def preRecordSessionTakings(sessionid):
+    def preRecordSessionTakings(self, sessionid):
         """Called before the Record Session Takings popup appears
 
         To prevent the popup from appearing, return True.  You may pop
@@ -481,7 +483,7 @@ class AccountingHooks:
         """
         pass
 
-    def postRecordSessionTakings(sessionid):
+    def postRecordSessionTakings(self, sessionid):
         """Called after the Record Session Takings popup is completed.
 
         The session takings will have been flushed to the database,
@@ -491,7 +493,7 @@ class AccountingHooks:
         """
         pass
 
-    def preUpdateSessionTakings(sessionid):
+    def preUpdateSessionTakings(self, sessionid):
         """Called before the Update Session Takings popup appears
 
         To prevent the popup from appearing, return True.  You may pop
@@ -499,7 +501,7 @@ class AccountingHooks:
         """
         pass
 
-    def fetchReconciledSessionTakings(sessionid):
+    def fetchReconciledSessionTakings(self, sessionid):
         """Called during setup of the Update Session Takings popup
 
         The accounting system can provide a list of payment types that
@@ -508,7 +510,7 @@ class AccountingHooks:
         """
         return []
 
-    def postUpdateSessionTakings(sessionid):
+    def postUpdateSessionTakings(self, sessionid):
         """Called after the Update Session Takings popup is finished
 
         The session takings will have been flushed to the database,
