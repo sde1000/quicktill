@@ -3,7 +3,7 @@
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
 from .models import Session, SessionTotal, PayType, Transaction, penny, zero
 from .td import undefer, func, desc, select
-from .plugins import PluginMount
+from .plugins import InstancePluginMount
 from decimal import Decimal
 import datetime
 
@@ -468,7 +468,7 @@ def restore_deferred():
                      title="No transactions restored", colour=ui.colour_confirm,
                      dismiss=keyboard.K_CASH)
 
-class SessionHooks(metaclass=PluginMount):
+class SessionHooks(metaclass=InstancePluginMount):
     """Hooks for sessions
 
     Accounting integration plugins should subclass this.  Subclass

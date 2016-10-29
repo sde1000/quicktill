@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger(__name__)
 from . import ui, td, keyboard, tillconfig, user
 from .models import Department, UnitType, StockType, StockItem, Delivery, penny
+from .plugins import ClassPluginMount
 from decimal import Decimal
 import datetime
 
@@ -269,7 +270,7 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
                        "Guide price")
         ll = [f(x.id, x.delivery.date, tillconfig.fc(x.costprice),
                 x.stockunit.size, x.remaining,
-                tillconfig.priceguess(
+                PriceGuessHook.guess_price(
                     x.stocktype, x.stockunit, x.costprice))
               for x in sl]
         w = min(max(f.idealwidth() + 2, len(name) + 4, 30), mw)
@@ -323,3 +324,13 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
                          title="Price changed",
                          colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)
+
+class PriceGuessHook(metaclass=ClassPluginMount):
+    """Subclass this to add a price guessing routine.
+    """
+    @staticmethod
+    def guess_price(stocktype, stockunit, cost):
+        for p in PriceGuessHook.plugins:
+            g = p.guess_price(stocktype, stockunit, cost)
+            if g:
+                return g

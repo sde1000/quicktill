@@ -79,6 +79,7 @@ In the configuration file you must make the following changes:
  - Rewrite modifiers to use the new interface
  - Replace ord('x') with 'x' in hotkeys
  - Replace usestock_hook with a subclass of usestock.UseStockHook
+ - Replace priceguess with a subclass of stocktype.PriceGuessHook
 
 
 Upgrade v0.10.57 to v0.11.0

@@ -1,7 +1,7 @@
 """Deals with connecting stock items to stock lines."""
 
 from . import ui, td, keyboard, stock, stocklines, tillconfig, user, linekeys
-from .plugins import PluginMount
+from .plugins import InstancePluginMount
 from .models import StockLine, FinishCode, StockItem, Department, Delivery
 from .models import StockType, StockAnnotation, StockLineTypeLog
 from sqlalchemy.orm import contains_eager, undefer
@@ -365,7 +365,7 @@ auto_allocate = user.permission_required(
     'auto-allocate', 'Automatically allocate stock to lines')(
         auto_allocate_internal)
 
-class UseStockHook(metaclass=PluginMount):
+class UseStockHook(metaclass=InstancePluginMount):
     """Subclass this to be notified of stock being put on sale
 
     All subclass instances will be called in turn.

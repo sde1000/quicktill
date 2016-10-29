@@ -392,7 +392,7 @@ class stockitem(ui.basicpopup):
         else:
             qty = int(self.qtyfield.f)
         wholeprice = Decimal(self.costfield.f)
-        g = tillconfig.priceguess(
+        g = stocktype.PriceGuessHook.guess_price(
             self.typefield.read(), self.unitfield.read(), wholeprice / qty)
         if g is not None:
             if isinstance(g, Decimal):

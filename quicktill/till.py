@@ -524,7 +524,9 @@ def main():
     if 'format_currency' in config:
         tillconfig.fc=config['format_currency']
     if 'priceguess' in config:
-        tillconfig.priceguess=config['priceguess']
+        # Config files should subclass stocktype.PriceGuessHook
+        # instead of specifying this
+        log.warning("Obsolete 'priceguess' key present in configuration")
     if 'deptkeycheck' in config:
         log.warning("Obsolete 'deptkeycheck' key present in configuration")
     if 'checkdigit_print' in config:

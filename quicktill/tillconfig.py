@@ -26,15 +26,6 @@ def fc(a):
     if a is None: return "None"
     return "".join([currency, str(a.quantize(penny))])
 
-def priceguess(stocktype,stockunit,cost):
-    """
-    Guess a suitable selling price for a new stock item.  Return a
-    price, or None if there is no suitable guess available.  'cost' is
-    the cost price _per stockunit_, eg. per cask for beer.
-
-    """
-    return None
-
 # Do we print check digits on stock labels?
 checkdigit_print=False
 # Do we ask the user to input check digits when using stock?
