@@ -78,6 +78,7 @@ In the configuration file you must make the following changes:
    "2", ... "0", "00", "."
  - Rewrite modifiers to use the new interface
  - Replace ord('x') with 'x' in hotkeys
+ - Replace usestock_hook with a subclass of usestock.UseStockHook
 
 
 Upgrade v0.10.57 to v0.11.0

@@ -1,6 +1,7 @@
 """Deals with connecting stock items to stock lines."""
 
 from . import ui, td, keyboard, stock, stocklines, tillconfig, user, linekeys
+from .plugins import PluginMount
 from .models import StockLine, FinishCode, StockItem, Department, Delivery
 from .models import StockType, StockAnnotation, StockLineTypeLog
 from sqlalchemy.orm import contains_eager, undefer
@@ -187,7 +188,8 @@ def put_on_sale(line, si):
                  title="Confirmation",
                  dismiss=keyboard.K_CASH, colour=ui.colour_info)
     if line.linetype == "regular":
-        tillconfig.usestock_hook(si, line)
+        for i in UseStockHook.instances:
+            i.regular_usestock(si, line)
 
 def add_display_line_stock(line):
     """Add stock to a display stock line.
@@ -362,3 +364,12 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
 auto_allocate = user.permission_required(
     'auto-allocate', 'Automatically allocate stock to lines')(
         auto_allocate_internal)
+
+class UseStockHook(metaclass=PluginMount):
+    """Subclass this to be notified of stock being put on sale
+
+    All subclass instances will be called in turn.
+    """
+    def regular_usestock(self, stockitem, stockline):
+        """An item has been put on sale on a regular stockline"""
+        pass

@@ -532,7 +532,9 @@ def main():
     if 'checkdigit_on_usestock' in config:
         tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
     if 'usestock_hook' in config:
-        tillconfig.usestock_hook=config['usestock_hook']
+        # Config files should subclass usestock.UseStockRegularHook
+        # instead of specifying this
+        log.warning("Obsolete 'usestock_hook' key present in configuration")
     if 'hotkeys' in config:
         tillconfig.hotkeys=config['hotkeys']
     if 'firstpage' in config:
