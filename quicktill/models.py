@@ -1328,6 +1328,8 @@ class StockItem(Base):
     @property
     def tillweb_url(self):
         return "stock/%d/" % self.id
+    def __unicode__(self):
+        return "<StockItem({})>".format(self.id)
     def __repr__(self):
         return "<StockItem(%s)>" % (self.id,)
 

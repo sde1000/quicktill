@@ -9,7 +9,10 @@ from . import payment
 from . import ui
 from . import td
 from . import user
+from . import delivery
+from . import keyboard
 from .models import Session, SessionNoteType, SessionNote, zero
+from .models import Delivery, Supplier
 log = logging.getLogger(__name__)
 
 XERO_ENDPOINT_URL = "https://api.xero.com/api.xro/2.0/"
@@ -56,6 +59,22 @@ class XeroSessionHooks(session.SessionHooks):
         except XeroError:
             return
         ui.toast("Session details uploaded to Xero.")
+
+class XeroDeliveryHooks(delivery.DeliveryHooks):
+    def __init__(self, xero):
+        self.xero = xero
+
+    def confirmed(self, deliveryid):
+        d = td.s.query(Delivery).get(deliveryid)
+        if self.xero.start_date and self.xero.start_date > d.date:
+            ui.toast("Not sending this delivery to Xero - delivery is dated "
+                     "before the Xero start date")
+            return
+        if not d.supplier.accinfo:
+            ui.toast("Not sending this delivery to Xero - the supplier "
+                     "is not linked to a Xero contact")
+            return
+        self.xero._send_delivery(deliveryid)
 
 class XeroIntegration:
     """Xero accounting system integration
@@ -121,9 +140,28 @@ class XeroIntegration:
         self.discrepancy_account = discrepancy_account
         self.start_date = start_date
 
+    @user.permission_required("xero-admin", "Xero integration admin")
+    def app_menu(self):
+        ui.automenu([
+            ("Link a supplier with a Xero contact",
+             choose_supplier,
+             (self._link_supplier_with_contact, False)),
+            ("Unlink a supplier from its Xero contact",
+             choose_supplier,
+             (self._unlink_supplier, True)),
+            ("Send a delivery to Xero as a bill",
+             choose_delivery,
+             (self._send_delivery, self.start_date, False)),
+            ("Re-send a delivery to Xero as a bill",
+             choose_delivery,
+             (self._send_delivery, self.start_date, True)),
+            ("Xero debug menu",
+             self._debug_menu, ())],
+                    title="Xero options")
+
     @user.permission_required("xero-debug", "Low-level access to the "
                               "Xero integration")
-    def app_menu(self):
+    def _debug_menu(self):
         ui.automenu([
             ("Send invoice and payments for a session",
              self._debug_choose_session,
@@ -134,13 +172,29 @@ class XeroIntegration:
             ("Send payments for an existing invoice",
              self._debug_choose_session,
              (self._debug_send_payments,)),
+            ("Send bill for a delivery",
+             self._debug_choose_delivery,
+             (self._debug_send_bill,))
             ], title="Xero debug")
 
     def _debug_choose_session(self, cont):
         ui.menu(session.sessionlist(
             cont, paidonly=True, closedonly=True, maxlen=100),
                 title="Choose session")
-        
+
+    def _debug_choose_delivery(self, cont):
+        dl = td.s.query(Delivery)\
+                 .order_by(Delivery.checked)\
+                 .order_by(Delivery.date.desc())\
+                 .order_by(Delivery.id.desc())\
+                 .all()
+        f = ui.tableformatter(' r l l l l ')
+        lines = [(f(x.id, x.supplier.name, x.date, x.docnumber or "",
+                    "" if x.checked else "not confirmed"),
+                  cont, (x.id,)) for x in dl]
+        ui.menu(lines, title="Delivery List",
+                blurb="Select a delivery and press Cash/Enter.")
+
     def _debug_send_invoice_and_payments(self, sessionid):
         log.info("Sending invoice and payments for %d", sessionid)
         iid = self._create_invoice_for_session(sessionid, approve=True)
@@ -167,7 +221,23 @@ class XeroIntegration:
             self._add_payments_for_session(sessionid, ids[0].text)
         else:
             ui.toast("No invoice - doing nothing")
-        
+
+    def _debug_send_bill(self, deliveryid):
+        log.info("Sending bill for delivery %d", deliveryid)
+        iid = self._create_bill_for_delivery(deliveryid)
+        log.info("...new invoice ID is %s", iid)
+        ui.infopopup(["Invoice ID is {}".format(iid)])
+
+    def _sales_account_for_department(self, department):
+        codes = department.accinfo.split("/")
+        return codes[0]
+
+    def _purchases_account_for_department(self, department):
+        codes = department.accinfo.split("/")
+        if len(codes) > 1:
+            return codes[1]
+        return codes[0]
+    
     def _create_invoice_for_session(self, sessionid, approve=False):
         """Create an invoice for a session
 
@@ -190,13 +260,12 @@ class XeroIntegration:
         if self.contact:
             inv.append(self.contact)
         inv.append(_textelem("LineAmountTypes", "Inclusive"))
-        inv.append(_textelem(
-            "Date", session.date.isoformat()))
+        inv.append(_textelem("Date", session.date.isoformat()))
         inv.append(_textelem(
             "DueDate", (session.date + self.due_days).isoformat()))
         if self.tillweb_base_url:
             inv.append(_textelem(
-                "Url", self.tillweb_base_url + session.tillweb_url()))
+                "Url", self.tillweb_base_url + session.tillweb_url))
         inv.append(_textelem(
             "Reference", self.reference_template.format(session=session)))
         if self.branding_theme_id:
@@ -208,7 +277,8 @@ class XeroIntegration:
         for dept, amount in session.dept_totals:
             li = SubElement(litems, "LineItem")
             li.append(_textelem("Description", dept.description))
-            li.append(_textelem("AccountCode", dept.accinfo))
+            li.append(_textelem("AccountCode",
+                                self._sales_account_for_department(dept)))
             li.append(_textelem("LineAmount", str(amount)))
             if self.tracking:
                 li.append(self.tracking)
@@ -297,12 +367,103 @@ class XeroIntegration:
             raise XeroError("Response root tag '{}' was not 'Response'".format(
                 root.tag))
 
+    def _create_bill_for_delivery(self, deliveryid):
+        d = td.s.query(Delivery).get(deliveryid)
+        if not d:
+            raise XeroError("Delivery {} does not exist".format(deliveryid))
+        if not d.supplier.accinfo:
+            raise XeroError("Supplier {} ({}) has no Xero contact info".format(
+                d.supplier.id, d.supplier.name))
+        
+        invoices = Element("Invoices")
+        inv = SubElement(invoices, "Invoice")
+        inv.append(_textelem("Type", "ACCPAY"))
+        contact = SubElement(inv, "Contact")
+        contact.append(_textelem("ContactID", d.supplier.accinfo))
+        inv.append(_textelem("LineAmountTypes", "Exclusive"))
+        inv.append(_textelem("Date", d.date.isoformat()))
+        inv.append(_textelem("InvoiceNumber", d.docnumber))
+        if self.tillweb_base_url:
+            inv.append(_textelem(
+                "Url", self.tillweb_base_url + d.tillweb_url))
+        litems = SubElement(inv, "LineItems")
+        previtem = None
+        prevqty = None
+        for item in d.items:
+            # prevqty is never true even if not-None.  Compare against
+            # None explicitly.  Silly etree API!
+            if previtem and prevqty != None \
+               and item.stocktype.id == previtem.stocktype.id \
+               and item.stockunit.id == previtem.stockunit.id \
+               and item.costprice == previtem.costprice:
+                # We can bump up the quantity on the previous invoice line
+                # rather than add a new one
+                prevqty.text = str(int(prevqty.text) + 1)
+                continue
+            li = SubElement(litems, "LineItem")
+            li.append(_textelem(
+                "Description",
+                item.stocktype.format() + " " + item.stockunit.name))
+            li.append(_textelem(
+                "AccountCode",
+                self._purchases_account_for_department(
+                    item.stocktype.department)))
+            li.append(_textelem("UnitAmount", str(item.costprice)))
+            prevqty = _textelem("Quantity", "1")
+            li.append(prevqty)
+            if self.tracking:
+                li.append(self.tracking)
+            previtem = item
+
+        xml = tostring(invoices)
+        r = requests.put(XERO_ENDPOINT_URL + "Invoices/",
+                         data={'xml': xml},
+                         auth=self.oauth)
+        if r.status_code == 400:
+            root = fromstring(r.text)
+            messages = [e.text for e in root.findall(".//Message")]
+            raise XeroError("Xero rejected invoice: {}".format(
+                ", ".join(messages)))
+        if r.status_code != 200:
+            raise XeroError("Received {} response".format(r.status_code))
+        root = fromstring(r.text)
+        if root.tag != "Response":
+            raise XeroError("Response root tag '{}' was not 'Response'".format(
+                root.tag))
+        i = root.find("./Invoices/Invoice")
+        if not i:
+            raise XeroError("Response did not contain invoice details")
+        invid = _fieldtext(i, "InvoiceID")
+        if not invid:
+            raise XeroError("No invoice ID was returned")
+        #warnings = [w.text for w in i.findall("./Warnings/Warning/Message")]
+        return invid
+
+    def _send_delivery(self, deliveryid):
+        d = td.s.query(Delivery).get(deliveryid)
+        with ui.exception_guard("sending bill for delivery to Xero"):
+            iid = self._create_bill_for_delivery(deliveryid)
+            d.accinfo = iid
+            td.s.flush()
+            ui.toast("Delivery sent to Xero as draft bill")
+
     def url_for_invoice(self, id):
         url = "/AccountsReceivable/View.aspx?InvoiceID={}".format(id)
         if self.shortcode:
             url = "/organisationlogin/default.aspx?shortcode={}"\
                   "&redirecturl={}".format(self.shortcode, url)
         return "https://go.xero.com" + url
+
+    def _link_supplier_with_contact(self, supplierid):
+        ui.toast("Not implemented yet")
+
+    def _unlink_supplier(self, supplierid):
+        s = td.s.query(Supplier).get(supplierid)
+        s.accinfo = None
+        ui.infopopup(["{} unlinked from Xero".format(s.name)],
+                     title="Unlink supplier from Xero contact",
+                     colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
 
 def _textelem(name, text):
     e = Element(name)
@@ -314,3 +475,29 @@ def _fieldtext(c, field):
     if f is None:
         return
     return f.text
+
+def choose_supplier(cont, link_only):
+    q = td.s.query(Supplier).order_by(Supplier.name)
+    if link_only:
+        q = q.filter(Supplier.accinfo != None)
+    f = ui.tableformatter(' l l ')
+    lines = [(f(x.name, "Linked to {}".format(x.accinfo) if x.accinfo else ""),
+              cont, (x.id,)) for x in q.all()]
+    ui.menu(lines, title="Supplier List",
+            blurb="Choose a supplier and press Cash/Enter.")
+
+def choose_delivery(cont, start_date, allow_sent):
+    q = td.s.query(Delivery)\
+            .join(Supplier)\
+            .filter(Delivery.checked)\
+            .filter(Supplier.accinfo != None)\
+            .order_by(Delivery.date, Delivery.id)
+    if start_date:
+        q = q.filter(Delivery.date >= start_date)
+    if not allow_sent:
+        q = q.filter(Delivery.accinfo == None)
+    f = ui.tableformatter(' r l l l ')
+    lines = [(f(x.id, x.supplier.name, x.date, x.docnumber or ""),
+              cont, (x.id,)) for x in q.all()]
+    ui.menu(lines, title="Delivery List",
+            blurb="Select a delivery and press Cash/Enter.")

@@ -1,8 +1,9 @@
 from . import ui, stock, td, keyboard, printer, tillconfig, stocktype
 from . import user, usestock
 from decimal import Decimal
-from .models import Delivery, Supplier, StockUnit, StockItem, desc
+from .models import Delivery, Supplier, StockUnit, StockItem
 from .models import penny
+from .plugins import InstancePluginMount
 import datetime
 
 import logging
@@ -14,8 +15,8 @@ def deliverymenu():
     """
     dl = td.s.query(Delivery)\
              .order_by(Delivery.checked)\
-             .order_by(desc(Delivery.date))\
-             .order_by(desc(Delivery.id))\
+             .order_by(Delivery.date.desc())\
+             .order_by(Delivery.id.desc())\
              .all()
     f = ui.tableformatter(' r l l l l ')
     lines = [(f(x.id, x.supplier.name, x.date, x.docnumber or "",
@@ -233,6 +234,8 @@ class delivery(ui.basicpopup):
         self.dismiss()
         usestock.auto_allocate_internal(deliveryid=self.dn,
                                         message_on_no_work=False)
+        for i in DeliveryHooks.instances:
+            i.confirmed(self.dn)
 
     def confirmcheck(self):
         if not self.dn or not self.dl:
@@ -567,3 +570,13 @@ def updatesupplier():
     m = [(x.name, editsupplier, (lambda a:None, x)) for x in sl]
     ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
             title="Edit Supplier")
+
+class DeliveryHooks(metaclass=InstancePluginMount):
+    """Hooks for deliveries
+
+    Accounting integration plugins should subclass this.  Instances of
+    subclasses will be called in order of creation.
+    """
+    def confirmed(self, deliveryid):
+        """Called when a delivery has been confirmed."""
+        pass
