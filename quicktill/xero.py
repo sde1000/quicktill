@@ -408,7 +408,8 @@ class XeroIntegration:
                 "AccountCode",
                 self._purchases_account_for_department(
                     item.stocktype.department)))
-            li.append(_textelem("UnitAmount", str(item.costprice)))
+            if item.costprice is not None:
+                li.append(_textelem("UnitAmount", str(item.costprice)))
             prevqty = _textelem("Quantity", "1")
             li.append(prevqty)
             if self.tracking:
