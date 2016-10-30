@@ -74,6 +74,10 @@ class XeroDeliveryHooks(delivery.DeliveryHooks):
             ui.toast("Not sending this delivery to Xero - the supplier "
                      "is not linked to a Xero contact")
             return
+        if not self.xero.oauth:
+            ui.toast("Not sending this delivery to Xero - this terminal "
+                     "does not have access to Xero.")
+            return
         self.xero._send_delivery(deliveryid)
 
 class XeroIntegration:
@@ -142,6 +146,11 @@ class XeroIntegration:
 
     @user.permission_required("xero-admin", "Xero integration admin")
     def app_menu(self):
+        if not self.oauth:
+            ui.infopopup(["This terminal does not have access to Xero.  "
+                          "Please use a different terminal."],
+                         title="Accounts not available")
+            return
         ui.automenu([
             ("Link a supplier with a Xero contact",
              choose_supplier,
@@ -456,7 +465,60 @@ class XeroIntegration:
         return "https://go.xero.com" + url
 
     def _link_supplier_with_contact(self, supplierid):
-        ui.toast("Not implemented yet")
+        s = td.s.query(Supplier).get(supplierid)
+        # Fetch possible contacts
+        w = "Name.ToLower().Contains(\"{}\")".format(s.name.lower())
+        r = requests.get(XERO_ENDPOINT_URL + "Contacts/", params={
+            "where": w, "order": "Name"}, auth=self.oauth)
+        if r.status_code != 200:
+            ui.infopopup(["Failed to retrieve contacts from Xero: "
+                          "error code {}".format(r.status_code)],
+                         title="Xero Error")
+            return
+        root = fromstring(r.text)
+        if root.tag != "Response":
+            ui.infopopup(["Failed to retrieve contacts from Xero: "
+                          "root element of response was '{}' instead of "
+                          "'Response'".format(root.tag)],
+                         title="Xero Error")
+            return
+        contacts = root.find("Contacts")
+        if contacts:
+            cl = contacts.findall("Contact")
+        else:
+            cl = []
+        if len(cl) == 0:
+            ui.infopopup(["There are no Xero contacts matching '{}'.  You "
+                          "could try renaming the contact in Xero to match "
+                          "the till, or renaming the supplier in the till "
+                          "to match Xero.".format(s.name)],
+                         title="No Matching Contacts")
+            return
+        ml = [ (c.find("Name").text, self._finish_link_supplier_with_contact,
+                (supplierid, c.find("Name").text, c.find("ContactID").text))
+               for c in cl ]
+        ui.menu(
+            ml, title="Choose matching contact",
+            blurb="Choose the Xero contact to link to the supplier '{}'".format(
+                s.name))
+
+    def _finish_link_supplier_with_contact(self, supplierid, name, contactid):
+        s = td.s.query(Supplier).get(supplierid)
+        if not s:
+            ui.infopopup(["Supplier {} not found.".format(supplierid)],
+                         title="Error")
+            return
+        if s.accinfo == contactid:
+            ui.infopopup(
+                ["Supplier '{}' was already linked to Xero contact '{}'.".format(
+                    s.name, name)],
+                title="Supplier already linked")
+            return
+        s.accinfo = contactid
+        ui.infopopup(["Supplier '{}' now linked to Xero contact '{}'.".format(
+            s.name, name)],
+                     title="Supplier linked", colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
 
     def _unlink_supplier(self, supplierid):
         s = td.s.query(Supplier).get(supplierid)
@@ -492,7 +554,7 @@ def choose_delivery(cont, start_date, allow_sent):
             .join(Supplier)\
             .filter(Delivery.checked)\
             .filter(Supplier.accinfo != None)\
-            .order_by(Delivery.date, Delivery.id)
+            .order_by(Delivery.date.desc(), Delivery.id.desc())
     if start_date:
         q = q.filter(Delivery.date >= start_date)
     if not allow_sent:
