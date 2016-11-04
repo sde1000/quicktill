@@ -302,8 +302,9 @@ class checkdb(cmdline.command):
         pristine.write(pristine_schema)
         pristine.close()
         try:
-            subprocess.check_call(["apgdiff","--ignore-start-with",
-                                   current.name,pristine.name])
+            subprocess.check_call(["apgdiff", "--add-transaction",
+                                   "--ignore-start-with",
+                                   current.name, pristine.name])
         except OSError as e:
             print("Couldn't run apgdiff; is it installed?")
             print(e)
