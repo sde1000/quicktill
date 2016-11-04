@@ -1,20 +1,10 @@
 import hashlib
-import logging
-from . import keyboard, user
-log = logging.getLogger(__name__)
+from . import user
 
 class nullfilter:
     """Keyboard input filter that passes on all events unchanged"""
     def __call__(self, keys):
         return keys
-
-# For backward compatibility with till configurations that explicitly
-# specify curseskeyboard:
-class curseskeyboard(nullfilter):
-    def __init__(self):
-        log.warning(
-            "Please remove curseskeyboard() keyboard driver declarations "
-            "from the config file: they are no longer needed.")
 
 class _magstripecode:
     """A keycode used to indicate the start or end of a magstripe card
