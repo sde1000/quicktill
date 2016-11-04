@@ -4,7 +4,7 @@ quicktill — cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004–2015 Stephen Early <sde@individualpubs.co.uk>
+quicktill is Copyright (C) 2004–2016 Stephen Early <sde@individualpubs.co.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -47,7 +47,7 @@ The first hurdle is finding a suitable keyboard!  I generally use 16x8
 matrix keyboards from Preh (MCI128), configured so that on each
 keypress they output a sequence of keystrokes giving the coordinates
 of the key that was pressed, for example [A01] for the bottom-left and
-[G16] for the top-right.  If you have a different type of keyboard, or
+[H16] for the top-right.  If you have a different type of keyboard, or
 it is set up differently, it's fairly easy to write a new keyboard
 driver: see quicktill/kbdrivers.py
 
@@ -119,11 +119,10 @@ Startup procedure
 Assuming the command was "start":
 
  - quicktill.till.runtill() initialises the database engine
- - runtill() invokes quicktill.till.start() via the curses wrapper that catches exceptions
+ - runtill() invokes quicktill.run(), which invokes
+   quicktill.ui._init() via the curses wrapper that catches exceptions
    and returns the display to a sane state on exit
- - start() invokes ui.init() with the root window, which sets up colours and the clock/header
- - start() invokes whatever callable was defined as the 'firstpage' config option
- - start() enters the main event loop
+ - quicktill.ui._init() enters the main event loop
 
 Another useful command is "dbshell", which starts an interactive
 python interpreter with a database connection already set up, a
