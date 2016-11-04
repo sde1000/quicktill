@@ -30,13 +30,16 @@ def is_england_banking_day(d):
     if d.month == 1 and d.day == 2:
         if datetime.date(d.year, 1, 1).isoweekday() in (6, 7):
             return False
+    if d.month == 1 and d.day == 3:
+        if datetime.date(d.year, 1, 1).isoweekday() == 6:
+            return False
     if d.month == 12 and d.day == 27:
         # Bank holiday if either the 25th or 26th was a Saturday or Sunday
         if datetime.date(d.year, 12, 25).isoweekday() in (6, 7) \
            or datetime.date(d,year, 12, 26).isoweekday() in (6, 7):
             return False
     if d.month == 12 and d.day == 28:
-        # Bank holiday if thr 25th was a Saturday and the 26th was a Sunday
+        # Bank holiday if the 25th was a Saturday and the 26th was a Sunday
         if datetime.date(d.year, 12, 25).isoweekday() == 6 \
            and datetime.date(d.year, 12, 26).isoweekday() == 7:
             return False
