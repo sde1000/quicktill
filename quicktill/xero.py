@@ -95,7 +95,7 @@ class XeroIntegration:
                  # require Xero callouts
                  consumer_key=None, private_key=None,
                  # Invoices will be created to the following contact ID:
-                 contact_id=None,
+                 sales_contact_id=None,
                  # Invoices will be created with a reference using the
                  # following template:
                  reference_template="Session {session.id}",
@@ -124,9 +124,9 @@ class XeroIntegration:
                 signature_type=SIGNATURE_TYPE_AUTH_HEADER)
         else:
             self.oauth = None
-        if contact_id:
+        if sales_contact_id:
             self.contact = Element("Contact")
-            self.contact.append(_textelem("ContactID", contact_id))
+            self.contact.append(_textelem("ContactID", sales_contact_id))
         else:
             self.contact = None
         if tracking_category_name and tracking_category_value:
@@ -164,6 +164,8 @@ class XeroIntegration:
             ("Re-send a delivery to Xero as a bill",
              choose_delivery,
              (self._send_delivery, self.start_date, True)),
+            ("Test the connection to Xero",
+             self.check_connection, ()),
             ("Xero debug menu",
              self._debug_menu, ())],
                     title="Xero options")
@@ -526,6 +528,41 @@ class XeroIntegration:
         ui.infopopup(["{} unlinked from Xero".format(s.name)],
                      title="Unlink supplier from Xero contact",
                      colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
+
+    def check_connection(self):
+        if not self.oauth:
+            ui.infopopup(
+                ["This terminal does not have access to the accounting "
+                 "system."], title="Xero not available")
+            return True
+        r = requests.get(XERO_ENDPOINT_URL + "Organisation/", auth=self.oauth)
+        if r.status_code != 200:
+            ui.infopopup(["Failed to retrieve organisation details from Xero: "
+                          "error code {}".format(r.status_code)],
+                         title="Xero Error")
+            return
+        root = fromstring(r.text)
+        if root.tag != "Response":
+            ui.infopopup(["Failed to retrieve organisation details from Xero: "
+                          "root element of response was '{}' instead of "
+                          "'Response'".format(root.tag)],
+                         title="Xero Error")
+            return
+        org = None
+        orgs = root.find("Organisations")
+        if orgs is not None:
+            org = orgs.find("Organisation")
+        if org is None:
+            ui.infopoup(["There were no organisation details in the response "
+                         "from Xero."],
+                        title="Xero Error")
+            return
+
+        ui.infopopup(["Successfully connected to Xero.", "",
+                      "Organisation name: {}".format(_fieldtext(org, "Name")),
+                      "Short code: {}".format(_fieldtext(org, "ShortCode"))],
+                     title="Connected to Xero", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
 def _textelem(name, text):
