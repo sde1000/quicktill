@@ -33,6 +33,7 @@ class prehkeyboard:
                 self.inputs[end] = _magstripecode(end)
             self.finishmagstripe = end
         self.magstripe = None # Magstripe read in progress if not-None
+
     def _pass_on_buffer(self):
         # A sequence that started '[...' didn't finish with ']' so we
         # pass it on unchanged
@@ -41,6 +42,7 @@ class prehkeyboard:
             self._handle_decoded_input(i)
         self.decode = False
         self.ibuf = []
+
     def _handle_input(self, k):
         # First layer of decoding: spot and replace tokens that look
         # like [...]
@@ -65,6 +67,7 @@ class prehkeyboard:
             self.decode = True
         else:
             self._handle_decoded_input(k)
+
     def _handle_decoded_input(self, k):
         # Second layer of decoding: spot sequences of magstripe tokens
         # and save/hash all the keypresses between them into a user
@@ -86,6 +89,7 @@ class prehkeyboard:
             self.magstripe.append(k)
         else:
             self._obuf.append(k)
+
     def __call__(self, keys):
         # We should never be called recursively so we can accumulate
         # output tokens in a list while mutating our internal state.

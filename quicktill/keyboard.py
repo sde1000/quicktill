@@ -83,8 +83,12 @@ keycode("K_RECALLTRANS","Recall Transaction")
 keycode("K_MANAGETRANS","Manage Transaction")
 keycode("K_QUANTITY","Quantity")
 keycode("K_FOODORDER","Order Food")
-keycode("K_CANCELFOOD","Cancel Food")
 keycode("K_FOODMESSAGE","Kitchen Message")
+keycode("K_STOCKTERMINAL", "Stock Terminal")
+keycode("K_APPS", "Apps")
+keycode("K_MANAGESTOCK", "Manage Stock")
+keycode("K_PRICECHECK", "Price Check")
+keycode("K_LOCK", "Lock")
 
 # Tendering keys referred to in the code
 keycode("K_CASH","Cash / Enter")

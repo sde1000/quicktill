@@ -2203,7 +2203,7 @@ class page(ui.basicpage):
             if not trans:
                 return
             return foodorder.popup(self.deptlines, transid=trans.id)
-        if k == keyboard.K_CANCELFOOD or k == keyboard.K_FOODMESSAGE:
+        if k == keyboard.K_FOODMESSAGE:
             return foodorder.message()
         ui.beep()
 

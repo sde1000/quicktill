@@ -1,5 +1,10 @@
 # Various region-specific utility functions
+# and configuration that is recommended for many common cases
+from . import kbdrivers
+from . import user
+from .keyboard import *
 import datetime
+from decimal import Decimal
 from dateutil.easter import easter, EASTER_WESTERN
 from dateutil.relativedelta import relativedelta, MO, FR
 
@@ -87,3 +92,157 @@ def delta_england_banking_days(date, n):
         if is_england_banking_day(date):
             n = n - 1
     return date
+
+def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
+                      card_payment_method=None, overrides={}):
+    """Standard 16x8 keyboard layout
+
+    A standard keyboard layout for a 16 by 8 key keyboard that
+    produces inputs of the form [A01] to [H16].
+    """
+    kb = {}
+    # First assign a linekey() to every key position, which we will
+    # override later for special keys.
+    linenumber = iter(range(line_base, line_base + 128))
+    for row in ["H", "G", "F", "E", "D", "C", "B", "A"]:
+        for col in range(1, 17):
+            kb["{}{:02}".format(row, col)] = linekey(next(linenumber))
+    kb.update({
+        "H01": user.token('builtin:alice'),
+        "G01": user.token('builtin:bob'),
+        "F01": user.token('builtin:charlie'),
+        "E01": K_STOCKTERMINAL,
+        "H02": K_MANAGETILL,
+        "G02": K_MANAGESTOCK,
+        "F02": K_USESTOCK,
+        "E02": K_WASTE,
+        "D01": K_RECALLTRANS,
+        "D02": K_MANAGETRANS,
+        "C01": K_PRICECHECK,
+        "C02": K_PRINT,
+        "B01": K_CANCEL,
+        "B02": K_APPS,
+        "A01": K_CLEAR,
+        "A02": K_MARK,
+        "D13": K_FOODORDER,
+        "D14": K_FOODMESSAGE,
+        "C11": K_LEFT,
+        "D12": K_UP,
+        "C12": K_DOWN,
+        "C13": K_RIGHT,
+        "E14": ".",
+        "E15": "0",
+        "E16": "00",
+        "F14": "1",
+        "F15": "2",
+        "F16": "3",
+        "G14": "4",
+        "G15": "5",
+        "G16": "6",
+        "H14": "7",
+        "H15": "8",
+        "H16": "9",
+        "B15": K_CASH,
+        "D15": K_LOCK,
+        "E13": K_QUANTITY,
+        "H13": K_DRINKIN,
+    })
+    if cash_payment_method:
+        kb.update({
+            "C14": notekey('K_TWENTY', '£20', cash_payment_method,
+                           Decimal("20.00")),
+            "B14": notekey('K_TENNER', '£10', cash_payment_method,
+                           Decimal("10.00")),
+            "A14": notekey('K_FIVER', '£5', cash_payment_method,
+                           Decimal("5.00")),
+        })
+    if card_payment_method:
+        cardkey = paymentkey('K_CARD', 'Card', card_payment_method)
+        kb.update({
+            "C15": cardkey,
+            "C16": cardkey,
+        })
+    kb.update(overrides)
+    return kbdrivers.prehkeyboard(
+        kb.items(),
+        magstripe=[
+            ("M1H", "M1T"),
+            ("M2H", "M2T"),
+            ("M3H", "M3T"),
+        ])
+
+def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
+                      card_payment_method=None, overrides={}):
+    """Standard 20x7 keyboard layout
+
+    A standard keyboard layout for a 20 by 7 key keyboard that
+    produces inputs of the form [A01] to [G20].
+    """
+    kb = {}
+    # First assign a linekey() to every key position, which we will
+    # override later for special keys.
+    linenumber = iter(range(line_base, line_base + 140))
+    for row in ["G", "F", "E", "D", "C", "B", "A"]:
+        for col in range(1, 21):
+            kb["{}{:02}".format(row, col)] = linekey(next(linenumber))
+    kb.update({
+        "G01": user.token('builtin:eve'),
+        "F01": user.token('builtin:frank'),
+        "E01": user.token('builtin:giles'),
+        "D01": K_STOCKTERMINAL,
+        "C01": K_RECALLTRANS,
+        "B01": K_CANCEL,
+        "A01": K_CLEAR,
+        "G02": K_MANAGETILL,
+        "F02": K_MANAGESTOCK,
+        "E02": K_USESTOCK,
+        "G03": K_PRINT,
+        "F03": K_WASTE,
+        "E03": K_PRICECHECK,
+        "G04": K_MANAGETRANS,
+        "G05": K_APPS,
+        "G07": K_FOODORDER,
+        "G08": K_FOODMESSAGE,
+        "F15": K_LEFT,
+        "G16": K_UP,
+        "F16": K_DOWN,
+        "F17": K_RIGHT,
+        "D18": ".",
+        "D19": "0",
+        "D20": "00",
+        "E18": "1",
+        "E19": "2",
+        "E20": "3",
+        "F18": "4",
+        "F19": "5",
+        "F20": "6",
+        "G18": "7",
+        "G19": "8",
+        "G20": "9",
+        "B19": K_CASH,
+        "E17": K_QUANTITY,
+        "E13": K_LOCK,
+    })
+    if cash_payment_method:
+        kb.update({
+            "C18": notekey('K_TWENTY', '£20', cash_payment_method,
+                           Decimal("20.00")),
+            "B18": notekey('K_TENNER', '£10', cash_payment_method,
+                           Decimal("10.00")),
+            "A18": notekey('K_FIVER', '£5', cash_payment_method,
+                           Decimal("5.00")),
+        })
+    if card_payment_method:
+        cardkey = paymentkey('K_CARD', 'Card', card_payment_method)
+        kb.update({
+            "C19": cardkey,
+            "C20": cardkey,
+        })
+    kb.update(overrides)
+    return kbdrivers.prehkeyboard(
+        kb.items(),
+        magstripe=[
+            ("M1H", "M1T"),
+            ("M2H", "M2T"),
+            ("M3H", "M3T"),
+        ])

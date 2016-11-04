@@ -247,6 +247,12 @@ class token(object):
     """
     def __init__(self, t):
         self.usertoken = t
+    def __eq__(self, other):
+        if not isinstance(other, token):
+            return False
+        return self.usertoken == other.usertoken
+    def __hash__(self):
+        return hash(self.usertoken)
     def __repr__(self):
         return "token('{}')".format(self.usertoken)
 
