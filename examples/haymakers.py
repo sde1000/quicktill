@@ -52,23 +52,26 @@ class Half(modifiers.SimpleModifier):
     (soft drinks) and halves the price.
 
     """
-    def mod_stockline(self,stockline,transline):
-        st=transline.stockref.stockitem.stocktype
-        if st.unit_id!='pt':
+    def mod_stockline(self, stockline, sale):
+        st = sale.stocktype
+        if st.unit_id != 'pt':
             raise modifiers.Incompatible(
                 "The {} modifier can only be used with stock "
                 "that is sold in pints.".format(self.name))
         # There may not be a price at this point
-        if transline.amount: transline.amount=transline.amount/2
-        transline.stockref.qty=transline.stockref.qty*Decimal("0.5")
-        transline.text="{} half pint".format(st.format())
-    def mod_plu(self,plu,transline):
-        if plu.dept_id!=7:
+        if sale.price:
+            sale.price = sale.price / 2
+        sale.qty = sale.qty * Decimal("0.5")
+        sale.description = "{} half pint".format(st.format())
+
+    def mod_plu(self, plu, sale):
+        if plu.dept_id != 7:
             raise modifiers.Incompatible(
                 "The {} modifier can only be used with stock that is "
                 "sold in pints.".format(self.name))
-        if transline.amount: transline.amount=transline.amount/2
-        transline.text="{} half pint".format(transline.text)
+        if sale.price:
+            sale.price = sale.price / 2
+        sale.description = "{} half pint".format(transline.text)
 
 class Mixer(modifiers.SimpleModifier):
     """When used with a price lookup, checks that the department is 7
