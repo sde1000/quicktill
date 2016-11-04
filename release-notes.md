@@ -6,6 +6,20 @@ Upgrade v0.11.x to v0.12
 
 There are major database and config file changes this release.
 
+Update the configuration file first, followed by the database.
+
+In the configuration file you must make the following changes:
+
+ - Replace K_ONE, K_TWO, ... K_ZERO, K_ZEROZERO, K_POINT with "1",
+   "2", ... "0", "00", "."
+ - Remove all deptkey() calls; deptkeys can now be expressed as PLUs
+   with no price set
+ - Rewrite modifiers to use the new interface
+ - Replace ord('x') with 'x' in hotkeys
+ - Replace usestock_hook with a subclass of usestock.UseStockHook
+ - Replace priceguess with a subclass of stocktype.PriceGuessHook
+ - Remove references to curseskeyboard() - they are no longer necessary
+
 To upgrade the database:
 
  - install the new release
@@ -71,15 +85,6 @@ COMMIT;
  - run "runtill checkdb", check that the output looks sensible, then
    pipe it or paste it in to psql
  - run "runtill checkdb" again and check it produces no output
-
-In the configuration file you must make the following changes:
-
- - Replace K_ONE, K_TWO, ... K_ZERO, K_ZEROZERO, K_POINT with "1",
-   "2", ... "0", "00", "."
- - Rewrite modifiers to use the new interface
- - Replace ord('x') with 'x' in hotkeys
- - Replace usestock_hook with a subclass of usestock.UseStockHook
- - Replace priceguess with a subclass of stocktype.PriceGuessHook
 
 
 Upgrade v0.10.57 to v0.11.0
