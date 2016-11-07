@@ -449,7 +449,7 @@ def currentsummary():
     if sc is None:
         ui.infopopup(["There is no session in progress."], title="Error")
     else:
-        totalpopup(sc)
+        totalpopup(sc.id)
 
 @user.permission_required(
     'restore-deferred','Restore deferred transactions to the current session')
