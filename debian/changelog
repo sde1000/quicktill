@@ -1,3 +1,11 @@
+quicktill (0.12.0alpha10) stable; urgency=low
+
+  * New release 0.12.0alpha10
+
+  * Fix other foodmenu subopts exception!
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 07 Nov 2016 14:02:18 +0000
+
 quicktill (0.12.0alpha9) stable; urgency=low
 
   * New release 0.12.0alpha9
