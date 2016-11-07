@@ -1,3 +1,11 @@
+quicktill (0.12.0alpha8) stable; urgency=low
+
+  * New release 0.12.0alpha8
+
+  * Oops - finish renaming hooks
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 07 Nov 2016 12:44:40 +0000
+
 quicktill (0.12.0alpha7) stable; urgency=low
 
   * New release 0.12.0alpha7
