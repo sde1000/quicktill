@@ -115,6 +115,7 @@ class XeroIntegration:
                  # Only start sending totals to Xero on or after this date
                  start_date=None):
         XeroSessionHooks(self)
+        XeroDeliveryHooks(self)
         if consumer_key and private_key:
             self.oauth = OAuth1(
                 consumer_key,

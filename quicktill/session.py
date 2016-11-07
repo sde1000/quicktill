@@ -208,7 +208,7 @@ class record(ui.dismisspopup):
         self.session = s
         if not self.session_valid():
             return
-        for i in AccountingHooks.instances:
+        for i in SessionHooks.instances:
             if i.preRecordSessionTakings(s.id):
                 return
         paytotals = dict([(x.paytype, y) for x, y in s.payment_totals])
@@ -356,7 +356,7 @@ class record(ui.dismisspopup):
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
-        for i in AccountingHooks.instances:
+        for i in SessionHooks.instances:
             i.postRecordSessionTakings(self.session.id)
 
 @user.permission_required('record-takings', "Record takings for a session")
