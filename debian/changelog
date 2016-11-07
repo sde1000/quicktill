@@ -1,3 +1,13 @@
+quicktill (0.12.0alpha7) stable; urgency=low
+
+  * New release 0.12.0alpha7
+
+  * Fix current session total popup
+
+  * Add dependency on python3-dateutil
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 07 Nov 2016 11:56:05 +0000
+
 quicktill (0.12.0alpha6) stable; urgency=low
 
   * New release 0.12.0alpha6
