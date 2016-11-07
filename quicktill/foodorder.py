@@ -148,7 +148,7 @@ class subopts_dialog(ui.dismisspopup):
         self.addstr(7,2,' '*(self.w-4))
         if len(self.ol)<self.atleast:
             self.addstr(7,2,"Choose options from the list below.")
-        elif len(self.ol)<self.atmost or self.atmost is None:
+        elif self.atmost is None or len(self.ol) < self.atmost:
             self.addstr(7,2,
                             "Choose options, and press Cash/Enter to confirm.")
         else:
