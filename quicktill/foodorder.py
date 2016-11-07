@@ -155,7 +155,7 @@ class subopts_dialog(ui.dismisspopup):
             self.addstr(7,2,"Press Cash/Enter to confirm.")
         self.move(2, 2)
     def newsubopt(self,so):
-        if len(self.ol)<self.atmost or self.atmost is None:
+        if self.atmost is None or len(self.ol) < self.atmost:
             if isinstance(so[1],float):
                 self.ol.append(so)
                 self.redraw()
