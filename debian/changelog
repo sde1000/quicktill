@@ -1,3 +1,59 @@
+quicktill (0.12.0alpha6) stable; urgency=low
+
+  * New release 0.12.0alpha6
+
+  * README updates
+
+  * Add 'kbdiff' command temporarily
+
+  * Update Haymakers example file for modifiers changes
+
+  * Remove curseskeyboard() backwards-compatibility code
+
+  * Deal with New Years Day being a Saturday
+
+  * Add "check connection" option to Xero
+
+  * Update release notes
+
+  * checkdb command output includes transaction
+
+  * Allow suppliers to be linked to Xero contacts
+
+  * Don't send UnitAmount element if cost price is unknown
+
+  * WIP: Delivery to Xero bill
+
+  * PEP8 pass on delivery.py
+
+  * Change priceguess to use new plugin system
+
+  * Change usestock_hook to use the new plugin system
+
+  * Xero sessions integration
+
+  * Simple plugin system
+
+  * Add accounting info fields to more models
+
+  * Voided transaction line tracking
+
+  * First attempt at Xero integration
+
+  * Store transaction ID instead of Transaction object in register
+
+  * Fix for sales from display stocklines with negative ondisplay
+
+  * WIP: database query optimisation
+
+  * Implement stock purge for continuous stocklines
+
+  * PEP8 pass on session.py
+
+  * Fix calculate_sale on continuous stocklines
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Mon, 07 Nov 2016 10:24:27 +0000
+
 quicktill (0.12.0alpha5) stable; urgency=low
 
   * New release 0.12.0alpha5
