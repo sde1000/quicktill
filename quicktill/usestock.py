@@ -174,6 +174,8 @@ def put_on_sale(line, si):
     # This is used for regular and display stocklines.
     td.s.add(line)
     td.s.add(si)
+    log.debug("Use Stock put_on_sale: about to put %s on sale on line %s",
+              si, line)
     si.onsale = datetime.datetime.now()
     si.stockline = line
     if line.linetype == "display":
