@@ -209,6 +209,7 @@ def add_display_line_stock(line):
                     .filter(Delivery.checked == True)\
                     .filter(StockItem.stockline == None)\
                     .filter(StockItem.stocktype == line.stocktype)\
+                    .filter(StockItem.finished == None)\
                     .all()
     other_lines = line.other_lines_same_stocktype()
     if other_lines:
