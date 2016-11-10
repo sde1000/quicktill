@@ -1,3 +1,11 @@
+quicktill (0.12.0alpha11) stable; urgency=low
+
+  * New release 0.12.0alpha11
+
+  * Remove remaining references to register.trans
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 10 Nov 2016 12:05:20 +0000
+
 quicktill (0.12.0alpha10) stable; urgency=low
 
   * New release 0.12.0alpha10
