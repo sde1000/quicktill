@@ -1,3 +1,13 @@
+quicktill (0.12.0alpha12) stable; urgency=low
+
+  * New release 0.12.0alpha12
+
+  * Fix "show stock lines with no key bindings" function
+
+  * Add debug message to usestock.put_on_sale()
+
+ -- Stephen Early <sde@individualpubs.co.uk>  Thu, 10 Nov 2016 13:02:54 +0000
+
 quicktill (0.12.0alpha11) stable; urgency=low
 
   * New release 0.12.0alpha11
