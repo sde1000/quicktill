@@ -528,7 +528,7 @@ class page(ui.basicpage):
             # another user has this transaction, remove it from them
             # before claiming it for the current user otherwise we
             # will receive an integrity exception.
-            self.trans.user = None
+            trans.user = None
             td.s.flush()
         trans.user = self.user.dbuser
         self.dl = [tline(l.id) for l in trans.lines] \
@@ -708,7 +708,7 @@ class page(ui.basicpage):
             otl.items = otl.items + 1
             self.dl[-1].update()
             td.s.flush()
-            td.s.expire(self.trans, ['total'])
+            td.s.expire(trans, ['total'])
             self.update_balance()
             self.cursor_off()
             self._redraw()
@@ -2012,7 +2012,7 @@ class page(ui.basicpage):
                                self.user.fullname)
         for line in list(trans.lines):
             line.transaction = othertrans
-        td.s.delete(self.trans)
+        td.s.delete(trans)
         td.s.flush()
         td.s.expire(othertrans)
         self._loadtrans(othertrans.id)
