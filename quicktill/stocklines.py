@@ -513,31 +513,33 @@ class modify(user.permission_checked,ui.dismisspopup):
 class listunbound(ui.listpopup):
     """Pop up a list of stock lines with no key bindings on any keyboard."""
     def __init__(self):
-        l=td.s.query(StockLine).outerjoin(KeyboardBinding).\
-            filter(KeyboardBinding.stocklineid==None).\
-            all()
-        if len(l)==0:
+        l = td.s.query(StockLine)\
+                .outerjoin(KeyboardBinding)\
+                .filter(KeyboardBinding.stocklineid==None)\
+                .all()
+        if not l:
             ui.infopopup(
                 ["There are no stock lines that lack key bindings.",
-                 "","Note that other tills may have key bindings to "
+                 "", "Note that other tills may have key bindings to "
                  "a stock line even if this till doesn't."],
-                title="Unbound stock lines",colour=ui.colour_info,
+                title="Unbound stock lines", colour=ui.colour_info,
                 dismiss=keyboard.K_CASH)
             return
-        f=ui.tableformatter(' l l l l ')
-        headerline=f("Name","Location","Department","Stock")
-        self.ll=[f(x.name,x.location,x.department.description,
-                   "Yes" if len(x.stockonsale)>0 else "No",
-                   userdata=x) for x in l]
-        ui.listpopup.__init__(self,self.ll,title="Unbound stock lines",
-                              colour=ui.colour_info,header=[headerline])
+        f = ui.tableformatter(' l l l l ')
+        headerline = f("Name", "Location", "Department", "Stock")
+        self.ll = [f(x.name, x.location,
+                     x.department.description if x.department else "",
+                     "Yes" if len(x.stockonsale) > 0 else "No",
+                     userdata=x) for x in l]
+        ui.listpopup.__init__(self, self.ll, title="Unbound stock lines",
+                              colour=ui.colour_info, header=[headerline])
 
-    def keypress(self,k):
-        if k==keyboard.K_CASH:
+    def keypress(self, k):
+        if k == keyboard.K_CASH:
             self.dismiss()
             modify(self.ll[self.s.cursor].userdata)
         else:
-            ui.listpopup.keypress(self,k)
+            ui.listpopup.keypress(self, k)
 
 class selectline(ui.listpopup):
     """
