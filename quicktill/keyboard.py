@@ -70,6 +70,7 @@ keycode("K_DEL", "Del")
 keycode("K_HOME", "Home")
 keycode("K_END", "End")
 keycode("K_EOL", "Kill to EOL")
+keycode("K_TAB", "Tab")
 
 # Till management keys
 keycode("K_USESTOCK","Use Stock")

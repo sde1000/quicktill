@@ -687,7 +687,7 @@ class field(basicwin):
             if i[0] is not None:
                 if i[1] is None: i[0]()
                 else: i[0](*i[1])
-        elif (k in (keyboard.K_DOWN,keyboard.K_CASH,curses.ascii.TAB)
+        elif (k in (keyboard.K_DOWN, keyboard.K_CASH, keyboard.K_TAB)
               and self.nextfield):
             self.nextfield.focus()
         elif (k in (keyboard.K_UP,keyboard.K_CLEAR)
@@ -1878,6 +1878,7 @@ class cursesfilter:
         curses.KEY_HOME: keyboard.K_HOME,
         curses.KEY_END: keyboard.K_END,
         curses.KEY_EOL: keyboard.K_EOL,
+        curses.ascii.TAB: keyboard.K_TAB,
         1: keyboard.K_HOME, # Ctrl-A
         4: keyboard.K_DEL, # Ctrl-D
         5: keyboard.K_END, # Ctrl-E
