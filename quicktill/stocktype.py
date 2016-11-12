@@ -331,6 +331,8 @@ class PriceGuessHook(metaclass=ClassPluginMount):
     @staticmethod
     def guess_price(stocktype, stockunit, cost):
         for p in PriceGuessHook.plugins:
-            g = p.guess_price(stocktype, stockunit, cost)
+            g = None
+            with ui.exception_guard("running guess_price hook"):
+                g = p.guess_price(stocktype, stockunit, cost)
             if g:
                 return g
