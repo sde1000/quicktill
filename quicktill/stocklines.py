@@ -216,8 +216,9 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             y += 1
         if linetype == "display" or linetype == "continuous":
             self.addstr(y,2,"      Stock type:")
-            self.stocktypefield = ui.popupfield(
-                y, 20, 52, stocktype.choose_stocktype, lambda si: si.format())
+            self.stocktypefield = ui.modelpopupfield(
+                y, 20, 52, StockType, stocktype.choose_stocktype,
+                lambda si: si.format())
             self.fields.append(self.stocktypefield)
             y += 1
         self.createfield = ui.buttonfield(
@@ -267,7 +268,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
         # manufacturer field.
         if self.linetype != 'regular' \
            and self.stocktypefield.focused \
-           and self.stocktypefield.f is None \
+           and self.stocktypefield.read() is None \
            and isinstance(k, str) \
            and k:
             self.stocktypefield.popup() # Grabs the focus
@@ -310,9 +311,10 @@ class modify(user.permission_checked,ui.dismisspopup):
             self.fields.append(self.pullthrufield)
             y += 1
             self.addstr(y, 2, "         Department:")
-            depts = td.s.query(Department).order_by(Department.id).all()
-            self.deptfield = ui.listfield(
-                y, 23, 20, depts, f=stockline.department,
+            self.deptfield = ui.modellistfield(
+                y, 23, 20, Department,
+                lambda q: q.order_by(Department.id),
+                f=stockline.department,
                 d=lambda x: x.description)
             self.fields.append(self.deptfield)
             y += 1
@@ -323,8 +325,9 @@ class modify(user.permission_checked,ui.dismisspopup):
             self.fields.append(self.capacityfield)
             y += 1
         self.addstr(y, 2, "         Stock type:")
-        self.stocktypefield = ui.popupfield(
-            y, 23, 52, stocktype.choose_stocktype, lambda si: si.format(),
+        self.stocktypefield = ui.modelpopupfield(
+            y, 23, 52, StockType, stocktype.choose_stocktype,
+            lambda si: si.format(),
             f=stockline.stocktype)
         self.fields.append(self.stocktypefield)
         y += 1
@@ -380,7 +383,7 @@ class modify(user.permission_checked,ui.dismisspopup):
     def keypress(self,k):
         # Handle keypresses that the fields pass up to the main popup
         if self.stocktypefield.focused \
-           and self.stocktypefield.f is None \
+           and self.stocktypefield.read() is None \
            and isinstance(k, str) \
            and k:
             self.stocktypefield.popup() # Grabs the focus

@@ -231,9 +231,9 @@ class addtransline(user.permission_checked, ui.dismisspopup):
             colour=ui.colour_input)
         self.addstr(2, 2, " Department:")
         self.addstr(3, 2, "Description:")
-        depts = td.s.query(Department).order_by(Department.id).all()
-        self.deptfield = ui.listfield(
-            2, 15, 20, depts,
+        self.deptfield = ui.modellistfield(
+            2, 15, 20, Department,
+            lambda q: q.order_by(Department.id),
             d=lambda x: x.description,
             keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)})
@@ -241,7 +241,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.itemsfield = ui.editfield(4, 15, 5, validate=ui.validate_int)
         self.addstr(4, 21, "items @ {}".format(tillconfig.currency))
         self.amountfield = ui.editfield(4, 29 + len(tillconfig.currency), 8,
-                                        validate=ui.validate_float)
+                                        validate=ui.validate_positive_float)
         self.addstr(4, 38 + len(tillconfig.currency), '=')
         self.itemsfield.sethook = self.calculate_total
         self.amountfield.sethook = self.calculate_total
@@ -266,11 +266,10 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.addstr(4, 40 + len(tillconfig.currency),
                     tillconfig.fc(items * amount))
     def enter(self):
-        if self.deptfield.f is None:
+        dept = self.deptfield.read()
+        if dept is None:
             return ui.infopopup(["You must specify a department."],
                                 title="Error")
-        dept = self.deptfield.read()
-        td.s.add(dept)
         text = self.descfield.f if self.descfield.f else dept.description
         try:
             items = int(self.itemsfield.f)

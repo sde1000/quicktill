@@ -9,8 +9,10 @@ import textwrap
 import traceback
 import locale
 import curses, curses.ascii, curses.panel
+import os.path
 from . import keyboard, event, tillconfig, td
 from .td import func
+import sqlalchemy.inspection
 
 import logging
 log = logging.getLogger(__name__)
@@ -629,38 +631,46 @@ class alarmpopup(infopopup):
             del event.eventlist[event.eventlist.index(self)]
         infopopup.dismiss(self)
 
-def validate_int(s,c):
+def validate_int(s, c):
     try:
         int(s)
     except:
         return None
     return s
-def validate_positive_int(s,c):
+def validate_positive_nonzero_int(s, c):
     try:
-        x=int(s)
-        if x<1: return None
+        x = int(s)
+        if x < 1:
+            return None
     except:
         return None
     return s
-def validate_float(s,c):
-    if s=='-': return s
+def validate_float(s, c):
+    if s == '-':
+        return s
     try:
         float(s)
     except:
         return None
     return s
-def validate_uppercase(s,c):
-    return s.upper()
-def validate_lowercase(s,c):
-    return s.lower()
-def validate_title(s,c):
-    return s.title()
+def validate_positive_float(s, c):
+    try:
+        x = float(s)
+        if x < 0.0:
+            return None
+    except:
+        return None
+    return s
 
 class field(basicwin):
-    def __init__(self,keymap={}):
+    """A field inside a window.
+
+    Able to receive the input focus, and knows how to pass it on to
+    peer fields.
+    """
+    def __init__(self, keymap={}):
         self.nextfield=None
         self.prevfield=None
-        self.sethook=lambda:None
         # We _must_ copy the provided keymap; it is permissible for our
         # keymap to be modified after initialisation, and it would be
         # a Very Bad Thing (TM) for the default empty keymap to be
@@ -668,8 +678,7 @@ class field(basicwin):
         self.keymap=keymap.copy()
         basicwin.__init__(self)
         self.win=self.parent.win
-    def set(self):
-        self.sethook()
+
     def keypress(self,k):
         # All keypresses handled here are defaults; if they are present
         # in the keymap, we should not handle them ourselves.
@@ -686,6 +695,40 @@ class field(basicwin):
             self.prevfield.focus()
         else:
             self.parent.keypress(k)
+
+class valuefield(field):
+    """A field that can have a variable value.
+
+    Use the set() method to set the value and the read() method to
+    read it.  Accessing the value as the "f" property may work for
+    some fields, but is deprecated.  Some valuefields may support the
+    value being changed directly by the user.
+
+    Set the "sethook" attribute to receive a callback when the value
+    is changed.
+    """
+    def __init__(self, keymap={}, f=None):
+        super(valuefield, self).__init__(keymap)
+        self.sethook = lambda: None
+        self.set(f)
+
+    def set(self, value):
+        """Set field value.
+
+        If you completely override this method, remember to call
+        sethook() after changing the value!
+        """
+        self._f = f
+        self.sethook()
+
+    def setf(self, value):
+        """Set value and move to next field"""
+        self.set(value)
+        if self.nextfield:
+            self.nextfield.focus()
+
+    def read(self):
+        return self._f
 
 class scrollable(field):
     """A rectangular field of a page or popup that contains a list of
@@ -716,7 +759,6 @@ class scrollable(field):
         self.set(dl)
     def set(self,dl):
         self.dl=dl
-        self.sethook()
         self.redraw() # Does implicit set_cursor()
     def set_cursor(self,c):
         if len(self.dl)==0 and not self.lastline:
@@ -1198,47 +1240,59 @@ def automenu(itemlist,spill="menu",**kwargs):
     return keymenu([(possible_keys.pop(0),desc,func,args)
                     for desc,func,args in itemlist],**kwargs)
 
-class booleanfield(field):
-    """
+class booleanfield(valuefield):
+    """A field with boolean value.
+
     A field that can be either True or False, displayed as Yes or No.
     Also has an optional "blank" state which will be read back as
     None.
-
     """
-    def __init__(self,y,x,keymap={},f=None,readonly=False,allow_blank=True):
-        field.__init__(self,keymap)
-        self.y=y
-        self.x=x
-        self.readonly=readonly
-        self.allow_blank=allow_blank
-        self.set(f)
+    def __init__(self, y, x,
+                 keymap={}, f=None, readonly=False, allow_blank=True):
+        self.y = y
+        self.x = x
+        self.readonly = readonly
+        self.allow_blank = allow_blank
+        super(booleanfield, self).__init__(keymap, f)
+
     def focus(self):
-        field.focus(self)
+        super(booleanfield, self).focus()
         self.draw()
-    def set(self,l):
-        self.f=l
-        if not self.allow_blank: self.f=not not self.f
+
+    def set(self, l):
+        self._f = l
+        if not self.allow_blank:
+            self._f = not not self._f
         self.sethook()
         self.draw()
+
     def draw(self):
-        pos=self.win.getyx()
-        if self.f is None: s="   "
-        else: s="Yes" if self.f else "No "
-        pos=self.win.getyx()
-        self.addstr(self.y,self.x,s,curses.A_REVERSE)
-        if self.focused: self.win.move(self.y,self.x)
-        else: self.win.move(*pos)
-    def keypress(self,k):
+        pos = self.win.getyx()
+        if self._f is None:
+            s = "   "
+        else:
+            s = "Yes" if self._f else "No "
+        pos = self.win.getyx()
+        self.addstr(self.y, self.x, s, curses.A_REVERSE)
+        if self.focused:
+            self.win.move(self.y, self.x)
+        else:
+            self.win.move(*pos)
+
+    def keypress(self, k):
         if k in ('y', 'Y', '1'):
             self.set(True)
         elif k in ('n', 'N', '0', '00'):
             self.set(False)
-        elif k == keyboard.K_CLEAR and self.allow_blank and self.f is not None:
+        elif k in (keyboard.K_LEFT, keyboard.K_RIGHT, ' ') \
+             and self._f is not None:
+            self.set(not self._f)
+        elif k == keyboard.K_CLEAR and self.allow_blank and self._f is not None:
             self.set(None)
         else:
-            field.keypress(self, k)
+            super(booleanfield, self).keypress(k)
                 
-class editfield(field):
+class editfield(valuefield):
     """Accept typed-in input in a field.
 
     Processes an implicit set of keycodes; when an unrecognised code
@@ -1269,20 +1323,21 @@ class editfield(field):
         self.flen = flen
         self.validate = validate
         self.readonly = readonly
-        field.__init__(self, keymap)
-        editfield.set(self, f)
+        super(editfield, self).__init__(keymap, f)
     # Internal attributes:
     # c - cursor position
     # i - amount by which contents have scrolled left to fit width
     # _f - current contents
     @property
     def f(self):
-        return self._f
+        return self.read()
+
     def focus(self):
-        field.focus(self)
+        super(editfield, self).focus()
         if self.c > len(self._f):
             self.c = len(self._f)
         self.draw()
+
     def set(self, l):
         if l is None:
             l = ""
@@ -1294,15 +1349,21 @@ class editfield(field):
         self.i = 0 # will be updated by draw() if necessary
         self.sethook()
         self.draw()
+
     def draw(self):
-        if self.c -self.i > self.w:
+        pos = self.win.getyx()
+        if self.c - self.i > self.w:
             self.i = self.c - self.w
         if self.c < self.i:
             self.i = self.c
         self.addstr(self.y, self.x, ' ' * self.w, curses.A_REVERSE)
         self.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
                     curses.A_REVERSE)
-        self.win.move(self.y, self.x + self.c - self.i)
+        if self.focused:
+            self.win.move(self.y, self.x + self.c - self.i)
+        else:
+            self.win.move(*pos)
+
     def insert(self, s):
         if self.readonly:
             curses.beep()
@@ -1321,6 +1382,7 @@ class editfield(field):
             self.draw()
         else:
             curses.beep()
+
     def backspace(self):
         "Delete the character to the left of the cursor"
         if self.c > 0 and not self.readonly:
@@ -1330,6 +1392,7 @@ class editfield(field):
             self.draw()
         else:
             curses.beep()
+
     def delete(self):
         "Delete the character under the cursor"
         if self.c < len(self._f) and not self.readonly:
@@ -1338,28 +1401,30 @@ class editfield(field):
             self.draw()
         else:
             curses.beep()
+
     def move_left(self):
         if self.c == 0:
             curses.beep()
         self.c = max(self.c - 1, 0)
         self.draw()
+
     def move_right(self):
         if self.c == len(self._f):
             curses.beep()
         self.c = min(self.c + 1, len(self._f))
         self.draw()
+
     def home(self):
         self.c = 0
         self.draw()
+
     def end(self):
         self.c = len(self._f)
         self.draw()
+
     def clear(self):
-        self._f = ""
-        self.c = 0
-        self.i = 0
-        self.sethook()
-        self.draw()
+        editfield.set(self, "")
+
     def killtoeol(self):
         if self.readonly:
             curses.beep()
@@ -1367,6 +1432,7 @@ class editfield(field):
         self._f = self._f[:self.c]
         self.sethook()
         self.draw()
+
     def keypress(self, k):
         if isinstance(k, str):
             self.insert(k)
@@ -1387,7 +1453,7 @@ class editfield(field):
         elif k == keyboard.K_CLEAR and self._f != "" and not self.readonly:
             self.clear()
         else:
-            field.keypress(self, k)
+            super(editfield, self).keypress(k)
 
 class datefield(editfield):
     """A field for entry of dates
@@ -1423,27 +1489,27 @@ class datefield(editfield):
             checkdigit(9)):
             return s
         return None
+
     def set(self, v):
         if hasattr(v, 'strftime'):
-            editfield.set(self, formatdate(v))
+            super(datefield, self).set(formatdate(v))
         else:
-            editfield.set(self, v)
+            super(datefield, self).set(v)
+
     def read(self):
         try:
             d = datetime.datetime.strptime(self._f,"%Y-%m-%d")
         except:
             d = None
         return d
-    @property
-    def f(self):
-        # XXX maybe cache this?
-        return self.read()
+
     def draw(self):
         self.addstr(self.y, self.x, 'YYYY-MM-DD', curses.A_REVERSE)
         self.addstr(self.y, self.x, self._f, curses.A_REVERSE)
         self.win.move(self.y, self.x + self.c)
+
     def insert(self, s):
-        editfield.insert(self, s)
+        super(datefield, self).insert(s)
         if len(self._f) == 4 or len(self._f) == 7:
             self.set(self._f + '-')
 
@@ -1459,8 +1525,6 @@ class modelfield(editfield):
 
     field: the model attribute to search on, which must be a String type
 
-    filter: an expression to use to select from a subset of rows
-
     default: a model instance to use as the default value
 
     create: a function to call to create a new row; it is called with
@@ -1471,27 +1535,25 @@ class modelfield(editfield):
         self._model = model
         self._attr = field
         self._field = getattr(self._model, self._attr)
-        self._filter = filter
         self._create = create
-        self._instance = None
-        editfield.__init__(self, y, x, w, keymap=keymap,
-                           flen=self._field.type.length,
-                           validate=self._validate_autocomplete,
-                           readonly=readonly)
-        if default:
-            self.set(default)
+        super(modelfield, self).__init__(
+            y, x, w, keymap=keymap,
+            f=default,
+            flen=self._field.type.length,
+            validate=self._validate_autocomplete,
+            readonly=readonly)
+
     def _complete(self, m):
         q = td.s.query(self._field)
-        if self._filter:
-            q = q.filter(self._filter)
         q = q.filter(self._field.ilike("{}%".format(m)))
         q = q.order_by(func.length(self._field), self._field)
         return [x[0] for x in q.all()]
+
     def _validate_autocomplete(self, s, c):
         t = s[:c + 1]
         l = self._complete(t)
         if l:
-            return l[0]
+            return os.path.commonprefix(l)
         # If we can't create new entries, don't allow the user to continue
         # typing if there are no matches
         if not self._create:
@@ -1503,46 +1565,37 @@ class modelfield(editfield):
         if self._complete(t[:-1]):
             return t
         return s
-    def set(self, instance):
-        self._instance = instance
-        if instance:
-            editfield.set(self, getattr(instance, self._attr))
+
+    def set(self, value):
+        if value:
+            super(modelfield, self).set(getattr(value, self._attr))
         else:
-            editfield.set(self, None)
-    @property
-    def f(self):
-        return self._instance
+            super(modelfield, self).set(None)
+
     def read(self):
-        if self._instance:
-            self._instance = td.s.merge(self._instance)
-        return self._instance
-    def update_instance_if_matched(self):
-        """Update instance to match field contents if possible
-
-        If not possible, instance is set to None
-        """
-        oi = self._instance
-        i = td.s.query(self._model).\
-            filter(self._field == self._f).\
-            all()
+        i = td.s.query(self._model)\
+                .filter(self._field == self._f)\
+                .all()
         if len(i) == 1:
-            self._instance = i[0]
-        else:
-            self._instance = None
-        if self._instance != oi:
-            self.sethook()
-    def defocus(self):
-        self.update_instance_if_matched()
-        if self._f and not self._instance and self._create:
-            t = self._f
-            self.set(None)
-            self._create(self, t)
-    def clear(self):
-        self._instance = None
-        editfield.clear(self)
+            return i[0]
 
-class popupfield(field):
-    """
+    def defocus(self):
+        i = self.read()
+        if self._f and not i:
+            # Find candidate matches and pop up a list of them
+            m = td.s.query(self._field)\
+                    .filter(self._field.ilike("{}%".format(self._f)))\
+                    .order_by(self._field)\
+                    .all()
+            ml = [ (x[0], super(modelfield, self).set, (x[0],)) for x in m ]
+            if self._create:
+                ml.append(("Create new...", self._create, (self, self._f,)))
+            self.set(None)
+            menu(ml, title="Choose...")
+
+class modelpopupfield(valuefield):
+    """A field that allows a model instance to be chosen using a popup dialog
+
     A field which has its value set using a popup dialog.  The values
     the field can take are unordered; there is no concept of "next"
     and "previous".  The field can also be null.
@@ -1557,133 +1610,164 @@ class popupfield(field):
     The current value of the field, if not-None, is always a database
     model.  It is not necessarily a model previously supplied via
     set() or through popupfunc().
-
     """
-    def __init__(self,y,x,w,popupfunc,valuefunc,f=None,keymap={},
+    def __init__(self, y, x, w, model, popupfunc, valuefunc, f=None, keymap={},
                  readonly=False):
-        """
-        f is the default value, and must be a database model.
+        # f must be a database model or None
+        self.y = y
+        self.x = x
+        self.w = w
+        self.model = model
+        self.popupfunc = popupfunc
+        self.valuefunc = valuefunc
+        self.readonly = readonly
+        super(modelpopupfield, self).__init__(keymap, f)
 
-        """
-        self.y=y
-        self.x=x
-        self.w=w
-        self.popupfunc=popupfunc
-        self.valuefunc=valuefunc
-        self.readonly=readonly
-        field.__init__(self,keymap)
-        self.f=f
-        self.draw()
     def focus(self):
-        field.focus(self)
+        super(modelpopupfield, self).focus()
         self.draw()
-    def set(self,value):
-        self.f=value
+
+    def set(self, value):
+        self._f = sqlalchemy.inspection.inspect(value).identity \
+                  if value else None
         self.sethook()
         self.draw()
+
     def read(self):
-        if self.f is None: return None
-        # We have to be careful here: self.f is very likely to be a
-        # detached instance, and there's no guarantee that another
-        # instance with the same primary key has not already been
-        # loaded into the current session.  Get via primary key
-        # instead of just doing td.s.add()
-        self.f=td.s.merge(self.f)
-        return self.f
-    def setf(self,value):
-        self.set(value)
-        if self.nextfield: self.nextfield.focus()
+        if self._f is None:
+            return None
+        return td.s.query(self.model).get(self._f)
+
     def draw(self):
-        if self.f is not None:
-            td.s.add(self.f)
-            s=self.valuefunc(self.f)
-        else: s=""
-        if len(s)>self.w: s=s[:self.w]
-        self.addstr(self.y,self.x,' '*self.w,curses.A_REVERSE)
-        self.addstr(self.y,self.x,s,curses.A_REVERSE)
-        self.win.move(self.y,self.x)
+        pos = self.win.getyx()
+        i = self.read()
+        if i:
+            s = self.valuefunc(i)
+        else:
+            s = ""
+        if len(s) > self.w:
+            s = s[:self.w]
+        self.addstr(self.y, self.x, ' ' * self.w, curses.A_REVERSE)
+        self.addstr(self.y, self.x, s, curses.A_REVERSE)
+        if self.focused:
+            self.win.move(self.y, self.x)
+        else:
+            self.win.move(*pos)
+
     def popup(self):
-        if not self.readonly: self.popupfunc(self.setf,self.f)
-    def keypress(self,k):
-        if k==keyboard.K_CLEAR and self.f is not None and not self.readonly:
+        if not self.readonly:
+            self.popupfunc(self.setf, self.read())
+
+    def keypress(self, k):
+        if k == keyboard.K_CLEAR and self._f is not None and not self.readonly:
             self.set(None)
-        elif k==keyboard.K_CASH and not self.readonly:
+        elif k == keyboard.K_CASH and not self.readonly:
             self.popup()
         else:
-            field.keypress(self,k)
+            super(modelpopupfield, self).keypress(k)
 
-class listfield(popupfield):
-    """
-    A field which allows a model to be chosen from a list of models.
+class modellistfield(modelpopupfield):
+    """A field that allows a model instance to be chosen from a list
+
+    A field which allows a model instance to be chosen from a list.
     The list is ordered: for any particular value there is a concept
     of "next" and "previous".
+
+    l is a function which, given a Query object for the model filters
+    it such that the desired list of instances will be obtained, and
+    returns it.
 
     A function d can be provided; if it is, then d(model) is expected
     to return a suitable string for display.  If it is not then
     str(model) is called to obtain a string.
 
+    This should only be used where the list of model instances is
+    expected to be small: the entire list is loaded from the database
+    on every user interaction.  Where the list may be large, it is
+    likely to be better to use a modelfield() instead.
     """
-    def __init__(self,y,x,w,l,d=str,f=None,keymap={},readonly=False):
-        # We copy the list because we're going to modify it in-place
-        # whenever we refresh from the database
-        self.l=list(l)
-        self.d=d
-        popupfield.__init__(self,y,x,w,self._popuplist,d,
-                            f=f,keymap=keymap,readonly=readonly)
-    def _update_list(self):
-        self.l=[td.s.merge(x) for x in self.l]
-    def _popuplist(self,func,default):
-        self._update_list()
-        self.read()
+
+    def __init__(self, y, x, w, model, l, d=str, f=None, keymap={},
+                 readonly=False):
+        self._query = l
+        super(modellistfield, self).__init__(
+            y, x, w, model, self._popuplist, d,
+            f=f, keymap=keymap, readonly=readonly)
+
+    def _popuplist(self, func, default):
+        l = self._query(td.s.query(self.model)).all()
+        current = self.read()
+        default = None
         try:
-            default=self.l.index(self.f)
+            default = l.index(current)
         except ValueError:
             pass
-        m=[(self.valuefunc(x),func,(x,)) for x in self.l]
-        menu(m,colour=colour_line,default=default)
-    def change_list(self,l):
-        """
+        m = [(self.valuefunc(x), func, (x,)) for x in l]
+        menu(m, colour=colour_line, default=default)
+
+    def change_query(self, l):
+        """Change the query
+
         Replace the current list of models with a new one.  If the
         currently chosen model is in the list, keep it; otherwise,
         select the first model from the new list.
-        
         """
-        self.l=l
-        self.read()
-        if self.f in l:
+        self._query = l
+        l = self._query(td.s.query(self.model)).all()
+        current = self.read()
+        if current in l:
             return
-        if len(l)>0:
-            self.f=l[0]
+        if len(l) > 0:
+            self.set(l[0])
         else:
-            self.f=None
-        self.sethook()
-        self.draw()
+            self.set(None)
+
     def nextitem(self):
-        self._update_list()
-        self.read()
-        if self.f in self.l:
-            ni=self.l.index(self.f)+1
-            if ni>=len(self.l): ni=0
-            self.f=self.l[ni]
+        l = self._query(td.s.query(self.model)).all()
+        current = self.read()
+        if current in l:
+            ni = l.index(current) + 1
+            if ni >= len(l):
+                ni = 0
+            self.set(l[ni])
         else:
-            if len(self.l)>0: self.f=self.l[0]
-        self.sethook()
-        self.draw()
+            if len(l) > 0:
+                self.set(l[0])
+            else:
+                self.set(None)
+
     def previtem(self):
-        self._update_list()
-        self.read()
-        if self.f in self.l:
-            pi=self.l.index(self.f)-1
-            self.f=self.l[pi]
+        l = self._query(td.s.query(self.model)).all()
+        current = self.read()
+        if current in l:
+            pi = l.index(current) - 1
+            self.set(l[pi])
         else:
-            if len(self.l)>0: self.f=self.l[-1]
-        self.sethook()
-        self.draw()
-    def keypress(self,k):
+            if len(l) > 0:
+                self.set(l[-1])
+            else:
+                self.set(None)
+
+    def prefixitem(self, prefix):
+        l = self._query(td.s.query(self.model)).all()
+        current = self.read()
+        if current in l:
+            idx = l.index(current) + 1
+            l = l[idx:] + l[:idx]
+        for i in l:
+            if self.valuefunc(i).lower().startswith(prefix.lower()):
+                self.set(i)
+                return
+
+    def keypress(self, k):
         if not self.readonly:
-            if k==keyboard.K_RIGHT: return self.nextitem()
-            elif k==keyboard.K_LEFT: return self.previtem()
-        popupfield.keypress(self,k)
+            if k == keyboard.K_RIGHT:
+                return self.nextitem()
+            elif k == keyboard.K_LEFT:
+                return self.previtem()
+            elif isinstance(k, str):
+                return self.prefixitem(k)
+        super(modellistfield, self).keypress(k)
 
 class buttonfield(field):
     def __init__(self,y,x,w,text,keymap={}):

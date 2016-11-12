@@ -1,7 +1,7 @@
 from . import ui, stock, td, keyboard, printer, tillconfig, stocktype
 from . import user, usestock
 from decimal import Decimal
-from .models import Delivery, Supplier, StockUnit, StockItem
+from .models import Delivery, Supplier, StockUnit, StockItem, StockType
 from .models import penny
 from .plugins import InstancePluginMount
 import datetime
@@ -317,6 +317,10 @@ class delivery(ui.basicpopup):
 class stockitem(ui.basicpopup):
     """Create a number of stockitems, or edit a single stockitem."""
 
+    @staticmethod
+    def _null_list(query):
+        return query.filter(False)
+
     def __init__(self, func, deliveryid, item=None):
         """If item is provided then we edit it; otherwise we create one or
         more StockItems and call func with the StockItem as an
@@ -343,14 +347,17 @@ class stockitem(ui.basicpopup):
         self.addstr(7, 31 + len(tillconfig.currency), "per")
         self.addstr(8, 2, "         Best before:")
         if not item:
-            self.qtyfield = ui.editfield(2, 24, 5, f=1,
-                                         validate=ui.validate_positive_int)
+            self.qtyfield = ui.editfield(
+                2, 24, 5, f=1,
+                validate=ui.validate_positive_nonzero_int)
             self.qtyfield.sethook = self.update_suggested_price
-        self.typefield = ui.popupfield(
-            3, 24, 52, stocktype.choose_stocktype, lambda si: si.format(),
+        self.typefield = ui.modelpopupfield(
+            3, 24, 52, StockType, stocktype.choose_stocktype,
+            lambda si: si.format(),
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.typefield.sethook = self.typefield_changed
-        self.unitfield = ui.listfield(4, 24, 30, [], lambda x: x.name)
+        self.unitfield = ui.modellistfield(
+            4, 24, 30, StockUnit, self._null_list, lambda x: x.name)
         self.unitfield.sethook = self.update_suggested_price
         self.costfield = ui.editfield(5, 24 + len(tillconfig.currency), 10,
                                       validate=ui.validate_float)
@@ -398,14 +405,15 @@ class stockitem(ui.basicpopup):
             self.saleunitsfield.set("")
 
     def updateunitfield(self):
-        if self.typefield.f == None:
-            self.unitfield.change_list([])
+        stocktype = self.typefield.read()
+        if stocktype == None:
+            self.unitfield.change_query(self._null_list)
             return
-        ul = td.s.query(StockUnit).\
-             filter(StockUnit.unit == self.typefield.read().unit).\
-             order_by(StockUnit.size).\
-             all()
-        self.unitfield.change_list(ul)
+        unit_id = stocktype.unit.id
+        def unit_list(query):
+            return query.filter(StockUnit.unit_id == unit_id)\
+                        .order_by(StockUnit.size)
+        self.unitfield.change_query(unit_list)
 
     def update_suggested_price(self):
         self.addstr(6, 24, ' ' * 10)
@@ -433,8 +441,8 @@ class stockitem(ui.basicpopup):
 
     def accept(self):
         if (not self.item and len(self.qtyfield.f) == 0) \
-           or self.typefield.f is None \
-           or self.unitfield.f is None \
+           or self.typefield.read() is None \
+           or self.unitfield.read() is None \
            or len(self.salefield.f) == 0 \
            or len(self.saleunitsfield.f) == 0:
             ui.infopopup(["You have not filled in all the fields.  "
@@ -489,7 +497,7 @@ class stockitem(ui.basicpopup):
         # to them and pop up the stock type entry dialog.  Then
         # synthesise the keypress again to enter it into the
         # manufacturer field.
-        if (self.typefield.focused and self.typefield.f is None
+        if (self.typefield.focused and self.typefield.read() is None
             and isinstance(k, str) and k):
             self.typefield.popup() # Grabs the focus
             ui.handle_keyboard_input(k)

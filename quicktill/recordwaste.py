@@ -52,9 +52,10 @@ class record_item_waste(ui.dismisspopup):
             keyboard.K_CLEAR: (self.dismiss, None),},
                                            check_checkdigits=True)
         self.stockfield.sethook = self.stockfield_updated
-        wastelist = td.s.query(RemoveCode).filter(RemoveCode.id != 'sold').all()
-        self.wastedescfield = ui.listfield(
-            5, 21, 30, wastelist, lambda rc: rc.reason)
+        self.wastedescfield = ui.modellistfield(
+            5, 21, 30, RemoveCode,
+            lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),
+            lambda rc: rc.reason)
         self.amountfield = ui.editfield(
             6, 21, 4, validate=ui.validate_float,
             keymap={keyboard.K_CASH: (self.finish, None)})
@@ -126,9 +127,10 @@ class record_line_waste(ui.dismisspopup):
         self.addstr(5, 2, "Waste description:")
         self.addstr(6, 2, "    Amount wasted:      {}s".format(
             stockline.stocktype.unit.name))
-        wastelist = td.s.query(RemoveCode).filter(RemoveCode.id != 'sold').all()
-        self.wastedescfield = ui.listfield(
-            5, 21, 30, wastelist, lambda rc: rc.reason, keymap={
+        self.wastedescfield = ui.modellistfield(
+            5, 21, 30, RemoveCode,
+            lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),
+            lambda rc: rc.reason, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None),})
         self.amountfield = ui.editfield(
             6, 21, 4, validate=ui.validate_float,

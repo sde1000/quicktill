@@ -145,12 +145,11 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
     permission_required = ('stock-level-check', 'Check stock levels')
 
     def __init__(self):
-        depts = td.s.query(Department).order_by(Department.id).all()
         ui.dismisspopup.__init__(self, 10, 52, title="Stock level check",
                                  colour=ui.colour_input)
         self.addstr(2, 2, 'Department:')
-        self.deptfield = ui.listfield(
-            2, 14, 20, depts,
+        self.deptfield = ui.modellistfield(
+            2, 14, 20, Department, lambda q: q.order_by(Department.id),
             d=lambda x: x.description,
             keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)})
@@ -177,10 +176,7 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
         min_sale = float(self.minfield.f)
         ahead = datetime.timedelta(days=weeks_ahead * 7)
         behind = datetime.timedelta(days=months_behind * 30.4)
-        dept = None if self.deptfield.f is None \
-               else self.deptfield.read()
-        if dept:
-            td.s.add(dept)
+        dept = self.deptfield.read()
         self.dismiss()
         q = td.s.query(StockType, func.sum(StockOut.qty) / behind.days)\
                 .join(StockItem)\

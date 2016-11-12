@@ -17,7 +17,6 @@ class create(user.permission_checked,ui.dismisspopup):
         ui.dismisspopup.__init__(self,12,57,title="Create PLU",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
-        depts=td.s.query(Department).order_by(Department.id).all()
         self.addstr(2,2,"Description:")
         self.addstr(3,2,"       Note:")
         self.addstr(4,2," Department:")
@@ -26,14 +25,17 @@ class create(user.permission_checked,ui.dismisspopup):
         self.descfield=ui.editfield(2,15,40,flen=160,keymap={
             keyboard.K_CLEAR: (self.dismiss,None)})
         self.notefield=ui.editfield(3,15,40,flen=160)
-        self.deptfield=ui.listfield(4,15,20,depts,d=lambda x:x.description)
+        self.deptfield = ui.modellistfield(
+            4, 15, 20, Department, lambda q: q.order_by(Department.id),
+            d=lambda x: x.description)
         self.createfield=ui.buttonfield(9,23,10,"Create",keymap={
             keyboard.K_CASH: (self.enter,None)})
         ui.map_fieldlist([self.descfield,self.notefield,self.deptfield,
                           self.createfield])
         self.descfield.focus()
+
     def enter(self):
-        if (self.descfield.f=='' or self.deptfield.f is None):
+        if self.descfield.f == '' or self.deptfield.read() is None:
             ui.infopopup(["You must enter values for Description and "
                           "Department."],title="Error")
             return
@@ -56,7 +58,6 @@ class modify(user.permission_checked,ui.dismisspopup):
     def __init__(self,p,focus_on_price=False):
         td.s.add(p)
         self.plu=p
-        depts=td.s.query(Department).order_by(Department.id).all()
         ui.dismisspopup.__init__(self,24,58,title="Price Lookup",
                                  colour=ui.colour_input,
                                  dismiss=keyboard.K_CLEAR)
@@ -72,8 +73,10 @@ class modify(user.permission_checked,ui.dismisspopup):
             keymap={keyboard.K_CLEAR: (self.dismiss,None)})
         self.notefield=ui.editfield(
             3,15,30,flen=160,f=self.plu.note)
-        self.deptfield=ui.listfield(4,15,20,depts,d=lambda x:x.description,
-                                    f=self.plu.department)
+        self.deptfield = ui.modellistfield(
+            4, 15, 20, Department, lambda q: q.order_by(Department.id),
+            d=lambda x: x.description,
+            f=self.plu.department)
         self.pricefield=ui.editfield(
             5,15+len(tillconfig.currency),8,
             f=self.plu.price,validate=ui.validate_float)
@@ -116,7 +119,7 @@ class modify(user.permission_checked,ui.dismisspopup):
             ui.infopopup(["You may not make the description blank."],
                          title="Error")
             return
-        if self.deptfield.f is None:
+        if self.deptfield.read() is None:
             ui.infopopup(["You must specify a department."],
                           title="Error")
             return
