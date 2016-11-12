@@ -191,7 +191,8 @@ def put_on_sale(line, si):
                  dismiss=keyboard.K_CASH, colour=ui.colour_info)
     if line.linetype == "regular":
         for i in UseStockHook.instances:
-            i.regular_usestock(si, line)
+            with ui.exception_guard("running the regular_usestock hook"):
+                i.regular_usestock(si, line)
 
 def add_display_line_stock(line):
     """Add stock to a display stock line.
