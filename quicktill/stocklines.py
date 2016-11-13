@@ -231,7 +231,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
 
     def enter(self):
         for f in self.fields:
-            if not f.f:
+            if not f.read():
                 ui.infopopup(["You must fill in all the fields."], title="Error")
                 return
         sl = StockLine(name=self.namefield.f,

@@ -1784,9 +1784,15 @@ class buttonfield(field):
     def defocus(self):
         field.defocus(self)
         self.draw()
+
     @property
     def f(self):
+        # XXX does anything actually use this?
         return self.focused
+
+    def read(self):
+        return self.focused
+
     def draw(self):
         if self.focused: s="[%s]"%self.t
         else: s=" %s "%self.t
