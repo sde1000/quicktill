@@ -117,10 +117,10 @@ class managecoffeealarm(ui.dismisspopup):
         self.addstr(3,22,"minutes")
         if remaining is not None:
             self.addstr(5,2,"Press Cancel to clear the alarm.")
-        self.timefield=ui.editfield(
-            3,18,3,validate=ui.validate_int,keymap={
-                keyboard.K_CASH: (self.enter,None,False),
-                keyboard.K_CANCEL: (self.clearalarm,None,False)})
+            self.timefield = ui.editfield(
+                3, 18, 3, validate=ui.validate_positive_nonzero_int, keymap={
+                    keyboard.K_CASH: (self.enter, None, False),
+                    keyboard.K_CANCEL: (self.clearalarm, None, False)})
         self.timefield.set("60") # Default time
         self.timefield.focus()
     def enter(self):

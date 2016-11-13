@@ -211,7 +211,8 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
         y = 4
         if linetype == "display":
             self.addstr(y,2,"Display capacity:")
-            self.capacityfield = ui.editfield(y, 20, 5, validate=ui.validate_int)
+            self.capacityfield = ui.editfield(
+                y, 20, 5, validate=ui.validate_positive_nonzero_int)
             self.fields.append(self.capacityfield)
             y += 1
         if linetype == "display" or linetype == "continuous":
@@ -321,7 +322,8 @@ class modify(user.permission_checked,ui.dismisspopup):
         if stockline.linetype == 'display':
             self.addstr(y, 2, "   Display capacity:")
             self.capacityfield = ui.editfield(
-                y, 23, 5, f=stockline.capacity, validate=ui.validate_int)
+                y, 23, 5, f=stockline.capacity,
+                validate=ui.validate_positive_nonzero_int)
             self.fields.append(self.capacityfield)
             y += 1
         self.addstr(y, 2, "         Stock type:")

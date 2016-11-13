@@ -221,7 +221,7 @@ class stockpicker(ui.dismisspopup):
         ui.dismisspopup.__init__(self, h, 62, title, colour=ui.colour_input)
         self.addstr(2, 2, "   Stock ID:")
         self.numfield = ui.editfield(
-            2, 15, 8, validate=ui.validate_int,
+            2, 15, 8, validate=ui.validate_positive_nonzero_int,
             f=default.id if default else None,
             keymap={keyboard.K_CASH: (self.numfield_enter, None),
                     keyboard.K_DOWN: (self.numfield_enter, None)})
@@ -229,11 +229,11 @@ class stockpicker(ui.dismisspopup):
         if self.check:
             self.addstr(6, 2, "Checkdigits:")
             self.checkfield = ui.editfield(
-                6, 15, 3, validate=ui.validate_int,
+                6, 15, 3,
                 keymap={keyboard.K_CASH: (self.checkfield_enter, None),
                         keyboard.K_CLEAR: (self.numfield.focus, None),
                         keyboard.K_UP: (self.numfield.focus, None)})
-            self.checkfield.sethook=self.checkfield_set
+            self.checkfield.sethook = self.checkfield_set
         self.numfield.focus()
 
     def numfield_set(self):

@@ -154,13 +154,15 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
             keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)})
         self.addstr(4, 2, 'Show stock to buy to cover the next     weeks')
-        self.wfield = ui.editfield(4, 38, 3, validate=ui.validate_int)
+        self.wfield = ui.editfield(
+            4, 38, 3, validate=ui.validate_positive_nonzero_int)
         self.addstr(5, 2, 'based on sales over the last     months,')
-        self.mfield = ui.editfield(5, 31, 3, validate=ui.validate_int)
+        self.mfield = ui.editfield(
+            5, 31, 3, validate=ui.validate_positive_nonzero_int)
         self.addstr(6, 2, 'ignoring stock where we sell less than     units')
         self.addstr(7, 2, 'per day.')
         self.minfield = ui.editfield(
-            6, 41, 3, validate=ui.validate_float,
+            6, 41, 3, validate=ui.validate_positive_float,
             keymap={
                 keyboard.K_CASH: (self.enter, None)})
         ui.map_fieldlist(

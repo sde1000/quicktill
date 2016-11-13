@@ -85,7 +85,10 @@ class record_item_waste(ui.dismisspopup):
         if self.amountfield.f == "":
             ui.infopopup(["You must enter an amount!"], title="Error")
             return
-        amount = Decimal(self.amountfield.f)
+        try:
+            amount = Decimal(self.amountfield.f)
+        except:
+            amount = Decimal(0)
         if amount == Decimal(0):
             ui.infopopup(["You must enter an amount other than zero!"],
                          title='Error')
@@ -147,8 +150,11 @@ class record_line_waste(ui.dismisspopup):
         if self.amountfield.f == "":
             ui.infopopup(["You must enter an amount!"], title="Error")
             return
-        amount = Decimal(self.amountfield.f)
-        if amount == 0:
+        try:
+            amount = Decimal(self.amountfield.f)
+        except:
+            amount = Decimal(0)
+        if amount == Decimal(0):
             ui.infopopup(["You must enter an amount other than zero!"],
                          title='Error')
             self.amountfield.set("")

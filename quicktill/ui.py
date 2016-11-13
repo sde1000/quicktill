@@ -632,6 +632,8 @@ class alarmpopup(infopopup):
         infopopup.dismiss(self)
 
 def validate_int(s, c):
+    if s == '-':
+        return s
     try:
         int(s)
     except:

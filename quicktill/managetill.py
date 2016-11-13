@@ -1,5 +1,4 @@
 """Till management functions.
-
 """
 
 import sys
@@ -20,9 +19,9 @@ class receiptprint(user.permission_checked,ui.dismisspopup):
                                  dismiss=keyboard.K_CLEAR,
                                  colour=ui.colour_input)
         self.addstr(2,2,"Receipt number:")
-        self.rnfield=ui.editfield(
-            2,18,10,validate=ui.validate_int,keymap={
-                keyboard.K_CASH: (self.enter,None,True)})
+        self.rnfield = ui.editfield(
+            2, 18, 10, validate=ui.validate_positive_nonzero_int, keymap={
+                keyboard.K_CASH: (self.enter, None, True)})
         self.rnfield.focus()
     def enter(self):
         try:
