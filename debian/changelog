@@ -1,3 +1,35 @@
+quicktill (0.12.0alpha14) stable; urgency=low
+
+  * New release 0.12.0alpha14
+
+  * Fix ugly lines on pie charts with small wedges
+
+  * Close figures in tillweb after use
+
+  * Show payment totals in payment method order in popup
+
+  * Show pending payments in current totals popup
+
+  * Add "date racked" to stock terminal stillage page
+
+  * Fix creating stocklines
+
+  * Show deferred transactions total when no session is active
+
+  * Clean up validate_int function
+
+  * Fix the twitter client
+
+  * Make the TAB key work again
+
+  * Remove use of detached instances in several places
+
+  * Catch exceptions in PriceGuessHook
+
+  * Guard against exceptions in UseStockHook
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 13 Nov 2016 21:08:09 +0000
+
 quicktill (0.12.0alpha13) stable; urgency=low
 
   * New release 0.12.0alpha13
