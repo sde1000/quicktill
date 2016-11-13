@@ -445,8 +445,8 @@ def summary(maxlen=100):
 @user.permission_required('current-session-summary', "Display a takings "
                           "summary for the current session")
 def currentsummary():
-    sc = Session.current(td.s)
-    if sc is None:
+    s = Session.current(td.s)
+    if s is None:
         msg = ["There is no session in progress.", ""]
         # Show details of deferred transactions instead.
         deferred_total = td.s.query(func.sum(Transaction.total))\
@@ -461,8 +461,47 @@ def currentsummary():
                      title="No current session",
                      colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
-    else:
-        totalpopup(sc.id)
+        return
+    w = 33
+    log.info("Totals popup for session %d (current)", s.id)
+
+    # list of (Dept, total, closed_total, pending_total) tuples
+    depts = s.dept_totals_closed
+    paytotals = dict(s.payment_totals)
+    l = []
+    l.append(" Accounting date {} ".format(s.date))
+    l.append(" Started {:%Y-%m-%d %H:%M:%S} ".format(s.starttime))
+    l.append("")
+    tf = ui.tableformatter(" l rp")
+    for pm in tillconfig.payment_methods:
+        pt = pm.get_paytype()
+        if pt in paytotals:
+            l.append(tf(pt.description + ":", tillconfig.fc(paytotals[pt])))
+    l.append("")
+    paid_total = zero
+    pending_total = zero
+    total_total = zero
+    df = ui.tableformatter(" r l p r  r  r ")
+    l.append(df(
+        "", "Department", "Paid", "Pending", "Total"))
+    for dept, total, paid, pending in depts:
+        if paid or pending:
+            l.append(df(
+                dept.id, dept.description,
+                tillconfig.fc(paid) if paid else "",
+                tillconfig.fc(pending) if pending else "",
+                tillconfig.fc(total or zero)))
+            paid_total += paid or zero
+            pending_total += pending or zero
+            total_total += total or zero
+    l.append(df(
+        "", "Total:", tillconfig.fc(paid_total), tillconfig.fc(pending_total),
+        tillconfig.fc(total_total)))
+    l.append("")
+    ui.listpopup(l,
+                 title="Session number {}".format(s.id),
+                 colour=ui.colour_info,
+                 dismiss=keyboard.K_CASH, show_cursor=False)
 
 @user.permission_required(
     'restore-deferred','Restore deferred transactions to the current session')
