@@ -670,6 +670,7 @@ def session_sales_pie_chart(request,info,session,sessionid):
     # See https://code.djangoproject.com/ticket/25576
     wrapper = io.StringIO()
     fig.savefig(wrapper, format="svg", transparent=True)
+    plt.close(fig)
     response.write(wrapper.getvalue())
     return response
 
@@ -696,5 +697,6 @@ def session_users_pie_chart(request,info,session,sessionid):
     # See https://code.djangoproject.com/ticket/25576
     wrapper = io.StringIO()
     fig.savefig(wrapper, format="svg", transparent=True)
+    plt.close(fig)
     response.write(wrapper.getvalue())
     return response
