@@ -378,14 +378,11 @@ def totalpopup(sessionid):
     """Display popup session totals given a Session ID.
     """
     s = td.s.query(Session).get(sessionid)
-    w = 33
     log.info("Totals popup for session %d", s.id)
 
     depts = s.dept_totals # list of (Dept,total) tuples
     paytotals = dict(s.payment_totals)
     payments = dict([(x.paytype, x) for x in s.actual_totals])
-
-    paytypes = set(list(paytotals.keys()) + list(payments.keys()))
     l = []
     l.append(" Accounting date {} ".format(s.date))
     l.append(" Started {:%Y-%m-%d %H:%M:%S} ".format(s.starttime))
@@ -398,22 +395,22 @@ def totalpopup(sessionid):
     l.append(tf("", "Till:", "Actual:"))
     ttt = zero
     att = zero
-    for i in paytypes:
-        if i in paytotals:
-            tt = tillconfig.fc(paytotals[i])
-            ttt = ttt + paytotals[i]
-        else:
-            tt = ""
-        if i in payments:
-            at = tillconfig.fc(payments[i].amount)
-            att = att+payments[i].amount
-        else:
-            at = ""
-        if tt or at:
-            l.append(tf(i.description + ":", tt, at))
-    if len(paytypes) > 1:
-        l.append(tf("Total:", tillconfig.fc(ttt),
-                    tillconfig.fc(att) if att > zero else ""))
+    for pm in tillconfig.all_payment_methods:
+        pt = pm.get_paytype()
+        till_total = paytotals.get(pt, zero)
+        ttt += till_total
+        actual_total = payments[pt].amount if pt in payments else zero
+        att += actual_total
+        if till_total or actual_total:
+            l.append(tf(pt.description + ":",
+                        tillconfig.fc(till_total) if till_total else "",
+                        tillconfig.fc(actual_total) if actual_total else ""))
+    l.append(tf("Total:", tillconfig.fc(ttt),
+                tillconfig.fc(att) if att else ""))
+    if att:
+        l.append("    ({} by {})".format(
+            "UP" if att > ttt else "DOWN",
+            tillconfig.fc(abs(att - ttt))))
     l.append("")
     dt = zero
     df = ui.tableformatter(" r l pr ")
@@ -429,8 +426,8 @@ def totalpopup(sessionid):
     }
     ui.listpopup(l,
                  title="Session number {}".format(s.id),
-                 colour=ui.colour_info,keymap=keymap,
-                 dismiss=keyboard.K_CASH,show_cursor=False)
+                 colour=ui.colour_info, keymap=keymap,
+                 dismiss=keyboard.K_CASH, show_cursor=False)
 
 @user.permission_required("session-summary", "Display a summary for any session")
 def summary(maxlen=100):
@@ -462,7 +459,6 @@ def currentsummary():
                      colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
         return
-    w = 33
     log.info("Totals popup for session %d (current)", s.id)
 
     # list of (Dept, total, closed_total, pending_total) tuples
