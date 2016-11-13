@@ -447,7 +447,20 @@ def summary(maxlen=100):
 def currentsummary():
     sc = Session.current(td.s)
     if sc is None:
-        ui.infopopup(["There is no session in progress."], title="Error")
+        msg = ["There is no session in progress.", ""]
+        # Show details of deferred transactions instead.
+        deferred_total = td.s.query(func.sum(Transaction.total))\
+                   .filter(Transaction.session == None)\
+                   .scalar()
+        if deferred_total:
+            msg.append("There are deferred transactions totalling {}.".format(
+                tillconfig.fc(deferred_total)))
+        else:
+            msg.append("There are no deferred transactions.")
+        ui.infopopup(msg,
+                     title="No current session",
+                     colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
     else:
         totalpopup(sc.id)
 
