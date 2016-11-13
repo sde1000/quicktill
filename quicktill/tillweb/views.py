@@ -664,6 +664,9 @@ def session_sales_pie_chart(request,info,session,sessionid):
                 'royalblue','sienna','steelblue'])
     for t in texts:
         t.set_fontsize(8)
+    for p in patches:
+        p.set_linewidth(0.5)
+        p.set_joinstyle("bevel")
     response = HttpResponse(content_type="image/svg+xml")
     # XXX the use of the io.StringIO wrapper is temporary until django's
     # HttpResponse object is fixed, possibly in django-1.10
@@ -691,6 +694,9 @@ def session_users_pie_chart(request,info,session,sessionid):
                 'royalblue','sienna','steelblue'])
     for t in texts:
         t.set_fontsize(8)
+    for p in patches:
+        p.set_linewidth(0.5)
+        p.set_joinstyle("bevel")
     response = HttpResponse(content_type="image/svg+xml")
     # XXX the use of the io.StringIO wrapper is temporary until django's
     # HttpResponse object is fixed, possibly in django-1.10
