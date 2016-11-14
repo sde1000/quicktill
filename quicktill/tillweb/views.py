@@ -1,4 +1,8 @@
 from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+
 from django.http import HttpResponse,Http404,HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
@@ -500,10 +504,23 @@ def stock(request,info,session,stockid):
 
 @tillweb_view
 def stocklinelist(request,info,session):
-    lines=session.query(StockLine).\
-        order_by(StockLine.dept_id,StockLine.name).\
-        all()
-    return ('stocklines.html',{'lines':lines,})
+    regular = session.query(StockLine)\
+                     .order_by(StockLine.dept_id, StockLine.name)\
+                     .filter(StockLine.linetype == "regular")\
+                     .all()
+    display = session.query(StockLine)\
+                     .filter(StockLine.linetype == "display")\
+                     .order_by(StockLine.name)\
+                     .all()
+    continuous = session.query(StockLine)\
+                        .filter(StockLine.linetype == "continuous")\
+                        .order_by(StockLine.name)\
+                        .all()
+    return ('stocklines.html', {
+        'regular': regular,
+        'display': display,
+        'continuous': continuous,
+    })
 
 @tillweb_view
 def stockline(request,info,session,stocklineid):

@@ -9,10 +9,60 @@
 <table class="kvtable">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
 <tr><th>Location</th><td><a href="{{u}}location/{{stockline.location|urlencode}}/">{{stockline.location}}</a></td></tr>
+<tr><th>Type</th><td>{{stockline.linetype}}</td></tr>
+{% if stockline.stocktype %}
+<tr><th>Stock type</th><td><a href="{{u}}{{stockline.stocktype.tillweb_url}}">{{stockline.stocktype}}</a></td></tr>
+{% endif %}
+{% if stockline.department %}
+<tr><th>Department</th><td><a href="{{u}}{{stockline.department.tillweb_url}}">{{stockline.department}}</a></td></tr>
+{% endif %}
+{% if stockline.linetype == "display" %}
 <tr><th>Capacity</th><td>{{stockline.capacity}}</td></tr>
-<tr><th>Department</th><td>{{stockline.department}}</td></tr>
+{% endif %}
+{% if stockline.linetype == "regular" %}
 <tr><th>Pullthru</th><td>{{stockline.pullthru}}</td></tr>
+{% endif %}
 </table>
+
+{% if stockline.linetype == "regular" %}
+<p>This is a "regular" stock line.  Regular stock lines can have at
+  most one stock item on sale at any one time.  Finishing that stock
+  item and putting another item on sale are done explicitly by the
+  staff.  They are typically used where units are dispensed directly
+  from the stock item to the customer and it's obvious to the member
+  of staff when the stock item is empty, for example casks/kegs
+  through a pump, bottles of spirits, cards or boxes of snacks, and so
+  on.</p>
+
+{% if not stockline.stockonsale %}
+<p>There is nothing currently on sale on this stock line.</p>
+{% endif %}
+{% elif stockline.linetype == "display" %}
+<p>This is a "display" stock line.  Display stock lines can have
+  several stock items on sale at once.  Moving from one stock item to
+  the next is automatic; when one item is empty the next is used.
+  These stock lines have a "capacity", and the system keeps track of
+  how many units of each stock item are "on display" and available to
+  be sold; the "capacity" is the number of units that can be on
+  display at any one time (for example, in a fridge).  Display stock
+  lines are typically used where it isn't obvious to the member of
+  staff where one stock item finishes and another one starts; for
+  example, the bottles on display in a fridge may come from several
+  different stock items.</p>
+{% elif stockline.linetype == "continuous" %}
+<p>This is a "continuous" stock line.  Continuous stock lines never
+  have any stock items explicitly on sale.  Instead, when a sale is
+  made the till searches for stock of the specified type that is not
+  already on sale on another stock line, and uses that.  If a
+  particular stock item doesn't have enough stock left for the whole
+  sale, multiple stock items are used.  Continuous stock lines are
+  typically used where a single sale (for example of a glass of wine)
+  can come from multiple stock items (eg. where a wine bottle
+  finishes, and the next bottle is from a different case).</p>
+{% else %}
+<p>This is a "{{stockline.linetype}}" stock line.  This web service
+  has not yet been updated to support this type of stock line.</p>
+{% endif %}
 
 {% if stockline.stockonsale %}
 <h2>Items on sale</h2>
@@ -20,8 +70,6 @@
 {% with stocklist=stockline.stockonsale exclude_column="stockline" %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
-{% else %}
-<p>There is nothing on sale on this stockline.</p>
 {% endif %}
 
 {% if stockline.stocktype_log %}

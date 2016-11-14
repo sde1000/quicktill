@@ -6,18 +6,27 @@
 
 {% block tillcontent %}
 
-<table id="stocklinelist">
+<h2>Regular stock lines</h2>
+
+<p>Regular stock lines can have at most one stock item on sale at any
+  one time.  Finishing that stock item and putting another item on
+  sale are done explicitly by the staff.  They are typically used
+  where units are dispensed directly from the stock item to the
+  customer and it's obvious to the member of staff when the stock item
+  is empty, for example casks/kegs through a pump, bottles of spirits,
+  cards or boxes of snacks, and so on.</p>
+
+<table id="regularstocklinelist">
 <thead>
 <tr><th>Name</th><th>Location</th><th>Department</th>
-<th>Capacity</th><th>Pullthru?</th></tr>
+<th>Pullthru?</th></tr>
 </thead>
 <tbody>
-{% for line in lines %}
+{% for line in regular %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
 <td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
-<td><a href="{{u}}{{line.department.tillweb_url}}">{{line.department}}</a></td>
-<td>{% if line.capacity %}{{line.capacity}}{% endif %}</td>
+<td>{% if line.department %}<a href="{{u}}{{line.department.tillweb_url}}">{{line.department}}</a>{% endif %}</td>
 <td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
 </tr>
 {% endfor %}
@@ -26,7 +35,76 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#stocklinelist").tablesorter({widgets:["zebra"]});
+  $("#regularstocklinelist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+<h2>Display stock lines</h2>
+
+<p>Display stock lines can have several stock items on sale at once.
+  Moving from one stock item to the next is automatic; when one item
+  is empty the next is used.  These stock lines have a "capacity", and
+  the system keeps track of how many units of each stock item are "on
+  display" and available to be sold; the "capacity" is the number of
+  units that can be on display at any one time (for example, in a
+  fridge).  Display stock lines are typically used where it isn't
+  obvious to the member of staff where one stock item finishes and
+  another one starts; for example, the bottles on display in a fridge
+  may come from several different stock items.</p>
+
+<table id="displaystocklinelist">
+<thead>
+<tr><th>Name</th><th>Location</th><th>Stock type</th>
+<th>Capacity</th></tr>
+</thead>
+<tbody>
+{% for line in display %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
+<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
+<td><a href="{{u}}{{line.stocktype.tillweb_url}}">{{line.stocktype.format}}</a></td>
+<td>{{line.capacity}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#displaystocklinelist").tablesorter({widgets:["zebra"]});
+});
+</script>
+
+<h2>Continuous stock lines</h2>
+
+<p>Continuous stock lines never have any stock items explicitly on
+  sale.  Instead, when a sale is made the till searches for stock of
+  the specified type that is not already on sale on another stock
+  line, and uses that.  If a particular stock item doesn't have enough
+  stock left for the whole sale, multiple stock items are used.
+  Continuous stock lines are typically used where a single sale (for
+  example of a glass of wine) can come from multiple stock items
+  (eg. where a wine bottle finishes, and the next bottle is from a
+  different case).</p>
+
+<table id="displaystocklinelist">
+<thead>
+<tr><th>Name</th><th>Location</th><th>Stock type</th></tr>
+</thead>
+<tbody>
+{% for line in continuous %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
+<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
+<td><a href="{{u}}{{line.stocktype.tillweb_url}}">{{line.stocktype.format}}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#continuousstocklinelist").tablesorter({widgets:["zebra"]});
 });
 </script>
 
