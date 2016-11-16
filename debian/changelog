@@ -1,3 +1,13 @@
+quicktill (0.12.0alpha16) stable; urgency=low
+
+  * New release 0.12.0alpha16
+
+  * Fix business info printing on receipts
+
+  * Tillweb improvements: show stock on stocklines, and voided transline details
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 16 Nov 2016 16:26:14 +0000
+
 quicktill (0.12.0alpha15) stable; urgency=low
 
   * New release 0.12.0alpha15
