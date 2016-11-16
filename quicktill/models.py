@@ -591,6 +591,8 @@ class Transline(Base):
     user = relationship(User)
     voided_by = relationship("Transline", remote_side=[id], uselist=False,
                              backref=backref('voids', uselist=False))
+    def __unicode__(self):
+        return "Transaction line {}".format(self.id)
     @hybrid_property
     def total(self):
         return self.items * self.amount
@@ -802,6 +804,7 @@ class StockLine(Base):
         "department.")
     stocktype = relationship(
         "StockType", backref=backref('stocklines', order_by=id),
+        lazy='joined',
         doc="Stock items put on sale on this line are restricted to this "
         "stocktype.")
     # capacity and pullthru can't both be non-null at the same time
@@ -853,7 +856,7 @@ class StockLine(Base):
         """
         if self.linetype != "display":
             return None
-        return sum(sos.ondisplay for sos in self.stockonsale)
+        return sum(sos.ondisplay for sos in self.stockonsale) or Decimal("0.0")
     @property
     def instock(self):
         """Number of units of stock available
@@ -865,7 +868,7 @@ class StockLine(Base):
         """
         if self.linetype != "display":
             return None
-        return sum(sos.instock for sos in self.stockonsale)
+        return sum(sos.instock for sos in self.stockonsale) or Decimal("0.0")
     @property
     def remaining(self):
         """Amount of unsold stock on the stock line."""
@@ -1271,7 +1274,7 @@ class StockItem(Base):
         This is needed for compatibility with legacy till databases.
         """
         if self.displayqty is None:
-            return 0
+            return Decimal("0.0")
         return self.displayqty
     @property
     def ondisplay(self):

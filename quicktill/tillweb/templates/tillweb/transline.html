@@ -2,7 +2,7 @@
 
 {% block title %}{{till}} — transaction line {{tl.id}}{% endblock %}
 
-{% block heading %}{{till}} — transaction line {{tl.id}}{% endblock %}
+{% block heading %}{{till}} — transaction line {{tl.id}}{% if tl.voided_by_id %} (VOIDED){% endif %}{% endblock %}
 
 {% block tillcontent %}
 
@@ -16,6 +16,12 @@
 <tr><th>Items</th><td>{{tl.items}}</td></tr>
 <tr><th>Amount per item</th><td><span class="money">{{tl.amount}}</span></td></tr>
 <tr><th>Total</th><td><span class="money">{{tl.total}}</span></td></tr>
+{% if tl.voided_by_id %}
+<tr><th>Voided by</th><td><a href="{{u}}{{tl.voided_by.tillweb_url}}">{{tl.voided_by}}</td></tr>
+{% endif %}
+{% if tl.voids %}
+<tr><th>This line voids</th><td><a href="{{u}}{{tl.voids.tillweb_url}}">{{tl.voids}}</td></tr>
+{% endif %}
 <tr><th>User</th><td>{% if tl.user %}<a href="{{u}}{{tl.user.tillweb_url}}">{{tl.user.fullname}}</a>{% endif %}
 </table>
 

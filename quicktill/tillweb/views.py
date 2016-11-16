@@ -507,14 +507,19 @@ def stocklinelist(request,info,session):
     regular = session.query(StockLine)\
                      .order_by(StockLine.dept_id, StockLine.name)\
                      .filter(StockLine.linetype == "regular")\
+                     .options(joinedload("stockonsale"))\
+                     .options(joinedload("stockonsale.stocktype"))\
                      .all()
     display = session.query(StockLine)\
                      .filter(StockLine.linetype == "display")\
                      .order_by(StockLine.name)\
+                     .options(joinedload("stockonsale"))\
+                     .options(undefer("stockonsale.used"))\
                      .all()
     continuous = session.query(StockLine)\
                         .filter(StockLine.linetype == "continuous")\
                         .order_by(StockLine.name)\
+                        .options(undefer("stocktype.remaining"))\
                         .all()
     return ('stocklines.html', {
         'regular': regular,
