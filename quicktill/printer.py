@@ -15,37 +15,40 @@ labelprinters = []
 # in any other context, use with td.orm_session(): around the call.
 
 def print_receipt(transid):
-    trans=td.s.query(Transaction).get(transid)
-    if trans is None: return
-    if len(trans.lines)==0: return
+    trans = td.s.query(Transaction).get(transid)
+    if trans is None:
+        return
+    if not trans.lines:
+        return
     with driver as d:
-        d.printline("\t%s"%tillconfig.pubname,emph=1)
+        d.printline("\t{}".format(tillconfig.pubname), emph=1)
         for i in tillconfig.pubaddr:
-            d.printline("\t%s"%i,colour=1)
-        d.printline("\tTel. %s"%tillconfig.pubnumber)
+            d.printline("\t{}".format(i), colour=1)
+        d.printline("\tTel. {}".format(tillconfig.pubnumber))
         d.printline()
-        bandtotals={}
+        bandtotals = {}
         for tl in trans.lines:
-            bandtotals[tl.department.vatband]=bandtotals.get(
-                tl.department.vatband,Decimal("0.00"))+tl.total
+            bandtotals[tl.department.vatband] = bandtotals.get(
+                tl.department.vatband, Decimal("0.00")) + tl.total
         for tl in trans.lines:
-            left=tl.description
-            right=tl.regtotal(tillconfig.currency)
-            if len(bandtotals)>1 and trans.closed:
+            left = tl.description
+            right = tl.regtotal(tillconfig.currency)
+            if len(bandtotals) > 1 and trans.closed:
                 d.printline(
-                    "%s\t\t%s %s"%(left,right,tl.department.vatband),font=1)
+                    "{}\t\t{} {}".format(left, right, tl.department.vatband),
+                    font=1)
             else:
-                d.printline("%s\t\t%s"%(left,right),font=1)
-        totalpad="  " if len(bandtotals)>1 else ""
-        d.printline("\t\tSubtotal %s%s"%(tillconfig.fc(trans.total),totalpad),
-                    colour=1,emph=1)
+                d.printline("{}\t\t{}".format(left, right), font=1)
+        totalpad = "  " if len(bandtotals) > 1 else ""
+        d.printline("\t\tSubtotal {}{}".format(tillconfig.fc(trans.total), totalpad),
+                    colour=1, emph=1)
         for p in trans.payments:
-            pl=payment.pline(p)
-            d.printline("\t\t{}{}".format(pl.text,totalpad))
+            pl = payment.pline(p)
+            d.printline("\t\t{}{}".format(pl.text, totalpad))
         d.printline("")
         if not trans.closed:
-            d.printline("\tThis is not a VAT receipt",colour=1,emph=1)
-            d.printline("\tTransaction number %d"%trans.id)
+            d.printline("\tThis is not a VAT receipt", colour=1, emph=1)
+            d.printline("\tTransaction number {}".format(trans.id))
         else:
             # We have a list of VAT bands; we need to look up rate and
             # business information for each of them.  Once we have the
@@ -53,37 +56,38 @@ def print_receipt(transid):
             # business.  In each section, show the business name and
             # address, VAT number, and then for each VAT band the net
             # amount, VAT and total.
-            businesses={} # Keys are business IDs, values are (band,rate) tuples
+            businesses = {} # Keys are business IDs, values are (band,rate) tuples
             for i in list(bandtotals.keys()):
-                vr=td.s.query(VatBand).get(i).at(trans.session.date)
-                businesses.setdefault(vr.business.id,[]).append((i,vr.rate))
-                for i in list(businesses.keys()):
-                    business=td.s.query(Business).get(i)
-                    bands=businesses[i]
+                vr = td.s.query(VatBand).get(i).at(trans.session.date)
+                businesses.setdefault(vr.business.id, []).append((i, vr.rate))
+            for i in list(businesses.keys()):
+                business = td.s.query(Business).get(i)
+                bands = businesses[i]
                 # Print the business info
-                d.printline("\t%s"%business.name)
+                d.printline("\t{}".format(business.name))
                 # The business address may be stored in the database
                 # with either the string "\n" (legacy) or a newline
                 # character (current) to separate the lines.
                 if "\\n" in business.address:
-                    addrlines=business.address.split("\\n")
-                else: addrlines=business.address.splitlines()
+                    addrlines = business.address.split("\\n")
+                else:
+                    addrlines = business.address.splitlines()
                 for l in addrlines:
-                    d.printline("\t%s"%l)
+                    d.printline("\t{}".format(l))
                 d.printline()
-                d.printline("VAT reg no. %s"%business.vatno)
-                for band,rate in bands:
+                d.printline("VAT reg no. {}".format(business.vatno))
+                for band, rate in bands:
                     # Print the band, amount ex VAT, amount inc VAT, gross
-                    gross=bandtotals[band]
-                    net=(gross/((rate/Decimal("100.0"))+Decimal("1.0"))).\
-                        quantize(penny)
-                    vat=gross-net
-                    d.printline("%s: %s net, %s VAT @ %0.1f%%\t\tTotal %s"%(
-                            band,tillconfig.fc(net),tillconfig.fc(vat),rate,
-                            tillconfig.fc(gross)),font=1)
+                    gross = bandtotals[band]
+                    net = (gross / ((rate / Decimal("100.0")) + Decimal("1.0")))\
+                          .quantize(penny)
+                    vat = gross - net
+                    d.printline("{}: {} net, {} VAT @ {:0.1f}%\t\tTotal {}".format(
+                            band, tillconfig.fc(net), tillconfig.fc(vat), rate,
+                            tillconfig.fc(gross)), font=1)
                 d.printline("")
-            d.printline("\tReceipt number %d"%trans.id)
-        d.printline("\t%s"%ui.formatdate(trans.session.date))
+            d.printline("\tReceipt number {}".format(trans.id))
+        d.printline("\t{}".format(ui.formatdate(trans.session.date)))
 
 def print_sessioncountup(s):
     with driver as d:
