@@ -514,7 +514,7 @@ class edituser(permission_checked,ui.basicpopup):
         u.fullname=fn
         u.shortname=sn
         u.webuser=wn if len(wn)>0 else None
-        u.enabled=self.actfield.f
+        u.enabled=self.actfield.read()
         td.s.flush()
         self.dismiss()
 
