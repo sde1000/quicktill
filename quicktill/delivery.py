@@ -459,16 +459,16 @@ class stockitem(ui.basicpopup):
         saleunits = Decimal(self.saleunitsfield.f)
         stocktype = self.typefield.read()
         stockunit = self.unitfield.read()
+        if stocktype.saleprice != saleprice \
+           or stocktype.saleprice_units != saleunits:
+            stocktype.saleprice = saleprice
+            stocktype.saleprice_units = saleunits
+            stocktype.pricechanged = datetime.datetime.now()
         if self.item:
             td.s.add(self.item)
             self.item.stocktype = stocktype
             self.item.stockunit = stockunit
             self.item.costprice = cost
-            if stocktype.saleprice != saleprice \
-               or stocktype.saleprice_units != saleunits:
-                stocktype.saleprice = saleprice
-                stocktype.saleprice_units = saleunits
-                stocktype.pricechanged = datetime.datetime.now()
             self.item.bestbefore = self.bestbeforefield.read()
             td.s.flush()
             self.func(self.item)
@@ -476,9 +476,6 @@ class stockitem(ui.basicpopup):
             qty = int(self.qtyfield.f)
             costper = (cost/qty).quantize(penny) if cost else None
             remaining_cost = cost
-            if stocktype.saleprice != saleprice:
-                stocktype.saleprice = saleprice
-                stocktype.pricechanged = datetime.datetime.now()
             for i in range(qty):
                 thiscost = remaining_cost if i == (qty - 1) else costper
                 remaining_cost = remaining_cost - thiscost if cost else None
