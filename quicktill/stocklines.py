@@ -547,9 +547,10 @@ class listunbound(ui.listpopup):
             ui.listpopup.keypress(self, k)
 
 class selectline(ui.listpopup):
-    """
-    A pop-up menu of stocklines, sorted by department, location and
-    name.  Optionally can remove stocklines that have no capacities.
+    """Pop-up menu of stocklines
+
+    A pop-up menu of stocklines, sorted by location and name.
+    Optionally can remove stocklines that have no capacities.
     Stocklines with key bindings can be selected through that binding.
 
     Optional arguments:
@@ -559,13 +560,12 @@ class selectline(ui.listpopup):
       create_new - allow a new stockline to be created
       select_none - a string for a menu item which will result in a call
         to func(None)
-
     """
     # XXX caponly and exccap should be renamed and changed to use the linetype
     def __init__(self,func,title="Stock Lines",blurb=None,caponly=False,
                  exccap=False,keymap={},create_new=False,select_none=None):
         self.func=func
-        q=td.s.query(StockLine).order_by(StockLine.dept_id,StockLine.location,
+        q=td.s.query(StockLine).order_by(StockLine.location,
                                          StockLine.name)
         if caponly: q=q.filter(StockLine.capacity!=None)
         if exccap: q=q.filter(StockLine.capacity==None)
