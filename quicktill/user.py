@@ -318,30 +318,32 @@ class adduser(permission_checked,ui.dismisspopup):
         self.dismiss()
         edituser(u.id)
 
-class tokenfield(ui.ignore_hotkeys,ui.field):
-    emptymessage="Use a token to fill in this field"
-    def __init__(self,y,x,w,keymap={}):
-        ui.field.__init__(self,keymap)
-        self.y=y
-        self.x=x
-        self.w=w
-        self.message=self.emptymessage
-        self.f=None
+class tokenfield(ui.ignore_hotkeys, ui.valuefield):
+    emptymessage = "Use a token to fill in this field"
+    def __init__(self, y, x, w, keymap={}):
+        self.y = y
+        self.x = x
+        self.w = w
+        self.message = self.emptymessage
+        self.f = None
+        super(tokenfield, self).__init__(keymap)
         self.draw()
-    def set(self,t):
+
+    def set(self, t):
         if t is None:
-            self.f=None
-            self.message=self.emptymessage
+            self.f = None
+            self.message = self.emptymessage
         else:
-            dbt=td.s.query(UserToken).get(t)
+            dbt = td.s.query(UserToken).get(t)
             if dbt:
-                self.message="In use by {}".format(
+                self.message = "In use by {}".format(
                     dbt.user.fullname)
-                self.f=None
+                self.f = None
             else:
-                self.f=t
+                self.f = t
         self.sethook()
         self.draw()
+
     def draw(self):
         pos = self.getyx()
         self.addstr(self.y, self.x, ' ' * self.w, ui.attr_reverse())
@@ -355,21 +357,24 @@ class tokenfield(ui.ignore_hotkeys,ui.field):
             self.move(self.y, self.x)
         else:
             self.move(*pos)
+
     def focus(self):
-        ui.field.focus(self)
+        super(tokenfield, self).focus()
         self.draw()
+
     def defocus(self):
-        ui.field.defocus(self)
-        self.message=self.emptymessage
+        super(tokenfield, self).defocus()
+        self.message = self.emptymessage
         self.draw()
-    def keypress(self,k):
-        if hasattr(k,'usertoken'):
+
+    def keypress(self, k):
+        if hasattr(k, 'usertoken'):
             self.set(k.usertoken)
-        elif k==keyboard.K_CLEAR and (
-            self.f is not None or self.message!=self.emptymessage):
+        elif k == keyboard.K_CLEAR and (
+                self.f is not None or self.message != self.emptymessage):
             self.set(None)
         else:
-            ui.field.keypress(self,k)
+            super(tokenfield, self).keypress(k)
 
 class addtoken(ui.dismisspopup):
     def __init__(self,userid):
