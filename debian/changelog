@@ -1,3 +1,11 @@
+quicktill (0.12.0alpha19) stable; urgency=low
+
+  * New release 0.12.0alpha19
+
+  * Fix tokenfield
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 26 Nov 2016 17:34:52 +0000
+
 quicktill (0.12.0alpha18) stable; urgency=low
 
   * New release 0.12.0alpha18
