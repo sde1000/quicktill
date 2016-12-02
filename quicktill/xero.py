@@ -210,7 +210,7 @@ class XeroIntegration:
     def _debug_send_invoice_and_payments(self, sessionid):
         log.info("Sending invoice and payments for %d", sessionid)
         iid = self._create_invoice_for_session(sessionid, approve=True)
-        self._add_payments_for_session(args.sessionid, iid)
+        self._add_payments_for_session(sessionid, iid)
         log.info("...new invoice ID is %s", iid)
         ui.infopopup(["Invoice ID is {}".format(iid)])
 
