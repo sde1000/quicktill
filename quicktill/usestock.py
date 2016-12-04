@@ -1,6 +1,7 @@
 """Deals with connecting stock items to stock lines."""
 
 from . import ui, td, keyboard, stock, stocklines, tillconfig, user, linekeys
+from . import stocktype
 from .plugins import InstancePluginMount
 from .models import StockLine, FinishCode, StockItem, Department, Delivery
 from .models import StockType, StockAnnotation, StockLineTypeLog
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
 # For display stocklines it enables stock items to be added to the
 # line, the display to be re-stocked, stock to be removed, etc.
 
-# For continuous stocklines it does nothing.
+# For continuous stocklines it allows the stock type to be changed.
 
 class popup(user.permission_checked, ui.keymenu):
     permission_required=("use-stock", "Allocate stock to lines")
@@ -100,16 +101,7 @@ def line_chosen(line):
                     "1": (stocklines.restock_item, (line,), True),
                     "2": (add_display_line_stock, (line, ), True)})
     elif line.linetype == "continuous":
-        # XXX maybe we should allow the user to change the line's
-        # stocktype here?  What permission would they need -
-        # alter-stockline?
-        ui.infopopup(['{} is a "continuous" stock line that does not '
-                      'need stock to be put on sale explicitly.'.format(
-                          line.name),
-                      "",
-                      "To change the type of stock on sale, edit the "
-                      "stock line."],
-                     title="Continuous stock line")
+        change_continuous_stockline(line.id)
     else:
         ui.infopopup(["Confused now"])
 
@@ -287,6 +279,44 @@ def remove_display_line_stockitem(line, item):
         item.id, item.stocktype.format(), line.name, displaynote)],
                  title="Stock removed from line",
                  colour=ui.colour_info, dismiss=keyboard.K_CASH)
+
+class change_continuous_stockline(ui.dismisspopup):
+    def __init__(self, stocklineid):
+        stockline = td.s.query(StockLine).get(stocklineid)
+        if stockline.linetype != "continuous":
+            log.error("change_continuous_stockline called on non-continous "
+                      "stockline id %s", stocklineid)
+            return
+        self._stocklineid = stocklineid
+        super(change_continuous_stockline, self).__init__(
+            9, 75, title="Change stock on sale on {}".format(stockline.name),
+            colour=ui.colour_input)
+        self.addstr(2, 2, "Current stock type: {}".format(
+            stockline.stocktype.format()))
+        self.addstr(4, 2, "New stock type:")
+        self.stocktypefield = ui.modelpopupfield(
+            4, 18, 54, StockType, stocktype.choose_stocktype,
+            lambda si: si.format())
+        confirmfield = ui.buttonfield(
+            6, 28, 21, "Change stock type",
+            keymap={keyboard.K_CASH: (self.confirm, None)})
+        ui.map_fieldlist([self.stocktypefield, confirmfield])
+        self.stocktypefield.focus()
+
+    def confirm(self):
+        new_stocktype = self.stocktypefield.read()
+        if not new_stocktype:
+            ui.infopopup(["You can't set the stock type to be blank. Choose "
+                          "a stock type, even if we don't currently have "
+                          "any of it in stock."], title="Error")
+            return
+        stockline = td.s.query(StockLine).get(self._stocklineid)
+        stockline.stocktype = new_stocktype
+        self.dismiss()
+        ui.infopopup(["{} is now on sale on the {} stock line.".format(
+            new_stocktype.format(), stockline.name)],
+                     title="Stock type changed", colour=ui.colour_info,
+                     dismiss=keyboard.K_CASH)
 
 def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     """Automatically allocate stock to display stock lines.
