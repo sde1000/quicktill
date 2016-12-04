@@ -1,3 +1,37 @@
+quicktill (0.12.0alpha20) stable; urgency=low
+
+  * New release 0.12.0alpha20
+
+  * Show 'total cost ex-VAT' on delivery popup
+
+  * Add a 'label' object type to ui
+
+  * Add a 'costprice' column property to Delivery
+
+  * Show deliveries from unlinked suppliers in 'pending' list
+
+  * Use Stock on continuous stock line allows stock type to be changed
+
+  * modelpopupfield passes on keypresses to popup when blank
+
+  * More clarity about stock line types
+
+  * Allow stock names to be truncated in stock terminal
+
+  * Allow supplier and ref fields to be truncated in delivery list
+
+  * Extend tableformatter to allow truncated fields
+
+  * Prevent delivery confirmation when accounts are inaccessible
+
+  * Minor updates to session total upload sequence
+
+  * Update Haymakers example config from live config
+
+  * Fix typo in Xero debug code
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 04 Dec 2016 19:06:39 +0000
+
 quicktill (0.12.0alpha19) stable; urgency=low
 
   * New release 0.12.0alpha19
