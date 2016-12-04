@@ -5,7 +5,7 @@ from __future__ import division
 from sqlalchemy.ext.declarative import declarative_base,declared_attr
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
-from sqlalchemy.sql.expression import text,alias
+from sqlalchemy.sql.expression import text, alias, case
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
 from sqlalchemy.orm import contains_eager,column_property
@@ -1350,6 +1350,20 @@ class StockItem(Base):
         return "<StockItem({})>".format(self.id)
     def __repr__(self):
         return "<StockItem(%s)>" % (self.id,)
+
+Delivery.costprice = column_property(
+    select([
+        case(
+            [
+                (func.count(StockItem.costprice) != func.count('*'), None),
+            ],
+            else_=func.sum(StockItem.costprice))
+    ])
+    .correlate(Delivery.__table__)
+    .where(StockItem.deliveryid == Delivery.id)
+    .label('costprice'),
+    deferred=True,
+    doc="Cost ex-VAT of this delivery")
 
 class AnnotationType(Base):
     __tablename__ = 'annotation_types'

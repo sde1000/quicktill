@@ -211,5 +211,31 @@ class ModelTest(unittest.TestCase):
         self.assertIsNone(transline.voided_by_id)
         self.assertEqual(trans.balance, Decimal("10.00"))
 
+    def test_delivery_costprice(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        firkin = models.StockUnit(
+            id='firkin', name='Firkin', size=72, unit_id='pt')
+        delivery = models.Delivery(
+            date=datetime.date.today(),
+            supplier=models.Supplier(name="Test supplier"),
+            docnumber="test")
+        self.s.add(delivery)
+        self.s.commit()
+        self.assertIsNone(delivery.costprice)
+        self.s.add(models.StockItem(
+            delivery=delivery,
+            stocktype=beer,
+            stockunit=firkin,
+            costprice=72))
+        self.s.commit()
+        self.assertEqual(delivery.costprice, Decimal("72.00"))
+        self.s.add(models.StockItem(
+            delivery=delivery,
+            stocktype=beer,
+            stockunit=firkin))
+        self.s.commit()
+        self.assertIsNone(delivery.costprice)
+
 if __name__ == '__main__':
     unittest.main()
