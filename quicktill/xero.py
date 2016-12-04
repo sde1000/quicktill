@@ -36,6 +36,10 @@ class XeroSessionHooks(session.SessionHooks):
         session = td.s.query(Session).get(sessionid)
         if self.xero.start_date and self.xero.start_date > session.date:
             return
+        # Commit at this point to ensure the totals are recorded in
+        # the till database.
+        td.s.commit()
+        ui.toast("Sending session details to accounting system...")
         try:
             with ui.exception_guard("creating the Xero invoice",
                                     suppress_exception=False):

@@ -352,12 +352,12 @@ class record(ui.dismisspopup):
                              title="Payment method error")
                 return
         self.dismiss()
+        for i in SessionHooks.instances:
+            i.postRecordSessionTakings(self.session.id)
         ui.toast("Printing the confirmed session totals.")
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
-        for i in SessionHooks.instances:
-            i.postRecordSessionTakings(self.session.id)
 
 @user.permission_required('record-takings', "Record takings for a session")
 def recordtakings():
