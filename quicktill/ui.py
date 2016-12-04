@@ -664,6 +664,21 @@ def validate_positive_float(s, c):
         return None
     return s
 
+class label(basicwin):
+    """An area of a window that has a value that can be changed."""
+    def __init__(self, y, x, w, contents="", align="<", attr=None):
+        super(label, self).__init__()
+        self.win = self.parent.win
+        self._y = y
+        self._x = x
+        self._format = "%s%d.%d" % (align, w, w)
+        self.set(contents, attr=attr)
+
+    def set(self, contents, attr=None):
+        y, x = self.win.getyx()
+        self.addstr(self._y, self._x, format(str(contents), self._format), attr)
+        self.win.move(y, x)
+
 class field(basicwin):
     """A field inside a window.
 
