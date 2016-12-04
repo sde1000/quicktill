@@ -265,21 +265,6 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             from . import usestock
             usestock.add_display_line_stock(sl)
 
-    def keypress(self, k):
-        # If the user starts typing into the stocktype field, be nice
-        # to them and pop up the stock type entry dialog.  Then
-        # synthesise the keypress again to enter it into the
-        # manufacturer field.
-        if self.linetype != 'regular' \
-           and self.stocktypefield.focused \
-           and self.stocktypefield.read() is None \
-           and isinstance(k, str) \
-           and k:
-            self.stocktypefield.popup() # Grabs the focus
-            ui.handle_keyboard_input(k)
-        else:
-            super(_create_stockline_popup, self).keypress(k)
-
 class modify(user.permission_checked,ui.dismisspopup):
     """Modify a stockline.
 
@@ -387,13 +372,7 @@ class modify(user.permission_checked,ui.dismisspopup):
 
     def keypress(self,k):
         # Handle keypresses that the fields pass up to the main popup
-        if self.stocktypefield.focused \
-           and self.stocktypefield.read() is None \
-           and isinstance(k, str) \
-           and k:
-            self.stocktypefield.popup() # Grabs the focus
-            ui.handle_keyboard_input(k)
-        elif k == keyboard.K_USESTOCK:
+        if k == keyboard.K_USESTOCK:
             from . import usestock
             usestock.line_chosen(self.stockline)
         elif hasattr(k, 'line'):

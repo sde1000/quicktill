@@ -381,10 +381,6 @@ class stockfield(ui.modelpopupfield):
                     line.name)], title="Error")
 
     def keypress(self, k):
-        if k in keyboard.numberkeys and not self.readonly:
-            # Pass on the keypress to the stocknumber entry popup
-            self.popup()
-            ui.handle_keyboard_input(k)
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.linekey)
         else:

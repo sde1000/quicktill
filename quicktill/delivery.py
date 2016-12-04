@@ -492,18 +492,6 @@ class stockitem(ui.basicpopup):
                 td.s.flush()
                 self.func(item)
 
-    def keypress(self, k):
-        # If the user starts typing into the stocktype field, be nice
-        # to them and pop up the stock type entry dialog.  Then
-        # synthesise the keypress again to enter it into the
-        # manufacturer field.
-        if (self.typefield.focused and self.typefield.read() is None
-            and isinstance(k, str) and k):
-            self.typefield.popup() # Grabs the focus
-            ui.handle_keyboard_input(k)
-        else:
-            ui.basicpopup.keypress(self,k)
-
 def createsupplier(field, name):
     # Called by the select supplier field if it decides we need to create
     # a new supplier record.

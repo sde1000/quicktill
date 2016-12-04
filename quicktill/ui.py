@@ -1691,6 +1691,12 @@ class modelpopupfield(valuefield):
             self.set(None)
         elif k == keyboard.K_CASH and not self.readonly:
             self.popup()
+        elif k and isinstance(k, str) and self.read() is None \
+             and not self.readonly:
+            # If the field is blank and the user starts typing into it,
+            # pop up the dialog and send the keypress to it.
+            self.popup()
+            handle_keyboard_input(k)
         else:
             super(modelpopupfield, self).keypress(k)
 
