@@ -56,14 +56,17 @@ def restock_location():
     all stocklines in the selected location.
 
     """
-    selectlocation(restock_list,title="Re-stock location",caponly=True)
+    selectlocation(restock_list, title="Re-stock location",
+                   linetypes=["display"])
 
 @user.permission_required('restock',"Re-stock items on display stocklines")
 def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
 
     """
-    restock_list(td.s.query(StockLine).filter(StockLine.capacity!=None).all())
+    restock_list(td.s.query(StockLine)
+                 .filter(StockLine.linetype == "display")
+                 .all())
 
 class stockline_associations(user.permission_checked,ui.listpopup):
     """
@@ -555,24 +558,22 @@ class selectline(ui.listpopup):
 
     Optional arguments:
       blurb - text for the top of the window
-      caponly - only list "display" stocklines
-      exccap - don't list "display" stocklines
+      linetypes - list of permissible line types
       create_new - allow a new stockline to be created
       select_none - a string for a menu item which will result in a call
         to func(None)
     """
-    # XXX caponly and exccap should be renamed and changed to use the linetype
-    def __init__(self,func,title="Stock Lines",blurb=None,caponly=False,
-                 exccap=False,keymap={},create_new=False,select_none=None):
+    def __init__(self, func, title="Stock Lines", blurb=None,
+                 linetypes=["regular", "display", "continuous"],
+                 keymap={}, create_new=False, select_none=None):
         self.func=func
         q=td.s.query(StockLine).order_by(StockLine.location,
                                          StockLine.name)
-        if caponly: q=q.filter(StockLine.capacity!=None)
-        if exccap: q=q.filter(StockLine.capacity==None)
+        q = q.filter(StockLine.linetype.in_(linetypes))
         stocklines=q.all()
-        f=ui.tableformatter(' l l l r r ')
-        self.sl=[f(x.name,x.location,x.department,
-                   x.capacity or "",x.pullthru or "",
+        f=ui.tableformatter(' l l l l ')
+        self.sl=[f(x.name,x.location, x.department if x.department else "Any",
+                   x.typeinfo,
                    userdata=x)
                  for x in stocklines]
         self.create_new=create_new
@@ -580,7 +581,7 @@ class selectline(ui.listpopup):
             self.sl=[ui.line(" New stockline")]+self.sl
         elif select_none:
             self.sl=[ui.line(" %s"%select_none)]+self.sl
-        hl=[f("Name","Location","Department","DC","PT")]
+        hl=[f("Name", "Location", "Department", "Type")]
         if blurb:
             hl=[ui.lrline(blurb),ui.emptyline()]+hl
         ui.listpopup.__init__(self,self.sl,title=title,header=hl,keymap=keymap)
@@ -613,13 +614,14 @@ def stocklinemenu():
         "stock line.",create_new=True)
 
 def selectlocation(func,title="Stock Locations",blurb="Choose a location",
-                   caponly=False):
+                   linetypes = None):
     """A pop-up menu of stock locations.  Calls func with a list of
     stocklines for the selected location.
-
     """
     stocklines=td.s.query(StockLine)
-    if caponly: stocklines=stocklines.filter(StockLine.capacity!=None)
+    if linetypes:
+        stocklines = stocklines.filter(
+            StockLine.linetype.in_(linetypes))
     stocklines=stocklines.all()
     l={}
     for sl in stocklines:

@@ -831,6 +831,21 @@ class StockLine(Base):
             "NOT(linetype='continuous') OR (stocktype IS NOT NULL)",
             name="linetype_continuous_constraint"),
         )
+
+    @property
+    def typeinfo(self):
+        """Useful information about the line type"""
+        if self.linetype == "regular":
+            if self.pullthru:
+                return "Regular (pullthru {})".format(self.pullthru)
+            return "Regular"
+        elif self.linetype == "display":
+            return "Display (capacity {})".format(self.capacity)
+        elif self.linetype == "continuous":
+            return "Continuous"
+        else:
+            return self.linetype
+
     @property
     def sale_stocktype(self):
         """Return the type of stock that is currently sold through this
