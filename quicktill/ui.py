@@ -1011,111 +1011,137 @@ class lrline(emptyline):
                 + self.rtext
         return w
 
-class tableformatter(object):
-    """This class implements policy for formatting a table.  The format
+class tableformatter:
+    """Format a table.
+
+    This class implements policy for formatting a table.  The format
     string is used as-is with the following characters being replaced:
 
     l - left-aligned field
     c - centered field
-    r - right-aligned string
+    r - right-aligned field
     p - padding
-
+    upper-case L, C or R - field that may have its contents
+      truncated so the other fields fit.
     """
-    def __init__(self,format):
-        self._f=format
-        self._rows=[] # Doesn't need to be kept in order
-        self._formats={}
-        self._colwidths=None
+    def __init__(self, format):
+        self._f = format
+        self._rows = [] # Doesn't need to be kept in order
+        self._formats = {}
+        self._colwidths = None
         # Remove the formatting characters from the format and see
         # what's left
-        f=format
-        f=f.replace('l','')
-        f=f.replace('c','')
-        f=f.replace('r','')
-        f=f.replace('p','')
-        self._formatlen=len(f)
-    def __call__(self,*args,**kwargs):
-        """Append a row to the table.  Positional arguments are used as table
-        fields, and keyword arguments are passed to the underlying
-        line object eg. for colour and userdata.
+        f = self._f
+        f = f.replace('l', '')
+        f = f.replace('L', '')
+        f = f.replace('c', '')
+        f = f.replace('C', '')
+        f = f.replace('r', '')
+        f = f.replace('R', '')
+        f = f.replace('p', '')
+        self._formatlen = len(f)
 
+    def __call__(self, *args, **kwargs):
+        """Append a row to the table.
+
+        Positional arguments are used as table fields, and keyword
+        arguments are passed to the underlying line object eg. for
+        colour and userdata.
         """
-        row=_tableline(self,args,**kwargs)
+        row = _tableline(self, args, **kwargs)
         self._rows.append(row)
         self._update(row)
         return row
-    def _update(self,row):
-        """
+
+    def _update(self, row):
+        """Call when a row has been changed.
+
         Called when a row is changed.  Invalidate any cached widths
         and format strings.
-
         """
-        self._formats={}
-        self._colwidths=None
+        self._formats = {}
+        self._colwidths = None
+
     @property
     def colwidths(self):
-        """
-        List of column widths.
-
+        """List of column widths.
         """
         if not self._colwidths:
             # Each row has a list of fields.  We want to rearrange
             # this so we have a list of columns.
-            cols=list(zip(*(r.fields for r in self._rows)))
-            self._colwidths=[max(len(f) for f in c) for c in cols]
+            cols = zip(*(r.fields for r in self._rows))
+            self._colwidths = [max(len(f) for f in c) for c in cols]
         return self._colwidths
-    def idealwidth(self):
-        return self._formatlen+sum(self.colwidths)
-    def _formatstr(self,width):
-        """
-        Return a format template for the given width.
 
+    def idealwidth(self):
+        return self._formatlen + sum(self.colwidths)
+
+    def _formatstr(self, width):
+        """Return a format template for the given width.
         """
-        if width in self._formats: return self._formats[width]
-        w=list(self.colwidths) # copy
-        r=[]
-        pads=self._f.count("p")
-        if pads>0:
-            total_to_pad=max(0,width-self.idealwidth())
+        if width in self._formats:
+            return self._formats[width]
+        w = list(self.colwidths) # copy
+        r = []
+        pads = self._f.count("p")
+        if pads > 0:
+            total_to_pad = max(0, width - self.idealwidth())
             pw = total_to_pad // pads
             odd = total_to_pad % pads
-            pads=[pw+1]*odd+[pw]*(pads-odd)
+            pads = [pw + 1] * odd + [pw] * (pads - odd)
         else:
-            pads=[]
+            pads = []
+        excess_width = max(0, self.idealwidth() - width)
+        log.debug("tableformatter idealwidth=%s, width=%s, excess_width=%s",
+                  self.idealwidth(), width, excess_width)
+        truncates = self._f.count('L') + self._f.count('C') + self._f.count('R')
         for i in self._f:
-            if i=='l':
-                r.append("{:<%d}"%w.pop(0))
-            elif i=='c':
-                r.append("{:^%d}"%w.pop(0))
-            elif i=='r':
-                r.append("{:>%d}"%w.pop(0))
-            elif i=="p":
-                r.append(" "*pads.pop(0))
+            if i in ('l', 'L', 'c', 'C', 'r', 'R'):
+                if i in ('l', 'L'):
+                    align = "<"
+                elif i in ('c', 'C'):
+                    align = "^"
+                else:
+                    align = ">"
+                colwidth = w.pop(0)
+                if i in ('L', 'C', 'R'):
+                    if excess_width > 0:
+                        reduce_by = min(excess_width // truncates, colwidth)
+                        colwidth -= reduce_by
+                        excess_width -= reduce_by
+                        truncates -= 1
+                r.append("{:%s%d.%d}" % (align, colwidth, colwidth))
+            elif i == "p":
+                r.append(" " * pads.pop(0))
             else:
                 r.append(i)
-        fs=''.join(r)
-        self._formats[width]=fs
+        fs = ''.join(r)
+        self._formats[width] = fs
         return fs
-    def format(self,row,width):
+
+    def format(self, row, width):
         return [self._formatstr(width).format(*row.fields)[:width]]
 
 class _tableline(emptyline):
-    """A line for use in a tableformatter table.  Create instances of this
-    by calling tableformatter instances.
+    """A line for use in a tableformatter table.
 
+    Create instances of this by calling tableformatter instances.
     """
-    def __init__(self,formatter,fields,colour=None,userdata=None):
-        emptyline.__init__(self,colour,userdata)
-        self._formatter=formatter
-        self.fields=[str(x) for x in fields]
+    def __init__(self, formatter, fields, colour=None, userdata=None):
+        emptyline.__init__(self, colour, userdata)
+        self._formatter = formatter
+        self.fields = [str(x) for x in fields]
+
     def update(self):
         emptyline.update(self)
         self._formatter._update(self)
+
     def idealwidth(self):
         return self._formatter.idealwidth()
-    def display(self,width):
-        self.cursor=(0,0)
-        return self._formatter.format(self,width)
+
+    def display(self, width):
+        self.cursor = (0, 0)
+        return self._formatter.format(self, width)
 
 class menu(listpopup):
     """A popup menu with a list of selections. Selection can be made by
