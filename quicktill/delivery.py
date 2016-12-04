@@ -36,7 +36,7 @@ class deliveryline(ui.line):
         s = self.stockitem
         td.s.add(s)
         try:
-            coststr = "%-6.2f" % s.costprice
+            coststr = format(s.costprice, ">-6.2f")
         except:
             coststr = "????? "
         self.text = "%7d %-37s %-8s %s %-5.2f %-10s" % (
@@ -116,8 +116,12 @@ class delivery(ui.basicpopup):
         self.entryprompt = None if readonly else ui.line(
             " [ New item ]")
         self.s = ui.scrollable(
-            7, 1, 78, mh - 9 if readonly else mh - 11, self.dl,
+            7, 1, 78, mh - 10 if readonly else mh - 11, self.dl,
             lastline=self.entryprompt, keymap=skm)
+        self.addstr(mh - 3 if readonly else mh - 4, 33, "Total cost ex-VAT:")
+        self.costfield = ui.label(mh - 3 if readonly else mh - 4,
+                                  52, 10, align='>')
+        self.update_costfield()
         if readonly:
             self.s.focus()
         else:
@@ -141,6 +145,12 @@ class delivery(ui.basicpopup):
             else:
                 self.supfield.focus()
 
+    def update_costfield(self):
+        if self.dn:
+            d = td.s.query(Delivery).get(self.dn)
+            self.costfield.set(
+                tillconfig.fc(d.costprice) if d.costprice else "?????")
+
     def update_model(self):
         # Called whenever one of the three fields at the top changes.
         # If the three fields are valid and we have a Delivery model,
@@ -160,6 +170,7 @@ class delivery(ui.basicpopup):
         d.date = date
         d.docnumber = self.docnumfield.f
         td.s.flush()
+        self.update_costfield()
 
     def make_delivery_model(self):
         # If we do not have a delivery ID, create one if possible.  If
@@ -203,6 +214,7 @@ class delivery(ui.basicpopup):
         del self.dl[self.s.cursor]
         td.s.flush()
         self.s.drawdl()
+        self.update_costfield()
 
     def deleteline(self):
         if not self.s.cursor_on_lastline():
@@ -258,10 +270,12 @@ class delivery(ui.basicpopup):
         # lines or deletions
         self.dl[self.s.cursor].update()
         self.s.cursor_down()
+        self.update_costfield()
 
     def newline(self, stockitem):
         self.dl.append(deliveryline(stockitem))
         self.s.cursor_down()
+        self.update_costfield()
 
     def edit_line(self):
         # If there is not yet an underlying Delivery object, create one
@@ -293,6 +307,7 @@ class delivery(ui.basicpopup):
         td.s.flush()
         self.dl.append(deliveryline(new))
         self.s.cursor_down()
+        self.update_costfield()
 
     def reallydelete(self):
         if self.dn is None:
