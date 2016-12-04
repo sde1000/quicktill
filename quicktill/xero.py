@@ -68,6 +68,22 @@ class XeroDeliveryHooks(delivery.DeliveryHooks):
     def __init__(self, xero):
         self.xero = xero
 
+    def preConfirm(self, deliveryid):
+        d = td.s.query(Delivery).get(deliveryid)
+        if self.xero.start_date and self.xero.start_date > d.date:
+            return
+        if not d.supplier.accinfo:
+            return
+        if not self.xero.oauth:
+            ui.infopopup(
+                ["This terminal does not have access to Xero, the "
+                 "accounting system, so the delivery can't be confirmed "
+                 "from here.", "",
+                 "Please save the delivery here, and confirm it using "
+                 "a terminal that does have access to Xero."],
+                title="No access to accounts")
+            return True
+
     def confirmed(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
         if self.xero.start_date and self.xero.start_date > d.date:

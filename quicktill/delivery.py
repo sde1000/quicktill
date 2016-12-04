@@ -242,6 +242,9 @@ class delivery(ui.basicpopup):
             ui.infopopup(["There is nothing here to confirm!"],
                          title="Error")
             return
+        for i in DeliveryHooks.instances:
+            if i.preConfirm(self.dn):
+                return
         ui.infopopup(["When you confirm a delivery you are asserting that "
                       "you have received and checked every item listed as part "
                       "of the delivery.  Once the delivery is confirmed, you "
@@ -582,6 +585,13 @@ class DeliveryHooks(metaclass=InstancePluginMount):
     Accounting integration plugins should subclass this.  Instances of
     subclasses will be called in order of creation.
     """
+    def preConfirm(self, deliveryid):
+        """Called when a delivery is about to be confirmed.
+
+        To prevent the confirmation taking place, return True.  You
+        may pop up your own information box in this case.
+        """
+        pass
     def confirmed(self, deliveryid):
         """Called when a delivery has been confirmed."""
         pass
