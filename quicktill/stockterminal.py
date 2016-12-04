@@ -35,7 +35,7 @@ class page(ui.basicpage):
              options(joinedload('stockonsale.stocktype')).\
              options(undefer_group('qtys')).\
              all()
-        f = ui.tableformatter("pl l l r rp")
+        f = ui.tableformatter("pl l L r rp")
         header = f("Line", "StockID", "Stock", "Used", "Remaining")
         def fl(line):
             if line.stockonsale:
@@ -67,7 +67,7 @@ class page(ui.basicpage):
                  .options(joinedload('stockitem.stocktype'))\
                  .options(joinedload('stockitem.stockline'))\
                  .all()
-        f = ui.tableformatter('pl l c l lp')
+        f = ui.tableformatter('pl l c L lp')
         header = f("Loc", "Racked", "StockID", "Name", "Line")
         ml = [f(a.text, a.time.date().strftime("%d %b"), a.stockid,
                 a.stockitem.stocktype.format(),
