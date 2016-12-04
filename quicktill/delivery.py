@@ -18,7 +18,7 @@ def deliverymenu():
              .order_by(Delivery.date.desc())\
              .order_by(Delivery.id.desc())\
              .all()
-    f = ui.tableformatter(' r l l l l ')
+    f = ui.tableformatter(' r L l L l ')
     lines = [(f(x.id, x.supplier.name, x.date, x.docnumber or "",
                 "" if x.checked else "not confirmed"),
               delivery, (x.id,)) for x in dl]
