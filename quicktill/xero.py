@@ -474,6 +474,12 @@ class XeroIntegration:
 
     def _send_delivery(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
+        if not d.supplier.accinfo:
+            ui.infopopup(["Couldn't send delivery {} to Xero; supplier {} "
+                          "is not linked to a Xero contact.".format(
+                              deliveryid, d.supplier.name)],
+                         title="Error")
+            return
         with ui.exception_guard("sending bill for delivery to Xero"):
             iid = self._create_bill_for_delivery(deliveryid)
             d.accinfo = iid
@@ -601,7 +607,7 @@ def choose_supplier(cont, link_only):
     q = td.s.query(Supplier).order_by(Supplier.name)
     if link_only:
         q = q.filter(Supplier.accinfo != None)
-    f = ui.tableformatter(' l l ')
+    f = ui.tableformatter(' l L ')
     lines = [(f(x.name, "Linked to {}".format(x.accinfo) if x.accinfo else ""),
               cont, (x.id,)) for x in q.all()]
     ui.menu(lines, title="Supplier List",
@@ -611,14 +617,15 @@ def choose_delivery(cont, start_date, allow_sent):
     q = td.s.query(Delivery)\
             .join(Supplier)\
             .filter(Delivery.checked)\
-            .filter(Supplier.accinfo != None)\
             .order_by(Delivery.date.desc(), Delivery.id.desc())
     if start_date:
         q = q.filter(Delivery.date >= start_date)
     if not allow_sent:
         q = q.filter(Delivery.accinfo == None)
-    f = ui.tableformatter(' r l l l ')
-    lines = [(f(x.id, x.supplier.name, x.date, x.docnumber or ""),
+    f = ui.tableformatter(' r L l L ')
+    lines = [(f(x.id, x.supplier.name if x.supplier.accinfo
+                else "{} (not linked)".format(x.supplier.name),
+                x.date, x.docnumber or ""),
               cont, (x.id,)) for x in q.all()]
     ui.menu(lines, title="Delivery List",
             blurb="Select a delivery and press Cash/Enter.")
