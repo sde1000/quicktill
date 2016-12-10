@@ -296,7 +296,8 @@ class change_continuous_stockline(ui.dismisspopup):
         self.addstr(4, 2, "New stock type:")
         self.stocktypefield = ui.modelpopupfield(
             4, 18, 54, StockType, stocktype.choose_stocktype,
-            lambda si: si.format())
+            lambda si: si.format(),
+            keymap={keyboard.K_CLEAR: (self.dismiss, ())})
         confirmfield = ui.buttonfield(
             6, 28, 21, "Change stock type",
             keymap={keyboard.K_CASH: (self.confirm, None)})
