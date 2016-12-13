@@ -88,7 +88,7 @@ class permission_checked(object, metaclass=_permission_checked_metaclass):
         if user is None: return False
         return user.may(cls.permission_required[0])
 
-class permission_required(object):
+class permission_required:
     """Function decorator to perform permission check
 
     A factory that creates decorators that will perform a permission
@@ -106,6 +106,8 @@ class permission_required(object):
     def __init__(self, action, description=None):
         self._action = action
         self._description = description
+        if description:
+            action_descriptions[action] = description
     def __call__(self, function):
         """Decorate a function to perform the permission check"""
         def allowed(user=None):
