@@ -1,3 +1,15 @@
+quicktill (0.12.1) stable; urgency=low
+
+  * New release 0.12.1
+
+  * Only show UP or DOWN if there is a difference in session totals
+
+  * Register permissions from permission_required decorator
+
+  * Add Clear action to stock type field in continuous Use Stock popup
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 13 Dec 2016 16:52:44 +0000
+
 quicktill (0.12.0alpha20) stable; urgency=low
 
   * New release 0.12.0alpha20
