@@ -407,7 +407,7 @@ def totalpopup(sessionid):
                         tillconfig.fc(actual_total) if actual_total else ""))
     l.append(tf("Total:", tillconfig.fc(ttt),
                 tillconfig.fc(att) if att else ""))
-    if att:
+    if att and att != ttt:
         l.append("    ({} by {})".format(
             "UP" if att > ttt else "DOWN",
             tillconfig.fc(abs(att - ttt))))
