@@ -1,3 +1,11 @@
+quicktill (0.12.2) stable; urgency=low
+
+  * New release 0.12.2
+
+  * Allow transactions to be recalled by number
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 14 Dec 2016 17:21:22 +0000
+
 quicktill (0.12.1) stable; urgency=low
 
   * New release 0.12.1
