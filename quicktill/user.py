@@ -684,4 +684,5 @@ class default_groups(object):
         "alter-plu",
         "alter-modifier",
         "return-finished-item",
+        "recall-any-trans",
         ])

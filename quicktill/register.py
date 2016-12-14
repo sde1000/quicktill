@@ -289,6 +289,29 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.dismiss()
         self.func([(dept.id, text, items, amount)])
 
+class recalltranspopup(user.permission_checked, ui.dismisspopup):
+    """Popup to allow transaction number entry
+
+    Recalls the transaction to the register.
+    """
+    permission_required = (
+        "recall-any-trans", "Recall any transaction, even from previous sessions")
+    def __init__(self, reg):
+        self._reg = reg
+        ui.dismisspopup.__init__(self, 5, 34, title="Recall Transaction", colour=ui.colour_input)
+        self.addstr(2, 2, "Transaction number:")
+        self.transfield = ui.editfield(2, 22, 10, validate=ui.validate_int, keymap={
+            keyboard.K_CASH: (self.enterkey, None)})
+        self.transfield.focus()
+
+    def enterkey(self):
+        self.dismiss()
+        try:
+            transid = int(self.transfield.read())
+        except:
+            return
+        self._reg.recalltrans(transid)
+
 def strtoamount(s):
     if s.find('.') >= 0:
         return Decimal(s).quantize(penny)
@@ -1776,6 +1799,10 @@ class page(ui.basicpage):
         if transid:
             log.info("Register: recalltrans %d", transid)
             trans = td.s.query(Transaction).get(transid)
+            if not trans:
+                ui.infopopup(["Transaction {} does not exist.".format(transid)],
+                             title="Error")
+                return
             # Leave a message if the transaction belonged to another
             # user.
             user = td.s.query(User).filter(User.transaction == trans).first()
@@ -2090,6 +2117,8 @@ class page(ui.basicpage):
             menu = []
         menu.append(("7", "Add a custom transaction line",
                      addtransline, (self.deptlines,)))
+        menu.append(("8", "Recall a transaction by number",
+                     recalltranspopup, (self,)))
         ui.keymenu(menu, title="Transaction options")
 
     def entry(self):
