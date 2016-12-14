@@ -1,3 +1,11 @@
+quicktill (0.12.3) stable; urgency=low
+
+  * New release 0.12.3
+
+  * Keyguard now opens the payment method menu
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 14 Dec 2016 17:55:46 +0000
+
 quicktill (0.12.2) stable; urgency=low
 
   * New release 0.12.2
