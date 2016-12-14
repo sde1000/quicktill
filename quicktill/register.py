@@ -562,7 +562,7 @@ class page(ui.basicpage):
         self.repeat = None
         self.update_balance()
         self.prompt = self.defaultprompt
-        self.keyguard = False
+        self.keyguard = (trans.notes != "")
         self.clearbuffer()
         self.cursor_off()
         td.s.flush()
@@ -1223,14 +1223,10 @@ class page(ui.basicpage):
         # confirmation - one of the most common user errors is to
         # recall a transaction that's being used as a tab, add some
         # lines to it, and then automatically press 'cash'.
+        #
+        # We do this by opening the payment methods menu.
         if self.keyguard:
-            ui.infopopup(["Are you sure you want to close this transaction?  "
-                          "If you are then press "
-                          "Cash/Enter again.  If you pressed Cash/Enter by "
-                          "mistake then press Clear now to go back."],
-                         title="Confirm transaction close",
-                         colour=ui.colour_confirm, keymap={
-                             keyboard.K_CASH: (self.paymentkey, (pm,), True)})
+            self._payment_method_menu(title="Choose payment method for this transaction")
             return
         self.paymentkey(pm)
 
