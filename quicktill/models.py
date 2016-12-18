@@ -325,19 +325,21 @@ class Transaction(Base):
     notes = Column(String(60), nullable=False, default='')
     closed = Column(Boolean, nullable=False, default=False)
     session = relationship(Session, backref=backref('transactions', order_by=id))
+
     # total is a column property defined below
-    @hybrid_property
-    def payments_total(self):
-        """Payments total
-        """
-        return sum((p.amount for p in self.payments), zero)
+
+    # payments_total is a column property defined below
+
     def payments_summary(self):
         """List of (paytype, amount) tuples.
+
+        Used by the web interface.
         """
-        pts={}
+        pts = {}
         for p in self.payments:
             pts[p.paytype] = pts.get(p.paytype, zero) + p.amount
         return list(pts.items())
+
     @property
     def balance(self):
         """Transaction balance
@@ -712,8 +714,8 @@ Session.closed_total = column_property(
     deferred=True,
     doc="Transaction lines total, closed transactions only")
 
-# Add "total" column property to the Transaction class now that
-# transactions and translines are defined
+# Add Transline-related column properties to the Transaction class now
+# that transactions and translines are both defined
 Transaction.total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
                           text("0.00"))],
@@ -722,6 +724,7 @@ Transaction.total = column_property(
         label('total'),
     deferred=True,
     doc="Transaction lines total")
+
 Transaction.age = column_property(
     select([func.coalesce(
         func.current_timestamp() - func.min(Transline.time),
@@ -731,6 +734,14 @@ Transaction.age = column_property(
     .label('age'),
     deferred=True,
     doc="Transaction age")
+
+Transaction.payments_total = column_property(
+    select([func.coalesce(func.sum(Payment.amount), zero)],
+           whereclause=and_(Payment.transid == Transaction.id))\
+    .correlate(Transaction.__table__)\
+    .label('payments_total'),
+    deferred=True,
+    doc="Payments total")
 
 stocklines_seq = Sequence('stocklines_seq', start=100)
 class StockLine(Base):
