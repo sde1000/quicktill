@@ -227,7 +227,7 @@ bitcoin = quicktill.bitcoin.BitcoinPayment(
     'BTC', 'Bitcoin', site='haymakers', username='haymakers',
     base_url='http://btcmerch.i.individualpubs.co.uk/merchantservice/',
     password='not-a-real-password', account_code="641")
-all_payment_methods = [cash, card, bitcoin] # Used for session totals entry
+all_payment_methods = [cash, card] # Used for session totals entry
 payment_methods = all_payment_methods # Used in register
 
 tapi = quicktill.extras.twitter_api(
@@ -347,7 +347,7 @@ pdfprinter = {
 }
 xpdfprinter = {
     'printer': quicktill.pdrivers.commandprinter(
-        "xpdf %s", driver=quicktill.pdrivers.pdf_driver()),
+        "evince %s", driver=quicktill.pdrivers.pdf_driver()),
 }
 
 # across, down, width, height, horizgap, vertgap, pagesize
@@ -414,7 +414,7 @@ stockcontrol_terminal = {
 config0 = {'description': "Stock-control terminal, no user"}
 config0.update(std)
 config0.update(stockcontrol)
-config0.update(pdfprinter)
+config0.update(xpdfprinter)
 config0.update(labelprinter)
 
 config1 = {'description': "Haymakers main bar",
@@ -428,7 +428,7 @@ config1.update(kitchen)
 config2 = {'description':"Stock-control terminal, card reader"}
 config2.update(std)
 config2.update(stockcontrol_terminal)
-config2.update(pdfprinter)
+config2.update(xpdfprinter)
 config2.update(labelprinter)
 
 config3 = {'description':"Test menu file 'testmenu.py' in current directory",
