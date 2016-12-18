@@ -1641,11 +1641,8 @@ class page(ui.basicpage):
             tn = trans.id
             log.info("Register: cancel open transaction %d" % tn)
             payments = trans.payments_total
-            for p in trans.payments:
-                td.s.delete(p)
-            for l in trans.lines:
-                td.s.delete(l)
-            # stockout objects should be deleted implicitly in cascade
+            # Payment, Transline and StockOut objects should be deleted
+            # implicitly in cascade
             td.s.delete(trans)
             self.transid = None
             td.s.flush()
@@ -1957,10 +1954,11 @@ class page(ui.basicpage):
             for sr in l.stockref:
                 sr.removecode = freebie
                 sr.transline = None
+        # Flush the changes to the database now, so that the stockout
+        # objects are not deleted in the cascade from deleting the
+        # transaction
         td.s.flush()
         td.s.refresh(trans) # remove references to stockout objects
-        for l in trans.lines:
-            td.s.delete(l)
         td.s.delete(trans)
         td.s.flush()
         self._clear()

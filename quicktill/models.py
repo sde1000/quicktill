@@ -495,8 +495,10 @@ class Payment(Base):
     __tablename__ = 'payments'
     id = Column('paymentid', Integer, payments_seq, nullable=False,
                 primary_key=True)
-    transid = Column(Integer, ForeignKey('transactions.transid'),
-                     nullable=False)
+    transid = Column(
+        Integer,
+        ForeignKey('transactions.transid', ondelete='CASCADE'),
+        nullable=False)
     amount = Column(money, nullable=False)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
                         nullable=False)
@@ -505,8 +507,10 @@ class Payment(Base):
                   server_default=func.current_timestamp())
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this payment")
-    transaction = relationship(Transaction,
-                               backref=backref('payments', order_by=id))
+    transaction = relationship(
+        Transaction,
+        backref=backref('payments', order_by=id,
+                        passive_deletes="all"))
     paytype = relationship(PayType)
     user = relationship(User)
     def __repr__(self):
@@ -567,8 +571,10 @@ class Transline(Base):
     __tablename__ = 'translines'
     id = Column('translineid', Integer, translines_seq, nullable=False,
                 primary_key=True)
-    transid = Column(Integer, ForeignKey('transactions.transid'),
-                     nullable=False)
+    transid = Column(
+        Integer,
+        ForeignKey('transactions.transid', ondelete='CASCADE'),
+        nullable=False)
     items = Column(Integer, nullable=False)
     amount = Column(money, nullable=False)
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
@@ -585,12 +591,15 @@ class Transline(Base):
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
     text = Column(Text)
-    transaction = relationship(Transaction,
-                               backref=backref('lines', order_by=id))
+    transaction = relationship(
+        Transaction,
+        backref=backref('lines', order_by=id,
+                        passive_deletes=True))
     department = relationship(Department)
     user = relationship(User)
-    voided_by = relationship("Transline", remote_side=[id], uselist=False,
-                             backref=backref('voids', uselist=False))
+    voided_by = relationship(
+        "Transline", remote_side=[id], uselist=False,
+        backref=backref('voids', uselist=False, passive_deletes=True))
     def __unicode__(self):
         return "Transaction line {}".format(self.id)
     @hybrid_property
