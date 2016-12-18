@@ -1,3 +1,23 @@
+quicktill (0.12.4) stable; urgency=low
+
+  * New release 0.12.4
+
+  * Add database constraint to ensure display capacity > 0
+
+  * Use 'zero' instead of text("0.00") in models
+
+  * Change Transaction.payments_total into a column property
+
+  * Change Transaction.age into a column property
+
+  * Start of attempt to speed up voiding
+
+  * Speed up cancelling whole transactions
+
+  * Remove more live config from haymakers example
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 18 Dec 2016 14:50:21 +0000
+
 quicktill (0.12.3) stable; urgency=low
 
   * New release 0.12.3
