@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from __future__ import division
 
 from sqlalchemy.ext.declarative import declarative_base,declared_attr
-from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text
+from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text,Interval
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
 from sqlalchemy.sql.expression import text, alias, case
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
@@ -346,18 +346,9 @@ class Transaction(Base):
     @property
     def tillweb_url(self):
         return "transaction/%d/" % self.id
-    @property
-    def age(self):
-        """How old is the transaction?
 
-        The age of the transaction's oldest line in days, or zero if
-        the transaction has no lines.
-        """
-        if len(self.lines) == 0:
-            return 0
-        first = min(tl.time for tl in self.lines)
-        age = datetime.datetime.now() - first
-        return age.days
+    # age is now a column property, defined below
+
     def __unicode__(self):
         return "Transaction %d" % self.id
     def __repr__(self):
@@ -731,6 +722,15 @@ Transaction.total = column_property(
         label('total'),
     deferred=True,
     doc="Transaction lines total")
+Transaction.age = column_property(
+    select([func.coalesce(
+        func.current_timestamp() - func.min(Transline.time),
+        func.cast("0", Interval))],
+           whereclause=and_(Transline.transid == Transaction.id))\
+    .correlate(Transaction.__table__)\
+    .label('age'),
+    deferred=True,
+    doc="Transaction age")
 
 stocklines_seq = Sequence('stocklines_seq', start=100)
 class StockLine(Base):
