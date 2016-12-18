@@ -850,6 +850,10 @@ class StockLine(Base):
         CheckConstraint(
             "NOT(linetype='continuous') OR (stocktype IS NOT NULL)",
             name="linetype_continuous_constraint"),
+        # if capacity is present it must be greater than zero
+        CheckConstraint(
+            "capacity IS NULL OR capacity > 0",
+            name="capacity_greater_than_zero_constraint"),
         )
 
     @property
