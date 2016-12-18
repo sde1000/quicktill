@@ -1586,8 +1586,7 @@ class page(ui.basicpage):
                 return
             log.info("Register: cancelmarked %s; new trans=%d",
                      str(tl), trans.id)
-            for l in tl:
-                self._void_line(l)
+            self._void_lines(tl)
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -1601,11 +1600,13 @@ class page(ui.basicpage):
                     title="Not allowed")
                 return
             can_delete = all(l.age() <= max_transline_modify_age for l in tl)
+            voids = []
             for l in tl:
                 if can_delete:
                     self._delete_line(l)
                 else:
-                    self._void_line(l)
+                    voids.append(l)
+            self._void_lines(voids)
             if len(self.dl) == 0:
                 # The last transaction line was deleted, so also
                 # delete the transaction.
@@ -1628,9 +1629,7 @@ class page(ui.basicpage):
             trans = self.get_open_trans()
             if not trans:
                 return
-            for l in tl:
-                if isinstance(l, tline):
-                    self._void_line(l)
+            self._void_lines([ l for l in tl if isinstance(l, tline) ])
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -1666,7 +1665,7 @@ class page(ui.basicpage):
         if l.age() < max_transline_modify_age:
             self._delete_line(l)
         else:
-            self._void_line(l)
+            self._void_lines([l])
         if len(self.dl) == 0:
             # The last transaction line was deleted, so also
             # delete the transaction.
@@ -1696,26 +1695,30 @@ class page(ui.basicpage):
                     tl.update()
         td.s.expire(trans, ['total'])
 
-    def _void_line(self, l):
-        """Void a line
+    def _void_lines(self, ll):
+        """Void some transaction lines
 
-        Add a line reversing the supplied transaction line to the
-        current transaction.  l is a tline object, but may not be in
-        the current transaction.
+        Add lines reversing the supplied transaction lines to the
+        current transaction.  ll is a list of tline objects, but the
+        transaction lines may not be in the current transaction.
 
         The caller is responsible for ensuring that the current
         transaction is open, updating the balance and redrawing.
         """
-        trans = self._gettrans()
-        transline = td.s.query(Transline).get(l.transline)
-        ntl = transline.void(trans, self.user.dbuser)
-        if not ntl:
-            # Original line was already voided; do nothing
+        log.debug("_void_lines %s", ll)
+        if not ll:
             return
-        td.s.add(ntl)
-        td.s.flush()
-        l.update()
-        self.dl.append(tline(ntl.id))
+        trans = self._gettrans()
+        tll = [ td.s.query(Transline).get(l.transline) for l in ll ]
+        voidlines = [ transline.void(trans, self.user.dbuser)
+                      for transline in tll ]
+        voidlines = [ x for x in voidlines if x ]
+        td.s.add_all(voidlines)
+        td.s.flush() # get transline IDs, fill in voided_by
+        for ntl in voidlines:
+            self.dl.append(tline(ntl.id))
+        for l in ll:
+            l.update()
 
     def markkey(self):
         """The Mark key was pressed.
