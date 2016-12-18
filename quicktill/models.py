@@ -696,7 +696,7 @@ DROP FUNCTION check_modify_closed_trans_line();
 # transactions and translines are defined
 Session.total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          text("0.00"))],
+                          zero)],
            whereclause=and_(Transline.transid == Transaction.id,
                             Transaction.sessionid == Session.id)).\
         correlate(Session.__table__).\
@@ -705,7 +705,7 @@ Session.total = column_property(
     doc="Transaction lines total")
 Session.closed_total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          text("0.00"))],
+                          zero)],
            whereclause=and_(Transline.transid == Transaction.id,
                             Transaction.closed,
                             Transaction.sessionid == Session.id)).\
@@ -718,7 +718,7 @@ Session.closed_total = column_property(
 # that transactions and translines are both defined
 Transaction.total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          text("0.00"))],
+                          zero)],
            whereclause=and_(Transline.transid == Transaction.id)).\
         correlate(Transaction.__table__).\
         label('total'),
