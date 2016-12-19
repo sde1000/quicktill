@@ -79,7 +79,6 @@ class prehkeyboard:
             if k.magstripe == self.finishmagstripe:
                 mr = ''.join(self.magstripe)
                 self.magstripe = None
-                log.debug("Magstripe '%s'", mr)
                 if "BadRead" in mr:
                     return
                 k = user.token(
