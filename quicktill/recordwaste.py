@@ -57,7 +57,7 @@ class record_item_waste(ui.dismisspopup):
             lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),
             lambda rc: rc.reason)
         self.amountfield = ui.editfield(
-            6, 21, 4, validate=ui.validate_float,
+            6, 21, 6, validate=ui.validate_float,
             keymap={keyboard.K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.stockfield, self.wastedescfield,
                           self.amountfield])
@@ -68,10 +68,10 @@ class record_item_waste(ui.dismisspopup):
             self.stockfield.focus()
 
     def stockfield_updated(self):
-        self.addstr(6, 26, " " * 20)
+        self.addstr(6, 28, " " * 18)
         s = self.stockfield.read()
         if s:
-            self.addstr(6, 26, "{}s".format(s.stocktype.unit.name))
+            self.addstr(6, 28, "{}s".format(s.stocktype.unit.name))
 
     def finish(self):
         item = self.stockfield.read()
