@@ -1,3 +1,13 @@
+quicktill (0.12.5) stable; urgency=low
+
+  * New release 0.12.5
+
+  * Increase size of waste amount field in Record Waste popup
+
+  * Remove debug message from kbdriver
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 27 Jan 2017 14:09:13 +0000
+
 quicktill (0.12.4) stable; urgency=low
 
   * New release 0.12.4
