@@ -115,6 +115,8 @@ class XeroIntegration:
                  # require Xero callouts
                  consumer_key=None, private_key=None,
                  # Invoices will be created to the following contact ID:
+                 # (which may be a callable that takes a session and returns
+                 # the contact ID)
                  sales_contact_id=None,
                  # Invoices will be created with a reference using the
                  # following template:
@@ -122,6 +124,8 @@ class XeroIntegration:
                  # Use this tracking category on all relevant entries
                  tracking_category_name=None,
                  tracking_category_value=None,
+                 # Use this tracking category on departments
+                 department_tracking_category_name=None,
                  # Mark the invoice as Due in the following number of days:
                  due_days=7,
                  # Add tillweb link when an invoice is created
@@ -145,18 +149,10 @@ class XeroIntegration:
                 signature_type=SIGNATURE_TYPE_AUTH_HEADER)
         else:
             self.oauth = None
-        if sales_contact_id:
-            self.contact = Element("Contact")
-            self.contact.append(_textelem("ContactID", sales_contact_id))
-        else:
-            self.contact = None
-        if tracking_category_name and tracking_category_value:
-            self.tracking = Element("Tracking")
-            tc = SubElement(self.tracking, "TrackingCategory")
-            tc.append(_textelem("Name", tracking_category_name))
-            tc.append(_textelem("Option", tracking_category_value))
-        else:
-            self.tracking = None
+        self.sales_contact = sales_contact_id
+        self.tracking_category_name = tracking_category_name
+        self.tracking_category_value = tracking_category_value
+        self.department_tracking_category_name = department_tracking_category_name
         self.reference_template = reference_template
         self.due_days = datetime.timedelta(days=due_days)
         self.tillweb_base_url = tillweb_base_url
@@ -164,6 +160,33 @@ class XeroIntegration:
         self.shortcode = shortcode
         self.discrepancy_account = discrepancy_account
         self.start_date = start_date
+
+    def _get_sales_contact(self, session):
+        if callable(self.sales_contact):
+            sales_contact_id = self.sales_contact(session)
+        else:
+            sales_contact_id = self.sales_contact
+        contact = None
+        if sales_contact_id:
+            contact = Element("Contact")
+            contact.append(_textelem("ContactID", sales_contact_id))
+        return contact
+
+    def _get_tracking(self, department):
+        tracking = []
+        if self.tracking_category_name and self.tracking_category_value:
+            tracking.append((self.tracking_category_name, self.tracking_category_value))
+        if self.department_tracking_category_name:
+            v = self._tracking_for_department(department)
+            if v:
+                tracking.append((self.department_tracking_category_name, v))
+        if tracking:
+            t = Element("Tracking")
+            for name, option in tracking:
+                tc = SubElement(t, "TrackingCategory")
+                tc.append(_textelem("Name", name))
+                tc.append(_textelem("Option", option))
+            return t
 
     @user.permission_required("xero-admin", "Xero integration admin")
     def app_menu(self):
@@ -269,6 +292,11 @@ class XeroIntegration:
         if len(codes) > 1:
             return codes[1]
         return codes[0]
+
+    def _tracking_for_department(self, department):
+        codes = department.accinfo.split("/")
+        if len(codes) > 2:
+            return codes[2]
     
     def _create_invoice_for_session(self, sessionid, approve=False):
         """Create an invoice for a session
@@ -289,8 +317,7 @@ class XeroIntegration:
         invoices = Element("Invoices")
         inv = SubElement(invoices, "Invoice")
         inv.append(_textelem("Type", "ACCREC"))
-        if self.contact:
-            inv.append(self.contact)
+        inv.append(self._get_sales_contact(session))
         inv.append(_textelem("LineAmountTypes", "Inclusive"))
         inv.append(_textelem("Date", session.date.isoformat()))
         inv.append(_textelem(
@@ -312,8 +339,9 @@ class XeroIntegration:
             li.append(_textelem("AccountCode",
                                 self._sales_account_for_department(dept)))
             li.append(_textelem("LineAmount", str(amount)))
-            if self.tracking:
-                li.append(self.tracking)
+            tracking = self._get_tracking(dept)
+            if tracking:
+                li.append(tracking)
         # If there is a discrepancy between the till totals and the
         # actual totals, this must be recorded in a separate account
         if session.error != zero:
@@ -444,8 +472,9 @@ class XeroIntegration:
                 li.append(_textelem("UnitAmount", str(item.costprice)))
             prevqty = _textelem("Quantity", "1")
             li.append(prevqty)
-            if self.tracking:
-                li.append(self.tracking)
+            tracking = self._get_tracking(item.stocktype.department)
+            if tracking:
+                li.append(tracking)
             previtem = item
 
         xml = tostring(invoices)
