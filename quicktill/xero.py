@@ -176,7 +176,7 @@ class XeroIntegration:
         tracking = []
         if self.tracking_category_name and self.tracking_category_value:
             tracking.append((self.tracking_category_name, self.tracking_category_value))
-        if self.department_tracking_category_name:
+        if department and self.department_tracking_category_name:
             v = self._tracking_for_department(department)
             if v:
                 tracking.append((self.department_tracking_category_name, v))
@@ -355,8 +355,9 @@ class XeroIntegration:
             li.append(_textelem("AccountCode", self.discrepancy_account))
             li.append(_textelem("LineAmount", str(session.error)))
             li.append(_textelem("TaxType", "NONE"))
-            if self.tracking:
-                li.append(self.tracking)
+            tracking = self._get_tracking(None)
+            if tracking:
+                li.append(tracking)
         xml = tostring(invoices)
         r = requests.put(XERO_ENDPOINT_URL + "Invoices/",
                          data={'xml': xml},
