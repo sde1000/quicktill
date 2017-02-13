@@ -25,9 +25,8 @@ class Till(models.Model):
     name = models.TextField()
     database = models.TextField()
 
-    @models.permalink
     def get_absolute_url(self):
-        return ('quicktill.tillweb.views.pubroot', [self.slug])
+        return reverse('quicktill.tillweb.views.pubroot', args=[self.slug])
 
     def __str__(self):
         return self.name
