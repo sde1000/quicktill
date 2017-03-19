@@ -76,7 +76,7 @@ class slmenu(ui.keymenu):
             ("6", "Return items from display to stock",
              stocklines.selectline,
              (stocklines.return_stock, "Return Stock",
-              "Select the stock line to remove from display", True)),
+              "Select the stock line to remove from display", ["display"])),
             ("7", "Edit key labels", linekeys.edit_keycaps, None),
         ]
         ui.keymenu.__init__(
