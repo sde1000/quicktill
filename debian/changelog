@@ -1,3 +1,17 @@
+quicktill (0.12.8) stable; urgency=low
+
+  * New release 0.12.8
+
+  * Fix returning items from display to stock
+
+  * Remove models.permalink decorator from tillweb models
+
+  * PEP8 pass on tillweb models
+
+  * Add python_2_unicode_compatible decorator to tillweb models
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 19 Mar 2017 20:55:50 +0000
+
 quicktill (0.12.7) stable; urgency=low
 
   * New release 0.12.7
