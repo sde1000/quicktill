@@ -1592,11 +1592,32 @@ class modelfield(editfield):
         q = q.order_by(func.length(self._field), self._field)
         return [x[0] for x in q.all()]
 
+    @staticmethod
+    def _commonprefix(l):
+        """Case-insensitive common prefix of a list of strings
+
+        This is surprisingly difficult to think about!
+
+        When there is a match, the string returned will have the case
+        of the first list member.
+        """
+        if not l:
+            return
+        s1 = min((x.lower() for x in l))
+        s2 = max((x.lower() for x in l))
+        for i, c in enumerate(s1):
+            if c != s2[i]:
+                return l[0][:i]
+        return l[0]
+
     def _validate_autocomplete(self, s, c):
         t = s[:c + 1]
         l = self._complete(t)
         if l:
-            return os.path.commonprefix(l)
+            # l is in order of length, shortest first, so
+            # _commonprefix will return a string with the case of the
+            # shortest match.
+            return self._commonprefix(l)
         # If we can't create new entries, don't allow the user to continue
         # typing if there are no matches
         if not self._create:
