@@ -22,7 +22,7 @@
 {% if stock.costprice %}
 <td><span class="money">{{stock.costprice}}</span> (ex-VAT)</td>
 {% else %}<td>Unknown</td>{% endif %}</tr>
-<tr><th>Sale price</th><td><span class="money">{{stock.stocktype.saleprice}}</span>/{{stock.stockunit.unit.name}} (inc-VAT)</td></tr>
+<tr><th>Sale price</th><td><span class="money">{{stock.stocktype.pricestr}}</span> (inc-VAT)</td></tr>
 {% if stock.onsale %}
 <tr><th>Put on sale</th><td>{{stock.onsale}}
 {% if stock.stockonsale %} on line <a href="{{u}}{{stock.stockonsale.stockline.tillweb_url}}">{{stock.stockonsale.stockline.name}}</a>

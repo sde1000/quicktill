@@ -15,7 +15,7 @@
 {% endif %}
 <tr><th>Department</th><td><a href="{{u}}{{stocktype.department.tillweb_url}}">{{stocktype.department}}</a></td></tr>
 <tr><th>Unit</th><td>{{stocktype.unit}}</td></tr>
-<tr><th>Sale price</th><td><span class="money">{{stocktype.saleprice}}</span>/{{stocktype.unit.name}} (inc-VAT)</td></tr>
+<tr><th>Sale price</th><td><span class="money">{{stocktype.pricestr}}</span> (inc-VAT)</td></tr>
 </table>
 
 <h2>Stock of this type</h2>
