@@ -38,15 +38,21 @@ def is_england_banking_day(d):
     if d.month == 1 and d.day == 3:
         if datetime.date(d.year, 1, 1).isoweekday() == 6:
             return False
-    if d.month == 12 and d.day == 27:
-        # Bank holiday if either the 25th or 26th was a Saturday or Sunday
-        if datetime.date(d.year, 12, 25).isoweekday() in (6, 7) \
-           or datetime.date(d,year, 12, 26).isoweekday() in (6, 7):
+    # Christmas and Boxing Day substitutes.  Cases:
+    # CD and BD both on weekdays: no substitutes
+    cd_wd = datetime.date(d.year, 12, 25).isoweekday()
+    if cd_wd == 5:
+        # CD on Friday, BD on Saturday: one substitute on Monday 28th
+        if d.month == 12 and d.day == 28:
             return False
-    if d.month == 12 and d.day == 28:
-        # Bank holiday if the 25th was a Saturday and the 26th was a Sunday
-        if datetime.date(d.year, 12, 25).isoweekday() == 6 \
-           and datetime.date(d.year, 12, 26).isoweekday() == 7:
+    elif cd_wd == 6:
+        # CD on Saturday, BD on Sunday: substitutes on Monday 27th and
+        # Tuesday 28th
+        if d.month == 12 and d.day in (27, 28):
+            return False
+    elif cd_wd == 7:
+        # CD on Sunday, BD on Monday: substitute on Tuesday 27th
+        if d.month == 12 and d.day == 27:
             return False
 
     # Good Friday and Easter Monday both depend on the date of Easter.
