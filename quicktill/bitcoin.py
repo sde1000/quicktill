@@ -218,7 +218,7 @@ class BitcoinPayment(payment.PaymentMethod):
         if amount < self._min_payment:
             ui.infopopup(
                 ["The minimum amount you can take using {} is {}.  "
-                 "Small transactions will cost the customer "
+                 "Small transactions will cost "
                  "proportionally too much in transaction fees.".format(
                      self.description, tillconfig.fc(self._min_payment))],
                 title="Payment too small")
