@@ -1,3 +1,15 @@
+quicktill (0.12.10) stable; urgency=low
+
+  * New release 0.12.10
+
+  * Change note about small Bitcoin payments
+
+  * Fix calculation of Christmas substitute bank holidays
+
+  * Show correct sale price units on tillweb
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 31 May 2017 12:55:26 +0100
+
 quicktill (0.12.9) stable; urgency=low
 
   * New release 0.12.9
