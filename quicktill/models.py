@@ -1640,6 +1640,7 @@ Index('payments_transid_key', Payment.transid)
 Index('transactions_sessionid_key', Transaction.sessionid)
 Index('stock_annotations_stockid_key', StockAnnotation.stockid)
 Index('stockout_stockid_key', StockOut.stockid)
+Index('stockout_translineid_key', StockOut.translineid)
 Index('translines_time_key', Transline.time)
 
 # The "find free drinks on this day" function is speeded up
