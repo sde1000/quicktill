@@ -540,7 +540,6 @@ class page(ui.basicpage):
         trans = td.s.query(Transaction).\
                 filter_by(id=transid).\
                 options(subqueryload_all('payments')).\
-                options(joinedload_all('lines.stockref.stockitem.stocktype')).\
                 options(joinedload('lines.user')).\
                 options(undefer('total')).\
                 one()
