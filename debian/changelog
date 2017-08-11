@@ -1,3 +1,13 @@
+quicktill (0.12.11) stable; urgency=low
+
+  * New release 0.12.11
+
+  * Add missing index to StockOut.translineid
+
+  * Speed up transaction loading
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 11 Aug 2017 10:01:39 +0100
+
 quicktill (0.12.10) stable; urgency=low
 
   * New release 0.12.10
