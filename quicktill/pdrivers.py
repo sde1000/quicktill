@@ -1,6 +1,7 @@
 import socket
 import os
 import tempfile
+import io
 import textwrap
 import subprocess
 import fcntl
@@ -301,37 +302,74 @@ class commandprinter(tmpfileprinter):
             r=subprocess.call(self._printcmd%filename,
                               shell=True,stdout=null,stderr=null)
 
-# XXX python-cups in Ubuntu 14.04 doesn't support the CUPS streaming
-# API, so we have to write our output to a temporary file before
-# printing it.  Fix this when we move on from 14.04!
-class cupsprinter(tmpfileprinter):
+class cupsprinter(object):
     """Print to a CUPS printer.
 
+    If host, port and/or encryption are specified they are passed to
+    the cups.Connection() constructor.  encryption should be
+    cups.HTTP_ENCRYPT_ALWAYS, cups.HTTP_ENCRYPT_IF_REQUESTED,
+    cups.HTTP_ENCRYPT_NEVER or cups.HTTP_ENCRYPT_REQUIRED.
     """
-    def __init__(self,printername,driver,options={},description=None):
-        tmpfileprinter.__init__(self,driver,description=description)
-        self._printername=printername
-        self._options=options
+    def __init__(self, printername, driver, options={}, description=None,
+                 host=None, port=None, encryption=None):
+        self._driver = driver
+        self._file = None
+        self._description = description
+        self._printername = printername
+        self._options = options
+        self._connect_kwargs = {}
+        if host is not None:
+            self._connect_kwargs['host'] = host
+        if port is not None:
+            self._connect_kwargs['port'] = port
+        if encryption is not None:
+            self._connect_kwargs['encryption'] = encryption
+        self._file = None
+
     def __str__(self):
         x = self._description or "Print to '{}'".format(self._printername)
         o = self.offline()
         if o:
             x = x + " (offline: {})".format(o)
         return x
+
     def offline(self):
         try:
-            conn=cups.Connection()
-            accepting=conn.getPrinterAttributes(
+            conn = cups.Connection(**self._connect_kwargs)
+            accepting = conn.getPrinterAttributes(
                 self._printername)['printer-is-accepting-jobs']
-            if accepting: return
+            if accepting:
+                return
             return "'{}' is not accepting jobs at the moment".format(
                 self._printername)
         except cups.IPPError as e:
             return str(e)
-    def finish(self,filename):
-        conn=cups.Connection()
-        conn.printFile(self._printername,filename,"quicktill output",
-                       self._options)
+
+    def __enter__(self):
+        if self._file:
+            raise PrinterError(self, "Already started in start()")
+        self._file = io.BytesIO()
+        return self._driver.start(self._file, self)
+
+    def __exit__(self, type, value, tb):
+        try:
+            if tb is not None:
+                self._driver.printline(
+                    "An error occurred, the document may be incomplete")
+            self._driver.end()
+        except:
+            pass
+        self._file.flush()
+        connection = cups.Connection(**self._connect_kwargs)
+        job = connection.createJob(self._printername, "quicktill output",
+                                   self._options)
+        doc = connection.startDocument(self._printername, job, "quicktill",
+                                       self._driver.mimetype, 1)
+        b = self._file.getvalue()
+        connection.writeRequestData(b, len(b))
+        connection.finishDocument(self._printername)
+        self._file.close()
+        self._file = None
 
 def ep_2d_cmd(*params):
     """Assemble an ESC/POS 2d barcode command.
@@ -348,6 +386,7 @@ class escpos(object):
     """The ESC/POS protocol for controlling receipt printers.
     """
     filesuffix = ".dat"
+    mimetype = "application/octet-stream"
     ep_reset = bytes([27, 64, 27, 116, 16])
     ep_pulse = bytes([27, ord('p'), 0, 50, 50])
     ep_underline = (bytes([27, 45, 0]), bytes([27, 45, 1]), bytes([27, 45, 2]))
@@ -608,7 +647,8 @@ class pdf_driver(object):
     ESC/POS driver.
 
     """
-    filesuffix=".pdf"
+    filesuffix = ".pdf"
+    mimetype = "application/pdf"
     def __init__(self,width=140,pagesize=A4,
                  fontsizes=[8,10],pitches=[10,12]):
         """
@@ -710,7 +750,8 @@ class pdf_page(object):
     size readable via a getPageSize() method.
 
     """
-    filesuffix=".pdf"
+    filesuffix = ".pdf"
+    mimetype = "application/pdf"
     def __init__(self,pagesize=A4):
         self._pagesize=pagesize
     def start(self,fileobj,interface):
@@ -720,6 +761,10 @@ class pdf_page(object):
     def end(self):
         self._canvas.save()
         del self._canvas
+
+    def printline(self, l="", justcheckfit=False, allowwrap=True,
+                  colour=None, font=None, emph=None, underline=None):
+        pass
 
 # XXX this depends on an implementation detail of reportlab.pdfgen
 class LabelCanvas(canvas.Canvas):
@@ -768,7 +813,8 @@ class pdf_labelpage(object):
     be output.
 
     """
-    filesuffix=".pdf"
+    filesuffix = ".pdf"
+    mimetype = "application/pdf"
     def __init__(self,labelsacross,labelsdown,
                  labelwidth,labelheight,
                  horizlabelgap,vertlabelgap,
@@ -804,3 +850,7 @@ class pdf_labelpage(object):
     def end(self):
         self._canvas._end()
         del self._canvas
+
+    def printline(self, l="", justcheckfit=False, allowwrap=True,
+                  colour=None, font=None, emph=None, underline=None):
+        pass
