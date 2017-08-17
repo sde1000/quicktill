@@ -4,7 +4,7 @@ quicktill — cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004–2016 Stephen Early <sde@individualpubs.co.uk>
+quicktill is Copyright (C) 2004–2017 Stephen Early <sde@individualpubs.co.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
