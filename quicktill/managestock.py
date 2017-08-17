@@ -317,9 +317,6 @@ def reprint_stocklabel_choose_printer(item):
     td.s.add(StockAnnotation(
         stockitem=item, atype="memo", user=user.current_dbuser(),
         text="Re-printed stock label"))
-    if len(printer.labelprinters) == 1:
-        printer.stocklabel_print(printer.labelprinters[0], [item])
-        return
     menu=[("Print label on {}".format(str(x)),
            printer.stocklabel_print, (x, [item]))
           for x in printer.labelprinters]
