@@ -275,6 +275,36 @@ class Session(Base):
         """
         return session.query(Session).filter_by(endtime=None).first()
 
+    @property
+    def next(self):
+        """Next session
+
+        Return the subsequent session, or None.
+        """
+        if hasattr(self, "_nextsession"):
+            return self._nextsession
+        self._nextsession = object_session(self)\
+            .query(Session)\
+            .filter(Session.id > self.id)\
+            .order_by(Session.id)\
+            .first()
+        return self._nextsession
+
+    @property
+    def previous(self):
+        """Previous session
+
+        Return the previous session, or None.
+        """
+        if hasattr(self, "_prevsession"):
+            return self._prevsession
+        self._prevsession = object_session(self)\
+            .query(Session)\
+            .filter(Session.id < self.id)\
+            .order_by(desc(Session.id))\
+            .first()
+        return self._prevsession
+
 add_ddl(Session.__table__, """
 CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
 BEGIN
