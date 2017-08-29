@@ -178,8 +178,10 @@ template = r"""
 """
 
 import yaml
+import argparse
 from . import models
 from . import td
+from . import cmdline
 
 def setup(f):
     t = yaml.load(f)
@@ -192,3 +194,28 @@ def setup(f):
         del m['model']
         td.s.merge(model(**m))
         td.s.flush()
+
+class dbsetup(cmdline.command):
+    """Add initial records to the database.
+
+    With no arguments, print a template database setup file.
+    With one argument, import and process a database setup file.
+
+    """
+    @staticmethod
+    def add_arguments(subparsers):
+        parser = subparsers.add_parser(
+            'dbsetup',help="add initial records to the database",
+            description=dbsetup.__doc__)
+        parser.set_defaults(command=dbsetup.run)
+        parser.add_argument("dbfile", help="Initial records file "
+                            "in YAML", type=argparse.FileType('r'),
+                            nargs="?")
+    @staticmethod
+    def run(args):
+        if not args.dbfile:
+            print(template)
+        else:
+            td.init(tillconfig.database)
+            with td.orm_session():
+                setup(args.dbfile)
