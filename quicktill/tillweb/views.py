@@ -11,10 +11,12 @@ from django.template.loader import get_template
 from django.conf import settings
 from django import forms
 from .models import *
+import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload,subqueryload_all
 from sqlalchemy.orm import joinedload,joinedload_all
 from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import undefer,defer,undefer_group
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import desc
@@ -131,6 +133,16 @@ def tillweb_view(view):
         new_view = login_required(new_view)
     return new_view
 
+# undefer_group on a related entity is broken until sqlalchemy 1.1.14
+def undefer_qtys(entity):
+    """Return options to undefer the qtys group on a related entity"""
+    if sqlalchemy.__version__ < "1.1.14":
+        return defaultload(entity)\
+            .undefer("used")\
+            .undefer("sold")\
+            .undefer("remaining")
+    return defaultload(entity).undefer_group("qtys")
+
 def business_totals(session,firstday,lastday):
     # This query is wrong in that it ignores the 'business' field in
     # VatRate objects.  Fixes that don't involve a database round-trip
@@ -172,7 +184,7 @@ def pubroot(request,info,session):
         filter(StockLine.location=="Bar").\
         order_by(StockLine.dept_id,StockLine.name).\
         options(joinedload_all('stockonsale.stocktype.unit')).\
-        options(undefer_group('qtys')).\
+        options(undefer_qtys("stockonsale")).\
         all()
     stillage=session.query(StockAnnotation).\
         join(StockItem).\
@@ -185,7 +197,7 @@ def pubroot(request,info,session):
         order_by(StockLine.name!=null(),StockAnnotation.time).\
         options(joinedload_all('stockitem.stocktype.unit')).\
         options(joinedload_all('stockitem.stockline')).\
-        options(undefer_group('qtys')).\
+        options(undefer_qtys('stockitem')).\
         all()
     return ('index.html',
             {'currentsession':currentsession,
@@ -411,7 +423,7 @@ def delivery(request,info,session,deliveryid):
             filter_by(id=int(deliveryid)).\
             options(joinedload_all('items.stocktype.unit')).\
             options(joinedload_all('items.stockline')).\
-            options(undefer_group('qtys')).\
+            options(undefer_qtys('items')).\
             one()
     except NoResultFound:
         raise Http404
