@@ -633,8 +633,12 @@ class Transline(Base):
     @property
     def tillweb_url(self):
         return "transline/{}/".format(self.id)
+
     @property
     def description(self):
+        # We aim to transition to self.text being nullable=False with
+        # the release of 0.13.0; see the add-transline-text command in
+        # dbutils.py.  This property will then just return self.text
         if self.text is not None:
             return self.text
         # If there is more than one entry in stockref then the text
@@ -696,6 +700,9 @@ class Transline(Base):
                 removecode=stockout.removecode))
         return v
 
+# This trigger permits null columns (text or user) to be set to
+# not-null in closed transactions but subsequently prevents
+# modification
 add_ddl(Transline.__table__, """
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
