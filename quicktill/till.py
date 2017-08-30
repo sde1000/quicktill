@@ -58,11 +58,11 @@ class runtill(cmdline.command):
     Run the till interactively.
 
     """
+    command = "start"
+    help = "run the till interactively"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'start',help="run the till interactively",
-            description=runtill.__doc__)
+    def add_arguments(parser):
         parser.add_argument("-n", "--nolisten", action="store_true",
                             dest="nolisten",
                             help="Disable listening socket for user tokens")
@@ -89,7 +89,8 @@ class runtill(cmdline.command):
             action="store", type=int, metavar="LOCKTIME",
             help="Display the lock screen for at least LOCKTIME seconds "
             "before considering the till to be idle")
-        parser.set_defaults(command=runtill.run,nolisten=False)
+        parser.set_defaults(command=runtill.run, nolisten=False)
+
     @staticmethod
     def run(args):
         log.info("Starting version %s"%version)
@@ -115,16 +116,12 @@ class runtill(cmdline.command):
         return event.shutdowncode
 
 class kbdiff(cmdline.command):
-    """Show differences between kbconfig and altkbconfig
+    """Show differences between kbconfig and altkbconfig.
 
     Concentrates on updating linekey numbers
     """
-    @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'kbdiff',help="diff keyboard table",
-            description=kbdiff.__doc__)
-        parser.set_defaults(command=kbdiff.run)
+    help = "diff keyboard table"
+
     @staticmethod
     def run(args):
         # We want to go through all codes defined in the new (alt) driver
@@ -171,12 +168,10 @@ class totals(cmdline.command):
     Display a table of session totals.
 
     """
+    help = "display table of session totals"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'totals',help="display table of session totals",
-            description=totals.__doc__)
-        parser.set_defaults(command=totals.run)
+    def add_arguments(parser):
         parser.add_argument("-d","--days",type=int,dest="days",
                             help="number of days to display",default=40)
     @staticmethod
@@ -280,9 +275,7 @@ def main():
     parser.add_argument("--disable-printer", action="store_true",
                         dest="disable_printer",help="Use the null printer "
                         "instead of the configured printer")
-    subparsers=parser.add_subparsers(title="commands")
-    for c in cmdline.command._commands:
-        c.add_arguments(subparsers)
+    cmdline.command.add_subparsers(parser)
     parser.set_defaults(configurl=configurl,configname="default",
                         database=None,logfile=None,debug=False,
                         interactive=False,disable_printer=False)

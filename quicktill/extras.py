@@ -168,18 +168,17 @@ class reminderpopup(object):
 class twitter_auth(cmdline.command):
     """Generate tokens for Twitter login.
     """
+    command = "twitter-auth"
+    help = "authorise with Twitter"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'twitter-auth', help="authorise with Twitter",
-            description=twitter_auth.__doc__)
+    def add_arguments(parser):
         parser.add_argument("--consumer-key", action="store",
                             dest="consumer_key",
                             help="OAuth1 consumer key")
         parser.add_argument("--consumer-secret", action="store",
                             dest="consumer_secret",
                             help="OAuth1 consumer secret")
-        parser.set_defaults(command=twitter_auth.run)
 
     @staticmethod
     def run(args):

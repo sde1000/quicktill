@@ -13,12 +13,7 @@ class dbshell(cmdline.command):
     'models.*' already imported, and a database session started.
 
     """
-    @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'dbshell', description=dbshell.__doc__,
-            help="interactive python prompt with database initialised")
-        parser.set_defaults(command=dbshell.run)
+    help = "interactive python prompt with database initialised"
 
     @staticmethod
     def run(args):
@@ -43,12 +38,7 @@ class syncdb(cmdline.command):
     script under "examples".
 
     """
-    @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'syncdb', help="create new database tables",
-            description=syncdb.__doc__)
-        parser.set_defaults(command=syncdb.run)
+    help = "create new database tables"
 
     @staticmethod
     def run(args):
@@ -63,12 +53,10 @@ class flushdb(cmdline.command):
     for use during testing and setup.
 
     """
+    help = "remove database tables"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'flushdb', help="remove database tables",
-            description=flushdb.__doc__)
-        parser.set_defaults(command=flushdb.run)
+    def add_arguments(parser):
         parser.add_argument("--really", action="store_true", dest="really",
                             help="confirm removal of data")
 
@@ -107,19 +95,18 @@ class checkdb(cmdline.command):
     not have permission to do so.
 
     """
+    help = "check database schema"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'checkdb', help="check database schema",
-            description=checkdb.__doc__)
-        parser.set_defaults(command=checkdb.run)
+    def add_arguments(parser):
         parser.add_argument("--tempdb", type=str, dest="tempdb",
                             help="name of temporary database",
                             default="quicktill-test")
         parser.add_argument("--nocreate", action="store_false", dest="createdb",
                             help="assume temporary database exists",
                             default=True)
-        parser.add_argument("--keep-tempfiles", action="store_true", dest="keeptmp",
+        parser.add_argument("--keep-tempfiles", action="store_true",
+                            dest="keeptmp",
                             help="don't delete the temporary schema dump files",
                             default=False)
 

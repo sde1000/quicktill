@@ -202,15 +202,14 @@ class dbsetup(cmdline.command):
     With one argument, import and process a database setup file.
 
     """
+    help = "add initial records to the database"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser = subparsers.add_parser(
-            'dbsetup',help="add initial records to the database",
-            description=dbsetup.__doc__)
-        parser.set_defaults(command=dbsetup.run)
+    def add_arguments(parser):
         parser.add_argument("dbfile", help="Initial records file "
                             "in YAML", type=argparse.FileType('r'),
                             nargs="?")
+
     @staticmethod
     def run(args):
         if not args.dbfile:

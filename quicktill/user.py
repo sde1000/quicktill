@@ -575,15 +575,15 @@ class adduser_cmd(cmdline.command):
     during setup.
 
     """
+    command = "adduser"
+    help = "add a superuser to the database"
+
     @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'adduser',help="add a superuser to the database",
-            description=adduser_cmd.__doc__)
-        parser.set_defaults(command=adduser_cmd.run)
+    def add_arguments(parser):
         parser.add_argument("fullname", help="Full name of user")
         parser.add_argument("shortname", help="Short name of user")
         parser.add_argument("usertoken", help="User ID token")
+
     @staticmethod
     def run(args):
         td.init(tillconfig.database)
@@ -596,16 +596,12 @@ class adduser_cmd(cmdline.command):
             td.s.flush()
             print("User added.")
 
-class listusers_cmd(cmdline.command):
+class listusers(cmdline.command):
     """List all active users.
 
     """
-    @staticmethod
-    def add_arguments(subparsers):
-        parser=subparsers.add_parser(
-            'listusers',help="list active users",
-            description=listusers_cmd.__doc__)
-        parser.set_defaults(command=listusers_cmd.run)
+    help = "list active users"
+
     @staticmethod
     def run(args):
         td.init(tillconfig.database)
