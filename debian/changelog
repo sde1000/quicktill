@@ -1,3 +1,29 @@
+quicktill (0.12.12) stable; urgency=low
+
+  * New release 0.12.12
+
+  * Show unconfirmed delivery state in tillweb
+
+  * Add command to fill in text field in translines
+
+  * Remove duplicated code from subcommand definitions
+
+  * Move subcommands around
+
+  * Quality control pass on tillweb
+
+  * Work around broken undefer_group in sqlalchemy
+
+  * Add migrations support to tillweb
+
+  * Use the CUPS streaming API, pass host/port to constructor
+
+  * Always show the printers menu when reprinting a single label
+
+  * Update year (a little late...)
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 30 Aug 2017 15:24:17 +0100
+
 quicktill (0.12.11) stable; urgency=low
 
   * New release 0.12.11
