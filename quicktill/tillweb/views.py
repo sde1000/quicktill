@@ -476,7 +476,8 @@ def stocktype(request, info, session, stocktype_id):
     items = session\
             .query(StockItem)\
             .filter(StockItem.stocktype == s)\
-            .options(undefer_group('qtys'))\
+            .options(undefer_group('qtys'),
+                     joinedload('delivery'))\
             .order_by(desc(StockItem.id))
     if not include_finished:
         items = items.filter(StockItem.finished == None)
@@ -500,6 +501,7 @@ def stocksearch(request,info,session):
             .order_by(StockItem.id)\
             .options(joinedload_all('stocktype.unit'),
                      joinedload('stockline'),
+                     joinedload('delivery'),
                      undefer_group('qtys'))
         q = form.filter(q)
         if not form.cleaned_data['include_finished']:
@@ -556,6 +558,7 @@ def stockline(request, info, session, stocklineid):
     s = session\
         .query(StockLine)\
         .options(joinedload_all('stockonsale.stocktype.unit'),
+                 joinedload_all('stockonsale.delivery'),
                  undefer_qtys('stockonsale'))\
         .get(int(stocklineid))
     if not s:
@@ -604,6 +607,7 @@ def department(request, info, session, departmentid):
             .options(joinedload_all('stocktype.unit'),
                      undefer_group('qtys'),
                      joinedload('stockline'),
+                     joinedload('delivery'),
                      joinedload('finishcode'))
     if not include_finished:
         items = items.filter(StockItem.finished == None)

@@ -16,8 +16,11 @@
 <td>{{s.remaining}} {{s.stocktype.unit.name}}s</td>
 {% if s.bestbefore != None %}<td {% if s.shelflife > 28 %}class="bbok"{% elif s.shelflife <= 0 %}class="bberr"{% else %}class="bbwarn"{% endif %}>{{s.bestbefore}}</td>
 {% else %}<td></td>{% endif %}
-<td>{% if s.finished %}{{s.finishcode}} ({{s.finished|date:dtf}}){% endif %}
-{% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale{% if exclude_column != "stockline" %}: {{s.stockline.name}}{% endif %}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}</td>
+<td>{% if s.delivery.checked %}
+  {% if s.finished %}{{s.finishcode}} ({{s.finished|date:dtf}}){% endif %}
+  {% if s.stockline %}<a href="{{u}}{{s.stockline.tillweb_url}}">On sale{% if exclude_column != "stockline" %}: {{s.stockline.name}}{% endif %}{% if s.ondisplay != None %} ({{s.ondisplay}}+{{s.instock}}){% endif %}</a>{% endif %}
+{% else %}<a href="{{u}}{{s.delivery.tillweb_url}}">Unconfirmed delivery</a>
+{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
