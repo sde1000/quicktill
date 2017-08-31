@@ -19,6 +19,9 @@
 {{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
 {% endfor %}</a>
 {% else %}No current session{% endif %}
+{% if deferred %}
+<br /><span class="money">{{deferred}}</span> deferred transactions
+{% endif %}
 </td>
 {% for desc,start,end,totals in weeks %}
 <td>{{start}}–{{end}}<br />

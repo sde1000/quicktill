@@ -200,11 +200,19 @@ def pubroot(request, info, session):
                         undefer_qtys('stockitem'))\
                .all()
 
+    deferred = session\
+               .query(func.sum(Transline.items * Transline.amount))\
+               .select_from(Transaction)\
+               .join(Transline)\
+               .filter(Transaction.sessionid == None)\
+               .scalar()
+
     return ('index.html',
             {'currentsession': currentsession,
              'barsummary': barsummary,
              'stillage': stillage,
              'weeks': weeks,
+             'deferred': deferred,
             })
 
 @tillweb_view
