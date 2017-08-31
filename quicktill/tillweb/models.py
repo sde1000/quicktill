@@ -9,7 +9,7 @@ def get_app_details(user):
     tills = Till.objects.filter(access__user=user)
     if len(tills) > 0:
         return [{'name': "Till access",
-                 'url': reverse('quicktill.tillweb.views.publist'),
+                 'url': reverse('tillweb-publist'),
                  'objects': tills}]
     return []
 
@@ -26,7 +26,7 @@ class Till(models.Model):
     database = models.TextField()
 
     def get_absolute_url(self):
-        return reverse('quicktill.tillweb.views.pubroot', args=[self.slug])
+        return reverse('tillweb-pubroot', args=[self.slug])
 
     def __str__(self):
         return self.name

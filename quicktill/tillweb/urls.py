@@ -2,7 +2,7 @@ from django.conf.urls import include, url
 from quicktill.tillweb.views import *
 
 tillurls = [
-    url(r'^$', pubroot),
+    url(r'^$', pubroot, name="tillweb-pubroot"),
     url(r'^session/$', sessionfinder),
     url(r'^session/(?P<sessionid>\d+)/', include([
         url(r'^$', session),
@@ -40,6 +40,6 @@ tillurls = [
 
 urls = [
     # Index page
-    url(r'^$', publist, name="publist"),
+    url(r'^$', publist, name="tillweb-publist"),
     url(r'^(?P<pubname>[\w\-]+)/', include(tillurls)),
 ]
