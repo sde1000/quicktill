@@ -174,7 +174,13 @@ def pubroot(request, info, session):
              ("The week before last", weekbefore_start, weekbefore_end,
               business_totals(session, weekbefore_start, weekbefore_end))]
 
-    currentsession = Session.current(session)
+    #currentsession = Session.current(session)
+    currentsession = session\
+                     .query(Session)\
+                     .filter_by(endtime=None)\
+                     .options(undefer('total'),
+                              undefer('closed_total'))\
+                     .first()
 
     barsummary = session\
                  .query(StockLine)\
