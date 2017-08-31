@@ -88,6 +88,8 @@ class Document:
 
         self.boldcurrencystyle = Style(name="BoldPounds", family="table-cell",
                                        parentstylename=self.currencystyle)
+        self.boldcurrencystyle.addElement(
+            TextProperties(fontweight="bold"))
         self.doc.styles.addElement(self.boldcurrencystyle)
 
         self.boldtextstyle = Style(name="BoldText", family="table-cell",
@@ -99,6 +101,13 @@ class Document:
 
     def intcell(self, val):
         return TableCell(valuetype="float", value=val)
+
+    numbercell = intcell
+
+    def textcell(self, text):
+        tc = TableCell(valuetype="string")
+        tc.addElement(P(text=text))
+        return tc
 
     @property
     def datestyle(self):
@@ -144,10 +153,10 @@ class Document:
         self.doc.styles.addElement(currencystyle)
         return currencystyle
 
-    def moneycell(self, m, formula=None):
+    def moneycell(self, m, formula=None, style=None):
         a = { "valuetype": "currency",
               "currency": "GBP",
-              "stylename": self.currencystyle,
+              "stylename": style if style else self.currencystyle,
         }
         if m is not None:
             a["value"] = str(m)
@@ -285,5 +294,95 @@ def sessionrange(ds, start=None, end=None, tillname="Till"):
                 break
 
     doc.add_table(table)
+
+    return doc.as_response()
+
+def session(ds, s, tillname="Till"):
+    """A spreadsheet giving full details for a session
+    """
+    filename = "{}-session-{}{}.ods".format(
+        tillname, s.id, "" if s.endtime else "-incomplete")
+    doc = Document(filename)
+
+    dsheet = Sheet("Departments")
+    dsheet.cell(0, 0, doc.headercell("Dept"))
+    dsheet.cell(1, 0, doc.headercell("Description"))
+    if not s.endtime:
+        dsheet.cell(2, 0, doc.headercell("Paid"))
+        dsheet.cell(3, 0, doc.headercell("Pending"))
+        tcol = 4
+    else:
+        tcol = 2
+    dsheet.cell(tcol, 0, doc.headercell("Total"))
+
+    row = 1
+    for dept, total, paid, pending in s.dept_totals_closed:
+        if not paid and not pending:
+            continue
+        dsheet.cell(0, row, doc.intcell(dept.id))
+        dsheet.cell(1, row, doc.textcell(dept.description))
+        if not s.endtime:
+            if paid:
+                dsheet.cell(2, row, doc.moneycell(paid))
+            if pending:
+                dsheet.cell(3, row, doc.moneycell(pending))
+        dsheet.cell(tcol, row, doc.moneycell(total))
+        row += 1
+    dsheet.cell(1, row, doc.headercell("Total:"))
+    if not s.endtime:
+        dsheet.cell(2, row, doc.moneycell(
+            None, formula="oooc:=SUM([.{}:.{}])".format(
+                dsheet.ref(2, 1), dsheet.ref(2, row - 1))))
+        dsheet.cell(3, row, doc.moneycell(
+            None, formula="oooc:=SUM([.{}:.{}])".format(
+                dsheet.ref(3, 1), dsheet.ref(3, row - 1))))
+    dsheet.cell(tcol, row, doc.moneycell(
+        None, formula="oooc:=SUM([.{}:.{}])".format(
+            dsheet.ref(tcol, 1), dsheet.ref(tcol, row - 1)),
+        style=doc.boldcurrencystyle))
+
+    doc.add_table(dsheet)
+
+    sheet = Sheet("Users")
+    sheet.colstyle(0, doc.colwidth("4.0cm"))
+    sheet.cell(0, 0, doc.headercell("User"))
+    sheet.cell(1, 0, doc.headercell("Items"))
+    sheet.cell(2, 0, doc.headercell("Total"))
+    row = 1
+    for user, items, total in s.user_totals:
+        sheet.cell(0, row, doc.textcell(user.fullname))
+        sheet.cell(1, row, doc.intcell(items))
+        sheet.cell(2, row, doc.moneycell(total))
+        row = row + 1
+    doc.add_table(sheet)
+
+    sheet = Sheet("Stock sold")
+    sheet.colstyle(0, doc.colwidth("8.5cm"))
+    sheet.cell(0, 0, doc.headercell("Type"))
+    sheet.cell(1, 0, doc.headercell("Quantity"))
+    sheet.cell(2, 0, doc.headercell("Unit"))
+    row = 1
+    for st, q in s.stock_sold:
+        sheet.cell(0, row, doc.textcell(st.format()))
+        sheet.cell(1, row, doc.numbercell(q))
+        sheet.cell(2, row, doc.textcell(st.unit.name))
+        row += 1
+    doc.add_table(sheet)
+
+    tsheet = Sheet("Transactions")
+    tsheet.cell(0, 0, doc.headercell("Transaction"))
+    tsheet.cell(1, 0, doc.headercell("Amount"))
+    tsheet.cell(2, 0, doc.headercell("Note"))
+    tsheet.cell(3, 0, doc.headercell("State"))
+    row = 1
+    for t in s.transactions:
+        tsheet.cell(0, row, doc.intcell(t.id))
+        tsheet.cell(1, row, doc.moneycell(t.total))
+        tsheet.cell(2, row, doc.textcell(t.notes))
+        tsheet.cell(3, row, doc.textcell(
+            "Closed" if t.closed else "Open"))
+        row += 1
+
+    doc.add_table(tsheet)
 
     return doc.as_response()

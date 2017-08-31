@@ -6,6 +6,7 @@ tillurls = [
     url(r'^session/$', sessionfinder),
     url(r'^session/(?P<sessionid>\d+)/', include([
         url(r'^$', session),
+        url(r'^spreadsheet.ods$', session_spreadsheet),
         url(r'^takings-by-dept.html$', session_takings_by_dept),
         url(r'^takings-by-user.html$', session_takings_by_user),
         url(r'^stock-sold.html$', session_stock_sold),

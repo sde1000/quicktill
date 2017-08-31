@@ -282,6 +282,17 @@ def session(request, info, session, sessionid):
             {'session': s, 'nextlink': nextlink, 'prevlink': prevlink})
 
 @tillweb_view
+def session_spreadsheet(request, info, session, sessionid):
+    s = session\
+        .query(Session)\
+        .options(undefer('transactions.total'),
+                 joinedload('transactions.payments'))\
+        .get(int(sessionid))
+    if not s:
+        raise Http404
+    return spreadsheets.session(session, s, info['tillname'])
+
+@tillweb_view
 def session_takings_by_dept(request, info, session, sessionid):
     s = session\
         .query(Session)\
