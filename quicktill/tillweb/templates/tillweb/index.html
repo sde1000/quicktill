@@ -17,8 +17,8 @@
 {{currentsession.id}} ({{currentsession.date}})<br />
 {% for vr,t,ex,vat in currentsession.vatband_totals %}
 {{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
-{% if currentsession.pending_total %}(<span class="money">{{currentsession.pending_total}}</span> unpaid){% endif %}
-{% endfor %}</a>
+{% endif %}
+{% endfor %}{% if currentsession.pending_total %}(<span class="money">{{currentsession.pending_total}}</span> unpaid)</a>
 {% else %}No current session{% endif %}
 {% if deferred %}
 <br /><span class="money">{{deferred}}</span> deferred transactions
