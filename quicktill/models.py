@@ -1,7 +1,3 @@
-# This module needs to work with python2 and python3
-from __future__ import unicode_literals
-from __future__ import division
-
 from sqlalchemy.ext.declarative import declarative_base,declared_attr
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text,Interval
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
@@ -28,11 +24,7 @@ quantity = Numeric(8, 1)
 
 metadata = MetaData()
 
-class _unistr(object):
-    def __str__(self):
-        return str(self.__unicode__())
-
-Base = declarative_base(metadata=metadata, cls=_unistr)
+Base = declarative_base(metadata=metadata)
 
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
@@ -58,7 +50,7 @@ class Business(Base):
     address = Column(String(), nullable=False)
     vatno = Column(String(30))
     show_vat_breakdown = Column(Boolean(),nullable=False,default=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.abbrev,)
     def __repr__(self):
         return "<Business('%s')>" % (self.name,)
@@ -130,7 +122,7 @@ class PayType(Base):
     __tablename__ = 'paytypes'
     paytype = Column(String(8), nullable=False, primary_key=True)
     description = Column(String(10), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.description,)
     def __repr__(self):
         return "<PayType('%s')>" % (self.paytype,)
@@ -158,7 +150,7 @@ class Session(Base):
 
     def __repr__(self):
         return "<Session(%s,'%s')>" % (self.id, self.date,)
-    def __unicode__(self):
+    def __str__(self):
         return "Session %d" % self.id
     @property
     def tillweb_url(self):
@@ -381,7 +373,7 @@ class Transaction(Base):
 
     # age is now a column property, defined below
 
-    def __unicode__(self):
+    def __str__(self):
         return "Transaction %d" % self.id
     def __repr__(self):
         return "<Transaction(%s,%s,%s)>" % (self.id, self.sessionid, self.closed)
@@ -485,7 +477,7 @@ class SessionNoteType(Base):
     __tablename__ = 'session_note_types'
     id = Column('ntype', String(8), nullable=False, primary_key=True)
     description = Column(String(20), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return self.description
     def __repr__(self):
         return "<SessionNoteType('{}','{}')>".format(self.id, self.description)
@@ -571,7 +563,7 @@ class Department(Base):
                       "single item in this department.")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     vat = relationship(VatBand)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.description,)
     def __repr__(self):
         return "<Department(%s,'%s')>" % (self.id, self.description)
@@ -583,7 +575,7 @@ class TransCode(Base):
     __tablename__ = 'transcodes'
     code = Column('transcode', CHAR(1), nullable=False, primary_key=True)
     description = Column(String(20), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.description,)
     def __repr__(self):
         return "<TransCode('%s','%s')>" % (self.code, self.description)
@@ -623,7 +615,7 @@ class Transline(Base):
     voided_by = relationship(
         "Transline", remote_side=[id], uselist=False,
         backref=backref('voids', uselist=False, passive_deletes=True))
-    def __unicode__(self):
+    def __str__(self):
         return "Transaction line {}".format(self.id)
     @hybrid_property
     def total(self):
@@ -1127,7 +1119,7 @@ class Supplier(Base):
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     def __repr__(self):
         return "<Supplier(%s,'%s')>" % (self.id, self.name)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.name,)
     @property
     def tillweb_url(self):
@@ -1158,7 +1150,7 @@ class UnitType(Base):
     __tablename__ = 'unittypes'
     id = Column('unit', String(10), nullable=False, primary_key=True)
     name = Column(String(30), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.name,)
     def __repr__(self):
         return "<UnitType('%s','%s')>" % (self.id, self.name)
@@ -1173,7 +1165,7 @@ class StockUnit(Base):
     unit = relationship(UnitType)
     def __repr__(self):
         return "<StockUnit('%s',%s)>" % (self.id, self.size)
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 stocktypes_seq = Sequence('stocktypes_seq')
@@ -1201,7 +1193,7 @@ class StockType(Base):
     @property
     def tillweb_url(self):
         return "stocktype/%d/" % self.id
-    def __unicode__(self):
+    def __str__(self):
         return "%s %s" % (self.manufacturer, self.name)
     def __repr__(self):
         return "<StockType(%s,'%s','%s')>" % (
@@ -1262,7 +1254,7 @@ class FinishCode(Base):
     __tablename__ = 'stockfinish'
     id = Column('finishcode', String(8), nullable=False, primary_key=True)
     description = Column(String(50), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % self.description
     def __repr__(self):
         return "<FinishCode('%s','%s')>" % (self.id, self.description)
@@ -1407,7 +1399,7 @@ class StockItem(Base):
     @property
     def tillweb_url(self):
         return "stock/%d/" % self.id
-    def __unicode__(self):
+    def __str__(self):
         return "<StockItem({})>".format(self.id)
     def __repr__(self):
         return "<StockItem(%s)>" % (self.id,)
@@ -1430,7 +1422,7 @@ class AnnotationType(Base):
     __tablename__ = 'annotation_types'
     id = Column('atype', String(8), nullable=False, primary_key=True)
     description = Column(String(20), nullable=False)
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.description,)
     def __repr__(self):
         return "<AnnotationType('%s','%s')>" % (self.id,self.description)
@@ -1460,7 +1452,7 @@ class RemoveCode(Base):
     __tablename__ = 'stockremove'
     id = Column('removecode', String(8), nullable=False, primary_key=True)
     reason = Column(String(80))
-    def __unicode__(self):
+    def __str__(self):
         return "%s" % (self.reason,)
     def __repr__(self):
         return "<RemoveCode('%s','%s')>" % (self.id, self.reason)
