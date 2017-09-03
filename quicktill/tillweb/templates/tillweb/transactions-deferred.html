@@ -1,0 +1,36 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — deferred transactions{% endblock %}
+
+{% block heading %}{{till}} — deferred transactions{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Deferred transactions</h2>
+
+{% if transactions %}
+<table id="transactions-table">
+<thead>
+<tr><th>Transaction</th><th>Amount</th><th>Note</th></tr>
+</thead>
+<tbody>
+{% for t in transactions %}
+<tr class="{% cycle 'odd' 'even' %}">
+<td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
+<td class="money">{{t.total}}</td>
+<td>{% if t.notes %}{{t.notes}}{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#transactions-table").tablesorter({widgets:["zebra"]});
+});
+</script>
+{% else %}
+<p>There are no deferred transactions at the moment.</p>
+{% endif %}
+
+{% endblock %}

@@ -20,7 +20,7 @@
 {% endfor %}{% if currentsession.pending_total %}(<span class="money">{{currentsession.pending_total}}</span> unpaid){% endif %}</a>
 {% else %}No current session{% endif %}
 {% if deferred %}
-<br /><span class="money">{{deferred}}</span> deferred transactions
+<br /><a href="{{u}}transaction/deferred/"><span class="money">{{deferred}}</span> deferred transactions</a>
 {% endif %}
 </td>
 {% for desc,start,end,totals in weeks %}

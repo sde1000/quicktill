@@ -15,6 +15,7 @@ tillurls = [
         url(r'^users-pie-chart.svg$', session_users_pie_chart),
         url(r'^dept(?P<dept>\d+)/$', sessiondept, name="sessiondept"),
         ])),
+    url(r'^transaction/deferred/$', transactions_deferred),
     url(r'^transaction/(?P<transid>\d+)/$', transaction),
     url(r'^transline/(?P<translineid>\d+)/$', transline),
     url(r'^supplier/$', supplierlist),

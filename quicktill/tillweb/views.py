@@ -384,6 +384,16 @@ def sessiondept(request, info, session, sessionid, dept):
              'nextlink': nextlink, 'prevlink': prevlink})
 
 @tillweb_view
+def transactions_deferred(request, info, session):
+    """Page showing all deferred transactions"""
+    td = session\
+         .query(Transaction)\
+         .options(undefer('total'))\
+         .filter(Transaction.sessionid == None)\
+         .all()
+    return ('transactions-deferred.html', {'transactions': td})
+
+@tillweb_view
 def transaction(request, info, session, transid):
     # XXX now that we store transaction descriptions explicitly, we
     # may not need to joinedload lines.stockref.stockitem.stocktype

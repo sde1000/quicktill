@@ -8,12 +8,17 @@
 
 <table class="kvtable">
 <tr><th>ID</th><td>{{transaction.id}}</td></tr>
+{% if transaction.session %}
 <tr><th>Session</th><td><a href="{{u}}{{transaction.session.tillweb_url}}">{{transaction.session.id}}</a></td></tr>
 <tr><th>Date</th><td>{{transaction.session.date}}</td></tr>
 <tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
+{% endif %}
 <tr><th>Notes</th><td>{{transaction.notes}}</td></tr>
 <tr><th>Total</th><td><span class="money">{{transaction.total}}</span></td></tr>
 </table>
+
+<p><strong>This transaction has been deferred to the next
+session.</strong></p>
 
 <h2>Lines</h2>
 
