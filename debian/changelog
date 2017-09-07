@@ -1,3 +1,33 @@
+quicktill (0.12.13) stable; urgency=low
+
+  * New release 0.12.13
+
+  * Improve user / token management menu
+
+  * Add page showing deferred transactions to tillweb
+
+  * Oops again - move the endif as well!
+
+  * Oops - move unpaid transaction total outside of for loop in template!
+
+  * Add names to urlconf for embedded tillweb configurations
+
+  * Show unpaid total on index page
+
+  * Show deferred transactions amount on tillweb index page
+
+  * Add a simple downloadable spreadsheet per session
+
+  * Use callables for views in tillweb urlconf
+
+  * Refactor tillweb spreadsheet generation code
+
+  * Remove python2 compatibility code
+
+  * PEP8 pass on tillweb spreadsheets.py
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 07 Sep 2017 12:16:46 +0100
+
 quicktill (0.12.12) stable; urgency=low
 
   * New release 0.12.12
