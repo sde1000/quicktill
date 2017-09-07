@@ -202,8 +202,12 @@ class built_in_user(object):
         return list(self._flat_permissions)
     def display_info(self):
         def pl_display(perm):
-            pl=sorted(perm)
-            return ["  {0} ({1})".format(x,action_descriptions[x]) for x in pl]
+            pl = sorted(perm)
+            if pl:
+                return ["  {0} ({1})".format(
+                    x, action_descriptions[x]) for x in pl]
+            else:
+                return ["  (None)"]
         info=["Full name: {}".format(self.fullname),
                       "Short name: {}".format(self.shortname),""]
         if self.is_superuser:
@@ -322,12 +326,13 @@ class adduser(permission_checked,ui.dismisspopup):
 
 class tokenfield(ui.ignore_hotkeys, ui.valuefield):
     emptymessage = "Use a token to fill in this field"
-    def __init__(self, y, x, w, keymap={}):
+    def __init__(self, y, x, w, allow_inuse=False, keymap={}):
         self.y = y
         self.x = x
         self.w = w
         self.message = self.emptymessage
         self.f = None
+        self._allow_inuse = allow_inuse
         super(tokenfield, self).__init__(keymap)
         self.draw()
 
@@ -337,7 +342,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             self.message = self.emptymessage
         else:
             dbt = td.s.query(UserToken).get(t)
-            if dbt:
+            if dbt and not self._allow_inuse:
                 self.message = "In use by {}".format(
                     dbt.user.fullname)
                 self.f = None
@@ -441,8 +446,8 @@ def addpermission(userid):
     ui.menu(menu,title="Give permission to {}".format(u.fullname),
             blurb="Choose the permission to give to {}".format(u.fullname))
 
-class edituser(permission_checked,ui.basicpopup):
-    permission_required=('edit-user','Edit a user')
+class edituser(permission_checked, ui.basicpopup):
+    permission_required=('edit-user', 'Edit a user')
     def __init__(self,userid):
         self.userid=userid
         u=td.s.query(User).get(userid)
@@ -525,49 +530,140 @@ class edituser(permission_checked,ui.basicpopup):
         td.s.flush()
         self.dismiss()
 
-def display_info(userid):
-    u=td.s.query(User).get(userid)
-    database_user(u).display_info()
-
-# Permission descriptions for the users menu
-action_descriptions['list-users']="List till users"
-
-def usersmenu(include_inactive=False):
-    """
-    List, create and edit users.
-
-    This menu displays different options depending on the permissions
-    of the calling user.
-
-    """
-    u=ui.current_user()
-    if u is None:
-        ui.infopopup(["There is no current user."],title="No user info",
-                     colour=ui.colour_info)
-        return
-    if not u.may('list-users') and not u.may('edit-user'):
-        # A user who doesn't have the "list users" or "edit user"
-        # permission will just see their own information.
-        u.display_info()
-        return
-    q=td.s.query(User).order_by(User.fullname)
-    if not include_inactive:
-        q=q.filter(User.enabled==True)
-    ul=q.all()
-    if u.may('edit-user'):
-        f=ui.tableformatter(' l l l ')
-        lines=[(f(x.fullname,x.shortname,
-                  "(Active)" if x.enabled else "(Inactive)"),
-                edituser,(x.id,)) for x in ul]
+def display_info(userid=None):
+    if userid is None:
+        u = ui.current_user()
+        if u:
+            u.display_info()
+        else:
+            ui.infopopup(["There is no current user."], title="User info",
+                         colour=ui.colour_info)
     else:
-        f=ui.tableformatter(' l l ')
-        lines=[(f(x.fullname,"(Active)" if x.enabled else "(Inactive)"),
-                display_info,(x.id,)) for x in ul]
+        u = database_user(td.s.query(User).get(userid))
+        u.display_info()
+
+def usersmenu():
+    """Create and edit users and tokens
+    """
+    ui.keymenu([
+        ("1", "Users", manageusers, None),
+        ("2", "Tokens", managetokens, None),
+        ("3", "Current user information", display_info, None),
+        ], title="Manage Users")
+
+@permission_required("list-users", "List till users")
+def manageusers(include_inactive=False):
+    """List, create and edit users.
+    """
+    q = td.s.query(User).order_by(User.fullname)
     if not include_inactive:
-        lines.insert(0,("Include inactive users",usersmenu,(True,)))
+        q = q.filter(User.enabled == True)
+    ul = q.all()
+    # There is guaranteed to be a current user because the
+    # permission_required() check will have passed to get here
+    u = ui.current_user()
+    may_edit = u.may('edit-user')
+    f = ui.tableformatter(' l l l ')
+    lines = [(f(x.fullname, x.shortname,
+                "(Active)" if x.enabled else "(Inactive)"),
+              edituser if may_edit else display_info, (x.id,)) for x in ul]
+    if not include_inactive:
+        lines.insert(0, ("Include inactive users", manageusers, (True,)))
     if u.may('edit-user'):
-        lines.insert(0,("Add new user",adduser,None))
-    ui.menu(lines,title="User list",blurb="Select a user and press Cash/Enter")
+        lines.insert(0, ("Add new user", adduser, None))
+    ui.menu(lines, title="User list",
+            blurb="Select a user and press Cash/Enter")
+
+class managetokens(permission_checked, ui.dismisspopup):
+    permission_required = ("manage-tokens", "Manage user login tokens")
+    def __init__(self):
+        ui.dismisspopup.__init__(self, 11, 60, title="Manage tokens",
+                                 colour=ui.colour_input)
+        self.addstr(2, 2, "      Token:")
+        self.addstr(3, 2, "Description:")
+        self.addstr(4, 2, "Assigned to:")
+        self.addstr(5, 2, "  Last used:")
+        self.tokenfield = tokenfield(
+            2, 15, 40, allow_inuse=True,
+            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
+        self.description = ui.editfield(3, 15, 40)
+        ui.map_fieldlist([self.tokenfield, self.description])
+        self.user = ui.label(4, 15, 40)
+        self.lastused = ui.label(5, 15, 40)
+        self.opt_1 = ui.label(7, 2, 50)
+        self.opt_2 = ui.label(8, 2, 50)
+        self.tokenfield.sethook = self.tokenfield_set
+        self.description.sethook = self.description_set
+        self.tokenfield.focus()
+
+    def tokenfield_set(self):
+        t = self.tokenfield.f
+        if t:
+            dbt = td.s.query(UserToken).get(t)
+            if dbt:
+                self.description.set(dbt.description)
+                self.user.set(dbt.user.fullname)
+                self.lastused.set(dbt.last_seen)
+                self.opt_1.set("1. Assign this token to a different user")
+                self.opt_2.set("2. Forget about this token")
+            else:
+                self.description.set("")
+                self.user.set("(not assigned)")
+                self.lastused.set("")
+                self.opt_1.set("1. Assign this token to a user")
+                self.opt_2.set("")
+        else:
+            self.description.set("")
+            self.user.set("")
+            self.lastused.set("")
+            self.opt_1.set("")
+            self.opt_2.set("")
+
+    def description_set(self):
+        if self.tokenfield.f:
+            dbt = td.s.query(UserToken).get(self.tokenfield.f)
+            if dbt:
+                dbt.description = self.description.f
+
+    def keypress(self, k):
+        if self.tokenfield.f:
+            if k == "1":
+                self.assign()
+            elif k == "2":
+                self.forget()
+
+    def assign(self):
+        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        users = td.s.query(User)\
+                    .filter(User.enabled == True)
+        if dbt:
+            users = users.filter(User.id != dbt.user_id)
+        users = users.all()
+        menu = [(user.fullname, self.finish_assign, (user.id,))
+                for user in users]
+        ui.menu(menu, title="Assign token to user", blurb="Choose the user "
+                "to assign this token to")
+
+    def forget(self):
+        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        if dbt:
+            td.s.delete(dbt)
+        self.tokenfield.set("")
+
+    def finish_assign(self, userid):
+        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        if not dbt:
+            dbt = UserToken(token=self.tokenfield.f,
+                            description=self.description.f)
+        user = td.s.query(User).get(userid)
+        dbt.user = user
+        td.s.add(dbt)
+        self.dismiss()
+        ui.infopopup(["Token {} ({}) assigned to {}.".format(
+            dbt.token, dbt.description or "[no description]",
+            user.fullname)],
+                     title="Token assigned to user",
+                     colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
 
 class adduser_cmd(cmdline.command):
     """
@@ -660,7 +756,9 @@ class default_groups(object):
         "end-session",
         "record-takings",
         "session-summary",
+        "list-users",
         "edit-user",
+        "manage-tokens",
         "override-price",
         "reprice-stock",
         "defer-trans",
