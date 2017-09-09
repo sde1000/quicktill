@@ -8,13 +8,13 @@
 
 <table class="kvtable">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
-<tr><th>Location</th><td><a href="{{u}}location/{{stockline.location|urlencode}}/">{{stockline.location}}</a></td></tr>
+<tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
 <tr><th>Type</th><td>{{stockline.linetype}}</td></tr>
 {% if stockline.stocktype %}
-<tr><th>Stock type</th><td><a href="{{u}}{{stockline.stocktype.tillweb_url}}">{{stockline.stocktype}}</a></td></tr>
+<tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
 {% endif %}
 {% if stockline.department %}
-<tr><th>Department</th><td><a href="{{u}}{{stockline.department.tillweb_url}}">{{stockline.department}}</a></td></tr>
+<tr><th>Department</th><td><a href="{{stockline.department.get_absolute_url}}">{{stockline.department}}</a></td></tr>
 {% endif %}
 {% if stockline.linetype == "display" %}
 <tr><th>Capacity</th><td>{{stockline.capacity}}</td></tr>
@@ -79,7 +79,7 @@
 
 <ul>
 {% for stl in stockline.stocktype_log %}
-<li><a href="{{u}}{{stl.stocktype.tillweb_url}}">{{stl.stocktype}}</a></li>
+<li><a href="{{stl.stocktype.get_absolute_url}}">{{stl.stocktype}}</a></li>
 {% endfor %}
 </ul>
 {% endif %}

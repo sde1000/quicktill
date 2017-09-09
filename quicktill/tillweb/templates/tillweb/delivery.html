@@ -8,7 +8,7 @@
 
 <table class="kvtable">
 <tr><th>ID</th><td>{{delivery.id}}</td></tr>
-<tr><th>Supplier</th><td><a href="{{u}}{{delivery.supplier.tillweb_url}}">
+<tr><th>Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">
 {{delivery.supplier}}</a></td></tr>
 <tr><th>Document number</th><td>{{delivery.docnumber}}</td></tr>
 <tr><th>Date</th><td>{{delivery.date}}</td></tr>

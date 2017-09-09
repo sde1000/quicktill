@@ -14,9 +14,9 @@
 <tbody>
 {% for user in users %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
-<td><a href="{{u}}{{user.tillweb_url}}">{{user.shortname}}</a></td>
-<td>{% if user.webuser %}<a href="{{u}}{{user.tillweb_url}}">{{user.webuser}}</a>{% endif %}</td>
+<td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
+<td><a href="{{user.get_absolute_url}}">{{user.shortname}}</a></td>
+<td>{% if user.webuser %}<a href="{{user.get_absolute_url}}">{{user.webuser}}</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

@@ -24,18 +24,18 @@
 
 <div class="tillnav">
 <ul>
-<li><a href="{{u}}">Main Menu</a></li>
-<li><a href="{{u}}session/">Sessions</a></li>
-<li><a href="{{u}}department/">Departments</a></li>
-<li><a href="{{u}}stock/">Stock</a>
-<li><a href="{{u}}stocktype/">Stock types</a></li>
-<li><a href="{{u}}stockline/">Stock lines</a></li>
-<li><a href="{{u}}location/">Locations</a></li>
-<li><a href="{{u}}plu/">Price lookups</a></li>
-<li><a href="{{u}}delivery/">Deliveries</a></li>
-<li><a href="{{u}}supplier/">Suppliers</a></li>
-<li><a href="{{u}}stockcheck/">Buying list</a></li>
-<li><a href="{{u}}user/">Users</a></li>
+<li><a href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
+<li><a href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a></li>
+<li><a href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
+<li><a href="{% url "tillweb-stocksearch" pubname=pubname %}">Stock</a>
+<li><a href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a></li>
+<li><a href="{% url "tillweb-stocklines" pubname=pubname %}">Stock lines</a></li>
+<li><a href="{% url "tillweb-locations" pubname=pubname %}">Locations</a></li>
+<li><a href="{% url "tillweb-plus" pubname=pubname %}">Price lookups</a></li>
+<li><a href="{% url "tillweb-deliveries" pubname=pubname %}">Deliveries</a></li>
+<li><a href="{% url "tillweb-suppliers" pubname=pubname %}">Suppliers</a></li>
+<li><a href="{% url "tillweb-stockcheck" pubname=pubname %}">Buying list</a></li>
+<li><a href="{% url "tillweb-till-users" pubname=pubname %}">Users</a></li>
 </ul>
 </div>
 

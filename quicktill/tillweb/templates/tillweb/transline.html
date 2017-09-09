@@ -8,21 +8,21 @@
 
 <table class="kvtable">
 <tr><th>ID</th><td>{{tl.id}}</td></tr>
-<tr><th>Transaction</th><td><a href="{{u}}{{tl.transaction.tillweb_url}}">{{tl.transid}}</a></td></tr>
+<tr><th>Transaction</th><td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></td></tr>
 <tr><th>Stored description</th><td>{{tl.text}}</td></tr>
 <tr><th>Calculated description</th><td>{{tl.description}}</td></tr>
 <tr><th>Time</th><td>{{tl.time}}</td></tr>
-<tr><th>Department</th><td><a href="{{u}}{{tl.department.tillweb_url}}">{{tl.department.description}}</a></td></tr>
+<tr><th>Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
 <tr><th>Items</th><td>{{tl.items}}</td></tr>
 <tr><th>Amount per item</th><td><span class="money">{{tl.amount}}</span></td></tr>
 <tr><th>Total</th><td><span class="money">{{tl.total}}</span></td></tr>
 {% if tl.voided_by_id %}
-<tr><th>Voided by</th><td><a href="{{u}}{{tl.voided_by.tillweb_url}}">{{tl.voided_by}}</td></tr>
+<tr><th>Voided by</th><td><a href="{{tl.voided_by.get_absolute_url}}">{{tl.voided_by}}</td></tr>
 {% endif %}
 {% if tl.voids %}
-<tr><th>This line voids</th><td><a href="{{u}}{{tl.voids.tillweb_url}}">{{tl.voids}}</td></tr>
+<tr><th>This line voids</th><td><a href="{{tl.voids.get_absolute_url}}">{{tl.voids}}</td></tr>
 {% endif %}
-<tr><th>User</th><td>{% if tl.user %}<a href="{{u}}{{tl.user.tillweb_url}}">{{tl.user.fullname}}</a>{% endif %}
+<tr><th>User</th><td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}
 </table>
 
 {% if tl.stockref %}
@@ -36,7 +36,7 @@
 {% for so in tl.stockref %}
 <tr>
 <td>{{so.id}}</td>
-<td><a href="{{u}}{{so.stockitem.tillweb_url}}">{{so.stockitem.stocktype.fullname}}</a></td>
+<td><a href="{{so.stockitem.get_absolute_url}}">{{so.stockitem.stocktype.fullname}}</a></td>
 <td>{{so.qty}}</td>
 <td>{{so.removecode}}</td>
 </tr>

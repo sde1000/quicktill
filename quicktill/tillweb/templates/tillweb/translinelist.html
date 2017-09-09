@@ -15,16 +15,16 @@
 {% for tl in translines %}
 <tr class="{% cycle 'odd' 'even' %}">
 {% if exclude_column != "transaction" %}
-<td><a href="{{u}}{{tl.transaction.tillweb_url}}">{{tl.transaction.id}}</a></td>
+<td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transaction.id}}</a></td>
 {% endif %}
-<td><a href="{{u}}{{tl.tillweb_url}}">{{tl.id}}</a></td>
-<td><a href="{{u}}{{tl.tillweb_url}}">{{tl.description}}</a></td>
+<td><a href="{{tl.get_absolute_url}}">{{tl.id}}</a></td>
+<td><a href="{{tl.get_absolute_url}}">{{tl.description}}</a></td>
 {% if exclude_column != "department" %}<td>{{tl.department}}</td>{% endif %}
-<td>{{tl.transcode}}{% if tl.voided_by_id %} <a href="{{u}}{{tl.voided_by.tillweb_url}}">(voided)</a>{% endif %}</td>
+<td>{{tl.transcode}}{% if tl.voided_by_id %} <a href="{{tl.voided_by.get_absolute_url}}">(voided)</a>{% endif %}</td>
 <td>{% if tl.items and tl.amount %}{{tl.items}} @ <span class="money">{{tl.amount}}</span> = <span class="money">{{tl.total}}</span>{% endif %}</td>
 <td>{{tl.time|date:dtf}}</td>
 {% if exclude_column != "user" %}
-<td>{% if tl.user %}<a href="{{u}}{{tl.user.tillweb_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
+<td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
 </tr>
 {% endfor %}
 </tbody>

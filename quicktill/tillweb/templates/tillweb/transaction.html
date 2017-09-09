@@ -9,7 +9,7 @@
 <table class="kvtable">
 <tr><th>ID</th><td>{{transaction.id}}</td></tr>
 {% if transaction.session %}
-<tr><th>Session</th><td><a href="{{u}}{{transaction.session.tillweb_url}}">{{transaction.session.id}}</a></td></tr>
+<tr><th>Session</th><td><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></td></tr>
 <tr><th>Date</th><td>{{transaction.session.date}}</td></tr>
 <tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 {% endif %}

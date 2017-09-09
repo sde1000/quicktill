@@ -19,7 +19,7 @@ not been closed.  These are shown in a separate column.</p>
 {% if t or c %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td>{{d.id}}</td>
-<td><a href="{% url "sessiondept" pubname=pubname sessionid=session.id dept=d.id %}">{{d.description}}</a></td>
+<td><a href="{% url "tillweb-session-department" pubname=pubname sessionid=session.id dept=d.id %}">{{d.description}}</a></td>
 {% if not session.endtime %}
 {% if c %}<td class="money">{{c}}</td>{% else %}<td></td>{% endif %}
 <td class="money">{{p}}</td>
@@ -46,6 +46,6 @@ $(document).ready(function(){
 });
 </script>
 
-<img src="{{u}}{{session.tillweb_url}}sales-pie-chart.svg" alt="Sales pie chart" />
+<img src="{% url "tillweb-session-sales-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales pie chart" />
 </div>
 

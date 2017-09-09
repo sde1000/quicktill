@@ -22,8 +22,8 @@
 <tbody>
 {% for s in recent %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{s.tillweb_url}}">{{s.id}}</a></td>
-<td><a href="{{u}}{{s.tillweb_url}}">{{s.date}}</a></td>
+<td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
+<td><a href="{{s.get_absolute_url}}">{{s.date}}</a></td>
 <td>{{s.date|date:"l"}}</td>
 <td class="money">{{s.total}}</td>
 {% if s.actual_total %}

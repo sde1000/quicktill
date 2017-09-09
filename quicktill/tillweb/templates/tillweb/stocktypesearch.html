@@ -23,10 +23,10 @@
 {% for t in stocktypes %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="?manufacturer={{t.manufacturer|urlencode}}">{{t.manufacturer}}</a></td>
-<td><a href="{{u}}{{t.tillweb_url}}">{{t.name}}</a></td>
-<td><a href="{{u}}{{t.tillweb_url}}">{{t.shortname}}</a></td>
+<td><a href="{{t.get_absolute_url}}">{{t.name}}</a></td>
+<td><a href="{{t.get_absolute_url}}">{{t.shortname}}</a></td>
 <td>{{t.abvstr}}</td>
-<td><a href="{{u}}{{t.department.tillweb_url}}">{{t.department}}</a></td>
+<td><a href="{{t.department.get_absolute_url}}">{{t.department}}</a></td>
 <td>{{t.unit.name}}</td>
 {% if t.saleprice %}<td class="money">{{t.saleprice}}</td>
 {% else %}<td></td>{% endif %}

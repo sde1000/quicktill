@@ -7,9 +7,9 @@
 {% for line in lines %}
 {% for item in line.stockonsale %}
 <tr class="{% cycle 'odd' 'even' as barzebra %}">
-<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
-<td><a href="{{u}}{{item.tillweb_url}}">{{item.id}}</a></td>
-<td><a href="{{u}}{{item.stocktype.tillweb_url}}">
+<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+<td><a href="{{item.get_absolute_url}}">{{item.id}}</a></td>
+<td><a href="{{item.stocktype.get_absolute_url}}">
 {{item.stocktype.fullname}}</a></td>
 <td>{{item.stocktype.abvstr}}</td>
 <td><span class="money">{{item.stocktype.saleprice}}</span>/{{item.stocktype.unit.name}}</td>
@@ -24,7 +24,7 @@
 </tr>
 {% empty %}
 <tr class="{% cycle barzebra %}">
-<td><a href="{{u}}{{line.tillweb_url}}">
+<td><a href="{{line.get_absolute_url}}">
 {{line.name}}</a></td><td></td><td></td><td></td><td></td><td></td>
 <td colspan="2"></td></tr>
 {% endfor %}

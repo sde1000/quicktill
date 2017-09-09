@@ -10,11 +10,11 @@
 stock lines into groups.  You can edit the location on the till.</p>
 
 <p>The special location "Bar" is displayed on
-the <a href="{{u}}">front page</a>.</p>
+the <a href="{% url "tillweb-pubroot" pubname=pubname %}">front page</a>.</p>
 
 <ul>
 {% for l in locations %}
-<li><a href="{{u}}location/{{l|urlencode}}/">{{l}}</a></li>
+<li><a href="{% url "tillweb-location" pubname=pubname location=l %}">{{l}}</a></li>
 {% endfor %}
 </ul>
 

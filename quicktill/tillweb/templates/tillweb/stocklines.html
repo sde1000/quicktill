@@ -24,11 +24,11 @@
 <tbody>
 {% for line in regular %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
-<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
-<td>{% if line.department %}<a href="{{u}}{{line.department.tillweb_url}}">{{line.department}}</a>{% endif %}</td>
+<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+<td><a href="{% url "tillweb-location" pubname=pubname location=line.location %}">{{line.location}}</a></td>
+<td>{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
 <td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
-<td>{% if line.stockonsale %}<a href="{{u}}{{line.stockonsale.0.tillweb_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}</td>
+<td>{% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -61,9 +61,9 @@ $(document).ready(function(){
 <tbody>
 {% for line in display %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
-<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
-<td><a href="{{u}}{{line.stocktype.tillweb_url}}">{{line.stocktype.format}}</a></td>
+<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+<td><a href="{% url "tillweb-location" pubname=pubname location=line.location %}">{{line.location}}</a></td>
+<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
 <td>{{line.capacity}}</td>
 <td>{{line.ondisplay}}</td>
 <td>{{line.instock}}</td>
@@ -97,9 +97,9 @@ $(document).ready(function(){
 <tbody>
 {% for line in continuous %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{line.tillweb_url}}">{{line.name}}</a></td>
-<td><a href="{{u}}location/{{line.location|urlencode}}/">{{line.location}}</a></td>
-<td><a href="{{u}}{{line.stocktype.tillweb_url}}">{{line.stocktype.format}}</a></td>
+<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+<td><a href="{% url "tillweb-location" pubname=pubname location=line.location %}">{{line.location}}</a></td>
+<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
 <td>{{line.stocktype.remaining}} {{line.stocktype.unit}}s</td>
 </tr>
 {% endfor %}

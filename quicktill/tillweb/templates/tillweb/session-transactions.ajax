@@ -6,7 +6,7 @@
 <tbody>
 {% for t in session.transactions %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{t.tillweb_url}}">{{t.id}}</a></td>
+<td><a href="{{t.get_absolute_url}}">{{t.id}}</a></td>
 <td class="money">{{t.total}}</td>
 <td>{% if t.notes %}{{t.notes}}{% endif %}</td>
 <td>{% if t.closed %}Paid:

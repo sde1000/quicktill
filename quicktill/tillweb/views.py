@@ -67,7 +67,6 @@ def tillweb_view(view):
             tillname = settings.TILLWEB_PUBNAME
             access = settings.TILLWEB_DEFAULT_ACCESS
             session = settings.TILLWEB_DATABASE()
-            base = "/{}/".format(pubname) if pubname else "/"
         else:
             try:
                 till = Till.objects.get(slug=pubname)
@@ -83,14 +82,13 @@ def tillweb_view(view):
             except ValueError:
                 # The database doesn't exist
                 raise Http404
-            base = till.get_absolute_url()
             tillname = till.name
             access = access.permission
         try:
             info = {
-                'base': base,
                 'access': access,
-                'tillname': tillname,
+                'tillname': tillname, # Formatted for people
+                'pubname': pubname, # Used in url
             }
             result = view(request, info, session, *args, **kwargs)
             if isinstance(result, HttpResponse):
@@ -100,9 +98,8 @@ def tillweb_view(view):
             # (it's None if we are set up for a single site)
             # till is the name of the till
             # access is 'R','M','F'
-            # u is the base URL for the till website including trailing /
             defaults = {'object': till,
-                        'till': tillname, 'access': access, 'u': base,
+                        'till': tillname, 'access': access,
                         'dtf': dtf, 'pubname': pubname,
                         'version': version}
             if t.endswith(".ajax"):
@@ -253,7 +250,7 @@ def sessionfinder(request, info, session):
         if form.is_valid():
             s = session.query(Session).get(form.cleaned_data['session'])
             if s:
-                return HttpResponseRedirect(info['base'] + s.tillweb_url)
+                return HttpResponseRedirect(s.get_absolute_url())
             form.add_error(None, "This session does not exist.")
     else:
         form = SessionFinderForm()
@@ -289,8 +286,8 @@ def session(request, info, session, sessionid):
     if not s:
         raise Http404
 
-    nextlink = info['base'] + s.next.tillweb_url if s.next else None
-    prevlink = info['base'] + s.previous.tillweb_url if s.previous else None
+    nextlink = s.next.get_absolute_url() if s.next else None
+    prevlink = s.previous.get_absolute_url() if s.previous else None
 
     return ('session.html',
             {'session': s, 'nextlink': nextlink, 'prevlink': prevlink})
@@ -362,10 +359,12 @@ def sessiondept(request, info, session, sessionid, dept):
     if not dept:
         raise Http404
 
-    nextlink = info['base'] + s.next.tillweb_url + "dept{}/".format(dept.id) \
-        if s.next else None
-    prevlink = info['base']+ s.previous.tillweb_url + "dept{}/".format(dept.id) \
-        if s.previous else None
+    nextlink = reverse("tillweb-session-department", kwargs={
+        'pubname': info['pubname'], 'sessionid': s.next.id,
+        'dept': dept.id}) if s.next else None
+    prevlink = reverse("tillweb-session-department", kwargs={
+        'pubname': info['pubname'], 'sessionid': s.previous.id,
+        'dept': dept.id}) if s.previous else None
 
     translines = session\
                  .query(Transline)\

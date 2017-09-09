@@ -37,11 +37,11 @@
 
 <div id="tabs" style="min-width: 550px">
 <ul>
-<li><a href="takings-by-dept.html">Takings by department</a></li>
+<li><a href="{% url "tillweb-session-takings-by-dept" pubname=pubname sessionid=session.id %}">Takings by department</a></li>
 {% if not session.endtime %}<li><a href="#paytype-takings">Takings by payment type</a></li>{% endif %}
-<li><a href="takings-by-user.html">Takings by user</a></li>
-<li><a href="stock-sold.html">Stock sold</a></li>
-<li><a href="transactions.html">Transactions</a></li>
+<li><a href="{% url "tillweb-session-takings-by-user" pubname=pubname sessionid=session.id %}">Takings by user</a></li>
+<li><a href="{% url "tillweb-session-stock-sold" pubname=pubname sessionid=session.id %}">Stock sold</a></li>
+<li><a href="{% url "tillweb-session-transactions" pubname=pubname sessionid=session.id %}">Transactions</a></li>
 </ul>
 
 {% if not session.endtime %}
@@ -64,7 +64,7 @@ $(function() {
 });
 </script>
 
-<p><a href="spreadsheet.ods">Download spreadsheet</a></p>
+<p><a href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a></p>
 
 {% if session.notes %}
 <ul>

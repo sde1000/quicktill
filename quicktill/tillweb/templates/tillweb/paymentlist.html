@@ -10,12 +10,12 @@
 {% for p in payments %}
 <tr class="{% cycle 'odd' 'even' %}">
 {% if excluded_column != "transaction" %}
-<td><a href="{{u}}{{p.transaction.tillweb_url}}">{{p.transaction.id}}</a></td>
+<td><a href="{{p.transaction.get_absolute_url}}">{{p.transaction.id}}</a></td>
 {% endif %}
 <td>{{p.id}}</td><td>{{p.paytype}}{% if p.ref %} ({{p.ref}}){% endif %}</td>
 <td class="money">{{p.amount}}</td><td>{{p.time|date:dtf}}</td>
 {% if excluded_column != "user" %}
-<td>{% if p.user %}<a href="{{u}}{{p.user.tillweb_url}}">{{p.user.fullname}}</a>{% endif %}</td>
+<td>{% if p.user %}<a href="{{p.user.get_absolute_url}}">{{p.user.fullname}}</a>{% endif %}</td>
 {% endif %}
 </tr>
 {% endfor %}

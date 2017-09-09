@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
 from sqlalchemy.orm import contains_eager,column_property
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import reconstructor
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
@@ -24,7 +25,22 @@ quantity = Numeric(8, 1)
 
 metadata = MetaData()
 
-Base = declarative_base(metadata=metadata)
+class _pubobject:
+    @reconstructor
+    def init_on_load(self):
+        # Stash the django "reverse" function and session's configured
+        # pub name for use in get_absolute_url() methods
+        s = object_session(self)
+        if "reverse" in s.info:
+            self.reverse = s.info["reverse"]
+        if "pubname" in s.info:
+            self.pubname = s.info["pubname"]
+
+    def get_absolute_url(self):
+        return self.reverse(self.tillweb_viewname, kwargs={
+            'pubname': self.pubname, self.tillweb_argname: self.id})
+
+Base = declarative_base(metadata=metadata, cls=_pubobject)
 
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
@@ -152,9 +168,10 @@ class Session(Base):
         return "<Session(%s,'%s')>" % (self.id, self.date,)
     def __str__(self):
         return "Session %d" % self.id
-    @property
-    def tillweb_url(self):
-        return "session/%d/" % self.id
+
+    tillweb_viewname = "tillweb-session"
+    tillweb_argname = "sessionid"
+
     incomplete_transactions = relationship(
         "Transaction",
         primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
@@ -367,9 +384,9 @@ class Transaction(Base):
         """Transaction balance
         """
         return self.total - self.payments_total
-    @property
-    def tillweb_url(self):
-        return "transaction/%d/" % self.id
+
+    tillweb_viewname = "tillweb-transaction"
+    tillweb_argname = "transid"
 
     # age is now a column property, defined below
 
@@ -428,9 +445,10 @@ class User(Base):
                                backref="users")
     transaction = relationship(Transaction, backref=backref(
         'user', uselist=False))
-    @property
-    def tillweb_url(self):
-        return "user/{}/".format(self.id)
+
+    tillweb_viewname = "tillweb-till-user"
+    tillweb_argname = "userid"
+
     def __repr__(self):
         return "<User({0.id},'{0.fullname}')>".format(self)
 
@@ -567,9 +585,9 @@ class Department(Base):
         return "%s" % (self.description,)
     def __repr__(self):
         return "<Department(%s,'%s')>" % (self.id, self.description)
-    @property
-    def tillweb_url(self):
-        return "department/{}/".format(self.id)
+
+    tillweb_viewname = "tillweb-department"
+    tillweb_argname = "departmentid"
 
 class TransCode(Base):
     __tablename__ = 'transcodes'
@@ -622,9 +640,9 @@ class Transline(Base):
         return self.items * self.amount
     def __repr__(self):
         return "<Transline(%s,%s)>" % (self.id, self.transid)
-    @property
-    def tillweb_url(self):
-        return "transline/{}/".format(self.id)
+
+    tillweb_viewname = "tillweb-transline"
+    tillweb_argname = "translineid"
 
     @property
     def description(self):
@@ -909,9 +927,10 @@ class StockLine(Base):
                 return None
             return self.stockonsale[0].stocktype
         return self.stocktype
-    @property
-    def tillweb_url(self):
-        return "stockline/%d/" % self.id
+
+    tillweb_viewname = "tillweb-stockline"
+    tillweb_argname = "stocklineid"
+
     def __repr__(self):
         return "<StockLine(%s,'%s')>" % (self.id, self.name)
     @property
@@ -1102,9 +1121,9 @@ class PriceLookup(Base):
     @property
     def name(self):
         return self.description
-    @property
-    def tillweb_url(self):
-        return "plu/%d/" % self.id
+
+    tillweb_viewname = "tillweb-plu"
+    tillweb_argname = "pluid"
 
 suppliers_seq = Sequence('suppliers_seq')
 
@@ -1121,9 +1140,9 @@ class Supplier(Base):
         return "<Supplier(%s,'%s')>" % (self.id, self.name)
     def __str__(self):
         return "%s" % (self.name,)
-    @property
-    def tillweb_url(self):
-        return "supplier/%d/" % (self.id,)
+
+    tillweb_viewname = "tillweb-supplier"
+    tillweb_argname = "supplierid"
 
 deliveries_seq = Sequence('deliveries_seq')
 
@@ -1140,9 +1159,10 @@ class Delivery(Base):
         'deliveries', order_by=desc(id)),
                             lazy="joined")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
-    @property
-    def tillweb_url(self):
-        return "delivery/%d/" % (self.id,)
+
+    tillweb_viewname = "tillweb-delivery"
+    tillweb_argname = "deliveryid"
+
     def __repr__(self):
         return "<Delivery(%s)>" % (self.id,)
 
@@ -1190,9 +1210,10 @@ class StockType(Base):
     @hybrid_property
     def fullname(self):
         return self.manufacturer + ' ' + self.name
-    @property
-    def tillweb_url(self):
-        return "stocktype/%d/" % self.id
+
+    tillweb_viewname = "tillweb-stocktype"
+    tillweb_argname = "stocktype_id"
+
     def __str__(self):
         return "%s %s" % (self.manufacturer, self.name)
     def __repr__(self):
@@ -1396,9 +1417,10 @@ class StockItem(Base):
         return "%s %s%s" % (
             self.remaining, self.stocktype.unit.name,
             "s" if self.remaining != Decimal(1) else "")
-    @property
-    def tillweb_url(self):
-        return "stock/%d/" % self.id
+
+    tillweb_viewname = "tillweb-stock"
+    tillweb_argname = "stockid"
+
     def __str__(self):
         return "<StockItem({})>".format(self.id)
     def __repr__(self):

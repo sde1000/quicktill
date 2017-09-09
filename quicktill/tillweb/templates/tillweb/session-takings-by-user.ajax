@@ -8,7 +8,7 @@
 <tbody>
 {% for user,i,t in usertotals %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{user.tillweb_url}}">{{user.fullname}}</a></td>
+<td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
 <td>{{i}}</td>
 <td class="money">{{t}}</td>
 </tr>
@@ -23,7 +23,7 @@ $(document).ready(function(){
   $("#usertakings").tablesorter({widgets:["zebra"]});
 });
 </script>
-<img src="{{u}}{{session.tillweb_url}}users-pie-chart.svg" alt="Sales by user pie chart" />
+<img src="{% url "tillweb-session-users-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales by user pie chart" />
 {% else %}
 <p>No information.</p>
 {% endif %}

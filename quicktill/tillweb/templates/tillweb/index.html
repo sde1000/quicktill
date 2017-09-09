@@ -13,14 +13,14 @@
 {% endfor %}</tr>
 <tr><td>
 {% if currentsession %}
-<a href="{{u}}{{currentsession.tillweb_url}}">
+<a href="{{currentsession.get_absolute_url}}">
 {{currentsession.id}} ({{currentsession.date}})<br />
 {% for vr,t,ex,vat in currentsession.vatband_totals %}
 {{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
 {% endfor %}{% if currentsession.pending_total %}(<span class="money">{{currentsession.pending_total}}</span> unpaid){% endif %}</a>
 {% else %}No current session{% endif %}
 {% if deferred %}
-<br /><a href="{{u}}transaction/deferred/"><span class="money">{{deferred}}</span> deferred transactions</a>
+<br /><a href="{% url "tillweb-deferred-transactions" pubname=pubname %}"><span class="money">{{deferred}}</span> deferred transactions</a>
 {% endif %}
 </td>
 {% for desc,start,end,totals in weeks %}
@@ -42,10 +42,10 @@
 {% include "tillweb/linelist.html" %}
 {% endwith %}
 
-<p><a href="{{u}}location/">Other locations</a></p>
+<p><a href="{% url "tillweb-locations" pubname=pubname %}">Other locations</a></p>
 </div>
 {% else %}
-<p><a href="{{u}}location/">Stock locations</a></p>
+<p><a href="{% url "tillweb-locations" pubname=pubname %}">Stock locations</a></p>
 {% endif %}
 
 {% if stillage %}
@@ -61,11 +61,11 @@
 {% for s in stillage %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td>{{s.text}}</td><td>{{s.time|date:dtf}}</td>
-<td><a href="{{u}}{{s.stockitem.tillweb_url}}">
+<td><a href="{{s.stockitem.get_absolute_url}}">
 {{s.stockitem.stocktype.fullname}}</a></td>
 <td>{{s.stockitem.used}} {{s.stockitem.stocktype.unit.name}}s</td>
 <td>{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
-<td>{% if s.stockitem.stockline %}<a href="{{u}}{{s.stockitem.stockline.tillweb_url}}">{{s.stockitem.stockline.name}}</a>{% endif %}</td></tr>
+<td>{% if s.stockitem.stockline %}<a href="{{s.stockitem.stockline.get_absolute_url}}">{{s.stockitem.stockline.name}}</a>{% endif %}</td></tr>
 {% endfor %}
 </tbody>
 </table>

@@ -13,7 +13,7 @@
 <tbody>
 {% for s in suppliers %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{s.tillweb_url}}">{{s.name}}</a></td>
+<td><a href="{{s.get_absolute_url}}">{{s.name}}</a></td>
 <td>{{s.tel}}</td>
 <td>{% if s.email %}<a href="mailto:{{s.email|urlencode}}">{{s.email}}</a>{% endif %}</td>
 <td>{% if s.web %}<a href="{{s.web}}">{{s.web}}</a>{% endif %}</td>

@@ -39,7 +39,7 @@ units per day{% if form.minimum_sold.errors %}
 <tbody>
 {% for st,sold,buy in buylist %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{st.tillweb_url}}">{{st}}</a></td>
+<td><a href="{{st.get_absolute_url}}">{{st}}</a></td>
 <td>{{sold}} {{st.unit.name}}s</td>
 <td>{{st.instock}} {{st.unit.name}}s</td>
 <td>{{buy}} {{st.unit.name}}s</td>

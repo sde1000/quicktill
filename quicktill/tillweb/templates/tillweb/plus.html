@@ -15,8 +15,8 @@
 <tbody>
 {% for p in plus %}
 <tr class="{% cycle 'odd' 'even' %}">
-<td><a href="{{u}}{{p.tillweb_url}}">{{p.description}}</a></td>
-<td><a href="{{u}}{{p.department.tillweb_url}}">{{p.department}}</a></td>
+<td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
+<td><a href="{{p.department.get_absolute_url}}">{{p.department}}</a></td>
 {% if p.price %}<td class="money">{{p.price}}</td>{% else %}<td></td>{% endif %}
 {% if p.altprice1 %}<td class="money">{{p.altprice1}}</td>{% else %}<td></td>{% endif %}
 {% if p.altprice2 %}<td class="money">{{p.altprice2}}</td>{% else %}<td></td>{% endif %}
