@@ -621,7 +621,7 @@ def departmentlist(request, info, session):
     return ('departmentlist.html', {'depts': depts})
 
 @tillweb_view
-def department(request, info, session, departmentid):
+def department(request, info, session, departmentid, as_spreadsheet=False):
     d = session\
         .query(Department)\
         .get(int(departmentid))
@@ -642,6 +642,12 @@ def department(request, info, session, departmentid):
     if not include_finished:
         items = items.filter(StockItem.finished == None)
     items = items.all()
+
+    if as_spreadsheet:
+        return spreadsheets.stock(
+            session, items, tillname=info['tillname'],
+            filename="{}-dept{}-stock.ods".format(
+                info['tillname'], departmentid))
 
     return ('department.html',
             {'department': d, 'items': items,

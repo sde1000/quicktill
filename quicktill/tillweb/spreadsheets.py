@@ -115,7 +115,14 @@ class Document:
             self._datestyle = self._add_datestyle()
         return self._datestyle
 
-    def _add_datestyle(self, name="Date"):
+    @property
+    def datetimestyle(self):
+        if not hasattr(self, "_datetimestyle"):
+            self._datetimestyle = self._add_datestyle(
+                name="DateTime", include_time=True)
+        return self._datetimestyle
+
+    def _add_datestyle(self, name="Date", include_time=False):
         """Construct a date style"""
         slash = number.Text()
         slash.addText('/')
@@ -126,6 +133,15 @@ class Document:
         ds.addElement(number.Month())
         ds.addElement(slash)
         ds.addElement(number.Year())
+        if include_time:
+            space = number.Text()
+            space.addText(' ')
+            colon = number.Text()
+            colon.addText(':')
+            ds.addElement(space)
+            ds.addElement(number.Hours())
+            ds.addElement(colon)
+            ds.addElement(number.Minutes())
         self.doc.styles.addElement(ds)
         datestyle = Style(name=name, family="table-cell",
                           parentstylename="Default",
@@ -138,6 +154,12 @@ class Document:
             style = self.datestyle
         return TableCell(
             valuetype="date", datevalue=date.isoformat(), stylename=style)
+
+    def datetimecell(self, datetime, style=None):
+        if not style:
+            style = self.datetimestyle
+        return TableCell(
+            valuetype="date", datevalue=datetime.isoformat(), stylename=style)
 
     def _add_currencystyle(self, name="Pounds"):
         """Construct a currency style"""
@@ -385,4 +407,56 @@ def session(ds, s, tillname="Till"):
 
     doc.add_table(tsheet)
 
+    return doc.as_response()
+
+def stock(ds, stocklist, tillname="Till", filename=None):
+    """A list of stock items as a spreadsheet
+    """
+    if not filename:
+        filename = "{}-stock.ods".format(tillname)
+
+    doc = Document(filename)
+    sheet = Sheet("{} stock".format(tillname))
+
+    sheet.cell(0, 0, doc.headercell("Stock ID"))
+    sheet.cell(1, 0, doc.headercell("Manufacturer"))
+    sheet.cell(2, 0, doc.headercell("Name"))
+    sheet.cell(3, 0, doc.headercell("ABV"))
+    sheet.cell(4, 0, doc.headercell("Used"))
+    sheet.cell(5, 0, doc.headercell("Sold"))
+    sheet.cell(6, 0, doc.headercell("Size"))
+    sheet.cell(7, 0, doc.headercell("Remaining"))
+    sheet.cell(8, 0, doc.headercell("Unit"))
+    sheet.cell(9, 0, doc.headercell("Finish code"))
+    sheet.cell(10, 0, doc.headercell("Finish date"))
+
+    sheet.colstyle(0, doc.colwidth("1.8cm"))
+    sheet.colstyle(1, doc.colwidth("3.4cm"))
+    sheet.colstyle(2, doc.colwidth("5.0cm"))
+    sheet.colstyle(3, doc.colwidth("1.2cm"))
+    sheet.colstyle(4, doc.colwidth("1.4cm"))
+    sheet.colstyle(5, doc.colwidth("1.4cm"))
+    sheet.colstyle(6, doc.colwidth("1.4cm"))
+    sheet.colstyle(10, doc.colwidth("2.7cm"))
+
+    row = 1
+
+    for s in stocklist:
+        sheet.cell(0, row, doc.numbercell(s.id))
+        sheet.cell(1, row, doc.textcell(s.stocktype.manufacturer))
+        sheet.cell(2, row, doc.textcell(s.stocktype.name))
+        if s.stocktype.abv:
+            sheet.cell(3, row, doc.numbercell(s.stocktype.abv))
+        sheet.cell(4, row, doc.numbercell(s.used))
+        sheet.cell(5, row, doc.numbercell(s.sold))
+        sheet.cell(6, row, doc.numbercell(s.stockunit.size))
+        sheet.cell(7, row, doc.numbercell(s.remaining))
+        sheet.cell(8, row, doc.textcell(str(s.stocktype.unit)))
+        if s.finishcode:
+            sheet.cell(9, row, doc.textcell(str(s.finishcode)))
+        if s.finished:
+            sheet.cell(10, row, doc.datetimecell(s.finished))
+        row += 1
+
+    doc.add_table(sheet)
     return doc.as_response()
