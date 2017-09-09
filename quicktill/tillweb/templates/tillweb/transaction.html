@@ -17,8 +17,9 @@
 <tr><th>Total</th><td><span class="money">{{transaction.total}}</span></td></tr>
 </table>
 
-<p><strong>This transaction has been deferred to the next
-session.</strong></p>
+{% if not transaction.session %}
+<p><strong>This transaction has been deferred to the next session.</strong></p>
+{% endif %}
 
 <h2>Lines</h2>
 
