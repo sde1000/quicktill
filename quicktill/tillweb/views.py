@@ -389,6 +389,7 @@ def transactions_deferred(request, info, session):
          .query(Transaction)\
          .options(undefer('total'))\
          .filter(Transaction.sessionid == None)\
+         .order_by(Transaction.id)\
          .all()
     return ('transactions-deferred.html', {'transactions': td})
 
