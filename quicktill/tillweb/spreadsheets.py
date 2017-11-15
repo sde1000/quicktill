@@ -270,21 +270,24 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
 
         depttotals = ds.query(
             dateranges.c.start, dateranges.c.end,
-            select([func.sum(SessionTotal.amount)],
-                   whereclause=and_(
-                       Session.date >= dateranges.c.start,
-                       Session.date <= dateranges.c.end,
-                       SessionTotal.sessionid == Session.id))\
-            .correlate(dateranges).label('actual_total'),
+            select([func.sum(SessionTotal.amount)])\
+            .correlate(dateranges)\
+            .where(and_(
+                Session.date >= dateranges.c.start,
+                Session.date <= dateranges.c.end))\
+            .select_from(Session.__table__.join(SessionTotal))\
+            .label('actual_total'),
             Department.id,
-            select([tf],
-                   whereclause=and_(
-                       Session.date >= dateranges.c.start,
-                       Session.date <= dateranges.c.end,
-                       Transaction.sessionid == Session.id,
-                       Transline.transid == Transaction.id,
-                       Transline.dept_id == Department.id))\
-            .correlate(dateranges, Department.__table__).label("total"))\
+            select([tf])\
+            .correlate(dateranges, Department.__table__)\
+            .where(and_(
+                Session.date >= dateranges.c.start,
+                Session.date <= dateranges.c.end,
+                Transline.dept_id == Department.id))\
+            .select_from(Session.__table__\
+                         .join(Transaction)\
+                         .join(Transline))\
+            .label("total"))\
                        .select_from(dateranges)\
                        .group_by(dateranges.c.start,
                                  dateranges.c.end,
