@@ -1,3 +1,37 @@
+quicktill (0.12.14) stable; urgency=low
+
+  * New release 0.12.14
+
+  * Get rid of subquery for department totals
+
+  * Fetch session totals in a separate query to department totals
+
+  * Update daily/weekly sheet query
+
+  * Add additional choices for rows on the downloadable sessions spreadsheet
+
+  * Show BestBefore date on stillage summary page of stockterminal
+
+  * We no longer support python2 - remove compat code from tillweb models
+
+  * on_delete will be a required arg for ForeignKey in Django 2.0
+
+  * Add pager functionality to tillweb
+
+  * Order deferred transactions on tillweb page by transaction ID
+
+  * Add link to download stock spreadsheet for a department
+
+  * Use django reverse() for all URL references in tillweb
+
+  * Fix note about transaction deferral on tillweb
+
+  * Stock spreadsheet code added to tillweb
+
+  * PEP8 pass on user.py
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 15 Nov 2017 22:26:10 +0000
+
 quicktill (0.12.13) stable; urgency=low
 
   * New release 0.12.13
