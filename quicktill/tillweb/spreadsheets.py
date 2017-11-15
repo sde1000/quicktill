@@ -269,23 +269,19 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
         dateranges = dateranges.cte(name="dateranges")
 
         depttotals = ds.query(
-            dateranges.c.start, dateranges.c.end,
-            Department.id,
-            select([tf])\
-            .correlate(dateranges, Department.__table__)\
-            .where(and_(
-                Session.date >= dateranges.c.start,
-                Session.date <= dateranges.c.end,
-                Transline.dept_id == Department.id))\
-            .select_from(Session.__table__\
-                         .join(Transaction)\
-                         .join(Transline))\
-            .label("total"))\
-                       .select_from(dateranges)\
+            dateranges.c.start,
+            dateranges.c.end,
+            Transline.dept_id,
+            tf)\
+                       .select_from(dateranges.join(Session, and_(
+                           Session.date >= dateranges.c.start,
+                           Session.date <= dateranges.c.end))
+                                    .join(Transaction)\
+                                    .join(Transline))\
                        .group_by(dateranges.c.start,
                                  dateranges.c.end,
-                                 Department.id)\
-                       .order_by(dateranges.c.start, Department.id)
+                                 Transline.dept_id)\
+                       .order_by(dateranges.c.start, Transline.dept_id)
 
         acttotals = ds.query(
             dateranges.c.start, dateranges.c.end,
