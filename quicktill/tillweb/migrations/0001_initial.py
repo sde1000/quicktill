@@ -31,12 +31,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='access',
             name='till',
-            field=models.ForeignKey(to='tillweb.Till'),
+            field=models.ForeignKey(to='tillweb.Till', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='access',
             name='user',
-            field=models.ForeignKey(related_name='till_access', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(related_name='till_access', to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='access',
