@@ -2,6 +2,7 @@
 from django.http import HttpResponse
 from quicktill.models import *
 from sqlalchemy.orm import undefer
+from sqlalchemy.sql import select
 from odf.opendocument import OpenDocumentSpreadsheet
 from odf.style import Style, TextProperties, ParagraphProperties
 from odf.style import TableColumnProperties
@@ -227,32 +228,79 @@ class Document:
         self.doc.write(r)
         return r
 
-def sessionrange(ds, start=None, end=None, tillname="Till"):
+def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
     """A spreadsheet summarising sessions between the start and end date.
     """
     depts = ds.query(Department).order_by(Department.id).all()
-    depttotals = ds.query(Session, Department, func.sum(
-        Transline.items * Transline.amount))\
-                   .select_from(Session)\
-                   .options(undefer('actual_total'))\
-                   .filter(Session.endtime != None)\
-                   .filter(select([func.count(SessionTotal.sessionid)],
-                                  whereclause=SessionTotal.sessionid == Session.id)\
-                           .correlate(Session.__table__)\
-                           .as_scalar() != 0)\
-                   .join(Transaction, Transline, Department)\
-                   .order_by(Session.id, Department.id)\
-                   .group_by(Session, Department)
-    if start:
-        depttotals = depttotals.filter(Session.date >= start)
-    if end:
-        depttotals = depttotals.filter(Session.date <= end)
+    tf = func.sum(Transline.items * Transline.amount).label("depttotal")
+    # I believe weeks run Monday to Sunday!
+    weeks = func.div(Session.date - datetime.date(2002, 8, 5), 7)
+
+    if start is None:
+        start = ds.query(func.min(Session.date)).scalar()
+    if end is None:
+        end = ds.query(func.max(Session.date)).scalar()
+
+    if rows == "Sessions":
+        depttotals = ds.query(Session, Department.id, tf)\
+                       .select_from(Session)\
+                       .options(undefer('actual_total'))\
+                       .order_by(Session.id, Department.id)\
+                       .group_by(Session.id, Department.id)\
+                       .filter(select([func.count(SessionTotal.sessionid)],
+                                      whereclause=SessionTotal.sessionid == Session.id)\
+                               .correlate(Session.__table__)\
+                               .as_scalar() != 0)\
+                       .filter(Session.endtime != None)\
+                       .filter(Session.date >= start)\
+                       .filter(Session.date <= end)\
+                       .join(Transaction, Transline, Department)
+    else:
+        dateranges = ds.query(func.min(Session.date).label("start"),
+                              func.max(Session.date).label("end"))\
+                       .filter(Session.date >= start)\
+                       .filter(Session.date <= end)\
+                       .filter(Session.endtime != None)
+
+        if rows == "Days":
+            dateranges = dateranges.group_by(Session.date)
+        else:
+            dateranges = dateranges.group_by(weeks)
+        dateranges = dateranges.cte(name="dateranges")
+
+        depttotals = ds.query(
+            dateranges.c.start, dateranges.c.end,
+            select([func.sum(SessionTotal.amount)],
+                   whereclause=and_(
+                       Session.date >= dateranges.c.start,
+                       Session.date <= dateranges.c.end,
+                       SessionTotal.sessionid == Session.id))\
+            .correlate(dateranges).label('actual_total'),
+            Department.id,
+            select([tf],
+                   whereclause=and_(
+                       Session.date >= dateranges.c.start,
+                       Session.date <= dateranges.c.end,
+                       Transaction.sessionid == Session.id,
+                       Transline.transid == Transaction.id,
+                       Transline.dept_id == Department.id))\
+            .correlate(dateranges, Department.__table__).label("total"))\
+                       .select_from(dateranges)\
+                       .group_by(dateranges.c.start,
+                                 dateranges.c.end,
+                                 Department.id)\
+                       .order_by(dateranges.c.start, Department.id)
 
     filename = "{}-summary".format(tillname)
+
     if start:
-        filename = filename + "-from-{}".format(start)
+        filename += "-from-{}".format(start)
     if end:
-        filename = filename + "-to-{}".format(end)
+        filename += "-to-{}".format(end)
+    if rows == "Days":
+        filename += "-daily"
+    if rows == "Weeks":
+        filename += "-weekly"
     filename = filename + ".ods"
 
     doc = Document(filename=filename)
@@ -263,56 +311,91 @@ def sessionrange(ds, start=None, end=None, tillname="Till"):
     widthtotal = doc.colwidth("2.2cm")
     widthgap = doc.colwidth("0.5cm")
 
-    # Columns 0 and 1 are Session ID and date
-    table.colstyle(0, widthshort)
-    table.colstyle(1, widthshort)
-    # Columns 2 and 3 are till total and actual total
-    table.colstyle(2, widthtotal)
-    table.colstyle(3, widthtotal)
-    # Column 4 is the difference between till total and actual total
-    table.colstyle(4, widthshort)
-    # Column 5 is a gap
-    table.colstyle(5, widthgap)
-    # Columns 6+ are departments
-    deptscol = 6
+    col = 0
+    if rows == "Sessions":
+        table.colstyle(col, widthshort)
+        table.cell(col, 0, doc.headercell("ID"))
+        idcol = col
+        col += 1
+    if rows == "Sessions" or rows == "Days":
+        table.colstyle(col, widthshort)
+        table.cell(col, 0, doc.headercell("Date"))
+        datecol = col
+        col += 1
+    else:
+        table.colstyle(col, widthshort)
+        table.cell(col, 0, doc.headercell("From"))
+        startdatecol = col
+        col += 1
+        table.colstyle(col, widthshort)
+        table.cell(col, 0, doc.headercell("To"))
+        enddatecol = col
+        col += 1
+
+    # Till total and actual total
+    table.colstyle(col, widthtotal)
+    table.cell(col, 0, doc.headercell("Till Total"))
+    tilltotalcol = col
+    col += 1
+    table.colstyle(col, widthtotal)
+    table.cell(col, 0, doc.headercell("Actual Total"))
+    actualtotalcol = col
+    col += 1
+
+    # Difference between till total and actual total
+    table.colstyle(col, widthshort)
+    table.cell(col, 0, doc.headercell("Error"))
+    errorcol = col
+    col += 1
+
+    table.colstyle(col, widthgap)
+    col += 1
+
+    deptscol = col
+
     for c in range(deptscol, deptscol + len(depts)):
         table.colstyle(c, widthshort)
-
-    # Row 0 is headers
-    table.cell(0, 0, doc.headercell("ID"))
-    table.cell(1, 0, doc.headercell("Date"))
-    table.cell(2, 0, doc.headercell("Till Total"))
-    table.cell(3, 0, doc.headercell("Actual Total"))
-    table.cell(4, 0, doc.headercell("Error"))
-    col = deptscol
     for d in depts:
         table.cell(col, 0, doc.headercell(d.description))
         col += 1
 
     row = 0
-    prev_s = None
-    for s, d, t in depttotals:
-        if s != prev_s:
-            prev_s = s
+    prev_row = None
+    for x in depttotals:
+        if rows == "Sessions":
+            session, dept, total = x
+            actual_total = session.actual_total
+            rowspec = session.id
+        else:
+            startdate, enddate, actual_total, dept, total = x
+            rowspec = (startdate, enddate)
+        if rowspec != prev_row:
+            prev_row = rowspec
             row += 1
-            table.cell(0, row, doc.intcell(s.id))
-            table.cell(1, row, doc.datecell(s.date))
-            table.cell(2, row, doc.moneycell(
+            if rows == "Sessions":
+                table.cell(idcol, row, doc.intcell(session.id))
+                table.cell(datecol, row, doc.datecell(session.date))
+            elif rows == "Days":
+                table.cell(datecol, row, doc.datecell(startdate))
+            else:
+                table.cell(startdatecol, row, doc.datecell(startdate))
+                table.cell(enddatecol, row, doc.datecell(enddate))
+
+            table.cell(tilltotalcol, row, doc.moneycell(
                 None, formula="oooc:=SUM([.{}:.{}])".format(
                     table.ref(deptscol, row),
                     table.ref(deptscol + len(depts) - 1, row))))
-            table.cell(3, row, doc.moneycell(s.actual_total))
-            table.cell(4, row, doc.moneycell(
+            table.cell(actualtotalcol, row, doc.moneycell(actual_total))
+            table.cell(errorcol, row, doc.moneycell(
                 None, formula="oooc:=[.{}]-[.{}]".format(
-                    table.ref(3, row),
-                    table.ref(2, row))))
+                    table.ref(actualtotalcol, row),
+                    table.ref(tilltotalcol, row))))
             di = iter(depts)
             col = deptscol - 1
         while True:
             col += 1
-            dept = next(di)
-            if dept == d:
-                table.cell(col, row, doc.moneycell(t))
+            if next(di).id == dept:
+                table.cell(col, row, doc.moneycell(total))
                 break
 
     doc.add_table(table)

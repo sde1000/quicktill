@@ -356,9 +356,14 @@ def location(request, info, session, location):
 class SessionFinderForm(forms.Form):
     session = forms.IntegerField(label="Session ID")
 
-class SessionRangeForm(forms.Form):
+class SessionSheetForm(forms.Form):
     startdate = forms.DateField(label="Start date", required=False)
     enddate = forms.DateField(label="End date", required=False)
+    rows = forms.ChoiceField(label="Rows show", choices=[
+        ("Sessions", "Sessions"),
+        ("Days", "Days"),
+        ("Weeks", "Weeks"),
+        ])
 
 @tillweb_view
 def sessionfinder(request, info, session):
@@ -373,16 +378,17 @@ def sessionfinder(request, info, session):
         form = SessionFinderForm()
 
     if request.method == 'POST' and "submit_sheet" in request.POST:
-        rangeform = SessionRangeForm(request.POST)
+        rangeform = SessionSheetForm(request.POST)
         if rangeform.is_valid():
             cd = rangeform.cleaned_data
             return spreadsheets.sessionrange(
                 session,
                 start=cd['startdate'],
                 end=cd['enddate'],
+                rows=cd['rows'],
                 tillname=info['tillname'])
     else:
-        rangeform = SessionRangeForm()
+        rangeform = SessionSheetForm()
 
     sessions = session\
                .query(Session)\
