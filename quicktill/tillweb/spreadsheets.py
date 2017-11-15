@@ -270,13 +270,6 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
 
         depttotals = ds.query(
             dateranges.c.start, dateranges.c.end,
-            select([func.sum(SessionTotal.amount)])\
-            .correlate(dateranges)\
-            .where(and_(
-                Session.date >= dateranges.c.start,
-                Session.date <= dateranges.c.end))\
-            .select_from(Session.__table__.join(SessionTotal))\
-            .label('actual_total'),
             Department.id,
             select([tf])\
             .correlate(dateranges, Department.__table__)\
@@ -293,6 +286,24 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
                                  dateranges.c.end,
                                  Department.id)\
                        .order_by(dateranges.c.start, Department.id)
+
+        acttotals = ds.query(
+            dateranges.c.start, dateranges.c.end,
+            select([func.sum(SessionTotal.amount)])\
+            .correlate(dateranges)\
+            .where(and_(
+                Session.date >= dateranges.c.start,
+                Session.date <= dateranges.c.end))\
+            .select_from(Session.__table__.join(SessionTotal))\
+            .label('actual_total'))\
+                      .select_from(dateranges)\
+                      .group_by(dateranges.c.start,
+                                dateranges.c.end)\
+                      .order_by(dateranges.c.start)
+
+        acttotal_dict = {}
+        for start, end, total in acttotals:
+            acttotal_dict[(start, end)] = total
 
     filename = "{}-summary".format(tillname)
 
@@ -370,8 +381,9 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
             actual_total = session.actual_total
             rowspec = session.id
         else:
-            startdate, enddate, actual_total, dept, total = x
+            startdate, enddate, dept, total = x
             rowspec = (startdate, enddate)
+            actual_total = acttotal_dict[rowspec]
         if rowspec != prev_row:
             prev_row = rowspec
             row += 1
@@ -398,7 +410,8 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
         while True:
             col += 1
             if next(di).id == dept:
-                table.cell(col, row, doc.moneycell(total))
+                if total:
+                    table.cell(col, row, doc.moneycell(total))
                 break
 
     doc.add_table(table)
