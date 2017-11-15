@@ -67,10 +67,11 @@ class page(ui.basicpage):
                  .options(joinedload('stockitem.stocktype'))\
                  .options(joinedload('stockitem.stockline'))\
                  .all()
-        f = ui.tableformatter('pl l c L lp')
-        header = f("Loc", "Racked", "StockID", "Name", "Line")
+        f = ui.tableformatter('pl l c L c lp')
+        header = f("Loc", "Racked", "StockID", "Name", "BB", "Line")
         ml = [f(a.text, a.time.date().strftime("%d %b"), a.stockid,
                 a.stockitem.stocktype.format(),
+                a.stockitem.bestbefore or "",
                 a.stockitem.stockline.name if a.stockitem.stockline
                 else "") for a in sl]
         ml.insert(0, header)
