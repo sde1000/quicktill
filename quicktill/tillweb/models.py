@@ -1,9 +1,13 @@
-from __future__ import unicode_literals
-from django.utils.encoding import python_2_unicode_compatible
-
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+
+# They moved it again!  As of django-1.10 reverse is found in
+# django.urls, but we need to retain compatibility with django-1.8
+# while we are still targetting Ubuntu-16.04 LTS.
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 
 def get_app_details(user):
     tills = Till.objects.filter(access__user=user)
@@ -13,7 +17,6 @@ def get_app_details(user):
                  'objects': tills}]
     return []
 
-@python_2_unicode_compatible
 class Till(models.Model):
     """An available till database
 
@@ -43,7 +46,6 @@ PERMISSIONS = (
     ('F', 'Full access'),
 )
 
-@python_2_unicode_compatible
 class Access(models.Model):
     """Access to a till by a particular user
 
@@ -51,8 +53,9 @@ class Access(models.Model):
     type of access they have if they don't exist in the till's user
     database.
     """
-    till = models.ForeignKey(Till)
-    user = models.ForeignKey(User, related_name="till_access")
+    till = models.ForeignKey(Till, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name="till_access")
     permission = models.CharField(max_length=1, choices=PERMISSIONS)
 
     class Meta(object):
