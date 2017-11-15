@@ -20,7 +20,7 @@
 <th>Till Total</th><th>Actual Total</th></tr>
 </thead>
 <tbody>
-{% for s in recent %}
+{% for s in pager.items %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
 <td><a href="{{s.get_absolute_url}}">{{s.date}}</a></td>
@@ -40,6 +40,8 @@ $(document).ready(function(){
   $("#recentsessions").tablesorter({widgets:["zebra"]});
 });
 </script>
+<p></p>
+{{pager.as_html}}
 
 <h2>Download spreadsheet</h2>
 <form action="" method="post">{% csrf_token %}

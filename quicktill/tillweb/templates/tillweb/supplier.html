@@ -15,8 +15,8 @@
 
 <h2>Deliveries</h2>
 
-{% with deliveries=supplier.deliveries exclude_column="supplier" %}
-{% if deliveries %}
+{% with exclude_column="supplier" %}
+{% if pager.items %}
 {% include "tillweb/deliverylist.html" %}
 {% else %}
 <p>There have not been any deliveries from this supplier.</p>

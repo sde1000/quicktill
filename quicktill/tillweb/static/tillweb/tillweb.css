@@ -145,3 +145,39 @@ form table tr td ul {
 a {
     font-size: 100%;
 }
+
+ul.pager {
+    display: inline-block;
+    list-style: none;
+    padding: 0px;
+    margin: 2px;
+}
+
+ul.pager li {
+    display: block;
+    float: left;
+    color: black;
+    text-decoration: none;
+    border: 1px solid #ddd;
+}
+
+ul.pager li a {
+    display: block;
+    padding: 16px;
+    transition: background-color .3s;
+    color: black;
+}
+
+ul.pager li span {
+    display: block;
+    padding: 16px;
+    font-weight: bold;
+}
+
+ul.pager li.active span {
+    background-color: cyan;
+}
+
+ul.pager li a:hover {
+    background-color: #ddd;
+}

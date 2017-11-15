@@ -17,14 +17,14 @@
 
 {% if department.notes %}<p>{{department.notes}}</p>{% endif %}
 
-{% if items %}
+{% if pager.items %}
 {% if include_finished %}
 <h2>All stock items</h2>
 {% else %}
 <h2>Currently in stock</h2>
 {% endif %}
 <p><a href="{% url "tillweb-department-sheet" pubname=pubname departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a></p>
-{% with items as stocklist %}
+{% with pager.items as stocklist %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
 {% else %}

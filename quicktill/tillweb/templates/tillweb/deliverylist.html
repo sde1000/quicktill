@@ -1,4 +1,4 @@
-{% if deliveries %}
+{% if pager.items %}
 <table id="deliveries">
 <thead>
 <tr><th>ID</th><th>Date</th>
@@ -6,7 +6,7 @@
 <th>Document</th><th>Confirmed?</th></tr>
 </thead>
 <tbody>
-{% for d in deliveries %}
+{% for d in pager.items %}
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="{{d.get_absolute_url}}">{{d.id}}</a></td>
 <td><a href="{{d.get_absolute_url}}">{{d.date}}</a></td>
@@ -23,4 +23,6 @@ $(document).ready(function(){
   $("#deliveries").tablesorter({widgets:["zebra"]});
 });
 </script>
+<p></p>
+{{pager.as_html}}
 {% endif %}

@@ -1,0 +1,25 @@
+{% if pager.has_other_pages %}
+<ul class="pager">
+  {% if pager.has_previous %}
+  <li><a href="{{pager.firstlink}}">&laquo;&laquo;</a></li>
+  <li><a href="{{pager.prevlink}}">&laquo;</a></li>
+  {% else %}
+  <li class="disabled"><span>&laquo;&laquo;</span></li>
+  <li class="disabled"><span>&laquo;</span></li>
+  {% endif %}
+  {% for i in pager.local_page_range %}
+  {% if pager.page == i.page %}
+  <li class="active"><span>{{i.page}}</span></li>
+  {% else %}
+  <li><a href="{{i.pagelink}}">{{i.page}}</a></li>
+  {% endif %}
+  {% endfor %}
+  {% if pager.has_next %}
+  <li><a href="{{pager.nextlink}}">&raquo;</a></li>
+  <li><a href="{{pager.lastlink}}">&raquo;&raquo;</a></li>
+  {% else %}
+  <li class="disabled"><span>&raquo;</span></li>
+  <li class="disabled"><span>&raquo;&raquo;</span></li>
+  {% endif %}
+</ul>
+{% endif %}

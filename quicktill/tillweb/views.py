@@ -2,8 +2,9 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.template import RequestContext, Context
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.conf import settings
+from django.utils.safestring import mark_safe
 from django import forms
 from .models import *
 import sqlalchemy
@@ -150,6 +151,122 @@ def business_totals(session, firstday, lastday):
                   .group_by(Business)\
                   .all()
 
+class _pager_page:
+    def __init__(self, pager, page):
+        self._pager = pager
+        self._page = page
+
+    @property
+    def page(self):
+        return self._page
+
+    def pagelink(self):
+        return self._pager.pagelink(self._page)
+
+class Pager:
+    """Manage paginated data
+
+    This is similar in idea to the class in django.core.paginator but
+    works with sqlalchemy and has a different API.
+    """
+    def __init__(self, request, query, items_per_page=30):
+        self._request = request
+        self._query = query
+        self.page = 1
+        self.default_items_per_page = items_per_page
+        if 'page' in request.GET:
+            try:
+                self.page = int(request.GET['page'])
+            except:
+                pass
+        self.items_per_page = items_per_page
+        if 'pagesize' in request.GET:
+            try:
+                self.items_per_page = max(1, int(request.GET['pagesize']))
+            except:
+                if request.GET['pagesize'] == "all":
+                    self.items_per_page = None
+
+        # If the requested page is outside the range of the available items,
+        # reset it to 1
+        if self.items_per_page:
+            if ((self.page - 1) * self.items_per_page) > self.count():
+                self.page = 1
+
+    def count(self):
+        """Number of items to display
+        """
+        if not hasattr(self, '_count'):
+            self._count = self._query.count()
+        return self._count
+
+    def pages(self):
+        """Number of pages for all the items
+        """
+        if self.items_per_page:
+            return (self.count() // self.items_per_page) + 1
+        return 1
+
+    @property
+    def num_pages(self):
+        return self.pages()
+
+    def page_range(self):
+        return (_pager_page(self, x) for x in range(1, self.pages() + 1))
+
+    def local_page_range(self):
+        # 9 pages centered on the current page, unless there are fewer
+        # than four pages ahead of or behind the current page
+        target = 4
+        start = self.page - target
+        end = self.page + target
+        if start < 1:
+            end += 1 - start
+        if end > self.pages():
+            start += self.pages() - end
+        return (_pager_page(self, x) for x in range(
+            max(start, 1), min(self.pages(), end) + 1))
+
+    def has_next(self):
+        return self.page < self.pages()
+
+    def has_previous(self):
+        return self.page > 1
+
+    def has_other_pages(self):
+        return self.has_next() or self.has_previous()
+
+    def items(self):
+        q = self._query
+        if self.items_per_page:
+            q = q.offset((self.page - 1) * self.items_per_page)\
+                 .limit(self.items_per_page)
+        return q.all()
+
+    def pagelink(self, page):
+        d = self._request.GET.copy()
+        d['page'] = str(page)
+        if self.items_per_page != self.default_items_per_page:
+            d['pagesize'] = str(self.items_per_page)
+        return "?" + d.urlencode()
+
+
+    def nextlink(self):
+        return self.pagelink(self.page + 1) if self.has_next() else None
+
+    def prevlink(self):
+        return self.pagelink(self.page - 1) if self.has_previous() else None
+
+    def firstlink(self):
+        return self.pagelink(1) if self.has_previous() else None
+
+    def lastlink(self):
+        return self.pagelink(self.pages()) if self.has_next() else None
+
+    def as_html(self):
+        return render_to_string("tillweb/pager.html", context={
+            'pager': self})
+
 @tillweb_view
 def pubroot(request, info, session):
     date = datetime.date.today()
@@ -267,13 +384,21 @@ def sessionfinder(request, info, session):
     else:
         rangeform = SessionRangeForm()
 
-    recent = session\
-             .query(Session)\
-             .options(undefer('total'),
-                      undefer('actual_total'))\
-             .order_by(desc(Session.id))[:30]
+    sessions = session\
+               .query(Session)\
+               .options(undefer('total'),
+                        undefer('actual_total'))\
+               .order_by(desc(Session.id))
+
+    pager = Pager(request, sessions)
+
     return ('sessions.html',
-            {'recent': recent, 'form': form, 'rangeform': rangeform})
+            {'recent': pager.items,
+             'pager': pager,
+             'nextlink': pager.nextlink(),
+             'prevlink': pager.prevlink(),
+             'form': form,
+             'rangeform': rangeform})
 
 @tillweb_view
 def session(request, info, session, sessionid):
@@ -438,16 +563,25 @@ def supplier(request, info, session, supplierid):
         .get(int(supplierid))
     if not s:
         raise Http404
-    return ('supplier.html', {'supplier': s})
+
+    deliveries = session\
+                 .query(Delivery)\
+                 .order_by(desc(Delivery.id))\
+                 .filter(Delivery.supplier == s)
+
+    pager = Pager(request, deliveries)
+    return ('supplier.html', {'supplier': s, 'pager': pager})
 
 @tillweb_view
 def deliverylist(request, info, session):
     dl = session\
          .query(Delivery)\
          .order_by(desc(Delivery.id))\
-         .options(joinedload('supplier'))\
-         .all()
-    return ('deliveries.html', {'deliveries': dl})
+         .options(joinedload('supplier'))
+
+    pager = Pager(request, dl)
+
+    return ('deliveries.html', {'pager': pager})
 
 @tillweb_view
 def delivery(request, info, session, deliveryid):
@@ -523,7 +657,7 @@ class StockForm(StockTypeForm):
 @tillweb_view
 def stocksearch(request,info,session):
     form = StockForm(request.GET)
-    result = []
+    pager = None
     if form.is_valid() and form.is_filled_in():
         q = session\
             .query(StockItem)\
@@ -536,8 +670,13 @@ def stocksearch(request,info,session):
         q = form.filter(q)
         if not form.cleaned_data['include_finished']:
             q = q.filter(StockItem.finished == None)
-        result = q.all()
-    return ('stocksearch.html', {'form': form, 'stocklist': result})
+
+        pager = Pager(request, q)
+
+    return ('stocksearch.html', {
+        'form': form,
+        'stocklist': pager.items() if pager else [],
+        'pager': pager})
 
 @tillweb_view
 def stock(request, info, session, stockid):
@@ -641,16 +780,17 @@ def department(request, info, session, departmentid, as_spreadsheet=False):
                      joinedload('finishcode'))
     if not include_finished:
         items = items.filter(StockItem.finished == None)
-    items = items.all()
 
     if as_spreadsheet:
         return spreadsheets.stock(
-            session, items, tillname=info['tillname'],
+            session, items.all(), tillname=info['tillname'],
             filename="{}-dept{}-stock.ods".format(
                 info['tillname'], departmentid))
 
+    pager = Pager(request, items)
+
     return ('department.html',
-            {'department': d, 'items': items,
+            {'department': d, 'pager': pager,
              'include_finished': include_finished})
 
 class StockCheckForm(forms.Form):
