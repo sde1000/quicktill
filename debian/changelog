@@ -1,3 +1,11 @@
+quicktill (0.12.15) stable; urgency=low
+
+  * New release 0.12.15
+
+  * Fix Xero upload code for delivery and session URLs
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 20 Nov 2017 16:52:31 +0000
+
 quicktill (0.12.14) stable; urgency=low
 
   * New release 0.12.14
