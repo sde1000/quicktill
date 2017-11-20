@@ -324,7 +324,7 @@ class XeroIntegration:
             "DueDate", (session.date + self.due_days).isoformat()))
         if self.tillweb_base_url:
             inv.append(_textelem(
-                "Url", self.tillweb_base_url + session.tillweb_url))
+                "Url", self.tillweb_base_url + "session/{}/".format(session.id)))
         inv.append(_textelem(
             "Reference", self.reference_template.format(session=session)))
         if self.branding_theme_id:
@@ -446,7 +446,7 @@ class XeroIntegration:
         inv.append(_textelem("InvoiceNumber", d.docnumber))
         if self.tillweb_base_url:
             inv.append(_textelem(
-                "Url", self.tillweb_base_url + d.tillweb_url))
+                "Url", self.tillweb_base_url + "delivery/{}/".format(d.id)))
         litems = SubElement(inv, "LineItems")
         previtem = None
         prevqty = None
