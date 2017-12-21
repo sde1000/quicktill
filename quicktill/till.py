@@ -21,6 +21,8 @@ from . import keyboard
 from .version import version
 from .models import Session,User,UserToken,Business,zero
 from . import models
+import json
+import subprocess
 
 log=logging.getLogger(__name__)
 
@@ -89,7 +91,27 @@ class runtill(cmdline.command):
             action="store", type=int, metavar="LOCKTIME",
             help="Display the lock screen for at least LOCKTIME seconds "
             "before considering the till to be idle")
+        parser.add_argument(
+            "-d", "--debug-kbd", dest="debug_kbd", default=False,
+            action="store_true", help="Shown an on-screen keyboard if possible")
         parser.set_defaults(command=runtill.run, nolisten=False)
+
+    class _dbg_kbd_input:
+        """Process input from debug keyboard
+        """
+        def __init__(self, f):
+            self.f = f
+        def fileno(self):
+            return self.f.fileno()
+        def doread(self):
+            i = self.f.readline().strip()
+            if not i:
+                self.f.close()
+                del event.rdlist[event.rdlist.index(self)]
+            ui.handle_raw_keyboard_input(ord("["))
+            for c in i:
+                ui.handle_raw_keyboard_input(c)
+            ui.handle_raw_keyboard_input(ord("]"))
 
     @staticmethod
     def run(args):
@@ -107,9 +129,32 @@ class runtill(cmdline.command):
             tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
             tillconfig.start_time = time.time()
             td.init(tillconfig.database)
+            dbg_kbd = None
+            if args.debug_kbd and hasattr(tillconfig, "kbdriver"):
+                with td.orm_session():
+                    kbl = {x: y.keycap if hasattr(y, "keycap") else str(y)
+                           for x, y in tillconfig.kbdriver.inputs.items()
+                           if x[0] != 'M'}
+                r, w = os.pipe()
+                os.set_inheritable(r, True)
+                dbg_kbd = subprocess.Popen(
+                    [os.path.join(os.path.dirname(sys.argv[0]),
+                                  "quicktill-debug-kbd"),
+                     "--layoutfd={}".format(r)],
+                    bufsize=0,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    pass_fds=[r])
+                with os.fdopen(w, 'w') as f:
+                    json.dump(kbl, f)
+                event.rdlist.append(runtill._dbg_kbd_input(dbg_kbd.stdout))
             ui.run()
         except:
             log.exception("Exception caught at top level")
+        finally:
+            if dbg_kbd is not None:
+                dbg_kbd.stdin.close()
+                dbg_kbd.wait()
 
         log.info("Shutting down")
         logging.shutdown()
@@ -363,7 +408,8 @@ def main():
     if 'kbdriver' in config:
         # Perhaps we should support multiple filters...
         ui.keyboard_filter_stack.insert(0, config['kbdriver'])
-    # XXX support kbdiff command temporarily
+    # XXX support kbdiff and debug keyboard temporarily; we need to
+    # find a more general way to do this!
     if 'kbdriver' in config:
         tillconfig.kbdriver = config['kbdriver']
     # XXX support kbdiff command temporarily

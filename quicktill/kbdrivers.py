@@ -13,6 +13,9 @@ class _magstripecode:
     def __init__(self, code):
         self.magstripe = code
 
+    def __str__(self):
+        return "Magstripe {}".format(self.magstripe)
+
 class prehkeyboard:
     """Keyboard input filter for Preh keyboards
 

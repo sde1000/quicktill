@@ -280,6 +280,13 @@ class token:
     def __repr__(self):
         return "token('{}')".format(self.usertoken)
 
+class tokenkey(token):
+    """A key that represents a user token
+    """
+    def __init__(self, t, label):
+        super(tokenkey, self).__init__(t)
+        self.keycap = label
+
 class tokenlistener:
     def __init__(self, address, addressfamily=socket.AF_INET):
         self.s = socket.socket(addressfamily, socket.SOCK_DGRAM)

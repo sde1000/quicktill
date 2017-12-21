@@ -10,8 +10,8 @@ setup(name='quicktill3',
       url='https://github.com/sde1000/quicktill',
       packages=['quicktill', 'quicktill.tillweb'],
       package_data={'quicktill.tillweb':
-                        ['static/tillweb/*.js', 'templates/tillweb/*.html',
-                         'templates/tillweb/*.ajax',
-                         'static/tillweb/*.css', 'static/tillweb/images/*']},
-      scripts=['runtill'],
-      )
+                    ['static/tillweb/*.js', 'templates/tillweb/*.html',
+                     'templates/tillweb/*.ajax',
+                     'static/tillweb/*.css', 'static/tillweb/images/*']},
+      scripts=['runtill', 'quicktill-debug-kbd'],
+)
