@@ -36,7 +36,6 @@ from . import linekeys
 from . import modifiers
 from . import payment
 from . import user
-from . import event
 import logging
 import datetime
 import time
@@ -440,8 +439,7 @@ class page(ui.basicpage):
         self._autolock = autolock
         self.locked = False
         self._timeout = timeout
-        if self._timeout:
-            event.eventlist.append(self)
+        self._timeout_handle = None # Used to cancel timeout
         self._update_timeout()
         self.h = self.h - 1 # XXX hack to avoid drawing into bottom
                             # right-hand cell; is this still
@@ -489,8 +487,12 @@ class page(ui.basicpage):
             return td.s.query(Transaction).get(self.transid)
 
     def _update_timeout(self):
+        if self._timeout_handle:
+            self._timeout_handle.cancel()
+            self._timeout_handle = None
         if self._timeout:
-            self.nexttime = time.time() + self._timeout
+            self._timeout_handle = tillconfig.mainloop.add_timeout(
+                self._timeout, self.alarm, desc="register auto-lock")
 
     def clearbuffer(self):
         """Clear user input from the buffer.
@@ -2288,14 +2290,15 @@ class page(ui.basicpage):
                  self.user.fullname)
         ui.basicpage.deselect(self)
         self.dismiss()
-        if self in event.eventlist:
-            event.eventlist.remove(self)
+        if self._timeout_handle:
+            self._timeout_handle.cancel()
+            self._timeout_handle = None
 
     def alarm(self):
         # The timeout has passed.  If the scrollable has the input
         # focus (i.e. there are no popups on top of us) we can
         # deselect.
-        self.nexttime = None
+        self._timeout_handle = None
         if self.s.focused:
             self.deselect()
 

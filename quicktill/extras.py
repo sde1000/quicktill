@@ -1,168 +1,43 @@
-from . import ui,keyboard,printer,tillconfig,event,td,user,cmdline
+from . import ui, keyboard, tillconfig, user, cmdline
 import twython
-from .models import VatBand
-import traceback,sys,os,time,datetime
+import time, datetime
 from requests_oauthlib import OAuth1Session
 
-### Bar Billiards checker
-
-class bbcheck(ui.dismisspopup):
-    """Given the amount of money taken by a machine and the share of it
-    retained by the supplier, print out the appropriate figures for
-    the collection receipt.
-
-    """
-    def __init__(self,vatband,share=25.0):
-        ui.dismisspopup.__init__(self,7,20,title="Bar Billiards check",
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_input)
-        # We assume that VAT band 'A' is the current main VAT rate.
-        self.vatrate=float(td.s.query(VatBand).get(vatband).at(datetime.datetime.now()).rate)
-        self.vatrate=self.vatrate/100.0
-        self.addstr(2,2,"   Total gross:")
-        self.addstr(3,2,"Supplier share:")
-        self.addstr(4,2,"      VAT rate: %0.1f%%"%(self.vatrate*100.0))
-        self.grossfield=ui.editfield(
-            2,18,5,validate=ui.validate_float,keymap={
-                keyboard.K_CLEAR: (self.dismiss,None)})
-        self.sharefield=ui.editfield(
-            3,18,5,validate=ui.validate_float,keymap={
-                keyboard.K_CASH: (self.enter,None,False)})
-        self.sharefield.set(str(share))
-        ui.map_fieldlist([self.grossfield,self.sharefield])
-        self.grossfield.focus()
-    def enter(self):
-        try:
-            grossamount=float(self.grossfield.f)
-        except:
-            grossamount=None
-        try:
-            sharepct=float(self.sharefield.f)
-        except:
-            sharepct=None
-        if grossamount is None or sharepct is None:
-            return ui.infopopup(["You must fill in both fields."],
-                                title="You Muppet")
-        if sharepct>=100.0 or sharepct<0.0:
-            return ui.infopopup(["The supplier share is a percentage, "
-                                 "and must be between 0 and 100."],
-                                title="You Muppet")
-        balancea=grossamount/(self.vatrate+1.0)
-        vat_on_nett_take=grossamount-balancea
-        supplier_share=balancea*sharepct/100.0
-        brewery_share=balancea-supplier_share
-        vat_on_rent=supplier_share*self.vatrate
-        left_on_site=brewery_share+vat_on_nett_take-vat_on_rent
-        banked=supplier_share+vat_on_rent
-        with printer.driver as d:
-            d.setdefattr(font=1)
-            d.printline("Nett take:\t\t%s"%tillconfig.fc(grossamount))
-            d.printline("VAT on nett take:\t\t%s"%tillconfig.fc(vat_on_nett_take))
-            d.printline("Balance A/B:\t\t%s"%tillconfig.fc(balancea))
-            d.printline("Supplier share:\t\t%s"%tillconfig.fc(supplier_share))
-            d.printline("Licensee share:\t\t%s"%tillconfig.fc(brewery_share))
-            d.printline("VAT on rent:\t\t%s"%tillconfig.fc(vat_on_rent))
-            d.printline("(VAT on rent is added to")
-            d.printline("'banked' column and subtracted")
-            d.printline("from 'left on site' column.)")
-            d.printline("Left on site:\t\t%s"%tillconfig.fc(left_on_site))
-            d.printline("Banked:\t\t%s"%tillconfig.fc(banked))
-        self.dismiss()
-
-### Coffee pot timer
-
-class coffeealarm(object):
-    def __init__(self,timestampfilename,dismisskey):
-        self.tsf=timestampfilename
-        self.dismisskey=dismisskey
-        self.update()
-        event.eventlist.append(self)
-    def update(self):
-        try:
-            sd=os.stat(self.tsf)
-            self.nexttime=float(sd.st_mtime)
-        except:
-            self.nexttime=None
-    def setalarm(self,timeout):
-        "timeout is in seconds"
-        now=time.time()
-        self.nexttime=now+timeout
-        f=file(self.tsf,'w')
-        f.close()
-        os.utime(self.tsf,(now,self.nexttime))
-    def clearalarm(self):
-        self.nexttime=None
-        os.remove(self.tsf)
-    def alarm(self):
-        if self.nexttime==None: return
-        self.clearalarm()
-        ui.alarmpopup(title="Coffee pot alarm",
-                      text=["Please empty out and clean the coffee pot - the "
-                      "coffee in it is now too old."],
-                      colour=ui.colour_info,dismiss=self.dismisskey)
-
-class managecoffeealarm(ui.dismisspopup):
-    def __init__(self,alarminstance):
-        self.ai=alarminstance
-        remaining=None if self.ai.nexttime is None else self.ai.nexttime-time.time()
-        ui.dismisspopup.__init__(self,8,40,title="Coffee pot alarm",
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_input)
-        if remaining is None:
-            self.addstr(2,2,"No alarm is currently set.")
-        else:
-            self.addstr(2,2,"Remaining time: %d minutes %d seconds"%(
-                    remaining/60,remaining%60))
-        self.addstr(3,2,"      New time:")
-        self.addstr(3,22,"minutes")
-        if remaining is not None:
-            self.addstr(5,2,"Press Cancel to clear the alarm.")
-            self.timefield = ui.editfield(
-                3, 18, 3, validate=ui.validate_positive_nonzero_int, keymap={
-                    keyboard.K_CASH: (self.enter, None, False),
-                    keyboard.K_CANCEL: (self.clearalarm, None, False)})
-        self.timefield.set("60") # Default time
-        self.timefield.focus()
-    def enter(self):
-        try:
-            timeout=int(self.timefield.f)*60
-        except:
-            return
-        self.ai.setalarm(timeout)
-        self.dismiss()
-    def clearalarm(self):
-        self.ai.clearalarm()
-        self.dismiss()
-
 ### Reminders at particular times of day
-class reminderpopup(object):
-    def __init__(self,alarmtime,title,text,colour=ui.colour_info,
+class reminderpopup:
+    def __init__(self, alarmtime, title, text, colour=ui.colour_info,
                  dismiss=keyboard.K_CANCEL):
-        """
+        """Pop up a reminder at a particular time of day
 
-        Alarmtime is a tuple of (hour,minute).  It will be interpreted
-        as being in local time; each time the alarm goes off it will
-        be reinterpreted.
+        Alarmtime is a tuple of (hour, minute).  It will be
+        interpreted as being in local time; each time the alarm goes
+        off it will be reinterpreted.
 
+        The popup window will appear on whichever page is active at
+        the time.
         """
-        self.alarmtime=alarmtime
-        self.title=title
-        self.text=text
-        self.colour=colour
-        self.dismisskey=dismiss
-        self.setalarm()
-        event.eventlist.append(self)
+        self.alarmtime = alarmtime
+        self.title = title
+        self.text = text
+        self.colour = colour
+        self.dismisskey = dismiss
+        ui.run_after_init.append(self.setalarm)
+
     def setalarm(self):
         # If the alarm time has already passed today, we set the alarm for
         # the same time tomorrow
-        atime=datetime.time(*self.alarmtime)
-        candidate=datetime.datetime.combine(datetime.date.today(),atime)
-        if time.mktime(candidate.timetuple())<=time.time():
-            candidate=candidate+datetime.timedelta(1,0,0)
-        self.nexttime=time.mktime(candidate.timetuple())
+        now = time.time()
+        atime = datetime.time(*self.alarmtime)
+        candidate = datetime.datetime.combine(datetime.date.today(), atime)
+        if time.mktime(candidate.timetuple()) <= now:
+            candidate = candidate + datetime.timedelta(1, 0, 0)
+        nexttime = time.mktime(candidate.timetuple())
+        tillconfig.mainloop.add_timeout(
+            nexttime - now, self.alarm, desc="reminder popup")
+
     def alarm(self):
-        ui.alarmpopup(title=self.title,text=self.text,
-                      colour=self.colour,dismiss=self.dismisskey)
+        ui.alarmpopup(title=self.title, text=self.text,
+                      colour=self.colour, dismiss=self.dismisskey)
         self.setalarm()
 
 class twitter_auth(cmdline.command):

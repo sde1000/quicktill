@@ -2,7 +2,7 @@
 
 import time
 import logging
-from . import ui, event, td, keyboard, usestock, stocklines, user, tillconfig
+from . import ui, td, keyboard, usestock, stocklines, user, tillconfig
 from .user import load_user
 from .models import StockLine, StockAnnotation, StockItem
 from sqlalchemy.sql.expression import tuple_, func, null
@@ -19,9 +19,8 @@ class page(ui.basicpage):
         self.max_unattended_updates = max_unattended_updates
         self.hotkeys = hotkeys
         self.locations = locations if locations else ['Bar']
-        event.eventlist.append(self)
         self.updateheader()
-        self.alarm(need_new_session=False)
+        self._alarm_handle = tillconfig.mainloop.add_timeout(0, self.alarm)
 
     def pagename(self):
         return self.user.fullname if self.user else "Stock Control"
@@ -100,14 +99,17 @@ class page(ui.basicpage):
         elif self.display == 1:
             self.drawstillage(self.h - len(pl))
 
-    def alarm(self, need_new_session=True):
-        self.nexttime = time.time() + 60.0
+    def alarm(self, called_by_timer=True):
+        if not called_by_timer:
+            self._alarm_handle.cancel()
+        self._alarm_handle = tillconfig.mainloop.add_timeout(
+            2 if tillconfig.debug else 60, self.alarm)
         self.display = self.display + 1
         if self.display > 1:
             self.display = 0
         # There won't be a database session set up when we're called
         # by the timer expiring.
-        if need_new_session:
+        if called_by_timer:
             with td.orm_session():
                 if self.max_unattended_updates:
                     self.remaining_life = self.remaining_life - 1
@@ -123,7 +125,7 @@ class page(ui.basicpage):
         if k in self.hotkeys:
             return self.hotkeys[k]()
         elif k == keyboard.K_CASH:
-            self.alarm(need_new_session=False)
+            self.alarm(called_by_timer=False)
         elif k == 'u' or k == 'U':
             stocklines.selectline(usestock.line_chosen,
                                   title="Use Stock",
@@ -134,7 +136,7 @@ class page(ui.basicpage):
     def deselect(self):
         # Ensure that we're not still hanging around when we are invisible
         ui.basicpage.deselect(self)
-        del event.eventlist[event.eventlist.index(self)]
+        self._alarm_handle.cancel()
         self.dismiss()
 
 def handle_usertoken(t,*args,**kwargs):

@@ -1,4 +1,4 @@
-from . import ui, foodorder, keyboard, event, tillconfig
+from . import ui, foodorder, keyboard, tillconfig
 
 class page(ui.basicpage):
     def __init__(self, hotkeys, user=None):
@@ -26,9 +26,9 @@ class page(ui.basicpage):
         if k in self.hotkeys:
             return self.hotkeys[k]()
         elif k == 'c' or k == 'C':
-            event.shutdowncode=0
+            tillconfig.mainloop.shutdown(0)
         elif k == 'q' or k == 'Q':
-            event.shutdowncode=1
+            tillconfig.mainloop.shutdown(1)
         elif k == 'o' or k == 'O' or k == keyboard.K_CASH:
             foodorder.popup(self.receive_order, self.ordernumber)
         else:

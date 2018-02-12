@@ -3,8 +3,8 @@
 
 import sys
 import os
-from . import ui,keyboard,td,printer,session,user
-from . import tillconfig,linekeys,stocklines,plu,modifiers,event
+from . import ui, keyboard, td, printer, session, user
+from . import tillconfig, linekeys, stocklines, plu, modifiers
 from .version import version
 import subprocess
 
@@ -53,13 +53,11 @@ def versioninfo():
                  title="Software Version Information",
                  colour=ui.colour_info,dismiss=keyboard.K_CASH)
 
-def exitoption(code):
-    event.shutdowncode=code
-
 @user.permission_required('exit',"Exit the till software")
 def restartmenu():
     log.info("Restart menu")
-    menu = [(x[1], exitoption, (x[0],)) for x in tillconfig.exitoptions]
+    menu = [(x[1], tillconfig.mainloop.shutdown, (x[0],))
+            for x in tillconfig.exitoptions]
     ui.automenu(menu, title="Exit / restart options")
 
 class slmenu(ui.keymenu):
@@ -116,13 +114,29 @@ def sysinfo_menu():
         ]
     ui.keymenu(menu, title="System information")
 
+def debug_menu():
+    log.info("Debug menu")
+    def raise_test_exception():
+        raise Exception("Test exception")
+
+    def several_toasts():
+        ui.toast("Toast number one")
+        ui.toast("Toast number two")
+        ui.toast("The third toast")
+
+    menu = [
+        ("1", "Raise uncaught exception", raise_test_exception, None),
+        ("2", "Series of toasts", several_toasts, None),
+    ]
+    ui.keymenu(menu, title="Debug")
+
 def popup():
     log.info("Till management menu")
     if not tillconfig.exitoptions:
-        exit = ("8", "Exit till software", exitoption, (0,))
+        exit = ("8", "Exit till software", tillconfig.mainloop.shutdown, (0,))
     elif len(tillconfig.exitoptions) == 1:
         exit = ("8", tillconfig.exitoptions[0][1],
-                exitoption, (tillconfig.exitoptions[0][0],))
+                tillconfig.mainloop.shutdown, (tillconfig.exitoptions[0][0],))
     else:
         exit = ("8", "Exit / restart till software",
                 restartmenu, None)
@@ -135,4 +149,7 @@ def popup():
         exit,
         ("9", "System information", sysinfo_menu, None),
         ]
+    if tillconfig.debug:
+        menu.append(("0", "Debug options", debug_menu, None))
+
     ui.keymenu(menu, title="Management options")

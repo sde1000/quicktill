@@ -10,7 +10,7 @@ import traceback
 import locale
 import curses, curses.ascii, curses.panel
 import os.path
-from . import keyboard, event, tillconfig, td
+from . import keyboard, tillconfig, td
 from .td import func
 import sqlalchemy.inspection
 
@@ -42,7 +42,7 @@ def maxwinsize():
     """
     return stdwin.getmaxyx()
 
-class clockheader(object):
+class clockheader:
     """
     A single-line header at the top of the screen, with a clock at the
     right-hand side.  Can be passed text for the top-left and the
@@ -50,13 +50,13 @@ class clockheader(object):
     panel.
 
     """
-    def __init__(self,win,left="Quicktill",middle=""):
-        self.stdwin=win
+    def __init__(self, win, left="Quicktill", middle=""):
+        self.stdwin = win
         my, self.mx = maxwinsize()
-        self.left=left
-        self.middle=middle
+        self.left = left
+        self.middle = middle
         self.alarm()
-        event.eventlist.append(self)
+
     def redraw(self):
         """
         The header line consists of the title of the page at the left,
@@ -66,31 +66,40 @@ class clockheader(object):
         don't, we truncate the page name.
         
         """
-        m=self.left
-        s=self.middle
-        t=time.strftime("%a %d %b %Y %H:%M:%S %Z")
-        def cat(m,s,t):
-            w=len(m)+len(s)+len(t)
-            pad1 = (self.mx-w) // 2
+        m = self.left
+        s = self.middle
+        t = time.strftime("%a %d %b %Y %H:%M:%S %Z")
+        def cat(m, s, t):
+            w = len(m) + len(s) + len(t)
+            pad1 = (self.mx - w) // 2
             pad2 = pad1
             if w + pad1 + pad2 != self.mx:
                 pad1 = pad1 + 1
             return ''.join([m,' '*pad1,s,' '*pad2,t])
-        x=cat(m,s,t)
+        x = cat(m, s, t)
         while len(x) > self.mx:
-            if len(s)>0: s=s[:-1]
-            elif len(m)>0: m=m[:-1]
-            else: t=t[1:]
-            x=cat(m,s,t)
-        self.stdwin.addstr(0,0,x.encode(c),curses.color_pair(colour_header))
-    def update(self,left=None,middle=None):
-        if left is not None: self.left=left
-        if middle is not None: self.middle=middle
+            if len(s) > 0:
+                s = s[:-1]
+            elif len(m) > 0:
+                m = m[:-1]
+            else:
+                t = t[1:]
+            x = cat(m, s, t)
+        self.stdwin.addstr(0, 0, x.encode(c), curses.color_pair(colour_header))
+
+    def update(self, left=None, middle=None):
+        if left is not None:
+            self.left = left
+        if middle is not None:
+            self.middle = middle
         self.redraw()
+
     def alarm(self):
         self.redraw()
-        now=time.time()
-        self.nexttime=math.ceil(now)+0.01
+        now = time.time()
+        nexttime = math.ceil(now) + 0.01
+        # Schedule a callback for the next display update
+        tillconfig.mainloop.add_timeout(nexttime - now, self.alarm)
 
 def formattime(ts):
     "Returns ts formatted as %Y-%m-%d %H:%M:%S"
@@ -184,17 +193,16 @@ class _toastmaster(winobject):
 
     """
     # How long to display messages for, in seconds
-    toast_display_time=3
+    toast_display_time = 3
     # Gap between messages, in seconds
-    inter_toast_time=0.5
+    inter_toast_time = 0.5
 
     def __init__(self):
-        self.messagequeue=[]
-        self.current_message=None
-        self.nexttime=None
-        event.eventlist.append(self)
-        self.curses_initialised=False
-    def toast(self,message):
+        self.messagequeue = []
+        self.current_message = None
+        self.curses_initialised = False
+
+    def toast(self, message):
         """Display the message to the user.
 
         If an identical message is already in the queue of messages,
@@ -203,27 +211,38 @@ class _toastmaster(winobject):
         continues to be displayed.
 
         """
-        if message in self.messagequeue: return
+        if message in self.messagequeue:
+            return
         if not self.curses_initialised:
             self.messagequeue.append(message)
             return
-        if message==self.current_message:
-            self.nexttime=time.time()+self.toast_display_time
+        if message == self.current_message:
+            # Cancel the current timeout and reset for the full
+            # default message display time
+            self.timeout_handle.cancel()
+            self.timeout_handle = tillconfig.mainloop.add_timeout(
+                self.toast_display_time, self.alarm)
             return
         if self.current_message or self.messagequeue:
             self.messagequeue.append(message)
         else:
             self.start_display(message)
+
     def notify_curses_initialised(self):
-        self.curses_initialised=True
-        if self.messagequeue: self.alarm()
-    def start_display(self,message):
+        self.curses_initialised = True
+        if self.messagequeue:
+            self.alarm()
+
+    def start_display(self, message):
         # Ensure that we do not attempt to display a toast (for example, an
         # error log entry from an exception caught at the top level of the
         # application) if curses has already been deinitialised.
-        if curses.isendwin(): return
-        self.current_message=message
-        self.nexttime=time.time()+self.toast_display_time
+        if curses.isendwin():
+            return
+        self.current_message = message
+        # Schedule removing the message from the display
+        self.timeout_handle = tillconfig.mainloop.add_timeout(
+            self.toast_display_time, self.alarm)
         # Work out where to put the window.  We're aiming for about
         # 2/3 of the screen width, around 1/3 of the way up
         # vertically.  If a toast ends up particularly high, make sure
@@ -231,44 +250,49 @@ class _toastmaster(winobject):
         # screen.
         mh, mw = maxwinsize()
         w = min((mw * 2) // 3, len(message))
-        lines=textwrap.wrap(message,w)
-        w=max(len(l) for l in lines)+4
-        h=len(lines)+2
-        y=(mh * 2) // 3 - (h // 2)
-        if y+h+1>=mh: y=mh-h-1
+        lines = textwrap.wrap(message, w)
+        w = max(len(l) for l in lines) + 4
+        h = len(lines) + 2
+        y = (mh * 2) // 3 - (h // 2)
+        if y + h + 1 >= mh:
+            y = mh - h - 1
         try:
-            self.win=curses.newwin(h, w, y, (mw - w) // 2)
+            self.win = curses.newwin(h, w, y, (mw - w) // 2)
         except curses.error:
             return self.start_display("(toast too long)")
-        self.pan=curses.panel.new_panel(self.win)
+        self.pan = curses.panel.new_panel(self.win)
         self.pan.set_userptr(self)
-        self.win.bkgdset(ord(' '),curses.color_pair(colour_error))
+        self.win.bkgdset(ord(' '), curses.color_pair(colour_error))
         self.win.clear()
-        y=1
+        y = 1
         for l in lines:
-            self.win.addstr(y,2,l)
-            y=y+1
+            self.win.addstr(y, 2, l)
+            y = y + 1
         # Flush this to the display immediately; sometimes toasts are
         # added just before starting a lengthy / potentially blocking
         # operation, and if the timer expires before the operation
         # completes the toast will never be seen.
         curses.panel.update_panels()
         curses.doupdate()
+
     def to_top(self):
         if hasattr(self,"pan"):
             self.pan.top()
+
     def alarm(self):
         if self.current_message:
             # Stop display of message
-            self.current_message=None
+            self.current_message = None
             self.pan.hide()
-            del self.pan,self.win
-            self.nexttime=(
-                time.time()+self.inter_toast_time if self.messagequeue else None)
+            del self.pan, self.win
+            # If there's another waiting, schedule its display
+            if self.messagequeue:
+                tillconfig.mainloop.add_timeout(
+                    self.inter_toast_time, self.alarm)
         else:
             self.start_display(self.messagequeue.pop(0))
 
-toaster=_toastmaster()
+toaster = _toastmaster()
 
 def toast(message):
     """Display a message briefly to the user without affecting the input
@@ -442,7 +466,7 @@ class basicpage(basicwin):
         focus (if it exists) for regular keypress processing.
 
         If there is no current input focus then one will be set in
-        _ensurepage_exists() the next time around the event loop.
+        _ensure_page_exists() the next time around the event loop.
         """
         if k in tillconfig.hotkeys:
             tillconfig.hotkeys[k]()
@@ -616,19 +640,20 @@ class alarmpopup(infopopup):
     """
     def __init__(self,*args,**kwargs):
         infopopup.__init__(self,*args,**kwargs)
-        self.remaining=300
-        event.eventlist.append(self)
+        self.dismiss_at = time.time() + 300
         self.alarm()
+
     def alarm(self):
         curses.beep()
-        self.nexttime=math.ceil(time.time())
-        self.remaining=self.remaining-1
-        if self.remaining<1:
-            if self in basicwin._focus.parents(): self.dismiss()
-            else: del event.eventlist[event.eventlist.index(self)]
+        if time.time() >= self.dismiss_at:
+            if self in basicwin._focus.parents():
+                self.dismiss()
+        else:
+            self._alarmhandle = tillconfig.mainloop.add_timeout(
+                1, self.alarm, desc="alarmpopup")
+
     def dismiss(self):
-        if self in event.eventlist:
-            del event.eventlist[event.eventlist.index(self)]
+        self._alarmhandle.cancel()
         infopopup.dismiss(self)
 
 def validate_int(s, c):
@@ -1556,6 +1581,35 @@ class datefield(editfield):
         if len(self._f) == 4 or len(self._f) == 7:
             self.set(self._f + '-')
 
+class moneyfield(editfield):
+    """A field that allows an amount of money to be entered
+
+    The amount is in whole currency units, i.e. in the UK it will be
+    pounds.pence rather than pounds*100+pence
+
+    If a "note value" key is pressed, this auto-fills that amount into
+    the field.
+    """
+    def __init__(self, y, x, w=6):
+        ui.editfield.__init__(self, y, x, w, validate=ui.validate_float)
+
+    def keypress(self, k):
+        if hasattr(k, "notevalue"):
+            self.set(str(k.notevalue))
+            ui.editfield.keypress(self, keyboard.K_CASH)
+        else:
+            ui.editfield.keypress(self, k)
+
+    def set(self, a):
+        super(moneyfield, self).set(str(a))
+
+    def read(self):
+        try:
+            a = Decimal(self._f)
+        except:
+            a = Decimal(0)
+        return a
+
 class modelfield(editfield):
     """A field that allows a model instance to be chosen
 
@@ -1929,15 +1983,14 @@ def _doupdate():
     curses.panel.update_panels()
     curses.doupdate()
 
-class curseskeyboard:
-    def fileno(self):
-        return sys.stdin.fileno()
-    def doread(self):
-        global stdwin
-        i = stdwin.getch()
-        if i == -1:
-            return
-        handle_raw_keyboard_input(i)
+def _curses_keyboard_input():
+    """Called by the mainloop whenever data is available on sys.stdin
+    """
+    global stdwin
+    i = stdwin.getch()
+    if i == -1:
+        return
+    handle_raw_keyboard_input(i)
 
 class cursesfilter:
     """Keyboard input filter that converts curses keycodes to internal
@@ -1974,6 +2027,9 @@ class cursesfilter:
     def __call__(self, keys):
         return [self._curses_to_internal(key) for key in keys]
 
+# Functions to be called after the ui and main loop are initialised
+run_after_init = []
+
 def _init(w):
     """ncurses has been initialised, and calls us with the root window.
 
@@ -1993,12 +2049,16 @@ def _init(w):
     curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
     header = clockheader(stdwin)
-    event.ticklist.append(basicpage._ensure_page_exists)
-    event.preselectlist.append(_doupdate)
     keyboard_filter_stack.insert(0, cursesfilter())
-    event.rdlist.append(curseskeyboard())
+    tillconfig.mainloop.add_fd(sys.stdin.fileno(), _curses_keyboard_input,
+                               desc="stdin")
     toaster.notify_curses_initialised()
-    event.eventloop()
+    for i in run_after_init:
+        i()
+    while tillconfig.mainloop.exit_code is None:
+        basicpage._ensure_page_exists()
+        _doupdate()
+        tillconfig.mainloop.iterate()
 
 def run():
     curses.wrapper(_init)

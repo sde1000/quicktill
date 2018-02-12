@@ -13,7 +13,8 @@ import sys, os, logging, logging.config, locale, argparse, yaml
 import termios,fcntl,array
 import socket
 import time
-from . import ui,event,td,printer,tillconfig,foodorder,user,pdrivers,cmdline,extras
+from . import ui, td, printer, tillconfig, foodorder, user
+from . import pdrivers, cmdline, extras
 from . import dbsetup
 from . import dbutils
 from . import kbdrivers
@@ -65,9 +66,10 @@ class runtill(cmdline.command):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument("-n", "--nolisten", action="store_true",
-                            dest="nolisten",
-                            help="Disable listening socket for user tokens")
+        parser.add_argument(
+            "-n", "--nolisten", action="store_true",
+            dest="nolisten",
+            help="Disable listening socket for user tokens")
         parser.add_argument(
             "-e", "--exit-option", nargs=2,
             dest="exitoptions",
@@ -94,6 +96,9 @@ class runtill(cmdline.command):
         parser.add_argument(
             "-d", "--debug-kbd", dest="debug_kbd", default=False,
             action="store_true", help="Shown an on-screen keyboard if possible")
+        parser.add_argument(
+            "-g", "--glib-mainloop", dest="glibmainloop", default=False,
+            action="store_true", help="Use GLib mainloop")
         parser.set_defaults(command=runtill.run, nolisten=False)
 
     class _dbg_kbd_input:
@@ -101,13 +106,16 @@ class runtill(cmdline.command):
         """
         def __init__(self, f):
             self.f = f
-        def fileno(self):
-            return self.f.fileno()
+            self.handle = tillconfig.mainloop.add_fd(
+                f.fileno(), self.doread, desc="debug keyboard")
+
         def doread(self):
             i = self.f.readline().strip()
             if not i:
+                log.debug("Debug keyboard closed")
+                self.handle.remove()
                 self.f.close()
-                del event.rdlist[event.rdlist.index(self)]
+                return
             ui.handle_raw_keyboard_input(ord("["))
             for c in i:
                 ui.handle_raw_keyboard_input(c)
@@ -116,20 +124,34 @@ class runtill(cmdline.command):
     @staticmethod
     def run(args):
         log.info("Starting version %s"%version)
-        try:
-            if tillconfig.usertoken_listen and not args.nolisten:
-                user.tokenlistener(tillconfig.usertoken_listen)
-            if tillconfig.usertoken_listen_v6 and not args.nolisten:
-                user.tokenlistener(tillconfig.usertoken_listen_v6,
+        # Initialise event loop
+        if args.glibmainloop:
+            from . import event_glib
+            if event_glib.GLibMainLoop:
+                tillconfig.mainloop = event_glib.GLibMainLoop()
+            else:
+                log.error("GLib not available")
+                return 1
+        else:
+            from . import event
+            tillconfig.mainloop = event.SelectorsMainLoop()
+
+        if tillconfig.usertoken_listen and not args.nolisten:
+            user.tokenlistener(tillconfig.usertoken_listen)
+        if tillconfig.usertoken_listen_v6 and not args.nolisten:
+            user.tokenlistener(tillconfig.usertoken_listen_v6,
                                    addressfamily=socket.AF_INET6)
-            if args.exitoptions:
-                tillconfig.exitoptions = args.exitoptions
-            tillconfig.idle_exit_code = args.exit_when_idle
-            tillconfig.minimum_run_time = args.minimum_run_time
-            tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
-            tillconfig.start_time = time.time()
-            td.init(tillconfig.database)
-            dbg_kbd = None
+        if args.exitoptions:
+            tillconfig.exitoptions = args.exitoptions
+        tillconfig.idle_exit_code = args.exit_when_idle
+        tillconfig.minimum_run_time = args.minimum_run_time
+        tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
+        tillconfig.start_time = time.time()
+        td.init(tillconfig.database)
+
+        dbg_kbd = None
+        try:
+            # Set up debug keyboard
             if args.debug_kbd and hasattr(tillconfig, "kbdriver"):
                 with td.orm_session():
                     kbl = {x: y.keycap if hasattr(y, "keycap") else str(y)
@@ -147,7 +169,8 @@ class runtill(cmdline.command):
                     pass_fds=[r])
                 with os.fdopen(w, 'w') as f:
                     json.dump(kbl, f)
-                event.rdlist.append(runtill._dbg_kbd_input(dbg_kbd.stdout))
+                runtill._dbg_kbd_input(dbg_kbd.stdout)
+
             ui.run()
         except:
             log.exception("Exception caught at top level")
@@ -158,7 +181,7 @@ class runtill(cmdline.command):
 
         log.info("Shutting down")
         logging.shutdown()
-        return event.shutdowncode
+        return tillconfig.mainloop.exit_code
 
 class kbdiff(cmdline.command):
     """Show differences between kbconfig and altkbconfig.
@@ -289,7 +312,7 @@ def main():
             configurl = f.readline()
     except FileNotFoundError:
         configurl = None
-    parser=argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
     parser.add_argument("--version", action="version", version=version)
     parser.add_argument("-u", "--config-url", action="store",
@@ -304,10 +327,10 @@ def main():
                         help="Database connection string; overrides "
                         "database specified in configuration file")
     parser.add_argument("-f", "--user", action="store",
-                        dest="user",type=int,default=None,
+                        dest="user", type=int, default=None,
                         help="User ID to use when no other user information "
                         "is available (use 'listusers' command to check IDs)")
-    loggroup=parser.add_mutually_exclusive_group()
+    loggroup = parser.add_mutually_exclusive_group()
     loggroup.add_argument("-y", "--log-config", help="Logging configuration file "
                           "in YAML", type=argparse.FileType('r'),
                           dest="logconfig")
@@ -321,19 +344,21 @@ def main():
                         dest="disable_printer",help="Use the null printer "
                         "instead of the configured printer")
     cmdline.command.add_subparsers(parser)
-    parser.set_defaults(configurl=configurl,configname="default",
-                        database=None,logfile=None,debug=False,
-                        interactive=False,disable_printer=False)
-    args=parser.parse_args()
+    parser.set_defaults(configurl=configurl, configname="default",
+                        database=None, logfile=None, debug=False,
+                        interactive=False, disable_printer=False)
+    args = parser.parse_args()
 
     if not hasattr(args, 'command'):
         parser.error("No command supplied")
     if not args.configurl:
         parser.error("No configuration URL provided in "
                      "%s or on command line"%configurlfile)
-    tillconfig.configversion=args.configurl
-    f=urllib.request.urlopen(args.configurl)
-    globalconfig=f.read()
+    if args.debug:
+        tillconfig.debug = True
+    tillconfig.configversion = args.configurl
+    f = urllib.request.urlopen(args.configurl)
+    globalconfig = f.read()
     f.close()
 
     # Logging configuration.  If we have a log configuration file,
@@ -371,11 +396,11 @@ def main():
     rootlog.addHandler(toasthandler)
 
     import imp
-    g=imp.new_module("globalconfig")
-    g.configname=args.configname
-    exec(globalconfig,g.__dict__)
+    g = imp.new_module("globalconfig")
+    g.configname = args.configname
+    exec(globalconfig, g.__dict__)
 
-    config=g.configurations.get(args.configname)
+    config = g.configurations.get(args.configname)
     if config is None:
         print(("Configuration \"%s\" does not exist.  "
                "Available configurations:"%args.configname))
@@ -384,27 +409,28 @@ def main():
         sys.exit(1)
 
     if args.user:
-        tillconfig.default_user=args.user
+        tillconfig.default_user = args.user
     if 'printer' in config:
-        printer.driver=config['printer']
+        printer.driver = config['printer']
     else:
         log.info("no printer configured: using nullprinter()")
-        printer.driver=pdrivers.nullprinter()
+        printer.driver = pdrivers.nullprinter()
     if args.disable_printer:
-        printer.driver=pdrivers.nullprinter(name="disabled-printer")
+        printer.driver = pdrivers.nullprinter(name="disabled-printer")
     if 'labelprinters' in config:
-        printer.labelprinters=config['labelprinters']
-    tillconfig.database=config.get('database')
-    if args.database is not None: tillconfig.database=args.database
+        printer.labelprinters = config['labelprinters']
+    tillconfig.database = config.get('database')
+    if args.database is not None:
+        tillconfig.database = args.database
     if 'kitchenprinter' in config:
-        foodorder.kitchenprinter=config['kitchenprinter']
-    foodorder.menuurl=config.get('menuurl')
-    tillconfig.pubname=config['pubname']
-    tillconfig.pubnumber=config['pubnumber']
-    tillconfig.pubaddr=config['pubaddr']
-    tillconfig.currency=config['currency']
-    tillconfig.all_payment_methods=config['all_payment_methods']
-    tillconfig.payment_methods=config['payment_methods']
+        foodorder.kitchenprinter = config['kitchenprinter']
+    foodorder.menuurl = config.get('menuurl')
+    tillconfig.pubname = config['pubname']
+    tillconfig.pubnumber = config['pubnumber']
+    tillconfig.pubaddr = config['pubaddr']
+    tillconfig.currency = config['currency']
+    tillconfig.all_payment_methods = config['all_payment_methods']
+    tillconfig.payment_methods = config['payment_methods']
     if 'kbdriver' in config:
         # Perhaps we should support multiple filters...
         ui.keyboard_filter_stack.insert(0, config['kbdriver'])
@@ -418,7 +444,7 @@ def main():
     if 'pricepolicy' in config:
         log.warning("Obsolete 'pricepolicy' key present in configuration")
     if 'format_currency' in config:
-        tillconfig.fc=config['format_currency']
+        tillconfig.fc = config['format_currency']
     if 'priceguess' in config:
         # Config files should subclass stocktype.PriceGuessHook
         # instead of specifying this
@@ -426,34 +452,34 @@ def main():
     if 'deptkeycheck' in config:
         log.warning("Obsolete 'deptkeycheck' key present in configuration")
     if 'checkdigit_print' in config:
-        tillconfig.checkdigit_print=config['checkdigit_print']
+        tillconfig.checkdigit_print = config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
-        tillconfig.checkdigit_on_usestock=config['checkdigit_on_usestock']
+        tillconfig.checkdigit_on_usestock = config['checkdigit_on_usestock']
     if 'usestock_hook' in config:
         # Config files should subclass usestock.UseStockRegularHook
         # instead of specifying this
         log.warning("Obsolete 'usestock_hook' key present in configuration")
     if 'hotkeys' in config:
-        tillconfig.hotkeys=config['hotkeys']
+        tillconfig.hotkeys = config['hotkeys']
     if 'firstpage' in config:
-        tillconfig.firstpage=config['firstpage']
+        tillconfig.firstpage = config['firstpage']
     else:
-        tillconfig.firstpage=intropage
+        tillconfig.firstpage = intropage
     if 'usertoken_handler' in config:
-        tillconfig.usertoken_handler=config['usertoken_handler']
+        tillconfig.usertoken_handler = config['usertoken_handler']
     if 'usertoken_listen' in config:
-        tillconfig.usertoken_listen=config['usertoken_listen']
+        tillconfig.usertoken_listen = config['usertoken_listen']
     if 'usertoken_listen_v6' in config:
-        tillconfig.usertoken_listen_v6=config['usertoken_listen_v6']
+        tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
 
-    if os.uname()[0]=='Linux':
-        if os.getenv('TERM')=='linux':
-            tillconfig.unblank_screen=_linux_unblank_screen
-        elif os.getenv('TERM')=='xterm':
-            os.putenv('TERM','linux')
+    if os.uname()[0] == 'Linux':
+        if os.getenv('TERM') == 'linux':
+            tillconfig.unblank_screen = _linux_unblank_screen
+        elif os.getenv('TERM') == 'xterm':
+            os.putenv('TERM', 'linux')
 
     if os.getenv('DISPLAY'):
-        tillconfig.unblank_screen=_x_unblank_screen
+        tillconfig.unblank_screen = _x_unblank_screen
 
     locale.setlocale(locale.LC_ALL,'')
 

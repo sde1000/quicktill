@@ -16,7 +16,7 @@ function decorator (permission_required) for other modules to use to
 indicate restricted functionality.
 """
 
-from . import ui, td, event, keyboard, tillconfig, cmdline
+from . import ui, td, keyboard, tillconfig, cmdline
 from .models import User, UserToken, Permission
 from sqlalchemy.orm import joinedload
 import types
@@ -292,9 +292,9 @@ class tokenlistener:
         self.s = socket.socket(addressfamily, socket.SOCK_DGRAM)
         self.s.bind(address)
         self.s.setblocking(0)
-        event.rdlist.append(self)
-    def fileno(self):
-        return self.s.fileno()
+        tillconfig.mainloop.add_fd(self.s.fileno(), self.doread,
+                                   desc="token listener")
+
     def doread(self):
         d = self.s.recv(1024).strip().decode("utf-8")
         log.debug("Received: {}".format(repr(d)))

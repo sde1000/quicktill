@@ -7,6 +7,9 @@ most of the entries here.
 
 from .models import penny
 
+# Has the --debug flag been set on the command line?
+debug = False
+
 configversion="tillconfig.py"
 
 pubname="Test Pub Name"
