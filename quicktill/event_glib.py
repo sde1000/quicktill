@@ -39,7 +39,8 @@ class GLibMainLoop:
 
         def _call(self, fd, condition, user_data, unknown):
             try:
-                if (condition & GLib.IOCondition.IN) or (condition & GLib.IOCondition.HUP):
+                if (condition & GLib.IOCondition.IN)\
+                   or (condition & GLib.IOCondition.HUP):
                     self._doread()
                 if condition & GLib.IOCondition.OUT:
                     self._dowrite()
@@ -50,7 +51,7 @@ class GLibMainLoop:
         def remove(self):
             GLib.source_remove(self._handle)
             del self._doread, self._dowrite
-            
+
     def add_fd(self, fd, read=None, write=None, desc=None):
         return self._glib_fd_watch(self, fd, read, write, desc)
 
@@ -72,7 +73,7 @@ class GLibMainLoop:
         def cancel(self):
             GLib.source_remove(self._source)
             del self._func
-                                       
+
     def add_timeout(self, timeout, func, desc=None):
         return self._glib_timeout(self, timeout, func, desc)
 
