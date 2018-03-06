@@ -50,7 +50,7 @@ class btcpopup(ui.dismisspopup):
         self._pm = pm
         self._reg = reg
         self._paymentid = payment.id
-        mh, mw = ui.maxwinsize()
+        mh, mw = ui.rootwin.size()
         self.h = mh
         self.w = mh * 2
         self.response = {}

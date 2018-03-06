@@ -277,10 +277,10 @@ class record(ui.dismisspopup):
 
         Redraw the total line at the bottom of the window.
         """
-        self.addstr(self.total_y, 2, ' ' * 28)
-        self.addstr(self.total_y, self.ttx,
-                    self.ff.format(tillconfig.fc(self.till_total)),
-                    ui.attr(ui.colour_confirm))
+        self.win.addstr(self.total_y, 2, ' ' * 28)
+        self.win.addstr(self.total_y, self.ttx,
+                        self.ff.format(tillconfig.fc(self.till_total)),
+                        ui.colour_confirm)
         try:
             total = sum(pm.actual_total for pm in self.pms)
             difference = self.till_total - total
@@ -292,17 +292,19 @@ class record(ui.dismisspopup):
                 description = "Total (UP by {})"
             colour = ui.colour_error if difference > Decimal(20) \
                      else ui.colour_input
-            self.addstr(self.total_y, 2,
-                        description.format(tillconfig.fc(difference)),
-                        ui.attr(colour))
-            self.addstr(self.total_y, self.atx,
-                        self.ff.format(tillconfig.fc(total)),
-                        ui.attr(ui.colour_confirm))
+            self.win.addstr(
+                self.total_y, 2,
+                description.format(tillconfig.fc(difference)),
+                colour)
+            self.win.addstr(
+                self.total_y, self.atx,
+                self.ff.format(tillconfig.fc(total)),
+                ui.colour_confirm)
         except:
-            self.addstr(self.total_y, 2, "Can't calculate total",
-                        ui.attr(ui.colour_error))
-            self.addstr(self.total_y, self.atx, self.ff.format("Error"),
-                        ui.attr(ui.colour_error))
+            self.win.addstr(self.total_y, 2, "Can't calculate total",
+                            ui.colour_error)
+            self.win.addstr(self.total_y, self.atx, self.ff.format("Error"),
+                            ui.colour_error)
 
     def session_valid(self):
         """Is the session eligible to have its totals recorded?

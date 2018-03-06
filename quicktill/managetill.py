@@ -124,9 +124,16 @@ def debug_menu():
         ui.toast("Toast number two")
         ui.toast("The third toast")
 
+    def long_toast():
+        import time
+        ui.toast("Delay for 10 seconds...")
+        time.sleep(10)
+        ui.toast("Delay done")
+
     menu = [
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
+        ("3", "Toast covering a long operation", long_toast, None),
     ]
     ui.keymenu(menu, title="Debug")
 

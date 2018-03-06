@@ -379,18 +379,20 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
         self.draw()
 
     def draw(self):
-        pos = self.getyx()
-        self.addstr(self.y, self.x, ' ' * self.w, ui.attr_reverse())
+        pos = self.win.getyx()
+        self.win.addstr(self.y, self.x, ' ' * self.w,
+                        self.win.colour.reversed)
         if self.f:
-            self.addstr(self.y, self.x, self.f[:self.w], ui.attr_reverse())
+            self.win.addstr(self.y, self.x, self.f[:self.w],
+                            self.win.colour.reversed)
         else:
             if self.focused:
-                self.addstr(self.y, self.x, self.message[:self.w],
-                            ui.attr_reverse())
+                self.win.addstr(self.y, self.x, self.message[:self.w],
+                                self.win.colour.reversed)
         if self.focused:
-            self.move(self.y, self.x)
+            self.win.move(self.y, self.x)
         else:
-            self.move(*pos)
+            self.win.move(*pos)
 
     def focus(self):
         super(tokenfield, self).focus()

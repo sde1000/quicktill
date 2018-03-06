@@ -46,7 +46,7 @@ class page(ui.basicpage):
         y = 0
         for l in ml:
             for line in l.display(self.w):
-                self.addstr(y, 0, line)
+                self.win.addstr(y, 0, line)
                 y = y + 1
             if y >= h:
                 break
@@ -77,13 +77,13 @@ class page(ui.basicpage):
         y = 0
         for l in ml:
             for line in l.display(self.w):
-                self.addstr(y, 0, line)
+                self.win.addstr(y, 0, line)
                 y = y + 1
             if y >= h:
                 break
 
     def redraw(self):
-        self.erase()
+        self.win.erase()
         pl = ui.lrline("Ctrl+X = Clear; Ctrl+Y = Cancel.  "
                        "Press S for stock management.  "
                        "Press U to use stock.  Press R to record waste.  "
@@ -92,7 +92,7 @@ class page(ui.basicpage):
                        "Press L to lock.").display(self.w)
         y = self.h - len(pl)
         for l in pl:
-            self.addstr(y, 0, l)
+            self.win.addstr(y, 0, l)
             y = y + 1
         if self.display == 0:
             self.drawlines(self.h - len(pl))

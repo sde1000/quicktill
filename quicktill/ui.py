@@ -7,9 +7,6 @@ import math
 import sys
 import textwrap
 import traceback
-import locale
-import curses, curses.ascii, curses.panel
-import os.path
 from . import keyboard, tillconfig, td
 from .td import func
 import sqlalchemy.inspection
@@ -17,67 +14,77 @@ import sqlalchemy.inspection
 import logging
 log = logging.getLogger(__name__)
 
-c = locale.getpreferredencoding()
-
-colour_header=1
-colour_error=1 # white on red
-colour_info=2  # black on green
-colour_input=3 # white on blue
-colour_line=4
-colour_cashline=5
-colour_changeline=6
-colour_cancelline=7
-colour_confirm=8 # black on cyan
-
-def attr(colour):
-    """Convert a colour number to a value suitable to be passed as attr
+class colourpair:
+    """A pair of colours to be used for rendering text
     """
-    return curses.color_pair(colour)
+    all_colourpairs = []
+    def __init__(self, name, foreground, background):
+        self.name = name
+        self.foreground = foreground
+        self.background = background
+        self.all_colourpairs.append(self)
 
-def attr_reverse(attr=0):
-    return attr | curses.A_REVERSE
+    @property
+    def reversed(self):
+        if hasattr(self, '_reversed'):
+            return self._reversed
+        self._reversed = colourpair(self.name + "_reversed", self.background,
+                                    self.foreground)
+        self._reversed._reversed = self
+        return self._reversed
 
-def maxwinsize():
-    """Maximum window height and width, in characters
-    """
-    return stdwin.getmaxyx()
+colour_default = colourpair("header", "white", "black")
+colour_header = colourpair("header", "white", "red")
+colour_error = colourpair("error", "white", "red")
+colour_info = colourpair("info", "black", "green")
+colour_input = colourpair("input", "white", "blue")
+colour_line = colourpair("line", "black", "yellow")
+colour_cashline = colourpair("cashline", "green", "black")
+colour_changeline = colourpair("changeline", "yellow", "black")
+colour_cancelline = colourpair("cancelline", "blue", "black")
+colour_confirm = colourpair("confirm", "black", "cyan")
+
+# The display system root window.
+rootwin = None
+# Access to the header / clock line, if present, or the
+# window system title bar otherwise
+header = None
 
 class clockheader:
-    """
-    A single-line header at the top of the screen, with a clock at the
-    right-hand side.  Can be passed text for the top-left and the
-    middle.  Draws directly on the curses root window, not into a
-    panel.
+    """A single-line header at the top of the screen
 
+    Has a clock at the right-hand side.  Can be passed text for the
+    top-left and the middle.  Draws directly on the root window, not
+    into a subwindow.
     """
     def __init__(self, win, left="Quicktill", middle=""):
-        self.stdwin = win
-        my, self.mx = maxwinsize()
+        self.win = win
         self.left = left
         self.middle = middle
         self.alarm()
 
     def redraw(self):
-        """
+        """Draw the header based on the current left and middle text
+
         The header line consists of the title of the page at the left,
         optionally a summary of what's on other pages in the middle,
         and the clock at the right.  If we do not have enough space,
         we truncate the summary section until we do.  If we still
         don't, we truncate the page name.
-        
         """
+        my, mx = rootwin.size()
         m = self.left
         s = self.middle
         t = time.strftime("%a %d %b %Y %H:%M:%S %Z")
         def cat(m, s, t):
             w = len(m) + len(s) + len(t)
-            pad1 = (self.mx - w) // 2
+            pad1 = (mx - w) // 2
             pad2 = pad1
-            if w + pad1 + pad2 != self.mx:
+            if w + pad1 + pad2 != mx:
                 pad1 = pad1 + 1
-            return ''.join([m,' '*pad1,s,' '*pad2,t])
+            return ''.join([m, ' ' * pad1, s, ' ' * pad2, t])
         x = cat(m, s, t)
-        while len(x) > self.mx:
+        while len(x) > mx:
             if len(s) > 0:
                 s = s[:-1]
             elif len(m) > 0:
@@ -85,7 +92,7 @@ class clockheader:
             else:
                 t = t[1:]
             x = cat(m, s, t)
-        self.stdwin.addstr(0, 0, x.encode(c), curses.color_pair(colour_header))
+        self.win.addstr(0, 0, x, colour_header)
 
     def update(self, left=None, middle=None):
         if left is not None:
@@ -98,17 +105,18 @@ class clockheader:
         self.redraw()
         now = time.time()
         nexttime = math.ceil(now) + 0.01
-        # Schedule a callback for the next display update
         tillconfig.mainloop.add_timeout(nexttime - now, self.alarm)
 
 def formattime(ts):
     "Returns ts formatted as %Y-%m-%d %H:%M:%S"
-    if ts is None: return ""
+    if ts is None:
+        return ""
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 def formatdate(ts):
     "Returns ts formatted as %Y-%m-%d"
-    if ts is None: return ""
+    if ts is None:
+        return ""
     return ts.strftime("%Y-%m-%d")
 
 def handle_keyboard_input(k):
@@ -129,8 +137,6 @@ def handle_keyboard_input(k):
 keyboard_filter_stack = []
 
 def handle_raw_keyboard_input(k):
-    global keyboard_filter_stack
-
     input = [k]
 
     for f in keyboard_filter_stack:
@@ -146,47 +152,12 @@ def current_user():
     found, or None if there is none.
 
     """
-    stack=basicwin._focus.parents()
+    stack = basicwin._focus.parents()
     for i in stack:
-        if hasattr(i,'user'): return i.user
+        if hasattr(i, 'user'):
+            return i.user
 
-class winobject(object):
-    """Any class that has win and pan attributes.  Not instantiated
-    directly.
-
-    """
-    def addstr(self,y,x,s,attr=None):
-        try:
-            if attr is None:
-                self.win.addstr(y,x,s.encode(c))
-            else:
-                self.win.addstr(y,x,s.encode(c),attr)
-        except curses.error:
-            log.debug("addstr problem: len(s)=%d; s=%s",len(s),repr(s))
-
-    def wrapstr(self, y, x, width, s, attr=None):
-        """Display a string wrapped to specified width.
-
-        Returns the number of lines that the string was wrapped over.
-        """
-        lines = 0
-        for line in s.splitlines():
-            if line:
-                for wrappedline in textwrap.wrap(line, width):
-                    self.addstr(y + lines, x, wrappedline, attr)
-                    lines += 1
-            else:
-                lines += 1
-        return lines
-
-    def getyx(self):
-        return self.win.getyx()
-    def move(self, y, x):
-        return self.win.move(y, x)
-    def erase(self):
-        return self.win.erase()
-
-class _toastmaster(winobject):
+class _toastmaster:
     """Manages a queue of messages to be displayed to the user without
     affecting the input focus.  A single instance of this object is
     created during UI initialisation.
@@ -200,7 +171,7 @@ class _toastmaster(winobject):
     def __init__(self):
         self.messagequeue = []
         self.current_message = None
-        self.curses_initialised = False
+        self.display_initialised = False
 
     def toast(self, message):
         """Display the message to the user.
@@ -213,7 +184,7 @@ class _toastmaster(winobject):
         """
         if message in self.messagequeue:
             return
-        if not self.curses_initialised:
+        if not self.display_initialised:
             self.messagequeue.append(message)
             return
         if message == self.current_message:
@@ -228,16 +199,16 @@ class _toastmaster(winobject):
         else:
             self.start_display(message)
 
-    def notify_curses_initialised(self):
-        self.curses_initialised = True
+    def notify_display_initialised(self):
+        self.display_initialised = True
         if self.messagequeue:
             self.alarm()
 
     def start_display(self, message):
         # Ensure that we do not attempt to display a toast (for example, an
         # error log entry from an exception caught at the top level of the
-        # application) if curses has already been deinitialised.
-        if curses.isendwin():
+        # application) if the display system has already been deinitialised.
+        if rootwin.isendwin():
             return
         self.current_message = message
         # Schedule removing the message from the display
@@ -248,7 +219,7 @@ class _toastmaster(winobject):
         # vertically.  If a toast ends up particularly high, make sure
         # we always have at least one blank line at the bottom of the
         # screen.
-        mh, mw = maxwinsize()
+        mh, mw = rootwin.size()
         w = min((mw * 2) // 3, len(message))
         lines = textwrap.wrap(message, w)
         w = max(len(l) for l in lines) + 4
@@ -257,13 +228,11 @@ class _toastmaster(winobject):
         if y + h + 1 >= mh:
             y = mh - h - 1
         try:
-            self.win = curses.newwin(h, w, y, (mw - w) // 2)
-        except curses.error:
+            self.win = rootwin.new(
+                h, w, y, (mw - w) // 2,
+                colour=colour_error, always_on_top=True)
+        except:
             return self.start_display("(toast too long)")
-        self.pan = curses.panel.new_panel(self.win)
-        self.pan.set_userptr(self)
-        self.win.bkgdset(ord(' '), curses.color_pair(colour_error))
-        self.win.clear()
         y = 1
         for l in lines:
             self.win.addstr(y, 2, l)
@@ -272,19 +241,14 @@ class _toastmaster(winobject):
         # added just before starting a lengthy / potentially blocking
         # operation, and if the timer expires before the operation
         # completes the toast will never be seen.
-        curses.panel.update_panels()
-        curses.doupdate()
-
-    def to_top(self):
-        if hasattr(self,"pan"):
-            self.pan.top()
+        rootwin.flush()
 
     def alarm(self):
         if self.current_message:
             # Stop display of message
             self.current_message = None
-            self.pan.hide()
-            del self.pan, self.win
+            self.win.destroy()
+            del self.win
             # If there's another waiting, schedule its display
             if self.messagequeue:
                 tillconfig.mainloop.add_timeout(
@@ -302,7 +266,7 @@ def toast(message):
     global toaster
     toaster.toast(message)
 
-class ignore_hotkeys(object):
+class ignore_hotkeys:
     """
     Mixin class for UI elements that disables handling of hotkeys;
     they are passed to the input focus like all other keypresses.
@@ -311,7 +275,7 @@ class ignore_hotkeys(object):
     def hotkeypress(self,k):
         basicwin._focus.keypress(k)
 
-class basicwin(winobject):
+class basicwin:
     """Container for all pages, popup windows and fields.
 
     It is required that the parent holds the input focus whenever a
@@ -320,50 +284,55 @@ class basicwin(winobject):
     """
     _focus=None
     def __init__(self):
-        self.parent=basicwin._focus
-        log.debug("New %s with parent %s",self,self.parent)
+        self.parent = basicwin._focus
+        log.debug("New %s with parent %s", self, self.parent)
+
     @property
     def focused(self):
         """
         Do we hold the focus at the moment?
 
         """
-        return basicwin._focus==self
+        return basicwin._focus == self
+
     def focus(self):
         """Called when we are being told to take the focus.
 
         """
-        if basicwin._focus!=self:
-            oldfocus=basicwin._focus
-            basicwin._focus=self
+        if basicwin._focus != self:
+            oldfocus = basicwin._focus
+            basicwin._focus = self
             oldfocus.defocus()
-            log.debug("Focus %s -> %s"%(oldfocus,self))
+            log.debug("Focus %s -> %s", oldfocus, self)
+
     def defocus(self):
         """Called when we are being informed that we have (already) lost the
         focus.
-
         """
         pass
+
     def parents(self):
-        if self.parent==self:
+        if self.parent == self:
             return [self]
-        return [self]+self.parent.parents()
-    def keypress(self,k):
+        return [self] + self.parent.parents()
+
+    def keypress(self, k):
         pass
-    def hotkeypress(self,k):
+
+    def hotkeypress(self, k):
         """
         We get to look at keypress events before anything else does.
         If we don't do anything with this keypress we are required to
         pass it on to our parent.
-
         """
         self.parent.hotkeypress(k)
 
 class basicpage(basicwin):
-    _pagelist=[]
-    _basepage=None
+    _pagelist = []
+    _basepage = None
     def __init__(self):
-        """
+        """Create a new page.
+
         Create a new page.  This function should be called at
         the start of the __init__ function of any subclass.
 
@@ -374,22 +343,29 @@ class basicpage(basicwin):
         # the panel stack.
         if basicpage._basepage:
             basicpage._basepage.deselect()
-        (my, mx) = stdwin.getmaxyx()
-        self.win = curses.newwin(my - 1, mx, 1, 0)
-        self.pan = curses.panel.new_panel(self.win)
-        self.pan.set_userptr(self)
+        my, mx = rootwin.size()
+        self.win = rootwin.new(my - 1, mx, 1, 0)
+        # XXX In the past, self.win was a native ncurses window object
+        # and we had to use a wrapper for addstr to deal with
+        # character encodings.  Now self.win is a python object with
+        # its own addstr method; copying it here is redundant and done
+        # only for compatibility with code that hasn't been updated
+        # yet
+        self.addstr = self.win.addstr
         basicpage._pagelist.append(self)
-        (self.h, self.w) = self.win.getmaxyx()
+        self.h, self.w = self.win.size()
         self.savedfocus = self
         self.stack = None
         basicpage._basepage = self
         basicwin._focus = self
         basicwin.__init__(self) # Sets self.parent to self - ok!
-        toaster.to_top()
+
     def pagename(self):
         return "Basic page"
+
     def pagesummary(self):
         return ""
+
     def select(self):
         if basicpage._basepage == self:
             return # Nothing to do
@@ -398,14 +374,11 @@ class basicpage(basicwin):
             basicpage._basepage.deselect()
         basicpage._basepage = self
         basicwin._focus = self.savedfocus
-        self.pan.show()
-        if self.stack:
-            for i in self.stack:
-                i.show()
         self.savedfocus = None
+        self.stack.restore()
         self.stack = None
         self.updateheader()
-        toaster.to_top()
+
     def deselect(self):
         """Deselect this page.
 
@@ -415,28 +388,16 @@ class basicpage(basicwin):
         if basicpage._basepage != self:
             return
         self.savedfocus = basicwin._focus
-        l = []
-        t = curses.panel.top_panel()
-        while t.userptr() != self:
-            if t.userptr() == toaster:
-                t = t.below()
-                continue # Ignore any toast
-            st = t
-            l.append(t)
-            t = t.below()
-            st.hide()
-        l.reverse()
-        self.stack = l
-        self.pan.hide()
-        basicpage._basepage=None
-        basicwin._focus=None
+        self.stack = self.win.save_stack()
+        basicpage._basepage = None
+        basicwin._focus = None
 
     def dismiss(self):
         """Remove this page."""
         if basicpage._basepage == self:
             self.deselect()
-        del self.pan, self.win, self.stack
-        del basicpage._pagelist[basicpage._pagelist.index(self)]
+        del self.win, self.stack
+        basicpage._pagelist.remove(self)
 
     @staticmethod
     def updateheader():
@@ -477,48 +438,56 @@ class basicpage(basicwin):
                 basicwin._focus.keypress(k)
 
 class basicpopup(basicwin):
-    def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
+    def __init__(self, h, w, title=None, cleartext=None, colour=colour_error,
                  keymap={}):
         basicwin.__init__(self)
         # Grab the focus so that we hold it while we create any necessary
         # child UI elements
         self.focus()
-        self.keymap=keymap
-        mh, mw = maxwinsize()
-        if title: w=max(w,len(title)+3)
-        if cleartext: w=max(w,len(cleartext)+3)
-        w=min(w,mw)
-        h=min(h,mh)
-        y=(mh - h) // 2
-        x=(mw - w) // 2
-        self.win=curses.newwin(h,w,y,x)
-        self.pan=curses.panel.new_panel(self.win)
-        self.pan.set_userptr(self)
-        self.win.bkgdset(ord(' '),curses.color_pair(colour))
-        self.win.clear()
+        self.keymap = keymap
+        mh, mw = rootwin.size()
+        if title:
+            w = max(w, len(title) + 3)
+        if cleartext:
+            w = max(w, len(cleartext) + 3)
+        w = min(w, mw)
+        h = min(h, mh)
+        y = (mh - h) // 2
+        x = (mw - w) // 2
+        self.win = rootwin.new(h, w, y, x, colour=colour)
+        # XXX In the past, self.win was a native ncurses window object
+        # and we had to use a wrapper for addstr to deal with
+        # character encodings.  Now self.win is a python object with
+        # its own addstr method; copying it here is redundant and done
+        # only for compatibility with code that hasn't been updated
+        # yet
+        self.addstr = self.win.addstr
         self.win.border()
-        if title: self.addstr(0,1,title)
-        if cleartext: self.addstr(h-1,w-1-len(cleartext),cleartext)
-        self.pan.show()
-        toaster.to_top()
+        if title:
+            self.win.addstr(0, 1, title)
+        if cleartext:
+            self.win.addstr(h - 1, w - 1 - len(cleartext), cleartext)
+
     def dismiss(self):
-        self.pan.hide()
-        del self.pan,self.win
         self.parent.focus()
-    def keypress(self,k):
+        self.win.destroy()
+        del self.win
+
+    def keypress(self, k):
         # We never want to pass unhandled keypresses back to the parent
         # of the popup.
         if k in self.keymap:
-            i=self.keymap[k]
+            i = self.keymap[k]
             if len(i) > 2 and i[2]:
-                if i[2]: self.dismiss()
+                if i[2]:
+                    self.dismiss()
             if i[0] is not None:
                 if len(i) > 1 and i[1] is not None:
                     i[0](*i[1])
                 else:
                     i[0]()
         else:
-            curses.beep()
+            beep()
 
 class dismisspopup(basicpopup):
     """Adds optional processing of an implicit 'Dismiss' key and
@@ -556,9 +525,11 @@ class listpopup(dismisspopup):
     def __init__(self,linelist,default=0,header=None,title=None,
                  show_cursor=True,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_input,w=None,keymap={}):
-        dl=[x if isinstance(x,emptyline) else line(x) for x in linelist]
-        hl=[x if isinstance(x,emptyline) else marginline(lrline(x),margin=1)
-            for x in header] if header else []
+        dl = [x if isinstance(x, emptyline) else line(x, colour=colour)
+              for x in linelist]
+        hl = [x if isinstance(x, emptyline) else marginline(
+            lrline(x, colour=colour), margin=1)
+              for x in header] if header else []
         if w is None:
             w=max((x.idealwidth() for x in dl))+2 if len(dl)>0 else 0
             w=max(25,w)
@@ -566,31 +537,34 @@ class listpopup(dismisspopup):
             w=max(len(title)+3,w)
         # We know that the created window will not be wider than the
         # width of the screen.
-        mh, mw = maxwinsize()
+        mh, mw = rootwin.size()
         w=min(w,mw)
         h=sum(len(x.display(w-2)) for x in hl+dl)+2
         dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
                               dismiss=dismiss,cleartext=cleartext)
-        (h,w)=self.win.getmaxyx()
-        y=1
+        self.win.set_cursor(False)
+        h, w = self.win.size()
+        y = 1
         for hd in hl:
-            l=hd.display(w-2)
+            l = hd.display(w - 2)
             for i in l:
-                self.addstr(y,1,i)
-                y=y+1
+                self.win.addstr(y, 1, i)
+                y = y + 1
         # Note about keyboard handling: the scrollable will always have
         # the focus.  It will deal with cursor keys itself.  All other
         # keys will be passed through to our keypress() method, which
         # may well be overridden in a subclass.  We expect subclasses to
         # implement keypress() themselves, and access the methods of the
         # scrollable directly.  If there's no scrollable this will fail!
-        if len(linelist)>0:
-            log.debug("listpopup scrollable %d %d %d %d",y,1,w-2,h-y-1)
-            self.s=scrollable(y,1,w-2,h-y-1,dl,show_cursor=show_cursor)
-            self.s.cursor=default if default is not None else 0
+        if len(linelist) > 0:
+            log.debug("listpopup scrollable %d %d %d %d",
+                      y, 1, w - 2, h - y - 1)
+            self.s = scrollable(y, 1, w - 2, h - y - 1, dl,
+                                show_cursor=show_cursor)
+            self.s.cursor = default if default is not None else 0
             self.s.focus()
         else:
-            self.s=None
+            self.s = None
 
 class infopopup(listpopup):
     """
@@ -605,7 +579,7 @@ class infopopup(listpopup):
     def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
                  cleartext=None,colour=colour_error,keymap={}):
         cleartext=self.get_cleartext(cleartext,dismiss)
-        mh, mw = maxwinsize()
+        mh, mw = rootwin.size()
         maxw=mw-4
         maxh=mh-5
         # We want the window to end up as close to 2/3 the maximum width
@@ -625,7 +599,7 @@ class infopopup(listpopup):
         while len(t)>maxh and w<maxw:
             w=w+1
             t=formatat(w)
-        t=[emptyline()]+[marginline(line(x),margin=1) for x in t]+[emptyline()]
+        t = [emptyline(colour=colour)] + [marginline(line(x, colour=colour), margin=1) for x in t] + [emptyline(colour=colour)]
         listpopup.__init__(self,t,title=title,dismiss=dismiss,
                            cleartext=cleartext,colour=colour,keymap=keymap,
                            show_cursor=False,w=w+4)
@@ -644,7 +618,7 @@ class alarmpopup(infopopup):
         self.alarm()
 
     def alarm(self):
-        curses.beep()
+        beep()
         if time.time() >= self.dismiss_at:
             if self in basicwin._focus.parents():
                 self.dismiss()
@@ -691,17 +665,18 @@ def validate_positive_float(s, c):
 
 class label(basicwin):
     """An area of a window that has a value that can be changed."""
-    def __init__(self, y, x, w, contents="", align="<", attr=None):
+    def __init__(self, y, x, w, contents="", align="<", colour=None):
         super(label, self).__init__()
         self.win = self.parent.win
         self._y = y
         self._x = x
         self._format = "%s%d.%d" % (align, w, w)
-        self.set(contents, attr=attr)
+        self.set(contents, colour=colour)
 
-    def set(self, contents, attr=None):
+    def set(self, contents, colour=None):
         y, x = self.win.getyx()
-        self.addstr(self._y, self._x, format(str(contents), self._format), attr)
+        self.win.addstr(self._y, self._x,
+                        format(str(contents), self._format), colour)
         self.win.move(y, x)
 
 class field(basicwin):
@@ -711,15 +686,15 @@ class field(basicwin):
     peer fields.
     """
     def __init__(self, keymap={}):
-        self.nextfield=None
-        self.prevfield=None
+        self.nextfield = None
+        self.prevfield = None
         # We _must_ copy the provided keymap; it is permissible for our
         # keymap to be modified after initialisation, and it would be
         # a Very Bad Thing (TM) for the default empty keymap to be
         # changed!
-        self.keymap=keymap.copy()
+        self.keymap = keymap.copy()
         basicwin.__init__(self)
-        self.win=self.parent.win
+        self.win = self.parent.win
 
     def keypress(self,k):
         # All keypresses handled here are defaults; if they are present
@@ -799,9 +774,11 @@ class scrollable(field):
         self.cursor=default
         self.top=0
         self.set(dl)
+
     def set(self,dl):
         self.dl=dl
         self.redraw() # Does implicit set_cursor()
+
     def set_cursor(self,c):
         if len(self.dl)==0 and not self.lastline:
             self.cursor=None
@@ -810,6 +787,7 @@ class scrollable(field):
         last_valid_cursor=len(self.dl) if self.lastline else len(self.dl)-1
         if c>last_valid_cursor: c=last_valid_cursor
         self.cursor=c
+
     def focus(self):
         # If we are obtaining the focus from the previous field, we should
         # move the cursor to the top.  If we are obtaining it from the next
@@ -820,9 +798,11 @@ class scrollable(field):
             self.set_cursor(len(self.dl))
         field.focus(self)
         self.redraw()
+
     def defocus(self):
         field.defocus(self)
         self.drawdl() # We don't want to scroll
+
     def drawdl(self):
         """
         Redraw the area with the current scroll and cursor locations.
@@ -832,8 +812,8 @@ class scrollable(field):
 
         """
         # First clear the drawing space
-        for y in range(self.y,self.y+self.h):
-            self.addstr(y,self.x,' '*self.w)
+        for y in range(self.y, self.y + self.h):
+            self.win.addstr(y, self.x, ' ' * self.w)
         # Special case: if top is 1 and cursor is 1 and the first item
         # in the list is exactly one line high, we can set top to zero
         # so that the first line is displayed.  Only worthwhile if we
@@ -847,7 +827,7 @@ class scrollable(field):
         i=self.top
         lastcomplete=i
         if i>0:
-            self.addstr(y,self.x,'...')
+            self.win.addstr(y, self.x, '...')
             y=y+1
         cursor_y=None
         end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
@@ -858,15 +838,18 @@ class scrollable(field):
                 item=self.dl[i]
             if item is None: break
             l=item.display(self.w)
-            colour=item.colour
-            ccolour=item.cursor_colour
+            colour = item.colour if item.colour else self.win.colour
+            ccolour = item.cursor_colour if item.cursor_colour \
+                      else self.win.colour.reversed
             if self.focused and i==self.cursor and self.show_cursor:
                 colour=ccolour
                 cursor_y=y+item.cursor[1]
                 cursor_x=self.x+item.cursor[0]
             for j in l:
                 if y<(self.y+self.h):
-                    self.addstr(y,self.x,"%s%s"%(j,' '*(self.w-len(j))),colour)
+                    self.win.addstr(
+                        y, self.x, "%s%s" % (
+                            j, ' ' * (self.w - len(j))), colour)
                 y=y+1
             if y<=(self.y+self.h):
                 lastcomplete=i
@@ -876,10 +859,12 @@ class scrollable(field):
         if end_of_displaylist>i:
             # Check whether we are about to overwrite any of the last item
             if y>=self.y+self.h+1: lastcomplete=lastcomplete-1
-            self.addstr(self.y+self.h-1,self.x,'...'+' '*(self.w-3))
+            self.win.addstr(
+                self.y + self.h - 1, self.x, '...' + ' ' * (self.w - 3))
         if cursor_y is not None and cursor_y<(self.y+self.h):
             self.win.move(cursor_y,cursor_x)
         return lastcomplete
+
     def redraw(self):
         """
         Updates the field, scrolling until the cursor is visible.  If we
@@ -898,11 +883,15 @@ class scrollable(field):
             self.top=self.top+1
             lastitem=self.drawdl()
         self.display_complete=(lastitem==end_of_displaylist-1)
+
     def cursor_at_start(self):
-        if self.cursor is None: return True
-        return self.cursor==0
+        if self.cursor is None:
+            return True
+        return self.cursor == 0
+
     def cursor_at_end(self):
-        if self.cursor is None: return True
+        if self.cursor is None:
+            return True
         if self.show_cursor:
             if self.lastline:
                 return self.cursor>=len(self.dl)
@@ -910,8 +899,10 @@ class scrollable(field):
                 return self.cursor==len(self.dl)-1 or len(self.dl)==0
         else:
             return self.display_complete
+
     def cursor_on_lastline(self):
         return self.cursor==len(self.dl)
+
     def cursor_up(self,n=1):
         if self.cursor_at_start():
             if self.prevfield is not None and self.focused:
@@ -919,6 +910,7 @@ class scrollable(field):
         else:
             self.set_cursor(self.cursor-n)
         self.redraw()
+
     def cursor_down(self,n=1):
         if self.cursor_at_end():
             if self.nextfield is not None and self.focused:
@@ -926,32 +918,41 @@ class scrollable(field):
         else:
             self.set_cursor(self.cursor+n)
         self.redraw()
-    def keypress(self,k):
-        if k==keyboard.K_DOWN: self.cursor_down(1)
-        elif k==keyboard.K_UP: self.cursor_up(1)
-        elif k==keyboard.K_RIGHT: self.cursor_down(5)
-        elif k==keyboard.K_LEFT: self.cursor_up(5)
-        elif k==curses.KEY_NPAGE: self.cursor_down(10)
-        elif k==curses.KEY_PPAGE: self.cursor_up(10)
-        else: field.keypress(self,k)
 
-class emptyline(object):
-    """
-    A line for use in a scrollable.  Has a natural colour, a "cursor
-    is here" colour, and an optional "selected" colour.  This line has
+    def keypress(self, k):
+        if k == keyboard.K_DOWN:
+            self.cursor_down(1)
+        elif k == keyboard.K_UP:
+            self.cursor_up(1)
+        elif k == keyboard.K_RIGHT:
+            self.cursor_down(5)
+        elif k == keyboard.K_LEFT:
+            self.cursor_up(5)
+        elif k == keyboard.K_PAGEDOWN:
+            self.cursor_down(10)
+        elif k == keyboard.K_PAGEUP:
+            self.cursor_up(10)
+        else:
+            field.keypress(self, k)
+
+class emptyline:
+    """A line for use in a scrollable.
+
+    Has a natural colour and a "cursor is here" colour.  This line has
     no text.
-
     """
-    def __init__(self,colour=None,userdata=None):
-        if colour is None: colour=curses.color_pair(0)
-        self.colour=curses.color_pair(colour)
-        self.cursor_colour=self.colour|curses.A_REVERSE
-        self.userdata=userdata
+    def __init__(self, colour=None, userdata=None):
+        self.colour = colour
+        self.cursor_colour = colour.reversed if colour else None
+        self.userdata = userdata
+
     def update(self):
         pass
+
     def idealwidth(self):
         return 0
-    def display(self,width):
+
+    def display(self, width):
         """
         Returns a list of lines (of length 1), with one empty line.
 
@@ -959,56 +960,61 @@ class emptyline(object):
         # After display has been called, the caller can read 'cursor' to
         # find our preferred location for the cursor if we are selected.
         # It's a (x,y) tuple where y is 0 for the first line.
-        self.cursor=(0,0)
+        self.cursor = (0, 0)
         return [""]
 
 class emptylines(emptyline):
-    def __init__(self,colour=None,lines=1,userdata=None):
+    def __init__(self, colour=None, lines=1, userdata=None):
         emptyline.__init__(self,colour,userdata)
-        self.lines=lines
-    def display(self,width):
-        self.cursor=(0,0)
-        return [""]*self.lines
+        self.lines = lines
+
+    def display(self, width):
+        self.cursor = (0, 0)
+        return [""] * self.lines
 
 class line(emptyline):
-    """
-    A line for use in a scrollable.  Has a natural colour, a "cursor
-    is here" colour, and some text.  If the text is too long it will
-    be truncated; this line will never wrap.
+    """A line for use in a scrollable.
 
+    Has a natural colour, a "cursor is here" colour, and some text.
+    If either colour is None, the colour of the underlying window will
+    be used instead.  If the text is too long it will be truncated;
+    this line will never wrap.
     """
-    def __init__(self,text="",colour=None,userdata=None):
-        emptyline.__init__(self,colour,userdata)
-        self.text=text
+    def __init__(self, text="", colour=None, userdata=None):
+        emptyline.__init__(self, colour, userdata)
+        self.text = text
+
     def idealwidth(self):
         return len(self.text)
-    def display(self,width):
+
+    def display(self, width):
         """
         Returns a list of lines (of length 1), truncated to the
         specified maximum width.
-
         """
         # After display has been called, the caller can read 'cursor' to
         # find our preferred location for the cursor if we are selected.
         # It's a (x,y) tuple where y is 0 for the first line.
-        self.cursor=(0,0)
+        self.cursor = (0, 0)
         return [self.text[:width]]
 
 class marginline(emptyline):
-    """
-    Indent another line with a margin at the left and right.
+    """Indent another line with a margin at the left and right.
 
+    Colour is taken from the line to be indented.
     """
-    def __init__(self,l,margin=0,colour=None,userdata=None):
-        emptyline.__init__(self,colour,userdata)
-        self.l=l
-        self.margin=margin
+    def __init__(self, l, margin=0):
+        emptyline.__init__(self, l.colour, l.userdata)
+        self.l = l
+        self.margin = margin
+
     def idealwidth(self):
-        return self.l.idealwidth()+(2*self.margin)
+        return self.l.idealwidth() + (2 * self.margin)
+
     def display(self,width):
-        m=' '*self.margin
-        ll=[m+x+m for x in self.l.display(width-(2*self.margin))]
-        cursor=(self.l.cursor[0]+self.margin,self.l.cursor[1])
+        m = ' ' * self.margin
+        ll = [m + x + m for x in self.l.display(width - (2 * self.margin))]
+        cursor = (self.l.cursor[0] + self.margin, self.l.cursor[1])
         return ll
 
 class lrline(emptyline):
@@ -1022,9 +1028,11 @@ class lrline(emptyline):
         emptyline.__init__(self, colour)
         self.ltext = ltext
         self.rtext = rtext
+
     def idealwidth(self):
         return len(self.ltext) + (len(self.rtext) + 1 \
                                   if len(self.rtext) > 0 else 0)
+
     def display(self, width):
         """Format for display.
 
@@ -1205,6 +1213,7 @@ class menu(listpopup):
         listpopup.__init__(self,dl,default=default,
                            header=blurb,title=title,
                            colour=colour,w=w,keymap=keymap)
+
     def keypress(self,k):
         if k==keyboard.K_CASH:
             if len(self.itemlist)>0:
@@ -1228,7 +1237,7 @@ class _keymenuline(emptyline):
         if hasattr(func, "allowed"):
             if not func.allowed():
                 colour = keymenu._not_allowed_colour
-        self.colour = curses.color_pair(colour)
+        self.colour = colour
         self.cursor_colour = self.colour
         self.prompt = " " + str(keycode) + ". "
         self.desc = desc if isinstance(desc, emptyline) else line(desc)
@@ -1335,13 +1344,12 @@ class booleanfield(valuefield):
         self.draw()
 
     def draw(self):
-        pos = self.win.getyx()
         if self._f is None:
             s = "   "
         else:
             s = "Yes" if self._f else "No "
         pos = self.win.getyx()
-        self.addstr(self.y, self.x, s, curses.A_REVERSE)
+        self.win.addstr(self.y, self.x, s, self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x)
         else:
@@ -1424,9 +1432,10 @@ class editfield(valuefield):
             self.i = self.c - self.w
         if self.c < self.i:
             self.i = self.c
-        self.addstr(self.y, self.x, ' ' * self.w, curses.A_REVERSE)
-        self.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
-                    curses.A_REVERSE)
+        self.win.addstr(self.y, self.x, ' ' * self.w,
+                        self.win.colour.reversed)
+        self.win.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
+                        self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x + self.c - self.i)
         else:
@@ -1434,7 +1443,7 @@ class editfield(valuefield):
 
     def insert(self, s):
         if self.readonly:
-            curses.beep()
+            beep()
             return
         trial = self._f[:self.c] + s + self._f[self.c:]
         if self.validate:
@@ -1449,7 +1458,7 @@ class editfield(valuefield):
             self.sethook()
             self.draw()
         else:
-            curses.beep()
+            beep()
 
     def backspace(self):
         "Delete the character to the left of the cursor"
@@ -1459,7 +1468,7 @@ class editfield(valuefield):
             self.sethook()
             self.draw()
         else:
-            curses.beep()
+            beep()
 
     def delete(self):
         "Delete the character under the cursor"
@@ -1468,17 +1477,17 @@ class editfield(valuefield):
             self.sethook()
             self.draw()
         else:
-            curses.beep()
+            beep()
 
     def move_left(self):
         if self.c == 0:
-            curses.beep()
+            beep()
         self.c = max(self.c - 1, 0)
         self.draw()
 
     def move_right(self):
         if self.c == len(self._f):
-            curses.beep()
+            beep()
         self.c = min(self.c + 1, len(self._f))
         self.draw()
 
@@ -1495,7 +1504,7 @@ class editfield(valuefield):
 
     def killtoeol(self):
         if self.readonly:
-            curses.beep()
+            beep()
             return
         self._f = self._f[:self.c]
         self.sethook()
@@ -1572,8 +1581,10 @@ class datefield(editfield):
         return d
 
     def draw(self):
-        self.addstr(self.y, self.x, 'YYYY-MM-DD', curses.A_REVERSE)
-        self.addstr(self.y, self.x, self._f, curses.A_REVERSE)
+        self.win.addstr(self.y, self.x, 'YYYY-MM-DD',
+                        self.win.colour.reversed)
+        self.win.addstr(self.y, self.x, self._f,
+                        self.win.colour.reversed)
         self.win.move(self.y, self.x + self.c)
 
     def insert(self, s):
@@ -1765,8 +1776,8 @@ class modelpopupfield(valuefield):
             s = ""
         if len(s) > self.w:
             s = s[:self.w]
-        self.addstr(self.y, self.x, ' ' * self.w, curses.A_REVERSE)
-        self.addstr(self.y, self.x, s, curses.A_REVERSE)
+        self.win.addstr(self.y, self.x, ' ' * self.w, self.win.colour.reversed)
+        self.win.addstr(self.y, self.x, s, self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x)
         else:
@@ -1894,15 +1905,17 @@ class modellistfield(modelpopupfield):
         super(modellistfield, self).keypress(k)
 
 class buttonfield(field):
-    def __init__(self,y,x,w,text,keymap={}):
-        self.y=y
-        self.x=x
-        self.t=text.center(w-2)
-        field.__init__(self,keymap)
+    def __init__(self, y, x, w, text, keymap={}):
+        self.y = y
+        self.x = x
+        self.t = text.center(w - 2)
+        field.__init__(self, keymap)
         self.draw()
+
     def focus(self):
         field.focus(self)
         self.draw()
+
     def defocus(self):
         field.defocus(self)
         self.draw()
@@ -1916,12 +1929,16 @@ class buttonfield(field):
         return self.focused
 
     def draw(self):
-        if self.focused: s="[%s]"%self.t
-        else: s=" %s "%self.t
-        pos=self.win.getyx()
-        self.addstr(self.y,self.x,s,curses.A_REVERSE)
-        if self.focused: self.win.move(self.y,self.x)
-        else: self.win.move(*pos)
+        if self.focused:
+            s = "[%s]" % self.t
+        else:
+            s = " %s " % self.t
+        pos = self.win.getyx()
+        self.win.addstr(self.y, self.x, s, self.win.colour.reversed)
+        if self.focused:
+            self.win.move(self.y, self.x)
+        else:
+            self.win.move(*pos)
 
 def map_fieldlist(fl):
     """Update the nextfield and prevfield attributes of each field in
@@ -1941,7 +1958,7 @@ def popup_exception(title):
                                  sys.exc_info()[2])
     infopopup(e,title=title)
 
-class exception_popup(object):
+class exception_popup:
     """
     Pop up a window describing a caught exception.  Provide the user
     with the option to see the full traceback if they want to.
@@ -1962,105 +1979,34 @@ class exception_popup(object):
         infopopup(
             [self._description,""]+e,title=self._title)
 
-class exception_guard(object):
-    """
+class exception_guard:
+    """Context manager for code that may fail
+
     Context manager for running code that may raise an exception that
     should be reported to the user.
-
     """
     def __init__(self, description, title=None, suppress_exception=True):
-        self._description="There was a problem while {}.".format(description)
-        self._title=title if title else "Error"
+        self._description = "There was a problem while {}.".format(description)
+        self._title = title if title else "Error"
         self._suppress_exception = suppress_exception
+
     def __enter__(self):
         return self
-    def __exit__(self,type,value,tb):
-        if tb is None: return
-        exception_popup(self._description,self._title,type,value,tb)
+
+    def __exit__(self, type, value, tb):
+        if tb is None:
+            return
+        exception_popup(self._description, self._title, type, value, tb)
         return self._suppress_exception
-
-def _doupdate():
-    curses.panel.update_panels()
-    curses.doupdate()
-
-def _curses_keyboard_input():
-    """Called by the mainloop whenever data is available on sys.stdin
-    """
-    global stdwin
-    i = stdwin.getch()
-    if i == -1:
-        return
-    handle_raw_keyboard_input(i)
-
-class cursesfilter:
-    """Keyboard input filter that converts curses keycodes to internal
-    keycodes"""
-    # curses codes and their till keycode equivalents
-    kbcodes = {
-        curses.KEY_LEFT: keyboard.K_LEFT,
-        curses.KEY_RIGHT: keyboard.K_RIGHT,
-        curses.KEY_UP: keyboard.K_UP,
-        curses.KEY_DOWN: keyboard.K_DOWN,
-        curses.KEY_ENTER: keyboard.K_CASH,
-        curses.KEY_BACKSPACE: keyboard.K_BACKSPACE,
-        curses.KEY_DC: keyboard.K_DEL,
-        curses.KEY_HOME: keyboard.K_HOME,
-        curses.KEY_END: keyboard.K_END,
-        curses.KEY_EOL: keyboard.K_EOL,
-        curses.ascii.TAB: keyboard.K_TAB,
-        1: keyboard.K_HOME, # Ctrl-A
-        4: keyboard.K_DEL, # Ctrl-D
-        5: keyboard.K_END, # Ctrl-E
-        10: keyboard.K_CASH,
-        11: keyboard.K_EOL, # Ctrl-K
-        15: keyboard.K_QUANTITY, # Ctrl-O
-        16: keyboard.K_PRINT, # Ctrl-P
-        20: keyboard.K_MANAGETRANS, # Ctrl-T
-        24: keyboard.K_CLEAR, # Ctrl-X
-        25: keyboard.K_CANCEL, # Ctrl-Y
-        }
-    def _curses_to_internal(self, i):
-        if i in self.kbcodes:
-            return self.kbcodes[i]
-        elif curses.ascii.isprint(i):
-            return chr(i)
-    def __call__(self, keys):
-        return [self._curses_to_internal(key) for key in keys]
 
 # Functions to be called after the ui and main loop are initialised
 run_after_init = []
 
-def _init(w):
-    """ncurses has been initialised, and calls us with the root window.
+# Functions to be called after the screen is resized
+run_after_resize = []
 
-    When we leave this function for whatever reason, ncurses will shut
-    down and return the display to normal mode.  If we're leaving with
-    an exception, ncurses will reraise it.
+def beep():
+    """Make the terminal go beep
     """
-    global stdwin, header
-    stdwin = w
-    stdwin.nodelay(1)
-    curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_RED)
-    curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
-    curses.init_pair(3,curses.COLOR_WHITE,curses.COLOR_BLUE)
-    curses.init_pair(4,curses.COLOR_BLACK,curses.COLOR_YELLOW)
-    curses.init_pair(5,curses.COLOR_GREEN,curses.COLOR_BLACK)
-    curses.init_pair(6,curses.COLOR_YELLOW,curses.COLOR_BLACK)
-    curses.init_pair(7,curses.COLOR_BLUE,curses.COLOR_BLACK)
-    curses.init_pair(8,curses.COLOR_BLACK,curses.COLOR_CYAN)
-    header = clockheader(stdwin)
-    keyboard_filter_stack.insert(0, cursesfilter())
-    tillconfig.mainloop.add_fd(sys.stdin.fileno(), _curses_keyboard_input,
-                               desc="stdin")
-    toaster.notify_curses_initialised()
-    for i in run_after_init:
-        i()
-    while tillconfig.mainloop.exit_code is None:
-        basicpage._ensure_page_exists()
-        _doupdate()
-        tillconfig.mainloop.iterate()
-
-def run():
-    curses.wrapper(_init)
-
-beep = curses.beep
+    # display system patches this to work
+    log.warning("ui.beep() called before display system init")

@@ -252,7 +252,7 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
 
     def __init__(self, st):
         """We are passed a StockType that may not be in the current session."""
-        mh, mw = ui.maxwinsize()
+        mh, mw = ui.rootwin.size()
         self.st = st
         td.s.add(st)
         name = st.format()

@@ -99,6 +99,9 @@ class runtill(cmdline.command):
         parser.add_argument(
             "-g", "--glib-mainloop", dest="glibmainloop", default=False,
             action="store_true", help="Use GLib mainloop")
+        parser.add_argument(
+            "--gtk", dest="gtk", default=False,
+            action="store_true", help="Use Gtk display system")
         parser.set_defaults(command=runtill.run, nolisten=False)
 
     class _dbg_kbd_input:
@@ -116,16 +119,16 @@ class runtill(cmdline.command):
                 self.handle.remove()
                 self.f.close()
                 return
-            ui.handle_raw_keyboard_input(ord("["))
+            ui.handle_raw_keyboard_input("[")
             for c in i:
-                ui.handle_raw_keyboard_input(c)
-            ui.handle_raw_keyboard_input(ord("]"))
+                ui.handle_raw_keyboard_input(chr(c))
+            ui.handle_raw_keyboard_input("]")
 
     @staticmethod
     def run(args):
         log.info("Starting version %s"%version)
         # Initialise event loop
-        if args.glibmainloop:
+        if args.glibmainloop or args.gtk:
             from . import event_glib
             if event_glib.GLibMainLoop:
                 tillconfig.mainloop = event_glib.GLibMainLoop()
@@ -171,7 +174,12 @@ class runtill(cmdline.command):
                     json.dump(kbl, f)
                 runtill._dbg_kbd_input(dbg_kbd.stdout)
 
-            ui.run()
+            if args.gtk:
+                from . import ui_gtk
+                ui_gtk.run()
+            else:
+                from . import ui_ncurses
+                ui_ncurses.run()
         except:
             log.exception("Exception caught at top level")
         finally:

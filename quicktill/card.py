@@ -5,6 +5,7 @@ from .models import Session, Payment, Transaction, zero, penny
 from decimal import Decimal
 import datetime
 
+# XXX this should be replaced with ui.moneyfield
 class moneyfield(ui.editfield):
     def __init__(self, y, x, w):
         ui.editfield.__init__(self, y, x, w, validate=ui.validate_float)
@@ -54,6 +55,7 @@ class cardpopup(ui.dismisspopup):
             self.addstr(cbstart + 1, 2, "press Cash/Enter.  Leave blank and press")
             self.addstr(cbstart + 2, 2, "Cash/Enter if there is none.")
             self.addstr(cbstart + 4, 2, "Cashback amount: %s" % tillconfig.currency)
+            # XXX use ui.moneyfield instead
             self.cbfield = moneyfield(cbstart + 4, 19 + len(tillconfig.currency), 6)
             self._total_line = cbstart + 6
             self.cbfield.sethook = self.update_total_amount
@@ -81,7 +83,7 @@ class cardpopup(ui.dismisspopup):
             cba = zero
         if cba > self.max_cashback:
             self.addstr(self._total_line, 2, "Maximum cashback is %s" % (
-                tillconfig.fc(self.max_cashback)), ui.attr(ui.colour_error))
+                tillconfig.fc(self.max_cashback)), ui.colour_error)
         else:
             self.addstr(self._total_line, 2, "Total card payment: %s" % (
                     tillconfig.fc(self.amount + cba)))

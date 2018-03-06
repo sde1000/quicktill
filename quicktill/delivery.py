@@ -59,7 +59,7 @@ class delivery(ui.basicpopup):
     supplier has been chosen.
     """
     def __init__(self, dn=None):
-        mh, mw = ui.maxwinsize()
+        mh, mw = ui.rootwin.size()
         if mw < 80 or mh < 14:
             ui.infopopup(["Error: the screen is too small to display "
                           "the delivery dialog box.  It must be at least "
@@ -94,8 +94,10 @@ class delivery(ui.basicpopup):
         # field to fit.  The scrollable field must be at least three lines
         # high!
         ui.basicpopup.__init__(
-            self, mh - 1, 80, title=title, cleartext=cleartext,
+            self, mh, 80, title=title, cleartext=cleartext,
             colour=ui.colour_input)
+        if readonly:
+            self.win.set_cursor(False)
         self.addstr(2, 2, "       Supplier:")
         self.addstr(3, 2, "           Date:")
         self.addstr(4, 2, "Document number:")
@@ -116,23 +118,23 @@ class delivery(ui.basicpopup):
         self.entryprompt = None if readonly else ui.line(
             " [ New item ]")
         self.s = ui.scrollable(
-            7, 1, 78, mh - 10 if readonly else mh - 11, self.dl,
+            7, 1, 78, mh - 9 if readonly else mh - 10, self.dl,
             lastline=self.entryprompt, keymap=skm)
-        self.addstr(mh - 3 if readonly else mh - 4, 33, "Total cost ex-VAT:")
-        self.costfield = ui.label(mh - 3 if readonly else mh - 4,
+        self.addstr(mh - 2 if readonly else mh - 3, 33, "Total cost ex-VAT:")
+        self.costfield = ui.label(mh - 2 if readonly else mh - 3,
                                   52, 10, align='>')
         self.update_costfield()
         if readonly:
             self.s.focus()
         else:
             self.deletefield = ui.buttonfield(
-                mh - 3, 2, 24, "Delete this delivery", keymap={
+                mh - 2, 2, 24, "Delete this delivery", keymap={
                     keyboard.K_CASH: (self.confirmdelete, None)})
             self.confirmfield = ui.buttonfield(
-                mh - 3, 28, 31, "Confirm details are correct", keymap={
+                mh - 2, 28, 31, "Confirm details are correct", keymap={
                     keyboard.K_CASH: (self.confirmcheck, None)})
             self.savefield = ui.buttonfield(
-                mh - 3, 61, 17, "Save and exit", keymap={
+                mh - 2, 61, 17, "Save and exit", keymap={
                     keyboard.K_CASH: (self.finish, None)})
             ui.map_fieldlist(
                 [self.supfield, self.datefield, self.docnumfield, self.s,

@@ -119,8 +119,8 @@ class subopts_dialog(ui.dismisspopup):
                                  colour=ui.colour_line,keymap=km)
         y=9
         for k,so in opts:
-           self.addstr(y,2,"{:>2}: {}".format(k, so[0]))
-           y=y+1
+           self.win.addstr(y, 2, "{:>2}: {}".format(k, so[0]))
+           y = y + 1
         self.ol=[]
         self.name=name
         self.atleast=atleast
@@ -141,19 +141,20 @@ class subopts_dialog(ui.dismisspopup):
         if len(w)>4: self.atmost=len(self.ol)-1 # stop sillyness!
         w=["%s%s"%(x,' '*(self.w-4-len(x))) for x in w]
         y=2
-        attr = ui.attr_reverse(ui.attr(ui.colour_line))
+        colour = ui.colour_line.reversed
         for i in w:
-            self.addstr(y,2,i,attr)
-            y=y+1
-        self.addstr(7,2,' '*(self.w-4))
-        if len(self.ol)<self.atleast:
-            self.addstr(7,2,"Choose options from the list below.")
+            self.win.addstr(y, 2, i, colour)
+            y = y + 1
+        self.win.addstr(7, 2, ' ' * (self.w - 4))
+        if len(self.ol) < self.atleast:
+            self.win.addstr(7, 2, "Choose options from the list below.")
         elif self.atmost is None or len(self.ol) < self.atmost:
-            self.addstr(7,2,
+            self.win.addstr(7, 2,
                             "Choose options, and press Cash/Enter to confirm.")
         else:
-            self.addstr(7,2,"Press Cash/Enter to confirm.")
-        self.move(2, 2)
+            self.win.addstr(7, 2, "Press Cash/Enter to confirm.")
+        self.win.move(2, 2)
+
     def newsubopt(self,so):
         if self.atmost is None or len(self.ol) < self.atmost:
             if isinstance(so[1],float):

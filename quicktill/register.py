@@ -81,9 +81,10 @@ class bufferline(ui.lrline):
     at the left, and if appropriate the balance of the transaction on
     the right.
     """
-    def __init__(self,reg):
+    def __init__(self, reg):
         ui.lrline.__init__(self)
-        self.cursor_colour = self.colour
+        self.colour = ui.colour_default
+        self.cursor_colour = ui.colour_default
         self.reg = reg
 
     def display(self, width):
@@ -152,13 +153,13 @@ class tline(ui.lrline):
 
     def update_colour(self):
         if self.marked:
-            self.colour = ui.attr(ui.colour_cancelline)
+            self.colour = ui.colour_cancelline
         else:
             if self.voided:
-                self.colour = ui.attr(ui.colour_error)
+                self.colour = ui.colour_error
             else:
-                self.colour = ui.attr(0)
-        self.cursor_colour = ui.attr_reverse(self.colour)
+                self.colour = ui.colour_default
+        self.cursor_colour = self.colour.reversed
 
     def age(self):
         return datetime.datetime.now() - self.transtime
@@ -586,9 +587,9 @@ class page(ui.basicpage):
         trans = self._gettrans()
         note = trans.notes if trans else ""
         note = note + " " * (self.w - len(note))
-        c = self.getyx()
-        self.addstr(0, 0, note, ui.attr(ui.colour_changeline))
-        self.move(*c)
+        c = self.win.getyx()
+        self.addstr(0, 0, note, ui.colour_changeline)
+        self.win.move(*c)
 
     def cursor_off(self):
         # Returns the cursor to the buffer line.  Does not redraw (because

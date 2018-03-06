@@ -8,8 +8,9 @@ log = logging.getLogger(__name__)
 class lockpage(ui.basicpage):
     def __init__(self):
         ui.basicpage.__init__(self)
+        self.win.set_cursor(False)
         self.idle_timeout = None
-        self.addstr(1, 1, "This till is locked.")
+        self.win.addstr(1, 1, "This till is locked.")
         self.updateheader()
         self._y = 3
         unsaved = [p for p in ui.basicpage._pagelist if p != self]
@@ -36,13 +37,14 @@ class lockpage(ui.basicpage):
         if kpproblem:
             self.line("Kitchen printer problem: {}".format(kpproblem))
             log.info("Kitchen printer problem: %s",kpproblem)
-        self.addstr(self.h - 1, 0, "Till version: {}".format(version.version))
-        self.move(0, 0)
+        self.win.addstr(
+            self.h - 1, 0, "Till version: {}".format(version.version))
+        self.win.move(0, 0)
         log.info("lockpage gc stats: %s, len(gc.garbage)=%d", gc.get_count(),
                  len(gc.garbage))
 
     def line(self, s):
-        self.addstr(self._y, 1, s)
+        self.win.addstr(self._y, 1, s)
         self._y = self._y + 1
 
     def pagename(self):
