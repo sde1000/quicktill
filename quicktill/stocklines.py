@@ -205,21 +205,21 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             dismiss=keyboard.K_CLEAR)
         self.linetype = linetype
         self.func = func
-        self.addstr(2,2," Stock line name:")
+        self.win.addstr(2,2," Stock line name:")
         self.namefield = ui.editfield(2, 20, 30, keymap={
             keyboard.K_CLEAR: (self.dismiss, None)})
-        self.addstr(3,2,"        Location:")
+        self.win.addstr(3,2,"        Location:")
         self.locfield = ui.editfield(3, 20, 20, validate=validate_location)
         self.fields = [self.namefield, self.locfield]
         y = 4
         if linetype == "display":
-            self.addstr(y,2,"Display capacity:")
+            self.win.addstr(y,2,"Display capacity:")
             self.capacityfield = ui.editfield(
                 y, 20, 5, validate=ui.validate_positive_nonzero_int)
             self.fields.append(self.capacityfield)
             y += 1
         if linetype == "display" or linetype == "continuous":
-            self.addstr(y,2,"      Stock type:")
+            self.win.addstr(y,2,"      Stock type:")
             self.stocktypefield = ui.modelpopupfield(
                 y, 20, 52, StockType, stocktype.choose_stocktype,
                 lambda si: si.format())
@@ -285,21 +285,21 @@ class modify(user.permission_checked,ui.dismisspopup):
             title="Modify {} stock line".format(self.stockline.linetype),
             colour=ui.colour_input,
             dismiss=keyboard.K_CLEAR)
-        self.addstr(2, 2, "    Stock line name:")
+        self.win.addstr(2, 2, "    Stock line name:")
         self.namefield = ui.editfield(2, 23, 30, f=stockline.name, keymap={
             keyboard.K_CLEAR: (self.dismiss, None)})
-        self.addstr(3, 2, "           Location:")
+        self.win.addstr(3, 2, "           Location:")
         self.locfield=ui.editfield(3, 23, 20, f=stockline.location,
                                    validate=validate_location)
         self.fields = [self.namefield, self.locfield]
         y = 4
         if stockline.linetype == 'regular':
-            self.addstr(y, 2, "Pull-through amount:")
+            self.win.addstr(y, 2, "Pull-through amount:")
             self.pullthrufield = ui.editfield(
                 y, 23, 5, f=stockline.pullthru, validate=ui.validate_float)
             self.fields.append(self.pullthrufield)
             y += 1
-            self.addstr(y, 2, "         Department:")
+            self.win.addstr(y, 2, "         Department:")
             self.deptfield = ui.modellistfield(
                 y, 23, 20, Department,
                 lambda q: q.order_by(Department.id),
@@ -308,13 +308,13 @@ class modify(user.permission_checked,ui.dismisspopup):
             self.fields.append(self.deptfield)
             y += 1
         if stockline.linetype == 'display':
-            self.addstr(y, 2, "   Display capacity:")
+            self.win.addstr(y, 2, "   Display capacity:")
             self.capacityfield = ui.editfield(
                 y, 23, 5, f=stockline.capacity,
                 validate=ui.validate_positive_nonzero_int)
             self.fields.append(self.capacityfield)
             y += 1
-        self.addstr(y, 2, "         Stock type:")
+        self.win.addstr(y, 2, "         Stock type:")
         self.stocktypefield = ui.modelpopupfield(
             y, 23, 52, StockType, stocktype.choose_stocktype,
             lambda si: si.format(),
@@ -322,13 +322,13 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.fields.append(self.stocktypefield)
         y += 1
         if stockline.linetype == 'regular':
-            y += self.wrapstr(
+            y += self.win.wrapstr(
                 y, 2, 73,
                 "Setting department or stock type will restrict "
                 "the types of stock allowed to be put on sale on "
                 "this stock line in the future.")
         if stockline.linetype == 'display':
-            y += self.wrapstr(
+            y += self.win.wrapstr(
                 y, 2, 73,
                 "Changing the stock type will remove all stock items "
                 "currently on sale on this line and add all unallocated "
@@ -354,7 +354,7 @@ class modify(user.permission_checked,ui.dismisspopup):
                     lambda: stockline_associations(stocklines=[self.sid]),
                     None)}))
         y += 2
-        y += self.wrapstr(
+        y += self.win.wrapstr(
             y, 2, 73,
             "To add a keyboard binding, press a line key now.\n\n"
             "To edit or delete a keyboard binding, choose it "
@@ -491,10 +491,10 @@ class modify(user.permission_checked,ui.dismisspopup):
         f = ui.tableformatter(' l   c   l ')
         kbl = linekeys.keyboard_bindings_table(
             self.stockline.keyboard_bindings, f)
-        self.addstr(self.bindings_header_y, 1, " " * 75)
-        self.addstr(self.bindings_header_y, 1, f(
+        self.win.addstr(self.bindings_header_y, 1, " " * 75)
+        self.win.addstr(self.bindings_header_y, 1, f(
             "Line key","Menu key","Default modifier").
-                    display(75)[0])
+                        display(75)[0])
         self.kbs.set(kbl)
 
 class listunbound(ui.listpopup):

@@ -5,6 +5,7 @@ from gi.repository import Gtk, Pango, GLib, Gdk
 import sys
 import cairo
 import math
+import textwrap
 
 if not hasattr(cairo, 'OPERATOR_DIFFERENCE'):
     # This has been in cairo since 1.10 and is still not in the
@@ -263,6 +264,21 @@ class text_window(window):
         self.damage(y * self.fontheight, x * self.fontwidth,
                     self.fontheight, len(text) * self.fontwidth)
         self.move(y, x + len(text))
+
+    def wrapstr(self, y, x, width, s, colour=None):
+        """Display a string wrapped to specified width.
+
+        Returns the number of lines that the string was wrapped over.
+        """
+        lines = 0
+        for line in s.splitlines():
+            if line:
+                for wrappedline in textwrap.wrap(line, width):
+                    self.addstr(y + lines, x, wrappedline, colour)
+                    lines += 1
+            else:
+                lines += 1
+        return lines
 
     def isendwin(self):
         return False

@@ -1,5 +1,6 @@
 import sys
 import locale
+import textwrap
 import curses, curses.ascii, curses.panel
 from . import ui
 from . import keyboard
@@ -143,6 +144,21 @@ class curses_window:
             self._win.addstr(y, x, s.encode(c), _curses_attr(colour))
         except curses.error:
             log.debug("addstr problem: len(s)=%d; s=%s", len(s), repr(s))
+
+    def wrapstr(self, y, x, width, s, colour=None):
+        """Display a string wrapped to specified width.
+
+        Returns the number of lines that the string was wrapped over.
+        """
+        lines = 0
+        for line in s.splitlines():
+            if line:
+                for wrappedline in textwrap.wrap(line, width):
+                    self.addstr(y + lines, x, wrappedline, colour)
+                    lines += 1
+            else:
+                lines += 1
+        return lines
 
     def getyx(self):
         return self._win.getyx()
