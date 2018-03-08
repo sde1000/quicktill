@@ -1,5 +1,5 @@
-# This module manages the display - the header line, clock, popup
-# windows, and so on.
+# This module is the API for the display - the header line, clock,
+# popup windows, and so on.
 
 import time
 import datetime
@@ -36,6 +36,7 @@ class colourpair:
 colour_default = colourpair("header", "white", "black")
 colour_header = colourpair("header", "white", "red")
 colour_error = colourpair("error", "white", "red")
+colour_toast = colourpair("toast", "white", "red")
 colour_info = colourpair("info", "black", "green")
 colour_input = colourpair("input", "white", "blue")
 colour_line = colourpair("line", "black", "yellow")
@@ -120,7 +121,8 @@ def formatdate(ts):
     return ts.strftime("%Y-%m-%d")
 
 def handle_keyboard_input(k):
-    """
+    """Deal with input from the user
+
     We can be passed a variety of things as keyboard input:
 
     keycode objects from keyboard.py
@@ -129,6 +131,9 @@ def handle_keyboard_input(k):
 
     They don't always have a 'keycap' method - check the type first!
 
+    This function must be called within an ORM session.  It's ok to
+    call this function recursively (eg. to synthesise a keypress from
+    an on-screen button).
     """
     log.debug("Keypress %s", k)
     basicwin._focus.hotkeypress(k)
@@ -137,6 +142,13 @@ def handle_keyboard_input(k):
 keyboard_filter_stack = []
 
 def handle_raw_keyboard_input(k):
+    """Deal with input from the user
+
+    This input is passed through the keyboard filter stack before
+    being passed on to the handle_keyboard_input() function.  The
+    filter stack will typically recognise sequences (eg. "[A01]") and
+    convert them into keycode objects.
+    """
     input = [k]
 
     for f in keyboard_filter_stack:
@@ -147,10 +159,10 @@ def handle_raw_keyboard_input(k):
             handle_keyboard_input(k)
 
 def current_user():
-    """
+    """Return the current user
+
     Look up the focus stack and return the first user information
     found, or None if there is none.
-
     """
     stack = basicwin._focus.parents()
     for i in stack:
@@ -158,10 +170,11 @@ def current_user():
             return i.user
 
 class _toastmaster:
-    """Manages a queue of messages to be displayed to the user without
+    """Display brief messages to the user
+
+    Manages a queue of messages to be displayed to the user without
     affecting the input focus.  A single instance of this object is
     created during UI initialisation.
-
     """
     # How long to display messages for, in seconds
     toast_display_time = 3
@@ -180,7 +193,6 @@ class _toastmaster:
         don't add it.  If an identical message is already being
         displayed, reset the timeout to the default so the message
         continues to be displayed.
-
         """
         if message in self.messagequeue:
             return
@@ -230,7 +242,7 @@ class _toastmaster:
         try:
             self.win = rootwin.new(
                 h, w, y, (mw - w) // 2,
-                colour=colour_error, always_on_top=True)
+                colour=colour_toast, always_on_top=True)
         except:
             return self.start_display("(toast too long)")
         y = 1
@@ -259,45 +271,41 @@ class _toastmaster:
 toaster = _toastmaster()
 
 def toast(message):
-    """Display a message briefly to the user without affecting the input
-    focus.
+    """Display a message briefly to the user
 
+    Does not affect the input focus.
     """
-    global toaster
     toaster.toast(message)
 
 class ignore_hotkeys:
-    """
-    Mixin class for UI elements that disables handling of hotkeys;
-    they are passed to the input focus like all other keypresses.
+    """Mixin class for UI elements that disables handling of hotkeys
 
+    Hotkeys are not ignored, they are passed to the input focus like
+    all other keypresses.
     """
-    def hotkeypress(self,k):
+    def hotkeypress(self, k):
         basicwin._focus.keypress(k)
 
 class basicwin:
-    """Container for all pages, popup windows and fields.
+    """Base class for all pages, popup windows and fields.
 
     It is required that the parent holds the input focus whenever a
-    basicwin instance is created.  This should usually be true!
-    
+    basicwin instance is created.
     """
-    _focus=None
+    _focus = None
+
     def __init__(self):
         self.parent = basicwin._focus
         log.debug("New %s with parent %s", self, self.parent)
 
     @property
     def focused(self):
-        """
-        Do we hold the focus at the moment?
-
+        """Do we hold the focus at the moment?
         """
         return basicwin._focus == self
 
     def focus(self):
         """Called when we are being told to take the focus.
-
         """
         if basicwin._focus != self:
             oldfocus = basicwin._focus
@@ -306,8 +314,7 @@ class basicwin:
             log.debug("Focus %s -> %s", oldfocus, self)
 
     def defocus(self):
-        """Called when we are being informed that we have (already) lost the
-        focus.
+        """Called after we have lost the input focus.
         """
         pass
 
@@ -320,7 +327,8 @@ class basicwin:
         pass
 
     def hotkeypress(self, k):
-        """
+        """High priority keypress handling
+
         We get to look at keypress events before anything else does.
         If we don't do anything with this keypress we are required to
         pass it on to our parent.
@@ -330,6 +338,7 @@ class basicwin:
 class basicpage(basicwin):
     _pagelist = []
     _basepage = None
+
     def __init__(self):
         """Create a new page.
 
@@ -338,9 +347,7 @@ class basicpage(basicwin):
 
         Newly-created pages are always selected.
         """
-        # We need to deselect any current page before creating our
-        # panel, because creating a panel implicitly puts it on top of
-        # the panel stack.
+        # We need to deselect any current page first.
         if basicpage._basepage:
             basicpage._basepage.deselect()
         my, mx = rootwin.size()
@@ -358,7 +365,7 @@ class basicpage(basicwin):
         self.stack = None
         basicpage._basepage = self
         basicwin._focus = self
-        basicwin.__init__(self) # Sets self.parent to self - ok!
+        super().__init__() # Sets self.parent to self - ok!
 
     def pagename(self):
         return "Basic page"
@@ -401,7 +408,6 @@ class basicpage(basicwin):
 
     @staticmethod
     def updateheader():
-        global header
         m = ""
         s = ""
         for i in basicpage._pagelist:
@@ -420,7 +426,9 @@ class basicpage(basicwin):
                 tillconfig.firstpage()
 
     def hotkeypress(self, k):
-        """Since this is a page, it is always at the base of the stack of
+        """High priority keypress processing
+
+        Since this is a page, it is always at the base of the stack of
         windows - it does not have a parent to pass keypresses on to.
         By default we look at the configured hotkeys and call if
         found; otherwise we pass the keypress on to the current input
@@ -438,9 +446,18 @@ class basicpage(basicwin):
                 basicwin._focus.keypress(k)
 
 class basicpopup(basicwin):
+    """A popup window
+
+    Appears in the center of the screen.  Draws a title at the
+    top-left of the window and optionally a "clear" prompt at the
+    bottom-right.
+
+    Accepts a dictionary of {keyboard input: action} for handling
+    incoming keypresses.  Any unhandled keypresses result in a beep.
+    """
     def __init__(self, h, w, title=None, cleartext=None, colour=colour_error,
                  keymap={}):
-        basicwin.__init__(self)
+        super().__init__()
         # Grab the focus so that we hold it while we create any necessary
         # child UI elements
         self.focus()
@@ -490,58 +507,63 @@ class basicpopup(basicwin):
             beep()
 
 class dismisspopup(basicpopup):
-    """Adds optional processing of an implicit 'Dismiss' key and
-    generation of the cleartext prompt"""
-    def __init__(self,h,w,title=None,cleartext=None,colour=colour_error,
-                 dismiss=keyboard.K_CLEAR,keymap={}):
-        self.dismisskey=dismiss
-        basicpopup.__init__(self,h,w,title=title,
-                            cleartext=self.get_cleartext(cleartext,dismiss),
-                            colour=colour,keymap=keymap)
-    def get_cleartext(self,cleartext,dismiss):
+    """A popup window with implicit handling of a "dismiss" key
+
+    Adds optional processing of an implicit 'Dismiss' key and
+    generation of the cleartext prompt from the keycap.
+    """
+    def __init__(self, h, w, title=None, cleartext=None, colour=colour_error,
+                 dismiss=keyboard.K_CLEAR, keymap={}):
+        self.dismisskey = dismiss
+        super().__init__(h, w, title=title,
+                         cleartext=self.get_cleartext(cleartext, dismiss),
+                         colour=colour, keymap=keymap)
+
+    def get_cleartext(self, cleartext, dismiss):
         if cleartext is None:
-            if dismiss==keyboard.K_CLEAR:
+            if dismiss == keyboard.K_CLEAR:
                 return "Press Clear to go back"
-            elif dismiss==keyboard.K_CASH:
+            elif dismiss == keyboard.K_CASH:
                 return "Press Cash/Enter to continue"
             elif dismiss is None:
                 return None
             else:
-                return "Press %s to dismiss"%dismiss.keycap
+                return "Press {} to dismiss".format(dismiss.keycap)
         return cleartext
-    def keypress(self,k):
-        if self.dismisskey is not None and k==self.dismisskey:
+
+    def keypress(self, k):
+        if self.dismisskey and k == self.dismisskey:
             return self.dismiss()
-        basicpopup.keypress(self,k)
+        super().keypress(k)
 
 class listpopup(dismisspopup):
-    """
+    """A popup window with a scrollable list of items
+
     A popup window with an initial non-scrolling header, and then a
     scrollable list of selections.  Items in the list and header can
     be strings, or any subclass of emptyline().  The header is not
     used when deciding how wide the window will be.
-
     """
-    def __init__(self,linelist,default=0,header=None,title=None,
-                 show_cursor=True,dismiss=keyboard.K_CLEAR,
-                 cleartext=None,colour=colour_input,w=None,keymap={}):
+    def __init__(self, linelist, default=0, header=None, title=None,
+                 show_cursor=True, dismiss=keyboard.K_CLEAR,
+                 cleartext=None, colour=colour_input, w=None, keymap={}):
         dl = [x if isinstance(x, emptyline) else line(x, colour=colour)
               for x in linelist]
         hl = [x if isinstance(x, emptyline) else marginline(
             lrline(x, colour=colour), margin=1)
               for x in header] if header else []
         if w is None:
-            w=max((x.idealwidth() for x in dl))+2 if len(dl)>0 else 0
-            w=max(25,w)
+            w = max((x.idealwidth() for x in dl)) + 2 if len(dl) > 0 else 0
+            w = max(25, w)
         if title is not None:
-            w=max(len(title)+3,w)
+            w = max(len(title) + 3, w)
         # We know that the created window will not be wider than the
         # width of the screen.
         mh, mw = rootwin.size()
-        w=min(w,mw)
-        h=sum(len(x.display(w-2)) for x in hl+dl)+2
-        dismisspopup.__init__(self,h,w,title=title,colour=colour,keymap=keymap,
-                              dismiss=dismiss,cleartext=cleartext)
+        w = min(w, mw)
+        h = sum(len(x.display(w - 2)) for x in hl + dl) + 2
+        super().__init__(h, w, title=title, colour=colour, keymap=keymap,
+                         dismiss=dismiss, cleartext=cleartext)
         self.win.set_cursor(False)
         h, w = self.win.size()
         y = 1
@@ -567,53 +589,57 @@ class listpopup(dismisspopup):
             self.s = None
 
 class infopopup(listpopup):
-    """
-    A pop-up box that formats and displays text.  The text parameter is
-    a list of paragraphs.
+    """A pop-up box that formats and displays text.
 
+    The text parameter is a list of paragraphs.
     """
     # Implementation note: we _could_ use a scrollable with a list of
     # lrlines; however, we have to work out how big to make the window
     # anyway, and once we've done that we already have a list of lines
     # suitable to pass to listpopup.__init__()
-    def __init__(self,text=[],title=None,dismiss=keyboard.K_CLEAR,
-                 cleartext=None,colour=colour_error,keymap={}):
-        cleartext=self.get_cleartext(cleartext,dismiss)
+    def __init__(self, text=[], title=None, dismiss=keyboard.K_CLEAR,
+                 cleartext=None, colour=colour_error, keymap={}):
+        cleartext = self.get_cleartext(cleartext, dismiss)
         mh, mw = rootwin.size()
-        maxw=mw-4
-        maxh=mh-5
+        maxw = mw - 4
+        maxh = mh - 5
         # We want the window to end up as close to 2/3 the maximum width
         # as possible.  Try that first, and only let it go wider if the
         # maximum height is exceeded.
         w = (maxw * 2) // 3
-        if cleartext: w=max(w,len(cleartext)-1)
+        if cleartext:
+            w = max(w, len(cleartext) - 1)
         def formatat(width):
-            r=[]
+            r = []
             for i in text:
-                if i=="": r.append("")
+                if i == "":
+                    r.append("")
                 else:
-                    for j in textwrap.wrap(i,width):
+                    for j in textwrap.wrap(i, width):
                         r.append(j)
             return r
-        t=formatat(w)
-        while len(t)>maxh and w<maxw:
-            w=w+1
-            t=formatat(w)
-        t = [emptyline(colour=colour)] + [marginline(line(x, colour=colour), margin=1) for x in t] + [emptyline(colour=colour)]
-        listpopup.__init__(self,t,title=title,dismiss=dismiss,
-                           cleartext=cleartext,colour=colour,keymap=keymap,
-                           show_cursor=False,w=w+4)
+        t = formatat(w)
+        while len(t) > maxh and w < maxw:
+            w = w + 1
+            t = formatat(w)
+        t = [emptyline()] \
+            + [marginline(line(x), margin=1) for x in t] \
+            + [emptyline()]
+        super().__init__(t, title=title, dismiss=dismiss,
+                         cleartext=cleartext, colour=colour, keymap=keymap,
+                         show_cursor=False, w=w + 4)
 
 class alarmpopup(infopopup):
-    """This is like an infopopup, but goes "beep" every second until
-    it is dismissed.  It dismisses itself after 5 minutes, provided it
+    """An annoying infopopup
+
+    This is like an infopopup, but goes "beep" every second until it
+    is dismissed.  It dismisses itself after 5 minutes, provided it
     still has the input focus.  (If it doesn't have the focus,
     dismissing would put the focus in the wrong place - potentially on
     a different page, which would be VERY confusing for the user!)
-
     """
-    def __init__(self,*args,**kwargs):
-        infopopup.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.dismiss_at = time.time() + 300
         self.alarm()
 
@@ -628,7 +654,7 @@ class alarmpopup(infopopup):
 
     def dismiss(self):
         self._alarmhandle.cancel()
-        infopopup.dismiss(self)
+        super().dismiss()
 
 def validate_int(s, c):
     if s == '-':
@@ -638,6 +664,7 @@ def validate_int(s, c):
     except:
         return None
     return s
+
 def validate_positive_nonzero_int(s, c):
     try:
         x = int(s)
@@ -646,6 +673,7 @@ def validate_positive_nonzero_int(s, c):
     except:
         return None
     return s
+
 def validate_float(s, c):
     if s == '-':
         return s
@@ -654,6 +682,7 @@ def validate_float(s, c):
     except:
         return None
     return s
+
 def validate_positive_float(s, c):
     try:
         x = float(s)
@@ -664,9 +693,10 @@ def validate_positive_float(s, c):
     return s
 
 class label(basicwin):
-    """An area of a window that has a value that can be changed."""
+    """An area of a window that has a value that can be changed.
+    """
     def __init__(self, y, x, w, contents="", align="<", colour=None):
-        super(label, self).__init__()
+        super().__init__()
         self.win = self.parent.win
         self._y = y
         self._x = x
@@ -693,17 +723,19 @@ class field(basicwin):
         # a Very Bad Thing (TM) for the default empty keymap to be
         # changed!
         self.keymap = keymap.copy()
-        basicwin.__init__(self)
+        super().__init__()
         self.win = self.parent.win
 
-    def keypress(self,k):
+    def keypress(self, k):
         # All keypresses handled here are defaults; if they are present
         # in the keymap, we should not handle them ourselves.
         if k in self.keymap:
-            i=self.keymap[k]
+            i = self.keymap[k]
             if i[0] is not None:
-                if i[1] is None: i[0]()
-                else: i[0](*i[1])
+                if i[1] is None:
+                    i[0]()
+                else:
+                    i[0](*i[1])
         elif (k in (keyboard.K_DOWN, keyboard.K_CASH, keyboard.K_TAB)
               and self.nextfield):
             self.nextfield.focus()
@@ -725,7 +757,7 @@ class valuefield(field):
     is changed.
     """
     def __init__(self, keymap={}, f=None):
-        super(valuefield, self).__init__(keymap)
+        super().__init__(keymap)
         self.sethook = lambda: None
         self.set(f)
 
@@ -760,56 +792,59 @@ class scrollable(field):
     current position.  If "lastline" is selected, self.cursor is at
     len(self.dl).  If dl is empty and lastline is not present,
     self.cursor is set to None.
-
     """
-    def __init__(self,y,x,width,height,dl,show_cursor=True,
-                 lastline=None,default=0,keymap={}):
-        field.__init__(self,keymap)
-        self.y=y
-        self.x=x
-        self.w=width
-        self.h=height
-        self.show_cursor=show_cursor
-        self.lastline=lastline
-        self.cursor=default
-        self.top=0
+    def __init__(self, y, x, width, height, dl, show_cursor=True,
+                 lastline=None, default=0, keymap={}):
+        super().__init__(keymap)
+        self.y = y
+        self.x = x
+        self.w = width
+        self.h = height
+        self.show_cursor = show_cursor
+        self.lastline = lastline
+        self.cursor = default
+        self.top = 0
         self.set(dl)
 
-    def set(self,dl):
-        self.dl=dl
+    def set(self, dl):
+        self.dl = dl
+        # self.sethook()  - not used by anything, but should it work?
         self.redraw() # Does implicit set_cursor()
 
-    def set_cursor(self,c):
-        if len(self.dl)==0 and not self.lastline:
-            self.cursor=None
+    def set_cursor(self, c):
+        if len(self.dl) == 0 and not self.lastline:
+            self.cursor = None
             return
-        if c is None or c<0: c=0
-        last_valid_cursor=len(self.dl) if self.lastline else len(self.dl)-1
-        if c>last_valid_cursor: c=last_valid_cursor
-        self.cursor=c
+        if c is None or c < 0:
+            c = 0
+        last_valid_cursor = len(self.dl) if self.lastline else len(self.dl) - 1
+        if c > last_valid_cursor:
+            c = last_valid_cursor
+        self.cursor = c
 
     def focus(self):
         # If we are obtaining the focus from the previous field, we should
         # move the cursor to the top.  If we are obtaining it from the next
         # field, we should move the cursor to the bottom.  Otherwise we
         # leave the cursor untouched.
-        if self.prevfield and self.prevfield.focused: self.set_cursor(0)
+        if self.prevfield and self.prevfield.focused:
+            self.set_cursor(0)
         elif self.nextfield and self.nextfield.focused:
             self.set_cursor(len(self.dl))
-        field.focus(self)
+        super().focus()
         self.redraw()
 
     def defocus(self):
-        field.defocus(self)
+        super().defocus()
         self.drawdl() # We don't want to scroll
 
     def drawdl(self):
-        """
+        """Draw the scrollable contents
+
         Redraw the area with the current scroll and cursor locations.
         Returns the index of the last complete item that fits on the
         screen.  (This is useful to compare against the cursor
         position to ensure the cursor is displayed.)
-
         """
         # First clear the drawing space
         for y in range(self.y, self.y + self.h):
@@ -818,71 +853,75 @@ class scrollable(field):
         # in the list is exactly one line high, we can set top to zero
         # so that the first line is displayed.  Only worthwhile if we
         # are actually displaying a cursor.
-        if self.top==1 and self.cursor==1 and self.show_cursor:
-            if len(self.dl[0].display(self.w))==1: self.top=0
+        if self.top == 1 and self.cursor == 1 and self.show_cursor:
+            if len(self.dl[0].display(self.w)) == 1:
+                self.top = 0
         # self.dl may have shrunk since last time self.top was set;
         # make sure self.top is in bounds
-        if self.top>len(self.dl): self.top=len(self.dl)
-        y=self.y
-        i=self.top
-        lastcomplete=i
-        if i>0:
+        if self.top > len(self.dl):
+            self.top = len(self.dl)
+        y = self.y
+        i = self.top
+        lastcomplete = i
+        if i > 0:
             self.win.addstr(y, self.x, '...')
-            y=y+1
-        cursor_y=None
-        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
-        while i<end_of_displaylist:
-            if i>=len(self.dl):
-                item=self.lastline
+            y = y + 1
+        cursor_y = None
+        end_of_displaylist = len(self.dl) + 1 if self.lastline else len(self.dl)
+        while i < end_of_displaylist:
+            if i >= len(self.dl):
+                item = self.lastline
             else:
-                item=self.dl[i]
-            if item is None: break
-            l=item.display(self.w)
+                item = self.dl[i]
+            if item is None:
+                break
+            l = item.display(self.w)
             colour = item.colour if item.colour else self.win.colour
             ccolour = item.cursor_colour if item.cursor_colour \
                       else self.win.colour.reversed
-            if self.focused and i==self.cursor and self.show_cursor:
-                colour=ccolour
-                cursor_y=y+item.cursor[1]
-                cursor_x=self.x+item.cursor[0]
+            if self.focused and i == self.cursor and self.show_cursor:
+                colour = ccolour
+                cursor_y = y + item.cursor[1]
+                cursor_x = self.x + item.cursor[0]
             for j in l:
-                if y<(self.y+self.h):
+                if y < (self.y + self.h):
                     self.win.addstr(
                         y, self.x, "%s%s" % (
                             j, ' ' * (self.w - len(j))), colour)
-                y=y+1
-            if y<=(self.y+self.h):
-                lastcomplete=i
+                y = y + 1
+            if y <= (self.y + self.h):
+                lastcomplete = i
             else:
                 break
-            i=i+1
-        if end_of_displaylist>i:
+            i = i + 1
+        if end_of_displaylist > i:
             # Check whether we are about to overwrite any of the last item
-            if y>=self.y+self.h+1: lastcomplete=lastcomplete-1
+            if y >= self.y + self.h + 1:
+                lastcomplete = lastcomplete - 1
             self.win.addstr(
                 self.y + self.h - 1, self.x, '...' + ' ' * (self.w - 3))
-        if cursor_y is not None and cursor_y<(self.y+self.h):
-            self.win.move(cursor_y,cursor_x)
+        if cursor_y is not None and cursor_y < (self.y + self.h):
+            self.win.move(cursor_y, cursor_x)
         return lastcomplete
 
     def redraw(self):
-        """
+        """Draw the scrollable, ensuring the cursor is visible
+
         Updates the field, scrolling until the cursor is visible.  If we
         are not showing the cursor, the top line of the field is always
         the cursor line.
-
         """
         self.set_cursor(self.cursor)
         if self.cursor is None:
-            self.top=0
-        elif self.cursor<self.top or self.show_cursor==False:
-            self.top=self.cursor
-        end_of_displaylist=len(self.dl)+1 if self.lastline else len(self.dl)
-        lastitem=self.drawdl()
-        while self.cursor is not None and self.cursor>lastitem:
-            self.top=self.top+1
-            lastitem=self.drawdl()
-        self.display_complete=(lastitem==end_of_displaylist-1)
+            self.top = 0
+        elif self.cursor < self.top or self.show_cursor == False:
+            self.top = self.cursor
+        end_of_displaylist = len(self.dl) + 1 if self.lastline else len(self.dl)
+        lastitem = self.drawdl()
+        while self.cursor is not None and self.cursor > lastitem:
+            self.top = self.top + 1
+            lastitem = self.drawdl()
+        self.display_complete = (lastitem == end_of_displaylist - 1)
 
     def cursor_at_start(self):
         if self.cursor is None:
@@ -894,29 +933,29 @@ class scrollable(field):
             return True
         if self.show_cursor:
             if self.lastline:
-                return self.cursor>=len(self.dl)
+                return self.cursor >= len(self.dl)
             else:
-                return self.cursor==len(self.dl)-1 or len(self.dl)==0
+                return self.cursor == len(self.dl) - 1 or len(self.dl) == 0
         else:
             return self.display_complete
 
     def cursor_on_lastline(self):
-        return self.cursor==len(self.dl)
+        return self.cursor == len(self.dl)
 
-    def cursor_up(self,n=1):
+    def cursor_up(self, n=1):
         if self.cursor_at_start():
             if self.prevfield is not None and self.focused:
                 return self.prevfield.focus()
         else:
-            self.set_cursor(self.cursor-n)
+            self.set_cursor(self.cursor - n)
         self.redraw()
 
-    def cursor_down(self,n=1):
+    def cursor_down(self, n=1):
         if self.cursor_at_end():
             if self.nextfield is not None and self.focused:
                 return self.nextfield.focus()
         else:
-            self.set_cursor(self.cursor+n)
+            self.set_cursor(self.cursor + n)
         self.redraw()
 
     def keypress(self, k):
@@ -933,7 +972,7 @@ class scrollable(field):
         elif k == keyboard.K_PAGEUP:
             self.cursor_up(10)
         else:
-            field.keypress(self, k)
+            super().keypress(k)
 
 class emptyline:
     """A line for use in a scrollable.
@@ -953,9 +992,7 @@ class emptyline:
         return 0
 
     def display(self, width):
-        """
-        Returns a list of lines (of length 1), with one empty line.
-
+        """Return the lines needed to display this line
         """
         # After display has been called, the caller can read 'cursor' to
         # find our preferred location for the cursor if we are selected.
@@ -965,7 +1002,7 @@ class emptyline:
 
 class emptylines(emptyline):
     def __init__(self, colour=None, lines=1, userdata=None):
-        emptyline.__init__(self,colour,userdata)
+        super().__init__(colour, userdata)
         self.lines = lines
 
     def display(self, width):
@@ -981,14 +1018,15 @@ class line(emptyline):
     this line will never wrap.
     """
     def __init__(self, text="", colour=None, userdata=None):
-        emptyline.__init__(self, colour, userdata)
+        super().__init__(colour, userdata)
         self.text = text
 
     def idealwidth(self):
         return len(self.text)
 
     def display(self, width):
-        """
+        """Return the lines needed to display this line at the specified width
+
         Returns a list of lines (of length 1), truncated to the
         specified maximum width.
         """
@@ -1004,14 +1042,14 @@ class marginline(emptyline):
     Colour is taken from the line to be indented.
     """
     def __init__(self, l, margin=0):
-        emptyline.__init__(self, l.colour, l.userdata)
+        super().__init__(l.colour, l.userdata)
         self.l = l
         self.margin = margin
 
     def idealwidth(self):
         return self.l.idealwidth() + (2 * self.margin)
 
-    def display(self,width):
+    def display(self, width):
         m = ' ' * self.margin
         ll = [m + x + m for x in self.l.display(width - (2 * self.margin))]
         cursor = (self.l.cursor[0] + self.margin, self.l.cursor[1])
@@ -1025,16 +1063,16 @@ class lrline(emptyline):
     if it is too long) and optionally some right-aligned text.
     """
     def __init__(self, ltext="", rtext="", colour=None, userdata=None):
-        emptyline.__init__(self, colour)
+        super().__init__(colour, userdata)
         self.ltext = ltext
         self.rtext = rtext
 
     def idealwidth(self):
-        return len(self.ltext) + (len(self.rtext) + 1 \
-                                  if len(self.rtext) > 0 else 0)
+        return len(self.ltext) + (
+            len(self.rtext) + 1 if len(self.rtext) > 0 else 0)
 
     def display(self, width):
-        """Format for display.
+        """Format for display at the specified width
 
         Returns a list of lines, formatted to the specified maximum
         width.  If there is right-aligned text it is included along
@@ -1176,12 +1214,12 @@ class _tableline(emptyline):
     Create instances of this by calling tableformatter instances.
     """
     def __init__(self, formatter, fields, colour=None, userdata=None):
-        emptyline.__init__(self, colour, userdata)
+        super().__init__(colour, userdata)
         self._formatter = formatter
         self.fields = [str(x) for x in fields]
 
     def update(self):
-        emptyline.update(self)
+        super().update()
         self._formatter._update(self)
 
     def idealwidth(self):
@@ -1192,39 +1230,41 @@ class _tableline(emptyline):
         return self._formatter.format(self, width)
 
 class menu(listpopup):
-    """A popup menu with a list of selections. Selection can be made by
-    using cursor keys to move up and down, and pressing Cash/Enter to
-    confirm.
+    """A popup menu with a list of selections.
 
-    itemlist is a list of (desc,func,args) tuples.  If desc is a
+    Selection can be made by using cursor keys to move up and down,
+    and pressing Cash/Enter to confirm.
+
+    itemlist is a list of (desc, func, args) tuples.  If desc is a
     string it will be converted to a line(); otherwise it is assumed
     to be some subclass of emptyline().
-
     """
-    def __init__(self,itemlist,default=0,
+    def __init__(self, itemlist, default=0,
                  blurb="Select a line and press Cash/Enter",
                  title=None,
-                 colour=colour_input,w=None,dismiss_on_select=True,
+                 colour=colour_input, w=None, dismiss_on_select=True,
                  keymap={}):
-        self.itemlist=itemlist
-        self.dismiss_on_select=dismiss_on_select
-        dl=[x[0] for x in itemlist]
-        if not isinstance(blurb,list): blurb=[blurb]
-        listpopup.__init__(self,dl,default=default,
-                           header=blurb,title=title,
-                           colour=colour,w=w,keymap=keymap)
+        self.itemlist = itemlist
+        self.dismiss_on_select = dismiss_on_select
+        dl = [x[0] for x in itemlist]
+        if not isinstance(blurb, list):
+            blurb = [blurb]
+        super().__init__(dl, default=default,
+                         header=blurb, title=title,
+                         colour=colour, w=w, keymap=keymap)
 
-    def keypress(self,k):
-        if k==keyboard.K_CASH:
-            if len(self.itemlist)>0:
-                i=self.itemlist[self.s.cursor]
-                if self.dismiss_on_select: self.dismiss()
+    def keypress(self, k):
+        if k == keyboard.K_CASH:
+            if len(self.itemlist) > 0:
+                i = self.itemlist[self.s.cursor]
+                if self.dismiss_on_select:
+                    self.dismiss()
                 if i[2] is None:
                     i[1]()
                 else:
                     i[1](*i[2])
         else:
-            listpopup.keypress(self,k)
+            super().keypress(k)
 
 class _keymenuline(emptyline):
     """A line for use in a keymenu.
@@ -1241,10 +1281,13 @@ class _keymenuline(emptyline):
         self.cursor_colour = self.colour
         self.prompt = " " + str(keycode) + ". "
         self.desc = desc if isinstance(desc, emptyline) else line(desc)
+
     def update(self):
         pass
+
     def idealwidth(self):
         return self._keymenu.promptwidth + self.desc.idealwidth() + 1
+
     def display(self, width):
         self.cursor = (0, 0)
         dl = self.desc.display(width - self._keymenu.promptwidth)
@@ -1259,11 +1302,13 @@ class _keymenuline(emptyline):
         return ll
 
 class keymenu(listpopup):
-    """A popup menu with a list of selections.  Selections are made by
-    pressing the key associated with the selection.
+    """A popup menu with a list of selections.
 
-    itemlist is a list of (key,desc,func,args) tuples.  If desc is a
-    string it will be converted to a line(); otherwise it is assumed
+    Selections are made by pressing the key associated with the
+    selection.
+
+    itemlist is a list of (key, desc, func, args) tuples.  If desc is
+    a string it will be converted to a line(); otherwise it is assumed
     to be some subclass of emptyline().
     """
     def __init__(self, itemlist, blurb=[], title="Press a key",
@@ -1287,35 +1332,36 @@ class keymenu(listpopup):
             lines = [emptyline()] + list(yl(lines))
         else:
             lines = [emptyline()] + lines + [emptyline()]
-        listpopup.__init__(self, lines,
-                           header=blurb, title=title,
-                           colour=colour, w=w, keymap=km, show_cursor=False)
+        super().__init__(lines,
+                         header=blurb, title=title,
+                         colour=colour, w=w, keymap=km, show_cursor=False)
 
-def automenu(itemlist,spill="menu",**kwargs):
-    """Pop up a dialog to choose an item from the itemlist, which consists
-    of (desc,func,args) tuples.  If desc is a string it will be
-    converted to a lrline().
+def automenu(itemlist, spill="menu", **kwargs):
+    """A popup menu with a list of selections.
 
-    If the list is short enough then a keymenu will be used.  If
-    spill="menu" then a menu will be used; otherwise if
+    Pops up a dialog to choose an item from the itemlist, which
+    consists of (desc, func, args) tuples.  If desc is a string it
+    will be converted to a lrline().
+
+    If the list is short enough then a keymenu will be used.
+    Otherwise, if spill="menu" then a menu will be used; if
     spill="keymenu" (or anything else) the last option on the menu
-    will bring up another menu containing the remaining items.
-
+    will bring up another keymenu containing the remaining items.
     """
-    possible_keys=[
+    possible_keys = [
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-        ]
-    itemlist=[(lrline(desc) if not isinstance(desc,emptyline) else desc,
-               func,args) for desc,func,args in itemlist]
-    if spill=="menu" and len(itemlist)>len(possible_keys):
-        return menu(itemlist,**kwargs)
-    if len(itemlist)>len(possible_keys):
-        remainder=itemlist[len(possible_keys)-1:]
-        itemlist=itemlist[:len(possible_keys)-1]+[
-            ("More...",(lambda:automenu(remainder,spill="keymenu",**kwargs)),
-             None)]
-    return keymenu([(possible_keys.pop(0),desc,func,args)
-                    for desc,func,args in itemlist],**kwargs)
+    ]
+    itemlist = [(lrline(desc) if not isinstance(desc, emptyline) else desc,
+                 func, args) for desc, func, args in itemlist]
+    if spill == "menu" and len(itemlist) > len(possible_keys):
+        return menu(itemlist, **kwargs)
+    if len(itemlist) > len(possible_keys):
+        remainder = itemlist[len(possible_keys) - 1 :]
+        itemlist = itemlist[: len(possible_keys) - 1] + [
+            ("More...", (lambda: automenu(
+                remainder, spill="keymenu", **kwargs)), None)]
+    return keymenu([(possible_keys.pop(0), desc, func, args)
+                    for desc, func, args in itemlist], **kwargs)
 
 class booleanfield(valuefield):
     """A field with boolean value.
@@ -1330,10 +1376,10 @@ class booleanfield(valuefield):
         self.x = x
         self.readonly = readonly
         self.allow_blank = allow_blank
-        super(booleanfield, self).__init__(keymap, f)
+        super().__init__(keymap, f)
 
     def focus(self):
-        super(booleanfield, self).focus()
+        super().focus()
         self.draw()
 
     def set(self, l):
@@ -1366,7 +1412,7 @@ class booleanfield(valuefield):
         elif k == keyboard.K_CLEAR and self.allow_blank and self._f is not None:
             self.set(None)
         else:
-            super(booleanfield, self).keypress(k)
+            super().keypress(k)
                 
 class editfield(valuefield):
     """Accept typed-in input in a field.
@@ -1399,17 +1445,19 @@ class editfield(valuefield):
         self.flen = flen
         self.validate = validate
         self.readonly = readonly
-        super(editfield, self).__init__(keymap, f)
+        super().__init__(keymap, f)
+
     # Internal attributes:
     # c - cursor position
     # i - amount by which contents have scrolled left to fit width
     # _f - current contents
+
     @property
     def f(self):
         return self.read()
 
     def focus(self):
-        super(editfield, self).focus()
+        super().focus()
         if self.c > len(self._f):
             self.c = len(self._f)
         self.draw()
@@ -1530,7 +1578,7 @@ class editfield(valuefield):
         elif k == keyboard.K_CLEAR and self._f != "" and not self.readonly:
             self.clear()
         else:
-            super(editfield, self).keypress(k)
+            super().keypress(k)
 
 class datefield(editfield):
     """A field for entry of dates
@@ -1540,12 +1588,13 @@ class datefield(editfield):
     def __init__(self, y, x, keymap={}, f=None, readonly=False):
         if f is not None:
             f = formatdate(f)
-        editfield.__init__(self, y, x, 10, keymap=keymap, f=f, flen=10,
-                           readonly=readonly, validate=self.validate_date)
+        super().__init__(y, x, 10, keymap=keymap, f=f, flen=10,
+                         readonly=readonly, validate=self.validate_date)
+
     @staticmethod
     def validate_date(s, c):
         def checkdigit(i):
-            a=s[i : i + 1]
+            a = s[i : i + 1]
             if len(a) == 0:
                 return True
             return a.isdigit()
@@ -1569,9 +1618,9 @@ class datefield(editfield):
 
     def set(self, v):
         if hasattr(v, 'strftime'):
-            super(datefield, self).set(formatdate(v))
+            super().set(formatdate(v))
         else:
-            super(datefield, self).set(v)
+            super().set(v)
 
     def read(self):
         try:
@@ -1588,7 +1637,7 @@ class datefield(editfield):
         self.win.move(self.y, self.x + self.c)
 
     def insert(self, s):
-        super(datefield, self).insert(s)
+        super().insert(s)
         if len(self._f) == 4 or len(self._f) == 7:
             self.set(self._f + '-')
 
@@ -1602,17 +1651,17 @@ class moneyfield(editfield):
     the field.
     """
     def __init__(self, y, x, w=6):
-        ui.editfield.__init__(self, y, x, w, validate=ui.validate_float)
+        super().__init__(y, x, w, validate=ui.validate_float)
 
     def keypress(self, k):
         if hasattr(k, "notevalue"):
             self.set(str(k.notevalue))
-            ui.editfield.keypress(self, keyboard.K_CASH)
+            super().keypress(keyboard.K_CASH)
         else:
-            ui.editfield.keypress(self, k)
+            super().keypress(k)
 
     def set(self, a):
-        super(moneyfield, self).set(str(a))
+        super().set(str(a))
 
     def read(self):
         try:
@@ -1644,7 +1693,7 @@ class modelfield(editfield):
         self._attr = field
         self._field = getattr(self._model, self._attr)
         self._create = create
-        super(modelfield, self).__init__(
+        super().__init__(
             y, x, w, keymap=keymap,
             f=default,
             flen=self._field.type.length,
@@ -1697,9 +1746,9 @@ class modelfield(editfield):
 
     def set(self, value):
         if value:
-            super(modelfield, self).set(getattr(value, self._attr))
+            super().set(getattr(value, self._attr))
         else:
-            super(modelfield, self).set(None)
+            super().set(None)
 
     def read(self):
         i = td.s.query(self._model)\
@@ -1716,7 +1765,7 @@ class modelfield(editfield):
                     .filter(self._field.ilike("{}%".format(self._f)))\
                     .order_by(self._field)\
                     .all()
-            ml = [ (x[0], super(modelfield, self).set, (x[0],)) for x in m ]
+            ml = [ (x[0], super().set, (x[0],)) for x in m ]
             if self._create:
                 ml.append(("Create new...", self._create, (self, self._f,)))
             self.set(None)
@@ -1750,10 +1799,10 @@ class modelpopupfield(valuefield):
         self.popupfunc = popupfunc
         self.valuefunc = valuefunc
         self.readonly = readonly
-        super(modelpopupfield, self).__init__(keymap, f)
+        super().__init__(keymap, f)
 
     def focus(self):
-        super(modelpopupfield, self).focus()
+        super().focus()
         self.draw()
 
     def set(self, value):
@@ -1799,7 +1848,7 @@ class modelpopupfield(valuefield):
             self.popup()
             handle_keyboard_input(k)
         else:
-            super(modelpopupfield, self).keypress(k)
+            super().keypress(k)
 
 class modellistfield(modelpopupfield):
     """A field that allows a model instance to be chosen from a list
@@ -1825,7 +1874,7 @@ class modellistfield(modelpopupfield):
     def __init__(self, y, x, w, model, l, d=str, f=None, keymap={},
                  readonly=False):
         self._query = l
-        super(modellistfield, self).__init__(
+        super().__init__(
             y, x, w, model, self._popuplist, d,
             f=f, keymap=keymap, readonly=readonly)
 
@@ -1902,22 +1951,22 @@ class modellistfield(modelpopupfield):
                 return self.previtem()
             elif isinstance(k, str):
                 return self.prefixitem(k)
-        super(modellistfield, self).keypress(k)
+        super().keypress(k)
 
 class buttonfield(field):
     def __init__(self, y, x, w, text, keymap={}):
         self.y = y
         self.x = x
         self.t = text.center(w - 2)
-        field.__init__(self, keymap)
+        super().__init__(keymap)
         self.draw()
 
     def focus(self):
-        field.focus(self)
+        super().focus()
         self.draw()
 
     def defocus(self):
-        field.defocus(self)
+        super().defocus()
         self.draw()
 
     @property
@@ -1941,43 +1990,48 @@ class buttonfield(field):
             self.win.move(*pos)
 
 def map_fieldlist(fl):
-    """Update the nextfield and prevfield attributes of each field in
-    fl to enable movement between fields."""
-    for i in range(0,len(fl)):
-        next=i+1
-        if next>=len(fl): next=0
-        next=fl[next]
-        prev=i-1
-        if prev<0: prev=len(fl)-1
-        prev=fl[prev]
-        fl[i].nextfield=next
-        fl[i].prevfield=prev
+    """Set up navigation between fields
+
+    Update the nextfield and prevfield attributes of each field in fl
+    to enable movement between fields.
+    """
+    for i in range(0, len(fl)):
+        next = i + 1
+        if next >= len(fl):
+            next = 0
+        next = fl[next]
+        prev = i - 1
+        if prev < 0:
+            prev = len(fl) - 1
+        prev = fl[prev]
+        fl[i].nextfield = next
+        fl[i].prevfield = prev
 
 def popup_exception(title):
-    e=traceback.format_exception(sys.exc_info()[0],sys.exc_info()[1],
-                                 sys.exc_info()[2])
-    infopopup(e,title=title)
+    e = traceback.format_exception(*sys.exc_info())
+    infopopup(e, title=title)
 
 class exception_popup:
-    """
-    Pop up a window describing a caught exception.  Provide the user
-    with the option to see the full traceback if they want to.
+    """Pop up a window describing a caught exception.
 
+    Provide the user with the option to see the full traceback if they
+    want to.
     """
-    def __init__(self,description,title,type,value,tb):
-        self._description=description
-        self._title=title
-        self._type=type
-        self._value=value
-        self._tb=tb
+    def __init__(self, description, title, type, value, tb):
+        self._description = description
+        self._title = title
+        self._type = type
+        self._value = value
+        self._tb = tb
         infopopup(
-            [description,"",str(value),"",
+            [description, "", str(value), "",
              "Press {} to see more details.".format(keyboard.K_CASH.keycap)],
-            title=title,keymap={keyboard.K_CASH:(self.show_all,None,True)})
+            title=title, keymap={keyboard.K_CASH: (self.show_all, None, True)})
+
     def show_all(self):
-        e=traceback.format_exception(self._type,self._value,self._tb)
+        e = traceback.format_exception(self._type, self._value, self._tb)
         infopopup(
-            [self._description,""]+e,title=self._title)
+            [self._description, ""] + e, title=self._title)
 
 class exception_guard:
     """Context manager for code that may fail
