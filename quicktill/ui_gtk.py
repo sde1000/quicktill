@@ -1,7 +1,8 @@
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
-from gi.repository import Gtk, Pango, GLib, Gdk
+gi.require_version('PangoCairo', '1.0')
+from gi.repository import Gtk, Pango, GLib, Gdk, PangoCairo
 import sys
 import cairo
 import math
@@ -196,12 +197,19 @@ class text_window(window):
     """
     def __init__(self, gtkwin, height, width, y, x,
                  colour=ui.colour_default, always_on_top=False,
-                 fontheight=24, fontwidth=10):
-        self.fontheight = fontheight
-        self.fontwidth = fontwidth
+                 fontname="monospace 16"):
+        self.fontname = fontname
+        self.fontdesc = Pango.font_description_from_string(fontname)
+        fontmap = PangoCairo.font_map_get_default()
+        pangoctx = fontmap.create_context()
+        metrics = pangoctx.get_metrics(self.fontdesc)
+        self.fontwidth = metrics.get_approximate_digit_width() // Pango.SCALE
+        self.ascent = metrics.get_ascent() // Pango.SCALE
+        self.descent = metrics.get_descent() // Pango.SCALE
+        self.fontheight = self.ascent + self.descent
         super(text_window, self).__init__(
-            gtkwin, height * fontheight, width * fontwidth,
-            y * fontheight, x * fontwidth, always_on_top)
+            gtkwin, height * self.fontheight, width * self.fontwidth,
+            y * self.fontheight, x * self.fontwidth, always_on_top)
         self.height_chars = height
         self.width_chars = width
         self.cur_y = 0
@@ -244,9 +252,6 @@ class text_window(window):
         return (self.height_chars, self.width_chars)
 
     def addstr(self, y, x, text, colour=None):
-        # XXX the font selection and metrics code has yet to be written,
-        # this is a placeholder with a hard-coded font and size and
-        # magic numbers to make it work
         if not colour:
             colour = self.colour
         ctx = cairo.Context(self._surface)
@@ -255,12 +260,12 @@ class text_window(window):
         ctx.rectangle(x * self.fontwidth, y * self.fontheight,
                       len(text) * self.fontwidth, self.fontheight)
         ctx.fill()
-        ctx.select_font_face("monospace")
-        ctx.set_font_size(16)
+        layout = PangoCairo.create_layout(ctx)
+        layout.set_text(text, -1)
+        layout.set_font_description(self.fontdesc)
         ctx.set_source_rgb(*colours[colour.foreground])
-        # XXX this is such a hack!
-        ctx.move_to(x * self.fontwidth, ((y + 1) * self.fontheight) - 6)
-        ctx.show_text(text)
+        ctx.move_to(x * self.fontwidth, y * self.fontheight)
+        PangoCairo.show_layout(ctx, layout)
         self.damage(y * self.fontheight, x * self.fontwidth,
                     self.fontheight, len(text) * self.fontwidth)
         self.move(y, x + len(text))
@@ -284,11 +289,14 @@ class text_window(window):
         return False
 
     def new(self, height, width, y, x, colour=ui.colour_default,
-            always_on_top=False):
+            always_on_top=False, fontname=None):
         """Create a child text window
         """
+        if fontname is None:
+            fontname = self.fontname
         new = text_window(
-            self._gtkwin, height, width, y, x, colour, always_on_top)
+            self._gtkwin, height, width, y, x, colour, always_on_top,
+            fontname=fontname)
         return new
 
     def flush(self):
@@ -336,7 +344,7 @@ def _quit(widget, event):
 def run():
     """Start running with the GTK display system
     """
-    ui.rootwin = text_window(None, 24, 80, 0, 0)
+    ui.rootwin = text_window(None, 24, 80, 0, 0, fontname="monospace 14")
     ui.beep = Gdk.beep
     ui.header = ui.clockheader(ui.rootwin)
     ui.toaster.notify_display_initialised()
