@@ -241,7 +241,7 @@ class _toastmaster:
             y = mh - h - 1
         try:
             self.win = rootwin.new(
-                h, w, y, (mw - w) // 2,
+                h, w, y, "center",
                 colour=colour_toast, always_on_top=True)
         except:
             return self.start_display("(toast too long)")
@@ -350,8 +350,7 @@ class basicpage(basicwin):
         # We need to deselect any current page first.
         if basicpage._basepage:
             basicpage._basepage.deselect()
-        my, mx = rootwin.size()
-        self.win = rootwin.new(my - 1, mx, 1, 0)
+        self.win = rootwin.new("page", "max", "page", 0)
         # XXX In the past, self.win was a native ncurses window object
         # and we had to use a wrapper for addstr to deal with
         # character encodings.  Now self.win is a python object with
@@ -469,9 +468,7 @@ class basicpopup(basicwin):
             w = max(w, len(cleartext) + 3)
         w = min(w, mw)
         h = min(h, mh)
-        y = (mh - h) // 2
-        x = (mw - w) // 2
-        self.win = rootwin.new(h, w, y, x, colour=colour)
+        self.win = rootwin.new(h, w, "center", "center", colour=colour)
         # XXX In the past, self.win was a native ncurses window object
         # and we had to use a wrapper for addstr to deal with
         # character encodings.  Now self.win is a python object with
@@ -479,11 +476,7 @@ class basicpopup(basicwin):
         # only for compatibility with code that hasn't been updated
         # yet
         self.addstr = self.win.addstr
-        self.win.border()
-        if title:
-            self.win.addstr(0, 1, title)
-        if cleartext:
-            self.win.addstr(h - 1, w - 1 - len(cleartext), cleartext)
+        self.win.border(title, cleartext)
 
     def dismiss(self):
         self.parent.focus()

@@ -197,19 +197,20 @@ class text_window(window):
     """
     def __init__(self, gtkwin, height, width, y, x,
                  colour=ui.colour_default, always_on_top=False,
-                 fontname="monospace 16"):
-        self.fontname = fontname
-        self.fontdesc = Pango.font_description_from_string(fontname)
+                 monospace_font=None, font=None):
+        # y and x are in pixels, height and width are in characters
+        self.monospace = monospace_font
+        self.font = font if font else monospace_font
         fontmap = PangoCairo.font_map_get_default()
         pangoctx = fontmap.create_context()
-        metrics = pangoctx.get_metrics(self.fontdesc)
+        metrics = pangoctx.get_metrics(self.monospace)
         self.fontwidth = metrics.get_approximate_digit_width() // Pango.SCALE
         self.ascent = metrics.get_ascent() // Pango.SCALE
         self.descent = metrics.get_descent() // Pango.SCALE
         self.fontheight = self.ascent + self.descent
         super(text_window, self).__init__(
             gtkwin, height * self.fontheight, width * self.fontwidth,
-            y * self.fontheight, x * self.fontwidth, always_on_top)
+            y, x, always_on_top)
         self.height_chars = height
         self.width_chars = width
         self.cur_y = 0
@@ -262,7 +263,7 @@ class text_window(window):
         ctx.fill()
         layout = PangoCairo.create_layout(ctx)
         layout.set_text(text, -1)
-        layout.set_font_description(self.fontdesc)
+        layout.set_font_description(self.monospace)
         ctx.set_source_rgb(*colours[colour.foreground])
         ctx.move_to(x * self.fontwidth, y * self.fontheight)
         PangoCairo.show_layout(ctx, layout)
@@ -275,28 +276,48 @@ class text_window(window):
 
         Returns the number of lines that the string was wrapped over.
         """
-        lines = 0
-        for line in s.splitlines():
-            if line:
-                for wrappedline in textwrap.wrap(line, width):
-                    self.addstr(y + lines, x, wrappedline, colour)
-                    lines += 1
-            else:
-                lines += 1
+        if not colour:
+            colour = self.colour
+        ctx = cairo.Context(self._surface)
+        ctx.set_source_rgb(*colours[colour.foreground])
+        layout = PangoCairo.create_layout(ctx)
+        layout.set_text(s, -1)
+        layout.set_font_description(self.font)
+        layout.set_width(width * self.fontwidth * Pango.SCALE)
+        width, height = layout.get_pixel_size()
+        lines = height // self.fontheight
+        ctx.move_to(x * self.fontwidth, y * self.fontheight)
+        PangoCairo.show_layout(ctx, layout)
+        self.damage(y * self.fontheight, x * self.fontwidth,
+                    height, width)
         return lines
 
     def isendwin(self):
         return False
 
     def new(self, height, width, y, x, colour=ui.colour_default,
-            always_on_top=False, fontname=None):
+            always_on_top=False):
         """Create a child text window
         """
-        if fontname is None:
-            fontname = self.fontname
+        if height == "max":
+            height = self.height_chars
+        if height == "page":
+            height = self.height_chars - 1
+        if width == "max":
+            width = self.width_chars
+        if y == "center":
+            y = (self.height - (height * self.fontheight)) // 2
+        elif y == "page":
+            y = self.fontheight
+        else:
+            y = y * self.fontheight
+        if x == "center":
+            x = (self.width - (width * self.fontwidth)) // 2
+        else:
+            x = x * self.fontwidth
         new = text_window(
             self._gtkwin, height, width, y, x, colour, always_on_top,
-            fontname=fontname)
+            monospace_font=self.monospace, font=self.font)
         return new
 
     def flush(self):
@@ -319,7 +340,7 @@ class text_window(window):
         ctx.arc(x1 + radius, y2 - radius, radius, 1 * pi2, 2 * pi2)
         ctx.close_path()
 
-    def border(self):
+    def border(self, title=None, clear=None):
         x1 = self.fontwidth / 2
         y1 = self.fontheight / 2
         x2 = x1 + (self.width_chars - 1) * self.fontwidth
@@ -328,6 +349,30 @@ class text_window(window):
         ctx.set_source_rgb(*colours[self.colour.foreground])
         self._rect(ctx, self.fontwidth, x1, x2, y1, y2)
         ctx.stroke()
+        if title:
+            layout = PangoCairo.create_layout(ctx)
+            layout.set_text(title, -1)
+            layout.set_font_description(self.font)
+            width, height = layout.get_pixel_size()
+            ctx.set_source_rgb(*colours[self.colour.background])
+            ctx.rectangle(self.fontwidth, 0, width, self.fontheight)
+            ctx.fill()
+            ctx.set_source_rgb(*colours[self.colour.foreground])
+            ctx.move_to(self.fontwidth, 0)
+            PangoCairo.show_layout(ctx, layout)
+        if clear:
+            layout = PangoCairo.create_layout(ctx)
+            layout.set_text(clear, -1)
+            layout.set_font_description(self.font)
+            width, height = layout.get_pixel_size()
+            ctx.set_source_rgb(*colours[self.colour.background])
+            x = self.width - self.fontwidth - width
+            y = self.height - self.fontheight
+            ctx.rectangle(x, y, width, self.fontheight)
+            ctx.fill()
+            ctx.set_source_rgb(*colours[self.colour.foreground])
+            ctx.move_to(x, y)
+            PangoCairo.show_layout(ctx, layout)
         self.damage(0, 0, self.height, self.width)
 
     def erase(self):
@@ -344,7 +389,10 @@ def _quit(widget, event):
 def run():
     """Start running with the GTK display system
     """
-    ui.rootwin = text_window(None, 24, 80, 0, 0, fontname="monospace 14")
+    monospace_font = Pango.font_description_from_string("Ubuntu Mono 16")
+    font = Pango.font_description_from_string("Ubuntu 14")
+    ui.rootwin = text_window(None, 24, 80, 0, 0, monospace_font=monospace_font,
+                             font=font)
     ui.beep = Gdk.beep
     ui.header = ui.clockheader(ui.rootwin)
     ui.toaster.notify_display_initialised()

@@ -99,6 +99,19 @@ class curses_window:
         """
         if not colour:
             colour = ui.colour_default
+        my, mx = self.size()
+        if height == "max":
+            height = my
+        if height == "page":
+            height = my - 1
+        if width == "max":
+            width = mx
+        if y == "center":
+            y = (my - height) // 2
+        if y == "page":
+            y = 1
+        if x == "center":
+            x = (mx - width) // 2
         win = curses.newwin(height, width, y, x)
         pan = curses.panel.new_panel(win)
         cw = curses_window(win, pan, colour=colour, always_on_top=always_on_top)
@@ -169,8 +182,13 @@ class curses_window:
     def erase(self):
         return self._win.erase()
 
-    def border(self):
-        return self._win.border()
+    def border(self, title=None, clear=None):
+        self._win.border()
+        if title:
+            self.addstr(0, 1, title)
+        if clear:
+            h, w = self.size()
+            self.addstr(h - 1, w - 1 - len(clear), clear)
 
     def set_cursor(self, state):
         # Not yet implemented - we will have to keep track of which
