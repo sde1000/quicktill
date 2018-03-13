@@ -1,8 +1,15 @@
 """Price lookup window."""
 
-from . import td, ui, keyboard, stock, linekeys, user, modifiers, tillconfig
+from . import td
+from . import ui
+from . import keyboard
+from . import stock
+from . import linekeys
+from . import user
+from . import modifiers
+from . import tillconfig
 
-class pricecheck_keypress(object):
+class pricecheck_keypress:
     """Process line key presses.
 
     This class is a mixin for the various classes used by the price
@@ -19,15 +26,14 @@ class pricecheck_keypress(object):
                 popup(prompt="There are no options on key \"{}\".  Press "
                       "another line key.".format(k.keycap))
         else:
-            super(pricecheck_keypress, self).keypress(k)
+            super().keypress(k)
 
 class popup(user.permission_checked, pricecheck_keypress, ui.infopopup):
     permission_required = ("price-check",
                            "Check prices without selling anything")
     def __init__(self, prompt="Press a line key."):
-        ui.infopopup.__init__(
-            self, [prompt], title="Price Check",
-            dismiss=keyboard.K_CASH, colour=ui.colour_info)
+        super().__init__([prompt], title="Price Check",
+                         dismiss=keyboard.K_CASH, colour=ui.colour_info)
 
 class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
     """Display stockline -> display menu of items on sale on that line."""
@@ -47,8 +53,8 @@ class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
                  "", "Choose a stock item for more information, or "
                  "press another line key.",
         ]
-        ui.menu.__init__(
-            self, sl, title="{} ({}) - display capacity {}".format(
+        super().__init__(
+            sl, title="{} ({}) - display capacity {}".format(
                 stockline.name, stockline.location, stockline.capacity),
             blurb=blurb,
             colour=ui.colour_info,
@@ -71,8 +77,8 @@ class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
                  "", "Choose a stock item for more information, or "
                  "press another line key.",
         ]
-        ui.menu.__init__(
-            self, sl, title="{} ({})".format(
+        super().__init__(
+            sl, title="{} ({})".format(
                 stockline.name, stockline.location),
             blurb=blurb,
             colour=ui.colour_info,
@@ -82,10 +88,9 @@ class pricecheck_stockitem(pricecheck_keypress, ui.listpopup):
     """A particular stock item on a line."""
     def __init__(self, stockitem):
         td.s.add(stockitem)
-        ui.listpopup.__init__(
-            self,
+        super().__init__(
             stock.stockinfo_linelist(stockitem.id),
-            title="Stock item %d"%stockitem.id,
+            title="Stock item {}".format(stockitem.id),
             dismiss=keyboard.K_CASH,
             show_cursor=False,
             colour=ui.colour_info)
@@ -102,8 +107,8 @@ class pricecheck_plu(pricecheck_keypress, ui.listpopup):
              " Alternative price 2: {} ".format(tillconfig.fc(plu.altprice2)),
              " Alternative price 3: {} ".format(tillconfig.fc(plu.altprice3)),
              ""]
-        ui.listpopup.__init__(
-            self, l, title="Price Lookup",
+        super().__init__(
+            l, title="Price Lookup",
             dismiss=keyboard.K_CASH, show_cursor=False,
             colour=ui.colour_info)
 
@@ -115,8 +120,8 @@ class pricecheck_modifier(pricecheck_keypress, ui.infopopup):
         else:
             mod = modifiers.all[modifier]
             l = mod.description.split('\n\n')
-        ui.infopopup.__init__(
-            self, l, title=modifier,
+        super().__init__(
+            l, title=modifier,
             dismiss=keyboard.K_CASH,
             colour=ui.colour_info)
 
