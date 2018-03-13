@@ -464,7 +464,7 @@ def run():
     """Start running with the GTK display system
     """
     monospace_font = Pango.font_description_from_string("Ubuntu Mono 24")
-    font = Pango.font_description_from_string("Ubuntu 22")
+    font = Pango.font_description_from_string("Ubuntu 21")
     ui.rootwin = gtk_root(monospace_font, font, 24, 80)
     ui.beep = Gdk.beep
     GtkWindow(ui.rootwin)
