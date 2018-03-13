@@ -134,6 +134,8 @@ def debug_menu():
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
         ("3", "Toast covering a long operation", long_toast, None),
+        ("4", "Fullscreen window", ui.rootwin.set_fullscreen, (True,)),
+        ("5", "Unfullscreen window", ui.rootwin.set_fullscreen, (False,)),
     ]
     ui.keymenu(menu, title="Debug")
 
