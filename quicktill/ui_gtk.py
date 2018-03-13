@@ -355,10 +355,11 @@ class text_window(window):
             layout.set_font_description(self.font)
             width, height = layout.get_pixel_size()
             ctx.set_source_rgb(*colours[self.colour.background])
-            ctx.rectangle(self.fontwidth, 0, width, self.fontheight)
+            x = self.fontwidth + 4
+            ctx.rectangle(x, 0, width, self.fontheight)
             ctx.fill()
             ctx.set_source_rgb(*colours[self.colour.foreground])
-            ctx.move_to(self.fontwidth, 0)
+            ctx.move_to(x, 0)
             PangoCairo.show_layout(ctx, layout)
         if clear:
             layout = PangoCairo.create_layout(ctx)
@@ -366,7 +367,7 @@ class text_window(window):
             layout.set_font_description(self.font)
             width, height = layout.get_pixel_size()
             ctx.set_source_rgb(*colours[self.colour.background])
-            x = self.width - self.fontwidth - width
+            x = self.width - self.fontwidth - width - 4
             y = self.height - self.fontheight
             ctx.rectangle(x, y, width, self.fontheight)
             ctx.fill()
