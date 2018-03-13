@@ -1,6 +1,8 @@
 import sys
 import locale
 import textwrap
+import time
+import math
 import curses, curses.ascii, curses.panel
 from . import ui
 from . import keyboard
@@ -56,43 +58,78 @@ def _curses_attr(colour):
     colour._curses_attr = curses.color_pair(number)
     return colour._curses_attr
 
-class window_stack:
-    def __init__(self, stack):
-        self._stack = stack
+class curses_root:
+    """Root window with single-line header
 
-    def restore(self):
-        for i in self._stack:
-            i._pan.show()
-        i._check_on_top()
+    Has a clock at the right-hand side.  Can be passed text for the
+    top-left and the middle.  Draws directly on the root window, not
+    into a panel.
 
-class curses_window:
-    """A window to draw text in
+    "new" method is used to create panels on top of the panel stack.
     """
-    def __init__(self, win, pan=None, colour = ui.colour_default,
-                 always_on_top=False):
+    def __init__(self, win, left="Quicktill", middle=""):
         self._win = win
-        self._pan = pan
-        # ui code can access the colour attribute to decide what
-        # colour to use for (eg.) reversed text, etc.
-        self.colour = colour
-        self.always_on_top = always_on_top
+        self.left = left
+        self.middle = middle
+        self._clockalarm()
 
-    def destroy(self):
-        if self._pan:
-            self._pan.hide()
-        del self._win, self._pan
+    def _redraw(self):
+        """Draw the header based on the current left and middle text
 
-    def flush(self):
-        # Flush output to the display immediately, if possible
-        _doupdate()
+        The header line consists of the title of the page at the left,
+        optionally a summary of what's on other pages in the middle,
+        and the clock at the right.  If we do not have enough space,
+        we truncate the summary section until we do.  If we still
+        don't, we truncate the page name.
+        """
+        my, mx = self.size()
+        m = self.left
+        s = self.middle
+        t = time.strftime("%a %d %b %Y %H:%M:%S %Z")
+        def cat(m, s, t):
+            w = len(m) + len(s) + len(t)
+            pad1 = (mx - w) // 2
+            pad2 = pad1
+            if w + pad1 + pad2 != mx:
+                pad1 = pad1 + 1
+            return ''.join([m, ' ' * pad1, s, ' ' * pad2, t])
+        x = cat(m, s, t)
+        while len(x) > mx:
+            if len(s) > 0:
+                s = s[:-1]
+            elif len(m) > 0:
+                m = m[:-1]
+            else:
+                t = t[1:]
+            x = cat(m, s, t)
+        self._win.addstr(0, 0, x.encode(c), _curses_attr(ui.colour_header))
+
+    def update_header(self, left, middle):
+        self.left = left
+        self.middle = middle
+        self._redraw()
+
+    def _clockalarm(self):
+        self._redraw()
+        now = time.time()
+        nexttime = math.ceil(now) + 0.01
+        tillconfig.mainloop.add_timeout(nexttime - now, self._clockalarm,
+                                        "clock")
+
+    def size(self):
+        """Size of screen in characters
+        """
+        return self._win.getmaxyx()
 
     def isendwin(self):
         """Has the display been shut down?
         """
         return curses.isendwin()
 
-    def size(self):
-        return self._win.getmaxyx()
+    def flush(self):
+        """Flush pending output to the display immediately
+        """
+        _doupdate()
 
     def new(self, height, width, y, x, colour=None, always_on_top=False):
         """Create and return a new window on top of the stack of windows
@@ -121,6 +158,57 @@ class curses_window:
         win.erase()
         return cw
 
+    def set_fullscreen(self, fullscreen):
+        """Set whether the display takes the full screen
+        """
+        # Can't be implemented using ncurses
+        return False
+
+    def _check_on_top(self):
+        # Check the panel stack for panels that are supposed to be on
+        # top of others and restore them to that position
+        t = curses.panel.top_panel()
+        to_raise = []
+        while t:
+            if t.userptr().always_on_top:
+                to_raise.append(t)
+            t = t.below()
+        for p in to_raise:
+            p.top()
+
+class window_stack:
+    def __init__(self, stack):
+        self._stack = stack
+
+    def restore(self):
+        for i in self._stack:
+            i._pan.show()
+        ui.rootwin._check_on_top()
+
+class curses_window:
+    """A window to draw text in
+    """
+    def __init__(self, win, pan=None, colour = ui.colour_default,
+                 always_on_top=False):
+        self._win = win
+        self._pan = pan
+        # ui code can access the colour attribute to decide what
+        # colour to use for (eg.) reversed text, etc.
+        self.colour = colour
+        self.always_on_top = always_on_top
+
+    def destroy(self):
+        if self._pan:
+            self._pan.hide()
+        del self._win, self._pan
+
+    def flush(self):
+        # Flush output to the display immediately, if possible
+        _doupdate()
+
+    def size(self):
+        return self._win.getmaxyx()
+
     def save_stack(self):
         # Hide this window and all windows on top of it (excluding
         # those marked "always on top") and return an object that can
@@ -138,18 +226,6 @@ class curses_window:
         l.reverse()
         return window_stack(l)
 
-    def _check_on_top(self):
-        # Check the panel stack for panels that are supposed to be on
-        # top of others and restore them to that position
-        t = curses.panel.top_panel()
-        to_raise = []
-        while t:
-            if t.userptr().always_on_top:
-                to_raise.append(t)
-            t = t.below()
-        for p in to_raise:
-            p.top()
-
     def addstr(self, y, x, s, colour=None):
         if colour is None:
             colour = self.colour
@@ -158,7 +234,7 @@ class curses_window:
         except curses.error:
             log.debug("addstr problem: len(s)=%d; s=%s", len(s), repr(s))
 
-    def wrapstr(self, y, x, width, s, colour=None):
+    def wrapstr(self, y, x, width, s, colour=None, display=True):
         """Display a string wrapped to specified width.
 
         Returns the number of lines that the string was wrapped over.
@@ -167,7 +243,8 @@ class curses_window:
         for line in s.splitlines():
             if line:
                 for wrappedline in textwrap.wrap(line, width):
-                    self.addstr(y + lines, x, wrappedline, colour)
+                    if display:
+                        self.addstr(y + lines, x, wrappedline, colour)
                     lines += 1
             else:
                 lines += 1
@@ -258,8 +335,7 @@ def _init(w):
     w.nodelay(1)
     _init_colourpairs()
     ui.beep = curses.beep
-    ui.rootwin = curses_window(w)
-    ui.header = ui.clockheader(ui.rootwin)
+    ui.rootwin = curses_root(w)
     tillconfig.mainloop.add_fd(sys.stdin.fileno(), _curses_keyboard_input,
                                desc="stdin")
     ui.toaster.notify_display_initialised()

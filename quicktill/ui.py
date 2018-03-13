@@ -3,7 +3,6 @@
 
 import time
 import datetime
-import math
 import sys
 import textwrap
 import traceback
@@ -45,68 +44,8 @@ colour_changeline = colourpair("changeline", "yellow", "black")
 colour_cancelline = colourpair("cancelline", "blue", "black")
 colour_confirm = colourpair("confirm", "black", "cyan")
 
-# The display system root window.
+# The display system root window, and access to the header/clock/title bar
 rootwin = None
-# Access to the header / clock line, if present, or the
-# window system title bar otherwise
-header = None
-
-class clockheader:
-    """A single-line header at the top of the screen
-
-    Has a clock at the right-hand side.  Can be passed text for the
-    top-left and the middle.  Draws directly on the root window, not
-    into a subwindow.
-    """
-    def __init__(self, win, left="Quicktill", middle=""):
-        self.win = win
-        self.left = left
-        self.middle = middle
-        self.alarm()
-
-    def redraw(self):
-        """Draw the header based on the current left and middle text
-
-        The header line consists of the title of the page at the left,
-        optionally a summary of what's on other pages in the middle,
-        and the clock at the right.  If we do not have enough space,
-        we truncate the summary section until we do.  If we still
-        don't, we truncate the page name.
-        """
-        my, mx = rootwin.size()
-        m = self.left
-        s = self.middle
-        t = time.strftime("%a %d %b %Y %H:%M:%S %Z")
-        def cat(m, s, t):
-            w = len(m) + len(s) + len(t)
-            pad1 = (mx - w) // 2
-            pad2 = pad1
-            if w + pad1 + pad2 != mx:
-                pad1 = pad1 + 1
-            return ''.join([m, ' ' * pad1, s, ' ' * pad2, t])
-        x = cat(m, s, t)
-        while len(x) > mx:
-            if len(s) > 0:
-                s = s[:-1]
-            elif len(m) > 0:
-                m = m[:-1]
-            else:
-                t = t[1:]
-            x = cat(m, s, t)
-        self.win.addstr(0, 0, x, colour_header)
-
-    def update(self, left=None, middle=None):
-        if left is not None:
-            self.left = left
-        if middle is not None:
-            self.middle = middle
-        self.redraw()
-
-    def alarm(self):
-        self.redraw()
-        now = time.time()
-        nexttime = math.ceil(now) + 0.01
-        tillconfig.mainloop.add_timeout(nexttime - now, self.alarm)
 
 def formattime(ts):
     "Returns ts formatted as %Y-%m-%d %H:%M:%S"
@@ -402,6 +341,7 @@ class basicpage(basicwin):
         """Remove this page."""
         if basicpage._basepage == self:
             self.deselect()
+        self.win.destroy()
         del self.win, self.stack
         basicpage._pagelist.remove(self)
 
@@ -416,7 +356,7 @@ class basicpage(basicwin):
                 ps = i.pagesummary()
                 if ps:
                     s = s + i.pagesummary() + ' '
-        header.update(m, s)
+        rootwin.update_header(m, s)
 
     @staticmethod
     def _ensure_page_exists():
