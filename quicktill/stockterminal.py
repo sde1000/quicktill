@@ -13,7 +13,8 @@ log = logging.getLogger(__name__)
 class page(ui.basicpage):
     def __init__(self, hotkeys, locations=None, user=None,
                  max_unattended_updates=None):
-        ui.basicpage.__init__(self)
+        super().__init__()
+        self.win.set_cursor(False)
         self.user = user if user else load_user(tillconfig.default_user)
         self.display = 0
         self.max_unattended_updates = max_unattended_updates
@@ -84,20 +85,18 @@ class page(ui.basicpage):
 
     def redraw(self):
         self.win.erase()
-        pl = ui.lrline("Ctrl+X = Clear; Ctrl+Y = Cancel.  "
-                       "Press S for stock management.  "
-                       "Press U to use stock.  Press R to record waste.  "
-                       "Press Enter to refresh display.  "
-                       "Press A to add a stock annotation.  "
-                       "Press L to lock.").display(self.w)
-        y = self.h - len(pl)
-        for l in pl:
-            self.win.addstr(y, 0, l)
-            y = y + 1
+        prompt = ("Ctrl+X = Clear; Ctrl+Y = Cancel.  "
+                  "Press S for stock management.  "
+                  "Press U to use stock.  Press R to record waste.  "
+                  "Press Enter to refresh display.  "
+                  "Press A to add a stock annotation.  "
+                  "Press L to lock.")
+        promptheight = self.win.wrapstr(0, 0, self.w, prompt, display=False)
+        self.win.wrapstr(self.h - promptheight, 0, self.w, prompt)
         if self.display == 0:
-            self.drawlines(self.h - len(pl))
+            self.drawlines(self.h - promptheight)
         elif self.display == 1:
-            self.drawstillage(self.h - len(pl))
+            self.drawstillage(self.h - promptheight)
 
     def alarm(self, called_by_timer=True):
         if not called_by_timer:
@@ -135,17 +134,17 @@ class page(ui.basicpage):
 
     def deselect(self):
         # Ensure that we're not still hanging around when we are invisible
-        ui.basicpage.deselect(self)
+        super().deselect()
         self._alarm_handle.cancel()
         self.dismiss()
 
-def handle_usertoken(t,*args,**kwargs):
+def handle_usertoken(t, *args, **kwargs):
     """
     Called when a usertoken has been handled by the default hotkey
     handler.
 
     """
-    u=user.user_from_token(t)
+    u = user.user_from_token(t)
     if u is None:
         return # Should already have toasted
-    return page(*args,user=u,**kwargs)
+    return page(*args, user=u, **kwargs)
