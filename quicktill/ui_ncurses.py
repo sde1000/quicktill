@@ -67,6 +67,8 @@ class curses_root:
 
     "new" method is used to create panels on top of the panel stack.
     """
+    supports_fullscreen = False
+
     def __init__(self, win, left="Quicktill", middle=""):
         self._win = win
         self.left = left

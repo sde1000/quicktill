@@ -67,10 +67,6 @@ class runtill(cmdline.command):
     @staticmethod
     def add_arguments(parser):
         parser.add_argument(
-            "-n", "--nolisten", action="store_true",
-            dest="nolisten",
-            help="Disable listening socket for user tokens")
-        parser.add_argument(
             "-e", "--exit-option", nargs=2,
             dest="exitoptions",
             action=ValidateExitOption,
@@ -94,14 +90,36 @@ class runtill(cmdline.command):
             help="Display the lock screen for at least LOCKTIME seconds "
             "before considering the till to be idle")
         parser.add_argument(
-            "-d", "--debug-kbd", dest="debug_kbd", default=False,
-            action="store_true", help="Shown an on-screen keyboard if possible")
-        parser.add_argument(
-            "-g", "--glib-mainloop", dest="glibmainloop", default=False,
-            action="store_true", help="Use GLib mainloop")
-        parser.add_argument(
+            "-k", "--keyboard", dest="keyboard", default=False,
+            action="store_true", help="Show an on-screen keyboard if possible")
+        debugp = parser.add_argument_group(
+            title="debug / development arguments",
+            description="These arguments may be useful during development "
+            "and testing")
+        debugp.add_argument(
+            "--nolisten", action="store_true", dest="nolisten",
+            help="Disable listening socket for user tokens")
+        debugp.add_argument(
+            "--glib-mainloop", action="store_true", dest="glibmainloop",
+            help="Use GLib mainloop")
+        gtkp = parser.add_argument_group(
+            title="display system arguments",
+            description="The Gtk display system can be used instead of the "
+            "default ncurses display system")
+        gtkp.add_argument(
             "--gtk", dest="gtk", default=False,
             action="store_true", help="Use Gtk display system")
+        gtkp.add_argument(
+            "--fullscreen", dest="fullscreen", default=False,
+            action="store_true", help="Use the full screen if possible")
+        gtkp.add_argument(
+            "--font", dest="font", default="sans 20",
+            action="store", type=str, metavar="FONT_DESCRIPTION",
+            help="Set the font to be used for proportional text")
+        gtkp.add_argument(
+            "--monospace-font", dest="monospace", default="monospace 20",
+            action="store", type=str, metavar="FONT_DESCRIPTION",
+            help="Set the font to be used for monospace text")
         parser.set_defaults(command=runtill.run, nolisten=False)
 
     class _dbg_kbd_input:
@@ -143,7 +161,7 @@ class runtill(cmdline.command):
             user.tokenlistener(tillconfig.usertoken_listen)
         if tillconfig.usertoken_listen_v6 and not args.nolisten:
             user.tokenlistener(tillconfig.usertoken_listen_v6,
-                                   addressfamily=socket.AF_INET6)
+                               addressfamily=socket.AF_INET6)
         if args.exitoptions:
             tillconfig.exitoptions = args.exitoptions
         tillconfig.idle_exit_code = args.exit_when_idle
@@ -155,7 +173,7 @@ class runtill(cmdline.command):
         dbg_kbd = None
         try:
             # Set up debug keyboard
-            if args.debug_kbd and hasattr(tillconfig, "kbdriver"):
+            if args.keyboard and hasattr(tillconfig, "kbdriver"):
                 with td.orm_session():
                     kbl = {x: y.keycap if hasattr(y, "keycap") else str(y)
                            for x, y in tillconfig.kbdriver.inputs.items()
@@ -176,7 +194,9 @@ class runtill(cmdline.command):
 
             if args.gtk:
                 from . import ui_gtk
-                ui_gtk.run()
+                ui_gtk.run(fullscreen=args.fullscreen,
+                           font=args.font,
+                           monospace_font=args.monospace)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()

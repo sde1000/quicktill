@@ -94,6 +94,10 @@ class GtkWindow(Gtk.Window):
                 tillconfig.mainloop._exc_info = sys.exc_info()
 
 class gtk_root(Gtk.DrawingArea):
+    """Root window with single-line header
+    """
+    supports_fullscreen = True
+
     def __init__(self, monospace_font, font, min_height=24, min_width=80):
         super().__init__()
         self.monospace = monospace_font
@@ -460,14 +464,16 @@ class text_window(window):
 def _quit(widget, event):
     tillconfig.mainloop.shutdown(0)
 
-def run():
+def run(fullscreen=False, font="sans 20", monospace_font="monospace 20"):
     """Start running with the GTK display system
     """
-    monospace_font = Pango.font_description_from_string("Ubuntu Mono 24")
-    font = Pango.font_description_from_string("Ubuntu 21")
+    monospace_font = Pango.FontDescription(monospace_font)
+    font = Pango.FontDescription(font)
     ui.rootwin = gtk_root(monospace_font, font, 24, 80)
     ui.beep = Gdk.beep
-    GtkWindow(ui.rootwin)
+    window = GtkWindow(ui.rootwin)
+    if fullscreen:
+        window.fullscreen()
     ui.toaster.notify_display_initialised()
     for i in ui.run_after_init:
         i()

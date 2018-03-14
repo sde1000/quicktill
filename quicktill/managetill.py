@@ -98,7 +98,7 @@ class slmenu(ui.keymenu):
         else:
             modifiers.modify(kb.modifier)
 
-@user.permission_required('netinfo','See network information')
+@user.permission_required('netinfo', 'See network information')
 def netinfo():
     log.info("Net info popup")
     v4=subprocess.check_output(["ip","-4","addr"]).decode('ascii')
@@ -106,13 +106,22 @@ def netinfo():
     ui.infopopup(["IPv4:"]+v4.split('\n')+["IPv6:"]+v6.split('\n'),
                  title="Network information",colour=ui.colour_info)
 
-def sysinfo_menu():
-    log.info("System information menu")
-    menu=[
+@user.permission_required('fullscreen', 'Enter / leave fullscreen mode')
+def fullscreen(setting):
+    ui.rootwin.set_fullscreen(setting)
+
+def sys_menu():
+    log.info("System menu")
+    menu = [
         ("1", "Software versions", versioninfo, None),
         ("2", "Network status", netinfo, None),
+    ]
+    if ui.rootwin.supports_fullscreen:
+        menu += [
+            ("3", "Enter fullscreen mode", fullscreen, (True,)),
+            ("4", "Leave fullscreen mode", fullscreen, (False,)),
         ]
-    ui.keymenu(menu, title="System information")
+    ui.keymenu(menu, title="System information and settings")
 
 def debug_menu():
     log.info("Debug menu")
@@ -134,8 +143,6 @@ def debug_menu():
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
         ("3", "Toast covering a long operation", long_toast, None),
-        ("4", "Fullscreen window", ui.rootwin.set_fullscreen, (True,)),
-        ("5", "Unfullscreen window", ui.rootwin.set_fullscreen, (False,)),
     ]
     ui.keymenu(menu, title="Debug")
 
@@ -156,7 +163,7 @@ def popup():
         ("6", "Print a receipt", receiptprint, None),
         ("7", "Users", user.usersmenu, None),
         exit,
-        ("9", "System information", sysinfo_menu, None),
+        ("9", "System information and settings", sys_menu, None),
         ]
     if tillconfig.debug:
         menu.append(("0", "Debug options", debug_menu, None))
