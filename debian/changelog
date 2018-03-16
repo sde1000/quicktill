@@ -1,3 +1,43 @@
+quicktill (0.12.16) stable; urgency=low
+
+  * New release 0.12.16
+
+  * Add options for fullscreen and fonts
+
+  * Another font size tweak
+
+  * pricecheck minor tidy up
+
+  * Use proportional font for stockterminal footer if available
+
+  * Use proportional font in lockscreen if available
+
+  * Experiment with making Gtk window fullscreen
+
+  * Enable Gtk window to be resized
+
+  * Tweak popup title and clear text locations
+
+  * Start to use proportional fonts
+
+  * Calculate character cell size from font metrics
+
+  * PEP8 pass and tidyup in ui module
+
+  * Reinstate wrapstr method
+
+  * It's 2018 now!
+
+  * Pluggable user interface backends
+
+  * Linewrap
+
+  * Event loop changes
+
+  * Add an on-screen keyboard for development and testing
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 16 Mar 2018 09:48:35 +0000
+
 quicktill (0.12.15) stable; urgency=low
 
   * New release 0.12.15
