@@ -18,6 +18,7 @@ class page(ui.basicpage):
         self.user = user if user else load_user(tillconfig.default_user)
         self.display = 0
         self.max_unattended_updates = max_unattended_updates
+        self.remaining_life = max_unattended_updates
         self.hotkeys = hotkeys
         self.locations = locations if locations else ['Bar']
         self.updateheader()
