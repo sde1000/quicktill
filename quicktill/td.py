@@ -121,28 +121,27 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
     cursor.close()
 
 def libpq_to_sqlalchemy(database):
+    """Create a sqlalchemy engine URL from a libpq connection string
     """
-    Create a sqlalchemy engine URL from a libpq connection string
-
-    """
-    csdict=dict([x.split('=',1) for x in database.split(' ')])
-    estring="postgresql+psycopg2://"
+    csdict = dict([x.split('=', 1) for x in database.split(' ')])
+    estring = "postgresql+psycopg2://"
     if 'user' in csdict:
-        estring+=csdict[user]
+        estring += csdict['user']
         if 'password' in csdict:
-            estring+=":%s"%(csdict['password'],)
-        estring+='@'
+            estring += ":{}".format(csdict['password'])
+        estring += '@'
     if 'host' in csdict:
-        estring+=csdict['host']
+        estring += csdict['host']
     if 'port' in csdict:
-        estring+=":%s"%(csdict['port'],)
-    estring+="/%s"%(csdict['dbname'],)
+        estring += ":{}".format(csdict['port'])
+    estring += "/{}".format(csdict['dbname'])
     return estring
 
 def parse_database_name(database):
-    if database[0]==":":
-        database="dbname=%s"%database[1:]
-    if '://' not in database: database=libpq_to_sqlalchemy(database)
+    if database[0] == ":":
+        database = "dbname={}".format(database[1:])
+    if '://' not in database:
+        database = libpq_to_sqlalchemy(database)
     return database
 
 def init(database):
