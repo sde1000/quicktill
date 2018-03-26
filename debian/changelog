@@ -1,3 +1,11 @@
+quicktill (0.12.18) stable; urgency=low
+
+  * New release 0.12.18
+
+  * Fix handling of username in libpq connection strings
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 26 Mar 2018 15:35:32 +0100
+
 quicktill (0.12.17) stable; urgency=low
 
   * New release 0.12.17
