@@ -22,12 +22,11 @@ link](http://www.gnu.org/licenses/).
 A big warning
 -------------
 
-This software is not very easy to configure.  Once it's configured,
-though, it's generally quite easy for staff to use.  It's currently in
-use by [Individual Pubs Ltd](https://www.individualpubs.co.uk/) in all
-their pubs.  It's occasionally used by
+The software, "quicktill" is difficult to configure, but once configured, it
+is easy for staff to use. Currently, all [Individual Pubs Ltd](https://www.individualpubs.co.uk/)
+pubs uses this software. Occasionally this software is used by
 [EMFcamp](https://www.emfcamp.org/) and [London
-Hackspace](https://london.hackspace.org.uk/).
+Hackspace](https://london.hackspace.org.uk/).  
 
 At the moment I'm not guaranteeing that changes from one release to
 the next won't break existing configuration files, although I aim to
