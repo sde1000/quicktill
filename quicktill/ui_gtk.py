@@ -23,12 +23,12 @@ log = logging.getLogger(__name__)
 
 colours = {
     "black": (0.0, 0.0, 0.0),
-    "red": (1.0, 0.0, 0.0),
-    "green": (0.0, 1.0, 0.0),
-    "yellow": (1.0, 1.0, 0.0),
-    "blue": (0.0, 0.0, 1.0),
-    "magenta": (1.0, 0.0, 1.0),
-    "cyan": (0.0, 1.0, 1.0),
+    "red": (0.8, 0.0, 0.0),
+    "green": (0.0, 0.8, 0.0),
+    "yellow": (0.8, 0.8, 0.0),
+    "blue": (0.0, 0.0, 0.8),
+    "magenta": (0.8, 0.0, 0.8),
+    "cyan": (0.0, 0.8, 0.8),
     "white": (1.0, 1.0, 1.0),
 }
 
@@ -324,6 +324,12 @@ class text_window(window):
         self.cur_x = 0
         self.colour = colour
         self._cursor_on = True
+        # XXX it should be possible to use a cairo.RecordingSurface
+        # here to save memory on surfaces that will be written to on
+        # initialisation and which will then be static, but this was
+        # introduced in pycairo 1.11.0 and Ubuntu 16.04 to 17.10 only
+        # have pycairo-1.10.0.  Ubuntu 18.04 has pycairo-1.16.0 so
+        # implement it once all installations have been upgraded!
         self._surface = cairo.ImageSurface(
             cairo.FORMAT_ARGB32, self.width, self.height)
         self.erase()
