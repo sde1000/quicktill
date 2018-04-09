@@ -2,6 +2,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
 gi.require_version('PangoCairo', '1.0')
+gi.require_foreign('cairo')
 from gi.repository import Gtk, Pango, GLib, Gdk, PangoCairo
 import sys
 import cairo
@@ -352,6 +353,7 @@ class text_window(window):
     def destroy(self):
         self.damage(0, 0, self.height, self.width)
         self._drawable._remove(self)
+        self._surface.finish()
         del self._surface
 
     def draw(self, wid, ctx):
