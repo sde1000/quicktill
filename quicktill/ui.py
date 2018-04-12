@@ -580,13 +580,15 @@ class alarmpopup(infopopup):
         beep()
         if time.time() >= self.dismiss_at:
             if self in basicwin._focus.parents():
+                self._alarmhandle = None
                 self.dismiss()
         else:
             self._alarmhandle = tillconfig.mainloop.add_timeout(
                 1, self.alarm, desc="alarmpopup")
 
     def dismiss(self):
-        self._alarmhandle.cancel()
+        if self._alarmhandle:
+            self._alarmhandle.cancel()
         super().dismiss()
 
 def validate_int(s, c):
