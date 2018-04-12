@@ -27,10 +27,12 @@ class pline(ui.line):
         self.amount=payment.amount
         if method is None: method=methods[payment.paytype_id]
         self.method=method
-        ui.line.__init__(self,colour=ui.colour_cashline if self.amount>=zero
+        super().__init__(colour=ui.colour_cashline if self.amount>=zero
                          else ui.colour_changeline)
         self.update()
+
     def update(self):
+        super().update()
         payment=td.s.query(Payment).get(self.payment_id)
         self.amount=payment.amount
         self.transtime=payment.time

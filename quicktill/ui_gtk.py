@@ -364,6 +364,19 @@ class text_window(window):
         # Size in characters
         return (self.height_chars, self.width_chars)
 
+    def clear(self, y, x, height, width, colour=None):
+        """Clear a rectangle to a solid colour
+        """
+        if not colour:
+            colour = self.colour
+        ctx = cairo.Context(self._surface)
+        ctx.set_source_rgb(*colours[colour.background])
+        ctx.rectangle(x * self.fontwidth, y * self.fontheight,
+                      width * self.fontwidth, height * self.fontheight)
+        ctx.fill()
+        self.damage(y * self.fontheight, x * self.fontwidth,
+                    height * self.fontheight, width * self.fontwidth)
+
     def addstr(self, y, x, text, colour=None):
         if not colour:
             colour = self.colour
@@ -373,15 +386,19 @@ class text_window(window):
         ctx.rectangle(x * self.fontwidth, y * self.fontheight,
                       len(text) * self.fontwidth, self.fontheight)
         ctx.fill()
+        self.damage(y * self.fontheight, x * self.fontwidth,
+                    self.fontheight, len(text) * self.fontwidth)
+        self.move(y, x + len(text))
+        # Optimisation: if we are just drawing spaces to fill an area,
+        # don't bother actually rendering the text!
+        if text == ' ' * len(text):
+            return
         layout = PangoCairo.create_layout(ctx)
         layout.set_text(text, -1)
         layout.set_font_description(self.monospace)
         ctx.set_source_rgb(*colours[colour.foreground])
         ctx.move_to(x * self.fontwidth, y * self.fontheight)
         PangoCairo.show_layout(ctx, layout)
-        self.damage(y * self.fontheight, x * self.fontwidth,
-                    self.fontheight, len(text) * self.fontwidth)
-        self.move(y, x + len(text))
 
     def wrapstr(self, y, x, width, s, colour=None, display=True):
         """Display a string wrapped to specified width.

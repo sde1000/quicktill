@@ -82,12 +82,13 @@ class bufferline(ui.lrline):
     the right.
     """
     def __init__(self, reg):
-        ui.lrline.__init__(self)
+        super().__init__()
         self.colour = ui.colour_default
         self.cursor_colour = ui.colour_default
         self.reg = reg
 
     def display(self, width):
+        self.update() # clear cached outputs
         if self.reg.qty is not None:
             m = "{} of ".format(self.reg.qty)
         else:
@@ -124,7 +125,7 @@ class bufferline(ui.lrline):
                 tillconfig.fc(self.reg.balance)) \
                 if self.reg.balance != zero else ""
         # Add the expected blank line
-        l = [''] + ui.lrline.display(self, width)
+        l = [''] + super().display(width)
         self.cursor = (cursorx, len(l) - 1)
         return l
 
@@ -134,12 +135,13 @@ class tline(ui.lrline):
     This corresponds to a transaction line in the database.
     """
     def __init__(self, transline):
-        ui.lrline.__init__(self)
+        super().__init__()
         self.transline = transline
         self.marked = False
         self.update()
 
     def update(self):
+        super().update()
         tl = td.s.query(Transline).get(self.transline)
         self.transtime = tl.time
         if tl.voided_by_id:

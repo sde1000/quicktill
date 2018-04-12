@@ -773,17 +773,21 @@ class scrollable(field):
         super().defocus()
         self.drawdl() # We don't want to scroll
 
-    def drawdl(self):
+    def drawdl(self, display=True):
         """Draw the scrollable contents
 
         Redraw the area with the current scroll and cursor locations.
         Returns the index of the last complete item that fits on the
         screen.  (This is useful to compare against the cursor
         position to ensure the cursor is displayed.)
+
+        If display is set to False, don't actually draw anything; just
+        work out and return the index of the last complete item.
         """
         # First clear the drawing space
-        for y in range(self.y, self.y + self.h):
-            self.win.addstr(y, self.x, ' ' * self.w)
+        if display:
+            self.win.clear(self.y, self.x, self.h, self.w)
+
         # Special case: if top is 1 and cursor is 1 and the first item
         # in the list is exactly one line high, we can set top to zero
         # so that the first line is displayed.  Only worthwhile if we
@@ -799,7 +803,8 @@ class scrollable(field):
         i = self.top
         lastcomplete = i
         if i > 0:
-            self.win.addstr(y, self.x, '...')
+            if display:
+                self.win.addstr(y, self.x, '...')
             y = y + 1
         cursor_y = None
         end_of_displaylist = len(self.dl) + 1 if self.lastline else len(self.dl)
@@ -820,9 +825,10 @@ class scrollable(field):
                 cursor_x = self.x + item.cursor[0]
             for j in l:
                 if y < (self.y + self.h):
-                    self.win.addstr(
-                        y, self.x, "%s%s" % (
-                            j, ' ' * (self.w - len(j))), colour)
+                    if display:
+                        self.win.addstr(
+                            y, self.x, "%s%s" % (
+                                j, ' ' * (self.w - len(j))), colour)
                 y = y + 1
             if y <= (self.y + self.h):
                 lastcomplete = i
@@ -833,10 +839,12 @@ class scrollable(field):
             # Check whether we are about to overwrite any of the last item
             if y >= self.y + self.h + 1:
                 lastcomplete = lastcomplete - 1
-            self.win.addstr(
-                self.y + self.h - 1, self.x, '...' + ' ' * (self.w - 3))
+            if display:
+                self.win.addstr(
+                    self.y + self.h - 1, self.x, '...' + ' ' * (self.w - 3))
         if cursor_y is not None and cursor_y < (self.y + self.h):
-            self.win.move(cursor_y, cursor_x)
+            if display:
+                self.win.move(cursor_y, cursor_x)
         return lastcomplete
 
     def redraw(self):
@@ -852,10 +860,11 @@ class scrollable(field):
         elif self.cursor < self.top or self.show_cursor == False:
             self.top = self.cursor
         end_of_displaylist = len(self.dl) + 1 if self.lastline else len(self.dl)
-        lastitem = self.drawdl()
+        lastitem = self.drawdl(display=False)
         while self.cursor is not None and self.cursor > lastitem:
             self.top = self.top + 1
-            lastitem = self.drawdl()
+            lastitem = self.drawdl(display=False)
+        lastitem = self.drawdl()
         self.display_complete = (lastitem == end_of_displaylist - 1)
 
     def cursor_at_start(self):
@@ -1001,6 +1010,11 @@ class lrline(emptyline):
         super().__init__(colour, userdata)
         self.ltext = ltext
         self.rtext = rtext
+        self._outputs = {}
+
+    def update(self):
+        super().update()
+        self._outputs = {}
 
     def idealwidth(self):
         return len(self.ltext) + (
@@ -1018,6 +1032,8 @@ class lrline(emptyline):
         # find our preferred location for the cursor if we are selected.
         # It's a (x, y) tuple where y is 0 for the first line.
         self.cursor = (0, 0)
+        if width in self._outputs:
+            return self._outputs[width]
         w = []
         for l in self.ltext.splitlines():
             if l:
@@ -1030,6 +1046,7 @@ class lrline(emptyline):
             w.append("")
         w[-1] = w[-1] + (' ' * (width - len(w[-1]) - len(self.rtext))) \
                 + self.rtext
+        self._outputs[width] = w
         return w
 
 class tableformatter:
@@ -1217,15 +1234,12 @@ class _keymenuline(emptyline):
         self.prompt = " " + str(keycode) + ". "
         self.desc = desc if isinstance(desc, emptyline) else line(desc)
 
-    def update(self):
-        pass
-
     def idealwidth(self):
         return self._keymenu.promptwidth + self.desc.idealwidth() + 1
 
     def display(self, width):
         self.cursor = (0, 0)
-        dl = self.desc.display(width - self._keymenu.promptwidth)
+        dl = list(self.desc.display(width - self._keymenu.promptwidth))
         # First line is the prompt padded to promptwidth followed by
         # the first line of the description
         ll = [" " * (self._keymenu.promptwidth - len(self.prompt)) +

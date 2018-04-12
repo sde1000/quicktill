@@ -228,6 +228,13 @@ class curses_window:
         l.reverse()
         return window_stack(l)
 
+    def clear(self, y, x, height, width, colour=None):
+        """Clear a rectangle to a solid colour
+        """
+        l = ' ' * width
+        for i in range(y, y + height):
+            self.addstr(i, x, l, colour)
+
     def addstr(self, y, x, s, colour=None):
         if colour is None:
             colour = self.colour
