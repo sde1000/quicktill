@@ -1,6 +1,7 @@
 from . import pricecheck
 from . import ui, td, keyboard, user, tillconfig, linekeys, modifiers
 from .models import PriceLookup,Department,KeyboardBinding
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 import logging
 log = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class create(user.permission_checked,ui.dismisspopup):
         td.s.add(p)
         try:
             td.s.flush()
-        except td.IntegrityError:
+        except IntegrityError:
             td.s.rollback()
             ui.infopopup(["There is already a PLU with this description."],
                          title="Error")
@@ -132,7 +133,7 @@ class modify(user.permission_checked,ui.dismisspopup):
         self.plu.altprice3=_decimal_or_none(self.altprice3.f)
         try:
             td.s.flush()
-        except td.IntegrityError:
+        except IntegrityError:
             ui.infopopup(["You may not rename a price lookup to have the "
                           "same description as another price lookup."],
                          title="Duplicate price lookup error")

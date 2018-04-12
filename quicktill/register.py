@@ -1845,8 +1845,8 @@ class page(ui.basicpage):
             return
         transactions = td.s.query(Transaction).\
                        filter(Transaction.session == sc).\
-                       options(td.undefer('total')).\
-                       options(td.joinedload('user')).\
+                       options(undefer('total')).\
+                       options(joinedload('user')).\
                        order_by(Transaction.closed == True).\
                        order_by(desc(Transaction.id)).\
                        all()

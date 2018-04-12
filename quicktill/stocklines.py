@@ -4,6 +4,7 @@ from . import stocktype
 from .models import Department, StockLine, KeyboardBinding
 from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 log = logging.getLogger(__name__)
 
@@ -247,7 +248,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
         td.s.add(sl)
         try:
             td.s.flush()
-        except td.IntegrityError:
+        except IntegrityError:
             td.s.rollback()
             ui.infopopup(["Could not create stock line '{}'; there is "
                           "a stock line with that name already.".format(

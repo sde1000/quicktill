@@ -1,5 +1,4 @@
 """Command line argument parsing infrastructure.
-
 """
 
 import argparse
@@ -16,6 +15,8 @@ class CommandTracker(type):
             cls._commands.append(cls)
 
 class command(object, metaclass=CommandTracker):
+    database_required = True
+
     @classmethod
     def add_subparsers(cls, parser):
         subparsers = parser.add_subparsers(title="commands")
@@ -25,7 +26,7 @@ class command(object, metaclass=CommandTracker):
                 help=c.help if hasattr(c, "help") else None,
                 description=c.description if hasattr(c, "description")
                 else c.__doc__)
-            parser.set_defaults(command=c.run)
+            parser.set_defaults(command=c)
             c.add_arguments(parser)
 
     @staticmethod
@@ -35,4 +36,3 @@ class command(object, metaclass=CommandTracker):
     @staticmethod
     def run(args):
         pass
-

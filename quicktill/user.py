@@ -715,7 +715,6 @@ class adduser_cmd(cmdline.command):
 
     @staticmethod
     def run(args):
-        td.init(tillconfig.database)
         with td.orm_session():
             u = User(fullname=args.fullname, shortname=args.shortname,
                      enabled=True, superuser=True)
@@ -732,7 +731,6 @@ class listusers(cmdline.command):
 
     @staticmethod
     def run(args):
-        td.init(tillconfig.database)
         with td.orm_session():
             users = td.s.query(User)\
                         .filter_by(enabled=True)\

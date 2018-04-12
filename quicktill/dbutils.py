@@ -19,7 +19,6 @@ class dbshell(cmdline.command):
     def run(args):
         import code
         import readline
-        td.init(tillconfig.database)
         console = code.InteractiveConsole()
         console.push("import quicktill.td as td")
         console.push("from quicktill.models import *")
@@ -42,7 +41,6 @@ class syncdb(cmdline.command):
 
     @staticmethod
     def run(args):
-        td.init(tillconfig.database)
         td.create_tables()
 
 class flushdb(cmdline.command):
@@ -62,7 +60,6 @@ class flushdb(cmdline.command):
 
     @staticmethod
     def run(args):
-        td.init(tillconfig.database)
         with td.orm_session():
             sessions = td.s.query(models.Session).count()
         if sessions > 2 and not args.really:
@@ -96,6 +93,7 @@ class checkdb(cmdline.command):
 
     """
     help = "check database schema"
+    database_required = False
 
     @staticmethod
     def add_arguments(parser):
@@ -129,6 +127,9 @@ class checkdb(cmdline.command):
         import sqlalchemy
         import tempfile
         import subprocess
+        if not tillconfig.database:
+            print("No database specified")
+            return 1
         url = sqlalchemy.engine.url.make_url(
             td.parse_database_name(tillconfig.database))
         try:
@@ -208,7 +209,6 @@ class add_transline_text(cmdline.command):
     @staticmethod
     def run(args):
         from sqlalchemy.orm import joinedload_all
-        td.init(tillconfig.database)
         with td.orm_session():
             q = td.s.query(models.Transline)\
                     .filter(models.Transline.text == None)

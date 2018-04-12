@@ -45,6 +45,7 @@ class twitter_auth(cmdline.command):
     """
     command = "twitter-auth"
     help = "authorise with Twitter"
+    database_required = False
 
     @staticmethod
     def add_arguments(parser):

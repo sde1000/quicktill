@@ -182,6 +182,7 @@ import argparse
 from . import models
 from . import td
 from . import cmdline
+from . import tillconfig
 
 def setup(f):
     t = yaml.load(f)
@@ -203,6 +204,7 @@ class dbsetup(cmdline.command):
 
     """
     help = "add initial records to the database"
+    database_required = False
 
     @staticmethod
     def add_arguments(parser):
@@ -215,6 +217,10 @@ class dbsetup(cmdline.command):
         if not args.dbfile:
             print(template)
         else:
+            if not tillconfig.database:
+                print("No database specified; use --database or "
+                      "specify in config file")
+                return 1
             td.init(tillconfig.database)
             with td.orm_session():
                 setup(args.dbfile)

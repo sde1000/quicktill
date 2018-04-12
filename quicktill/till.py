@@ -19,27 +19,48 @@ from . import dbsetup
 from . import dbutils
 from . import kbdrivers
 from . import keyboard
+from . import foodcheck
 from .version import version
 from .models import Session,User,UserToken,Business,zero
 from . import models
 import json
 import subprocess
 
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
-configurlfile="/etc/quicktill/configurl"
+configurlfile = "/etc/quicktill/configurl"
+
+default_config = """
+configurations = {
+  'default': {
+    'description': 'Built-in default configuration',
+    'pubname': 'Not configured',
+    'pubnumber': 'Not configured',
+    'pubaddr': 'Not configured',
+    'currency': '',
+    'all_payment_methods': [],
+    'payment_methods': [],
+  }
+}
+"""
 
 class intropage(ui.basicpage):
     def __init__(self):
-        ui.basicpage.__init__(self)
-        self.addstr(1, 1, "This is quicktill version {}".format(version))
+        super().__init__()
+        self.win.addstr(1, 1, "This is quicktill version {}".format(version))
+        y = 5
         if tillconfig.hotkeys:
             self.addstr(3, 1, "To continue, press one of these keys:")
-            y = 5
             for k in tillconfig.hotkeys:
                self.addstr(y, 3, str(k))
                y = y + 1
-        self.move(0, 0)
+        self.addstr(y, 1, "Press Q to quit.")
+        self.win.move(0, 0)
+
+    def keypress(self, k):
+        if k == "q" or k == "Q":
+            tillconfig.mainloop.shutdown(1)
+        super().keypress(k)
 
 class ValidateExitOption(argparse.Action):
     def __call__(self, parser, args, values, option_string=None):
@@ -120,7 +141,7 @@ class runtill(cmdline.command):
             "--monospace-font", dest="monospace", default="monospace 20",
             action="store", type=str, metavar="FONT_DESCRIPTION",
             help="Set the font to be used for monospace text")
-        parser.set_defaults(command=runtill.run, nolisten=False)
+        parser.set_defaults(command=runtill, nolisten=False)
 
     class _dbg_kbd_input:
         """Process input from debug keyboard
@@ -144,7 +165,7 @@ class runtill(cmdline.command):
 
     @staticmethod
     def run(args):
-        log.info("Starting version %s"%version)
+        log.info("Starting version %s", version)
         # Initialise event loop
         if args.glibmainloop or args.gtk:
             from . import event_glib
@@ -168,7 +189,6 @@ class runtill(cmdline.command):
         tillconfig.minimum_run_time = args.minimum_run_time
         tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
         tillconfig.start_time = time.time()
-        td.init(tillconfig.database)
 
         dbg_kbd = None
         try:
@@ -223,7 +243,6 @@ class kbdiff(cmdline.command):
         # We want to go through all codes defined in the new (alt) driver
         # and compare them to the codes in the existing driver
         codes = sorted(tillconfig.altkbdriver.inputs.items())
-        td.init(tillconfig.database)
         changes = []
         with td.orm_session():
             for k, newcode in codes:
@@ -272,7 +291,6 @@ class totals(cmdline.command):
                             help="number of days to display",default=40)
     @staticmethod
     def run(args):
-        td.init(tillconfig.database)
         with td.orm_session():
             sessions=td.s.query(Session).\
                 filter(Session.endtime!=None).\
@@ -379,15 +397,9 @@ def main():
 
     if not hasattr(args, 'command'):
         parser.error("No command supplied")
-    if not args.configurl:
-        parser.error("No configuration URL provided in "
-                     "%s or on command line"%configurlfile)
+
     if args.debug:
         tillconfig.debug = True
-    tillconfig.configversion = args.configurl
-    f = urllib.request.urlopen(args.configurl)
-    globalconfig = f.read()
-    f.close()
 
     # Logging configuration.  If we have a log configuration file,
     # read it and apply it.  This is done before the main
@@ -422,6 +434,16 @@ def main():
     toasthandler.setFormatter(toastformatter)
     toasthandler.setLevel(logging.WARNING)
     rootlog.addHandler(toasthandler)
+
+    if args.configurl:
+        log.info("reading configuration %s", args.configurl)
+        tillconfig.configversion = args.configurl
+        f = urllib.request.urlopen(args.configurl)
+        globalconfig = f.read()
+        f.close()
+    else:
+        log.warning("running with no configuration file")
+        globalconfig = default_config
 
     import imp
     g = imp.new_module("globalconfig")
@@ -511,4 +533,10 @@ def main():
 
     locale.setlocale(locale.LC_ALL,'')
 
-    sys.exit(args.command(args))
+    if tillconfig.database:
+        td.init(tillconfig.database)
+    elif args.command.database_required:
+        print("No database specified")
+        sys.exit(1)
+
+    sys.exit(args.command.run(args))
