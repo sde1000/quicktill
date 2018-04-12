@@ -1,3 +1,19 @@
+quicktill (0.12.21) stable; urgency=low
+
+  * New release 0.12.21
+
+  * Speed up scrolling down in scrollables
+
+  * Fix alarmpopup
+
+  * Add 'testmenu' subcommand
+
+  * Support starting up with no database or config file
+
+  * Delete django example code - moved to separate project
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 12 Apr 2018 20:38:26 +0100
+
 quicktill (0.12.20) stable; urgency=low
 
   * New release 0.12.20
