@@ -172,6 +172,7 @@ class anonymise(cmdline.command):
                 lastname = random.choice(anonymise.surnames)
                 u.fullname = "{} {}".format(firstname, lastname)
                 u.shortname = firstname
+                u.message = None
         print("Finished.")
 
 class checkdb(cmdline.command):
