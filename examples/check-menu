@@ -1,8 +1,10 @@
 #!/bin/bash
 
-runtill -c testmenu
+runtill testmenu file:testmenu.py \
+	--commit-exit-code=10 \
+	--quit-exit-code=20
 
-if [ "$?" == "0" ]; then
+if [ "$?" == "10" ]; then
   echo "Installing new menu file..."
   cp testmenu.py live/livemenu.py
   echo "Done."
