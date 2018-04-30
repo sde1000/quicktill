@@ -2,6 +2,15 @@
 # and configuration that is recommended for many common cases
 from . import kbdrivers
 from . import user
+from . import lockscreen
+from . import stockterminal
+from . import pricecheck
+from . import managetill
+from . import managestock
+from . import usestock
+from . import recordwaste
+from . import stock
+from . import register
 from .keyboard import *
 import datetime
 from decimal import Decimal
@@ -259,3 +268,64 @@ def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
             ("M2H", "M2T"),
             ("M3H", "M3T"),
         ])
+
+# These keys are used by the register and stock terminal pages if they
+# haven't already found a use for a keypress
+def register_hotkeys(appsmenu=None):
+    hk = {
+        K_PRICECHECK: pricecheck.popup,
+        K_MANAGETILL: managetill.popup,
+        K_MANAGESTOCK: managestock.popup,
+        K_USESTOCK: usestock.popup,
+        K_WASTE: recordwaste.popup,
+        K_APPS: appsmenu,
+        's': managestock.popup,
+        'S': managestock.popup,
+        'a': stock.annotate,
+        'A': stock.annotate,
+        'r': recordwaste.popup,
+        'R': recordwaste.popup,
+        't': appsmenu,
+        'T': appsmenu,
+        'm': managetill.popup,
+        'M': managetill.popup,
+        'l': lockscreen.lockpage,
+        'L': lockscreen.lockpage,
+    }
+    if appsmenu:
+        hk[K_APPS] = appsmenu
+        hk['t'] = appsmenu
+        hk['T'] = appsmenu
+    return hk
+
+# Useful dictionaries of things that will be referenced by most
+# configuration files
+def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
+    return {
+        K_STOCKTERMINAL: lambda: stockterminal.page(
+            register_hotkeys, ["Bar"]),
+        K_LOCK: lockscreen.lockpage,
+    }
+
+# Dictionary to include in config to enable usertokens to activate the register
+def activate_register_with_usertoken(register_hotkeys):
+    return {
+        'firstpage': lockscreen.lockpage,
+        'usertoken_handler': lambda t: register.handle_usertoken(
+            t, register_hotkeys, autolock=K_LOCK),
+        'usertoken_listen': ('127.0.0.1', 8455),
+        'usertoken_listen_v6': ('::1', 8455),
+    }
+
+def activate_stockterminal_with_usertoken(
+        register_hotkeys,
+        stockterminal_location=["Bar"],
+        max_unattended_updates=5):
+    return {
+        'firstpage': lockscreen.lockpage,
+        'usertoken_handler': lambda t: stockterminal.handle_usertoken(
+            t, register_hotkeys, stockterminal_location,
+            max_unattended_updates=max_unattended_updates),
+        'usertoken_listen': ('127.0.0.1', 8455),
+        'usertoken_listen_v6': ('::1', 8455),
+    }
