@@ -6,6 +6,7 @@ from . import cmdline
 from . import td
 from . import models
 from . import tillconfig
+import random
 
 class dbshell(cmdline.command):
     """
@@ -75,6 +76,102 @@ class flushdb(cmdline.command):
             if ok != 'y':
                 return 1
         td.remove_tables()
+        print("Finished.")
+
+class anonymise(cmdline.command):
+    """Anonymise the database by replacing all user names with random
+    names.  This is intended to be used prior to releasing till
+    databases publicly to use as sample data.
+    """
+    command = "anonymise-users"
+    help = "set all user names to random values"
+
+    # Lists of names from Tom Lynch:
+    # https://gist.github.com/unknowndomain/455cbc44e37080fd49bdc370982544fa
+    firstnames = [
+	"Amelia", "Oliver", "Olivia", "Jack", "Emily",
+	"Harry", "Isla", "George", "Ava", "Jacob",
+	"Ella", "Charlie", "Jessica", "Noah", "Isabella",
+	"William", "Mia", "Thomas", "Poppy", "Oscar",
+	"Sophie", "James", "Sophia", "Muhammad", "Lily",
+	"Henry", "Grace", "Alfie", "Evie", "Leo",
+	"Scarlett", "Joshua", "Ruby", "Freddie", "Chloe",
+	"Ethan", "Isabelle", "Archie", "Daisy", "Isaac",
+	"Freya", "Joseph", "Phoebe", "Alexander", "Florence",
+	"Samuel", "Alice", "Daniel", "Charlotte", "Logan",
+	"Sienna", "Edward", "Matilda", "Lucas", "Evelyn",
+	"Max", "Eva", "Mohammed", "Millie", "Benjamin",
+	"Sofia", "Mason", "Lucy", "Harrison", "Elsie",
+	"Theo", "Imogen", "Jake", "Layla", "Sebastian",
+	"Rosie", "Finley", "Maya", "Arthur", "Esme",
+	"Adam", "Elizabeth", "Dylan", "Lola", "Riley",
+	"Willow", "Zachary", "Ivy", "Teddy", "Erin",
+	"David", "Holly", "Toby", "Emilia", "Theodore",
+	"Molly", "Elijah", "Ellie", "Matthew", "Jasmine",
+	"Jenson", "Eliza", "Jayden", "Lilly", "Harvey",
+	"Abigail", "Reuben", "Georgia", "Harley", "Maisie",
+	"Luca", "Eleanor", "Michael", "Hannah", "Hugo",
+	"Harriet", "Lewis", "Amber", "Frankie", "Bella",
+	"Luke", "Thea", "Stanley", "Annabelle", "Tommy",
+	"Emma", "Jude", "Amelie", "Blake", "Harper",
+	"Louie", "Gracie", "Nathan", "Rose", "Gabriel",
+	"Summer", "Charles", "Martha", "Bobby", "Violet",
+	"Mohammad", "Penelope", "Ryan", "Anna", "Tyler",
+	"Nancy", "Elliott", "Zara", "Albert", "Maria",
+	"Elliot", "Darcie", "Rory", "Maryam", "Alex",
+	"Megan", "Frederick", "Darcey", "Ollie", "Lottie",
+	"Louis", "Mila", "Dexter", "Heidi", "Jaxon",
+	"Lexi", "Liam", "Lacey", "Jackson", "Francesca",
+	"Callum", "Robyn", "Ronnie", "Bethany", "Leon",
+	"Julia", "Kai", "Sara", "Aaron", "Aisha",
+	"Roman", "Darcy", "Austin", "Zoe", "Ellis",
+	"Clara", "Jamie", "Victoria", "Reggie", "Beatrice",
+	"Seth", "Hollie", "Carter", "Arabella", "Felix",
+	"Sarah", "Ibrahim", "Maddison", "Sonny", "Leah",
+	"Kian", "Katie", "Caleb", "Aria", "Connor",
+    ]
+    surnames = [
+	"Smith", "Brown", "Wilson", "Campbell", "Stewart",
+	"Thomson", "Robertson", "Anderson", "Macdonald", "Taylor",
+	"Scott", "Reid", "Murray", "Clark", "Watson",
+	"Ross", "Young", "Mitchell", "Walker", "Morrison",
+	"Paterson", "Graham", "Hamilton", "Fraser", "Martin",
+	"Gray", "Henderson", "Kerr", "Mcdonald", "Ferguson",
+	"Miller", "Cameron", "Davidson", "Johnston", "Bell",
+	"Kelly", "Duncan", "Hunter", "Simpson", "Macleod",
+	"Mackenzie", "Allan", "Grant", "Wallace", "Black",
+	"Russell", "Jones", "Mackay", "Marshall", "Sutherland",
+	"Wright", "Gibson", "Burns", "Kennedy", "Mclean",
+	"Hughes", "Gordon", "White", "Murphy", "Wood",
+	"Craig", "Stevenson", "Johnstone", "Cunningham", "Williamson",
+	"Milne", "Sinclair", "Mcmillan", "Muir", "Mckenzie",
+	"Ritchie", "Watt", "Docherty", "Crawford", "Mckay",
+	"Millar", "Mcintosh", "Moore", "Douglas", "Fleming",
+	"Thompson", "King", "Munro", "Williams", "Maclean",
+	"Christie", "Dickson", "Jackson", "Shaw", "Jamieson",
+	"Lindsay", "Hill", "Mcgregor", "Boyle", "Bruce",
+	"Green", "Mclaughlin", "Ward", "Richardson", "Currie",
+	"Quinn", "Reilly", "Alexander", "Cooper", "Davies",
+    ]
+    @staticmethod
+    def run(args):
+        with td.orm_session():
+            sessions = td.s.query(models.Session).count()
+        if sessions > 0:
+            print("There is some data ({} sessions) in the database.  "
+                  "Are you sure you want to remove all the user names?  "
+                  "This operation cannot be undone.".format(
+                      sessions))
+            ok = input("Sure? (y/n) ")
+            if ok != 'y':
+                return 1
+        with td.orm_session():
+            users = td.s.query(models.User).all()
+            for u in users:
+                firstname = random.choice(anonymise.firstnames)
+                lastname = random.choice(anonymise.surnames)
+                u.fullname = "{} {}".format(firstname, lastname)
+                u.shortname = firstname
         print("Finished.")
 
 class checkdb(cmdline.command):
