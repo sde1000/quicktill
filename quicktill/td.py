@@ -1,21 +1,22 @@
+# This module originally contained all the SQL needed to access the
+# database - the name was an acronym for "Table Definitions".  Now all
+# of the database structure and almost all of the methods for
+# accessing it are declared in the models module.
+
 from sqlalchemy import create_engine
 from sqlalchemy.pool import Pool
 from sqlalchemy import event, exc
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql import select
+import threading
 from . import models
 from .models import *
 
 import logging
 log = logging.getLogger(__name__)
 
-# ORM session
-s = None
-# Sessionmaker, set up during init()
-sm = None
-class SessionLifecycleError(Exception):
-    pass
 class NoDatabase(Exception):
     """Attempt to use database before it's initialised
     """
@@ -29,33 +30,42 @@ class fake_session:
         pass
     def close(self):
         pass
+    def remove(self):
+        pass
 
+# ORM session; although this is a scoped_session it should only be
+# accessed within a "with orm_session()" block
+s = fake_session()
+_s_guard = threading.local()
+
+class SessionLifecycleError(Exception):
+    pass
 class orm_session:
     @staticmethod
     def __enter__():
         """Start a database session
-
-        Change td.s from None to an active session object, or raise an
-        exception if td.s is not None.
         """
-        global s
-        if s is not None:
+        # Check / set a variable in thread-local storage regarding
+        # whether the session is started yet.  The scoped_session will
+        # start one automatically if we say it's ok.
+        l = _s_guard.__dict__
+        session_started = l.get("session_started", False)
+        if session_started:
             raise SessionLifecycleError()
-        if sm:
-            log.debug("Start session")
-            s = sm()
-        else:
-            s = fake_session()
+        log.debug("Start session")
+        l["session_started"] = True
 
     @staticmethod
     def __exit__(type, value, traceback):
         """Finish a database session
-
-        Change td.s from an active session object to None, or raise an
-        exception if td.s is already None.  Calls s.close().
         """
-        global s
-        if s is None:
+        # Check/set the flag in thread-local storage.  Commit or
+        # rollback the session; the scoped_session will make sure
+        # we're operating on the correct one.  At the end, call
+        # remove() on the scoped_session.
+        l = _s_guard.__dict__
+        session_started = l.get("session_started", False)
+        if not session_started:
             raise SessionLifecycleError()
         if value is None:
             s.commit()
@@ -63,9 +73,9 @@ class orm_session:
             # An exception happened - roll back the database session
             log.debug("Session rollback")
             s.rollback()
-        s.close()
-        s = None
+        s.remove()
         log.debug("End session")
+        l["session_started"] = False
 
 ### Functions related to the stocktypes table
 
@@ -154,13 +164,14 @@ def init(database):
     database can be a libpq connection string or a sqlalchemy URL
 
     """
-    global sm
+    global s
     log.info("init database \'%s\'", database)
     database = parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'", database)
     engine = create_engine(database)
     models.metadata.bind = engine # for DDL, eg. to recreate foodorder_seq
-    sm = sessionmaker(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    s = scoped_session(session_factory)
 
 def create_tables():
     """Add any database tables that are missing.
