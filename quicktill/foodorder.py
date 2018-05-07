@@ -1,6 +1,6 @@
 import urllib.request, urllib.parse, urllib.error
 import urllib
-import imp
+from types import ModuleType
 import textwrap
 import sys
 import traceback
@@ -277,7 +277,7 @@ class popup(user.permission_checked,ui.basicpopup):
             log.debug("creating new menu module - oldhash %s, newhash %s",
                       self.menu_hash,hash)
             try:
-                self.__class__.menu_module=imp.new_module("foodmenu")
+                self.__class__.menu_module = ModuleType("foodmenu")
                 exec(g,self.menu_module.__dict__)
                 self.__class__.menu_hash=hash
             except:

@@ -13,6 +13,7 @@ import sys, os, logging, logging.config, locale, argparse, yaml
 import termios,fcntl,array
 import socket
 import time
+from types import ModuleType
 from . import ui, td, printer, tillconfig, foodorder, user
 from . import pdrivers, cmdline, extras
 from . import dbsetup
@@ -445,8 +446,7 @@ def main():
         log.warning("running with no configuration file")
         globalconfig = default_config
 
-    import imp
-    g = imp.new_module("globalconfig")
+    g = ModuleType("globalconfig")
     g.configname = args.configname
     exec(globalconfig, g.__dict__)
 
