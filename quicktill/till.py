@@ -521,6 +521,9 @@ def main():
         tillconfig.usertoken_listen = config['usertoken_listen']
     if 'usertoken_listen_v6' in config:
         tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
+    if 'discounts' in config:
+        tillconfig.discounts = config['discounts']
+        tillconfig.discount_note_dept = config['discount-note-dept']
 
     if os.uname()[0] == 'Linux':
         if os.getenv('TERM') == 'linux':

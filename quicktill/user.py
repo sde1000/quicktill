@@ -814,4 +814,5 @@ class default_groups:
         "alter-modifier",
         "return-finished-item",
         "recall-any-trans",
+        "apply-discount",
     ])

@@ -69,3 +69,7 @@ minimum_lock_screen_time = 300
 
 # The time at which this instance of the till was started
 start_time = 0.0
+
+# List of possible discounts.
+discounts = []
+dicount_note_dept = None

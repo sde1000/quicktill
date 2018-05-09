@@ -327,6 +327,14 @@ std = {
     'database': 'dbname=haymakers',
     'checkdigit_print': True,
     'checkdigit_on_usestock': True,
+    'discounts': [
+        ("5% Shareholder Discount", Decimal(0.05)),
+        ("10% Shareholder Discount", Decimal(0.10)),
+        ("20% Shareholder Discount", Decimal(0.20)),
+        ("Staff Discount", Decimal(0.25)),
+        ("Director's Discount", Decimal(0.50)),
+    ],
+    'discount-note-dept': 8,
 }
 
 kitchen = {

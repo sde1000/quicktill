@@ -2078,6 +2078,30 @@ class page(ui.basicpage):
         trans.notes = notes
         self._redraw_note()
 
+    def _apply_discount(self, name, amount):
+        trans = self._gettrans()
+        if not trans:
+            return
+        if trans.closed:
+            ui.infopopup(["The transaction is already closed."], title="Error")
+            return
+        for line in trans.lines:
+            discount = (line.amount * amount).quantize(penny)
+            line.amount -= discount
+        trans.lines.append(
+            Transline(items=1, amount=zero, dept_id=tillconfig.discount_note_dept,
+                      user=self.user.dbuser, transcode='S', text=name))
+        td.s.flush()
+        # Since everything is changing, just reload the whole transaction
+        self._loadtrans(trans.id)
+
+    @user.permission_required('apply-discount',
+                              'Apply a discount to a transaction')
+    def _discount_menu(self):
+        menu = [(name, self._apply_discount, (name, amount))
+                for name, amount in tillconfig.discounts]
+        ui.automenu(menu, title="Apply Discount")
+
     def managetranskey(self):
         trans = self._gettrans()
         if self.ml:
@@ -2120,6 +2144,9 @@ class page(ui.basicpage):
                      addtransline, (self.deptlines,)))
         menu.append(("8", "Recall a transaction by number",
                      recalltranspopup, (self,)))
+        if trans and not trans.closed and tillconfig.discounts:
+            menu.append(("9", "Apply a discount", self._discount_menu, None))
+
         ui.keymenu(menu, title="Transaction options")
 
     def entry(self):
