@@ -1,3 +1,25 @@
+quicktill (0.12.22) stable; urgency=low
+
+  * New release 0.12.22
+
+  * Very simple discounts feature
+
+  * Thread-local database sessions
+
+  * Stop using deprecated "imp" module
+
+  * Also remove pending user messages
+
+  * Add a command to anonymise the user database
+
+  * Add emfcamp config file as an example
+
+  * Add some more common configuration to localutils
+
+  * Update the example check-menu script
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 09 May 2018 14:12:25 +0100
+
 quicktill (0.12.21) stable; urgency=low
 
   * New release 0.12.21
