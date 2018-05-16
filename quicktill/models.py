@@ -21,7 +21,9 @@ penny = Decimal("0.01")
 
 # Common column types
 money = Numeric(10, 2)
+max_money = Decimal("99999999.99")
 quantity = Numeric(8, 1)
+max_quantity = Decimal("9999999.9")
 
 metadata = MetaData()
 

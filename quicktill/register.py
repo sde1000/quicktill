@@ -44,6 +44,7 @@ from . import foodorder
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
 from .models import Payment, zero, User, Department, desc, RemoveCode
 from .models import StockType
+from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -935,7 +936,8 @@ class page(ui.basicpage):
                 # It's the same stockitem.  Add one item and one qty.
                 so = otl.stockref[0]
                 orig_stockqty = so.qty / otl.items
-                if orig_stockqty == sell[0][1]:
+                if orig_stockqty == sell[0][1] \
+                   and (so.qty + orig_stockqty) < max_quantity:
                     so.qty += orig_stockqty
                     otl.items += 1
                     td.s.flush()
@@ -970,6 +972,16 @@ class page(ui.basicpage):
                          True)})
 
         if not repeated:
+            # Check that the number of items to be sold fits within the
+            # qty field of StockOut
+            for stockitem, items_to_sell in sell:
+                if items_to_sell > max_quantity:
+                    ui.infopopup(
+                        ["You can't sell {} {}s of {} in one go.".format(
+                            items_to_sell, stockitem.stocktype.unit.name,
+                            stockitem.stocktype.format())],
+                                 title="Error")
+                    return
             tl = Transline(
                 transaction=trans, items=items,
                 amount=sale.price,
