@@ -28,7 +28,6 @@
 # will only be redrawn when the display list is redrawn.
 
 from . import tillconfig
-import textwrap
 import math
 from . import td, ui, keyboard, printer
 import quicktill.stocktype
@@ -38,7 +37,6 @@ from . import payment
 from . import user
 import logging
 import datetime
-import time
 log = logging.getLogger(__name__)
 from . import foodorder
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
