@@ -1,7 +1,8 @@
 """Record waste against a stock item or stock line."""
 
-from . import ui, td, keyboard, stock, stocklines, department, user
+from . import ui, td, keyboard, stock, stocklines, user
 from .models import StockItem, StockType, RemoveCode, StockOut, StockLine
+from .models import max_quantity
 from decimal import Decimal
 
 # There are two types of thing against which waste can be recorded:
@@ -57,7 +58,7 @@ class record_item_waste(ui.dismisspopup):
             lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),
             lambda rc: rc.reason)
         self.amountfield = ui.editfield(
-            6, 21, 6, validate=ui.validate_float,
+            6, 21, len(str(max_quantity)) + 1, validate=ui.validate_float,
             keymap={keyboard.K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.stockfield, self.wastedescfield,
                           self.amountfield])
@@ -68,10 +69,11 @@ class record_item_waste(ui.dismisspopup):
             self.stockfield.focus()
 
     def stockfield_updated(self):
-        self.addstr(6, 28, " " * 18)
+        self.addstr(6, 23 + len(str(max_quantity)), " " * 18)
         s = self.stockfield.read()
         if s:
-            self.addstr(6, 28, "{}s".format(s.stocktype.unit.name))
+            self.addstr(6, 23 + len(str(max_quantity)),
+                        "{}s".format(s.stocktype.unit.name))
 
     def finish(self):
         item = self.stockfield.read()
@@ -92,6 +94,12 @@ class record_item_waste(ui.dismisspopup):
         if amount == Decimal(0):
             ui.infopopup(["You must enter an amount other than zero!"],
                          title='Error')
+            self.amountfield.set("")
+            return
+        if abs(amount) > max_quantity:
+            ui.infopopup(
+                ["The amount can't be more than {}.".format(max_quantity)],
+                title='Error')
             self.amountfield.set("")
             return
         td.s.add(item)
@@ -128,7 +136,8 @@ class record_line_waste(ui.dismisspopup):
             self.addstr(3, 2, "  Amount in stock: {} {}s".format(
                 stockline.remaining, stockline.stocktype.unit.name))
         self.addstr(5, 2, "Waste description:")
-        self.addstr(6, 2, "    Amount wasted:      {}s".format(
+        self.addstr(6, 2, "    Amount wasted: {} {}s".format(
+            ' ' * len(str(max_quantity)),
             stockline.stocktype.unit.name))
         self.wastedescfield = ui.modellistfield(
             5, 21, 30, RemoveCode,
@@ -136,7 +145,7 @@ class record_line_waste(ui.dismisspopup):
             lambda rc: rc.reason, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None),})
         self.amountfield = ui.editfield(
-            6, 21, 4, validate=ui.validate_float,
+            6, 21, len(str(max_quantity)), validate=ui.validate_positive_float,
             keymap={keyboard.K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.wastedescfield, self.amountfield])
         self.wastedescfield.focus()
@@ -166,6 +175,17 @@ class record_line_waste(ui.dismisspopup):
                 amount, stockline.sale_stocktype.unit.name)], title="Error")
             self.amountfield.set("")
             return
+        if not sell:
+            ui.infopopup(["Couldn't record this amount."],
+                         title="Error")
+            self.amountfield.set("")
+            return
+        for item, qty in sell:
+            if abs(qty) > max_quantity:
+                ui.infopopup(["The amount is too large."],
+                             title="Error")
+                self.amountfield.set("")
+                return
         for item, qty in sell:
             td.s.add(StockOut(stockitem=item, removecode=waste, qty=qty))
         td.s.flush()
