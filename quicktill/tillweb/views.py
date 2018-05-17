@@ -337,9 +337,7 @@ def pubroot(request, info, session):
 
 @tillweb_view
 def locationlist(request, info, session):
-    locations = [x[0] for x in session.query(distinct(StockLine.location))\
-                 .order_by(StockLine.location).all()]
-    return ('locations.html', {'locations': locations})
+    return ('locations.html', {'locations': StockLine.locations(session)})
 
 @tillweb_view
 def location(request, info, session, location):
