@@ -302,7 +302,7 @@ class commandprinter(tmpfileprinter):
             r=subprocess.call(self._printcmd%filename,
                               shell=True,stdout=null,stderr=null)
 
-class cupsprinter(object):
+class cupsprinter:
     """Print to a CUPS printer.
 
     If host, port and/or encryption are specified they are passed to
@@ -353,10 +353,12 @@ class cupsprinter(object):
 
     def __exit__(self, type, value, tb):
         try:
-            if tb is not None:
-                self._driver.printline(
-                    "An error occurred, the document may be incomplete")
             self._driver.end()
+            if tb is not None:
+                # An exception was raised while generating the file to print.
+                # Don't print it.
+                self._file = None
+                return
         except:
             pass
         self._file.flush()

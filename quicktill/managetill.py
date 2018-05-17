@@ -139,10 +139,17 @@ def debug_menu():
         time.sleep(10)
         ui.toast("Delay done")
 
+    def raise_print_exception():
+        with ui.exception_guard("testing exception raised in printer driver"):
+            with printer.driver as d:
+                d.printline("This line is printed before the exception")
+                raise Exception
+
     menu = [
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
         ("3", "Toast covering a long operation", long_toast, None),
+        ("4", "Raise exception while printing", raise_print_exception, None),
     ]
     ui.keymenu(menu, title="Debug")
 
