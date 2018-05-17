@@ -1,3 +1,25 @@
+quicktill (0.12.23) stable; urgency=low
+
+  * New release 0.12.23
+
+  * Let the user choose the location in the stock terminal
+
+  * Don't use super() inside a list comprehension
+
+  * Don't send job to cups when exception raised in printer driver
+
+  * Show more informative message if timesheets password is wrong
+
+  * Inform user when trying to rename stock line to an existing name
+
+  * Expand quantity field for Record Waste function
+
+  * Remove some unused import from register
+
+  * Check that we don't overflow StockOut.qty
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 17 May 2018 15:41:10 +0100
+
 quicktill (0.12.22) stable; urgency=low
 
   * New release 0.12.22
