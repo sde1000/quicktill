@@ -429,7 +429,15 @@ class modify(user.permission_checked,ui.dismisspopup):
                     "removed.")
                 # XXX call auto-allocate to add new items
 
-        self.stockline.name = self.namefield.f
+        try:
+            self.stockline.name = self.namefield.f
+            td.s.flush()
+        except IntegrityError:
+            ui.infopopup(["There is already another stock line called '{}'. "
+                          "You can't give this stock line the same "
+                          "name.".format(self.namefield.f)])
+            td.s.rollback()
+            return
         self.stockline.location = self.locfield.f
         if self.stockline.linetype == "regular":
             self.stockline.department = self.deptfield.read()
