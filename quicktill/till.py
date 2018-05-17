@@ -347,16 +347,16 @@ class ToastHandler(logging.Handler):
         ui.toast(self.format(record))
 
 def main():
-    """Usual main entry point for the till software, unless you are doing
-    something strange.  Reads the location of its global configuration,
-    command line options, and the global configuration, and then starts
-    the program.
+    """Usual main entry point for the till software.
 
+    Reads the location of its global configuration, command line
+    options (which may override that location), and then the global
+    configuration, and starts the program.
     """
-    
+
     try:
         with open(configurlfile) as f:
-            configurl = f.readline()
+            configurl = f.readline().strip()
     except FileNotFoundError:
         configurl = None
     parser = argparse.ArgumentParser(
