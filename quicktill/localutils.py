@@ -289,8 +289,6 @@ def register_hotkeys(appsmenu=None):
         'T': appsmenu,
         'm': managetill.popup,
         'M': managetill.popup,
-        'l': lockscreen.lockpage,
-        'L': lockscreen.lockpage,
     }
     if appsmenu:
         hk[K_APPS] = appsmenu
