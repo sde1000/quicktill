@@ -1714,7 +1714,7 @@ class modelfield(editfield):
                     .filter(self._field.ilike("{}%".format(self._f)))\
                     .order_by(self._field)\
                     .all()
-            ml = [ (x[0], super().set, (x[0],)) for x in m ]
+            ml = [ (x[0], super(modelfield, self).set, (x[0],)) for x in m ]
             if self._create:
                 ml.append(("Create new...", self._create, (self, self._f,)))
             self.set(None)
