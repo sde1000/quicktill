@@ -10,6 +10,7 @@ from sqlalchemy.orm import reconstructor
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select,func,desc,and_
 from sqlalchemy import event
+from sqlalchemy import distinct
 
 import datetime
 import hashlib
@@ -1091,6 +1092,11 @@ class StockLine(Base):
             .filter(StockLine.stocktype == self.stocktype)\
             .filter(StockLine.id != self.id)\
             .all()
+
+    @classmethod
+    def locations(cls, session):
+        return [x[0] for x in session.query(distinct(cls.location))\
+                .order_by(cls.location).all()]
 
 plu_seq = Sequence('plu_seq')
 

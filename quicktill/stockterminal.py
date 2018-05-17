@@ -91,7 +91,7 @@ class page(ui.basicpage):
                   "Press U to use stock.  Press R to record waste.  "
                   "Press Enter to refresh display.  "
                   "Press A to add a stock annotation.  "
-                  "Press L to lock.")
+                  "Press L to choose another location.")
         promptheight = self.win.wrapstr(0, 0, self.w, prompt, display=False)
         self.win.wrapstr(self.h - promptheight, 0, self.w, prompt)
         if self.display == 0:
@@ -122,14 +122,16 @@ class page(ui.basicpage):
             self.redraw()
 
     def keypress(self,k):
-        if k in self.hotkeys:
-            return self.hotkeys[k]()
+        if k == 'l' or k == 'L':
+            self.choose_location()
         elif k == keyboard.K_CASH:
             self.alarm(called_by_timer=False)
         elif k == 'u' or k == 'U':
             stocklines.selectline(usestock.line_chosen,
                                   title="Use Stock",
                                   blurb="Select a stock line")
+        elif k in self.hotkeys:
+            return self.hotkeys[k]()
         else:
             ui.beep()
 
@@ -138,6 +140,15 @@ class page(ui.basicpage):
         super().deselect()
         self._alarm_handle.cancel()
         self.dismiss()
+
+    def choose_location(self):
+        locations = StockLine.locations(td.s)
+        ui.automenu([(x, self.set_location, (x,)) for x in locations],
+                    title="Choose location")
+
+    def set_location(self, location):
+        self.locations = [location]
+        self.alarm(called_by_timer=False)
 
 def handle_usertoken(t, *args, **kwargs):
     """
