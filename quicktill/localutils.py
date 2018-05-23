@@ -108,80 +108,107 @@ def delta_england_banking_days(date, n):
             n = n - 1
     return date
 
-def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
-                      card_payment_method=None, overrides={}):
+def _kbd_to_preh(kb):
+    """Take a dict of (row, col): Key() and return a dict of str: keycode
+    """
+    maxrow = max(row for row, col in kb.keys())
+    rows = list(reversed("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:maxrow + 1]))
+    preh = {}
+    for loc, key in kb.items():
+        row, col = loc
+        for x in range(0, key.width):
+            for y in range(0, key.height):
+                preh["{}{:02}".format(rows[row + y], col + x + 1)] = key.keycode
+    return preh
+
+def stdkeyboard_16by8_base(line_base=1, cash_payment_method=None,
+                           card_payment_method=None, overrides={}):
+    """Standard 16x8 keyboard layout
+
+    A standard keyboard layout for a 16 by 8 key keyboard.  Returns a
+    dict of (row, col): keyboard.Key()
+    """
+    kb = {}
+    # First assign a linekey() to every key position, which we will
+    # override and/or delete later for special keys.
+    linenumber = iter(range(line_base, line_base + 128))
+    for row in range(0, 8):
+        for col in range(0, 16):
+            kb[(row, col)] = Key(linekey(next(linenumber)))
+    kb.update({
+        (0, 0): Key(user.tokenkey('builtin:alice', "Alice"),
+                    background="yellow"),
+        (1, 0): Key(user.tokenkey('builtin:bob', "Bob"),
+                    background="yellow"),
+        (2, 0): Key(user.tokenkey('builtin:charlie', "Charlie"),
+                    background="yellow"),
+        (3, 0): Key(K_STOCKTERMINAL, background="green"),
+        (0, 1): Key(K_MANAGETILL, background="green"),
+        (1, 1): Key(K_MANAGESTOCK, background="green"),
+        (2, 1): Key(K_USESTOCK, background="green"),
+        (3, 1): Key(K_WASTE, background="green"),
+        (4, 0): Key(K_RECALLTRANS, background="green"),
+        (4, 1): Key(K_MANAGETRANS, background="green"),
+        (5, 0): Key(K_PRICECHECK, background="green"),
+        (5, 1): Key(K_PRINT, background="green"),
+        (6, 0): Key(K_CANCEL, background="green"),
+        (6, 1): Key(K_APPS, background="green"),
+        (7, 0): Key(K_CLEAR, background="red"),
+        (7, 1): Key(K_MARK, background="green"),
+        (4, 12): Key(K_FOODORDER, background="green"),
+        (4, 13): Key(K_FOODMESSAGE, background="green"),
+        (5, 10): Key(K_LEFT, background="white"),
+        (4, 11): Key(K_UP, background="white"),
+        (5, 11): Key(K_DOWN, background="white"),
+        (5, 12): Key(K_RIGHT, background="white"),
+        (3, 13): Key(".", background="white"),
+        (3, 14): Key("0", background="white"),
+        (3, 15): Key("00", background="white"),
+        (2, 13): Key("1", background="white"),
+        (2, 14): Key("2", background="white"),
+        (2, 15): Key("3", background="white"),
+        (1, 13): Key("4", background="white"),
+        (1, 14): Key("5", background="white"),
+        (1, 15): Key("6", background="white"),
+        (0, 13): Key("7", background="white"),
+        (0, 14): Key("8", background="white"),
+        (0, 15): Key("9", background="white"),
+        (6, 14): Key(K_CASH, width=2, height=2, background="yellow"),
+        (4, 14): Key(K_LOCK, width=2, background="red"),
+        (3, 12): Key(K_QUANTITY, background="yellow"),
+        (0, 12): Key(K_DRINKIN, background="blue"),
+    })
+    del kb[(6, 15)], kb[(7, 14)], kb[(7, 15)] # Cash key
+    del kb[(4, 15)] # Lock key
+    if cash_payment_method:
+        kb.update({
+            (5, 13): Key(notekey('K_TWENTY', '£20', cash_payment_method,
+                                 Decimal("20.00")),
+                         background="yellow"),
+            (6, 13): Key(notekey('K_TENNER', '£10', cash_payment_method,
+                                 Decimal("10.00")),
+                         background="yellow"),
+            (7, 13): Key(notekey('K_FIVER', '£5', cash_payment_method,
+                                 Decimal("5.00")),
+                         background="yellow"),
+        })
+    if card_payment_method:
+        kb.update({
+            (5, 14): Key(paymentkey('K_CARD', 'Card', card_payment_method),
+                         background="yellow", width=2),
+        })
+        del kb[(5, 15)]
+    kb.update(overrides)
+    return kb
+
+def stdkeyboard_16by8(*args, **kwargs):
     """Standard 16x8 keyboard layout
 
     A standard keyboard layout for a 16 by 8 key keyboard that
     produces inputs of the form [A01] to [H16].
     """
-    kb = {}
-    # First assign a linekey() to every key position, which we will
-    # override later for special keys.
-    linenumber = iter(range(line_base, line_base + 128))
-    for row in ["H", "G", "F", "E", "D", "C", "B", "A"]:
-        for col in range(1, 17):
-            kb["{}{:02}".format(row, col)] = linekey(next(linenumber))
-    kb.update({
-        "H01": user.tokenkey('builtin:alice', "Alice"),
-        "G01": user.tokenkey('builtin:bob', "Bob"),
-        "F01": user.tokenkey('builtin:charlie', "Charlie"),
-        "E01": K_STOCKTERMINAL,
-        "H02": K_MANAGETILL,
-        "G02": K_MANAGESTOCK,
-        "F02": K_USESTOCK,
-        "E02": K_WASTE,
-        "D01": K_RECALLTRANS,
-        "D02": K_MANAGETRANS,
-        "C01": K_PRICECHECK,
-        "C02": K_PRINT,
-        "B01": K_CANCEL,
-        "B02": K_APPS,
-        "A01": K_CLEAR,
-        "A02": K_MARK,
-        "D13": K_FOODORDER,
-        "D14": K_FOODMESSAGE,
-        "C11": K_LEFT,
-        "D12": K_UP,
-        "C12": K_DOWN,
-        "C13": K_RIGHT,
-        "E14": ".",
-        "E15": "0",
-        "E16": "00",
-        "F14": "1",
-        "F15": "2",
-        "F16": "3",
-        "G14": "4",
-        "G15": "5",
-        "G16": "6",
-        "H14": "7",
-        "H15": "8",
-        "H16": "9",
-        "B15": K_CASH,
-        "B16": K_CASH,
-        "A15": K_CASH,
-        "A16": K_CASH,
-        "D15": K_LOCK,
-        "D16": K_LOCK,
-        "E13": K_QUANTITY,
-        "H13": K_DRINKIN,
-    })
-    if cash_payment_method:
-        kb.update({
-            "C14": notekey('K_TWENTY', '£20', cash_payment_method,
-                           Decimal("20.00")),
-            "B14": notekey('K_TENNER', '£10', cash_payment_method,
-                           Decimal("10.00")),
-            "A14": notekey('K_FIVER', '£5', cash_payment_method,
-                           Decimal("5.00")),
-        })
-    if card_payment_method:
-        cardkey = paymentkey('K_CARD', 'Card', card_payment_method)
-        kb.update({
-            "C15": cardkey,
-            "C16": cardkey,
-        })
-    kb.update(overrides)
+    base = stdkeyboard_16by8_base(*args, **kwargs)
+    kb = _kbd_to_preh(base)
     return kbdrivers.prehkeyboard(
         kb.items(),
         magstripe=[
@@ -190,77 +217,91 @@ def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
             ("M3H", "M3T"),
         ])
 
-def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
-                      card_payment_method=None, overrides={}):
+def stdkeyboard_20by7_base(line_base=1, cash_payment_method=None,
+                           card_payment_method=None, overrides={}):
     """Standard 20x7 keyboard layout
 
-    A standard keyboard layout for a 20 by 7 key keyboard that
-    produces inputs of the form [A01] to [G20].
+    A standard keyboard layout for a 20 by 7 key keyboard.  Returns a
+    dict of (row, col): keyboard.Key()
     """
     kb = {}
     # First assign a linekey() to every key position, which we will
     # override later for special keys.
     linenumber = iter(range(line_base, line_base + 140))
-    for row in ["G", "F", "E", "D", "C", "B", "A"]:
-        for col in range(1, 21):
-            kb["{}{:02}".format(row, col)] = linekey(next(linenumber))
+    for row in range(0, 7):
+        for col in range(0, 20):
+            kb[(row, col)] = Key(linekey(next(linenumber)))
     kb.update({
-        "G01": user.tokenkey('builtin:eve', "Eve"),
-        "F01": user.tokenkey('builtin:frank', "Frank"),
-        "E01": user.tokenkey('builtin:giles', "Giles"),
-        "D01": K_STOCKTERMINAL,
-        "C01": K_RECALLTRANS,
-        "B01": K_CANCEL,
-        "A01": K_CLEAR,
-        "G02": K_MANAGETILL,
-        "F02": K_MANAGESTOCK,
-        "E02": K_USESTOCK,
-        "G03": K_PRINT,
-        "F03": K_WASTE,
-        "E03": K_PRICECHECK,
-        "G04": K_MANAGETRANS,
-        "G05": K_APPS,
-        "G07": K_FOODORDER,
-        "G08": K_FOODMESSAGE,
-        "F15": K_LEFT,
-        "G16": K_UP,
-        "F16": K_DOWN,
-        "F17": K_RIGHT,
-        "D18": ".",
-        "D19": "0",
-        "D20": "00",
-        "E18": "1",
-        "E19": "2",
-        "E20": "3",
-        "F18": "4",
-        "F19": "5",
-        "F20": "6",
-        "G18": "7",
-        "G19": "8",
-        "G20": "9",
-        "B19": K_CASH,
-        "B20": K_CASH,
-        "A19": K_CASH,
-        "A20": K_CASH,
-        "E17": K_QUANTITY,
-        "E13": K_LOCK,
+        (0, 0): Key(user.tokenkey('builtin:eve', "Eve"),
+                    background="yellow"),
+        (1, 0): Key(user.tokenkey('builtin:frank', "Frank"),
+                    background="yellow"),
+        (2, 0): Key(user.tokenkey('builtin:giles', "Giles"),
+                    background="yellow"),
+        (3, 0): Key(K_STOCKTERMINAL, background="green"),
+        (4, 0): Key(K_RECALLTRANS, background="green"),
+        (5, 0): Key(K_CANCEL, background="green"),
+        (6, 0): Key(K_CLEAR, background="red"),
+        (0, 1): Key(K_MANAGETILL, background="green"),
+        (1, 1): Key(K_MANAGESTOCK, background="green"),
+        (2, 1): Key(K_USESTOCK, background="green"),
+        (0, 2): Key(K_PRINT, background="green"),
+        (1, 2): Key(K_WASTE, background="green"),
+        (2, 2): Key(K_PRICECHECK, background="green"),
+        (0, 3): Key(K_MANAGETRANS, background="green"),
+        (0, 4): Key(K_APPS, background="green"),
+        (0, 6): Key(K_FOODORDER, background="green"),
+        (0, 7): Key(K_FOODMESSAGE, background="green"),
+        (1, 14): Key(K_LEFT, background="white"),
+        (0, 15): Key(K_UP, background="white"),
+        (1, 15): Key(K_DOWN, background="white"),
+        (1, 16): Key(K_RIGHT, background="white"),
+        (3, 17): Key(".", background="white"),
+        (3, 18): Key("0", background="white"),
+        (3, 19): Key("00", background="white"),
+        (2, 17): Key("1", background="white"),
+        (2, 18): Key("2", background="white"),
+        (2, 19): Key("3", background="white"),
+        (1, 17): Key("4", background="white"),
+        (1, 18): Key("5", background="white"),
+        (1, 19): Key("6", background="white"),
+        (0, 17): Key("7", background="white"),
+        (0, 18): Key("8", background="white"),
+        (0, 19): Key("9", background="white"),
+        (5, 18): Key(K_CASH, width=2, height=2, background="yellow"),
+        (2, 16): Key(K_QUANTITY, background="yellow"),
+        (2, 12): Key(K_LOCK, background="red"),
     })
+    del kb[(5, 19)], kb[(6, 18)], kb[(6, 19)] # Cash key
     if cash_payment_method:
         kb.update({
-            "C18": notekey('K_TWENTY', '£20', cash_payment_method,
-                           Decimal("20.00")),
-            "B18": notekey('K_TENNER', '£10', cash_payment_method,
-                           Decimal("10.00")),
-            "A18": notekey('K_FIVER', '£5', cash_payment_method,
-                           Decimal("5.00")),
+            (4, 17): Key(notekey('K_TWENTY', '£20', cash_payment_method,
+                                 Decimal("20.00")),
+                         background="yellow"),
+            (5, 17): Key(notekey('K_TENNER', '£10', cash_payment_method,
+                                 Decimal("10.00")),
+                         background="yellow"),
+            (6, 17): Key(notekey('K_FIVER', '£5', cash_payment_method,
+                                 Decimal("5.00")),
+                         background="yellow"),
         })
     if card_payment_method:
-        cardkey = paymentkey('K_CARD', 'Card', card_payment_method)
         kb.update({
-            "C19": cardkey,
-            "C20": cardkey,
+            (4, 18): Key(paymentkey('K_CARD', 'Card', card_payment_method),
+                         background="yellow", width=2),
         })
+        del kb[(4, 19)]
     kb.update(overrides)
+    return kb
+
+def stdkeyboard_20by7(*args, **kwargs):
+    """Standard 20x7 keyboard layout
+
+    A standard keyboard layout for a 20 by 7 key keyboard that
+    produces inputs of the form [A01] to [G20].
+    """
+    base = stdkeyboard_20by7_base(*args, **kwargs)
+    kb = _kbd_to_preh(base)
     return kbdrivers.prehkeyboard(
         kb.items(),
         magstripe=[

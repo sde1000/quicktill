@@ -7,6 +7,8 @@ Till configurations can define as many new keycodes as they need.
 """
 
 class keycode:
+    """A keyboard input from the user
+    """
     def __new__(cls, name, keycap, *args, **kwargs):
         # If a keycode of this name already exists, return it instead
         existing = globals().get(name)
@@ -118,3 +120,19 @@ cursorkeys = [
     keycode("K_PAGEUP", "Page Up"),
     keycode("K_PAGEDOWN", "Page Down"),
 ]
+
+class Key:
+    """A key on the till's keyboard
+
+    May be physical, on-screen, or both.
+    """
+    def __init__(self, keycode, background="grey", foreground="black",
+                 width=1, height=1):
+        self.keycode = keycode
+        self.background = background
+        self.foreground = foreground
+        self.width = width
+        self.height = height
+
+    def __str__(self):
+        return str(self.keycode)
