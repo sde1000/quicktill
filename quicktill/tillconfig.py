@@ -10,7 +10,8 @@ from .models import penny
 # Has the --debug flag been set on the command line?
 debug = False
 
-configversion="tillconfig.py"
+configversion = "file:/dev/null"
+configname = "default"
 
 pubname="Test Pub Name"
 pubnumber="07715 422132"

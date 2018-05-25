@@ -1,6 +1,7 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
+import sys
 
 class kbutton(Gtk.Button):
     """A button on an on-screen keyboard
@@ -17,7 +18,7 @@ class kbutton(Gtk.Button):
 
     def do_get_preferred_width(self):
         # Return minimum width and natural width
-        return 1, 1
+        return 20, 20
 
 class kbgrid(Gtk.Grid):
     """A Gtk widget representing an on-screen keyboard
@@ -31,3 +32,20 @@ class kbgrid(Gtk.Grid):
             button = kbutton(key, font, input_handler)
             self.attach(button, col, row, key.width, key.height)
 
+class kbwindow(Gtk.Window):
+    """A window with an on-screen keyboard
+    """
+    def __init__(self, kb, font, input_handler):
+        super().__init__(title="Quicktill keyboard")
+        self.add(kbgrid(kb, font, input_handler))
+        self.set_default_size(1200, 200)
+        self.show_all()
+
+def get_font(font):
+    return Pango.FontDescription(font)
+
+def run_standalone(window):
+    window.connect("delete-event", Gtk.main_quit)
+    GLib.io_add_watch(sys.stdin, GLib.IO_IN | GLib.IO_ERR | GLib.IO_HUP,
+                      Gtk.main_quit)
+    Gtk.main()

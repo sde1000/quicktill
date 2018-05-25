@@ -157,16 +157,19 @@ class runtill(cmdline.command):
                 f.fileno(), self.doread, desc="debug keyboard")
 
         def doread(self):
-            i = self.f.readline().strip()
+            i = self.f.readline().strip().decode("utf-8")
             if not i:
-                log.debug("Debug keyboard closed")
+                log.warning("Debug keyboard closed")
                 self.handle.remove()
                 self.f.close()
                 return
-            ui.handle_raw_keyboard_input("[")
-            for c in i:
-                ui.handle_raw_keyboard_input(chr(c))
-            ui.handle_raw_keyboard_input("]")
+            with td.orm_session():
+                if i.startswith("usertoken:"):
+                    ui.handle_keyboard_input(user.token(i[10:]))
+                elif i.startswith("K_") and hasattr(keyboard, i):
+                    ui.handle_keyboard_input(getattr(keyboard, i))
+                else:
+                    ui.handle_keyboard_input(i)
 
     @staticmethod
     def run(args):
@@ -197,25 +200,17 @@ class runtill(cmdline.command):
 
         dbg_kbd = None
         try:
-            # Set up debug keyboard
-            if args.keyboard and hasattr(tillconfig, "kbdriver") \
+            if args.keyboard and hasattr(tillconfig, "keyboard") \
                and not args.gtk:
-                with td.orm_session():
-                    kbl = {x: y.keycap if hasattr(y, "keycap") else str(y)
-                           for x, y in tillconfig.kbdriver.inputs.items()
-                           if x[0] != 'M'}
-                r, w = os.pipe()
-                os.set_inheritable(r, True)
                 dbg_kbd = subprocess.Popen(
-                    [os.path.join(os.path.dirname(sys.argv[0]),
-                                  "quicktill-debug-kbd"),
-                     "--layoutfd={}".format(r)],
+                    [sys.argv[0],
+                     "-u", tillconfig.configversion,
+                     "-c", tillconfig.configname,
+                     "on-screen-keyboard",
+                     "--keyboard-font", args.kbfont],
                     bufsize=0,
                     stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    pass_fds=[r])
-                with os.fdopen(w, 'w') as f:
-                    json.dump(kbl, f)
+                    stdout=subprocess.PIPE)
                 runtill._dbg_kbd_input(dbg_kbd.stdout)
 
             if args.gtk:
@@ -241,6 +236,35 @@ class runtill(cmdline.command):
         log.info("Shutting down")
         logging.shutdown()
         return tillconfig.mainloop.exit_code
+
+class on_screen_keyboard(cmdline.command):
+    command = "on-screen-keyboard"
+    help = "internal helper command for on-screen-keyboard"
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument(
+            "--keyboard-font", dest="kbfont", default="sans 8",
+            action="store", type=str, metavar="FONT_DESCRIPTION",
+            help="Set the font to be used for the on-screen keyboard")
+
+    @staticmethod
+    def run(args):
+        if not hasattr(tillconfig, "keyboard"):
+            return
+        from . import keyboard_gtk
+        def input_handler(keycode):
+            if hasattr(keycode, "usertoken"):
+                print("usertoken:" + keycode.usertoken)
+            elif hasattr(keycode, "name"):
+                print(keycode.name)
+            else:
+                print(keycode)
+            sys.stdout.flush()
+        window = keyboard_gtk.kbwindow(
+            tillconfig.keyboard, keyboard_gtk.get_font(args.kbfont),
+            input_handler)
+        keyboard_gtk.run_standalone(window)
 
 class totals(cmdline.command):
     """
@@ -408,6 +432,8 @@ def main():
     else:
         log.warning("running with no configuration file")
         globalconfig = default_config
+
+    tillconfig.configname = args.configname
 
     g = ModuleType("globalconfig")
     g.configname = args.configname

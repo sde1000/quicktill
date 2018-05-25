@@ -13,5 +13,5 @@ setup(name='quicktill3',
                     ['static/tillweb/*.js', 'templates/tillweb/*.html',
                      'templates/tillweb/*.ajax',
                      'static/tillweb/*.css', 'static/tillweb/images/*']},
-      scripts=['runtill', 'quicktill-debug-kbd'],
+      scripts=['runtill'],
 )
