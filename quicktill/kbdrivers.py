@@ -24,12 +24,22 @@ class prehkeyboard:
     Optionally converts magnetic stripe card input of the form
     [M1H]track1[M1T][M2H]track2[M2T][M3H]track3[M3T] to user tokens.
     """
-    def __init__(self, kblayout, magstripe=None):
+    def __init__(self, kb, magstripe=[
+            ("M1H", "M1T"),
+            ("M2H", "M2T"),
+            ("M3H", "M3T"),
+    ]):
+        maxrow = max(row for row, col in kb.keys())
+        rows = list(reversed("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:maxrow + 1]))
+        self.inputs = {}
+        for loc, key in kb.items():
+            row, col = loc
+            for x in range(0, key.width):
+                for y in range(0, key.height):
+                    self.inputs["{}{:02}".format(
+                        rows[row + y], col + x + 1)] = key.keycode
         self.ibuf = [] # Sequence of characters received after a '['
         self.decode = False # Are we reading into ibuf at the moment?
-        self.inputs = {}
-        for loc, code in kblayout:
-            self.inputs[loc.upper()] = code
         if magstripe:
             for start, end in magstripe:
                 self.inputs[start] = _magstripecode(start)

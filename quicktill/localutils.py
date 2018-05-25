@@ -108,21 +108,8 @@ def delta_england_banking_days(date, n):
             n = n - 1
     return date
 
-def _kbd_to_preh(kb):
-    """Take a dict of (row, col): Key() and return a dict of str: keycode
-    """
-    maxrow = max(row for row, col in kb.keys())
-    rows = list(reversed("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:maxrow + 1]))
-    preh = {}
-    for loc, key in kb.items():
-        row, col = loc
-        for x in range(0, key.width):
-            for y in range(0, key.height):
-                preh["{}{:02}".format(rows[row + y], col + x + 1)] = key.keycode
-    return preh
-
-def stdkeyboard_16by8_base(line_base=1, cash_payment_method=None,
-                           card_payment_method=None, overrides={}):
+def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
+                      card_payment_method=None, overrides={}):
     """Standard 16x8 keyboard layout
 
     A standard keyboard layout for a 16 by 8 key keyboard.  Returns a
@@ -201,24 +188,8 @@ def stdkeyboard_16by8_base(line_base=1, cash_payment_method=None,
     kb.update(overrides)
     return kb
 
-def stdkeyboard_16by8(*args, **kwargs):
-    """Standard 16x8 keyboard layout
-
-    A standard keyboard layout for a 16 by 8 key keyboard that
-    produces inputs of the form [A01] to [H16].
-    """
-    base = stdkeyboard_16by8_base(*args, **kwargs)
-    kb = _kbd_to_preh(base)
-    return kbdrivers.prehkeyboard(
-        kb.items(),
-        magstripe=[
-            ("M1H", "M1T"),
-            ("M2H", "M2T"),
-            ("M3H", "M3T"),
-        ])
-
-def stdkeyboard_20by7_base(line_base=1, cash_payment_method=None,
-                           card_payment_method=None, overrides={}):
+def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
+                      card_payment_method=None, overrides={}):
     """Standard 20x7 keyboard layout
 
     A standard keyboard layout for a 20 by 7 key keyboard.  Returns a
@@ -293,22 +264,6 @@ def stdkeyboard_20by7_base(line_base=1, cash_payment_method=None,
         del kb[(4, 19)]
     kb.update(overrides)
     return kb
-
-def stdkeyboard_20by7(*args, **kwargs):
-    """Standard 20x7 keyboard layout
-
-    A standard keyboard layout for a 20 by 7 key keyboard that
-    produces inputs of the form [A01] to [G20].
-    """
-    base = stdkeyboard_20by7_base(*args, **kwargs)
-    kb = _kbd_to_preh(base)
-    return kbdrivers.prehkeyboard(
-        kb.items(),
-        magstripe=[
-            ("M1H", "M1T"),
-            ("M2H", "M2T"),
-            ("M3H", "M3T"),
-        ])
 
 # These keys are used by the register and stock terminal pages if they
 # haven't already found a use for a keypress

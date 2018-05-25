@@ -13,6 +13,8 @@ debug = False
 configversion = "file:/dev/null"
 configname = "default"
 
+keyboard = None
+
 pubname="Test Pub Name"
 pubnumber="07715 422132"
 pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")

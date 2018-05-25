@@ -114,6 +114,9 @@ class runtill(cmdline.command):
         parser.add_argument(
             "-k", "--keyboard", dest="keyboard", default=False,
             action="store_true", help="Show an on-screen keyboard if possible")
+        parser.add_argument(
+            "--no-hardware-keyboard", dest="hwkeyboard", default=True,
+            action="store_false", help="Disable support for hardware keyboard")
         debugp = parser.add_argument_group(
             title="debug / development arguments",
             description="These arguments may be useful during development "
@@ -174,6 +177,11 @@ class runtill(cmdline.command):
     @staticmethod
     def run(args):
         log.info("Starting version %s", version)
+        if tillconfig.keyboard and tillconfig.keyboard_driver \
+           and args.hwkeyboard:
+            ui.keyboard_filter_stack.insert(
+                0, tillconfig.keyboard_driver(tillconfig.keyboard))
+
         # Initialise event loop
         if args.glibmainloop or args.gtk:
             from . import event_glib
@@ -200,7 +208,7 @@ class runtill(cmdline.command):
 
         dbg_kbd = None
         try:
-            if args.keyboard and hasattr(tillconfig, "keyboard") \
+            if args.keyboard and tillconfig.keyboard \
                and not args.gtk:
                 dbg_kbd = subprocess.Popen(
                     [sys.argv[0],
@@ -215,14 +223,12 @@ class runtill(cmdline.command):
 
             if args.gtk:
                 from . import ui_gtk
-                ui_gtk.run(fullscreen=args.fullscreen,
-                           font=args.font,
-                           monospace_font=args.monospace,
-                           keyboard_font=args.kbfont,
-                           keyboard=tillconfig.keyboard
-                           if hasattr(tillconfig, "keyboard")
-                           and args.keyboard
-                           else None)
+                ui_gtk.run(
+                    fullscreen=args.fullscreen,
+                    font=args.font,
+                    monospace_font=args.monospace,
+                    keyboard_font=args.kbfont,
+                    keyboard=tillconfig.keyboard if args.keyboard else None)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
@@ -250,7 +256,7 @@ class on_screen_keyboard(cmdline.command):
 
     @staticmethod
     def run(args):
-        if not hasattr(tillconfig, "keyboard"):
+        if not tillconfig.keyboard:
             return
         from . import keyboard_gtk
         def input_handler(keycode):
@@ -470,11 +476,12 @@ def main():
     tillconfig.currency = config['currency']
     tillconfig.all_payment_methods = config['all_payment_methods']
     tillconfig.payment_methods = config['payment_methods']
+    tillconfig.keyboard_driver = kbdrivers.prehkeyboard # Default
+    if 'keyboard_driver' in config:
+        tillconfig.keyboard_driver = config['keyboard_driver']
     if 'kbdriver' in config:
-        # Perhaps we should support multiple filters...
-        ui.keyboard_filter_stack.insert(0, config['kbdriver'])
-        # XXX support debug keyboard during transition
-        tillconfig.kbdriver = config['kbdriver']
+        log.warning("Obsolete 'kbdriver' key present in configuration")
+        tillconfig.keyboard = config['kbdriver']
     if 'keyboard' in config:
         tillconfig.keyboard = config['keyboard']
     if 'altkbdriver' in config:
