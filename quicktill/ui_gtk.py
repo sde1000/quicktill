@@ -100,6 +100,7 @@ class GtkWindow(Gtk.Window):
                 ui.handle_raw_keyboard_input(k)
             except Exception as e:
                 tillconfig.mainloop._exc_info = sys.exc_info()
+        return True # Don't propagate the event to widgets in the window
 
 class gtk_root(Gtk.DrawingArea):
     """Root window with single-line header
