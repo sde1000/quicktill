@@ -288,7 +288,7 @@ class change_continuous_stockline(ui.dismisspopup):
                       "stockline id %s", stocklineid)
             return
         self._stocklineid = stocklineid
-        super(change_continuous_stockline, self).__init__(
+        super().__init__(
             9, 75, title="Change stock on sale on {}".format(stockline.name),
             colour=ui.colour_input)
         self.addstr(2, 2, "Current stock type: {}".format(

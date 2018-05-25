@@ -384,4 +384,4 @@ class stockfield(ui.modelpopupfield):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.linekey)
         else:
-            super(stockfield, self).keypress(k)
+            super().keypress(k)

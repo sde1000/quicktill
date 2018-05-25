@@ -93,7 +93,7 @@ class modify(user.permission_checked, ui.listpopup):
         elif k == keyboard.K_CANCEL:
             self.deletebinding()
         else:
-            super(modify, self).keypress(k)
+            super().keypress(k)
 
     def deletebinding(self):
         log.debug("modifier deletebinding: cursor is %s", self.s.cursor)

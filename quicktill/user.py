@@ -284,7 +284,7 @@ class tokenkey(token):
     """A key that represents a user token
     """
     def __init__(self, t, label):
-        super(tokenkey, self).__init__(t)
+        super().__init__(t)
         self.keycap = label
 
 class tokenlistener:
@@ -360,7 +360,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
         self.message = self.emptymessage
         self.f = None
         self._allow_inuse = allow_inuse
-        super(tokenfield, self).__init__(keymap)
+        super().__init__(keymap)
         self.draw()
 
     def set(self, t):
@@ -395,11 +395,11 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             self.win.move(*pos)
 
     def focus(self):
-        super(tokenfield, self).focus()
+        super().focus()
         self.draw()
 
     def defocus(self):
-        super(tokenfield, self).defocus()
+        super().defocus()
         self.message = self.emptymessage
         self.draw()
 
@@ -410,7 +410,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
                 self.f is not None or self.message != self.emptymessage):
             self.set(None)
         else:
-            super(tokenfield, self).keypress(k)
+            super().keypress(k)
 
 class addtoken(ui.dismisspopup):
     def __init__(self, userid):

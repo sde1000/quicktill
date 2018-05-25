@@ -492,7 +492,7 @@ class popup(user.permission_checked,ui.basicpopup):
         elif k==keyboard.K_CASH:
             self.edit_item()
         else:
-            super(popup,self).keypress(k)
+            super().keypress(k)
 
 class message(user.permission_checked,ui.dismisspopup):
     """

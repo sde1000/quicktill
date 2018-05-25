@@ -365,7 +365,7 @@ class _update_timeout_scrollable(ui.scrollable):
     receives the input focus.
     """
     def focus(self):
-        super(_update_timeout_scrollable, self).focus()
+        super().focus()
         self.parent._update_timeout()
 
 class InvalidSale(Exception):
@@ -2286,7 +2286,7 @@ class page(ui.basicpage):
         # they have, lock immediately.
         if self.user.dbuser.register != register_instance:
             self.deselect()
-            return super(page, self).hotkeypress(k)
+            return super().hotkeypress(k)
 
         if self._autolock and k == self._autolock and not self.locked \
            and self.s.focused:
@@ -2295,7 +2295,7 @@ class page(ui.basicpage):
             self.locked = True
             self._redraw()
         else:
-            super(page, self).hotkeypress(k)
+            super().hotkeypress(k)
 
     def select(self, u):
         # Called when the appropriate user token is presented

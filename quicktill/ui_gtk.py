@@ -35,7 +35,7 @@ colours = {
 
 class GtkWindow(Gtk.Window):
     def __init__(self, drawing_area):
-        super(GtkWindow, self).__init__(title="Quicktill")
+        super().__init__(title="Quicktill")
         self.add(drawing_area)
         self.connect("delete-event", _quit)
         self.connect("key_press_event", self._keypress)
@@ -316,7 +316,7 @@ class text_window(window):
         self.ascent = metrics.get_ascent() // Pango.SCALE
         self.descent = metrics.get_descent() // Pango.SCALE
         self.fontheight = self.ascent + self.descent
-        super(text_window, self).__init__(
+        super().__init__(
             drawable, height * self.fontheight, width * self.fontwidth,
             y, x)
         self.height_chars = height
