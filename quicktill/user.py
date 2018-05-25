@@ -557,8 +557,8 @@ class edituser(permission_checked, ui.basicpopup):
         sn = self.snfield.f.strip()
         wn = self.wnfield.f.strip()
         if len(fn) == 0 or len(sn) == 0:
-            ui.infopoup(["You can't leave the full name or short name blank."],
-                        title="Error")
+            ui.infopopup(["You can't leave the full name or short name blank."],
+                         title="Error")
             return
         u = td.s.query(User).get(self.userid)
         u.fullname = fn
