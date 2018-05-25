@@ -380,6 +380,8 @@ labelprinter = {
 kb1 = {
     'kbdriver': quicktill.localutils.stdkeyboard_16by8(
         cash_payment_method=cash, card_payment_method=card),
+    'keyboard': quicktill.localutils.stdkeyboard_16by8_base(
+        cash_payment_method=cash, card_payment_method=card),
     'firstpage': quicktill.lockscreen.lockpage,
     'usertoken_handler': lambda t: quicktill.register.handle_usertoken(
         t, register_hotkeys, autolock=K_LOCK),
@@ -454,6 +456,8 @@ config4 = {'description': "Haymakers festival bar",
 config4.update(std)
 config4.update(kb1)
 config4['kbdriver'] = quicktill.localutils.stdkeyboard_20by7(
+    151, cash_payment_method=cash, card_payment_method=card)
+config4['keyboard'] = quicktill.localutils.stdkeyboard_20by7_base(
     151, cash_payment_method=cash, card_payment_method=card)
 config4.update(localprinter)
 config4.update(labelprinter)

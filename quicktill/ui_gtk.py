@@ -9,6 +9,7 @@ import cairo
 import time
 import math
 import textwrap
+from . import keyboard_gtk
 
 if not hasattr(cairo, 'OPERATOR_DIFFERENCE'):
     # This has been in cairo since 1.10 and is still not in the
@@ -34,9 +35,15 @@ colours = {
 }
 
 class GtkWindow(Gtk.Window):
-    def __init__(self, drawing_area):
+    def __init__(self, drawing_area, kbgrid=None):
         super().__init__(title="Quicktill")
-        self.add(drawing_area)
+        if kbgrid:
+            self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            self.box.pack_start(drawing_area, True, True, 0)
+            self.box.pack_start(kbgrid, False, True, 0)
+            self.add(self.box)
+        else:
+            self.add(drawing_area)
         self.connect("delete-event", _quit)
         self.connect("key_press_event", self._keypress)
         self.show_all()
@@ -99,7 +106,9 @@ class gtk_root(Gtk.DrawingArea):
     """
     supports_fullscreen = True
 
-    def __init__(self, monospace_font, font, min_height=24, min_width=80):
+    def __init__(self, monospace_font, font,
+                 preferred_height=24, preferred_width=80,
+                 minimum_height=14, minimum_width=80):
         super().__init__()
         self.monospace = monospace_font
         self.font = font if font else monospace_font
@@ -111,6 +120,10 @@ class gtk_root(Gtk.DrawingArea):
         self.descent = metrics.get_descent() // Pango.SCALE
         self.fontheight = self.ascent + self.descent
 
+        self._preferred_height = preferred_height
+        self._minimum_height = minimum_height
+        self._preferred_width = preferred_width
+        self._minimum_width = minimum_width
         self._contents = []
         self._ontop = []
         self.left = "Quicktill"
@@ -119,12 +132,16 @@ class gtk_root(Gtk.DrawingArea):
         self._cursor_location = None
         self._cursor_timeout()
 
-        # Set the minimum size
-        self.set_size_request(min_width * self.fontwidth,
-                              min_height * self.fontheight)
-
         self.connect("draw", self._redraw)
         self._clockalarm()
+
+    def do_get_preferred_height(self):
+        return self._minimum_height * self.fontheight, \
+            self._preferred_height * self.fontheight
+
+    def do_get_preferred_width(self):
+        return self._minimum_width * self.fontwidth, \
+            self._preferred_width * self.fontwidth
 
     def size(self):
         """Return (height, width) in characters
@@ -489,14 +506,26 @@ class text_window(window):
 def _quit(widget, event):
     tillconfig.mainloop.shutdown(0)
 
-def run(fullscreen=False, font="sans 20", monospace_font="monospace 20"):
+def _onscreen_keyboard_input(keycode):
+    try:
+        ui.handle_raw_keyboard_input(keycode)
+    except Exception as e:
+        tillconfig.mainloop._exc_info = sys.exc_info()
+
+def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
+        keyboard_font="sans 8", keyboard=None):
     """Start running with the GTK display system
     """
     monospace_font = Pango.FontDescription(monospace_font)
     font = Pango.FontDescription(font)
-    ui.rootwin = gtk_root(monospace_font, font, 24, 80)
+    keyboard_font = Pango.FontDescription(keyboard_font)
+    kbgrid = keyboard_gtk.kbgrid(
+        keyboard, keyboard_font, _onscreen_keyboard_input) if keyboard \
+        else None
+    ui.rootwin = gtk_root(monospace_font, font,
+                          preferred_height=20 if keyboard else 24)
     ui.beep = Gdk.beep
-    window = GtkWindow(ui.rootwin)
+    window = GtkWindow(ui.rootwin, kbgrid)
     if fullscreen:
         window.fullscreen()
     ui.toaster.notify_display_initialised()

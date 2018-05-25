@@ -287,6 +287,9 @@ class tokenkey(token):
         super().__init__(t)
         self.keycap = label
 
+    def __str__(self):
+        return self.keycap
+
 class tokenlistener:
     def __init__(self, address, addressfamily=socket.AF_INET):
         self.s = socket.socket(addressfamily, socket.SOCK_DGRAM)

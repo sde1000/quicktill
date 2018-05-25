@@ -301,6 +301,8 @@ config1 = {
     'hotkeys': global_hotkeys,
     'kbdriver': quicktill.localutils.stdkeyboard_16by8(
         line_base=1, cash_payment_method=cash, card_payment_method=card),
+    'keyboard': quicktill.localutils.stdkeyboard_16by8_base(
+        line_base=1, cash_payment_method=cash, card_payment_method=card),
 }
 config1.update(std)
 config1.update(quicktill.localutils.activate_register_with_usertoken(

@@ -142,6 +142,10 @@ class runtill(cmdline.command):
             "--monospace-font", dest="monospace", default="monospace 20",
             action="store", type=str, metavar="FONT_DESCRIPTION",
             help="Set the font to be used for monospace text")
+        gtkp.add_argument(
+            "--keyboard-font", dest="kbfont", default="sans 8",
+            action="store", type=str, metavar="FONT_DESCRIPTION",
+            help="Set the font to be used for the on-screen keyboard")
         parser.set_defaults(command=runtill, nolisten=False)
 
     class _dbg_kbd_input:
@@ -194,7 +198,8 @@ class runtill(cmdline.command):
         dbg_kbd = None
         try:
             # Set up debug keyboard
-            if args.keyboard and hasattr(tillconfig, "kbdriver"):
+            if args.keyboard and hasattr(tillconfig, "kbdriver") \
+               and not args.gtk:
                 with td.orm_session():
                     kbl = {x: y.keycap if hasattr(y, "keycap") else str(y)
                            for x, y in tillconfig.kbdriver.inputs.items()
@@ -217,7 +222,12 @@ class runtill(cmdline.command):
                 from . import ui_gtk
                 ui_gtk.run(fullscreen=args.fullscreen,
                            font=args.font,
-                           monospace_font=args.monospace)
+                           monospace_font=args.monospace,
+                           keyboard_font=args.kbfont,
+                           keyboard=tillconfig.keyboard
+                           if hasattr(tillconfig, "keyboard")
+                           and args.keyboard
+                           else None)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
@@ -484,6 +494,8 @@ def main():
     if 'kbdriver' in config:
         # Perhaps we should support multiple filters...
         ui.keyboard_filter_stack.insert(0, config['kbdriver'])
+    if 'keyboard' in config:
+        tillconfig.keyboard = config['keyboard']
     # XXX support kbdiff and debug keyboard temporarily; we need to
     # find a more general way to do this!
     if 'kbdriver' in config:
