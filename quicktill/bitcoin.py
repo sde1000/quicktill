@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 APIVersion = "1.0"
 
-class Api(object):
+class Api:
     """A python interface to the BTCMerch API
     """
     def __init__(self, username, password, site, base_url):

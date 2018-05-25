@@ -44,7 +44,7 @@ def handle_option(itemfunc,option):
     else:
         itemfunc(fooditem(*option))
 
-class simplemenu(object):
+class simplemenu:
     def __init__(self,options,title=None):
         self.options=options
         self.title=title
@@ -54,7 +54,7 @@ class simplemenu(object):
         ui.automenu(il,spill="keymenu",colour=ui.colour_line,
                     title=self.title or default_title)
 
-class subopts(object):
+class subopts:
     """
     A menu item which can have an arbitrary number of suboptions.
     Suboptions can have a price associated with them.  It's possible

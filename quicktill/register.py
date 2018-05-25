@@ -354,7 +354,7 @@ def record_pullthru(stockid, qty):
     td.s.add(StockOut(stockid=stockid, qty=qty, removecode_id='pullthru'))
     td.s.flush()
 
-class repeatinfo(object):
+class repeatinfo:
     """Information for repeat keypresses."""
     def __init__(self, **kwargs):
         for k, v in kwargs.items():

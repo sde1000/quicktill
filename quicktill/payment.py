@@ -51,7 +51,7 @@ class pline(ui.line):
     def resume(self,register):
         return self.method.resume_payment(register,self)
 
-class PaymentMethod(object):
+class PaymentMethod:
     change_given = False
     refund_supported = False
     def __init__(self,paytype,description):

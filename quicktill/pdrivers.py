@@ -79,7 +79,7 @@ def wrap(l,width):
     if len(w)==0: w=[""]
     return w
 
-class nullprinter(object):
+class nullprinter:
     """
     A "dummy" printer that just writes to the log.
 
@@ -131,7 +131,7 @@ class badprinter(nullprinter):
     def __enter__(self):
         raise PrinterError(self,"badprinter is always offline!")
 
-class fileprinter(object):
+class fileprinter:
     """Print to a file.  The file may be a device file!
 
     """
@@ -205,7 +205,7 @@ class linux_lpprinter(fileprinter):
         except IOError as e:
             return str(e)
 
-class netprinter(object):
+class netprinter:
     """
     Print to a network socket.  connection is a (hostname,port) tuple.
 
@@ -250,7 +250,7 @@ class netprinter(object):
         self._socket.close()
         self._socket=None
 
-class tmpfileprinter(object):
+class tmpfileprinter:
     """
     Print to a temporary file.  Call the "finish" method with the
     filename before the file is deleted.  This method does nothing in
@@ -384,7 +384,7 @@ def ep_2d_cmd(*params):
     pH = (len(p) >> 8) & 0xff
     return bytes([29, ord('('), ord('k'), pL, pH]) + p
 
-class escpos(object):
+class escpos:
     """The ESC/POS protocol for controlling receipt printers.
     """
     filesuffix = ".dat"
@@ -644,7 +644,7 @@ class Epson_TM_T20_driver(escpos):
                         lines_before_cut=0,default_font=0,
                         native_qrcode_support=True)
 
-class pdf_driver(object):
+class pdf_driver:
     """A driver that outputs to PDF and supports the same calls as the
     ESC/POS driver.
 
@@ -747,7 +747,7 @@ class PageSizeCanvas(canvas.Canvas):
     def getPageSize(self):
         return self._pagesize
 
-class pdf_page(object):
+class pdf_page:
     """A driver that presents as a PDF canvas, extended to make the page
     size readable via a getPageSize() method.
 
@@ -805,7 +805,7 @@ class LabelCanvas(canvas.Canvas):
             canvas.Canvas.showPage(self)
         self.save()
 
-class pdf_labelpage(object):
+class pdf_labelpage:
     """A driver that prints onto laser label paper.  It presents as a PDF
     canvas, extended to make the page size readable via a
     getPageSize() method.  Each individual label is treated as a

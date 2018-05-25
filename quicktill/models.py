@@ -76,7 +76,7 @@ class Business(Base):
 
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
-class Vat(object):
+class Vat:
     @declared_attr
     def rate(cls):
         return Column(Numeric(5, 2), nullable=False)

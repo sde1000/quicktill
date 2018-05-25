@@ -161,7 +161,7 @@ def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
     f = ui.tableformatter(' r  l  r ')
     return [(f(x.id, x.date, tillconfig.fc(x.total)), cont, (x.id,)) for x in q]
 
-class _PMWrapper(object):
+class _PMWrapper:
     """Payment method wrapper for record session takings popup.
 
     Remembers the total and where to put it when it's updated.
