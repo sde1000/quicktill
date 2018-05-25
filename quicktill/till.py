@@ -8,24 +8,40 @@ module.
 # As the main entry point, any modules that define their own
 # subcommands must be imported here otherwise they will be ignored.
 
-import urllib.request, urllib.parse, urllib.error
-import sys, os, logging, logging.config, locale, argparse, yaml
-import termios,fcntl,array
+import urllib.request
+import sys
+import os
+import logging
+import logging.config
+import locale
+import argparse
+import yaml
+import termios
+import fcntl
+import array
 import socket
 import time
 from types import ModuleType
-from . import ui, td, printer, tillconfig, foodorder, user
-from . import pdrivers, cmdline, extras
-from . import dbsetup
-from . import dbutils
+from . import ui
+from . import td
+from . import printer
+from . import tillconfig
+from . import foodorder
+from . import user
+from . import pdrivers
+from . import cmdline
 from . import kbdrivers
 from . import keyboard
-from . import foodcheck
 from .version import version
-from .models import Session,User,UserToken,Business,zero
-from . import models
-import json
+from .models import Session, Business, zero
 import subprocess
+
+# The following imports are to ensure subcommands are loaded
+from . import extras
+from . import dbsetup
+from . import dbutils
+from . import foodcheck
+# End of subcommand imports
 
 log = logging.getLogger(__name__)
 
