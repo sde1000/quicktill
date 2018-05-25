@@ -1706,7 +1706,7 @@ class page(ui.basicpage):
             # transaction.  Search through and update the line if
             # found.
             for tl in self.dl:
-                if tl.transline == voided_line.id:
+                if hasattr(tl, "transline") and tl.transline == voided_line.id:
                     tl.update()
         td.s.expire(trans, ['total'])
 
