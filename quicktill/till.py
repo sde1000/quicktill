@@ -242,53 +242,6 @@ class runtill(cmdline.command):
         logging.shutdown()
         return tillconfig.mainloop.exit_code
 
-class kbdiff(cmdline.command):
-    """Show differences between kbconfig and altkbconfig.
-
-    Concentrates on updating linekey numbers
-    """
-    help = "diff keyboard table"
-
-    @staticmethod
-    def run(args):
-        # We want to go through all codes defined in the new (alt) driver
-        # and compare them to the codes in the existing driver
-        codes = sorted(tillconfig.altkbdriver.inputs.items())
-        changes = []
-        with td.orm_session():
-            for k, newcode in codes:
-                if k not in tillconfig.kbdriver.inputs:
-                    print("Current driver does not map '{}'".format(k))
-                else:
-                    oldcode = tillconfig.kbdriver.inputs[k]
-                    if oldcode != newcode:
-                        if isinstance(oldcode, kbdrivers._magstripecode) \
-                           and isinstance(newcode, kbdrivers._magstripecode):
-                            continue
-                        print("Difference: {} {} -> {}".format(
-                            k, repr(oldcode), repr(newcode)))
-                        if isinstance(oldcode, keyboard.linekey) \
-                           and isinstance(newcode, keyboard.linekey):
-                            changes.append((oldcode._line, newcode._line))
-        if changes:
-            print("Database update commands:")
-            print("BEGIN;")
-            for old, new in changes:
-                print("UPDATE keycaps SET keycode='K_TMP{new}' "
-                      "WHERE keycode='K_LINE{old}';".format(old=old, new=new))
-                print("UPDATE keyboard SET keycode='K_TMP{new}' "
-                      "WHERE keycode='K_LINE{old}';".format(old=old, new=new))
-                print("UPDATE keyboard SET menukey='K_TMP{new}' "
-                      "WHERE menukey='K_LINE{old}';".format(old=old, new=new))
-            for old, new in changes:
-                print("UPDATE keycaps SET keycode='K_LINE{}' "
-                      "WHERE keycode='K_TMP{}';".format(new, new))
-                print("UPDATE keyboard SET keycode='K_LINE{}' "
-                      "WHERE keycode='K_TMP{}';".format(new, new))
-                print("UPDATE keyboard SET menukey='K_LINE{}' "
-                      "WHERE menukey='K_TMP{}';".format(new, new))
-            print("COMMIT;")
-
 class totals(cmdline.command):
     """
     Display a table of session totals.
@@ -494,15 +447,12 @@ def main():
     if 'kbdriver' in config:
         # Perhaps we should support multiple filters...
         ui.keyboard_filter_stack.insert(0, config['kbdriver'])
+        # XXX support debug keyboard during transition
+        tillconfig.kbdriver = config['kbdriver']
     if 'keyboard' in config:
         tillconfig.keyboard = config['keyboard']
-    # XXX support kbdiff and debug keyboard temporarily; we need to
-    # find a more general way to do this!
-    if 'kbdriver' in config:
-        tillconfig.kbdriver = config['kbdriver']
-    # XXX support kbdiff command temporarily
     if 'altkbdriver' in config:
-        tillconfig.altkbdriver = config['altkbdriver']
+        log.warning("Obsolete 'altkbdriver' key present in configuration")
     if 'pricepolicy' in config:
         log.warning("Obsolete 'pricepolicy' key present in configuration")
     if 'format_currency' in config:
