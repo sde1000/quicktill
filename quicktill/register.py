@@ -1458,7 +1458,8 @@ class page(ui.basicpage):
             return
         log.info("Register: printing transaction %d", trans.id)
         ui.toast("The receipt is being printed.")
-        printer.print_receipt(trans.id)
+        with ui.exception_guard("printing the receipt", title="Printer error"):
+            printer.print_receipt(trans.id)
 
     def cancelkey(self):
         """The cancel key was pressed.
