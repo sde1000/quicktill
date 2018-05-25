@@ -113,10 +113,10 @@ numberkeys = [
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "00", ".",
 ]
 cursorkeys = [
-    keycode("K_LEFT", "Left"),
-    keycode("K_RIGHT", "Right"),
-    keycode("K_UP", "Up"),
-    keycode("K_DOWN", "Down"),
+    keycode("K_LEFT", "◀"),
+    keycode("K_RIGHT", "▶"),
+    keycode("K_UP", "▲"),
+    keycode("K_DOWN", "▼"),
     keycode("K_PAGEUP", "Page Up"),
     keycode("K_PAGEDOWN", "Page Down"),
 ]
