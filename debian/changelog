@@ -1,3 +1,47 @@
+quicktill (0.12.24) stable; urgency=low
+
+  * New release 0.12.24
+
+  * Tidy up includes in till.py
+
+  * Fix typo in user.py
+
+  * When searching for transaction lines to update, skip payment lines
+
+  * Catch problems printing a receipt
+
+  * Use new keyboard definition style throughout
+
+  * Don't propagate key presses to widgets in the Gtk window
+
+  * Show configname in version popup
+
+  * Share on-screen-keyboard code between Gtk and ncurses modes
+
+  * Arrow key keycaps are now arrows
+
+  * Remove kbdiff subcommand
+
+  * Put on-screen keyboard and Gtk till interface in same window
+
+  * Use super() without arguments wherever possible
+
+  * No need to inherit from object
+
+  * Include more information in keyboard layout definitions
+
+  * Don't show the stillage layout page on the stock terminal if it's empty
+
+  * Add database dumps from EMF 2016 to use as example data
+
+  * Strip whitespace from config URL
+
+  * Use StockLine.locations() in web view
+
+  * Remove the default 'l' hotkey for the lock screen
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 26 May 2018 13:18:46 +0100
+
 quicktill (0.12.23) stable; urgency=low
 
   * New release 0.12.23
