@@ -132,6 +132,8 @@ class page(ui.basicpage):
             stocklines.selectline(usestock.line_chosen,
                                   title="Use Stock",
                                   blurb="Select a stock line")
+        elif k == keyboard.K_CLEAR or k == keyboard.K_CANCEL:
+            self.deselect()
         elif k in self.hotkeys:
             return self.hotkeys[k]()
         else:
