@@ -1,3 +1,11 @@
+quicktill (0.12.26) stable; urgency=low
+
+  * New release 0.12.26
+
+  * Some sites don't use the keyboard definitions in localutils
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 28 May 2018 23:25:05 +0100
+
 quicktill (0.12.25) stable; urgency=low
 
   * New release 0.12.25
