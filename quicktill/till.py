@@ -497,7 +497,7 @@ def main():
         tillconfig.keyboard_driver = config['keyboard_driver']
     if 'kbdriver' in config:
         log.warning("Obsolete 'kbdriver' key present in configuration")
-        tillconfig.keyboard = config['kbdriver']
+        ui.keyboard_filter_stack.insert(0, config['kbdriver'])
     if 'keyboard' in config:
         tillconfig.keyboard = config['keyboard']
     if 'altkbdriver' in config:
