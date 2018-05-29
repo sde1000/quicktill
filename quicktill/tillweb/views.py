@@ -958,3 +958,30 @@ def session_users_pie_chart(request, info, session, sessionid):
     plt.close(fig)
     response.write(wrapper.getvalue())
     return response
+
+class WasteReportForm(forms.Form):
+    startdate = forms.DateField(label="Start date", required=False)
+    enddate = forms.DateField(label="End date", required=False)
+    columns = forms.ChoiceField(label="Columns show", choices=[
+        ("depts", "Departments"),
+        ("waste", "Waste type"),
+    ])
+
+@tillweb_view
+def reportindex(request, info, session):
+    if request.method == 'POST' and "submit_waste" in request.POST:
+        wasteform = WasteReportForm(request.POST)
+        if wasteform.is_valid():
+            cd = wasteform.cleaned_data
+            return spreadsheets.waste(
+                session,
+                start=cd['startdate'],
+                end=cd['enddate'],
+                cols=cd['columns'],
+                tillname=info['tillname'])
+    else:
+        wasteform = WasteReportForm()
+
+    return ('reports.html',
+            {'wasteform': wasteform,
+            })

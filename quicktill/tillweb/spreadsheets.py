@@ -555,3 +555,97 @@ def stock(ds, stocklist, tillname="Till", filename=None):
 
     doc.add_table(sheet)
     return doc.as_response()
+
+def daterange(start, end):
+    """Produce a list of dates between start and end, inclusive
+    """
+    n = start
+    while n <= end:
+        yield n
+        n += datetime.timedelta(days=1)
+
+def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
+    """A report on waste
+
+    Separate sheets for: totals, each type of waste Rows are dates,
+    columns are departments.  First row of each sheet is headers.
+    """
+    depts = ds.query(Department).order_by(Department.id).all()
+    wastes = ds.query(RemoveCode).order_by(RemoveCode.id).all()
+
+    date = func.date(StockOut.time)
+    data = ds.query(date,
+                    StockType.dept_id,
+                    StockOut.removecode_id,
+                    func.sum(StockOut.qty))\
+             .join(StockItem, StockType)
+    if start:
+        data = data.filter(date >= start)
+    else:
+        start = ds.query(func.min(date)).scalar()
+    if end:
+        data = data.filter(date <= end)
+    else:
+        end = ds.query(func.max(date)).scalar()
+    data = data.group_by(date, StockType.dept_id, StockOut.removecode_id).all()
+
+    filename = "{}-waste.ods".format(tillname)
+    doc = Document(filename)
+
+    def date_to_row(date):
+        return (date - start).days + 1
+
+    def add_dates(table):
+        row = 1
+        for date in daterange(start, end):
+            table.cell(0, row, doc.datecell(date))
+            row += 1
+
+    if cols == "depts":
+        # Sheets are remove codes
+        dept_cols = {} # Column indexed by dept_id
+        col = 1
+        for dept in depts:
+            dept_cols[dept.id] = col
+            col += 1
+        waste_sheets = {} # Sheet indexed by removecode_id
+        for rc in wastes:
+            table = Sheet(rc.reason)
+            waste_sheets[rc.id] = table
+            add_dates(table)
+            for dept in depts:
+                table.cell(dept_cols[dept.id], 0,
+                           doc.headercell(dept.description))
+    else:
+        # Sheets are departments
+        waste_cols = {} # Column indexed by removecode_id
+        col = 1
+        for rc in wastes:
+            waste_cols[rc.id] = col
+            col += 1
+        dept_sheets = {} # Sheet indexed by dept_id
+        for dept in depts:
+            table = Sheet(dept.description)
+            dept_sheets[dept.id] = table
+            add_dates(table)
+            for rc in wastes:
+                table.cell(waste_cols[rc.id], 0,
+                           doc.headercell(rc.reason))
+
+    for date, dept_id, removecode_id, qty in data:
+        row = date_to_row(date)
+        if cols == "depts":
+            table = waste_sheets[removecode_id]
+            table.cell(dept_cols[dept_id], row, doc.numbercell(qty))
+        else:
+            table = dept_sheets[dept_id]
+            table.cell(waste_cols[removecode_id], row, doc.numbercell(qty))
+
+    if cols == "depts":
+        for rc in wastes:
+            doc.add_table(waste_sheets[rc.id])
+    else:
+        for dept in depts:
+            doc.add_table(dept_sheets[dept.id])
+
+    return doc.as_response()

@@ -1,0 +1,31 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Reports{% endblock %}
+
+{% block heading %}{{till}} — Reports{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Wasted stock</h2>
+
+<p>This report shows stock explicitly recorded as used, either as
+  waste or by being sold.  It doesn't show stock implicitly wasted by
+  being marked as "finished".</p>
+
+<form action="" method="post">{% csrf_token %}
+<table class="kvtable">
+{{ wasteform.as_table }}
+</table>
+<input type="submit" value="Download" name="submit_waste" />
+</form>
+
+<script type="text/javascript">
+var dtpicker_options = {firstDay: 1,
+  dateFormat: 'yy-mm-dd'};
+$(document).ready(function(){
+ $("#id_startdate").datepicker(dtpicker_options);
+ $("#id_enddate").datepicker(dtpicker_options);
+});
+</script>
+
+{% endblock %}

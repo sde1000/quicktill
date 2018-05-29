@@ -70,6 +70,8 @@ tillurls = [
 
     url(r'^user/$', userlist, name="tillweb-till-users"),
     url(r'^user/(?P<userid>\d+)/$', user, name="tillweb-till-user"),
+
+    url(r'^reports/$', reportindex, name="tillweb-reports"),
 ]
 
 urls = [
