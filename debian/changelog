@@ -1,3 +1,11 @@
+quicktill (0.12.28) stable; urgency=low
+
+  * New release 0.12.28
+
+  * Compatibility: prehkeyboard can use old-style keyboard definitions
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 29 May 2018 07:48:09 +0100
+
 quicktill (0.12.26) stable; urgency=low
 
   * New release 0.12.26
