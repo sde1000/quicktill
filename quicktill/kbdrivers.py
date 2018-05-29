@@ -29,15 +29,20 @@ class prehkeyboard:
             ("M2H", "M2T"),
             ("M3H", "M3T"),
     ]):
-        maxrow = max(row for row, col in kb.keys())
-        rows = list(reversed("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:maxrow + 1]))
         self.inputs = {}
-        for loc, key in kb.items():
-            row, col = loc
-            for x in range(0, key.width):
-                for y in range(0, key.height):
-                    self.inputs["{}{:02}".format(
-                        rows[row + y], col + x + 1)] = key.keycode
+        # Compatibility: if keys are strings, values are keycodes
+        if isinstance(kb, list):
+            for loc, code in kb:
+                self.inputs[loc.upper()] = code
+        else:
+            maxrow = max(row for row, col in kb.keys())
+            rows = list(reversed("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:maxrow + 1]))
+            for loc, key in kb.items():
+                row, col = loc
+                for x in range(0, key.width):
+                    for y in range(0, key.height):
+                        self.inputs["{}{:02}".format(
+                            rows[row + y], col + x + 1)] = key.keycode
         self.ibuf = [] # Sequence of characters received after a '['
         self.decode = False # Are we reading into ibuf at the moment?
         if magstripe:
