@@ -19,14 +19,125 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see [this
 link](http://www.gnu.org/licenses/).
 
-A big warning
--------------
+Features
+--------
 
-This software is not very easy to configure.  Once it's configured,
-though, it's generally quite easy for staff to use.  It's currently in
-use by [Individual Pubs Ltd](https://www.individualpubs.co.uk/) in all
-their pubs.  It's occasionally used by
-[EMFcamp](https://www.emfcamp.org/) and [London
+ * Any number of departments, products, price lookups, users, etc.
+
+ * Works on multiple terminals at once; transactions follow users
+   between terminals
+
+ * Web-based reporting interface (read-only for now)
+
+ * [Xero](https://www.xero.com/) integration
+
+It should be possible to run this software on any system that supports
+python 3.  Usually it runs on Debian-derived Linux systems like
+Ubuntu.
+
+Misfeatures
+-----------
+
+ * Lack of documentation - you're reading it now!
+
+ * Only one developer at the moment
+
+ * Arguably: Configuration is written in python
+
+Quick start
+-----------
+
+The till software includes an anonymised copy of the database from
+[EMFcamp 2016](https://www.emfcamp.org/) which can be used for
+testing.  This guide assumes you have a fresh installation of Ubuntu
+18.04.
+
+### Installing needed packages ###
+
+In a terminal window, run the following to install packages the till
+software needs:
+
+    sudo apt install git postgresql python3-sqlalchemy python3-twython
+    sudo apt install python3-dateutil python3-psycopg2
+
+### Configuring postgres ###
+
+We need to set up postgres to allow your user account to create new
+databases.  This procedure may vary from system to system, but on
+Debian-derived Linux systems will go something like this:
+
+    sudo -u postgres createuser -d your-username
+
+You will need to substitute your own username for "your-username".
+
+If you don't want to give your user account permission to create new
+databases, you could [use the instructions
+here](https://wiki.debian.org/PostgreSql) to do something more
+restricted.
+
+### Obtaining the till software and test data ###
+
+We will create a clone of the till software from github:
+
+    git clone https://github.com/sde1000/quicktill.git
+
+This puts the till software in a directory called "quicktill".  From
+now on we'll assume that this is your current working directory:
+
+    cd quicktill
+
+To create a database and install the test data in it:
+
+    createdb emfcamp
+    psql emfcamp <examples/data/emfcamp2016-anonymised.sql
+
+If in the future you need to go back to the original version of the
+test data, you can delete the database using "dropdb emfcamp" and
+repeat the above two commands.
+
+### Running the till software ###
+
+Check that the till software runs:
+
+    ./runtill --help
+
+The software can run in a number of different modes, defined in the
+configuration file.  We're going to be using the configuration file
+`examples/emfcamp.py`.  The commands shown here will specify this on
+the command line using the `-u` option.
+
+The till software can also run both in its own window or in the
+terminal window you're using to start it.  For a separate window give
+the `--gtk` option after the word `start` on the command line; to run
+in the terminal, leave it out.
+
+To run the till software in "Stock Terminal" mode:
+
+    ./runtill -u file:examples/emfcamp.py start --gtk
+
+To run the till software in "Main bar" mode:
+
+    ./runtill -u file:examples/emfcamp.py -c mainbar start --gtk --keyboard
+
+Normally the till software is used with a matrix keyboard, but these
+are pricey and hard to get hold of.  The `--keyboard` option makes the
+till softeware display an on-screen keyboard instead.
+
+Once the till software is running, you can exit it by pressing the
+"Manage Till" button (or 'M' if there's no on-screen keyboard) and
+picking option 8.
+
+
+Using the till software for your own site
+-----------------------------------------
+
+To use this software for your own site, you will have to write a new
+configuration file.  It's easiest to do this by copying one of the
+example configuration files (eg. `examples/emfcamp.py`) and changing
+it.  Once the software is configured, it's generally quite easy for
+staff to use.  It's currently in use by [Individual Pubs
+Ltd](https://www.individualpubs.co.uk/) in all their pubs.  It's
+occasionally used by [EMFcamp](https://www.emfcamp.org/) and [London
 Hackspace](https://london.hackspace.org.uk/).
 
 At the moment I'm not guaranteeing that changes from one release to
@@ -40,20 +151,27 @@ and aren't backward-compatible.  (So, to upgrade smoothly: make
 database schema changes, install the new version, then update the
 config file to enable any new features you need.)
 
-Getting started
----------------
+Hardware
+--------
 
-The first hurdle is finding a suitable keyboard!  I generally use 16x8
-matrix keyboards from Preh (MCI128), configured so that on each
-keypress they output a sequence of keystrokes giving the coordinates
-of the key that was pressed, for example [A01] for the bottom-left and
-[H16] for the top-right.  If you have a different type of keyboard, or
-it is set up differently, it's fairly easy to write a new keyboard
-driver: see quicktill/kbdrivers.py
+You can use a physical matrix keyboard, or an on-screen keyboard with
+a touchscreen.  I generally use 16x8 matrix keyboards from Preh
+(MCI128), configured so that on each keypress they output a sequence
+of keystrokes giving the coordinates of the key that was pressed, for
+example [A01] for the bottom-left and [H16] for the top-right.  If you
+have a different type of keyboard, or it is set up differently, it's
+fairly easy to write a new keyboard driver: see
+`quicktill/kbdrivers.py`
 
-quicktill is quite a complicated program to configure.  You should
-start with an example configuration file, examples/haymakers.py, and
-edit it according to your needs.
+The software works best with some way of identifying users.  By
+default, there are three buttons at the top-left of the keyboard that
+can be used to log users in.  If you have a keyboard with a magstripe
+reader, you can use magstripe cards to enable users to log in.  At my
+sites we use ACR122U NFC readers along with [some simple driver
+software](https://github.com/sde1000/quicktill-nfc-bridge).
+
+Setup
+-----
 
 You must create a postgresql database and make it accessible to
 whichever user is running the till software.  Name this database in
@@ -72,59 +190,36 @@ Get a draft database setup file and edit it:
     (edit database-config)
     runtill dbsetup database-config
 
-Create initial users; these will be superusers that can do anything,
+(There's an example edited database setup file at
+`examples/data/emfcamp2016-dbsetup.yaml`)
+
+Create an initial user; this will be a superuser that can do anything,
 you can use the user management interface once the till is running to
-restrict them once you have other users set up:
+set up other users:
 
     runtill adduser "Built-in Alice" Alice builtin:alice
-    runtill adduser "Built-in Bob" Bob builtin:bob
 
 Run in "stock control terminal" mode and enter your initial stock
 (this mode doesn't require a special keyboard)
 
-    runtill start
+    runtill start --gtk
 
 Run in "cash register" mode, create stocklines, bind them to keys, put
 your stock on sale, and sell it:
 
-    runtill -c mainbar start
+    runtill -c mainbar start --gtk --keyboard
 
-Set up the built-in web server: install nginx and uwsgi, then create
-the django project:
+A simple wrapper for the web interface can be found [in this
+project](https://github.com/sde1000/quicktill-tillweb).
 
-    apt-get install nginx-full uwsgi-plugin-python python-django
-    django-admin startproject --template=quicktill/examples/django-project tillweb
+Useful subcommands
+------------------
 
-Edit the created tillweb/tillweb/tillweb/settings.py file for your
-pubname and database, then start the server:
+The till software is invoked as `runtill [options] subcommand
+[subcommand options]`.  Usually the subcommand is "start", to run the
+till interactively.
 
-    tillweb/start-daemon
-
-Put tillweb/start-daemon in crontab to start on reboot.
-
-Startup procedure
------------------
-
- - runtill script calls quicktill.till.main()
- - main() reads /etc/quicktill/configurl if possible to find default config file location
- - main() parses command line options (overriding config file location if necessary)
- - main() reads config file and executes it as a python module "globalconfig", with
-   globalconfig.configname set from the command line (or "default" if not supplied)
- - main() looks for globalconfig.configurations[configname] and bails if not found
- - main() sets up logging based on command line options
- - main() looks for keys in globalconfig.configurations[configname] and sets parameters
-   throughout the library (mostly in tillconfig, but some in eg. printer)
- - main() runs the command that was specified on the command line
-
-Assuming the command was "start":
-
- - quicktill.till.runtill() initialises the database engine
- - runtill() invokes quicktill.run(), which invokes
-   quicktill.ui._init() via the curses wrapper that catches exceptions
-   and returns the display to a sane state on exit
- - quicktill.ui._init() enters the main event loop
-
-Another useful command is "dbshell", which starts an interactive
+Another useful subcommand is "dbshell", which starts an interactive
 python interpreter with a database connection already set up, a
 session started, and the td module and models.* already imported.  So
 for example, to get a list of departments:
