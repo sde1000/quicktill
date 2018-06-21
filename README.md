@@ -121,7 +121,7 @@ To run the till software in "Main bar" mode:
 
 Normally the till software is used with a matrix keyboard, but these
 are pricey and hard to get hold of.  The `--keyboard` option makes the
-till softeware display an on-screen keyboard instead.
+till software display an on-screen keyboard instead.
 
 Once the till software is running, you can exit it by pressing the
 "Manage Till" button (or 'M' if there's no on-screen keyboard) and
