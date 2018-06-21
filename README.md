@@ -170,6 +170,14 @@ reader, you can use magstripe cards to enable users to log in.  At my
 sites we use ACR122U NFC readers along with [some simple driver
 software](https://github.com/sde1000/quicktill-nfc-bridge).
 
+Receipt printers are supported (and required, if you want to use a
+cash drawer).  The software has generic support for all ESC/POS
+receipt printers, and explicit support for the Epson TM-T20 (thermal)
+and TM-U220 (dot-matrix) printers.  Label printers are supported for
+stock label printing.  I use the DYMO LabelWriter-450 (cheap, works
+well) but anything with [CUPS](https://www.cups.org/) support will
+work.
+
 Setup
 -----
 
