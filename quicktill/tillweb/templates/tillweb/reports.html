@@ -22,8 +22,9 @@
 <h2>Sold stock by type</h2>
 
 <p>This report shows amounts of stock recorded as sold.  Voids are
-  treated as negative sales.  Sales are selected according to one of
-  two options:</p>
+  treated as negative sales.</p>
+<p>There are two dates associated with sales, and you can choose
+  either one when choosing sales for this report:</p>
 <ol>
   <li>Transaction Date: the date of the transaction in which the stock
     is sold.  This can change if a transaction is deferred from one
@@ -32,6 +33,7 @@
   <li>Date entered: the date on which the sale is entered into a
     transaction.  This will not change even when the transaction is
     deferred.</li>
+</ol>
 
 <form action="" method="post">{% csrf_token %}
 <table class="kvtable">
