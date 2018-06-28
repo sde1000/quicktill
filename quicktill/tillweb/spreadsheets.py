@@ -2,6 +2,7 @@
 from django.http import HttpResponse
 from quicktill.models import *
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.sql import select
 from odf.opendocument import OpenDocumentSpreadsheet
 from odf.style import Style, TextProperties, ParagraphProperties
@@ -648,4 +649,56 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
         for dept in depts:
             doc.add_table(dept_sheets[dept.id])
 
+    return doc.as_response()
+
+def stocksold(ds, start=None, end=None, dates="transaction", tillname="Till"):
+    sold = ds.query(StockType, func.sum(StockOut.qty))\
+             .options(contains_eager(StockType.department))\
+             .join(Department)\
+             .options(contains_eager(StockType.unit))\
+             .join(UnitType)\
+             .join(StockItem, StockOut)\
+             .group_by(StockType, Department, UnitType)\
+             .order_by(StockType.dept_id,
+                       func.sum(StockOut.qty).desc())
+
+    if dates == "transaction":
+        sold = sold.join(Transline, Transaction, Session)
+        if start:
+            sold = sold.filter(Session.date >= start)
+        if end:
+            sold = sold.filter(Session.date <= end)
+    else:
+        sold = sold.filter(StockOut.removecode_id == 'sold')
+        if start:
+            sold = sold.filter(StockOut.time >= start)
+        if end:
+            sold = sold.filter(
+                StockOut.time < (end + datetime.timedelta(days=1)))
+
+    filename = "{}-stock-sold.ods".format(tillname)
+    doc = Document(filename)
+
+    sheet = Sheet("Stock sold")
+    # Columns are:
+    # Manufacturer  Name  ABV  Dept  qty  UnitType
+    sheet.cell(0, 0, doc.headercell("Manufacturer"))
+    sheet.cell(1, 0, doc.headercell("Name"))
+    sheet.cell(2, 0, doc.headercell("ABV"))
+    sheet.cell(3, 0, doc.headercell("Dept"))
+    sheet.cell(4, 0, doc.headercell("Qty"))
+    sheet.cell(5, 0, doc.headercell("Unit"))
+
+    row = 1
+    for st, qty in sold.all():
+        sheet.cell(0, row, doc.textcell(st.manufacturer))
+        sheet.cell(1, row, doc.textcell(st.name))
+        if st.abv:
+            sheet.cell(2, row, doc.numbercell(st.abv))
+        sheet.cell(3, row, doc.textcell(st.department.description))
+        sheet.cell(4, row, doc.numbercell(qty))
+        sheet.cell(5, row, doc.textcell(st.unit.name))
+        row += 1
+
+    doc.add_table(sheet)
     return doc.as_response()

@@ -967,10 +967,18 @@ class WasteReportForm(forms.Form):
         ("waste", "Waste type"),
     ])
 
+class StockSoldReportForm(forms.Form):
+    startdate = forms.DateField(label="Start date", required=False)
+    enddate = forms.DateField(label="End date", required=False)
+    dates = forms.ChoiceField(label="Based on", choices=[
+        ("transaction", "Transaction Date"),
+        ("stockusage", "Date entered"),
+    ])
+
 @tillweb_view
 def reportindex(request, info, session):
     if request.method == 'POST' and "submit_waste" in request.POST:
-        wasteform = WasteReportForm(request.POST)
+        wasteform = WasteReportForm(request.POST, prefix="waste")
         if wasteform.is_valid():
             cd = wasteform.cleaned_data
             return spreadsheets.waste(
@@ -980,8 +988,22 @@ def reportindex(request, info, session):
                 cols=cd['columns'],
                 tillname=info['tillname'])
     else:
-        wasteform = WasteReportForm()
+        wasteform = WasteReportForm(prefix="waste")
+
+    if request.method == 'POST' and "submit_stocksold" in request.POST:
+        stocksoldform = StockSoldReportForm(request.POST, prefix="stocksold")
+        if stocksoldform.is_valid():
+            cd = stocksoldform.cleaned_data
+            return spreadsheets.stocksold(
+                session,
+                start=cd['startdate'],
+                end=cd['enddate'],
+                dates=cd['dates'],
+                tillname=info['tillname'])
+    else:
+        stocksoldform = StockSoldReportForm(prefix="stocksold")
 
     return ('reports.html',
             {'wasteform': wasteform,
+             'stocksoldform': stocksoldform,
             })
