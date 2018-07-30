@@ -104,7 +104,7 @@ class nullprinter:
         return
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
-    def printline(self,l="",justcheckfit=False,allowwrap=True,
+    def printline(self,l="",justcheckfit=False,
                   colour=None,font=None,emph=None,underline=None):
         assert isinstance(l, str)
         if not justcheckfit:
@@ -453,7 +453,7 @@ class escpos:
             if underline != self.underline:
                 self.underline = underline
                 self.f.write(escpos.ep_underline[underline])
-    def printline(self, l="", justcheckfit=False, allowwrap=True,
+    def printline(self, l="", justcheckfit=False,
                   colour=None, font=None, emph=None, underline=None):
         self._printed = True
         cpl = self.cpl
@@ -466,8 +466,6 @@ class escpos:
         fits = (len(left) + len(center) + len(right) <= cpl)
         if justcheckfit:
             return fits
-        if not allowwrap and not fits:
-            return False
         if colour is not None:
             self.f.write(escpos.ep_colour[colour])
         if font is not None:
@@ -702,7 +700,7 @@ class pdf_driver:
         if underline is not None:
             if underline!=self.underline:
                 self.underline=underline
-    def printline(self,l="",justcheckfit=False,allowwrap=True,
+    def printline(self, l="", justcheckfit=False,
                   colour=None,font=None,emph=None,underline=None):
         if font is not None:
             fontsize=self.fontsizes[font]
@@ -717,7 +715,6 @@ class pdf_driver:
         if emph or colour: fontname="Courier-Bold"
         fits=(self.c.stringWidth(l,fontname,fontsize)<self.width)
         if justcheckfit: return fits
-        if not allowwrap and not fits: return False
         self.c.setFont(fontname,fontsize)
         s=l.split("\t")
         if len(s)>0: left=s[0]
@@ -764,7 +761,7 @@ class pdf_page:
         self._canvas.save()
         del self._canvas
 
-    def printline(self, l="", justcheckfit=False, allowwrap=True,
+    def printline(self, l="", justcheckfit=False,
                   colour=None, font=None, emph=None, underline=None):
         pass
 
@@ -853,6 +850,6 @@ class pdf_labelpage:
         self._canvas._end()
         del self._canvas
 
-    def printline(self, l="", justcheckfit=False, allowwrap=True,
+    def printline(self, l="", justcheckfit=False,
                   colour=None, font=None, emph=None, underline=None):
         pass
