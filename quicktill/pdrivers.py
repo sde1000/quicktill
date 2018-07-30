@@ -40,7 +40,6 @@ class PrinterError(Exception):
 
 # Methods a printer driver should implement (these objects are used
 # when a printer class is used in a with: statement)
-# setdefattr - set default attributes for subsequent lines
 # printline - print a line.  Text up to first \t is left-justified;
 #  text up to second \t is centered; text after that is right-aligned
 # cancut() - does the hardware support cutting?  If not, the caller can pause
@@ -98,8 +97,6 @@ class nullprinter:
         self._started = False
     def offline(self):
         return
-    def setdefattr(self,colour=None,font=None,emph=None,underline=None):
-        pass
     def printline(self,l="",
                   colour=None,font=None,emph=None,underline=None):
         assert isinstance(l, str)
@@ -156,7 +153,7 @@ class fileprinter:
         if self._file:
             raise PrinterError(self,"Already started in start()")
         self._file = open(self._getfilename(), 'ab')
-        return self._driver.start(self._file,self)
+        return self._driver.start(self._file)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -229,7 +226,7 @@ class netprinter:
         self._socket=socket.socket(socket.AF_INET)
         self._socket.connect(self._connection)
         self._file=self._socket.makefile('wb')
-        return self._driver.start(self._file,self)
+        return self._driver.start(self._file)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -262,7 +259,7 @@ class tmpfileprinter:
         if self._file:
             raise PrinterError(self,"Already started in start()")
         self._file=tempfile.NamedTemporaryFile(suffix=self._driver.filesuffix)
-        return self._driver.start(self._file,self)
+        return self._driver.start(self._file)
     def __exit__(self,type,value,tb):
         try:
             if tb is not None:
@@ -342,7 +339,7 @@ class cupsprinter:
         if self._file:
             raise PrinterError(self, "Already started in start()")
         self._file = io.BytesIO()
-        return self._driver.start(self._file, self)
+        return self._driver.start(self._file)
 
     def __exit__(self, type, value, tb):
         try:
@@ -398,6 +395,7 @@ class escpos:
     ep_bitimage_sd = bytes([27, 42, 0]) # follow with 16-bit little-endian data length
     ep_short_feed = bytes([27, 74, 5])
     ep_half_dot_feed = bytes([27, 74, 1])
+
     def __init__(self, cpl, dpl, coding, has_cutter=False,
                  lines_before_cut=3, default_font=0,
                  native_qrcode_support=False):
@@ -409,7 +407,7 @@ class escpos:
         self.lines_before_cut = lines_before_cut
         self.default_font = default_font
         self.native_qrcode_support = native_qrcode_support
-    def start(self, fileobj, interface):
+    def start(self, fileobj):
         self.f = fileobj
         self.colour = 0
         self.font = self.default_font
@@ -428,24 +426,6 @@ class escpos:
                 self.f.write(escpos.ep_fullcut)
             self.f.flush()
         self.f = None
-    def setdefattr(self, colour=None, font=None, emph=None, underline=None):
-        if colour is not None:
-            if colour != self.colour:
-                self.colour = colour
-                self.f.write(escpos.ep_colour[colour])
-        if font is not None:
-            if font != self.font:
-                self.font = font
-                self.cpl = self.fontcpl[font]
-                self.f.write(escpos.ep_font[font])
-        if emph is not None:
-            if emph != self.emph:
-                self.emph = emph
-                self.f.write(escpos.ep_emph[emph])
-        if underline is not None:
-            if underline != self.underline:
-                self.underline = underline
-                self.f.write(escpos.ep_underline[underline])
     def printline(self, l="",
                   colour=None, font=None, emph=None, underline=None):
         self._printed = True
@@ -649,7 +629,7 @@ class pdf_driver:
         self.fontsizes=fontsizes
         self.pitches=pitches
         self.leftmargin=40
-    def start(self,fileobj,interface):
+    def start(self, fileobj):
         self._f=fileobj
         self.c=canvas.Canvas(self._f,pagesize=self.pagesize)
         self.colour=0
@@ -674,19 +654,6 @@ class pdf_driver:
             self.c.showPage()
             self.column=0
             self.x=self.leftmargin
-    def setdefattr(self,colour=None,font=None,emph=None,underline=None):
-        if colour is not None:
-            if colour!=self.colour:
-                self.colour=colour
-        if font is not None:
-            if font!=self.font:
-                self.font=font
-        if emph is not None:
-            if emph!=self.emph:
-                self.emph=emph
-        if underline is not None:
-            if underline!=self.underline:
-                self.underline=underline
     def printline(self, l="",
                   colour=None,font=None,emph=None,underline=None):
         if font is not None:
@@ -735,7 +702,7 @@ class pdf_page:
     mimetype = "application/pdf"
     def __init__(self,pagesize=A4):
         self._pagesize=pagesize
-    def start(self,fileobj,interface):
+    def start(self, fileobj):
         self._canvas=PageSizeCanvas(fileobj,pagesize=self._pagesize)
         self._canvas.setAuthor("quicktill")
         return self._canvas
@@ -823,7 +790,7 @@ class pdf_labelpage:
                 ypos=(pageheight-endmargin-((self.height+vertlabelgap)*y)
                       -self.height)
                 self.ll.append((xpos,ypos))
-    def start(self,fileobj,interface):
+    def start(self, fileobj):
         self._canvas=LabelCanvas(self.ll,(self.width,self.height),
                                  fileobj,pagesize=self._pagesize)
         self._canvas.setAuthor("quicktill")
