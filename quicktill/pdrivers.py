@@ -49,10 +49,6 @@ class PrinterError(Exception):
 #  emph 0/1
 #  font 0/1
 #  underline 0/1/2
-# Furthermore, printline takes an argument "justcheckfit" which suppresses
-# printing and just returns True or False depending on whether the supplied
-# text fits without wrapping
-# The method 'checkwidth()' invokes printline with justcheckfit=True
 # kickout()
 
 def test_ping(host):
@@ -104,18 +100,15 @@ class nullprinter:
         return
     def setdefattr(self,colour=None,font=None,emph=None,underline=None):
         pass
-    def printline(self,l="",justcheckfit=False,
+    def printline(self,l="",
                   colour=None,font=None,emph=None,underline=None):
         assert isinstance(l, str)
-        if not justcheckfit:
-            log.info("%s: printline: %s",self._name,l)
+        log.info("%s: printline: %s",self._name,l)
         return True
     def printqrcode(self,code):
         log.info("%s: printqrcode: %s",self._name,code)
     def cancut(self):
         return False
-    def checkwidth(self,line):
-        return self.printline(l,justcheckfit=True)
     def kickout(self):
         log.info("%s: kickout",self._name)
     def __str__(self):
@@ -453,7 +446,7 @@ class escpos:
             if underline != self.underline:
                 self.underline = underline
                 self.f.write(escpos.ep_underline[underline])
-    def printline(self, l="", justcheckfit=False,
+    def printline(self, l="",
                   colour=None, font=None, emph=None, underline=None):
         self._printed = True
         cpl = self.cpl
@@ -463,9 +456,6 @@ class escpos:
         left = s[0] if len(s) > 0 else ""
         center = s[1] if len(s) > 1 else ""
         right = s[2] if len(s) > 2 else ""
-        fits = (len(left) + len(center) + len(right) <= cpl)
-        if justcheckfit:
-            return fits
         if colour is not None:
             self.f.write(escpos.ep_colour[colour])
         if font is not None:
@@ -506,9 +496,6 @@ class escpos:
             self.f.write(escpos.ep_emph[self.emph])
         if underline is not None:
             self.f.write(escpos.ep_underline[self.underline])
-        return fits
-    def checkwidth(self, line):
-        return self.printline(line, justcheckfit=True)
     def printqrcode_native(self, data):
         log.debug("Native QR code print: %d bytes: %s" % (len(data), repr(data)))
         # Set the size of a "module", in dots.  The default is apparently
@@ -700,7 +687,7 @@ class pdf_driver:
         if underline is not None:
             if underline!=self.underline:
                 self.underline=underline
-    def printline(self, l="", justcheckfit=False,
+    def printline(self, l="",
                   colour=None,font=None,emph=None,underline=None):
         if font is not None:
             fontsize=self.fontsizes[font]
@@ -713,8 +700,6 @@ class pdf_driver:
         if underline is None: underline=self.underline
         fontname="Courier"
         if emph or colour: fontname="Courier-Bold"
-        fits=(self.c.stringWidth(l,fontname,fontsize)<self.width)
-        if justcheckfit: return fits
         self.c.setFont(fontname,fontsize)
         s=l.split("\t")
         if len(s)>0: left=s[0]
@@ -729,13 +714,10 @@ class pdf_driver:
         self.y=self.y-pitch
         if self.y<50:
             self.newcol()
-        return fits
     def printqrcode(self,code):
         pass
     def cancut(self):
         return False
-    def checkwidth(self,line):
-        return self.printline(line,justcheckfit=True)
     def kickout(self):
         pass
 
@@ -761,7 +743,7 @@ class pdf_page:
         self._canvas.save()
         del self._canvas
 
-    def printline(self, l="", justcheckfit=False,
+    def printline(self, l="",
                   colour=None, font=None, emph=None, underline=None):
         pass
 
@@ -850,6 +832,6 @@ class pdf_labelpage:
         self._canvas._end()
         del self._canvas
 
-    def printline(self, l="", justcheckfit=False,
+    def printline(self, l="",
                   colour=None, font=None, emph=None, underline=None):
         pass
