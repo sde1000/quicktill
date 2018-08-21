@@ -2,6 +2,7 @@ from . import td, ui, tillconfig, payment
 from decimal import Decimal
 from .models import Delivery,VatBand,Business,Transline,Transaction
 from .models import zero,penny
+from . import pdrivers
 
 import datetime
 now = datetime.datetime.now
@@ -259,12 +260,16 @@ def print_restock_list(rl):
         d.printline("\tEnd of list")
 
 def kickout():
-    o=driver.offline()
-    if o:
-        ui.infopopup(["Could not kick out the cash drawer: {}".format(o)],
-                     title="Printer problem")
-        return
+    """Kick out the cash drawer.
+
+    Returns True if successful.
+    """
     with ui.exception_guard("kicking out the cash drawer",
                             title="Printer error"):
-        with driver as d:
-            d.kickout()
+        try:
+            driver.kickout()
+        except pdrivers.PrinterError as e:
+            ui.infopopup(["Could not kick out the cash drawer: {}".format(
+                e.desc)], title="Printer problem")
+            return False
+    return True

@@ -494,51 +494,53 @@ class popup(user.permission_checked,ui.basicpopup):
         else:
             super().keypress(k)
 
-class message(user.permission_checked,ui.dismisspopup):
-    """
-    Send a printed message to the kitchen.
+class message(user.permission_checked, ui.dismisspopup):
+    """Send a printed message to the kitchen.
 
     """
-    permission_required=('kitchen-message','Send a message to the kitchen')
+    permission_required = ('kitchen-message','Send a message to the kitchen')
+
     def __init__(self):
-        problem=kitchenprinter.offline()
+        problem = kitchenprinter.offline()
         if problem:
-            ui.infopopup(["There is a problem with the kitchen printer:","",
-                          problem],title="Kitchen printer problem")
+            ui.infopopup(["There is a problem with the kitchen printer:", "",
+                          problem], title="Kitchen printer problem")
             return
-        ui.dismisspopup.__init__(self,6,78,title="Message to kitchen",
+        ui.dismisspopup.__init__(self, 6, 78, title="Message to kitchen",
                                  colour=ui.colour_input)
-        self.addstr(2,2,"Order number:")
-        self.onfield=ui.editfield(2,16,5,keymap={
-                keyboard.K_CLEAR: (self.dismiss,None)})
-        self.addstr(2,23,"(may be blank)")
-        self.addstr(3,2,"     Message: ")
-        self.messagefield=ui.editfield(
-            3,16,60,flen=160,
-            keymap={keyboard.K_CASH: (self.finish,None)})
-        ui.map_fieldlist([self.onfield,self.messagefield])
+        self.addstr(2, 2, "Order number:")
+        self.onfield = ui.editfield(2, 16, 5, keymap={
+                keyboard.K_CLEAR: (self.dismiss, None)})
+        self.addstr(2, 23, "(may be blank)")
+        self.addstr(3, 2, "     Message:")
+        self.messagefield = ui.editfield(
+            3, 16, 60, flen=160,
+            keymap={keyboard.K_CASH: (self.finish, None)})
+        ui.map_fieldlist([self.onfield, self.messagefield])
         self.onfield.focus()
-        self.unsaved_data="message to kitchen"
+        self.unsaved_data = "message to kitchen"
+
     def finish(self):
-        if not self.onfield.f and not self.messagefield.f: return
-        problem=kitchenprinter.offline()
+        if not self.onfield.f and not self.messagefield.f:
+            return
+        problem = kitchenprinter.offline()
         if problem:
-            ui.infopopup(["There is a problem with the kitchen printer:","",
-                          problem],title="Kitchen printer problem")
+            ui.infopopup(["There is a problem with the kitchen printer:", "",
+                          problem], title="Kitchen printer problem")
             return
         self.dismiss()
-        try:
+        with ui.exception_guard("printing the message in the kitchen"):
             with kitchenprinter as d:
                 if self.onfield.f:
                     d.printline(
                         "\tMessage about order {}".format(self.onfield.f),
-                        colour=1,emph=1)
+                        colour=1, emph=1)
                 else:
-                    d.printline("\tMessage",colour=1,emph=1)
+                    d.printline("\tMessage", colour=1, emph=1)
                 d.printline()
-                d.printline("\t%s"%ui.formattime(datetime.datetime.now()))
+                d.printline("\t%s" % ui.formattime(datetime.datetime.now()))
                 d.printline()
-                user=ui.current_user()
+                user = ui.current_user()
                 if user:
                     d.printline("\t{}".format(user.shortname))
                     d.printline()
@@ -548,8 +550,4 @@ class message(user.permission_checked,ui.dismisspopup):
                 d.printline()
             ui.infopopup(["The message has been printed in the kitchen."],
                          title="Message sent",
-                         colour=ui.colour_info,dismiss=keyboard.K_CASH)
-        except:
-            ui.infopopup(["There was a problem printing the message in the "
-                          "kitchen.  Please try again."],
-                         title="Message not sent")
+                         colour=ui.colour_info, dismiss=keyboard.K_CASH)
