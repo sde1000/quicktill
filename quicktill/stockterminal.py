@@ -147,8 +147,12 @@ class page(ui.basicpage):
 
     def choose_location(self):
         locations = StockLine.locations(td.s)
-        ui.automenu([(x, self.set_location, (x,)) for x in locations],
-                    title="Choose location")
+        if not locations:
+            ui.infopopup(["There are no locations. Please create a stock line."],
+                         title="Error")
+        else:
+            ui.automenu([(x, self.set_location, (x,)) for x in locations],
+                        title="Choose location")
 
     def set_location(self, location):
         self.locations = [location]
