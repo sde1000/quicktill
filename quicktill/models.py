@@ -1707,3 +1707,16 @@ Index('translines_time_key', Transline.time)
 Index('stockout_date_key', func.cast(StockOut.time, Date))
 
 foodorder_seq = Sequence('foodorder_seq', metadata=metadata)
+
+# Very simple refusals log for EMF 2018.  Log templates are in config.
+refusals_log_seq = Sequence('refusals_log_seq');
+class RefusalsLog(Base):
+    __tablename__ = 'refusals_log'
+    id = Column(Integer, refusals_log_seq, nullable=False, primary_key=True)
+    user_id = Column('user', Integer, ForeignKey('users.id'), nullable=False,
+                     doc="User who made this log entry")
+    time = Column(DateTime, nullable=False,
+                  server_default=func.current_timestamp())
+    terminal = Column('terminal', String(), nullable=False)
+    details = Column('details', String(), nullable=False)
+    user = relationship(User, backref=backref("refusals", order_by=time))

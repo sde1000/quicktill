@@ -2,6 +2,8 @@ from . import ui, keyboard, tillconfig, user, cmdline
 import twython
 import time, datetime
 from requests_oauthlib import OAuth1Session
+from . import td
+from .models import RefusalsLog
 
 ### Reminders at particular times of day
 class reminderpopup:
@@ -212,3 +214,36 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
         self.tl = [Tweet(x) for x in self.timeline]
         self.tweets.set(self.tl)
         self.tfield.focus()
+
+def refusals():
+    reasons = [
+        "ID requested but no ID provided",
+        "ID requested but was not valid",
+        "Purchaser appeared drunk",
+        "Other",
+        "(Training: not a real refusal)",
+    ]
+    ui.automenu([(x, _finish_refusal, (x,)) for x in reasons],
+                title="Reason for refusing sale")
+
+class _finish_refusal(ui.dismisspopup):
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__(10, 76, title="Refusals log entry",
+                         colour=ui.colour_input)
+        self.win.addstr(2, 2, "Please add any additional details below "
+                        "and press Enter.")
+        self.win.addstr(4, 2, "Reason: {}".format(reason))
+        self.text = ui.editfield(
+            6, 2, 72, keymap={
+                keyboard.K_CLEAR: (self.dismiss, None),
+                keyboard.K_CASH: (self.enter, None, False)})
+        self.text.focus()
+
+    def enter(self):
+        td.s.add(RefusalsLog(
+            user_id=ui.current_user().userid,
+            terminal=tillconfig.configname,
+            details="{} - {}".format(self.reason, self.text.f)))
+        self.dismiss()
+        ui.toast("Refusals log entry added")

@@ -229,7 +229,8 @@ def qr():
 
 def appsmenu():
     menu = [
-        #("1", "Twitter", quicktill.extras.twitter_client, (tapi,)),
+        ("1", "Refusals log", quicktill.extras.refusals, ()),
+        #("2", "Twitter", quicktill.extras.twitter_client, (tapi,)),
         ("3", "QR code print", qr, ()),
     ]
     quicktill.ui.keymenu(menu, title="Apps")
