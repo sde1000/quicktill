@@ -50,7 +50,9 @@ Quick start
 The till software includes an anonymised copy of the database from
 [EMFcamp 2016](https://www.emfcamp.org/) which can be used for
 testing.  This guide assumes you have a fresh installation of Ubuntu
-18.04.
+18.04 Desktop.  (You will need a graphical user interface for the
+on-screen keyboard, and the Desktop version has the "universe"
+component enabled by default.)
 
 ### Installing needed packages ###
 
