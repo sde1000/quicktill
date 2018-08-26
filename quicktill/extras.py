@@ -1,9 +1,14 @@
 from . import ui, keyboard, tillconfig, user, cmdline
+from . import department
+from . import printer
 import twython
 import time, datetime
 from requests_oauthlib import OAuth1Session
 from . import td
 from .models import RefusalsLog
+from .models import StockType
+from .models import StockItem
+from .models import lazyload
 
 ### Reminders at particular times of day
 class reminderpopup:
@@ -247,3 +252,39 @@ class _finish_refusal(ui.dismisspopup):
             details="{} - {}".format(self.reason, self.text.f)))
         self.dismiss()
         ui.toast("Refusals log entry added")
+
+def print_pricelist():
+    department.menu(_finish_print_pricelist, "Print Price List",
+                    allowall=True)
+
+def _finish_print_pricelist(dept_id):
+    # We want all items currently in stock, restricted by department if
+    # dept_id is not None
+    l = td.s.query(StockType)\
+            .select_from(StockItem)\
+            .filter(StockItem.finished == None)\
+            .join(StockType)\
+            .options(lazyload(StockType.department))\
+            .options(lazyload(StockType.unit))\
+            .group_by(StockType)\
+            .order_by(StockType.dept_id, StockType.manufacturer, StockType.name)
+    if dept_id:
+        l = l.filter(StockType.dept_id == dept_id)
+    l = l.all()
+
+    with printer.driver as d:
+        d.printline("\t{}".format(tillconfig.pubname), emph=1)
+        d.printline()
+        d.printline("Price List")
+        d.printline()
+        current_dept = None
+        for st in l:
+            if st.department != current_dept:
+                if current_dept is not None:
+                    d.printline()
+                current_dept = st.department
+                d.printline(current_dept.description, emph=1)
+            d.printline("{}\t\t{}{}".format(
+                st.descriptions[0], tillconfig.currency, st.pricestr))
+        d.printline()
+        d.printline("\tEnd of list")
