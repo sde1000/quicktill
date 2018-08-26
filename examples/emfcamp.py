@@ -184,7 +184,8 @@ cash = quicktill.cash.CashPayment(
 card = quicktill.card.CardPayment(
     'CARD', 'Card', machines=3, cashback_method=cash,
     max_cashback=Decimal("100.00"), kickout=True,
-    rollover_guard_time=datetime.time(4, 0, 0))
+    rollover_guard_time=datetime.time(4, 0, 0),
+    ask_for_machine_id=True)
 all_payment_methods = [cash, card] # Used for session totals entry
 payment_methods = all_payment_methods # Used in register
 

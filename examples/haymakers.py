@@ -221,7 +221,8 @@ card = quicktill.card.CardPayment(
     'CARD', 'Card', machines=2, cashback_method=cash,
     max_cashback=Decimal("50.00"), kickout=True,
     rollover_guard_time=datetime.time(4, 0, 0),
-    account_code="011", account_date_policy=card_expected_payment_date)
+    account_code="011", account_date_policy=card_expected_payment_date,
+    ask_for_machine_id=False)
 bitcoin = quicktill.bitcoin.BitcoinPayment(
     'BTC', 'Bitcoin', site='haymakers', username='haymakers',
     base_url='http://btcmerch.i.individualpubs.co.uk/merchantservice/',
