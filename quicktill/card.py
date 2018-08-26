@@ -114,7 +114,7 @@ class cardpopup(ui.dismisspopup):
             if machineno == "":
                 return ui.infopopup(["You must enter a card machine id."],
                                     title="Error")
-            ref = "machine {}, {}".format(machineno, receiptno)
+            ref = "{} {}".format(machineno, receiptno)
         else:
             ref = receiptno
         self.dismiss()
