@@ -275,7 +275,7 @@ def _finish_print_pricelist(dept_id):
     with printer.driver as d:
         d.printline("\t{}".format(tillconfig.pubname), emph=1)
         d.printline()
-        d.printline("Price List")
+        d.printline("\tPrice List", colour=1)
         d.printline()
         current_dept = None
         for st in l:
