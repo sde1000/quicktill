@@ -9,6 +9,7 @@ import traceback
 from . import keyboard, tillconfig, td
 from .td import func
 import sqlalchemy.inspection
+from decimal import Decimal
 
 import logging
 log = logging.getLogger(__name__)
@@ -1599,8 +1600,9 @@ class moneyfield(editfield):
     If a "note value" key is pressed, this auto-fills that amount into
     the field.
     """
-    def __init__(self, y, x, w=6):
-        super().__init__(y, x, w, validate=ui.validate_float)
+    def __init__(self, y, x, w=6, default=""):
+        super().__init__(y, x, w, validate=validate_float)
+        self.set(default)
 
     def keypress(self, k):
         if hasattr(k, "notevalue"):
