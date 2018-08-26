@@ -9,6 +9,7 @@ import traceback
 from . import keyboard, tillconfig, td
 from .td import func
 import sqlalchemy.inspection
+from decimal import Decimal
 
 import logging
 log = logging.getLogger(__name__)
@@ -1362,7 +1363,7 @@ class booleanfield(valuefield):
             self.set(None)
         else:
             super().keypress(k)
-                
+
 class editfield(valuefield):
     """Accept typed-in input in a field.
 
@@ -1599,8 +1600,9 @@ class moneyfield(editfield):
     If a "note value" key is pressed, this auto-fills that amount into
     the field.
     """
-    def __init__(self, y, x, w=6):
-        super().__init__(y, x, w, validate=ui.validate_float)
+    def __init__(self, y, x, w=6, default=""):
+        super().__init__(y, x, w, validate=validate_float)
+        self.set(default)
 
     def keypress(self, k):
         if hasattr(k, "notevalue"):
@@ -1729,7 +1731,7 @@ class modelpopupfield(valuefield):
 
     popupfunc is a function that takes two arguments: the function to
     call when a value is chosen, and the current value of the field.
-    
+
     valuefunc is a function that takes one argument: the current value
     of the field.  It returns a string to display.  It is never passed
     None as an argument.
