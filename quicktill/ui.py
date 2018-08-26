@@ -1363,7 +1363,7 @@ class booleanfield(valuefield):
             self.set(None)
         else:
             super().keypress(k)
-                
+
 class editfield(valuefield):
     """Accept typed-in input in a field.
 
@@ -1731,7 +1731,7 @@ class modelpopupfield(valuefield):
 
     popupfunc is a function that takes two arguments: the function to
     call when a value is chosen, and the current value of the field.
-    
+
     valuefunc is a function that takes one argument: the current value
     of the field.  It returns a string to display.  It is never passed
     None as an argument.
