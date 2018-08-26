@@ -1,3 +1,53 @@
+quicktill (0.12.29) stable; urgency=low
+
+  * New release 0.12.29
+
+  * Center "Price List" header
+
+  * Very simple price list printer
+
+  * Shorten card payment ref with machine id
+
+  * Reinstate payment amount prompt unconditionally
+
+  * Some minor whitespace / pep8 fixes
+
+  * Add ask_for_machine_id to example configs
+
+  * Implement ask_for_machine_id on CardPayment
+
+  * Use ui.moneyfield in the card payment screen
+
+  * Clarify README quickstart
+
+  * Simple refusals log
+
+  * Show an error when there are no locations, fixes #158.
+
+  * Rewrite of printer driver internals
+
+  * Remove unused setdefattr() method from printer drivers
+
+  * Remove 'justcheckfit' argument and 'checkwidth' method from printer drivers
+
+  * Remove unused "allowwrap" keyword argument in printer drivers
+
+  * Use personal email address instead
+
+  * Fix HTML on reports page
+
+  * Add report to web interface showing sales by stocktype
+
+  * Add a note about printer support to the README
+
+  * Typo!
+
+  * Update README with quick setup instructions
+
+  * Add a waste report to the web interface
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 26 Aug 2018 20:10:33 +0100
+
 quicktill (0.12.28) stable; urgency=low
 
   * New release 0.12.28
