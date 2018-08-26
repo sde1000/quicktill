@@ -213,7 +213,7 @@ class CardPayment(payment.PaymentMethod):
                     ["The card machines 'roll over' from one day to the next at "
                      "around {}, so a card transaction performed now would be "
                      "recorded against the card totals for {}.".format(
-                         self._rollover_guard_time,date),
+                         self._rollover_guard_time, date),
                      "",
                      "The current session is for {}.".format(session.date),
                      "",
