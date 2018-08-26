@@ -23,36 +23,31 @@ class cardpopup(ui.dismisspopup):
         self.ask_for_machine_id = ask_for_machine_id
         cashback_in_use = max_cashback > zero
         h = 18 if cashback_in_use else 10
-        if cashback_in_use:
-            h = 18
-        else:
-            if ask_for_machine_id:
-                h = 12
-            else:
-                h = 10
+        if ask_for_machine_id:
+            h += 1
         desc = "refund" if refund else "payment"
         ui.dismisspopup.__init__(
             self, h, 44, title="Card {} transaction {}".format(
                 desc, transid), colour=ui.colour_input)
+        self.addstr(2, 2, "Card {} of {}".format(desc, tillconfig.fc(amount)))
         if cashback_in_use:
             if cashback_first:
-                cbstart = 2
-                rnstart = 10
+                cbstart = 4
+                rnstart = 12
             else:
-                cbstart = 9 if ask_for_machine_id else 7
-                rnstart = 2
+                cbstart = 10 if ask_for_machine_id else 9
+                rnstart = 4
         else:
-            self.addstr(2, 2, "Card {} of {}".format(desc, tillconfig.fc(amount)))
             rnstart = 4
         self.addstr(rnstart, 2, "Please enter the receipt number from the")
         self.addstr(rnstart + 1, 2, "credit card receipt.")
 
         if ask_for_machine_id:
-            self.addstr(rnstart + 3, 2, " Machine number:")
+            self.addstr(rnstart + 3, 2, "Terminal number:")
             self.mnfield = ui.editfield(rnstart + 3, 19, 3)
 
-        self.addstr(rnstart + (5 if ask_for_machine_id else 3), 2, " Receipt number:")
-        self.rnfield = ui.editfield(rnstart + (5 if ask_for_machine_id else 3), 19, 16)
+        self.addstr(rnstart + (4 if ask_for_machine_id else 3), 2, " Receipt number:")
+        self.rnfield = ui.editfield(rnstart + (4 if ask_for_machine_id else 3), 19, 16)
         if cashback_in_use:
             self.addstr(cbstart, 2, "Is there any cashback?  Enter amount and")
             self.addstr(cbstart + 1, 2, "press Cash/Enter.  Leave blank and press")
