@@ -75,7 +75,7 @@ class TextElement(ReceiptElement):
             self.underline = underline
 
     def __str__(self):
-        return "\t".join(self.left, self.center, self.right)
+        return "\t".join((self.left, self.center, self.right))
 
 class QRCodeElement(ReceiptElement):
     def __init__(self, data):
