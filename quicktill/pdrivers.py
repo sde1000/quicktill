@@ -198,7 +198,7 @@ class nullprinter(printer):
 
     def print_canvas(self, canvas):
         for i in canvas:
-            logger.info("%s: %s", self._name, str(i))
+            log.info("%s: %s", self._name, str(i))
 
     def __str__(self):
         return self.description or self._name
