@@ -79,12 +79,13 @@ class flushdb(cmdline.command):
         print("Finished.")
 
 class anonymise(cmdline.command):
-    """Anonymise the database by replacing all user names with random
-    names.  This is intended to be used prior to releasing till
-    databases publicly to use as sample data.
+    """Remove Personally Identifiable Information from the database.  This
+    is intended to be used prior to releasing till databases publicly
+    to use as sample data.  All user names are set to random values,
+    transaction notes are blanked, and the refusals list is truncated.
     """
     command = "anonymise-users"
-    help = "set all user names to random values"
+    help = "remove personally identifiable information from the database"
 
     # Lists of names from Tom Lynch:
     # https://gist.github.com/unknowndomain/455cbc44e37080fd49bdc370982544fa
@@ -159,7 +160,7 @@ class anonymise(cmdline.command):
             sessions = td.s.query(models.Session).count()
         if sessions > 0:
             print("There is some data ({} sessions) in the database.  "
-                  "Are you sure you want to remove all the user names?  "
+                  "Are you sure you want to remove all the PII?  "
                   "This operation cannot be undone.".format(
                       sessions))
             ok = input("Sure? (y/n) ")
@@ -173,6 +174,10 @@ class anonymise(cmdline.command):
                 u.fullname = "{} {}".format(firstname, lastname)
                 u.shortname = firstname
                 u.message = None
+            transactions = td.s.query(models.Transaction).all()
+            for t in transactions:
+                t.notes = ""
+            td.s.query(models.RefusalsLog).delete()
         print("Finished.")
 
 class checkdb(cmdline.command):
