@@ -429,14 +429,15 @@ class popup(user.permission_checked,ui.basicpopup):
         # for the register.  We enter these into the register before
         # printing, so that we can avoid printing if there is a
         # register problem.
-        rl=[(self.dept if x.dept is None else x.dept,x.name,1,x.price)
-            for x in self.ml]
+        rl = [(self.dept if x.dept is None else x.dept, x.name,
+               1 if x.price >= 0 else -1, x.price if x.price >= 0 else -x.price)
+              for x in self.ml]
         if tablenumber is not None:
-            rl.insert(0,(self.dept,"Food order %d (table %s):"%
-                         (number,tablenumber),1,zero))
+            rl.insert(0, (self.dept, "Food order {} (table {}):".format(
+                number, tablenumber), 1, zero))
         else:
-            rl.insert(0,(self.dept,"Food order %d:"%number,1,zero))
-        r=self.func(rl) # Return values: True=success; string or None=failure
+            rl.insert(0, (self.dept, "Food order {}:".format(number), 1, zero))
+        r = self.func(rl) # Return values: True=success; string or None=failure
         # If r is None then a window will have been popped up telling the
         # user what's happened to their transaction.  It will have popped
         # up on top of us; we can't do anything else at this point other than
