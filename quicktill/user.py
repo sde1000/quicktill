@@ -818,4 +818,5 @@ class default_groups:
         "return-finished-item",
         "recall-any-trans",
         "apply-discount",
+        "print-price-list",
     ])

@@ -2,6 +2,7 @@
 
 from . import ui, td, keyboard, printer, user, usestock
 from . import stock, delivery, department, stocklines, stocktype
+from . import tillconfig
 from .models import Department, FinishCode, StockLine, StockType, StockAnnotation
 from .models import StockItem, Delivery, StockOut, func, desc
 from .models import Supplier
@@ -401,6 +402,53 @@ def maintenance():
         ]
     ui.keymenu(menu, title="Stock Maintenance options")
 
+@user.permission_required("print-price-list", "Print a price list")
+def print_pricelist():
+    department.menu(_print_pricelist_options, "Print Price List",
+                    allowall=True)
+
+def _print_pricelist_options(dept_id):
+    ui.automenu([
+        ("Include all items in stock", _finish_print_pricelist,
+         (dept_id, True)),
+        ("Only include stock currently on sale", _finish_print_pricelist,
+         (dept_id, False)),
+        ], title="Print Price List options")
+
+def _finish_print_pricelist(dept_id, include_all):
+    # We want all items currently in stock, restricted by department if
+    # dept_id is not None
+    l = td.s.query(StockType)\
+            .select_from(StockItem)\
+            .filter(StockItem.finished == None)\
+            .join(StockType)\
+            .options(lazyload(StockType.department))\
+            .options(lazyload(StockType.unit))\
+            .group_by(StockType)\
+            .order_by(StockType.dept_id, StockType.manufacturer, StockType.name)
+    if dept_id:
+        l = l.filter(StockType.dept_id == dept_id)
+    if not include_all:
+        l = l.filter(StockItem.stocklineid != None)
+    l = l.all()
+
+    with printer.driver as d:
+        d.printline("\t{}".format(tillconfig.pubname), emph=1)
+        d.printline()
+        d.printline("\tPrice List", colour=1)
+        d.printline()
+        current_dept = None
+        for st in l:
+            if st.department != current_dept:
+                if current_dept is not None:
+                    d.printline()
+                current_dept = st.department
+                d.printline(current_dept.description, emph=1)
+            d.printline("{}\t\t{}{}".format(
+                st.descriptions[0], tillconfig.currency, st.pricestr))
+        d.printline()
+        d.printline("\tEnd of list")
+
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")
@@ -417,5 +465,6 @@ def popup():
         ("7", "Maintenance submenu", maintenance, None),
         ("8", "Annotate a stock item", stock.annotate, None),
         ("9", "Check stock levels", stocklevelcheck, None),
+        ("0", "Print price list", print_pricelist, None),
         ]
     ui.keymenu(menu, title="Stock Management options")
