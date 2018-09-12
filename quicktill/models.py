@@ -612,7 +612,8 @@ class Transline(Base):
         ForeignKey('transactions.transid', ondelete='CASCADE'),
         nullable=False)
     items = Column(Integer, nullable=False)
-    amount = Column(money, nullable=False)
+    amount = Column(money, CheckConstraint("amount >= 0.00"),
+                    nullable=False)
     dept_id = Column('dept', Integer, ForeignKey('departments.dept'),
                      nullable=False)
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,

@@ -1,6 +1,39 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v0.12.x to v0.13
+------------------------
+
+There are major database changes this release.
+
+To upgrade the database:
+
+ - run "runtill add-transline-text" while v0.12.x is still installed
+
+ - install the new release
+
+ - run "runtill syncdb"
+
+ - run psql and give the following commands to the database:
+
+```BEGIN;
+-- Ensure all amounts in transaction lines are non-negative
+SET session_replication_role = replica;
+UPDATE translines SET items=-items, amount=-amount WHERE amount<0;
+SET session_replication_role = default;
+ALTER TABLE translines
+      ADD CONSTRAINT translines_amount_check CHECK ((amount >= 0.00));
+
+-- Check that all transactions still balance
+-- This re-runs the close_only_if_balanced trigger on all closed transactions
+UPDATE transactions SET closed=true WHERE closed=true;
+COMMIT;
+```
+
+ - run "runtill checkdb", check that the output looks sensible, then
+   pipe it or paste it in to psql
+ - run "runtill checkdb" again and check it produces no output
+
 Upgrade v0.11.x to v0.12
 ------------------------
 
