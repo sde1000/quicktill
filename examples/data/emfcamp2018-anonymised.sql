@@ -35868,13 +35868,10 @@ ml	ml
 --
 
 COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid, register, message) FROM stdin;
-1	Sonny Watson	Sonny	\N	t	t	\N	06b9828e-7f0f-492b-89f3-f4491762a180	\N
-2	Matilda Reilly	Matilda	\N	t	f	6184	e803a3b5-b620-4b3a-a354-2c140d67cc65	\N
 3	Imogen Mclean	Imogen	\N	t	f	\N	eeb4051f-2c22-4645-aa64-677d150158d2	\N
 4	Olivia Simpson	Olivia	\N	t	f	4	eeb4051f-2c22-4645-aa64-677d150158d2	\N
 5	Isabella Shaw	Isabella	\N	t	f	6428	eeb4051f-2c22-4645-aa64-677d150158d2	\N
 6	Molly Hamilton	Molly	\N	t	f	6313	e803a3b5-b620-4b3a-a354-2c140d67cc65	\N
-7	Clara Scott	Clara	\N	t	f	5946	e803a3b5-b620-4b3a-a354-2c140d67cc65	\N
 8	Sophie Maclean	Sophie	\N	t	f	112	6b8597ee-5e1c-45c1-8dca-27d0589027fe	\N
 9	Ellis Lindsay	Ellis	\N	t	f	540	f8de749d-5b7e-4b8e-ba2c-b25a5e80de84	\N
 10	Lola Brown	Lola	\N	t	f	4854	eeb4051f-2c22-4645-aa64-677d150158d2	\N
@@ -35919,6 +35916,9 @@ COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid
 49	Bella Martin	Bella	\N	t	f	6116	dbb7d8f0-76f0-4b43-9143-4f0ba29df512	\N
 50	Mia Allan	Mia	\N	t	f	6449	e803a3b5-b620-4b3a-a354-2c140d67cc65	\N
 51	Thomas Taylor	Thomas	\N	t	f	6445	dbb7d8f0-76f0-4b43-9143-4f0ba29df512	\N
+1	Alice (superuser)	Alice (superuser)	\N	t	t	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
+2	Bob (manager)	Bob (manager)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
+7	Charlie (basic user)	Charlie (basic user)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
 \.
 
 
@@ -35931,7 +35931,6 @@ nfc:048acb72d84980	\N	red	6	2018-09-02 23:53:44.833247
 nfc:0466d772d84980	\N	red	42	2018-09-03 01:01:17.796336
 nfc:d5007d2f	\N	oyster	17	2018-09-02 00:16:04.354723
 nfc:04a4d572d84980	\N	red	37	\N
-nfc:04b00f82884c80	\N	Tesco	1	\N
 nfc:044acb72d84980	\N	red	15	2018-08-31 20:34:00.505305
 nfc:04e8c372d84980	\N	red	30	2018-09-01 17:05:06.306673
 nfc:0456d772d84980	\N	red	47	2018-09-02 16:57:56.91354
@@ -35939,7 +35938,6 @@ nfc:048aba72d84981	\N	red	40	2018-09-02 21:44:03.103206
 nfc:04bac072d84980	\N	red	38	\N
 nfc:04fabe72d84980	\N	red	7	2018-09-02 21:44:16.921076
 nfc:04efc472d84980	\N	red	19	2018-09-01 22:25:06.071409
-nfc:058503d3de7000	\N	Monzo	1	2018-08-29 17:20:48.194247
 nfc:04dad572d84980	\N	Red	1	2018-09-07 12:06:59.69625
 nfc:04a9d672d84980	\N	red	5	2018-09-03 00:53:16.435203
 nfc:0459aa72d84980	\N	blue	18	2018-08-31 23:33:30.443125
@@ -35951,6 +35949,10 @@ nfc:04dcc072d84980	\N	red	36	2018-09-01 19:09:26.071578
 nfc:0470b272d84980	\N	Red	2	2018-09-02 22:59:25.602385
 nfc:0415be72d84981	\N	red	22	2018-09-01 01:31:00.543364
 nfc:0412c372d84981	\N	red	14	2018-08-31 20:00:10.660142
+nfc:058503d3de7000	\N	Monzo	1	2018-09-12 14:06:22.882348
+builtin:alice	\N	Alice	1	2018-09-12 14:09:13.554112
+builtin:bob	\N	Bob	2	2018-09-12 14:10:32.447789
+builtin:charlie	\N	Charlie	7	2018-09-12 14:10:33.479701
 \.
 
 
