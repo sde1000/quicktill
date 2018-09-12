@@ -1,3 +1,23 @@
+quicktill (0.12.30) stable; urgency=low
+
+  * New release 0.12.30
+
+  * Move "print price list" function to Manage Stock menu
+
+  * Add EMF 2018 config file, update README
+
+  * Anonymised data from EMF 2018
+
+  * Don't pass negative amounts to register from foodorder
+
+  * Improve database redaction command
+
+  * Fix __str__ on TextElement in pdrivers
+
+  * Oops - fix nullprinter
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 12 Sep 2018 13:59:57 +0100
+
 quicktill (0.12.29) stable; urgency=low
 
   * New release 0.12.29
