@@ -38,57 +38,71 @@ quicktill.user.group('manager','Pub manager [group]',
 # that are set up in the database.  Once declared, modifiers are added
 # to buttons and stock lines entries in the database.
 
+class Case(quicktill.modifiers.SimpleModifier):
+    """Case modifier.
+
+    When used with a stock line, checks that the item is Club Mate,
+    sets the serving size to 20 and multiplies the price by 20.
+    """
+    def mod_stockline(self, stockline, sale):
+        st = sale.stocktype
+        if st.manufacturer != 'Club Mate':
+            raise quicktill.modifiers.Incompatible(
+                "The {} modifier can only be used with "
+                "Club Mate.".format(self.name))
+        if st.name == "Regular 330ml":
+            caseqty = 24
+        else:
+            caseqty = 20
+        # There may not be a price at this point
+        if sale.price:
+            sale.price = sale.price * caseqty
+        sale.qty = sale.qty * caseqty
+        sale.description = "{} case of {}".format(st.format(), caseqty)
+
 class Half(quicktill.modifiers.SimpleModifier):
     """Half pint modifier.
 
     When used with a stock line, checks that the item is sold in pints
     and then halves the serving size and price.
-
-    When used with a price lookup, checks that the department is 7 or
-    13 (soft drinks) and halves the price.
     """
     def mod_stockline(self, stockline, sale):
-        st = sale.stocktype
-        if st.unit_id != 'pt':
-            raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with stock "
-                "that is sold in pints.".format(self.name))
-        # There may not be a price at this point
-        if sale.price:
-            sale.price = sale.price / 2
-        sale.qty = sale.qty * Decimal("0.5")
-        sale.description = "{} half pint".format(st.format())
-
-    def mod_plu(self, plu, sale):
-        if plu.dept_id not in (7, 13):
-            raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with stock that is "
-                "sold in pints.".format(self.name))
-        if sale.price:
-            sale.price = sale.price / 2
-        sale.description = "{} half pint".format(plu.description)
+        if sale.stocktype.unit_id == 'pt' \
+           or (sale.stocktype.unit_id == 'ml'
+               and sale.stocktype.saleprice_units == 568):
+            # There may not be a price at this point
+            if sale.price:
+                sale.price = sale.price / 2
+            sale.qty = sale.qty * Decimal("0.5")
+            sale.description = "{} half pint".format(sale.stocktype.format())
+            return
+        raise quicktill.modifiers.Incompatible(
+            "The {} modifier can only be used with stock "
+            "that is sold in pints.".format(self.name))
 
 class Mixer(quicktill.modifiers.SimpleModifier):
     """Mixers modifier.
 
-    When used with a price lookup, checks that the department is 7 or
-    13 (soft drinks) and quarters the price.
+    When used with a stockline, checks that the stock is sold in ml
+    and priced in pints (568ml), sets the quantity to 100ml and the
+    sale price to £0.70.
     """
-    def mod_plu(self, plu, sale):
-        if plu.dept_id not in (7, 13):
+    def mod_stockline(self, stockline, sale):
+        if sale.stocktype.unit_id != 'ml' \
+           or sale.stocktype.saleprice_units != 568:
             raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with stock that is "
-                "sold in pints.".format(self.name))
+                "The {} modifier can only be used with soft drinks."\
+                .format(self.name))
         if sale.price:
-            sale.price = sale.price / 4
-        sale.description = "{} mixer".format(plu.description)
+            sale.price = Decimal("0.70")
+        sale.qty = Decimal("100.0")
+        sale.description = "{} mixer".format(sale.stocktype.format())
 
 class Double(quicktill.modifiers.SimpleModifier):
     """Double spirits modifier.
 
     When used with a stock line, checks that the item is sold in 25ml
-    or 50ml measures and then doubles the serving size, doubles the
-    price, and subtracts 50p.
+    or 50ml measures and then doubles the serving size and price.
     """
     def mod_stockline(self, stockline, sale):
         if sale.stocktype.unit_id not in ('25ml', '50ml'):
@@ -97,8 +111,8 @@ class Double(quicktill.modifiers.SimpleModifier):
                 .format(self.name))
         # There may not be a price at this point
         if sale.price:
-            sale.price = sale.price * Decimal(2) - Decimal("0.50")
-        sale.qty = sale.qty * Decimal(2)
+            sale.price = sale.price * 2
+        sale.qty = sale.qty * 2
         sale.description = "{} double {}".format(
             sale.stocktype.format(), sale.stocktype.unit.name)
 
@@ -162,6 +176,8 @@ class PriceGuess(quicktill.stocktype.PriceGuessHook):
     def guess_price(stocktype, stockunit, cost):
         if stocktype.dept_id == 1:
             return markup(stocktype, stockunit, cost, Decimal("3.0"))
+        if stocktype.dept_id == 2:
+            return markup(stocktype, stockunit, cost, Decimal("2.3"))
         if stocktype.dept_id == 3:
             return markup(stocktype, stockunit, cost, Decimal("2.6"))
         if stocktype.dept_id == 4:
@@ -170,7 +186,9 @@ class PriceGuess(quicktill.stocktype.PriceGuessHook):
         if stocktype.dept_id == 5:
             return markup(stocktype, stockunit, cost, Decimal("2.0"))
         if stocktype.dept_id == 6:
-            return markup(stocktype, stockunit, cost, Decimal("2.5"))
+            return markup(stocktype, stockunit, cost, Decimal("2.0"))
+        if stocktype.dept_id == 13:
+            return markup(stocktype, stockunit, cost, Decimal("2.3"))
 
 def markup(stocktype, stockunit, cost, markup):
     return stocktype.department.vat.current.exc_to_inc(
@@ -233,13 +251,14 @@ def appsmenu():
         ("1", "Refusals log", quicktill.extras.refusals, ()),
         #("2", "Twitter", quicktill.extras.twitter_client, (tapi,)),
         ("3", "QR code print", qr, ()),
+        ("4", "Print price list", quicktill.extras.print_pricelist, ()),
     ]
     quicktill.ui.keymenu(menu, title="Apps")
 
 std = {
-    'pubname': "EMFcamp 2016",
+    'pubname': "EMFcamp 2018",
     'pubnumber': "",
-    'pubaddr': ("New Pond Road", "Guildford GU3 1HY"),
+    'pubaddr': ("Eastnor Castle Deer Park", "Eastnor HR8 1RQ"),
     'currency': "£",
     'all_payment_methods': all_payment_methods,
     'payment_methods': payment_methods,
@@ -320,6 +339,19 @@ config2.update(quicktill.localutils.activate_stockterminal_with_usertoken(
 config2.update(windowprinter)
 config2.update(labelprinter)
 
+config3 = {
+    'description': "Cybar",
+    'hotkeys': global_hotkeys,
+    'keyboard': quicktill.localutils.stdkeyboard_16by8(
+        line_base=201, cash_payment_method=cash, card_payment_method=card),
+}
+config3.update(std)
+config3.update(quicktill.localutils.activate_register_with_usertoken(
+    register_hotkeys))
+#config3.update(localprinter) # Used when live
+config3.update(windowprinter) # Used for examples
+config3.update(labelprinter)
+
 # After this configuration file is read, the code in quicktill/till.py
 # simply looks for configurations[configname]
 
@@ -327,4 +359,5 @@ configurations = {
     'default': config0,
     'mainbar': config1,
     'stockterminal': config2,
+    'cybar': config3,
 }

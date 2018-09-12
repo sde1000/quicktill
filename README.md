@@ -48,7 +48,7 @@ Quick start
 -----------
 
 The till software includes an anonymised copy of the database from
-[EMFcamp 2016](https://www.emfcamp.org/) which can be used for
+[EMFcamp 2018](https://www.emfcamp.org/) which can be used for
 testing.  This guide assumes you have a fresh installation of Ubuntu
 18.04 Desktop.  (You will need a graphical user interface for the
 on-screen keyboard, and the Desktop version has the "universe"
@@ -91,7 +91,7 @@ now on we'll assume that this is your current working directory:
 To create a database and install the test data in it:
 
     createdb emfcamp
-    psql emfcamp <examples/data/emfcamp2016-anonymised.sql
+    psql emfcamp <examples/data/emfcamp2018-anonymised.sql
 
 If in the future you need to go back to the original version of the
 test data, you can delete the database using "dropdb emfcamp" and
@@ -201,7 +201,7 @@ Get a draft database setup file and edit it:
     runtill dbsetup database-config
 
 (There's an example edited database setup file at
-`examples/data/emfcamp2016-dbsetup.yaml`)
+`examples/data/emfcamp2018-dbsetup.yaml`)
 
 Create an initial user; this will be a superuser that can do anything,
 you can use the user management interface once the till is running to
