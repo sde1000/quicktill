@@ -627,7 +627,7 @@ class Transline(Base):
                        nullable=False)
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
-    text = Column(Text)
+    text = Column(Text, nullable=False)
     transaction = relationship(
         Transaction,
         backref=backref('lines', order_by=id,
@@ -650,34 +650,11 @@ class Transline(Base):
 
     @property
     def description(self):
-        # We aim to transition to self.text being nullable=False with
-        # the release of 0.13.0; see the add-transline-text command in
-        # dbutils.py.  This property will then just return self.text
-        if self.text is not None:
-            return self.text
-        # If there is more than one entry in stockref then the text
-        # field should already have been filled in.
-        if self.stockref and len(self.stockref) == 1:
-            stockout = self.stockref[0]
-            qty = stockout.qty / self.items
-            unitname = stockout.stockitem.stocktype.unit.name
-            # The following section is for legacy databases that do not have
-            # self.text filled in on old transactions.
-            qty = Decimal(qty).quantize(Decimal("0.1"))
-            if qty == Decimal("1.0"):
-                qtys = unitname
-            elif qty == Decimal("0.5"):
-                qtys = "half %s" % unitname
-            else:
-                qtys = "%s %s" % (qty, unitname)
-            if qtys == '4.0 pint':
-                qtys = '4pt jug'
-            if qtys == '2.0 25ml':
-                qtys = 'double 25ml'
-            if qtys == '2.0 50ml':
-                qtys = 'double 50ml'
-            return "%s %s" % (stockout.stockitem.stocktype.format(), qtys)
-        return self.department.description
+        # This property is left over from the days before 'text' was
+        # guaranteed not to be null.  New code should use the 'text'
+        # attribute directly.
+        return self.text
+
     def regtotal(self, currency):
         """Formatted version of items and price
 
