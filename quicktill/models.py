@@ -1117,7 +1117,7 @@ class Supplier(Base):
     __tablename__ = 'suppliers'
     id = Column('supplierid', Integer, suppliers_seq,
                 nullable=False, primary_key=True)
-    name = Column(String(60), nullable=False)
+    name = Column(String(60), nullable=False, unique=True)
     tel = Column(String(20))
     email = Column(String(60))
     web = Column(String())

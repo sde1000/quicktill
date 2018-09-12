@@ -5,6 +5,7 @@ from .models import Delivery, Supplier, StockUnit, StockItem, StockType
 from .models import penny
 from .plugins import InstancePluginMount
 import datetime
+from sqlalchemy.exc import IntegrityError
 
 import logging
 log = logging.getLogger(__name__)
@@ -514,15 +515,15 @@ def createsupplier(field, name):
     # a new supplier record.
     editsupplier(lambda supplier: field.set(supplier), defaultname=name)
 
-class editsupplier(ui.basicpopup):
-    @user.permission_required('edit-supplier', "Create or edit supplier details")
+class editsupplier(user.permission_checked, ui.basicpopup):
+    permission_required = ('edit-supplier', "Create or edit supplier details")
     def __init__(self, func, supplier=None, defaultname=None):
         if supplier:
             td.s.add(supplier)
         self.func = func
         self.sn = supplier.id if supplier else None
-        ui.basicpopup.__init__(
-            self, 11, 70, title="Supplier Details",
+        super().__init__(
+            13, 70, title="Supplier Details",
             colour=ui.colour_input, cleartext="Press Clear to go back")
         self.addstr(2, 2, "Please enter the supplier's details. You may ")
         self.addstr(3, 2, "leave the fields other than Name blank if you wish.")
@@ -539,26 +540,15 @@ class editsupplier(ui.basicpopup):
         self.emailfield = ui.editfield(
             7, 13, 55, flen=60, f=supplier.email if supplier else "")
         self.webfield = ui.editfield(
-            8, 13, 55, flen=120, f=supplier.web if supplier else "",
+            8, 13, 55, flen=120, f=supplier.web if supplier else "")
+        self.buttonfield = ui.buttonfield(
+            10, 28, 10, "Modify" if supplier else "Create",
             keymap={
-                keyboard.K_CASH:(self.confirmwin if supplier is None
-                                 else self.confirmed, None)})
-        ui.map_fieldlist([self.namefield, self.telfield, self.emailfield,
-                          self.webfield])
-        self.namefield.focus()
+                keyboard.K_CASH:(self.confirmed, None)})
 
-    def confirmwin(self):
-        # Called when Cash/Enter is pressed on the last field, for new
-        # suppliers only
-        self.dismiss()
-        ui.infopopup(["Press Cash/Enter to confirm new supplier details:",
-                      "Name: {}".format(self.namefield.f),
-                      "Telephone: {}".format(self.telfield.f),
-                      "Email: {}".format(self.emailfield.f),
-                      "Web: {}".format(self.webfield.f)],
-                     title="Confirm New Supplier Details",
-                     colour=ui.colour_input,keymap={
-            keyboard.K_CASH: (self.confirmed, None, True)})
+        ui.map_fieldlist([self.namefield, self.telfield, self.emailfield,
+                          self.webfield, self.buttonfield])
+        self.namefield.focus()
 
     def confirmed(self):
         if self.sn:
@@ -570,10 +560,14 @@ class editsupplier(ui.basicpopup):
         supplier.tel = self.telfield.f.strip()
         supplier.email = self.emailfield.f.strip()
         supplier.web = self.webfield.f.strip()
-        td.s.flush()
-        if self.sn is not None:
-            # note: if self.sn is None then the popup is dismissed in confirmwin
-            self.dismiss()
+        try:
+            td.s.flush()
+        except IntegrityError:
+            td.s.rollback()
+            ui.infopopup(["There is already a supplier called {}.".format(
+                self.namefield.f.strip())], title="Error")
+            return
+        self.dismiss()
         self.func(supplier)
 
 @user.permission_required('update-supplier', 'Update supplier details')
