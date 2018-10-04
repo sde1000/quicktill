@@ -703,6 +703,21 @@ class Epson_TM_T20_driver(escpos):
                         lines_before_cut=0, default_font=0,
                         native_qrcode_support=True)
 
+class Aures_ODP_333_driver(escpos):
+    """Driver for Aures ODP 333 thermal receipt printers
+
+    Note that when connected over USB this printer doesn't support the
+    LPGETSTATUS ioctl and can't be used with linux_lpprinter - you
+    must use fileprinter instead.
+    """
+    def __init__(self, coding='iso-8859-1'):
+        # Characters per line with fonts 0 and 1
+        cpl = (42, 56)
+        dpl = 512
+        escpos.__init__(self, cpl, dpl, coding, has_cutter=True,
+                        lines_before_cut=0, default_font=0,
+                        native_qrcode_support=True)
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
 from reportlab.lib.pagesizes import A4
