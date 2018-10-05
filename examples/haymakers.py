@@ -345,9 +345,18 @@ kitchen = {
 noprinter = {
     'printer': quicktill.pdrivers.nullprinter(),
 }
+# Print to a locally-attached receipt printer
 localprinter = {
-    'printer': quicktill.pdrivers.linux_lpprinter(
-        "/dev/usb/lp?", driver=quicktill.pdrivers.Epson_TM_T20_driver(80)),
+    'printer': quicktill.pdrivers.autodetect_printer([
+        ("/dev/epson-tm-t20",
+         quicktill.pdrivers.Epson_TM_T20_driver(80), True),
+        ("/dev/epson-tm-t20ii",
+         quicktill.pdrivers.Epson_TM_T20_driver(80), True),
+        ("/dev/aures-odp-333",
+         quicktill.pdrivers.Aures_ODP_333_driver(), False),
+        ("/dev/epson-tm-u220",
+         quicktill.pdrivers.Epson_TM_U220_driver(57, has_cutter=True), False),
+        ]),
 }
 pdfprinter = {
     'printer': quicktill.pdrivers.cupsprinter(

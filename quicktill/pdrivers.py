@@ -18,6 +18,13 @@ except ImportError:
 import logging
 log = logging.getLogger(__name__)
 
+class PrinterConfigurationError(Exception):
+    def __init__(self, desc):
+        self.desc = desc
+
+    def __str__(self):
+        return "PrinterConfigurationError('{}')".format(self.desc)
+
 class PrinterError(Exception):
     def __init__(self, printer, desc):
         self.printer = printer
@@ -152,11 +159,6 @@ class printer:
     def offline(self):
         return
 
-    def cancut(self):
-        if self.canvastype == "receipt":
-            return self._driver.cancut()
-        return False
-
     @property
     def canvastype(self):
         return self._driver.canvastype
@@ -181,9 +183,6 @@ class _null_printer_driver:
 
     def get_canvas(self):
         return ReceiptCanvas()
-
-    def cancut(self):
-        return False
 
 class nullprinter(printer):
     # XXX change to just writing to a BytesIO and throwing it away
@@ -259,21 +258,23 @@ class fileprinter(printer):
         with open(self._getfilename(), 'ab') as f:
             self._driver.kickout(f)
 
+def _lpgetstatus(f):
+    LPGETSTATUS = 0x060b
+    buf = array.array('b', [0])
+    fcntl.ioctl(f, LPGETSTATUS, buf)
+    status = buf[0]
+    if status & 0x20:
+        return "out of paper" # LP_POUTPA
+    if ~status & 0x10:
+        return "off-line" # LP_PSELECD
+    if ~status & 0x08:
+        return "error light is on" # LP_PERRORP
+
 class linux_lpprinter(fileprinter):
     """Print to a lp device file - /dev/lp? or /dev/usblp? on Linux
 
     Expects the specified file to support the LPGETSTATUS ioctl.
     """
-    LPGETSTATUS = 0x060b
-    @staticmethod
-    def _decode_status(status):
-        if status & 0x20:
-            return "out of paper" # LP_POUTPA
-        if ~status & 0x10:
-            return "off-line" # LP_PSELECD
-        if ~status & 0x08:
-            return "error light is on" # LP_PERRORP
-
     def __init__(self, *args, **kwargs):
         if not sys.platform.startswith("linux"):
             raise PrinterError(
@@ -284,16 +285,115 @@ class linux_lpprinter(fileprinter):
     def offline(self):
         try:
             f = open(self._getfilename(), 'ab')
-            buf = array.array('b', [0])
-            fcntl.ioctl(f, self.LPGETSTATUS, buf)
+            status = _lpgetstatus(f)
             f.close()
-            return self._decode_status(buf[0])
+            return status
         except IOError as e:
             return str(e)
 
     def __str__(self):
         return self.description or "Print to lp device {}".format(
             self._filename)
+
+class autodetect_printer:
+    """Use the first available device
+
+    A device is available if the glob matches an existing file.  It
+    doesn't matter whether the printer is in a "ready" state: it is
+    sufficient that it is connected.
+
+    printers is a list of (glob, driver, LPGETSTATUS supported?)
+
+    All drivers must support the same canvas type
+    """
+    NOT_CONNECTED = "No printer connected"
+    def __init__(self, printers, description=None):
+        self.canvastype = None
+        for path, driver, getstatus in printers:
+            if self.canvastype:
+                if driver.canvastype != self.canvastype:
+                    raise PrinterConfigurationError(
+                        "autodetect_printer can only be used with drivers "
+                        "that all support the same canvas type")
+            else:
+                self.canvastype = driver.canvastype
+                # XXX using the get_canvas method of the first driver
+                # in the list is making an assumption that the
+                # canvases provided by each driver are all compatible.
+                # It's true at the time of writing, but may need
+                # revisiting if more drivers are implemented!
+                self.get_canvas = driver.get_canvas
+        self._printers = printers
+        self.description = description
+        self._canvas = None
+
+    @staticmethod
+    def _globmatch(path):
+        gi = glob.iglob(path)
+        try:
+            return next(gi)
+        except StopIteration:
+            return
+
+    def _find_printer(self):
+        # Return device file, driver, lpgetstatus_supported
+        for path, driver, getstatus in self._printers:
+            filename = self._globmatch(path)
+            if filename:
+                return filename, driver, getstatus
+        return None, None, None
+
+    def __enter__(self):
+        if self._canvas:
+            raise PrinterError(self, "Already started in __enter__()")
+        self._canvas = self.get_canvas()
+        return self._canvas
+
+    def __exit__(self, type, value, tb):
+        try:
+            if tb is None:
+                self.print_canvas(self._canvas)
+        finally:
+            self._canvas = None
+
+    def offline(self):
+        filename, driver, lpgetstatus_supported = self._find_printer()
+        if not filename:
+            return self.NOT_CONNECTED
+        if lpgetstatus_supported:
+            try:
+                with open(filename, 'ab') as f:
+                    return _lpgetstatus(f)
+            except IOError as e:
+                return str(e)
+
+    def print_canvas(self, canvas):
+        filename, driver, lpgetstatus_supported = self._find_printer()
+        if not filename:
+            raise PrinterError(self, self.NOT_CONNECTED)
+        with open(filename, 'ab') as f:
+            status = None
+            if lpgetstatus_supported:
+                status = _lpgetstatus(f)
+            if status:
+                raise PrinterError(self, status)
+            driver.process_canvas(canvas, f)
+
+    def kickout(self):
+        filename, driver, lpgetstatus_supported = self._find_printer()
+        if not filename:
+            raise PrinterError(self, self.NOT_CONNECTED)
+        with open(filename, 'ab') as f:
+            status = None
+            if lpgetstatus_supported:
+                status = _lpgetstatus(f)
+            if status:
+                raise PrinterError(self, status)
+            driver.kickout(f)
+
+    def __str__(self):
+        return self.description or "one of: {}".format(', '.join(
+            (glob for glob, driver, status in self._printers)))
 
 class netprinter(printer):
     """Print to a network socket.  connection is a (hostname, port) tuple.
@@ -707,8 +807,7 @@ class Aures_ODP_333_driver(escpos):
     """Driver for Aures ODP 333 thermal receipt printers
 
     Note that when connected over USB this printer doesn't support the
-    LPGETSTATUS ioctl and can't be used with linux_lpprinter - you
-    must use fileprinter instead.
+    LPGETSTATUS ioctl.
     """
     def __init__(self, coding='iso-8859-1'):
         # Characters per line with fonts 0 and 1
@@ -859,9 +958,6 @@ class pdf_driver:
                 pass
 
         doctemplate.build(story)
-
-    def cancut(self):
-        return False
 
     def kickout(self, f):
         pass
