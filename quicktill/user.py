@@ -318,6 +318,10 @@ def user_from_token(t):
         return
     dbt.last_seen = datetime.datetime.now()
     u = dbt.user
+    if not u:
+        ui.toast("User token '{}' ({}) is not assigned to a user".format(
+            t.usertoken, dbt.description))
+        return
     if not u.enabled:
         ui.toast("User '{}' is not active.".format(u.fullname))
         return
@@ -372,7 +376,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             self.message = self.emptymessage
         else:
             dbt = td.s.query(UserToken).get(t)
-            if dbt and not self._allow_inuse:
+            if dbt and dbt.user and not self._allow_inuse:
                 self.message = "In use by {}".format(
                     dbt.user.fullname)
                 self.f = None
@@ -415,31 +419,91 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
         else:
             super().keypress(k)
 
-class addtoken(ui.dismisspopup):
+class manage_user_tokens(ui.dismisspopup):
+    """Manage the tokens assigned to a user
+    """
     def __init__(self, userid):
         self.userid = userid
-        u = td.s.query(User).get(userid)
-        ui.dismisspopup.__init__(self, 6, 66, title="Add token for {}".format(
-            u.fullname), colour=ui.colour_input)
-        self.addstr(2, 2, 'Description:')
-        self.addstr(3, 2, '      Token:')
-        self.descfield = ui.editfield(2, 20, 40, keymap={
-            keyboard.K_CLEAR: (self.dismiss, None)})
-        self.tokenfield = tokenfield(3, 20, 40, keymap={
-            keyboard.K_CASH: (self.save, None)})
-        ui.map_fieldlist([self.descfield, self.tokenfield])
-        self.descfield.focus()
+        user = td.s.query(User).get(userid)
+        super().__init__(15, 60, title="Manage tokens for {}".format(
+            user.fullname), colour=ui.colour_input)
+        self.win.addstr(2, 2, "      Token:")
+        self.win.addstr(3, 2, "Description:")
+        self.tokenfield = tokenfield(
+            2, 15, 40,
+            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
+        self.description = ui.editfield(3, 15, 40)
+        self.tokenfield.sethook = self.tokenfield_set
+        self.description.sethook = self.description_set
+        self.add_button = ui.buttonfield(5, 3, 13, "Add token", keymap={
+            keyboard.K_CASH: (self.add_token, None)})
+        self.exit_button = ui.buttonfield(5, 18, 10, "Exit", keymap={
+            keyboard.K_CASH: (self.dismiss, None)})
+        self.tokens = ui.scrollable(8, 1, 58, 6, [], keymap={
+            keyboard.K_CANCEL: (self.delete_token, None)})
+        self.win.addstr(14, 1, "Press Cancel to delete a token")
+        ui.map_fieldlist([self.tokenfield, self.description,
+                          self.add_button, self.exit_button,
+                          self.tokens])
+        self.reload_tokens()
+        self.tokenfield.focus()
 
-    def save(self):
-        desc = self.descfield.f.strip()
-        if len(desc) == 0 or self.tokenfield.f is None:
-            ui.infopopup(["You must fill in both fields."], title="Error")
+    def reload_tokens(self):
+        user = td.s.query(User).get(self.userid)
+        f = ui.tableformatter(' l l l ')
+        h = f("Token", "Description", "Last used")
+        tl = [f(x.token, x.description, ui.formattime(x.last_seen) or "Never",
+                userdata=x.token) for x in user.tokens]
+        self.win.clear(7, 1, 1, 58)
+        if tl:
+            self.win.addstr(7, 1, h.display(58)[0])
+        self.tokens.set(tl)
+
+    def delete_token(self):
+        if self.tokens.cursor is None:
             return
-        u = td.s.query(User).get(self.userid)
-        t = UserToken(token=self.tokenfield.f, description=desc)
-        u.tokens.append(t)
+        line = self.tokens.dl.pop(self.tokens.cursor)
+        self.tokens.redraw()
+        token = td.s.query(UserToken).get(line.userdata)
+        token.user = None
         td.s.flush()
-        self.dismiss()
+
+    def add_token(self):
+        t = self.tokenfield.f
+        if not t:
+            ui.infopopup(["You must use a token to fill in the 'Token' field "
+                          "before pressing the Add Token button."],
+                         title="Error")
+            return
+        user = td.s.query(User).get(self.userid)
+        token = td.s.query(UserToken).get(t)
+        if not token:
+            token = UserToken(token=t)
+        token.last_seen = None
+        user.tokens.append(token)
+        self.tokenfield.set(None)
+        self.description.set("")
+        self.reload_tokens()
+        self.tokenfield.focus()
+
+    def tokenfield_set(self):
+        t = self.tokenfield.f
+        if t:
+            dbt = td.s.query(UserToken).get(t)
+            if dbt:
+                self.description.set(dbt.description)
+            else:
+                self.description.set("")
+        else:
+            self.description.set("")
+
+    def description_set(self):
+        if self.tokenfield.f:
+            dbt = td.s.query(UserToken).get(self.tokenfield.f)
+            if not dbt:
+                dbt = UserToken(token=self.tokenfield.f)
+                td.s.add(dbt)
+            dbt.description = self.description.f
 
 def do_add_permission(userid, permission):
     u = td.s.query(User).get(userid)
@@ -458,13 +522,6 @@ def addpermission(userid):
         pl = list(action_descriptions.keys())
     else:
         pl = cu.all_permissions
-    # Add in groups if the list of permissions includes everything in that group
-    for g in group.all_groups:
-        for m in group.all_groups[g].members:
-            if m not in pl:
-                break
-        else: # else on a for loop is skipped if the loop was exited with break
-            pl.append(g)
     # Remove permissions the user already has
     u = td.s.query(User).get(userid)
     existing = [p.id for p in u.permissions]
@@ -501,7 +558,7 @@ class edituser(permission_checked, ui.basicpopup):
         self.wnfield = ui.editfield(4, 16, 30, f=u.webuser)
         self.actfield = ui.booleanfield(5, 16, f=u.enabled, allow_blank=False)
         self.tokenfield = ui.buttonfield(7, 7, 15, "Edit tokens", keymap={
-            keyboard.K_CASH: (self.edittokens, None)})
+            keyboard.K_CASH: (manage_user_tokens, (self.userid,))})
         self.permfield = ui.buttonfield(7, 30, 20, "Edit permissions", keymap={
             keyboard.K_CASH: (self.editpermissions, None)})
         self.savefield = ui.buttonfield(9, 6, 17, "Save and exit", keymap={
@@ -522,21 +579,6 @@ class edituser(permission_checked, ui.basicpopup):
         self.dismiss()
         u = td.s.query(User).get(self.userid)
         u.superuser = False
-
-    def removetoken(self, token):
-        t = td.s.query(UserToken).get(token)
-        td.s.delete(t)
-
-    def edittokens(self):
-        u = td.s.query(User).get(self.userid)
-        f = ui.tableformatter(' l l l ')
-        h = f("Description", "Value", "Last used")
-        tl = [(f(x.description, x.token, x.last_seen),
-               self.removetoken, (x.token,)) for x in u.tokens]
-        tl.insert(0, ("Add new token", addtoken, (self.userid,)))
-        ui.menu(tl, title="Tokens for {}".format(u.fullname),
-                blurb=["Select a token and press Cash/Enter to remove it.",
-                       "", h])
 
     def removepermission(self, permission):
         u = td.s.query(User).get(self.userid)
@@ -612,10 +654,11 @@ def manageusers(include_inactive=False):
             blurb="Select a user and press Cash/Enter")
 
 class managetokens(permission_checked, ui.dismisspopup):
+    """Manage the users assigned to tokens
+    """
     permission_required = ("manage-tokens", "Manage user login tokens")
     def __init__(self):
-        ui.dismisspopup.__init__(self, 11, 60, title="Manage tokens",
-                                 colour=ui.colour_input)
+        super().__init__(12, 60, title="Manage tokens", colour=ui.colour_input)
         self.addstr(2, 2, "      Token:")
         self.addstr(3, 2, "Description:")
         self.addstr(4, 2, "Assigned to:")
@@ -629,6 +672,7 @@ class managetokens(permission_checked, ui.dismisspopup):
         self.lastused = ui.label(5, 15, 40)
         self.opt_1 = ui.label(7, 2, 50)
         self.opt_2 = ui.label(8, 2, 50)
+        self.opt_3 = ui.label(9, 2, 50)
         self.tokenfield.sethook = self.tokenfield_set
         self.description.sethook = self.description_set
         self.tokenfield.focus()
@@ -637,36 +681,48 @@ class managetokens(permission_checked, ui.dismisspopup):
         t = self.tokenfield.f
         if t:
             dbt = td.s.query(UserToken).get(t)
-            if dbt:
+            if dbt and dbt.user:
                 self.description.set(dbt.description)
                 self.user.set(dbt.user.fullname)
                 self.lastused.set(dbt.last_seen)
                 self.opt_1.set("1. Assign this token to a different user")
-                self.opt_2.set("2. Forget about this token")
+                self.opt_2.set("2. Remove this token from {}".format(
+                    dbt.user.fullname))
+                self.opt_3.set("3. Forget about this token")
             else:
-                self.description.set("")
                 self.user.set("(not assigned)")
-                self.lastused.set("")
+                if dbt:
+                    self.description.set(dbt.description)
+                    self.lastused.set(dbt.last_seen or "never")
+                else:
+                    self.description.set("")
+                    self.lastused.set("")
                 self.opt_1.set("1. Assign this token to a user")
                 self.opt_2.set("")
+                self.opt_3.set("3. Forget about this token")
         else:
             self.description.set("")
             self.user.set("")
             self.lastused.set("")
             self.opt_1.set("")
             self.opt_2.set("")
+            self.opt_3.set("")
 
     def description_set(self):
         if self.tokenfield.f:
             dbt = td.s.query(UserToken).get(self.tokenfield.f)
-            if dbt:
-                dbt.description = self.description.f
+            if not dbt:
+                dbt = UserToken(token=self.tokenfield.f)
+                td.s.add(dbt)
+            dbt.description = self.description.f
 
     def keypress(self, k):
         if self.tokenfield.f:
             if k == "1":
                 self.assign()
             elif k == "2":
+                self.unassign()
+            elif k == "3":
                 self.forget()
 
     def assign(self):
@@ -680,6 +736,12 @@ class managetokens(permission_checked, ui.dismisspopup):
                 for user in users]
         ui.menu(menu, title="Assign token to user", blurb="Choose the user "
                 "to assign this token to")
+
+    def unassign(self):
+        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        if dbt:
+            dbt.user = None
+        self.tokenfield_set()
 
     def forget(self):
         dbt = td.s.query(UserToken).get(self.tokenfield.f)
@@ -695,12 +757,7 @@ class managetokens(permission_checked, ui.dismisspopup):
         user = td.s.query(User).get(userid)
         dbt.user = user
         td.s.add(dbt)
-        self.dismiss()
-        ui.infopopup(["Token {} ({}) assigned to {}.".format(
-            dbt.token, dbt.description or "[no description]",
-            user.fullname)],
-                     title="Token assigned to user",
-                     colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
+        self.tokenfield_set()
 
 class adduser_cmd(cmdline.command):
     """Add a user.

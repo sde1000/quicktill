@@ -465,7 +465,7 @@ class UserToken(Base):
     token = Column(String(), primary_key=True)
     authdata = Column(String(), nullable=True)
     description = Column(String())
-    user_id = Column('user', Integer, ForeignKey('users.id'), nullable=False)
+    user_id = Column('user', Integer, ForeignKey('users.id'))
     last_seen = Column(DateTime)
     user = relationship(User, backref='tokens')
 
