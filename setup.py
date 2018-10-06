@@ -2,8 +2,8 @@
 
 from distutils.core import setup
 
-setup(name='quicktill3',
-      version='0.12.30',
+setup(name='quicktill4',
+      version='0.13.0-pre',
       description='Quick till and stock control library',
       author='Stephen Early',
       author_email='steve@assorted.org.uk',
