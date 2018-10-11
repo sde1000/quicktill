@@ -126,11 +126,9 @@ class Key:
 
     May be physical, on-screen, or both.
     """
-    def __init__(self, keycode, background="grey", foreground="black",
-                 width=1, height=1):
+    def __init__(self, keycode, css_class=None, width=1, height=1):
         self.keycode = keycode
-        self.background = background
-        self.foreground = foreground
+        self.css_class = css_class
         self.width = width
         self.height = height
 

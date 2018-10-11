@@ -514,15 +514,15 @@ def _onscreen_keyboard_input(keycode):
         tillconfig.mainloop._exc_info = sys.exc_info()
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard_font="sans 8", keyboard=None):
+        keyboard=None):
     """Start running with the GTK display system
     """
     monospace_font = Pango.FontDescription(monospace_font)
     font = Pango.FontDescription(font)
-    keyboard_font = Pango.FontDescription(keyboard_font)
-    kbgrid = keyboard_gtk.kbgrid(
-        keyboard, keyboard_font, _onscreen_keyboard_input) if keyboard \
-        else None
+    if keyboard:
+        keyboard_gtk.init_css()
+        kbgrid = keyboard_gtk.kbgrid(
+            keyboard, _onscreen_keyboard_input)
     ui.rootwin = gtk_root(monospace_font, font,
                           preferred_height=20 if keyboard else 24)
     ui.beep = Gdk.beep

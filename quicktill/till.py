@@ -161,10 +161,6 @@ class runtill(cmdline.command):
             "--monospace-font", dest="monospace", default="monospace 20",
             action="store", type=str, metavar="FONT_DESCRIPTION",
             help="Set the font to be used for monospace text")
-        gtkp.add_argument(
-            "--keyboard-font", dest="kbfont", default="sans 8",
-            action="store", type=str, metavar="FONT_DESCRIPTION",
-            help="Set the font to be used for the on-screen keyboard")
         parser.set_defaults(command=runtill, nolisten=False)
 
     class _dbg_kbd_input:
@@ -230,8 +226,7 @@ class runtill(cmdline.command):
                     [sys.argv[0],
                      "-u", tillconfig.configversion,
                      "-c", tillconfig.configname,
-                     "on-screen-keyboard",
-                     "--keyboard-font", args.kbfont],
+                     "on-screen-keyboard"],
                     bufsize=0,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE)
@@ -243,7 +238,6 @@ class runtill(cmdline.command):
                     fullscreen=args.fullscreen,
                     font=args.font,
                     monospace_font=args.monospace,
-                    keyboard_font=args.kbfont,
                     keyboard=tillconfig.keyboard if args.keyboard else None)
             else:
                 from . import ui_ncurses
@@ -264,13 +258,6 @@ class on_screen_keyboard(cmdline.command):
     help = "internal helper command for on-screen-keyboard"
 
     @staticmethod
-    def add_arguments(parser):
-        parser.add_argument(
-            "--keyboard-font", dest="kbfont", default="sans 8",
-            action="store", type=str, metavar="FONT_DESCRIPTION",
-            help="Set the font to be used for the on-screen keyboard")
-
-    @staticmethod
     def run(args):
         if not tillconfig.keyboard:
             return
@@ -284,8 +271,7 @@ class on_screen_keyboard(cmdline.command):
                 print(keycode)
             sys.stdout.flush()
         window = keyboard_gtk.kbwindow(
-            tillconfig.keyboard, keyboard_gtk.get_font(args.kbfont),
-            input_handler)
+            tillconfig.keyboard, input_handler)
         keyboard_gtk.run_standalone(window)
 
 class totals(cmdline.command):
