@@ -17,6 +17,8 @@ from .models import *
 import logging
 log = logging.getLogger(__name__)
 
+engine = None
+
 class NoDatabase(Exception):
     """Attempt to use database before it's initialised
     """
@@ -164,7 +166,7 @@ def init(database):
     database can be a libpq connection string or a sqlalchemy URL
 
     """
-    global s
+    global s, engine
     log.info("init database \'%s\'", database)
     database = parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'", database)
