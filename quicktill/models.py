@@ -1620,9 +1620,26 @@ class KeyboardBinding(Base):
 class KeyCap(Base):
     __tablename__ = 'keycaps'
     keycode = Column(String(20), nullable=False, primary_key=True)
-    keycap = Column(String(30))
+    keycap = Column(String(), nullable=False, server_default='')
+    css_class = Column(String(), nullable=False, server_default='')
     def __repr__(self):
         return "<KeyCap('%s','%s')>" % (self.keycode, self.keycap)
+
+add_ddl(KeyCap.__table__, """
+CREATE OR REPLACE FUNCTION notify_keycap_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('keycaps', NEW.keycode);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER keycap_changed
+  AFTER INSERT OR UPDATE ON keycaps
+  FOR EACH ROW EXECUTE PROCEDURE notify_keycap_change();
+""", """
+DROP TRIGGER keycap_changed ON keycaps;
+DROP FUNCTION notify_keycap_change();
+""")
 
 class StockLineTypeLog(Base):
     """Association table for stocklines to stocktypes

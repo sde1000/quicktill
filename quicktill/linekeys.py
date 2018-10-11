@@ -1,9 +1,30 @@
 from . import keyboard, ui, td, user
 from .models import KeyCap, KeyboardBinding, StockLine, PriceLookup
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import select
 
 import logging
 log = logging.getLogger(__name__)
+
+def _complete_class(m):
+    result = td.s.execute(
+        select([KeyCap.css_class]).\
+            where(KeyCap.css_class.ilike(m+'%'))
+        )
+    return [x[0] for x in result]
+
+def validate_class(s, c):
+    t = s[: c + 1]
+    l = _complete_class(t)
+    if len(l) > 0:
+        return l[0]
+    # If a string one character shorter matches then we know we
+    # filled it in last time, so we should return the string with
+    # the rest chopped off rather than just returning the whole
+    # thing unedited.
+    if len(_complete_class(t[: -1])) > 0:
+        return t
+    return s
 
 class edit_keycaps(user.permission_checked, ui.dismisspopup):
     """This popup window enables the keycaps of line keys to be edited.
@@ -11,33 +32,52 @@ class edit_keycaps(user.permission_checked, ui.dismisspopup):
     permission_required = ('edit-keycaps',
                          'Change the names of keys on the keyboard')
     def __init__(self):
-        ui.dismisspopup.__init__(self,8,60,title="Edit Keycaps",
-                                 colour=ui.colour_input)
-        self.addstr(
-            2,2,"Press a line key; alter the legend and press Cash/Enter.")
-        self.addstr(4,2,"Keycode:")
-        self.addstr(5,2," Legend:")
-        self.keycode=None
-        self.kcfield=ui.editfield(5,11,46,keymap={
-                keyboard.K_CASH: (self.setcap,None)})
+        super().__init__(11, 60, title="Edit Keycaps",
+                         colour=ui.colour_input)
+        self.win.addstr(
+            2, 2, "Press a line key; alter the legend and press Cash/Enter.")
+        self.win.addstr(4, 2, "  Keycode:")
+        self.win.addstr(5, 2, "   Legend:")
+        self.win.addstr(6, 2, "CSS class:")
+        self.keycode = None
+        self.kclabel = ui.label(4, 13, 45)
+        self.kcfield = ui.editfield(5, 13, 45)
+        self.classfield = ui.editfield(6, 13, 45, validate=validate_class)
+        self.savebutton = ui.buttonfield(8, 13, 10, "Save", keymap={
+            keyboard.K_CASH: (self.setcap, None)})
+        self.exitbutton = ui.buttonfield(8, 35, 10, "Exit", keymap={
+            keyboard.K_CASH: (self.dismiss, None)})
+        ui.map_fieldlist([self.kcfield, self.classfield, self.savebutton,
+                          self.exitbutton])
         self.kcfield.focus()
-    def selectline(self,linekey):
-        self.addstr(4,11," "*20)
-        self.addstr(4,11,linekey.name)
+
+    def clear(self):
+        self.kclabel.set("")
+        self.kcfield.set("")
+        self.classfield.set("")
+
+    def selectline(self, linekey):
+        self.kclabel.set(linekey.name)
         self.kcfield.set(linekey.keycap)
-        self.keycode=linekey
+        self.classfield.set(linekey.css_class)
+        self.keycode = linekey
+        self.kcfield.focus()
+
     def setcap(self):
-        if self.keycode is None: return
-        if self.kcfield.f=="": return
-        newcap=KeyCap(keycode=self.keycode.name,
-                      keycap=self.kcfield.f)
+        if self.keycode is None:
+            return
+        newcap = KeyCap(keycode=self.keycode.name,
+                        keycap=self.kcfield.f, css_class=self.classfield.f)
         td.s.merge(newcap)
         td.s.flush()
-    def keypress(self,k):
-        if hasattr(k,'line'):
+        self.clear()
+        self.exitbutton.focus()
+
+    def keypress(self, k):
+        if hasattr(k, 'line'):
             self.selectline(k)
         else:
-            ui.dismisspopup.keypress(self,k)
+            super().keypress(k)
 
 def keyboard_bindings_table(bindings, formatter):
     """Given a list of keyboard bindings, from the database, format a

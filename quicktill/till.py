@@ -261,6 +261,8 @@ class on_screen_keyboard(cmdline.command):
     def run(args):
         if not tillconfig.keyboard:
             return
+        from . import event_glib
+        tillconfig.mainloop = event_glib.GLibMainLoop()
         from . import keyboard_gtk
         def input_handler(keycode):
             if hasattr(keycode, "usertoken"):

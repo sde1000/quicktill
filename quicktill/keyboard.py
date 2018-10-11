@@ -68,6 +68,13 @@ class linekey(keycode):
         return "Line %d" % self._line
 
     @property
+    def css_class(self):
+        from . import td, models
+        cap = td.s.query(models.KeyCap).get(self.name)
+        if cap:
+            return cap.css_class
+
+    @property
     def line(self):
         return self._line
 
@@ -128,9 +135,13 @@ class Key:
     """
     def __init__(self, keycode, css_class=None, width=1, height=1):
         self.keycode = keycode
-        self.css_class = css_class
+        self._css_class = css_class
         self.width = width
         self.height = height
+
+    @property
+    def css_class(self):
+        return getattr(self.keycode, 'css_class', None) or self._css_class
 
     def __str__(self):
         return str(self.keycode)
