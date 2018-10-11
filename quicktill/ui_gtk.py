@@ -519,6 +519,7 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
     """
     monospace_font = Pango.FontDescription(monospace_font)
     font = Pango.FontDescription(font)
+    kbgrid = None
     if keyboard:
         keyboard_gtk.init_css()
         kbgrid = keyboard_gtk.kbgrid(
