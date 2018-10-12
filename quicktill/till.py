@@ -523,6 +523,8 @@ def main():
     if 'discounts' in config:
         tillconfig.discounts = config['discounts']
         tillconfig.discount_note_dept = config['discount-note-dept']
+    if 'custom_css' in config:
+        tillconfig.custom_css = config['custom_css']
 
     if os.uname()[0] == 'Linux':
         if os.getenv('TERM') == 'linux':

@@ -3,6 +3,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 import sys
 from . import listen
+from . import tillconfig
 
 application_css = """
 window {
@@ -103,6 +104,8 @@ class kbutton(Gtk.Button):
         ctx = self.get_style_context()
         if key.width > 1 or key.height > 1:
             ctx.add_class("key{}x{}".format(key.width, key.height))
+        if hasattr(key.keycode, "line"):
+            ctx.add_class("linekey")
         self.update_class()
 
     def update_text(self):
@@ -153,15 +156,19 @@ class kbwindow(Gtk.Window):
         self.set_default_size(1200, 200)
         self.show_all()
 
-def init_css():
-        style_provider = Gtk.CssProvider()
-        style_provider.load_from_data(application_css.encode("utf-8"))
+def _add_css(css, priority):
+    style_provider = Gtk.CssProvider()
+    style_provider.load_from_data(css.encode("utf-8"))
 
-        Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(),
-            style_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(),
+        style_provider,
+        priority)
+
+def init_css():
+    _add_css(application_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    if tillconfig.custom_css:
+        _add_css(tillconfig.custom_css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
 def run_standalone(window):
     init_css()

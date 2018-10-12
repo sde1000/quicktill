@@ -265,6 +265,24 @@ std = {
     'allow_tabs': True,
     'checkdigit_print': True,
     'checkdigit_on_usestock': True,
+    'custom_css': """
+button:not(:active) {
+    transition: 250ms ease-in-out;
+}
+@define-color pumps deepskyblue;
+.pint {
+    background-color: @pumps;
+    color: black;
+}
+.linekey:active {
+    border-color: white;
+}
+
+.half {
+    background-color: lighter(@pumps);
+    color: black;
+}
+"""
 }
 
 # Print to a locally-attached receipt printer

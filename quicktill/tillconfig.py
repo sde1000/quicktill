@@ -76,3 +76,6 @@ start_time = 0.0
 # List of possible discounts.
 discounts = []
 dicount_note_dept = None
+
+# Custom CSS for Gtk
+custom_css = None
