@@ -534,10 +534,11 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
         if tillconfig.keyboard_right:
             rhgrid = keyboard_gtk.kbgrid(
                 tillconfig.keyboard_right, _onscreen_keyboard_input)
-            # Use a Grid to get a 3/4 - 1/4 split
+            split = 4 # maybe make this configurable?
+            # Use a Grid to get a consistent split
             newbox = Gtk.Grid()
-            newbox.attach(wincontents, 0, 0, 3, 1)
-            newbox.attach(rhgrid, 3, 0, 1, 1)
+            newbox.attach(wincontents, 0, 0, split, 1)
+            newbox.attach(rhgrid, split, 0, 1, 1)
             newbox.set_column_homogeneous(True)
             newbox.set_row_homogeneous(True)
             wincontents = newbox
