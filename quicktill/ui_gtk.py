@@ -514,20 +514,36 @@ def _onscreen_keyboard_input(keycode):
         tillconfig.mainloop._exc_info = sys.exc_info()
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard=None):
+        keyboard=False):
     """Start running with the GTK display system
     """
     monospace_font = Pango.FontDescription(monospace_font)
     font = Pango.FontDescription(font)
-    kbgrid = None
+    ui.rootwin = gtk_root(monospace_font, font,
+                          preferred_height=20 if keyboard else 24,
+                          minimum_width=60)
+    ui.beep = Gdk.beep
     if keyboard:
         keyboard_gtk.init_css()
         kbgrid = keyboard_gtk.kbgrid(
-            keyboard, _onscreen_keyboard_input)
-    ui.rootwin = gtk_root(monospace_font, font,
-                          preferred_height=20 if keyboard else 24)
-    ui.beep = Gdk.beep
-    window = GtkWindow(ui.rootwin, kbgrid)
+            tillconfig.keyboard, _onscreen_keyboard_input)
+        wincontents = Gtk.Box(spacing=1,
+                              orientation=Gtk.Orientation.VERTICAL)
+        wincontents.pack_start(ui.rootwin, True, True, 0)
+        wincontents.pack_end(kbgrid, True, True, 0)
+        if tillconfig.keyboard_right:
+            rhgrid = keyboard_gtk.kbgrid(
+                tillconfig.keyboard_right, _onscreen_keyboard_input)
+            # Use a Grid to get a 3/4 - 1/4 split
+            newbox = Gtk.Grid()
+            newbox.attach(wincontents, 0, 0, 3, 1)
+            newbox.attach(rhgrid, 3, 0, 1, 1)
+            newbox.set_column_homogeneous(True)
+            newbox.set_row_homogeneous(True)
+            wincontents = newbox
+    else:
+        wincontents = ui.rootwin
+    window = GtkWindow(wincontents)
     if fullscreen:
         window.fullscreen()
     ui.toaster.notify_display_initialised()

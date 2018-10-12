@@ -265,6 +265,52 @@ def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
     kb.update(overrides)
     return kb
 
+def resize(keyboard, maxwidth, maxheight):
+    """Chop a keyboard down to size
+    """
+    kb = {}
+    for loc, contents in keyboard.items():
+        if loc[1] < maxwidth and loc[0] < maxheight:
+            kb[loc] = contents
+    return kb
+
+def keyboard_rhpanel(cash_payment_method,
+                     card_payment_method,
+                     overrides={}):
+    kb = {
+        (0, 0): Key("7", css_class="numeric"),
+        (0, 1): Key("8", css_class="numeric"),
+        (0, 2): Key("9", css_class="numeric"),
+        (1, 0): Key("4", css_class="numeric"),
+        (1, 1): Key("5", css_class="numeric"),
+        (1, 2): Key("6", css_class="numeric"),
+        (2, 0): Key("1", css_class="numeric"),
+        (2, 1): Key("2", css_class="numeric"),
+        (2, 2): Key("3", css_class="numeric"),
+        (3, 0): Key(".", css_class="numeric"),
+        (3, 1): Key("0", css_class="numeric"),
+        (3, 2): Key("00", css_class="numeric"),
+        (4, 1): Key(K_UP, css_class="cursor"),
+        (5, 0): Key(K_LEFT, css_class="cursor"),
+        (5, 1): Key(K_DOWN, css_class="cursor"),
+        (5, 2): Key(K_RIGHT, css_class="cursor"),
+        (6, 1): Key(K_LOCK, width=2, css_class="lock"),
+        (7, 0): Key(notekey('K_TWENTY', '£20', cash_payment_method,
+                            Decimal("20.00")),
+                    css_class="payment"),
+        (8, 0): Key(notekey('K_TENNER', '£10', cash_payment_method,
+                            Decimal("10.00")),
+                    css_class="payment"),
+        (9, 0): Key(notekey('K_FIVER', '£5', cash_payment_method,
+                            Decimal("5.00")),
+                    css_class="payment"),
+        (7, 1): Key(paymentkey('K_CARD', 'Card', card_payment_method),
+                    css_class="payment", width=2),
+        (8, 1): Key(K_CASH, width=2, height=2, css_class="payment"),
+    }
+    kb.update(overrides)
+    return kb
+
 # These keys are used by the register and stock terminal pages if they
 # haven't already found a use for a keypress
 def register_hotkeys(appsmenu=None):

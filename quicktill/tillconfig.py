@@ -14,6 +14,7 @@ configversion = "file:/dev/null"
 configname = "default"
 
 keyboard = None
+keyboard_right = None
 
 pubname="Test Pub Name"
 pubnumber="07715 422132"

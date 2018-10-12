@@ -238,7 +238,7 @@ class runtill(cmdline.command):
                     fullscreen=args.fullscreen,
                     font=args.font,
                     monospace_font=args.monospace,
-                    keyboard=tillconfig.keyboard if args.keyboard else None)
+                    keyboard=args.keyboard)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
@@ -488,6 +488,8 @@ def main():
         ui.keyboard_filter_stack.insert(0, config['kbdriver'])
     if 'keyboard' in config:
         tillconfig.keyboard = config['keyboard']
+    if 'keyboard_right' in config:
+        tillconfig.keyboard_right = config['keyboard_right']
     if 'altkbdriver' in config:
         log.warning("Obsolete 'altkbdriver' key present in configuration")
     if 'pricepolicy' in config:

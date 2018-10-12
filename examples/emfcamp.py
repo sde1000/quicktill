@@ -344,8 +344,12 @@ config0.update(labelprinter)
 config1 = {
     'description': "Main bar",
     'hotkeys': global_hotkeys,
-    'keyboard': quicktill.localutils.stdkeyboard_16by8(
-        line_base=1, cash_payment_method=cash, card_payment_method=card),
+    'keyboard': quicktill.localutils.resize(
+        quicktill.localutils.stdkeyboard_16by8(
+            line_base=1, cash_payment_method=cash, card_payment_method=card),
+        maxwidth=13, maxheight=8),
+    'keyboard_right': quicktill.localutils.keyboard_rhpanel(
+        cash, card),
 }
 config1.update(std)
 config1.update(quicktill.localutils.activate_register_with_usertoken(
