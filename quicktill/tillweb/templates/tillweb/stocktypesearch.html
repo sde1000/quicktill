@@ -16,7 +16,7 @@
 {% if stocktypes %}
 <table id="stocktypelist">
 <thead>
-<tr><th>Manufacturer</th><th>Name</th><th>Short name</th><th>ABV</th>
+<tr><th>Manufacturer</th><th>Name</th><th>ABV</th>
 <th>Department</th><th>Unit</th><th>Sale price</th></tr>
 </thead>
 <tbody>
@@ -24,7 +24,6 @@
 <tr class="{% cycle 'odd' 'even' %}">
 <td><a href="?manufacturer={{t.manufacturer|urlencode}}">{{t.manufacturer}}</a></td>
 <td><a href="{{t.get_absolute_url}}">{{t.name}}</a></td>
-<td><a href="{{t.get_absolute_url}}">{{t.shortname}}</a></td>
 <td>{{t.abvstr}}</td>
 <td><a href="{{t.department.get_absolute_url}}">{{t.department}}</a></td>
 <td>{{t.unit.name}}</td>

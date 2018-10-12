@@ -602,11 +602,10 @@ def delivery(request, info, session, deliveryid):
 class StockTypeForm(forms.Form):
     manufacturer = forms.CharField(required=False)
     name = forms.CharField(required=False)
-    shortname = forms.CharField(required=False)
 
     def is_filled_in(self):
         cd = self.cleaned_data
-        return cd['manufacturer'] or cd['name'] or cd['shortname']
+        return cd['manufacturer'] or cd['name']
 
     def filter(self, q):
         cd = self.cleaned_data
@@ -616,9 +615,6 @@ class StockTypeForm(forms.Form):
         if cd['name']:
             q = q.filter(StockType.name.ilike(
                 "%{}%".format(cd['name'])))
-        if cd['shortname']:
-            q = q.filter(StockType.shortname.ilike(
-                "%{}%".format(cd['shortname'])))
         return q
 
 @tillweb_view

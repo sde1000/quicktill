@@ -97,7 +97,7 @@ class ModelTest(unittest.TestCase):
         """Add a stocktype to the database to make other tests shorter."""
         pint = models.UnitType(id='pt', name='pint')
         beer = models.StockType(
-            manufacturer="A Brewery", name="A Beer", shortname="A Beer",
+            manufacturer="A Brewery", name="A Beer",
             abv=5, unit=pint, dept_id=1)
         self.s.add(beer)
         self.s.commit()

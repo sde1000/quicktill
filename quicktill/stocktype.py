@@ -42,17 +42,15 @@ class choose_stocktype(ui.dismisspopup):
         else:
             raise Exception("Bad mode")
         self.st = default.id if default else None
-        ui.dismisspopup.__init__(self, 15, 48, title=title,
+        ui.dismisspopup.__init__(self, 14, 48, title=title,
                                  colour=ui.colour_input)
         self.addstr(2, 2, blurb1)
         self.addstr(3, 2, blurb2)
         self.addstr(5, 2, "Manufacturer:")
         self.addstr(6, 2, "        Name:")
-        self.addstr(7, 2, "  Short name:")
-        self.addstr(8, 2, "  Department:")
-        self.addstr(8, 38, "ABV:")
-        self.addstr(9, 2, "        Unit:")
-        self.addstr(13, 2, "'Short Name' may be printed on receipts.")
+        self.addstr(7, 2, "  Department:")
+        self.addstr(7, 38, "ABV:")
+        self.addstr(8, 2, "        Unit:")
         self.manufield = ui.editfield(
             5, 16, 30,
             validate=self.autocomplete_manufacturer if mode == 1 else None,
@@ -60,23 +58,22 @@ class choose_stocktype(ui.dismisspopup):
         self.namefield = ui.editfield(
             6, 16, 30,
             validate=self.autocomplete_name if mode == 1 else None)
-        self.snamefield = ui.editfield(7, 16, 25)
         self.deptfield = ui.modellistfield(
-            8, 16, 20, Department,
+            7, 16, 20, Department,
             lambda q: q.order_by(Department.id),
             d=lambda x: x.description,
             readonly=(mode == 2))
-        self.abvfield = ui.editfield(8, 42, 4, validate=ui.validate_float)
+        self.abvfield = ui.editfield(7, 42, 4, validate=ui.validate_float)
         self.unitfield = ui.modellistfield(
-            9, 16, 30, UnitType,
+            8, 16, 30, UnitType,
             lambda q: q.order_by(UnitType.id),
             d=lambda x: x.name,
             readonly=(mode == 2))
-        self.confirmbutton = ui.buttonfield(11, 15, 20, prompt, keymap={
+        self.confirmbutton = ui.buttonfield(10, 15, 20, prompt, keymap={
             keyboard.K_CASH: (self.finish_select if mode == 1
                               else self.finish_update, None)})
         ui.map_fieldlist(
-            [self.manufield, self.namefield, self.snamefield, self.deptfield,
+            [self.manufield, self.namefield, self.deptfield,
              self.abvfield, self.unitfield, self.confirmbutton])
         if default:
             self.fill_fields(default)
@@ -89,7 +86,6 @@ class choose_stocktype(ui.dismisspopup):
         "Fill all fields from the specified stock type"
         self.manufield.set(st.manufacturer)
         self.namefield.set(st.name)
-        self.snamefield.set(st.shortname)
         self.deptfield.set(st.department)
         self.abvfield.set(st.abv)
         self.unitfield.set(st.unit)
@@ -99,8 +95,6 @@ class choose_stocktype(ui.dismisspopup):
         if not self.deptfield.read():
             return None
         if not self.unitfield.read():
-            return None
-        if len(self.snamefield.f) == 0:
             return None
         if len(self.manufield.f) == 0:
             return None
@@ -117,7 +111,6 @@ class choose_stocktype(ui.dismisspopup):
     def update_model(self, model):
         model.manufacturer = self.manufield.f.strip()
         model.name = self.namefield.f.strip()
-        model.shortname = self.snamefield.f.strip()
         model.abv = self.get_abv()
         model.department = self.deptfield.read()
         model.unit = self.unitfield.read()
@@ -170,16 +163,12 @@ class choose_stocktype(ui.dismisspopup):
             self.existing_stocktype_chosen(l[0].id)
             return
         if len(l) == 0:
-            proposed_short_name = "{} {}".format(
-                self.manufield.f.strip(), self.namefield.f.strip())
-            if len(proposed_short_name) <= 25:
-                self.snamefield.set(proposed_short_name)
-            self.snamefield.focus()
+            self.deptfield.focus()
             return
         f = ui.tableformatter(' l l l l l l ')
-        header = f("Manufacturer", "Name", "Short name", "ABV", "Unit",
+        header = f("Manufacturer", "Name", "ABV", "Unit",
                    "Department")
-        lines = [(f(st.manufacturer, st.name, st.shortname, st.abv,
+        lines = [(f(st.manufacturer, st.name, st.abv,
                     st.unit.name, st.department.description),
                   self.existing_stocktype_chosen, (st.id,)) for st in l]
 
@@ -210,7 +199,6 @@ class choose_stocktype(ui.dismisspopup):
         st = td.s.query(StockType).\
             filter_by(manufacturer=self.manufield.f).\
             filter_by(name=self.namefield.f).\
-            filter_by(shortname=self.snamefield.f).\
             filter_by(abv=self.get_abv()).\
             filter_by(unit=self.unitfield.read()).\
             filter_by(department=self.deptfield.read()).\

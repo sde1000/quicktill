@@ -5,7 +5,7 @@
 </thead>
 <tbody>
 {% for st,q in session.stock_sold %}
-<tr><td><a href="{{st.get_absolute_url}}">{{st.shortname}}</a></td>
+<tr><td><a href="{{st.get_absolute_url}}">{{st.format}}</a></td>
 <td>{{q}} {{st.unit.name}}s</td></tr>
 {% empty %}
 <tr><td>None</td></tr>

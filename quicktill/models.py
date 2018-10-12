@@ -1184,7 +1184,6 @@ class StockType(Base):
                      nullable=False)
     manufacturer = Column(String(30), nullable=False)
     name = Column(String(30), nullable=False)
-    shortname = Column(String(25), nullable=False)
     abv = Column(Numeric(3, 1))
     unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
                      nullable=False)
@@ -1229,9 +1228,8 @@ class StockType(Base):
             return [
                 '%s (%0.1f%% ABV)' % (self.fullname, self.abv),
                 self.fullname,
-                '%s (%0.1f%% ABV)' % (self.shortname, self.abv),
-                self.shortname,]
-        return [self.fullname, self.shortname]
+            ]
+        return [self.fullname]
 
     def format(self, maxw=None):
         """Format this stocktype with optional maximum width
