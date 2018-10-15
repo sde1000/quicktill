@@ -274,6 +274,83 @@ def resize(keyboard, maxwidth, maxheight):
             kb[loc] = contents
     return kb
 
+def keyboard(width, height, maxwidth=None, line_base=1, overrides={}):
+    """A keyboard suitable for use on-screen
+
+    Keyboard will be the specified width and height.  If maxwidth is
+    specified then line keys will be numbered such that width can be
+    increased later without disturbing existing keys.
+    """
+    kb = {}
+    if not maxwidth or maxwidth < width:
+        maxwidth = width
+
+    # First assign a linekey() to every key position, which we will
+    # override and/or delete later for special keys.
+    linenumber = iter(range(line_base, line_base + (maxwidth * height)))
+    for row in range(0, height):
+        for col in range(0, maxwidth):
+            n = next(linenumber)
+            if col < width:
+                kb[(row, col)] = Key(linekey(n))
+
+    # Common control keys
+    alice = Key(user.tokenkey('builtin:alice', "Alice"),
+                css_class="usertoken")
+    bob = Key(user.tokenkey('builtin:bob', "Bob"),
+              css_class="usertoken")
+    charlie = Key(user.tokenkey('builtin:charlie', "Charlie"),
+                  css_class="usertoken")
+    stockterminal = Key(K_STOCKTERMINAL, css_class="management")
+    managetill = Key(K_MANAGETILL, css_class="management")
+    managestock = Key(K_MANAGESTOCK, css_class="management")
+    usestock = Key(K_USESTOCK, css_class="management")
+    waste = Key(K_WASTE, css_class="management")
+    recalltrans = Key(K_RECALLTRANS, css_class="register")
+    recalltrans2 = Key(K_RECALLTRANS, height=2, css_class="register")
+    managetrans = Key(K_MANAGETRANS, css_class="register")
+    pricecheck = Key(K_PRICECHECK, css_class="register")
+    printkey = Key(K_PRINT, css_class="register")
+    cancel = Key(K_CANCEL, css_class="management")
+    apps = Key(K_APPS, css_class="management")
+    clear = Key(K_CLEAR, css_class="clear")
+    mark = Key(K_MARK, css_class="register")
+
+    # Now fill in control keys according to available height
+    if height == 8:
+        kb.update({
+            (0, 0): alice,         (0, 1): managetill,
+            (1, 0): bob,           (1, 1): managestock,
+            (2, 0): charlie,       (2, 1): usestock,
+            (3, 0): recalltrans2 , (3, 1): waste,
+                                   (4, 1): managetrans,
+            (5, 0): pricecheck,    (5, 1): printkey,
+            (6, 0): cancel,        (6, 1): apps,
+            (7, 0): clear,         (7, 1): stockterminal,
+        })
+    elif height == 7:
+        kb.update({
+            (0, 0): alice,         (0, 1): managetill,
+            (1, 0): managestock,   (1, 1): usestock,
+            (2, 0): recalltrans2,  (2, 1): waste,
+                                   (3, 1): managetrans,
+            (4, 0): pricecheck,    (4, 1): printkey,
+            (5, 0): cancel,        (5, 1): apps,
+            (6, 0): clear,         (6, 1): stockterminal,
+        })
+    elif height == 6:
+        kb.update({
+            (0, 0): managetill,    (0, 1): managestock,
+            (1, 0): waste        , (1, 1): usestock,
+            (2, 0): recalltrans2,  (2, 1): managetrans,
+                                   (3, 1): printkey,
+            (4, 0): cancel,        (4, 1): pricecheck,
+            (5, 0): clear,         (5, 1): stockterminal,
+            (0, width - 1): apps,
+        })
+    kb.update(overrides)
+    return kb
+
 def keyboard_rhpanel(cash_payment_method,
                      card_payment_method,
                      overrides={}):
@@ -290,7 +367,9 @@ def keyboard_rhpanel(cash_payment_method,
         (3, 0): Key(".", css_class="numeric"),
         (3, 1): Key("0", css_class="numeric"),
         (3, 2): Key("00", css_class="numeric"),
+        (4, 0): Key(K_QUANTITY, css_class="register"),
         (4, 1): Key(K_UP, css_class="cursor"),
+        (4, 2): Key(K_MARK, css_class="register"),
         (5, 0): Key(K_LEFT, css_class="cursor"),
         (5, 1): Key(K_DOWN, css_class="cursor"),
         (5, 2): Key(K_RIGHT, css_class="cursor"),
