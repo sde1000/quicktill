@@ -165,7 +165,7 @@ class choose_stocktype(ui.dismisspopup):
         if len(l) == 0:
             self.deptfield.focus()
             return
-        f = ui.tableformatter(' l l l l l l ')
+        f = ui.tableformatter(' l l l l l ')
         header = f("Manufacturer", "Name", "ABV", "Unit",
                    "Department")
         lines = [(f(st.manufacturer, st.name, st.abv,
