@@ -42,7 +42,7 @@ class choose_stocktype(ui.dismisspopup):
         else:
             raise Exception("Bad mode")
         self.st = default.id if default else None
-        ui.dismisspopup.__init__(self, 14, 48, title=title,
+        ui.dismisspopup.__init__(self, 13, 48, title=title,
                                  colour=ui.colour_input)
         self.addstr(2, 2, blurb1)
         self.addstr(3, 2, blurb2)
