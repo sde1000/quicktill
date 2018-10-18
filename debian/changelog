@@ -1,3 +1,49 @@
+quicktill (0.13.0) stable; urgency=low
+
+  * New release 0.13.0
+
+  * Reduce stock type selector window height by 1
+
+  * Fix popup menu for selecting stock type
+
+  * On-screen keyboard layouts for 8, 7 and 6 rows
+
+  * Remove shortname field from stock types
+
+  * Change RH panel split to 4/5 - 1/5
+
+  * Add an optional right-hand on-screen keyboard panel
+
+  * Enable custom CSS to be specified in config file
+
+  * Store line key CSS class in the database
+
+  * Make database engine available as td.engine
+
+  * Oops - fix gtk display with no on-screen keyboard
+
+  * Add facility to listen for postgres async notifications
+
+  * Colourful on-screen keyboard using CSS
+
+  * Bump package name to quicktill4, version to 0.13
+
+  * Allowe UserToken.user_id field to be nullable
+
+  * Add an 'autodetect' printer connection driver
+
+  * Add a driver for the Aures ODP 333 receipt printer
+
+  * Enforce uniqueness of supplier names
+
+  * Set Transline.text to nullable=False
+
+  * Add check constraint to ensure transline.amount is non-negative
+
+  * Set up example users in emfcamp 2018 dataset
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 18 Oct 2018 20:37:55 +0100
+
 quicktill (0.12.30) stable; urgency=low
 
   * New release 0.12.30
