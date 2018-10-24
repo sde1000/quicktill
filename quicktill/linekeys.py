@@ -1,7 +1,7 @@
 from . import keyboard, ui, td, user
 from .models import KeyCap, KeyboardBinding, StockLine, PriceLookup
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, update
 
 import logging
 log = logging.getLogger(__name__)
@@ -195,6 +195,77 @@ def _finish_changebinding(binding,func,mod):
     td.s.add(binding)
     binding.modifier=mod
     func()
+
+class move_keys(ui.dismisspopup):
+    def __init__(self):
+        super().__init__(10, 60, title="Move keys", colour=ui.colour_input)
+        self.win.set_cursor(False)
+        y = 2
+        y += self.win.wrapstr(
+            2, 2, 56,
+            "Keys are moved by swapping one key with another.  "
+            "Press one key followed by another and they will be "
+            "swapped.  Press Clear when you are finished.")
+        y += 1
+        self.label = ui.label(y, 2, 56)
+        self.reset()
+
+    def reset(self):
+        self.key = None
+        self.label.set("Push the first key now.")
+
+    def linekey(self, k):
+        if self.key:
+            self.swap(k)
+        else:
+            self.key = k
+            self.label.set("Push the key to swap with {}".format(
+                k.keycap))
+
+    def swap(self, k):
+        ui.toast("{} swapped with {}".format(
+            str(self.key) or "(unlabeled)", str(k) or "(unlabeled)"))
+        # The keycode is (part of) the primary key and the key is not
+        # set as deferrable, so we have to swap using an intermediate
+        # value.  This occurs within a transaction so will never be
+        # visible to other database clients.
+        td.s.execute(
+            update(KeyboardBinding)\
+            .where(KeyboardBinding.keycode == self.key.name)\
+            .values(keycode="swapping"))
+        td.s.execute(
+            update(KeyboardBinding)\
+            .where(KeyboardBinding.keycode == k.name)\
+            .values(keycode=self.key.name))
+        td.s.execute(
+            update(KeyboardBinding)\
+            .where(KeyboardBinding.keycode == "swapping")\
+            .values(keycode=k.name))
+        td.s.execute(
+            update(KeyCap)\
+            .where(KeyCap.keycode == self.key.name)\
+            .values(keycode="swapping"))
+        td.s.execute(
+            update(KeyCap)\
+            .where(KeyCap.keycode == k.name)\
+            .values(keycode=self.key.name))
+        td.s.execute(
+            update(KeyCap)\
+            .where(KeyCap.keycode == "swapping")\
+            .values(keycode=k.name))
+        # Ensure that BOTH keycaps have been notified, even if there's no
+        # database keycap record for one or the other of them
+        td.s.execute("notify keycaps, '{}'".format(self.key.name))
+        td.s.execute("notify keycaps, '{}'".format(k.name))
+        self.reset()
+
+    def keypress(self, k):
+        if hasattr(k, "line"):
+            self.linekey(k)
+        elif k == keyboard.K_CLEAR and self.key:
+            self.reset()
+        else:
+            super().keypress(k)
 
 def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
              allow_mods=False, add_query_options=None):
