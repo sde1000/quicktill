@@ -32,6 +32,7 @@ from . import pdrivers
 from . import cmdline
 from . import kbdrivers
 from . import keyboard
+from .listen import listener
 from .version import version
 from .models import Session, Business, zero
 import subprocess
@@ -187,6 +188,11 @@ class runtill(cmdline.command):
                     ui.handle_keyboard_input(i)
 
     @staticmethod
+    def update_notified(payload):
+        log.info("Update notification received via database; exiting")
+        tillconfig.mainloop.shutdown(tillconfig.idle_exit_code)
+
+    @staticmethod
     def run(args):
         log.info("Starting version %s", version)
         if tillconfig.keyboard and tillconfig.keyboard_driver \
@@ -217,6 +223,9 @@ class runtill(cmdline.command):
         tillconfig.minimum_run_time = args.minimum_run_time
         tillconfig.minimum_lock_screen_time = args.minimum_lock_screen_time
         tillconfig.start_time = time.time()
+        if args.exit_when_idle is not None:
+            # We should also exit if the "update" notification is sent
+            listener.listen_for("update", runtill.update_notified)
 
         dbg_kbd = None
         try:
