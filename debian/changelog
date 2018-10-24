@@ -1,3 +1,35 @@
+quicktill (0.13.1) stable; urgency=low
+
+  * New release 0.13.1
+
+  * More general glob for package uploads
+
+  * Add a --geometry command line argument to set initial window size
+
+  * "Move keys" function
+
+  * Keys with no keycap now default to being unlabelled
+
+  * Add keyboard to description of Manage Till option 4
+
+  * Show useful information on stock terminal for display/continuous stocklines
+
+  * Allow department to be changed while editing stock type
+
+  * Set register auto-lock timeout through localutils
+
+  * Exit with "idle" exit code on update notification
+
+  * Add option to allow card payment references to be blank
+
+  * Fit stockline dialog to screen height
+
+  * Make groups visible again in the user permission editor
+
+  * Add missing files back into the Debian package
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 24 Oct 2018 21:02:52 +0100
+
 quicktill (0.13.0) stable; urgency=low
 
   * New release 0.13.0
