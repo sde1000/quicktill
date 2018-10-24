@@ -32,25 +32,23 @@ class choose_stocktype(ui.dismisspopup):
         if mode == 1:
             prompt = "Select"
             title = "Select Stock Type"
-            blurb1 = "Enter stock details and then press"
-            blurb2 = "Cash/Enter on the [Select] button."
+            blurb = "Enter stock details and then press " \
+                    "Cash/Enter on the [Select] button."
         elif mode == 2:
             prompt = "Save Changes"
             title = "Edit Stock Type"
-            blurb1 = "NOTE: make minor corrections only; changes"
-            blurb2 = "affect all stock items of this type!"
+            blurb = "NOTE: make corrections only; changes " \
+                    "affect all stock items of this type!"
         else:
             raise Exception("Bad mode")
         self.st = default.id if default else None
-        ui.dismisspopup.__init__(self, 13, 48, title=title,
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, blurb1)
-        self.addstr(3, 2, blurb2)
-        self.addstr(5, 2, "Manufacturer:")
-        self.addstr(6, 2, "        Name:")
-        self.addstr(7, 2, "  Department:")
-        self.addstr(7, 38, "ABV:")
-        self.addstr(8, 2, "        Unit:")
+        super().__init__(13, 48, title=title, colour=ui.colour_input)
+        self.win.wrapstr(2, 2, 44, blurb)
+        self.win.addstr(5, 2, "Manufacturer:")
+        self.win.addstr(6, 2, "        Name:")
+        self.win.addstr(7, 2, "  Department:")
+        self.win.addstr(7, 38, "ABV:")
+        self.win.addstr(8, 2, "        Unit:")
         self.manufield = ui.editfield(
             5, 16, 30,
             validate=self.autocomplete_manufacturer if mode == 1 else None,
@@ -61,8 +59,7 @@ class choose_stocktype(ui.dismisspopup):
         self.deptfield = ui.modellistfield(
             7, 16, 20, Department,
             lambda q: q.order_by(Department.id),
-            d=lambda x: x.description,
-            readonly=(mode == 2))
+            d=lambda x: x.description)
         self.abvfield = ui.editfield(7, 42, 4, validate=ui.validate_float)
         self.unitfield = ui.modellistfield(
             8, 16, 30, UnitType,
