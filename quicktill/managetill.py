@@ -167,7 +167,7 @@ def popup():
     menu=[
         ("1", "Sessions", session.menu, None),
         ("2", "Current session summary", session.currentsummary, None),
-        ("4", "Stock lines, PLUs and modifiers", slmenu, None),
+        ("4", "Stock lines, PLUs, modifiers and keyboard", slmenu, None),
         ("6", "Print a receipt", receiptprint, None),
         ("7", "Users", user.usersmenu, None),
         exit,
