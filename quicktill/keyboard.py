@@ -65,7 +65,7 @@ class linekey(keycode):
         cap = td.s.query(models.KeyCap).get(self.name)
         if cap:
             return cap.keycap
-        return "Line %d" % self._line
+        return ""
 
     @property
     def css_class(self):
