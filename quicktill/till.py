@@ -95,6 +95,19 @@ class ValidateExitOption(argparse.Action):
         current.append((code, text))
         setattr(args, self.dest, current)
 
+def window_geometry(value):
+    parts = value.split('x')
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            "'{}' is not a valid window geometry".format(value))
+    try:
+        width = int(parts[0])
+        height = int(parts[1])
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(
+            str(e))
+    return width, height
+
 class runtill(cmdline.command):
     """
     Run the till interactively.
@@ -163,6 +176,10 @@ class runtill(cmdline.command):
             action="store", type=str, metavar="FONT_DESCRIPTION",
             help="Set the font to be used for monospace text")
         parser.set_defaults(command=runtill, nolisten=False)
+        gtkp.add_argument(
+            "--geometry", dest="geometry", default=None,
+            action="store", type=window_geometry, metavar="WIDTHxHEIGHT",
+            help="Set the initial window size")
 
     class _dbg_kbd_input:
         """Process input from debug keyboard
@@ -247,7 +264,8 @@ class runtill(cmdline.command):
                     fullscreen=args.fullscreen,
                     font=args.font,
                     monospace_font=args.monospace,
-                    keyboard=args.keyboard)
+                    keyboard=args.keyboard,
+                    geometry=args.geometry)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()

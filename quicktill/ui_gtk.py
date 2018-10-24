@@ -514,7 +514,7 @@ def _onscreen_keyboard_input(keycode):
         tillconfig.mainloop._exc_info = sys.exc_info()
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard=False):
+        keyboard=False, geometry=None):
     """Start running with the GTK display system
     """
     monospace_font = Pango.FontDescription(monospace_font)
@@ -545,6 +545,8 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
     else:
         wincontents = ui.rootwin
     window = GtkWindow(wincontents)
+    if geometry:
+        window.resize(*geometry)
     if fullscreen:
         window.fullscreen()
     ui.toaster.notify_display_initialised()
