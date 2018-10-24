@@ -30,7 +30,6 @@ class page(ui.basicpage):
     def drawlines(self, h):
         sl = td.s.query(StockLine).\
              filter(StockLine.location.in_(self.locations)).\
-             filter(StockLine.capacity==None).\
              order_by(StockLine.name).\
              options(joinedload('stockonsale')).\
              options(joinedload('stockonsale.stocktype')).\
@@ -39,10 +38,19 @@ class page(ui.basicpage):
         f = ui.tableformatter("pl l L r rp")
         header = f("Line", "StockID", "Stock", "Used", "Remaining")
         def fl(line):
-            if line.stockonsale:
+            if line.linetype == "regular" and line.stockonsale:
                 sos = line.stockonsale[0]
                 return (line.name, sos.id, sos.stocktype.format(),
-                        sos.used, sos.remaining)
+                        "{} {}".format(sos.used, sos.stocktype.unit_id),
+                        "{} {}".format(sos.remaining, sos.stocktype.unit_id))
+            elif line.linetype == "continuous":
+                return (line.name, "", line.stocktype.format(), "",
+                        "{} {}".format(line.stocktype.remaining,
+                                       line.stocktype.unit_id))
+            elif line.linetype == "display":
+                return (line.name, "", line.stocktype.format(), "",
+                        "{}+{} {}".format(line.ondisplay, line.instock,
+                                          line.stocktype.unit_id))
             return (line.name, "", "", "", "")
         ml = [header] + [f(*fl(line)) for line in sl]
         y = 0
