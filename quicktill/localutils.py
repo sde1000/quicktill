@@ -427,11 +427,11 @@ def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
     }
 
 # Dictionary to include in config to enable usertokens to activate the register
-def activate_register_with_usertoken(register_hotkeys):
+def activate_register_with_usertoken(register_hotkeys, timeout=300):
     return {
         'firstpage': lockscreen.lockpage,
         'usertoken_handler': lambda t: register.handle_usertoken(
-            t, register_hotkeys, autolock=K_LOCK),
+            t, register_hotkeys, autolock=K_LOCK, timeout=timeout),
         'usertoken_listen': ('127.0.0.1', 8455),
         'usertoken_listen_v6': ('::1', 8455),
     }
