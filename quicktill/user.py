@@ -522,6 +522,15 @@ def addpermission(userid):
         pl = list(action_descriptions.keys())
     else:
         pl = cu.all_permissions
+        # Add in groups if the list of permissions includes everything
+        # in that group
+        for g in group.all_groups:
+            for m in group.all_groups[g].members:
+                if m not in pl:
+                    break
+            else: # else on a for loop is skipped if the loop was
+                  # exited with break
+                pl.append(g)
     # Remove permissions the user already has
     u = td.s.query(User).get(userid)
     existing = [p.id for p in u.permissions]
