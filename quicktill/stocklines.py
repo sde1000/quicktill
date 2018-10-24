@@ -266,7 +266,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             from . import usestock
             usestock.add_display_line_stock(sl)
 
-class modify(user.permission_checked,ui.dismisspopup):
+class modify(user.permission_checked, ui.dismisspopup):
     """Modify a stockline.
 
     Shows the name, location and other fields relevant to the type of
@@ -276,7 +276,20 @@ class modify(user.permission_checked,ui.dismisspopup):
         'alter-stockline', 'Modify or delete an existing stock line')
 
     def __init__(self, stockline):
-        h = 24
+        mh, mw = ui.rootwin.size()
+        if mw < 77:
+            ui.infopopup(["Error: the register area of the display is too "
+                          "narrow to display this dialog.  It must be at least "
+                          "77 characters across."],
+                         title="Screen width problem")
+            return
+        if mh < 21:
+            ui.infopopup(["Error: the register area of the display is not "
+                          "tall enough to display this dialog.  It must be "
+                          "at least 21 characters tall."],
+                         title="Screen height problem")
+            return
+        h = mh
         td.s.add(stockline)
         sanity_check_stock_on_sale(stockline)
         self.stockline = stockline
