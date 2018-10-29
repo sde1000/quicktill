@@ -1,3 +1,11 @@
+quicktill (0.13.2) stable; urgency=low
+
+  * New release 0.13.2
+
+  * Allow multiple kitchen printers
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 29 Oct 2018 14:09:45 +0000
+
 quicktill (0.13.1) stable; urgency=low
 
   * New release 0.13.1
