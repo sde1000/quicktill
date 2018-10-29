@@ -499,7 +499,9 @@ def main():
     if args.database is not None:
         tillconfig.database = args.database
     if 'kitchenprinter' in config:
-        foodorder.kitchenprinter = config['kitchenprinter']
+        foodorder.kitchenprinters = [config['kitchenprinter']]
+    if 'kitchenprinters' in config:
+        foodorder.kitchenprinters = config['kitchenprinters']
     foodorder.menuurl = config.get('menuurl')
     tillconfig.pubname = config['pubname']
     tillconfig.pubnumber = config['pubnumber']

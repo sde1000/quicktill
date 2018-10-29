@@ -10,10 +10,17 @@ import logging
 from . import ui, keyboard, td, printer, tillconfig, pdrivers, user
 from .models import zero, penny
 from decimal import Decimal
-log=logging.getLogger(__name__)
 
-kitchenprinter=pdrivers.nullprinter(name="default_kitchenprinter")
-menuurl=None
+log = logging.getLogger(__name__)
+
+kitchenprinters = [pdrivers.nullprinter(name="default_kitchenprinter")]
+menuurl = None
+
+def _kitchenprinter_problem():
+    for kp in kitchenprinters:
+        x = kp.offline()
+        if x:
+            return x
 
 class fooditem(ui.lrline):
     def __init__(self,name,price,dept=None):
@@ -315,8 +322,8 @@ class popup(user.permission_checked,ui.basicpopup):
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
-        kpprob=kitchenprinter.offline()
-        rpprob=printer.driver.offline()
+        kpprob = _kitchenprinter_problem()
+        rpprob = printer.driver.offline()
         if kpprob and rpprob:
             ui.infopopup(
                 ["Both the kitchen printer and receipt printer report "
@@ -452,19 +459,20 @@ class popup(user.permission_checked,ui.basicpopup):
                                  footer=self.footer,transid=self.transid,
                                  print_total=self.print_total)
             try:
-                print_food_order(
-                    kitchenprinter,number,self.ml,
-                    verbose=False,tablenumber=tablenumber,
-                    footer=self.footer,transid=self.transid,
-                    user=user.shortname if user else None)
+                for kp in kitchenprinters:
+                    print_food_order(
+                        kp, number, self.ml,
+                        verbose=False, tablenumber=tablenumber,
+                        footer=self.footer, transid=self.transid,
+                        user=user.shortname if user else None)
             except:
-                e=traceback.format_exception_only(
+                e = traceback.format_exception_only(
                     sys.exc_info()[0],sys.exc_info()[1])
                 try:
                     print_food_order(
-                        printer.driver,number,self.ml,
-                        verbose=False,tablenumber=tablenumber,
-                        footer=self.footer,transid=self.transid,
+                        printer.driver, number, self.ml,
+                        verbose=False, tablenumber=tablenumber,
+                        footer=self.footer, transid=self.transid,
                         user=user.shortname if user else None)
                 except:
                     pass
@@ -479,7 +487,8 @@ class popup(user.permission_checked,ui.basicpopup):
                 return
         else:
             if r:
-                ui.infopopup([r],title="Error")
+                ui.infopopup([r], title="Error")
+
     def keypress(self,k):
         if k==keyboard.K_CLEAR:
             # Maybe ask for confirmation?
@@ -502,7 +511,7 @@ class message(user.permission_checked, ui.dismisspopup):
     permission_required = ('kitchen-message','Send a message to the kitchen')
 
     def __init__(self):
-        problem = kitchenprinter.offline()
+        problem = _kitchenprinter_problem()
         if problem:
             ui.infopopup(["There is a problem with the kitchen printer:", "",
                           problem], title="Kitchen printer problem")
@@ -524,31 +533,32 @@ class message(user.permission_checked, ui.dismisspopup):
     def finish(self):
         if not self.onfield.f and not self.messagefield.f:
             return
-        problem = kitchenprinter.offline()
+        problem = _kitchenprinter_problem()
         if problem:
             ui.infopopup(["There is a problem with the kitchen printer:", "",
                           problem], title="Kitchen printer problem")
             return
         self.dismiss()
         with ui.exception_guard("printing the message in the kitchen"):
-            with kitchenprinter as d:
-                if self.onfield.f:
-                    d.printline(
-                        "\tMessage about order {}".format(self.onfield.f),
-                        colour=1, emph=1)
-                else:
-                    d.printline("\tMessage", colour=1, emph=1)
-                d.printline()
-                d.printline("\t%s" % ui.formattime(datetime.datetime.now()))
-                d.printline()
-                user = ui.current_user()
-                if user:
-                    d.printline("\t{}".format(user.shortname))
+            for kp in kitchenprinters:
+                with kp as d:
+                    if self.onfield.f:
+                        d.printline(
+                            "\tMessage about order {}".format(self.onfield.f),
+                            colour=1, emph=1)
+                    else:
+                        d.printline("\tMessage", colour=1, emph=1)
                     d.printline()
-                if self.messagefield.f:
-                    d.printline("\t{}".format(self.messagefield.f))
+                    d.printline("\t%s" % ui.formattime(datetime.datetime.now()))
                     d.printline()
-                d.printline()
+                    user = ui.current_user()
+                    if user:
+                        d.printline("\t{}".format(user.shortname))
+                        d.printline()
+                    if self.messagefield.f:
+                        d.printline("\t{}".format(self.messagefield.f))
+                        d.printline()
+                    d.printline()
             ui.infopopup(["The message has been printed in the kitchen."],
                          title="Message sent",
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
