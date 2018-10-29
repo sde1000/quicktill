@@ -34,7 +34,7 @@ class lockpage(ui.basicpage):
         if rpproblem:
             self.line("Receipt printer problem: {}".format(rpproblem))
             log.info("Receipt printer problem: %s",rpproblem)
-        kpproblem = foodorder.kitchenprinter.offline()
+        kpproblem = foodorder._kitchenprinter_problem()
         if kpproblem:
             self.line("Kitchen printer problem: {}".format(kpproblem))
             log.info("Kitchen printer problem: %s",kpproblem)
