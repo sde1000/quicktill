@@ -35,6 +35,7 @@ from . import linekeys
 from . import modifiers
 from . import payment
 from . import user
+from . import plugins
 import logging
 import datetime
 log = logging.getLogger(__name__)
@@ -70,6 +71,23 @@ user.action_descriptions['sell-dept'] = (
 # running at the same time, so they can coordinate moving transactions
 # and users between registers.
 register_instance = str(uuid.uuid4())
+
+class RegisterPlugin(metaclass=plugins.InstancePluginMount):
+    """A plugin to add functionality to the register
+
+    Create instances of subclasses of this class to add functions to
+    the register.
+    """
+    def keypress(self, register, keypress):
+        """Handle an unknown keypress on the register
+
+        Called when the register does not recognise a keypress.
+        Return True to indicate that the keypress has been handled.
+
+        The register's current transaction, if any, will be valid and
+        up to date.
+        """
+        return False
 
 class bufferline(ui.lrline):
     """The last line on the register display
@@ -488,6 +506,13 @@ class page(ui.basicpage):
         if self.transid:
             return td.s.query(Transaction).get(self.transid)
 
+    def gettrans(self):
+        """Obtain the Transaction object for the current transaction
+
+        Used by plugins.
+        """
+        return self._gettrans()
+
     def _update_timeout(self):
         if self._timeout_handle:
             self._timeout_handle.cancel()
@@ -570,6 +595,14 @@ class page(ui.basicpage):
         self.cursor_off()
         td.s.flush()
         self._redraw()
+
+    def reload_trans(self):
+        """Reload the current transaction
+
+        Used by plugins when they have modified the transaction.
+        """
+        if self.transid:
+            self._loadtrans(self.transid)
 
     def pagename(self):
         trans = self._gettrans()
@@ -2230,6 +2263,9 @@ class page(ui.basicpage):
             return
         if not self.entry():
             return
+        for i in RegisterPlugin.instances:
+            if i.keypress(self, k):
+                return
         if hasattr(k, 'line'):
             def add_query_options(q):
                 return q.options(joinedload('stockline'))\
