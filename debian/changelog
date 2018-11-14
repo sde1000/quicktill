@@ -1,3 +1,13 @@
+quicktill (0.13.4) stable; urgency=low
+
+  * New release 0.13.4
+
+  * Add a simple "Service Charge" plugin
+
+  * Add support for plugins to the register
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 14 Nov 2018 19:44:49 +0000
+
 quicktill (0.13.3) stable; urgency=low
 
   * New release 0.13.3
