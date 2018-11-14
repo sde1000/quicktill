@@ -11,11 +11,17 @@ from . import usestock
 from . import recordwaste
 from . import stock
 from . import register
+from . import ui
+from . import td
+from .models import Transline, zero
 from .keyboard import *
 import datetime
 from decimal import Decimal
 from dateutil.easter import easter, EASTER_WESTERN
 from dateutil.relativedelta import relativedelta, MO, FR
+
+import logging
+log = logging.getLogger(__name__)
 
 def is_england_banking_day(d):
     """Is a day a likely England banking day?
@@ -448,3 +454,52 @@ def activate_stockterminal_with_usertoken(
         'usertoken_listen': ('127.0.0.1', 8455),
         'usertoken_listen_v6': ('::1', 8455),
     }
+
+class ServiceCharge(register.RegisterPlugin):
+    """Apply a service charge to the current transaction
+
+    When the key is pressed, remove any existing service charge and
+    add the new service charge based on the current transaction total.
+    """
+    def __init__(self, key, percentage, dept, description="Service Charge"):
+        self._key = key
+        self._percentage = Decimal(percentage)
+        self._dept = dept
+        self._description = description
+
+    def _update_charge(self, reg):
+        log.debug("service charge")
+        trans = reg.gettrans()
+        if not trans:
+            ui.infopopup(["You can't apply a service charge with no "
+                          "current transaction."], title="Error")
+            return
+        if trans.closed:
+            ui.infopopup(["You can't apply a service charge to a transaction "
+                          "that is already closed."], title="Error")
+            return
+        # Delete all the transaction lines that are in the service charge
+        # department
+        td.s.query(Transline).filter(
+            Transline.transaction == trans,
+            Transline.dept_id == self._dept)\
+                             .delete()
+        td.s.flush()
+        balance = trans.balance
+        if balance > zero:
+            td.s.add(
+                Transline(
+                    items=1, dept_id = self._dept,
+                    amount=balance * self._percentage / 100,
+                    user=ui.current_user().dbuser,
+                    transcode='S',
+                    text=self._description,
+                    transaction=trans))
+            td.s.flush()
+        reg.reload_trans()
+
+    def keypress(self, reg, key):
+        if key == self._key:
+            self._update_charge(reg)
+            return True
+        return False
