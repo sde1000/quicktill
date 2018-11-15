@@ -1,5 +1,4 @@
 from . import ui
-from . import foodorder
 from . import keyboard
 from . import tillconfig
 from . import cmdline
@@ -11,10 +10,11 @@ import logging
 log = logging.getLogger(__name__)
 
 class page(ui.basicpage):
-    def __init__(self, *args, commitcode=0, quitcode=1, **kwargs):
+    def __init__(self, *args, commitcode=0, quitcode=1, menuurl=None, **kwargs):
         super().__init__()
         self._commitcode = commitcode
         self._quitcode = quitcode
+        self._menuurl = menuurl
         self.user = user.built_in_user(
             "Test Menu File",
             "Test",
@@ -48,7 +48,10 @@ class page(ui.basicpage):
         elif k == 'q' or k == 'Q':
             tillconfig.mainloop.shutdown(self._quitcode)
         elif k == 'o' or k == 'O' or k == keyboard.K_CASH:
-            foodorder.popup(self.receive_order, self.ordernumber)
+            from . import foodorder
+            foodorder.kitchenprinters = []
+            foodorder.popup(self.receive_order, None, self._menuurl,
+                            ordernumberfunc=self.ordernumber)
         else:
             ui.beep()
 
@@ -70,8 +73,8 @@ class testmenu(cmdline.command):
     def run(args):
         tillconfig.mainloop = event.SelectorsMainLoop()
         tillconfig.firstpage = lambda: page(commitcode=args.commitcode,
-                                            quitcode=args.quitcode)
-        foodorder.menuurl = args.url
+                                            quitcode=args.quitcode,
+                                            menuurl=args.url)
         try:
             ui_ncurses.run()
         except:

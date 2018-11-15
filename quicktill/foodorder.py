@@ -1,4 +1,3 @@
-import urllib.request, urllib.parse, urllib.error
 import urllib
 from types import ModuleType
 import textwrap
@@ -8,13 +7,13 @@ import datetime
 import hashlib
 import logging
 from . import ui, keyboard, td, printer, tillconfig, pdrivers, user
+from . import register
 from .models import zero, penny
 from decimal import Decimal
 
 log = logging.getLogger(__name__)
 
-kitchenprinters = [pdrivers.nullprinter(name="default_kitchenprinter")]
-menuurl = None
+kitchenprinters = []
 
 def _kitchenprinter_problem():
     for kp in kitchenprinters:
@@ -264,20 +263,21 @@ class edititem(ui.dismisspopup):
         self.dismiss()
         self.func()
 
-class popup(user.permission_checked,ui.basicpopup):
-    permission_required=('kitchen-order','Send an order to the kitchen')
-    menu_hash=None
-    menu_module=None
-    def __init__(self,func,ordernumberfunc=td.foodorder_ticket,transid=None):
-        if menuurl is None:
-            ui.infopopup(["No menu has been set!"],title="Error")
-            return
-        try:
-            f=urllib.request.urlopen(menuurl)
-            g=f.read()
+class popup(user.permission_checked, ui.basicpopup):
+    """Ask the user for a food order
+    """
+    permission_required = ('kitchen-order', 'Send an order to the kitchen')
+    menu_hash = None
+    menu_module = None
+
+    def __init__(self, func, transid, menuurl,
+                 ordernumberfunc=td.foodorder_ticket):
+        g = None
+        with ui.exception_guard("reading the menu"):
+            f = urllib.request.urlopen(menuurl)
+            g = f.read()
             f.close()
-        except:
-            ui.infopopup(["Unable to read the menu!"],title="Error")
+        if not g:
             return
         hash=hashlib.sha1(g).hexdigest()
         if hash!=self.menu_hash:
@@ -562,3 +562,21 @@ class message(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["The message has been printed in the kitchen."],
                          title="Message sent",
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
+
+class FoodOrderPlugin(register.RegisterPlugin):
+    """Create an instance of this plugin to enable food ordering
+    """
+    def __init__(self, menuurl, order_key, message_key):
+        self._menuurl = menuurl
+        self._order_key = order_key
+        self._message_key = message_key
+
+    def keypress(self, reg, k):
+        if k == self._order_key:
+            trans = reg.get_open_trans()
+            if trans:
+                popup(reg.deptlines, trans.id, self._menuurl)
+            return True
+        elif k == self._message_key:
+            message()
+            return True

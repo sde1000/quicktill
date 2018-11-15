@@ -39,7 +39,6 @@ from . import plugins
 import logging
 import datetime
 log = logging.getLogger(__name__)
-from . import foodorder
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
 from .models import Payment, zero, User, Department, desc, RemoveCode
 from .models import StockType
@@ -1087,7 +1086,7 @@ class page(ui.basicpage):
         self._redraw()
 
     def deptlines(self, lines):
-        """Accept multiple transaction lines from an external source.
+        """Accept multiple transaction lines from a plugin.
 
         lines is a list of (dept, text, items, amount) tuples.
 
@@ -2301,13 +2300,6 @@ class page(ui.basicpage):
             return keys[k]()
         if k in self.hotkeys:
             return self.hotkeys[k]()
-        if k == keyboard.K_FOODORDER:
-            trans = self.get_open_trans()
-            if not trans:
-                return
-            return foodorder.popup(self.deptlines, transid=trans.id)
-        if k == keyboard.K_FOODMESSAGE:
-            return foodorder.message()
         ui.beep()
 
     def hotkeypress(self, k):

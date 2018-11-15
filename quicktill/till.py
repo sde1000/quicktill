@@ -26,7 +26,6 @@ from . import ui
 from . import td
 from . import printer
 from . import tillconfig
-from . import foodorder
 from . import user
 from . import pdrivers
 from . import cmdline
@@ -498,11 +497,14 @@ def main():
     tillconfig.database = config.get('database')
     if args.database is not None:
         tillconfig.database = args.database
-    if 'kitchenprinter' in config:
-        foodorder.kitchenprinters = [config['kitchenprinter']]
-    if 'kitchenprinters' in config:
-        foodorder.kitchenprinters = config['kitchenprinters']
-    foodorder.menuurl = config.get('menuurl')
+    if 'menuurl' in config:
+        from . import foodorder
+        foodorder.FoodOrderPlugin(
+            config['menuurl'], keyboard.K_FOODORDER, keyboard.K_FOODMESSAGE)
+        if 'kitchenprinter' in config:
+            foodorder.kitchenprinters = [config['kitchenprinter']]
+        if 'kitchenprinters' in config:
+            foodorder.kitchenprinters = config['kitchenprinters']
     tillconfig.pubname = config['pubname']
     tillconfig.pubnumber = config['pubnumber']
     tillconfig.pubaddr = config['pubaddr']
