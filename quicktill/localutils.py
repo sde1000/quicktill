@@ -479,9 +479,11 @@ class ServiceCharge(register.RegisterPlugin):
                           "that is already closed."], title="Error")
             return
         # Delete all the transaction lines that are in the service charge
-        # department
+        # department, as long as they are not voided or voids
         td.s.query(Transline).filter(
             Transline.transaction == trans,
+            Transline.transcode == 'S',
+            Transline.voided_by_id == None,
             Transline.dept_id == self._dept)\
                              .delete()
         td.s.flush()
