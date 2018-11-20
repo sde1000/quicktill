@@ -25,6 +25,7 @@ from types import ModuleType
 from . import ui
 from . import td
 from . import printer
+from . import lockscreen
 from . import tillconfig
 from . import user
 from . import pdrivers
@@ -492,19 +493,21 @@ def main():
         printer.driver = pdrivers.nullprinter()
     if args.disable_printer:
         printer.driver = pdrivers.nullprinter(name="disabled-printer")
+    lockscreen.CheckPrinter("Receipt printer", printer.driver)
     if 'labelprinters' in config:
         printer.labelprinters = config['labelprinters']
     tillconfig.database = config.get('database')
     if args.database is not None:
         tillconfig.database = args.database
     if 'menuurl' in config:
+        if 'kitchenprinter' in config:
+            kitchenprinters = [config['kitchenprinter']]
+        if 'kitchenprinters' in config:
+            kitchenprinters = config['kitchenprinters']
         from . import foodorder
         foodorder.FoodOrderPlugin(
-            config['menuurl'], keyboard.K_FOODORDER, keyboard.K_FOODMESSAGE)
-        if 'kitchenprinter' in config:
-            foodorder.kitchenprinters = [config['kitchenprinter']]
-        if 'kitchenprinters' in config:
-            foodorder.kitchenprinters = config['kitchenprinters']
+            config['menuurl'], kitchenprinters,
+            keyboard.K_FOODORDER, keyboard.K_FOODMESSAGE)
     tillconfig.pubname = config['pubname']
     tillconfig.pubnumber = config['pubnumber']
     tillconfig.pubaddr = config['pubaddr']

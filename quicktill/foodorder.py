@@ -6,20 +6,13 @@ import traceback
 import datetime
 import hashlib
 import logging
-from . import ui, keyboard, td, printer, tillconfig, pdrivers, user
+from . import ui, keyboard, td, printer, tillconfig, user
+from . import lockscreen
 from . import register
 from .models import zero, penny
 from decimal import Decimal
 
 log = logging.getLogger(__name__)
-
-kitchenprinters = []
-
-def _kitchenprinter_problem():
-    for kp in kitchenprinters:
-        x = kp.offline()
-        if x:
-            return x
 
 class fooditem(ui.lrline):
     def __init__(self,name,price,dept=None):
@@ -270,8 +263,9 @@ class popup(user.permission_checked, ui.basicpopup):
     menu_hash = None
     menu_module = None
 
-    def __init__(self, func, transid, menuurl,
+    def __init__(self, func, transid, menuurl, kitchenprinters,
                  ordernumberfunc=td.foodorder_ticket):
+        self.kitchenprinters = kitchenprinters
         g = None
         with ui.exception_guard("reading the menu"):
             f = urllib.request.urlopen(menuurl)
@@ -322,7 +316,7 @@ class popup(user.permission_checked, ui.basicpopup):
         self.ordernumberfunc=ordernumberfunc
         self.h=20
         self.w=64
-        kpprob = _kitchenprinter_problem()
+        kpprob = self._kitchenprinter_problem()
         rpprob = printer.driver.offline()
         if kpprob and rpprob:
             ui.infopopup(
@@ -459,7 +453,7 @@ class popup(user.permission_checked, ui.basicpopup):
                                  footer=self.footer,transid=self.transid,
                                  print_total=self.print_total)
             try:
-                for kp in kitchenprinters:
+                for kp in self.kitchenprinters:
                     print_food_order(
                         kp, number, self.ml,
                         verbose=False, tablenumber=tablenumber,
@@ -489,6 +483,12 @@ class popup(user.permission_checked, ui.basicpopup):
             if r:
                 ui.infopopup([r], title="Error")
 
+    def _kitchenprinter_problem(self):
+        for kp in self.kitchenprinters:
+            x = kp.offline()
+            if x:
+                return x
+
     def keypress(self,k):
         if k==keyboard.K_CLEAR:
             # Maybe ask for confirmation?
@@ -510,8 +510,9 @@ class message(user.permission_checked, ui.dismisspopup):
     """
     permission_required = ('kitchen-message','Send a message to the kitchen')
 
-    def __init__(self):
-        problem = _kitchenprinter_problem()
+    def __init__(self, kitchenprinters):
+        self.kitchenprinters = kitchenprinters
+        problem = self._kitchenprinter_problem()
         if problem:
             ui.infopopup(["There is a problem with the kitchen printer:", "",
                           problem], title="Kitchen printer problem")
@@ -530,17 +531,23 @@ class message(user.permission_checked, ui.dismisspopup):
         self.onfield.focus()
         self.unsaved_data = "message to kitchen"
 
+    def _kitchenprinter_problem(self):
+        for kp in self.kitchenprinters:
+            x = kp.offline()
+            if x:
+                return x
+
     def finish(self):
         if not self.onfield.f and not self.messagefield.f:
             return
-        problem = _kitchenprinter_problem()
+        problem = self._kitchenprinter_problem()
         if problem:
             ui.infopopup(["There is a problem with the kitchen printer:", "",
                           problem], title="Kitchen printer problem")
             return
         self.dismiss()
         with ui.exception_guard("printing the message in the kitchen"):
-            for kp in kitchenprinters:
+            for kp in self.kitchenprinters:
                 with kp as d:
                     if self.onfield.f:
                         d.printline(
@@ -566,17 +573,20 @@ class message(user.permission_checked, ui.dismisspopup):
 class FoodOrderPlugin(register.RegisterPlugin):
     """Create an instance of this plugin to enable food ordering
     """
-    def __init__(self, menuurl, order_key, message_key):
+    def __init__(self, menuurl, printers, order_key, message_key):
         self._menuurl = menuurl
+        self._printers = printers
         self._order_key = order_key
         self._message_key = message_key
+        for p in printers:
+            lockscreen.CheckPrinter("Kitchen printer", p)
 
     def keypress(self, reg, k):
         if k == self._order_key:
             trans = reg.get_open_trans()
             if trans:
-                popup(reg.deptlines, trans.id, self._menuurl)
+                popup(reg.deptlines, trans.id, self._menuurl, self._printers)
             return True
         elif k == self._message_key:
-            message()
+            message(self._printers)
             return True

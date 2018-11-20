@@ -49,9 +49,8 @@ class page(ui.basicpage):
             tillconfig.mainloop.shutdown(self._quitcode)
         elif k == 'o' or k == 'O' or k == keyboard.K_CASH:
             from . import foodorder
-            foodorder.kitchenprinters = []
             foodorder.popup(self.receive_order, None, self._menuurl,
-                            ordernumberfunc=self.ordernumber)
+                            [], ordernumberfunc=self.ordernumber)
         else:
             ui.beep()
 

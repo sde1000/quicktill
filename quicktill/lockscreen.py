@@ -1,9 +1,27 @@
-from . import ui, version, printer, foodorder
+from . import plugins
+from . import ui, version
 from . import tillconfig
 import time
 import gc
 import logging
 log = logging.getLogger(__name__)
+
+class LockScreenPlugin(metaclass=plugins.InstancePluginMount):
+    def add_note(self):
+        """Return a string to be displayed on the lock page.
+        """
+        pass
+
+class CheckPrinter(LockScreenPlugin):
+    def __init__(self, description, printer):
+        self._description = description
+        self._printer = printer
+
+    def add_note(self):
+        problem = self._printer.offline()
+        if problem:
+            log.info("%s problem: %s", self._description, problem)
+            return "{} problem: {}".format(self._description, problem)
 
 class lockpage(ui.basicpage):
     def __init__(self):
@@ -30,14 +48,10 @@ class lockpage(ui.basicpage):
                     time.time() + tillconfig.minimum_lock_screen_time)
                 self.idle_timeout = tillconfig.mainloop.add_timeout(
                     call_at - now, self.alarm)
-        rpproblem = printer.driver.offline()
-        if rpproblem:
-            self.line("Receipt printer problem: {}".format(rpproblem))
-            log.info("Receipt printer problem: %s",rpproblem)
-        kpproblem = foodorder._kitchenprinter_problem()
-        if kpproblem:
-            self.line("Kitchen printer problem: {}".format(kpproblem))
-            log.info("Kitchen printer problem: %s",kpproblem)
+        for p in LockScreenPlugin.instances:
+            l = p.add_note()
+            if l:
+                self.line(l)
         self.win.wrapstr(
             self.h - 1, 0, self.w, "Till version: {}".format(version.version))
         self.win.move(0, 0)
