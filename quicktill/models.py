@@ -39,9 +39,13 @@ class _pubobject:
         if "pubname" in s.info:
             self.pubname = s.info["pubname"]
 
+    def get_view_url(self, viewname, *args, **kwargs):
+        kwargs['pubname'] = self.pubname
+        return self.reverse(viewname, args=args, kwargs=kwargs)
+
     def get_absolute_url(self):
-        return self.reverse(self.tillweb_viewname, kwargs={
-            'pubname': self.pubname, self.tillweb_argname: self.id})
+        return self.get_view_url(self.tillweb_viewname,
+                                 **{self.tillweb_argname: self.id})
 
 Base = declarative_base(metadata=metadata, cls=_pubobject)
 
@@ -174,7 +178,10 @@ class Session(Base):
 
     tillweb_viewname = "tillweb-session"
     tillweb_argname = "sessionid"
-
+    def tillweb_nav(self):
+        return [("Sessions", self.get_view_url("tillweb-sessions")),
+                ("{} ({})".format(self.id, self.date), self.get_absolute_url())]
+    
     incomplete_transactions = relationship(
         "Transaction",
         primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
@@ -451,6 +458,9 @@ class User(Base):
 
     tillweb_viewname = "tillweb-till-user"
     tillweb_argname = "userid"
+    def tillweb_nav(self):
+        return [("Users", self.get_view_url("tillweb-till-users")),
+                (self.fullname, self.get_absolute_url())]
 
     def __repr__(self):
         return "<User({0.id},'{0.fullname}')>".format(self)
@@ -591,6 +601,10 @@ class Department(Base):
 
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
+    def tillweb_nav(self):
+        return [("Departments", self.get_view_url("tillweb-departments")),
+                ("{}. {}".format(self.id, self.description),
+                 self.get_absolute_url())]
 
 class TransCode(Base):
     __tablename__ = 'transcodes'
@@ -911,6 +925,9 @@ class StockLine(Base):
 
     tillweb_viewname = "tillweb-stockline"
     tillweb_argname = "stocklineid"
+    def tillweb_nav(self):
+        return [("Stock lines", self.get_view_url("tillweb-stocklines")),
+                (self.name, self.get_absolute_url())]
 
     def __repr__(self):
         return "<StockLine(%s,'%s')>" % (self.id, self.name)
@@ -1110,6 +1127,9 @@ class PriceLookup(Base):
 
     tillweb_viewname = "tillweb-plu"
     tillweb_argname = "pluid"
+    def tillweb_nav(self):
+        return [("Price lookups", self.get_view_url("tillweb-plus")),
+                (self.description, self.get_absolute_url())]
 
 suppliers_seq = Sequence('suppliers_seq')
 
@@ -1129,6 +1149,9 @@ class Supplier(Base):
 
     tillweb_viewname = "tillweb-supplier"
     tillweb_argname = "supplierid"
+    def tillweb_nav(self):
+        return [("Suppliers", self.get_view_url("tillweb-suppliers")),
+                (self.name, self.get_absolute_url())]
 
 deliveries_seq = Sequence('deliveries_seq')
 
@@ -1148,6 +1171,11 @@ class Delivery(Base):
 
     tillweb_viewname = "tillweb-delivery"
     tillweb_argname = "deliveryid"
+    def tillweb_nav(self):
+        return [("Deliveries", self.get_view_url("tillweb-deliveries")),
+                ("{} ({} {})".format(self.id, self.supplier.name, self.date),
+                 self.get_absolute_url())]
+
 
     def __repr__(self):
         return "<Delivery(%s)>" % (self.id,)
@@ -1198,6 +1226,9 @@ class StockType(Base):
 
     tillweb_viewname = "tillweb-stocktype"
     tillweb_argname = "stocktype_id"
+    def tillweb_nav(self):
+        return [("Stock types", self.get_view_url("tillweb-stocktype-search")),
+                (str(self), self.get_absolute_url())]
 
     def __str__(self):
         return "%s %s" % (self.manufacturer, self.name)
@@ -1404,6 +1435,9 @@ class StockItem(Base):
 
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
+    def tillweb_nav(self):
+        return [("Stock", self.get_view_url("tillweb-stocksearch")),
+                ("Item {}".format(self.id), self.get_absolute_url())]
 
     def __str__(self):
         return "<StockItem({})>".format(self.id)

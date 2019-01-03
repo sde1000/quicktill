@@ -1,25 +1,44 @@
+<div class="clearfix">
+  <form class="float-md-left" action="" method="get">
+    {% for name, val in pager.pagesize_hidden_inputs %}
+    <input type="hidden" name="{{name}}" value="{{val}}">
+    {% endfor %}
+    <div class="form-group row">
+      <label class="col-md-8 col-form-label col-form-label-sm" for="itemsSelect">Items per page:</label>
+      <select class="col-md-4 form-control form-control-sm w-auto" name="pagesize" id="itemsSelect" onchange='this.form.submit()'>
+	<option{% if pager.items_per_page == 100 %} selected{% endif %}>100</option>
+	<option{% if pager.items_per_page == 50 %} selected{% endif %}>50</option>
+	<option{% if pager.items_per_page == 25 %} selected{% endif %}>25</option>
+	<option{% if pager.items_per_page == 10 %} selected{% endif %}>10</option>
+	<option{% if not pager.items_per_page %} selected{% endif %}>All</option>
+      </select>
+    </div>
+  </form>
 {% if pager.has_other_pages %}
-<ul class="pager">
-  {% if pager.has_previous %}
-  <li><a href="{{pager.firstlink}}">&laquo;&laquo;</a></li>
-  <li><a href="{{pager.prevlink}}">&laquo;</a></li>
-  {% else %}
-  <li class="disabled"><span>&laquo;&laquo;</span></li>
-  <li class="disabled"><span>&laquo;</span></li>
+  <nav aria-label="Pages">
+    <ul class="pagination justify-content-center">
+      {% if pager.has_previous %}
+      <li class="page-item"><a class="page-link" href="{{pager.firstlink}}">&laquo;&laquo;</a></li>
+      <li class="page-item"><a class="page-link" href="{{pager.prevlink}}">&laquo;</a></li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link">&laquo;&laquo;</span></li>
+      <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+      {% endif %}
+      {% for i in pager.local_page_range %}
+      {% if pager.page == i.page %}
+      <li class="page-item active"><span class="page-link">{{i.page}}</span></li>
+      {% else %}
+      <li class="page-item"><a class="page-link" href="{{i.pagelink}}">{{i.page}}</a></li>
+      {% endif %}
+      {% endfor %}
+      {% if pager.has_next %}
+      <li class="page-item"><a class="page-link" href="{{pager.nextlink}}">&raquo;</a></li>
+      <li class="page-item"><a class="page-link" href="{{pager.lastlink}}">&raquo;&raquo;</a></li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      <li class="page-item disabled"><span class="page-link">&raquo;&raquo;</span></li>
+      {% endif %}
+    </ul>
+  </nav>
   {% endif %}
-  {% for i in pager.local_page_range %}
-  {% if pager.page == i.page %}
-  <li class="active"><span>{{i.page}}</span></li>
-  {% else %}
-  <li><a href="{{i.pagelink}}">{{i.page}}</a></li>
-  {% endif %}
-  {% endfor %}
-  {% if pager.has_next %}
-  <li><a href="{{pager.nextlink}}">&raquo;</a></li>
-  <li><a href="{{pager.lastlink}}">&raquo;&raquo;</a></li>
-  {% else %}
-  <li class="disabled"><span>&raquo;</span></li>
-  <li class="disabled"><span>&raquo;&raquo;</span></li>
-  {% endif %}
-</ul>
-{% endif %}
+</div>

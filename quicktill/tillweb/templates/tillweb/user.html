@@ -2,15 +2,13 @@
 
 {% block title %}{{till}} — User "{{tuser.fullname}}"{% endblock %}
 
-{% block heading %}{{till}} — User "{{tuser.fullname}}"{% endblock %}
-
 {% block tillcontent %}
 
 <table class="kvtable">
-<tr><th>Full name</th><td>{{tuser.fullname}}</td></tr>
-<tr><th>Short name</th><td>{{tuser.shortname}}</td></tr>
+<tr><th scope="row">Full name:</th><td>{{tuser.fullname}}</td></tr>
+<tr><th scope="row">Short name:</th><td>{{tuser.shortname}}</td></tr>
 {% if user.webuser %}
-<tr><th>Web username</th><td>{{tuser.webuser}}</td></tr>
+<tr><th scope="row">Web username:</th><td>{{tuser.webuser}}</td></tr>
 {% endif %}
 </table>
 {% if not tuser.enabled %}

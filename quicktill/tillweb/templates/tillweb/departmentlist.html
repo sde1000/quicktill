@@ -2,30 +2,34 @@
 
 {% block title %}{{till}} — Departments{% endblock %}
 
-{% block heading %}{{till}} — Departments{% endblock %}
-
 {% block tillcontent %}
 
-<table id="departments">
-<thead>
-<tr><th>Number</th><th>Description</th><th>Min price</th><th>Max price</th><th>Notes</th></tr>
-</thead>
-<tbody>
+<table class="table table-striped table-hover table-sm" id="departments">
+  <thead class="thead-light">
+    <tr>
+      <th>Number</th>
+      <th>Description</th>
+      <th>Min price</th>
+      <th>Max price</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
 {% for d in depts %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{d.get_absolute_url}}">{{d.id}}</a></td>
 <td><a href="{{d.get_absolute_url}}">{{d.description}}</a></td>
-<td{% if d.minprice %} class="money"{% endif %}>{% if d.minprice %}{{d.minprice}}{% endif %}</td>
-<td{% if d.maxprice %} class="money"{% endif %}>{% if d.maxprice %}{{d.maxprice}}{% endif %}</td>
+<td>{% if d.minprice %}{{money}}{{d.minprice}}{% endif %}</td>
+<td>{% if d.maxprice %}{{money}}{{d.maxprice}}{% endif %}</td>
 <td>{% if d.notes %}{{d.notes}}{% endif %}</td>
 </tr>
 {% endfor %}
-</tbody>
+  </tbody>
 </table>
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#departments").tablesorter({widgets:["zebra"]});
+  $("#departments").tablesorter();
 });
 </script>
 

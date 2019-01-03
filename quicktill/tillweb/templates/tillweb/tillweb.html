@@ -1,43 +1,70 @@
 {% extends "base.html" %}
 {% load staticfiles %}
+{% load django_bootstrap_breadcrumbs %}
 
 {% block style %}
-{{block.super}}
-<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/jquery-ui.css" %}" />
+{# We assume the base template provides Bootstrap 4 #}
+{{ block.super }}
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/tillweb.css" %}" />
 {% endblock %}
-{% block scripts %}
-{% endblock %}
 {% block jquery %}
-<script type="text/javascript" src="{% static "tillweb/jquery.js" %}"></script>
+{# We assume jquery and jquery-ui are already present #}
+{{ block.super }}
 <script type="text/javascript" src="{% static "tillweb/jquery.tablesorter.js" %}"></script>
-<script type="text/javascript" src="{% static "tillweb/jquery-ui.js" %}"></script>
+{% endblock %}
+{% block breadcrumbs %}
+{{ block.super }}
+{% if single_site %}
+{% breadcrumb till "tillweb-pubroot" %}
+{% else %}
+{% breadcrumb "Tills" "tillweb-publist" %}
+{% breadcrumb till "tillweb-pubroot" pubname %}
+{% endif %}
+{% if nav %}{# Explicitly-provided nav list from view #}
+{% for desc, url in nav %}
+{% breadcrumb desc url %}
+{% endfor %}
+{% elif tillobject.tillweb_nav %}{# Implicit nav list from object #}
+{% for desc, url in tillobject.tillweb_nav %}
+{% breadcrumb desc url %}
+{% endfor %}
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="tillcontent">
-{% include "tillweb/versioncheck.html" %}
+<div class="container-fluid h-100">
+  {% include "tillweb/versioncheck.html" %}
+  <div class="row">
+    <div class="col-sm-12 col-md-12 col-lg-2">
+      <nav class="navbar navbar-expand-lg navbar-light bg-light flex-lg-column flex-row align-items-start">
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tillwebNavbar" aria-controls="tillwebNavbar" aria-expanded="false" aria-label="Toggle till navigation">
+	  <span class="navbar-toggler-icon"></span>
+	</button>
+	<div class="collapse navbar-collapse" id="tillwebNavbar">
+	  <ul class="navbar-nav flex-column w-100 justify-content-between">
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
+	    <li class="nav-item"><a class="nav-link "href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a></li>
+	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
+	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-stocksearch" pubname=pubname %}">Stock</a>
+	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-stocklines" pubname=pubname %}">Stock lines</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-locations" pubname=pubname %}">Locations</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-plus" pubname=pubname %}">Price lookups</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-deliveries" pubname=pubname %}">Deliveries</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-suppliers" pubname=pubname %}">Suppliers</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-stockcheck" pubname=pubname %}">Buying list</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-till-users" pubname=pubname %}">Users</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-reports" pubname=pubname %}">Reports</a></li>
+	  </ul>
+	</div>
+      </nav>
+    </div>
+    <main class="col">
 {% block tillcontent %}
-<p>Till content here</p>
+<p>Till content here - inside a col in a container</p>
 {% endblock %}
-</div>
-
-<div class="tillnav">
-<ul>
-<li><a href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
-<li><a href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a></li>
-<li><a href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
-<li><a href="{% url "tillweb-stocksearch" pubname=pubname %}">Stock</a>
-<li><a href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a></li>
-<li><a href="{% url "tillweb-stocklines" pubname=pubname %}">Stock lines</a></li>
-<li><a href="{% url "tillweb-locations" pubname=pubname %}">Locations</a></li>
-<li><a href="{% url "tillweb-plus" pubname=pubname %}">Price lookups</a></li>
-<li><a href="{% url "tillweb-deliveries" pubname=pubname %}">Deliveries</a></li>
-<li><a href="{% url "tillweb-suppliers" pubname=pubname %}">Suppliers</a></li>
-<li><a href="{% url "tillweb-stockcheck" pubname=pubname %}">Buying list</a></li>
-<li><a href="{% url "tillweb-till-users" pubname=pubname %}">Users</a></li>
-<li><a href="{% url "tillweb-reports" pubname=pubname %}">Reports</a></li>
-</ul>
+    </main>
+  </div>
 </div>
 
 {% endblock %}

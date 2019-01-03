@@ -1,15 +1,25 @@
 {% extends "base.html" %}
+{% load django_bootstrap_breadcrumbs %}
 
-{% block title %}{{object}}{% endblock %}
-
-{% block heading %}503 Operational Error on {{object}}{% endblock %}
+{% block title %}{{till}} error{% endblock %}
+{% block breadcrumbs %}
+{{ block.super }}
+{% if single_site %}
+{% breadcrumb till "tillweb-pubroot" %}
+{% else %}
+{% breadcrumb "Tills" "tillweb-publist" %}
+{% breadcrumb till "tillweb-pubroot" pubname %}
+{% endif %}
+{% endblock %}
 
 {% block content %}
+<main class="container">
+  <h1>503 Error accessing {{till}}</h1>
 
-<p>There was a problem accessing the till database.  This problem may
-be temporary — the pub's network connection might be down or
-congested.  Please try again in a few minutes.</p>
+  <p>There was a problem accessing the till database.  This problem
+    may be temporary — the pub's network connection might be down or
+    congested.  Please try again in a few minutes.</p>
 
-<p>The problem was: {{error}}.</p>
-
+  <p>The problem was: {{error}}.</p>
+</main>
 {% endblock %}

@@ -27,18 +27,13 @@ class Till(models.Model):
     slug = models.SlugField()
     name = models.TextField()
     database = models.TextField()
+    money_symbol = models.CharField(max_length=10)
 
     def get_absolute_url(self):
         return reverse('tillweb-pubroot', args=[self.slug])
 
     def __str__(self):
         return self.name
-
-    def nav(self):
-        return [self]
-
-    def navtext(self):
-        return "%s till" % (self.name,)
 
 PERMISSIONS = (
     ('R', 'Read-only'),

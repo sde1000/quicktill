@@ -6,6 +6,7 @@ from django.template.loader import get_template, render_to_string
 from django.conf import settings
 from django.utils.safestring import mark_safe
 from django import forms
+import django.urls
 from .models import *
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
@@ -59,6 +60,21 @@ def publist(request):
 # user - the quicktill.models.User object if available, or 'R','M','F'
 # session - sqlalchemy database session
 
+class viewutils:
+    """Info and utilities passed to a view function"""
+    def __init__(self, **kwargs):
+        for a, b in kwargs.items():
+            setattr(self, a, b)
+
+    def reverse(self, *args, **kwargs):
+        if 'kwargs' in kwargs:
+            rev_kwargs = kwargs['kwargs']
+        else:
+            rev_kwargs = {}
+            kwargs['kwargs'] = rev_kwargs
+        rev_kwargs["pubname"] = self.pubname
+        return django.urls.reverse(*args, **kwargs)
+
 def tillweb_view(view):
     single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
     tillweb_login_required = getattr(settings, 'TILLWEB_LOGIN_REQUIRED', True)
@@ -68,6 +84,7 @@ def tillweb_view(view):
             tillname = settings.TILLWEB_PUBNAME
             access = settings.TILLWEB_DEFAULT_ACCESS
             session = settings.TILLWEB_DATABASE()
+            money = settings.TILLWEB_MONEY_SYMBOL
         else:
             try:
                 till = Till.objects.get(slug=pubname)
@@ -85,24 +102,28 @@ def tillweb_view(view):
                 raise Http404
             tillname = till.name
             access = access.permission
+            money = till.money_symbol
         try:
-            info = {
-                'access': access,
-                'tillname': tillname, # Formatted for people
-                'pubname': pubname, # Used in url
-            }
+            info = viewutils(
+                access=access,
+                tillname=tillname, # Formatted for people
+                pubname=pubname, # Used in url
+            )
             result = view(request, info, session, *args, **kwargs)
             if isinstance(result, HttpResponse):
                 return result
             t, d = result
-            # object is the Till object, possibly used for a nav menu
-            # (it's None if we are set up for a single site)
             # till is the name of the till
             # access is 'R','M','F'
-            defaults = {'object': till,
-                        'till': tillname, 'access': access,
-                        'dtf': dtf, 'pubname': pubname,
-                        'version': version}
+            defaults = {
+                'single_site': single_site, # Used for breadcrumbs
+                'till': tillname,
+                'access': access,
+                'dtf': dtf,
+                'pubname': pubname,
+                'version': version,
+                'money': money,
+            }
             if t.endswith(".ajax"):
                 # AJAX content typically is not a fully-formed HTML document.
                 # If requested in a non-AJAX context, add a HTML container.
@@ -112,11 +133,12 @@ def tillweb_view(view):
             defaults.update(d)
             return render(request, 'tillweb/' + t, defaults)
         except OperationalError as oe:
-            t = get_template('tillweb/operationalerror.html')
-            return HttpResponse(
-                t.render(RequestContext(
-                        request, {'object':till, 'access':access, 'error':oe})),
-                status=503)
+            return render(request, "tillweb/operationalerror.html",
+                          {'till': till,
+                           'pubname': pubname,
+                           'access': access,
+                           'error': oe},
+                          status=503)
         finally:
             session.close()
     if tillweb_login_required or not single_site:
@@ -168,10 +190,17 @@ class Pager:
 
     This is similar in idea to the class in django.core.paginator but
     works with sqlalchemy and has a different API.
+
+    preserve_query_parameters is a list of query parameters that
+    should be passed through in the pagesize_hidden_inputs() method,
+    for the pagesize form to include in the query string when the
+    pagesize is changed.
     """
-    def __init__(self, request, query, items_per_page=30):
+    def __init__(self, request, query, items_per_page=25,
+                 preserve_query_parameters=[]):
         self._request = request
         self._query = query
+        self._preserve_query_parameters = preserve_query_parameters
         self.page = 1
         self.default_items_per_page = items_per_page
         if 'page' in request.GET:
@@ -184,7 +213,7 @@ class Pager:
             try:
                 self.items_per_page = max(1, int(request.GET['pagesize']))
             except:
-                if request.GET['pagesize'] == "all":
+                if request.GET['pagesize'] == "All":
                     self.items_per_page = None
 
         # If the requested page is outside the range of the available items,
@@ -215,9 +244,9 @@ class Pager:
         return (_pager_page(self, x) for x in range(1, self.pages() + 1))
 
     def local_page_range(self):
-        # 9 pages centered on the current page, unless there are fewer
+        # 7 pages centered on the current page, unless there are fewer
         # than four pages ahead of or behind the current page
-        target = 4
+        target = 3
         start = self.page - target
         end = self.page + target
         if start < 1:
@@ -250,6 +279,10 @@ class Pager:
             d['pagesize'] = str(self.items_per_page)
         return "?" + d.urlencode()
 
+    def pagesize_hidden_inputs(self):
+        return [(x, self._request.GET[x])
+                 for x in self._preserve_query_parameters
+                 if x in self._request.GET]
 
     def nextlink(self):
         return self.pagelink(self.page + 1) if self.has_next() else None
@@ -337,7 +370,10 @@ def pubroot(request, info, session):
 
 @tillweb_view
 def locationlist(request, info, session):
-    return ('locations.html', {'locations': StockLine.locations(session)})
+    return ('locations.html', {
+        'nav': [("Locations", info.reverse('tillweb-locations'))],
+        'locations': StockLine.locations(session),
+    })
 
 @tillweb_view
 def location(request, info, session, location):
@@ -349,7 +385,13 @@ def location(request, info, session, location):
                      joinedload('stockonsale.stocktype'),
                      undefer_qtys('stockonsale'))\
             .all()
-    return ('location.html', {'location': location, 'lines': lines})
+    return ('location.html', {
+        'nav': [("Locations", info.reverse('tillweb-locations')),
+                (location, info.reverse('tillweb-location',
+                                        kwargs={'location': location}))],
+        'location': location,
+        'lines': lines,
+    })
 
 class SessionFinderForm(forms.Form):
     session = forms.IntegerField(label="Session ID")
@@ -384,7 +426,7 @@ def sessionfinder(request, info, session):
                 start=cd['startdate'],
                 end=cd['enddate'],
                 rows=cd['rows'],
-                tillname=info['tillname'])
+                tillname=info.tillname)
     else:
         rangeform = SessionSheetForm()
 
@@ -397,7 +439,8 @@ def sessionfinder(request, info, session):
     pager = Pager(request, sessions)
 
     return ('sessions.html',
-            {'recent': pager.items,
+            {'nav': [("Sessions", info.reverse("tillweb-sessions"))],
+             'recent': pager.items,
              'pager': pager,
              'nextlink': pager.nextlink(),
              'prevlink': pager.prevlink(),
@@ -419,7 +462,11 @@ def session(request, info, session, sessionid):
     prevlink = s.previous.get_absolute_url() if s.previous else None
 
     return ('session.html',
-            {'session': s, 'nextlink': nextlink, 'prevlink': prevlink})
+            {'tillobject': s,
+             'session': s,
+             'nextlink': nextlink,
+             'prevlink': prevlink,
+            })
 
 @tillweb_view
 def session_spreadsheet(request, info, session, sessionid):
@@ -430,7 +477,7 @@ def session_spreadsheet(request, info, session, sessionid):
         .get(int(sessionid))
     if not s:
         raise Http404
-    return spreadsheets.session(session, s, info['tillname'])
+    return spreadsheets.session(session, s, info.tillname)
 
 @tillweb_view
 def session_takings_by_dept(request, info, session, sessionid):
@@ -488,11 +535,11 @@ def sessiondept(request, info, session, sessionid, dept):
     if not dept:
         raise Http404
 
-    nextlink = reverse("tillweb-session-department", kwargs={
-        'pubname': info['pubname'], 'sessionid': s.next.id,
+    nextlink = info.reverse("tillweb-session-department", kwargs={
+        'sessionid': s.next.id,
         'dept': dept.id}) if s.next else None
-    prevlink = reverse("tillweb-session-department", kwargs={
-        'pubname': info['pubname'], 'sessionid': s.previous.id,
+    prevlink = info.reverse("tillweb-session-department", kwargs={
+        'sessionid': s.previous.id,
         'dept': dept.id}) if s.previous else None
 
     translines = session\
@@ -558,7 +605,10 @@ def supplierlist(request, info, session):
          .query(Supplier)\
          .order_by(Supplier.name)\
          .all()
-    return ('suppliers.html', {'suppliers': sl})
+    return ('suppliers.html', {
+        'nav': [("Suppliers", info.reverse("tillweb-suppliers"))],
+        'suppliers': sl,
+    })
 
 @tillweb_view
 def supplier(request, info, session, supplierid):
@@ -574,7 +624,11 @@ def supplier(request, info, session, supplierid):
                  .filter(Delivery.supplier == s)
 
     pager = Pager(request, deliveries)
-    return ('supplier.html', {'supplier': s, 'pager': pager})
+    return ('supplier.html', {
+        'tillobject': s,
+        'supplier': s,
+        'pager': pager,
+    })
 
 @tillweb_view
 def deliverylist(request, info, session):
@@ -585,7 +639,10 @@ def deliverylist(request, info, session):
 
     pager = Pager(request, dl)
 
-    return ('deliveries.html', {'pager': pager})
+    return ('deliveries.html', {
+        'nav': [("Deliveries", info.reverse("tillweb-deliveries"))],
+                'pager': pager,
+        })
 
 @tillweb_view
 def delivery(request, info, session, deliveryid):
@@ -597,7 +654,10 @@ def delivery(request, info, session, deliveryid):
         .get(int(deliveryid))
     if not d:
         raise Http404
-    return ('delivery.html', {'delivery': d})
+    return ('delivery.html', {
+        'tillobject': d,
+        'delivery': d,
+    })
 
 class StockTypeForm(forms.Form):
     manufacturer = forms.CharField(required=False)
@@ -627,7 +687,11 @@ def stocktypesearch(request, info, session):
             .order_by(StockType.dept_id, StockType.manufacturer, StockType.name)
         q = form.filter(q)
         result = q.all()
-    return ('stocktypesearch.html', {'form': form, 'stocktypes': result})
+    return ('stocktypesearch.html', {
+        'nav': [("Stock types", info.reverse("tillweb-stocktype-search"))],
+        'form': form,
+        'stocktypes': result,
+    })
 
 @tillweb_view
 def stocktype(request, info, session, stocktype_id):
@@ -647,15 +711,18 @@ def stocktype(request, info, session, stocktype_id):
         items = items.filter(StockItem.finished == None)
     items = items.all()
     return ('stocktype.html',
-            {'stocktype': s, 'items': items,
-             'include_finished': include_finished})
+            {'tillobject': s,
+             'stocktype': s,
+             'items': items,
+             'include_finished': include_finished,
+            })
 
 class StockForm(StockTypeForm):
     include_finished = forms.BooleanField(
         required=False, label="Include finished items")
 
 @tillweb_view
-def stocksearch(request,info,session):
+def stocksearch(request, info, session):
     form = StockForm(request.GET)
     pager = None
     if form.is_valid() and form.is_filled_in():
@@ -671,9 +738,11 @@ def stocksearch(request,info,session):
         if not form.cleaned_data['include_finished']:
             q = q.filter(StockItem.finished == None)
 
-        pager = Pager(request, q)
+        pager = Pager(request, q, preserve_query_parameters=[
+            "manufacturer", "name", "include_finished"])
 
     return ('stocksearch.html', {
+        'nav': [("Stock", info.reverse("tillweb-stocksearch"))],
         'form': form,
         'stocklist': pager.items() if pager else [],
         'pager': pager})
@@ -692,7 +761,10 @@ def stock(request, info, session, stockid):
         .get(int(stockid))
     if not s:
         raise Http404
-    return ('stock.html', {'stock': s})
+    return ('stock.html', {
+        'tillobject': s,
+        'stock': s,
+    })
 
 @tillweb_view
 def stocklinelist(request, info, session):
@@ -717,6 +789,7 @@ def stocklinelist(request, info, session):
                  .options(undefer("stocktype.remaining"))\
                  .all()
     return ('stocklines.html', {
+        'nav': [("Stock lines", info.reverse("tillweb-stocklines"))],
         'regular': regular,
         'display': display,
         'continuous': continuous,
@@ -732,7 +805,10 @@ def stockline(request, info, session, stocklineid):
         .get(int(stocklineid))
     if not s:
         raise Http404
-    return ('stockline.html', {'stockline': s})
+    return ('stockline.html', {
+        'tillobject': s,
+        'stockline': s,
+    })
 
 @tillweb_view
 def plulist(request, info, session):
@@ -740,7 +816,10 @@ def plulist(request, info, session):
            .query(PriceLookup)\
            .order_by(PriceLookup.dept_id, PriceLookup.description)\
            .all()
-    return ('plus.html', {'plus': plus})
+    return ('plus.html', {
+        'nav': [("Price lookups", info.reverse("tillweb-plus"))],
+        'plus': plus,
+    })
 
 @tillweb_view
 def plu(request, info, session, pluid):
@@ -749,7 +828,10 @@ def plu(request, info, session, pluid):
         .get(int(pluid))
     if not p:
         raise Http404
-    return ('plu.html', {'plu': p})
+    return ('plu.html', {
+        'tillobject': p,
+        'plu': p,
+    })
 
 @tillweb_view
 def departmentlist(request, info, session):
@@ -757,7 +839,10 @@ def departmentlist(request, info, session):
             .query(Department)\
             .order_by(Department.id)\
             .all()
-    return ('departmentlist.html', {'depts': depts})
+    return ('departmentlist.html', {
+        'nav': [("Departments", info.reverse("tillweb-departments"))],
+        'depts': depts,
+    })
 
 @tillweb_view
 def department(request, info, session, departmentid, as_spreadsheet=False):
@@ -783,14 +868,15 @@ def department(request, info, session, departmentid, as_spreadsheet=False):
 
     if as_spreadsheet:
         return spreadsheets.stock(
-            session, items.all(), tillname=info['tillname'],
+            session, items.all(), tillname=info.tillname,
             filename="{}-dept{}-stock.ods".format(
-                info['tillname'], departmentid))
+                info.tillname, departmentid))
 
-    pager = Pager(request, items)
+    pager = Pager(request, items, preserve_query_parameters=["show_finished"])
 
     return ('department.html',
-            {'department': d, 'pager': pager,
+            {'tillobject': d,
+             'department': d, 'pager': pager,
              'include_finished': include_finished})
 
 class StockCheckForm(forms.Form):
@@ -846,7 +932,11 @@ def stockcheck(request, info, session):
             buylist.sort(key=lambda l: float(l[2]), reverse=True)
     else:
         form = StockCheckForm(depts)
-    return ('stockcheck.html', {'form': form, 'buylist': buylist})
+    return ('stockcheck.html', {
+        'nav': [("Buying list", info.reverse("tillweb-stockcheck"))],
+        'form': form,
+        'buylist': buylist,
+    })
 
 @tillweb_view
 def userlist(request, info, session):
@@ -858,7 +948,10 @@ def userlist(request, info, session):
         q = q.filter(User.enabled == True)
     users = q.all()
     return ('userlist.html',
-            {'users': users, 'include_inactive': include_inactive})
+            {'nav': [("Users", info.reverse("tillweb-till-users"))],
+             'users': users,
+             'include_inactive': include_inactive,
+            })
 
 @tillweb_view
 def user(request, info, session, userid):
@@ -890,8 +983,12 @@ def user(request, info, session, userid):
                   .order_by(desc(StockAnnotation.time))[:50]
 
     return ('user.html',
-            {'tuser': u, 'sales': sales, 'payments': payments,
-             'annotations': annotations})
+            {'tillobject': u,
+             'tuser': u,
+             'sales': sales,
+             'payments': payments,
+             'annotations': annotations,
+            })
 
 import matplotlib
 matplotlib.use("SVG")
@@ -982,7 +1079,7 @@ def reportindex(request, info, session):
                 start=cd['startdate'],
                 end=cd['enddate'],
                 cols=cd['columns'],
-                tillname=info['tillname'])
+                tillname=info.tillname)
     else:
         wasteform = WasteReportForm(prefix="waste")
 
@@ -995,11 +1092,12 @@ def reportindex(request, info, session):
                 start=cd['startdate'],
                 end=cd['enddate'],
                 dates=cd['dates'],
-                tillname=info['tillname'])
+                tillname=info.tillname)
     else:
         stocksoldform = StockSoldReportForm(prefix="stocksold")
 
     return ('reports.html',
-            {'wasteform': wasteform,
+            {'nav': [("Reports", info.reverse("tillweb-reports"))],
+             'wasteform': wasteform,
              'stocksoldform': stocksoldform,
             })

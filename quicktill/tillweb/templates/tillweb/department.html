@@ -2,16 +2,22 @@
 
 {% block title %}{{till}} — {{department.description}}{% endblock %}
 
-{% block heading %}{{till}} — {{department.description}}{% endblock %}
-
 {% block tillcontent %}
 
 {% if department.minprice or department.maxprice %}
 <table class="kvtable">
-{% if department.minprice %}<tr><th>Minimum price per item</th>
-<td class="money">{{department.minprice}}</td></tr>{% endif %}
-{% if department.maxprice %}<tr><th>Maximum price per item</th>
-<td class="money">{{department.maxprice}}</td></tr>{% endif %}
+  {% if department.minprice %}
+  <tr>
+    <th scope="row">Minimum price per item:</th>
+    <td>{{money}}{{department.minprice}}</td>
+  </tr>
+  {% endif %}
+  {% if department.maxprice %}
+  <tr>
+    <th scope="row">Maximum price per item:</th>
+    <td>{{money}}{{department.maxprice}}</td>
+  </tr>
+  {% endif %}
 </table>
 {% endif %}
 
@@ -23,7 +29,7 @@
 {% else %}
 <h2>Currently in stock</h2>
 {% endif %}
-<p><a href="{% url "tillweb-department-sheet" pubname=pubname departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a></p>
+<a class="btn btn-secondary mb-2" href="{% url "tillweb-department-sheet" pubname=pubname departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a>
 {% with pager.items as stocklist %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}

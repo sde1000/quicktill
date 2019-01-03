@@ -2,41 +2,56 @@
 
 {% block title %}{{till}}{% endblock %}
 
-{% block heading %}{{till}}{% endblock %}
-
 {% block tillcontent %}
 
-<table class="bordered">
-<tr><th>Current session</th>
-{% for desc,start,end,totals in weeks %}
-<th>{{desc}}</th>
-{% endfor %}</tr>
-<tr><td>
+<table class="text-center index-summary-table w-100">
+  <thead>
+    <tr>
+      <th scope="col">Current session</th>
+      {% for desc,start,end,totals in weeks %}
+      <th scope="col">{{desc}}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
 {% if currentsession %}
 <a href="{{currentsession.get_absolute_url}}">
-{{currentsession.id}} ({{currentsession.date}})<br />
+{{currentsession.id}} ({{currentsession.date}})<br>
 {% for vr,t,ex,vat in currentsession.vatband_totals %}
-{{vr.business.abbrev}}: <span class="money">{{t}}</span><br />
-{% endfor %}{% if currentsession.pending_total %}(<span class="money">{{currentsession.pending_total}}</span> unpaid){% endif %}</a>
+{{vr.business.abbrev}}: {{money}}{{t}}<br>
+{% endfor %}{% if currentsession.pending_total %}({{money}}{{currentsession.pending_total}} unpaid){% endif %}</a>
 {% else %}No current session{% endif %}
 {% if deferred %}
-<br /><a href="{% url "tillweb-deferred-transactions" pubname=pubname %}"><span class="money">{{deferred}}</span> deferred transactions</a>
+<br><a href="{% url "tillweb-deferred-transactions" pubname=pubname %}">{{money}}{{deferred}} deferred transactions</a>
 {% endif %}
-</td>
+      </td>
 {% for desc,start,end,totals in weeks %}
-<td>{{start}}–{{end}}<br />
+      <td>{{start}}–{{end}}<br>
 {% for business,total in totals %}
-{% if total %}{{business.abbrev}}: <span class="money">{{total}}</span><br />{% endif %}
+{% if total %}{{business.abbrev}}: {{money}}{{total}}<br>{% endif %}
 {% endfor %}
-</td>
-{% endfor %}</tr>
-
+      </td>
+{% endfor %}
+    </tr>
+  </tbody>
 </table>
 
-<div id="accordion">
-{% if barsummary %}
-<h2>On the bar</h2>
+<ul class="nav nav-tabs mt-3" id="barTabs" role="tablist w-100">
+  <li class="nav-item">
+    <a class="nav-link active" id="barSummaryTab" data-toggle="tab" href="#barSummary" role="tab" aria-controls="barSummary" aria-selected="true">On the bar</a>
+  </li>
+  {% if stillage %}
+  <li class="nav-item">
+    <a class="nav-link" id="stillageTab" data-toggle="tab" href="#stillage" role="tab" aria-controls="stillage" aria-selected="false">On the stillage</a>
+  </li>
+  {% endif %}
+</ul>
 
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="barSummary" aria-labelledby="barSummaryTab">
+{% if barsummary %}
 <div>
 {% with barsummary as lines %}
 {% include "tillweb/linelist.html" %}
@@ -47,19 +62,24 @@
 {% else %}
 <p><a href="{% url "tillweb-locations" pubname=pubname %}">Stock locations</a></p>
 {% endif %}
-
-{% if stillage %}
-<h2>On the stillage</h2>
-
-<div>
-<table id="stillage">
-<thead>
-<tr><th>Location</th><th>Time</th><th>Cask</th>
-<th>Used</th><th>Remaining</th><th>Line</th></tr>
-</thead>
-<tbody>
+  </div>
+  {% if stillage %}
+  <div class="tab-pane fade" id="stillage" aria-labelledby="stillageTab">
+    <div class="table-responsive">
+      <table id="stillageTable" class="table table-striped table-hover table-sm">
+	<thead class="thead-light">
+	  <tr>
+	    <th scope="col">Location</th>
+	    <th scope="col">Time</th>
+	    <th scope="col">Cask</th>
+	    <th scope="col">Used</th>
+	    <th scope="col">Remaining</th>
+	    <th scope="col">Line</th>
+	  </tr>
+	</thead>
+	<tbody>
 {% for s in stillage %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td>{{s.text}}</td><td>{{s.time|date:dtf}}</td>
 <td><a href="{{s.stockitem.get_absolute_url}}">
 {{s.stockitem.stocktype.fullname}}</a></td>
@@ -67,24 +87,16 @@
 <td>{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
 <td>{% if s.stockitem.stockline %}<a href="{{s.stockitem.stockline.get_absolute_url}}">{{s.stockitem.stockline.name}}</a>{% endif %}</td></tr>
 {% endfor %}
-</tbody>
-</table>
-
+	</tbody>
+      </table>
+    </div>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#stillage").tablesorter({widgets:["zebra"]});
+  $("#stillageTable").tablesorter();
 });
 </script>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
-</div>
-
-{% if barsummary and stillage %}
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#accordion").accordion();
-});
-</script>
-{% endif %}
 
 {% endblock %}

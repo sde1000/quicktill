@@ -57,8 +57,9 @@ echo "version=u\"${version}\"" >${pkgdir}/quicktill/version.py
 # Put the version number in the version check template
 cat >${pkgdir}/quicktill/tillweb/templates/tillweb/versioncheck.html <<EOF
 {% if version != "${version}" %}
-<p><strong>Warning:</strong> mismatch between template version [${version}]
-and running code version [{{version}}].</p>
+<div class="alert alert-warning">
+<strong>Warning:</strong> mismatch between template version [${version}]
+and running code version [{{version}}].</div>
 {% endif %}
 EOF
 

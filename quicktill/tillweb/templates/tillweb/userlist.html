@@ -2,29 +2,31 @@
 
 {% block title %}{{till}} — Users{% endblock %}
 
-{% block heading %}{{till}} — Users{% endblock %}
-
 {% block tillcontent %}
 
 {% if users %}
-<table id="userlist">
-<thead>
-<tr><th>Name</th><th>Short name</th><th>Web username</th></tr>
-</thead>
-<tbody>
+<table class="table table-striped table-hover table-sm" id="userlist">
+  <thead class="thead-light">
+    <tr>
+      <th>Name</th>
+      <th>Short name</th>
+      <th>Web username</th>
+    </tr>
+  </thead>
+  <tbody>
 {% for user in users %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
 <td><a href="{{user.get_absolute_url}}">{{user.shortname}}</a></td>
 <td>{% if user.webuser %}<a href="{{user.get_absolute_url}}">{{user.webuser}}</a>{% endif %}</td>
 </tr>
 {% endfor %}
-</tbody>
+  </tbody>
 </table>
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#userlist").tablesorter({widgets:["zebra"]});
+  $("#userlist").tablesorter();
 });
 </script>
 {% else %}

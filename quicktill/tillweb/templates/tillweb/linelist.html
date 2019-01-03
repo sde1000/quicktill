@@ -1,18 +1,26 @@
-<table id="linelist">
-<thead>
-<tr><th>Line</th><th>StockID</th><th>Product</th><th>ABV</th><th>Price</th>
-<th>Started</th><th colspan="2" class="sorter-false">State</th></tr>
+<div class="table-responsive">
+<table id="linelist" class="table table-striped table-hover table-sm">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Line</th>
+    <th scope="col">StockID</th>
+    <th scope="col">Product</th>
+    <th scope="col">ABV</th>
+    <th scope="col">Price</th>
+    <th scope="col">Started</th>
+    <th scope="col" colspan="2" class="sorter-false">State</th>
+  </tr>
 </thead>
 <tbody>
 {% for line in lines %}
 {% for item in line.stockonsale %}
-<tr class="{% cycle 'odd' 'even' as barzebra %}">
+<tr>
 <td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
 <td><a href="{{item.get_absolute_url}}">{{item.id}}</a></td>
 <td><a href="{{item.stocktype.get_absolute_url}}">
 {{item.stocktype.fullname}}</a></td>
 <td>{{item.stocktype.abvstr}}</td>
-<td><span class="money">{{item.stocktype.saleprice}}</span>/{{item.stocktype.unit.name}}</td>
+<td>{{money}}{{item.stocktype.pricestr}}</td>
 <td>{{item.onsale|date:dtf}}</td>
 {% if item.ondisplay == None %}
 <td>{{item.used}} {{item.stocktype.unit.name}}s used</td>
@@ -23,7 +31,7 @@
 {% endif %}
 </tr>
 {% empty %}
-<tr class="{% cycle barzebra %}">
+<tr>
 <td><a href="{{line.get_absolute_url}}">
 {{line.name}}</a></td><td></td><td></td><td></td><td></td><td></td>
 <td colspan="2"></td></tr>
@@ -31,9 +39,10 @@
 {% endfor %}
 </tbody>
 </table>
+</div>
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#linelist").tablesorter({widgets:["zebra"]});
+  $("#linelist").tablesorter();
 });
 </script>
