@@ -567,26 +567,23 @@ def transactions_deferred(request, info, session):
          .filter(Transaction.sessionid == None)\
          .order_by(Transaction.id)\
          .all()
-    return ('transactions-deferred.html', {'transactions': td})
+    return ('transactions-deferred.html', {
+        'transactions': td,
+        'nav': [("Deferred transactions", info.reverse('tillweb-deferred-transactions'))],
+    })
 
 @tillweb_view
 def transaction(request, info, session, transid):
-    # XXX now that we store transaction descriptions explicitly, we
-    # may not need to joinedload lines.stockref.stockitem.stocktype
-    # and this will end up as a much simpler query.  Wait until old
-    # transaction data has been migrated, though, because the web
-    # interface is still used to look at old data.
     t = session\
         .query(Transaction)\
         .options(subqueryload_all('payments'),
                  joinedload('lines.department'),
-                 joinedload_all('lines.stockref.stockitem.stocktype'),
                  joinedload('lines.user'),
                  undefer('total'))\
         .get(int(transid))
     if not t:
         raise Http404
-    return ('transaction.html', {'transaction': t})
+    return ('transaction.html', {'transaction': t, 'tillobject': t})
 
 @tillweb_view
 def transline(request, info, session, translineid):
@@ -597,7 +594,7 @@ def transline(request, info, session, translineid):
          .get(int(translineid))
     if not tl:
         raise Http404
-    return ('transline.html', {'tl': tl})
+    return ('transline.html', {'tl': tl, 'tillobject': tl})
 
 @tillweb_view
 def supplierlist(request, info, session):

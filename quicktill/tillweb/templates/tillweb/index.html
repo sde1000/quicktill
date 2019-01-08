@@ -4,6 +4,7 @@
 
 {% block tillcontent %}
 
+{% comment %}
 <table class="text-center index-summary-table w-100">
   <thead>
     <tr>
@@ -37,6 +38,36 @@
     </tr>
   </tbody>
 </table>
+{% endcomment %}
+
+<div class="row text-center">
+  <div class="col-6 col-md-3">
+    <strong>Current session</strong>
+    <div class="border">
+{% if currentsession %}
+<a href="{{currentsession.get_absolute_url}}">
+{{currentsession.id}} ({{currentsession.date}})<br>
+{% for vr,t,ex,vat in currentsession.vatband_totals %}
+{{vr.business.abbrev}}: {{money}}{{t}}<br>
+{% endfor %}{% if currentsession.pending_total %}({{money}}{{currentsession.pending_total}} unpaid){% endif %}</a>
+{% else %}No current session{% endif %}
+{% if deferred %}
+<br><a href="{% url "tillweb-deferred-transactions" pubname=pubname %}">{{money}}{{deferred}} deferred transactions</a>
+{% endif %}
+    </div>
+  </div>
+  {% for desc,start,end,totals in weeks %}
+  <div class="col-6 col-md-3">
+    <strong>{{desc}}</strong>
+    <div class="border">
+    {{start}}–{{end}}<br>
+{% for business,total in totals %}
+{% if total %}{{business.abbrev}}: {{money}}{{total}}<br>{% endif %}
+{% endfor %}
+    </div>
+  </div>
+{% endfor %}
+</div>
 
 <ul class="nav nav-tabs mt-3 w-100" id="barTabs" role="tablist">
   <li class="nav-item">

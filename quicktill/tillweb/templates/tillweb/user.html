@@ -24,9 +24,12 @@ irrelevant until the user's "superuser" status is revoked.</p>
 {% endif %}
 
 {% if tuser.permissions %}
-<table id="permissionlist">
-<thead>
-<tr><th>Name</th><th>Description</th></tr>
+<table class="table table-striped table-hover table-sm w-auto" id="permissionlist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Name</th>
+    <th scope="col">Description</th>
+  </tr>
 </thead>
 <tbody>
 {% for p in tuser.permissions %}
@@ -36,7 +39,7 @@ irrelevant until the user's "superuser" status is revoked.</p>
 </table>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#permissionlist").tablesorter({widgets:["zebra"]});
+  $("#permissionlist").tablesorter();
 });
 </script>
 {% else %}
@@ -46,13 +49,17 @@ $(document).ready(function(){
 <h2>Access tokens</h2>
 
 {% if tuser.tokens %}
-<table id="tokenlist">
-<thead>
-<tr><th>Description</th><th>Value</th><th>Last used</th></tr>
+<table class="table table-striped table-hover table-sm w-auto" id="tokenlist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Description</th>
+    <th scope="col">Value</th>
+    <th scope="col">Last used</th>
+  </tr>
 </thead>
 <tbody>
 {% for t in tuser.tokens %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td>
 </tr>
 {% endfor %}
@@ -60,7 +67,7 @@ $(document).ready(function(){
 </table>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#tokenlist").tablesorter({widgets:["zebra"]});
+  $("#tokenlist").tablesorter();
 });
 </script>
 {% else %}

@@ -2,42 +2,40 @@
 
 {% block title %}{{till}} — Stock item  {{stock.id}}{% endblock %}
 
-{% block heading %}{{till}} — Stock item  {{stock.id}}{% endblock %}
-
 {% block tillcontent %}
 
 <table class="kvtable">
-<tr><th>Stock ID</th><td>{{stock.id}}</td></tr>
-<tr><th>Check digits</th><td>{{stock.checkdigits}}</td></tr>
-<tr><th>Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
-<tr><th>Name</th><td><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></td></tr>
-<tr><th>ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
-<tr><th>Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
-<tr><th>Delivery date</th><td>{{stock.delivery.date}}</td></tr>
-<tr><th>Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a></td></tr>
-<tr><th>Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
-<tr><th>Stock unit</th><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
-<tr><th>Cost price</th>
+<tr><th scope="row">Stock ID</th><td>{{stock.id}}</td></tr>
+<tr><th scope="row">Check digits</th><td>{{stock.checkdigits}}</td></tr>
+<tr><th scope="row">Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
+<tr><th scope="row">Name</th><td><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></td></tr>
+<tr><th scope="row">ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
+<tr><th scope="row">Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
+<tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
+<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a></td></tr>
+<tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
+<tr><th scope="row">Stock unit</th><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
+<tr><th scope="row">Cost price</th>
 {% if stock.costprice %}
-<td><span class="money">{{stock.costprice}}</span> (ex-VAT)</td>
+<td>{{money}}{{stock.costprice}} (ex-VAT)</td>
 {% else %}<td>Unknown</td>{% endif %}</tr>
-<tr><th>Sale price</th><td><span class="money">{{stock.stocktype.pricestr}}</span> (inc-VAT)</td></tr>
+<tr><th scope="row">Sale price</th><td>{% if stock.stocktype.saleprice %}{{money}}{{stock.stocktype.pricestr}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
 {% if stock.onsale %}
-<tr><th>Put on sale</th><td>{{stock.onsale}}
+<tr><th scope="row">Put on sale</th><td>{{stock.onsale}}
 {% if stock.stockonsale %} on line <a href="{{stock.stockonsale.stockline.get_absolute_url}}">{{stock.stockonsale.stockline.name}}</a>
 {% endif %}
 </td></tr>
 {% endif %}
 {% if stock.finished %}
-<tr><th>Finished</th><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
+<tr><th scope="row">Finished</th><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
 {% endif %}
 {% if stock.bestbefore %}
-<tr><th>Best before</th><td>{{stock.bestbefore}}</td></tr>
+<tr><th scope="row">Best before</th><td>{{stock.bestbefore}}</td></tr>
 {% endif %}
-<tr><th>Amount used</th><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
-<tr><th>Amount remaining</th><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th scope="row">Amount used</th><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th scope="row">Amount remaining</th><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
 {% if stock.annotations %}
-<tr><th>Notes</th><td>
+<tr><th scope="row">Notes</th><td>
 {% with annotationlist=stock.annotations excluded_column="stock" %}
 {% include "tillweb/annotationlist.html" %}
 {% endwith %}
@@ -48,33 +46,37 @@
 <h2>Usage summary</h2>
 <table class="kvtable">
 {% for rc,qty in stock.removed %}
-<tr><th>{{rc.reason}}</th><td>{{qty}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th scope="row">{{rc.reason}}</th><td>{{qty}} {{stock.stockunit.unit.name}}s</td></tr>
 {% endfor %}
 </table>
 
 <h2>Quantities used</h2>
 
-<table id="stockout">
-<thead>
-<tr><th>Time</th><th>Description</th><th>Quantity</th></tr>
+<table class="table table-striped table-hover table-sm w-auto" id="stockout">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Time</th>
+    <th scope="col">Description</th>
+    <th scope="col">Quantity</th>
+  </tr>
 </thead>
 <tbody>
 {% for so in stock.out %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td>{{so.time|date:dtf}}</td>
-<td>{% if so.removecode_id == 'sold' %}<a href="{{so.transline.transaction.get_absolute_url}}">Sold for <span class="money">{{so.transline.total}}</span> in transaction {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td>
+<td>{% if so.removecode_id == 'sold' %}<a href="{{so.transline.transaction.get_absolute_url}}">Sold for {{money}}{{so.transline.total}}</span> in transaction {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td>
 <td>{{so.qty}} {{stock.stockunit.unit.name}}s</td>
 </tr>
 {% endfor %}
 </tbody>
 <tfoot>
-<tr><th colspan="2" style="text-align: right;">Total:</th>
+<tr><th scope="row" colspan="2" style="text-align: right;">Total:</th>
 <td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
 </tfoot>
 </table>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#stockout").tablesorter({widgets:["zebra"]});
+  $("#stockout").tablesorter();
 });
 </script>
 {% endif %}

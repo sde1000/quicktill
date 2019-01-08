@@ -5,22 +5,27 @@
 {% block heading %}{{till}} — transaction line {{tl.id}}{% if tl.voided_by_id %} (VOIDED){% endif %}{% endblock %}
 
 {% block tillcontent %}
-
-<table class="kvtable">
-<tr><th>ID</th><td>{{tl.id}}</td></tr>
-<tr><th>Transaction</th><td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></td></tr>
-<tr><th>Stored description</th><td>{{tl.text}}</td></tr>
-<tr><th>Calculated description</th><td>{{tl.description}}</td></tr>
-<tr><th>Time</th><td>{{tl.time}}</td></tr>
-<tr><th>Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
-<tr><th>Items</th><td>{{tl.items}}</td></tr>
-<tr><th>Amount per item</th><td><span class="money">{{tl.amount}}</span></td></tr>
-<tr><th>Total</th><td><span class="money">{{tl.total}}</span></td></tr>
-{% if tl.voided_by_id %}
-<tr><th>Voided by</th><td><a href="{{tl.voided_by.get_absolute_url}}">{{tl.voided_by}}</td></tr>
+{% if tl.voided_by %}
+<div class="alert alert-danger">This line has been voided</div>
 {% endif %}
 {% if tl.voids %}
-<tr><th>This line voids</th><td><a href="{{tl.voids.get_absolute_url}}">{{tl.voids}}</td></tr>
+<div class="alert alert-warning">This line voids another transaction line</div>
+{% endif %}
+
+<table class="kvtable">
+<tr><th scope="row">ID</th><td>{{tl.id}}</td></tr>
+<tr><th scope="row">Transaction</th><td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></td></tr>
+<tr><th scope="row">Description</th><td>{{tl.text}}</td></tr>
+<tr><th scope="row">Time</th><td>{{tl.time}}</td></tr>
+<tr><th scope="row">Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
+<tr><th scope="row">Items</th><td>{{tl.items}}</td></tr>
+<tr><th scope="row">Amount per item</th><td>{{money}}{{tl.amount}}</td></tr>
+<tr><th scope="row">Total</th><td>{{money}}{{tl.total}}</td></tr>
+{% if tl.voided_by_id %}
+<tr><th scope="row">Voided by</th><td><a href="{{tl.voided_by.get_absolute_url}}" class="text-danger">{{tl.voided_by}}</td></tr>
+{% endif %}
+{% if tl.voids %}
+<tr><th scope="row">This line voids</th><td><a href="{{tl.voids.get_absolute_url}}" class="text-warning">{{tl.voids}}</td></tr>
 {% endif %}
 <tr><th>User</th><td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}
 </table>
@@ -28,14 +33,21 @@
 {% if tl.stockref %}
 <h2>Stock used</h2>
 
-<table>
-<thead>
-<tr><th>ID</th><th>Stock item</th><th>Quantity</th><th>Code</th></tr>
+<table class="table table-striped table-hover w-auto">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">ID</th>
+    <th scope="col">Stock ID</th>
+    <th scope="col">Description</th>
+    <th scope="col">Quantity</th>
+    <th scope="col">Code</th>
+  </tr>
 </thead>
 <tbody>
 {% for so in tl.stockref %}
 <tr>
 <td>{{so.id}}</td>
+<td><a href="{{so.stockitem.get_absolute_url}}">{{so.stockitem.id}}</a></td>
 <td><a href="{{so.stockitem.get_absolute_url}}">{{so.stockitem.stocktype.fullname}}</a></td>
 <td>{{so.qty}}</td>
 <td>{{so.removecode}}</td>

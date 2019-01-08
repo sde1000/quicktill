@@ -1,19 +1,21 @@
 {% if translines %}
-<table id="translines">
-<thead>
+<div class="table-responsive">
+<table class="table table-striped table-hover table-sm" id="translines">
+<thead class="thead-light">
 <tr>
-{% if exclude_column != "transaction" %}<th>Transaction</th>{% endif %}
-<th>ID</th>
-<th>Description</th>
-{% if exclude_column != "department" %}<th>Department</th>{% endif %}
-<th>Code</th>
-<th class="sorter-false">Value</th><th>Time</th>
-{% if exclude_column != "user" %}<th>User</th>{% endif %}
+{% if exclude_column != "transaction" %}<th scope="col">Transaction</th>{% endif %}
+<th scope="col">ID</th>
+<th scope="col">Description</th>
+{% if exclude_column != "department" %}<th scope="col">Department</th>{% endif %}
+<th scope="col">Code</th>
+<th scope="col" class="sorter-false">Value</th>
+<th scope="col">Time</th>
+{% if exclude_column != "user" %}<th scope="col">User</th>{% endif %}
 </tr>
 </thead>
 <tbody>
 {% for tl in translines %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 {% if exclude_column != "transaction" %}
 <td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transaction.id}}</a></td>
 {% endif %}
@@ -21,7 +23,7 @@
 <td><a href="{{tl.get_absolute_url}}">{{tl.description}}</a></td>
 {% if exclude_column != "department" %}<td>{{tl.department}}</td>{% endif %}
 <td>{{tl.transcode}}{% if tl.voided_by_id %} <a href="{{tl.voided_by.get_absolute_url}}">(voided)</a>{% endif %}</td>
-<td>{% if tl.items and tl.amount %}{{tl.items}} @ <span class="money">{{tl.amount}}</span> = <span class="money">{{tl.total}}</span>{% endif %}</td>
+<td>{% if tl.items and tl.amount %}{{tl.items}} @ {{money}}{{tl.amount}} = {{money}}{{tl.total}}</span>{% endif %}</td>
 <td>{{tl.time|date:dtf}}</td>
 {% if exclude_column != "user" %}
 <td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
@@ -29,9 +31,10 @@
 {% endfor %}
 </tbody>
 </table>
+</div>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#translines").tablesorter({widgets:["zebra"]});
+  $("#translines").tablesorter();
 });
 </script>
 {% endif %}

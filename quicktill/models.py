@@ -398,6 +398,14 @@ class Transaction(Base):
     tillweb_viewname = "tillweb-transaction"
     tillweb_argname = "transid"
 
+    def tillweb_nav(self):
+        if self.session:
+            return self.session.tillweb_nav() \
+                + [(str(self), self.get_absolute_url())]
+        return [("Deferred transactions",
+                 self.get_view_url("tillweb-deferred-transactions")),
+                (str(self), self.get_absolute_url())]
+
     # age is now a column property, defined below
 
     def __str__(self):
@@ -661,6 +669,11 @@ class Transline(Base):
 
     tillweb_viewname = "tillweb-transline"
     tillweb_argname = "translineid"
+    def tillweb_nav(self):
+        return self.transaction.tillweb_nav() \
+            + [("Line {}{}".format(
+                self.id, " (VOIDED)" if self.voided_by else ""),
+                self.get_absolute_url())]
 
     @property
     def description(self):
@@ -1437,7 +1450,9 @@ class StockItem(Base):
     tillweb_argname = "stockid"
     def tillweb_nav(self):
         return [("Stock", self.get_view_url("tillweb-stocksearch")),
-                ("Item {}".format(self.id), self.get_absolute_url())]
+                ("Item {} ({} {})".format(
+                    self.id, self.stocktype.manufacturer, self.stocktype.name),
+                 self.get_absolute_url())]
 
     def __str__(self):
         return "<StockItem({})>".format(self.id)
