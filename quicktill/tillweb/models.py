@@ -10,7 +10,7 @@ except ImportError:
     from django.core.urlresolvers import reverse
 
 def get_app_details(user):
-    tills = Till.objects.filter(access__user=user)
+    tills = Till.objects.filter(access__user=user).order_by('name')
     if len(tills) > 0:
         return [{'name': "Till access",
                  'url': reverse('tillweb-publist'),
