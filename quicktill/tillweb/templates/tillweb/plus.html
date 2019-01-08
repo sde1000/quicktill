@@ -2,25 +2,29 @@
 
 {% block title %}{{till}} — Price Lookups{% endblock %}
 
-{% block heading %}{{till}} — Price Lookups{% endblock %}
-
 {% block tillcontent %}
 
-<table id="plulist">
-<thead>
-<tr><th>Description</th><th>Department</th>
-<th>Price</th><th>Alt price 1</th><th>Alt price 2</th><th>Alt price 3</th>
-<th>Note</th></tr>
+<table class="table table-striped table-hover" id="plulist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Description</th>
+    <th scope="col">Department</th>
+    <th scope="col">Price</th>
+    <th scope="col">Alt price 1</th>
+    <th scope="col">Alt price 2</th>
+    <th scope="col">Alt price 3</th>
+    <th scope="col">Note</th>
+  </tr>
 </thead>
 <tbody>
 {% for p in plus %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
 <td><a href="{{p.department.get_absolute_url}}">{{p.department}}</a></td>
-{% if p.price %}<td class="money">{{p.price}}</td>{% else %}<td></td>{% endif %}
-{% if p.altprice1 %}<td class="money">{{p.altprice1}}</td>{% else %}<td></td>{% endif %}
-{% if p.altprice2 %}<td class="money">{{p.altprice2}}</td>{% else %}<td></td>{% endif %}
-{% if p.altprice3 %}<td class="money">{{p.altprice3}}</td>{% else %}<td></td>{% endif %}
+{% if p.price %}<td class="money">{{money}}{{p.price}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice1 %}<td class="money">{{money}}{{p.altprice1}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice2 %}<td class="money">{{money}}{{p.altprice2}}</td>{% else %}<td></td>{% endif %}
+{% if p.altprice3 %}<td class="money">{{money}}{{p.altprice3}}</td>{% else %}<td></td>{% endif %}
 <td>{% if p.note %}{{p.note}}{% endif %}</td>
 </tr>
 {% endfor %}
@@ -29,7 +33,7 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#plulist").tablesorter({widgets:["zebra"]});
+  $("#plulist").tablesorter();
 });
 </script>
 

@@ -11,13 +11,11 @@
   being marked as "finished".</p>
 
 <form action="" method="post">{% csrf_token %}
-<table class="kvtable">
-{{ wasteform.as_table }}
-</table>
-<input type="submit" value="Download" name="submit_waste" />
+  {% include "form-horizontal.html" with form=wasteform %}
+  <button class="btn btn-secondary" type="submit" name="submit_waste">Download</button>
 </form>
 
-<h2>Sold stock by type</h2>
+<h2 class="mt-3">Sold stock by type</h2>
 
 <p>This report shows amounts of stock recorded as sold.  Voids are
   treated as negative sales.</p>
@@ -34,10 +32,8 @@
 </ol>
 
 <form action="" method="post">{% csrf_token %}
-<table class="kvtable">
-{{ stocksoldform.as_table }}
-</table>
-<input type="submit" value="Download" name="submit_stocksold" />
+  {% include "form-horizontal.html" with form=stocksoldform %}
+  <button class="btn btn-secondary" type="submit" name="submit_stocksold">Download</button>
 </form>
 
 <script type="text/javascript">

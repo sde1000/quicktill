@@ -2,8 +2,6 @@
 
 {% block title %}{{till}} — Locations{% endblock %}
 
-{% block heading %}{{till}} — Locations{% endblock %}
-
 {% block tillcontent %}
 
 <p>Each stock line has a "location", which is used here to put the
@@ -12,9 +10,10 @@ stock lines into groups.  You can edit the location on the till.</p>
 <p>The special location "Bar" is displayed on
 the <a href="{% url "tillweb-pubroot" pubname=pubname %}">front page</a>.</p>
 
-<ul>
+<ul class="nav flex-column">
 {% for l in locations %}
-<li><a href="{% url "tillweb-location" pubname=pubname location=l %}">{{l}}</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url "tillweb-location" pubname=pubname location=l %}">{{l}}</a>
+</li>
 {% endfor %}
 </ul>
 

@@ -1,51 +1,52 @@
-<div id="dept-takings">
+<div class="row mt-2">
+  <div class="col-md-5">
+    {% if not session.endtime %}
+    <p>This session is still open, so may include transactions that have
+      not been closed.  These are shown in a separate column.</p>
+    {% endif %}
+<table class="table table-striped table-hover w-auto table-sm" id="depttakings">
+<thead class="thead-light">
+<tr><th scope="col">Dept</th><th scope="col">Description</th>
 {% if not session.endtime %}
-<p>This session is still open, so may include transactions that have
-not been closed.  These are shown in a separate column.</p>
+<th scope="col">Paid</th>
+<th scope="col">Pending</th>
 {% endif %}
-
-<table id="depttakings">
-<thead>
-<tr><th>Dept</th><th>Description</th>
-{% if not session.endtime %}
-<th>Paid</th>
-<th>Pending</th>
-{% endif %}
-<th>Total</th>
+<th scope="col">Total</th>
 </tr>
 </thead>
 <tbody>
 {% for d,t,c,p in session.dept_totals_closed %}
 {% if t or c %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td>{{d.id}}</td>
 <td><a href="{% url "tillweb-session-department" pubname=pubname sessionid=session.id dept=d.id %}">{{d.description}}</a></td>
 {% if not session.endtime %}
 {% if c %}<td class="money">{{c}}</td>{% else %}<td></td>{% endif %}
-<td class="money">{{p}}</td>
+<td class="money">{{money}}{{p}}</td>
 {% endif %}
-<td class="money">{{t}}</td>
+<td class="money">{{money}}{{t}}</td>
 </tr>
 {% endif %}
 {% endfor %}
 </tbody>
 <tfoot>
-<tr><td></td><td>Total</td>
+<tr><td></td><th scope="row">Total</th>
 {% if not session.endtime %}
-<td class="money">{{session.closed_total}}</td>
-<td class="money">{{session.pending_total}}</td>
+<td class="money">{{money}}{{session.closed_total}}</td>
+<td class="money">{{money}}{{session.pending_total}}</td>
 {% endif %}
-<td class="money">{{session.total}}</td>
+<td class="money">{{money}}{{session.total}}</td>
 </tr>
 </tfoot>
 </table>
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#depttakings").tablesorter({widgets:["zebra"]});
+  $("#depttakings").tablesorter();
 });
 </script>
-
-<img src="{% url "tillweb-session-sales-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales pie chart" />
+  </div>
+  <div class="col-md-7">
+    <img src="{% url "tillweb-session-sales-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales pie chart" />
+  </div>
 </div>
-

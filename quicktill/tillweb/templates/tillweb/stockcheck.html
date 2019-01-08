@@ -2,8 +2,6 @@
 
 {% block title %}{{till}} — Buying List{% endblock %}
 
-{% block heading %}{{till}} — Buying List{% endblock %}
-
 {% block tillcontent %}
 
 <h2>Generate buying list</h2>
@@ -26,19 +24,23 @@ units per day{% if form.minimum_sold.errors %}
 
 <p>Restrict the list to the {{form.department}} department.{% if form.department.errors %} <span class="error">({% for e in form.department.errors %}{{e}}{% endfor %}</span>{% endif %}</p>
 
-<input type="submit" value="Calculate" name="submit_calculate" />
+<button class="btn btn-primary mb-2" type="submit" name="submit_calculate">Calculate</button>
 </form>
 
 {% if buylist %}
 
-<table id="buylist">
-<thead>
-<tr><th>Stock type</th><th>Sold per day</th>
-<th>In stock</th><th>Need to buy</th></tr>
+<table class="table table-striped table-hover table-sm" id="buylist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Stock type</th>
+    <th scope="col">Sold per day</th>
+    <th scope="col">In stock</th>
+    <th scope="col">Need to buy</th>
+  </tr>
 </thead>
 <tbody>
 {% for st,sold,buy in buylist %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{st.get_absolute_url}}">{{st}}</a></td>
 <td>{{sold}} {{st.unit.name}}s</td>
 <td>{{st.instock}} {{st.unit.name}}s</td>
@@ -49,7 +51,7 @@ units per day{% if form.minimum_sold.errors %}
 </table>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#buylist").tablesorter({widgets:["zebra"]});
+  $("#buylist").tablesorter();
 });
 </script>
 

@@ -1,16 +1,17 @@
 {% with usertotals=session.user_totals %}
-<div id="user-takings">
+<div class="row mt-2">
 {% if usertotals %}
-<table id="usertakings">
-<thead>
-<tr><th>User</th><th>Items</th><th>Total</th></tr>
+<div class="col-md-5">
+<table class="table table-striped table-hover table-sm w-auto" id="usertakings">
+<thead class="thead-light">
+<tr><th scope="col">User</th><th scope="col">Items</th><th scope="col">Total</th></tr>
 </thead>
 <tbody>
 {% for user,i,t in usertotals %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
 <td>{{i}}</td>
-<td class="money">{{t}}</td>
+<td class="money">{{money}}{{t}}</td>
 </tr>
 {% empty %}
 <tr><td>Not recorded</td><td></td></tr>
@@ -20,10 +21,13 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#usertakings").tablesorter({widgets:["zebra"]});
+  $("#usertakings").tablesorter();
 });
 </script>
-<img src="{% url "tillweb-session-users-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales by user pie chart" />
+</div>
+<div class="col-md-7">
+<img src="{% url "tillweb-session-users-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales by user pie chart">
+</div>
 {% else %}
 <p>No information.</p>
 {% endif %}

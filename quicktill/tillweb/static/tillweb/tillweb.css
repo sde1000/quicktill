@@ -9,6 +9,10 @@ table.kvtable td {
     padding-left: 1em;
 }
 
+td.money {
+    text-align: right;
+}
+
 table.index-summary-table {
     border-collapse: separate;
 }

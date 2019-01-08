@@ -2,8 +2,6 @@
 
 {% block title %}{{till}} — Session {{session.id}}{% endblock %}
 
-{% block heading %}{{till}} — Session {{session.id}} ({{session.date}}){% endblock %}
-
 {% block tillcontent %}
 
 {% if session.endtime %}
@@ -14,64 +12,94 @@
 
 {% if session.endtime %}
 {% if session.actual_totals %}
-<table>
-<tr>
+<table class="table text-center">
+  <tr>
 {% for p in session.actual_totals %}
-<td><strong>{{p.paytype.description}}</strong><br /><span class="money">{{p.amount}}</span></td>
+<td><strong>{{p.paytype.description}}</strong><br>{{money}}{{p.amount}}</td>
 {% endfor %}
 <td><strong>Error</strong><br /><span class="money">{{session.error}}</span></td>
 {% for vb,t,ex,vat in session.vatband_totals %}
 {% if vb.business.show_vat_breakdown %}
-<td><strong>{{vb.business}} ex-VAT</strong><br /><span class="money">{{ex}}</span></td>
-<td><strong>{{vb.business}} VAT</strong><br /><span class="money">{{vat}}</span></td>
+<td><strong>{{vb.business}} ex-VAT</strong><br>{{money}}{{ex}}</td>
+<td><strong>{{vb.business}} VAT</strong><br>{{money}}{{vat}}</td>
 {% else %}
-<td><strong>{{vb.business}}</strong><br /><span class="money">{{t}}</span></td>
+<td><strong>{{vb.business}}</strong><br>{{money}}{{t}}</span></td>
 {% endif %}
 {% endfor %}
-</tr>
+  </tr>
 </table>
 {% else %}
 <p>Session totals have not yet been recorded.</p>
 {% endif %}
 {% endif %}
 
-<div id="tabs" style="min-width: 550px">
-<ul>
-<li><a href="{% url "tillweb-session-takings-by-dept" pubname=pubname sessionid=session.id %}">Takings by department</a></li>
-{% if not session.endtime %}<li><a href="#paytype-takings">Takings by payment type</a></li>{% endif %}
-<li><a href="{% url "tillweb-session-takings-by-user" pubname=pubname sessionid=session.id %}">Takings by user</a></li>
-<li><a href="{% url "tillweb-session-stock-sold" pubname=pubname sessionid=session.id %}">Stock sold</a></li>
-<li><a href="{% url "tillweb-session-transactions" pubname=pubname sessionid=session.id %}">Transactions</a></li>
+<ul class="nav nav-tabs mt-3 w-100" id="sessionTabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link" id="deptTakingsTab" href="{% url "tillweb-session-takings-by-dept" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
+      Takings by department
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="userTakingsTab" href="{% url "tillweb-session-takings-by-user" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#userTakings" role="tab" aria-controls="userTakings" aria-selected="false">
+      Takings by user
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
+      Stock sold
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="transactionsTab" href="{% url "tillweb-session-transactions" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#transactions" role="tab" aria-controls="transactions" aria-selected="false">
+      Transactions
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="infoTab" href="#info" data-toggle="tab" data-target="#info" role="tab" aria-controls="info" aria-selected="false">
+      Info
+    </a>
+  </li>
 </ul>
 
-{% if not session.endtime %}
-<div id="paytype-takings">
-<p>Takings recorded so far this session.  May include part-paid
-transactions.</p>
-<table>
-<tr><th>Type</th><th>Amount</th></tr>
-{% for type,amount in session.payment_totals %}
-<tr><td>{{type}}</td><td class="money">{{amount}}</td></tr>
-{% endfor %}
-</table>
-</div>
-{% endif %}
-
-</div>
-<script type="text/javascript">
-$(function() {
-  $("#tabs").tabs();
-});
-</script>
-
-<p><a href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a></p>
+<div class="tab-content">
+  <div class="tab-pane fade" id="deptTakings" aria-labelledby="deptTakingsTab">
+  </div>
+  <div class="tab-pane fade" id="userTakings" aria-labelledby="userTakingsTab">
+  </div>
+  <div class="tab-pane fade" id="stockSold" aria-labelledby="stockSoldTab">
+  </div>
+  <div class="tab-pane fade" id="transactions" aria-labelledby="transactionsTab">
+  </div>
+  <div class="tab-pane fade" id="info" aria-labelledby="infoTab">
+    <a class="btn btn-secondary mt-3 mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
 
 {% if session.notes %}
-<ul>
-  {% for note in session.notes %}
-  <li>{{note.type.description}}: {{note.text}}</li>
-  {% endfor %}
-</ul>
+    <ul>
+      {% for note in session.notes %}
+      <li>{{note.type.description}}: {{note.text}}</li>
+      {% endfor %}
+    </ul>
 {% endif %}
+  </div>
+</div>
+
+<script type="text/javascript">
+$(document).ready(function() {
+$('[data-toggle="tabajax"]').click(function(e) {
+var $this = $(this),
+    loadurl = $this.attr('href'),
+    targ = $this.attr('data-target');
+
+$.get(loadurl, function(data) {
+    $(targ).html(data);
+});
+
+$this.tab('show');
+return false;
+});
+
+$('#deptTakingsTab').trigger('click');
+});
+</script>
 
 {% endblock %}
