@@ -14,7 +14,7 @@
 <tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 {% endif %}
 <tr><th>Notes</th><td>{{transaction.notes}}</td></tr>
-<tr><th>Total</th><td><span class="money">{{transaction.total}}</span></td></tr>
+<tr><th>Total</th><td>{{money}}{{transaction.total}}</td></tr>
 </table>
 
 {% if not transaction.session %}

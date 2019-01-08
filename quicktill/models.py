@@ -660,7 +660,8 @@ class Transline(Base):
         "Transline", remote_side=[id], uselist=False,
         backref=backref('voids', uselist=False, passive_deletes=True))
     def __str__(self):
-        return "Transaction line {}".format(self.id)
+        return "Transaction line {} in transaction {}".format(
+            self.id, self.transaction.id)
     @hybrid_property
     def total(self):
         return self.items * self.amount

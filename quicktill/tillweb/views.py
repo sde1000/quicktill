@@ -32,7 +32,7 @@ dtf = "Y-m-d H:i"
 # django-based website.
 @login_required
 def publist(request):
-    access = Access.objects.filter(user=request.user)
+    access = Access.objects.filter(user=request.user).order_by('till__name')
     return render(request, 'tillweb/publist.html',
                   {'access': access})
 
