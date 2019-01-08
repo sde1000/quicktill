@@ -1,3 +1,33 @@
+quicktill (0.13.5) stable; urgency=low
+
+  * New release 0.13.5
+
+  * More minor style updates
+
+  * More bootstrap style updates
+
+  * Rename style sheet
+
+  * More bootstrap style updates
+
+  * Sort tills alphabetically in multi-till mode
+
+  * Remove local copy of jquery and jquery-ui
+
+  * Include cost price in tillweb stock list
+
+  * Include cost price in stock spreadsheet
+
+  * WIP: update tillweb for bootstrap-based websites
+
+  * Remove dependency of lockscreen on foodorder
+
+  * Be careful not to touch voids / voided service charges
+
+  * Convert foodorder to using a RegisterPlugin
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 08 Jan 2019 22:58:16 +0000
+
 quicktill (0.13.4) stable; urgency=low
 
   * New release 0.13.4
