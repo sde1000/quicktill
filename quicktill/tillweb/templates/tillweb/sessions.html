@@ -28,7 +28,7 @@
   </thead>
 <tbody>
 {% for s in pager.items %}
-<tr class="{% cycle 'odd' 'even' %}">
+<tr>
 <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
 <td><a href="{{s.get_absolute_url}}">{{s.date}}</a></td>
 <td>{{s.date|date:"l"}}</td>
