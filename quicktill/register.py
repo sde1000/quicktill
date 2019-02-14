@@ -88,6 +88,72 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
         """
         return False
 
+class _DiscountPolicyMount(type):
+    def __init__(cls, name, bases, attrs):
+        if not hasattr(cls, 'policies'):
+            cls.policies = {}
+
+    def __call__(cls, *args, **kwargs):
+        x = type.__call__(cls, *args, **kwargs)
+        cls.policies[x.policy_name] = x
+        if x.permission_required:
+            user.action_descriptions[x.permission_required[0]] \
+                = x.permission_required[1]
+
+class DiscountPolicyPlugin(metaclass=_DiscountPolicyMount):
+    """A plugin to add a discount policy to the register
+
+    Create instances of subclasses of this class to add discount policies.
+    """
+    # Permission required to set this as a transaction's discount policy
+    permission_required = None
+
+    def __init__(self, policy_name):
+        self.policy_name = policy_name
+
+    def discount_for(self, transline):
+        """Calculate the discount for a transaction line and return it
+
+        The amount returned is the discount _per item_, i.e. the value
+        to subtract from the 'original_amount' property to apply the
+        discount, and the name of the discount, in a 2-tuple.
+
+        Eg. if the transaction line is for 2 items at £0.50 each and
+        the discount is 10% and called "foo", return (Decimal(0.05), "foo")
+
+        This method may read any information it needs to make its
+        decision by following relationships from transline, but must
+        not alter any information in the database.
+
+        It should read the 'original_amount' property instead of the
+        'amount' column, because 'amount' may already have a discount
+        applied.
+
+        The discount returned must not be less than zero or greater
+        than the original transaction line amount.
+        """
+        return zero, self.policy_name
+
+class PercentageDiscount(DiscountPolicyPlugin):
+    """A flat percentage discount, optionally restricted to a set of departments
+
+    Percentage must be between 0.0 and 100.0.
+    """
+
+    def __init__(self, policy_name, percentage, departments=None,
+                 permission_required=None):
+        super().__init__(policy_name)
+        self._percentage = percentage
+        self._departments = departments
+        self.permission_required = permission_required
+
+    def discount_for(self, transline):
+        if self._departments:
+            if transline.dept_id not in self._departments:
+                return zero, self.policy_name
+        return (transline.original_amount * Decimal(self._percentage / 100.0))\
+            .quantize(penny), self.policy_name
+
 class bufferline(ui.lrline):
     """The last line on the register display
 
@@ -136,10 +202,17 @@ class bufferline(ui.lrline):
                 tillconfig.fc(self.reg._total_value_of_marked_translines()))
         else:
             log.debug("bal %s", repr(tillconfig.fc(self.reg.balance)))
-            self.rtext = "{} {}".format(
-                "Amount to pay" if self.reg.balance >= zero else "Refund amount",
-                tillconfig.fc(self.reg.balance)) \
-                if self.reg.balance != zero else ""
+            if self.reg.balance > zero:
+                self.rtext = "Amount to pay {}{}".format(
+                    "(includes {} discount) ".format(
+                        self.reg.discount_policy.policy_name)
+                    if self.reg.discount_policy else "",
+                    tillconfig.fc(self.reg.balance))
+            elif self.reg.balance < zero:
+                self.rtext = "Refund amount {}".format(
+                    tillconfig.fc(self.reg.balance))
+            else:
+                self.rtext = ""
         # Add the expected blank line
         l = [''] + super().display(width)
         self.cursor = (cursorx, len(l) - 1)
@@ -543,11 +616,12 @@ class page(ui.basicpage):
             self.s.set(self.dl) # Tell the scrollable about the new display list
         self.ml = set() # Set of marked tlines
         self.transid = None # Current transaction
+        self.discount_policy = None
         self.user.dbuser.transaction = None
         self.repeat = None # If dept/line button pressed, update this transline
         self.keyguard = False
         self.clearbuffer()
-        self.balance = zero # Balance of current transaction
+        self.balance = zero # Cache of balance of current transaction
         self.prompt = self.defaultprompt
         self._redraw_note()
         td.s.flush()
@@ -560,7 +634,7 @@ class page(ui.basicpage):
                     l.update_mark(self.ml)
             self.prompt = self.defaultprompt
 
-    def _loadtrans(self, transid):
+    def _loadtrans(self, transid, update_discount=False):
         """Load a transaction, overwriting all our existing state.
         """
         log.debug("Register: loadtrans %s", transid)
@@ -580,6 +654,11 @@ class page(ui.basicpage):
             trans.user = None
             td.s.flush()
         trans.user = self.user.dbuser
+        self.discount_policy = DiscountPolicyPlugin.policies.get(
+            trans.discount_policy, None)
+        if update_discount:
+            for line in trans.lines:
+                self._apply_discount(line)
         self.dl = [tline(l.id) for l in trans.lines] \
                   + [payment.pline(i) for i in trans.payments]
         self.s.set(self.dl)
@@ -640,6 +719,9 @@ class page(ui.basicpage):
             and trans.total == trans.payments_total):
             # Yes, it's balanced!
             trans.closed = True
+            trans.discount_policy = None
+            self.discount_policy = None
+            self.balance = zero
             td.s.flush()
             self._clear_marks()
             if self._autolock:
@@ -825,6 +907,7 @@ class page(ui.basicpage):
                        department=plu.department, user=self.user.dbuser,
                        transcode='S', text=sale.description)
         td.s.add(tl)
+        self._apply_discount(tl)
         td.s.flush()
         td.s.refresh(tl, ['time']) # load time from database
         self.dl.append(tline(tl.id))
@@ -1027,6 +1110,7 @@ class page(ui.basicpage):
                 td.s.expire(
                     stockitem,
                     ['used', 'sold', 'remaining', 'firstsale', 'lastsale'])
+            self._apply_discount(tl)
             td.s.flush()
             td.s.refresh(tl, ['time']) # load time from database
             self.dl.append(tline(tl.id))
@@ -1107,6 +1191,7 @@ class page(ui.basicpage):
                            items=items, amount=amount,
                            transcode='S', text=text, user=self.user.dbuser)
             td.s.add(tl)
+            self._apply_discount(tl)
             td.s.flush()
             log.info("Register: deptlines: trans=%d,lid=%d,dept=%d,"
                      "price=%f,text=%s"%(trans.id, tl.id, dept, amount, text))
@@ -1763,9 +1848,11 @@ class page(ui.basicpage):
         td.s.add_all(voidlines)
         td.s.flush() # get transline IDs, fill in voided_by
         for ntl in voidlines:
+            self._apply_discount(ntl)
             self.dl.append(tline(ntl.id))
         for l in ll:
             l.update()
+        td.s.flush()
 
     def markkey(self):
         """The Mark key was pressed.
@@ -1966,57 +2053,6 @@ class page(ui.basicpage):
                      title="Transaction defer confirmed",
                      colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
 
-    @user.permission_required("convert-to-free-drinks",
-                              "Convert a transaction to free drinks")
-    def freedrinktrans(self):
-        """Convert the current transaction to free drinks."""
-        if not self.entry():
-            return
-        trans = self._gettrans()
-        if not trans:
-            ui.infopopup(["There is no current transaction."],
-                         title="Error")
-            return
-        if trans.closed:
-            ui.infopopup(["The transaction is already closed."],
-                         title="Error")
-            return
-        if len(trans.payments) > 0:
-            ui.infopopup(["This transaction has already had payments entered "
-                          "against it, so cannot be converted to free drinks."],
-                         title="Error")
-            return
-        if not trans.notes or "free" not in trans.notes.lower():
-            ui.infopopup(
-                ["The transaction notes must include the word 'free' "
-                 "before the transaction can be converted to free drinks.",
-                 "", "This is a protective measure to try to ensure you don't "
-                 "convert the wrong transaction.  Conversion of a transaction "
-                 "to free drinks cannot be reversed."],
-                title="Transaction not labelled for free drinks")
-            return
-        freebie = td.s.query(RemoveCode).get('freebie')
-        if not freebie:
-            ui.infopopup(["The database does not include a 'free drink' "
-                          "waste code."], title="Error")
-            return
-        for l in trans.lines:
-            for sr in l.stockref:
-                sr.removecode = freebie
-                sr.transline = None
-        # Flush the changes to the database now, so that the stockout
-        # objects are not deleted in the cascade from deleting the
-        # transaction
-        td.s.flush()
-        td.s.refresh(trans) # remove references to stockout objects
-        td.s.delete(trans)
-        td.s.flush()
-        self._clear()
-        self._redraw()
-        ui.infopopup(["Transaction has been converted to free drinks."],
-                     title="Free drinks", colour=ui.colour_confirm,
-                     dismiss=keyboard.K_CASH)
-
     def _check_session_and_open_transaction(self):
         # For transaction merging
         if not self.entry():
@@ -2085,7 +2121,7 @@ class page(ui.basicpage):
         td.s.delete(trans)
         td.s.flush()
         td.s.expire(othertrans)
-        self._loadtrans(othertrans.id)
+        self._loadtrans(othertrans.id, update_discount=True)
 
     def _splittrans(self, notes):
         if not self.entry():
@@ -2094,7 +2130,8 @@ class page(ui.basicpage):
             return
         trans = self._gettrans()
         # Create a new transaction with the supplied notes
-        nt = Transaction(session=trans.session, notes=notes)
+        nt = Transaction(session=trans.session, notes=notes,
+                         discount_policy=trans.discount_policy)
         td.s.add(nt)
         for l in self.ml:
             t = td.s.query(Transline).get(l.transline)
@@ -2121,19 +2158,46 @@ class page(ui.basicpage):
         trans.notes = notes
         self._redraw_note()
 
-    def _apply_discount(self, name, amount):
+    def _apply_discount(self, tline):
+        tline.amount = tline.original_amount
+        tline.discount = zero
+        tline.discount_name = None
+        if tline.items > 0:
+            if self.discount_policy:
+                discount, discount_name = self.discount_policy.discount_for(tline)
+                tline.amount = tline.amount - discount
+                tline.discount = discount
+                tline.discount_name = discount_name if discount else None
+        else:
+            # Lines with negative numbers of items usually void earlier
+            # transaction lines.  Copy the amount, discount and discount
+            # name from the earlier transaction line to ensure that
+            # the original discount is reversed.
+            if tline.voids:
+                tline.amount = tline.voids.amount
+                tline.discount = tline.voids.discount
+                tline.discount_name = tline.voids.discount_name
+
+    def _apply_discount_policy(self, policy):
         trans = self._gettrans()
         if not trans:
             return
         if trans.closed:
             ui.infopopup(["The transaction is already closed."], title="Error")
             return
-        for line in trans.lines:
-            discount = (line.amount * amount).quantize(penny)
-            line.amount -= discount
-        trans.lines.append(
-            Transline(items=1, amount=zero, dept_id=tillconfig.discount_note_dept,
-                      user=self.user.dbuser, transcode='S', text=name))
+        # Check permissions for new policy
+        if policy and policy.permission_required \
+           and not self.user.may(policy.permission_required[0]):
+            ui.infopopup(
+                ["You do not have the '{}' permission that is required "
+                 "to apply this type of discount.".format(
+                     policy.permission_required[0])],
+                title="Not allowed")
+            return
+        trans.discount_policy = policy.policy_name if policy else None
+        self.discount_policy = policy
+        for tline in trans.lines:
+            self._apply_discount(tline)
         td.s.flush()
         # Since everything is changing, just reload the whole transaction
         self._loadtrans(trans.id)
@@ -2141,8 +2205,9 @@ class page(ui.basicpage):
     @user.permission_required('apply-discount',
                               'Apply a discount to a transaction')
     def _discount_menu(self):
-        menu = [(name, self._apply_discount, (name, amount))
-                for name, amount in tillconfig.discounts]
+        menu = [("No discount", self._apply_discount_policy, (None,))] \
+               + [(x.policy_name, self._apply_discount_policy, (x,))
+                  for x in DiscountPolicyPlugin.policies.values()]
         ui.automenu(menu, title="Apply Discount")
 
     def managetranskey(self):
@@ -2168,8 +2233,6 @@ class page(ui.basicpage):
             menu = [
                 ("1", "Defer transaction to next session",
                  self.defertrans, None),
-                ("2", "Convert transaction to free drinks",
-                 self.freedrinktrans, None),
                 ("3", "Merge this transaction with another "
                  "open transaction", self.mergetransmenu, None),
                 ("4", "Set this transaction's note to '{}'".format(
@@ -2187,7 +2250,7 @@ class page(ui.basicpage):
                      addtransline, (self.deptlines,)))
         menu.append(("8", "Recall a transaction by number",
                      recalltranspopup, (self,)))
-        if trans and not trans.closed and tillconfig.discounts:
+        if trans and not trans.closed and DiscountPolicyPlugin.policies:
             menu.append(("9", "Apply a discount", self._discount_menu, None))
 
         ui.keymenu(menu, title="Transaction options")

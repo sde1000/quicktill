@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base,declared_attr
 from sqlalchemy import Column,Integer,String,DateTime,Date,ForeignKey,Numeric,CHAR,Boolean,Text,Interval
 from sqlalchemy.schema import Sequence,Index,MetaData,DDL,CheckConstraint,Table
-from sqlalchemy.sql.expression import text, alias, case
+from sqlalchemy.sql.expression import text, alias, case, literal
 from sqlalchemy.orm import relationship,backref,object_session,sessionmaker
 from sqlalchemy.orm import subqueryload_all,joinedload,subqueryload,lazyload
 from sqlalchemy.orm import contains_eager,column_property
@@ -373,6 +373,20 @@ class Transaction(Base):
                        nullable=True) # Null sessionid for deferred transactions
     notes = Column(String(60), nullable=False, default='')
     closed = Column(Boolean, nullable=False, default=False)
+    # The discount policy column is used when transactions are open to
+    # store the name of the discount policy to apply whenever a
+    # transaction line is added or changed.  Closed transactions are
+    # immutable, so discount policies can no longer be applied.  A
+    # record of which policy was used is stored per transaction line.
+    discount_policy = Column(String(), nullable=True)
+
+    __table_args__ = (
+        # closed implies discount_policy is null
+        CheckConstraint(
+            "NOT(closed) OR (discount_policy IS NULL)",
+            name="discount_policy_closed_constraint"),
+    )
+
     session = relationship(Session, backref=backref('transactions', order_by=id))
 
     # total is a column property defined below
@@ -650,6 +664,28 @@ class Transline(Base):
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
     text = Column(Text, nullable=False)
+    # The discount column records the discount applied to the amount
+    # _per item_, i.e. you must multiply by the number of items to get
+    # the total discount.
+    discount = Column(money, CheckConstraint("discount >= 0.00"),
+                      nullable=False, server_default=literal(zero),
+                      doc="Amount of discount applied to this transaction line")
+    discount_name = Column(String(), nullable=True)
+
+    __table_args__ = (
+        # If discount is zero, discount_name must be null
+        # If discount is not zero, discount_name must not be null
+        CheckConstraint(
+            "(discount = 0.00) = (discount_name IS NULL)",
+            name="discount_name_constraint"),
+    )
+
+    @property
+    def original_amount(self):
+        """The original amount of the transaction line before any discounts
+        """
+        return self.amount + (self.discount or zero)
+
     transaction = relationship(
         Transaction,
         backref=backref('lines', order_by=id,
@@ -689,7 +725,7 @@ class Transline(Base):
         The number of items and price formatted nicely for display in
         the register or on a receipt.
         """
-        if self.amount == zero:
+        if self.amount == zero and self.items > 0:
             return ""
         if self.items == 1:
             return "%s%s" % (currency, self.amount)
@@ -710,7 +746,9 @@ class Transline(Base):
         if self.voided_by:
             return
         v = Transline(transaction=transaction, items=-self.items,
-                      amount=self.amount, department=self.department,
+                      amount=self.amount, discount=self.discount,
+                      discount_name=self.discount_name,
+                      department=self.department,
                       user=user, transcode='V', text=self.text)
         self.voided_by = v
         for stockout in self.stockref:
@@ -1177,7 +1215,7 @@ class Delivery(Base):
                         nullable=False)
     docnumber = Column(String(40))
     date = Column(Date, nullable=False, server_default=func.current_timestamp())
-    checked = Column(Boolean, nullable=False, server_default=text('false'))
+    checked = Column(Boolean, nullable=False, server_default=literal(False))
     supplier = relationship(Supplier, backref=backref(
         'deliveries', order_by=desc(id)),
                             lazy="joined")
@@ -1668,8 +1706,8 @@ class KeyboardBinding(Base):
 class KeyCap(Base):
     __tablename__ = 'keycaps'
     keycode = Column(String(20), nullable=False, primary_key=True)
-    keycap = Column(String(), nullable=False, server_default='')
-    css_class = Column(String(), nullable=False, server_default='')
+    keycap = Column(String(), nullable=False, server_default=literal(''))
+    css_class = Column(String(), nullable=False, server_default=literal(''))
     def __repr__(self):
         return "<KeyCap('%s','%s')>" % (self.keycode, self.keycap)
 

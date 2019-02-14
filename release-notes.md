@@ -1,6 +1,43 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v0.13.x to v14
+----------------------
+
+Honesty in version numbering: there will never be a version 1.0!
+
+There are database changes this release.  The changes are
+backwards-compatible with v0.13 so can be made before installing the
+new version.
+
+To upgrade the database:
+
+  - run psql and give the following commands to the database:
+
+```BEGIN;
+ALTER TABLE transactions
+      ADD COLUMN discount_policy character varying;
+
+ALTER TABLE translines
+      ADD COLUMN discount numeric(10,2) DEFAULT 0.00 NOT NULL,
+      ADD COLUMN discount_name character varying;
+
+ALTER TABLE transactions
+      ADD CONSTRAINT discount_policy_closed_constraint CHECK (((NOT closed) OR (discount_policy IS NULL)));
+
+ALTER TABLE translines
+      ADD CONSTRAINT discount_name_constraint CHECK (((discount = 0.00) = (discount_name IS NULL)));
+
+ALTER TABLE translines
+      ADD CONSTRAINT translines_discount_check CHECK ((discount >= 0.00));
+
+COMMIT;
+```
+
+Alternatively install the new release, run "runtill checkdb" and paste
+the output into psql if it looks sensible.
+
+
 Upgrade v0.12.x to v0.13
 ------------------------
 

@@ -230,6 +230,13 @@ bitcoin = quicktill.bitcoin.BitcoinPayment(
 all_payment_methods = [cash, card] # Used for session totals entry
 payment_methods = all_payment_methods # Used in register
 
+# Declare discount policies: all simple percentages
+quicktill.register.PercentageDiscount("Staff food", 20, [10])
+quicktill.register.PercentageDiscount("Free", 100, permission_required=(
+    "convert-to-free-drinks", "Convert a transaction to free drinks"))
+quicktill.register.PercentageDiscount("Test", 10, [1, 2])
+quicktill.register.PercentageDiscount("Half price", 50)
+
 tapi = quicktill.extras.twitter_api(
     token='not-a-real-token',
     token_secret='not-a-real-secret',
@@ -327,14 +334,6 @@ std = {
     'database': 'dbname=haymakers',
     'checkdigit_print': True,
     'checkdigit_on_usestock': True,
-    'discounts': [
-        ("5% Shareholder Discount", Decimal(0.05)),
-        ("10% Shareholder Discount", Decimal(0.10)),
-        ("20% Shareholder Discount", Decimal(0.20)),
-        ("Staff Discount", Decimal(0.25)),
-        ("Director's Discount", Decimal(0.50)),
-    ],
-    'discount-note-dept': 8,
 }
 
 kitchen = {
