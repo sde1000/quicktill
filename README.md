@@ -4,7 +4,7 @@ quicktill — cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004–2018 Stephen Early <steve@assorted.org.uk>
+quicktill is Copyright (C) 2004–2019 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -30,6 +30,8 @@ Features
  * Web-based reporting interface (read-only for now)
 
  * [Xero](https://www.xero.com/) integration
+
+ * Flexible discount policies, and reporting on discounts given
 
 It should be possible to run this software on any system that supports
 python 3.  Usually it runs on Debian-derived Linux systems like
@@ -121,9 +123,9 @@ To run the till software in "Main bar" mode:
 
     ./runtill -u file:examples/emfcamp.py -c mainbar start --gtk --keyboard
 
-Normally the till software is used with a matrix keyboard, but these
-are pricey and hard to get hold of.  The `--keyboard` option makes the
-till software display an on-screen keyboard instead.
+At some sites the till software is used with a matrix keyboard, but
+these are pricey and hard to get hold of.  The `--keyboard` option
+makes the till software display an on-screen keyboard instead.
 
 Once the till software is running, you can exit it by pressing the
 "Manage Till" button (or 'M' if there's no on-screen keyboard) and
@@ -174,11 +176,11 @@ software](https://github.com/sde1000/quicktill-nfc-bridge).
 
 Receipt printers are supported (and required, if you want to use a
 cash drawer).  The software has generic support for all ESC/POS
-receipt printers, and explicit support for the Epson TM-T20 (thermal)
-and TM-U220 (dot-matrix) printers.  Label printers are supported for
-stock label printing.  I use the DYMO LabelWriter-450 (cheap, works
-well) but anything with [CUPS](https://www.cups.org/) support will
-work.
+receipt printers, and explicit support for the Epson TM-T20 (thermal),
+TM-U220 (dot-matrix), and Aures ODP 333.  Label printers are supported
+for stock label printing.  I use the DYMO LabelWriter-450 (cheap,
+works well) but anything with [CUPS](https://www.cups.org/) support
+will work.
 
 Setup
 -----
@@ -227,7 +229,8 @@ Useful subcommands
 
 The till software is invoked as `runtill [options] subcommand
 [subcommand options]`.  Usually the subcommand is "start", to run the
-till interactively.
+till interactively.  You can get a list of all the subcommands with
+`runtill --help`.
 
 Another useful subcommand is "dbshell", which starts an interactive
 python interpreter with a database connection already set up, a

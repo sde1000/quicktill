@@ -14,6 +14,7 @@
 <tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 {% endif %}
 <tr><th>Notes</th><td>{{transaction.notes}}</td></tr>
+<tr><th>Discount amount</th><td>{{money}}{{transaction.discount_total}}</td></tr>
 <tr><th>Total</th><td>{{money}}{{transaction.total}}</td></tr>
 </table>
 

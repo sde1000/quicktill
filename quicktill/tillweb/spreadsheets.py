@@ -434,17 +434,17 @@ def session(ds, s, tillname="Till"):
     dsheet.cell(tcol, 0, doc.headercell("Total"))
 
     row = 1
-    for dept, total, paid, pending in s.dept_totals_closed:
-        if not paid and not pending:
+    for x in s.dept_totals_closed:
+        if not x.paid and not x.pending:
             continue
-        dsheet.cell(0, row, doc.intcell(dept.id))
-        dsheet.cell(1, row, doc.textcell(dept.description))
+        dsheet.cell(0, row, doc.intcell(x.Department.id))
+        dsheet.cell(1, row, doc.textcell(x.Department.description))
         if not s.endtime:
-            if paid:
-                dsheet.cell(2, row, doc.moneycell(paid))
-            if pending:
-                dsheet.cell(3, row, doc.moneycell(pending))
-        dsheet.cell(tcol, row, doc.moneycell(total))
+            if x.paid:
+                dsheet.cell(2, row, doc.moneycell(x.paid))
+            if x.pending:
+                dsheet.cell(3, row, doc.moneycell(x.pending))
+        dsheet.cell(tcol, row, doc.moneycell(x.total))
         row += 1
     dsheet.cell(1, row, doc.headercell("Total:"))
     if not s.endtime:

@@ -7,6 +7,7 @@
 <table class="table table-striped table-hover w-auto table-sm" id="depttakings">
 <thead class="thead-light">
 <tr><th scope="col">Dept</th><th scope="col">Description</th>
+<th scope="col">Discount</th>
 {% if not session.endtime %}
 <th scope="col">Paid</th>
 <th scope="col">Pending</th>
@@ -15,22 +16,24 @@
 </tr>
 </thead>
 <tbody>
-{% for d,t,c,p in session.dept_totals_closed %}
-{% if t or c %}
+{% for x in session.dept_totals_closed %}
+{% if x.total or x.paid %}
 <tr>
-<td>{{d.id}}</td>
-<td><a href="{% url "tillweb-session-department" pubname=pubname sessionid=session.id dept=d.id %}">{{d.description}}</a></td>
+<td>{{x.Department.id}}</td>
+<td><a href="{% url "tillweb-session-department" pubname=pubname sessionid=session.id dept=x.Department.id %}">{{x.Department.description}}</a></td>
+<td class="money">{% if x.discount_total %}{{money}}{{x.discount_total}}{% endif %}</td>
 {% if not session.endtime %}
-{% if c %}<td class="money">{{c}}</td>{% else %}<td></td>{% endif %}
-<td class="money">{{money}}{{p}}</td>
+<td class="money">{% if x.paid %}{{money}}{{x.paid}}{% endif %}</td>
+<td class="money">{{money}}{{x.pending}}</td>
 {% endif %}
-<td class="money">{{money}}{{t}}</td>
+<td class="money">{{money}}{{x.total}}</td>
 </tr>
 {% endif %}
 {% endfor %}
 </tbody>
 <tfoot>
 <tr><td></td><th scope="row">Total</th>
+<td class="money">{{money}}{{session.discount_total}}</td>
 {% if not session.endtime %}
 <td class="money">{{money}}{{session.closed_total}}</td>
 <td class="money">{{money}}{{session.pending_total}}</td>

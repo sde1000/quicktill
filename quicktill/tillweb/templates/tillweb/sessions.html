@@ -22,8 +22,10 @@
       <th scope="col">ID</th>
       <th scope="col">Date</th>
       <th scope="col">Day</th>
+      <th scope="col">Discounts</th>
       <th scope="col">Till Total</th>
       <th scope="col">Actual Total</th>
+      <th scope="col">Difference</th>
     </tr>
   </thead>
 <tbody>
@@ -32,11 +34,14 @@
 <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
 <td><a href="{{s.get_absolute_url}}">{{s.date}}</a></td>
 <td>{{s.date|date:"l"}}</td>
+<td>{% if s.discount_total %}{{money}}{{s.discount_total}}{% endif %}</td>
 <td>{{money}}{{s.total}}</td>
 {% if s.actual_total %}
 <td>{{money}}{{s.actual_total}}</td>
+<td>{{money}}{{s.error}}</td>
 {% else %}
 <td></td>
+<th></td>
 {% endif %}
 </tr>
 {% endfor %}

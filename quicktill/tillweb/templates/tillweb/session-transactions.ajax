@@ -1,12 +1,19 @@
 <table class="table table-striped table-hover table-sm w-auto mt-2" id="transactions-table">
 <thead class="thead-light">
-<tr><th scope="col">Transaction</th><th scope="col">Amount</th><th scope="col">Note</th><th scope="col">State</th></tr>
+<tr>
+<th scope="col">Transaction</th>
+<th scope="col">Amount</th>
+<th scope="col">Discount</th>
+<th scope="col">Note</th>
+<th scope="col">State</th>
+</tr>
 </thead>
 <tbody>
 {% for t in session.transactions %}
-<tr">
+<tr>
 <td><a href="{{t.get_absolute_url}}">{{t.id}}</a></td>
 <td class="money">{{money}}{{t.total}}</td>
+<td class="money">{% if t.discount_total %}{{money}}{{t.discount_total}}{% endif %}</td>
 <td>{% if t.notes %}{{t.notes}}{% endif %}</td>
 <td>{% if t.closed %}Paid:
 {% for pt,amount in t.payments_summary %}

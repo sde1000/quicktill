@@ -45,6 +45,11 @@
     </a>
   </li>
   <li class="nav-item">
+    <a class="nav-link" id="discountsTab" href="{% url "tillweb-session-discounts" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#discounts" role="tab" aria-controls="discounts" aria-selected="false">
+      Discounts
+    </a>
+  </li>
+  <li class="nav-item">
     <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
       Stock sold
     </a>
@@ -65,6 +70,8 @@
   <div class="tab-pane fade" id="deptTakings" aria-labelledby="deptTakingsTab">
   </div>
   <div class="tab-pane fade" id="userTakings" aria-labelledby="userTakingsTab">
+  </div>
+  <div class="tab-pane fade" id="discounts" aria-labelledby="discountsTab">
   </div>
   <div class="tab-pane fade" id="stockSold" aria-labelledby="stockSoldTab">
   </div>

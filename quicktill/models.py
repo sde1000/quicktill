@@ -185,39 +185,52 @@ class Session(Base):
     incomplete_transactions = relationship(
         "Transaction",
         primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
+
     @property
     def dept_totals(self):
-        "Transaction lines broken down by Department."
+        """Transaction lines broken down by Department.
+
+        Returns list of (Department, total) keyed tuples.
+        """
         return object_session(self).\
             query(Department, func.sum(
-                Transline.items * Transline.amount)).\
+                Transline.items * Transline.amount).label("total")).\
             select_from(Session).\
             filter(Session.id == self.id).\
             join(Transaction, Transline, Department).\
             order_by(Department.id).\
             group_by(Department).all()
+
     @property
     def dept_totals_closed(self):
         """Transaction lines broken down by Department and closed status.
 
-        Returns list of (Department,total,closed_total,pending_total).
-        The list always includes all departments, even if both totals
-        are None.
+        Returns list of (Department, total, paid, pending,
+        discount_total) keyed tuples.  The list always includes all
+        departments, even if all totals are None.  Access the tuples
+        using keys not indices, so that
         """
         s = object_session(self)
-        tot_all = s.query(func.sum(Transline.items * Transline.amount)).\
-                  select_from(Transline.__table__).\
-                  join(Transaction).\
-                  filter(Transaction.sessionid == self.id).\
-                  filter(Transline.dept_id == Department.id)
-        tot_closed = tot_all.filter(Transaction.closed)
-        totals = object_session(self).\
-                 query(Department,
+        tot_all = s.query(func.sum(Transline.items * Transline.amount))\
+                   .select_from(Transline.__table__)\
+                   .join(Transaction)\
+                   .filter(Transaction.sessionid == self.id)\
+                   .filter(Transline.dept_id == Department.id)
+        tot_closed = tot_all.filter(Transaction.closed == True)
+        tot_open = tot_all.filter(Transaction.closed == False)
+        tot_discount = s.query(func.sum(Transline.items * Transline.discount))\
+                        .select_from(Transline.__table__)\
+                        .join(Transaction)\
+                        .filter(Transaction.sessionid == self.id)\
+                        .filter(Transline.dept_id == Department.id)
+        return s.query(Department,
                        tot_all.label("total"),
-                       tot_closed.label("closed")).\
-                       order_by(Department.id).\
-                       group_by(Department).all()
-        return [(d, t, c, (t or zero) - (c or zero)) for d, t, c in totals]
+                       tot_closed.label("paid"),
+                       tot_open.label("pending"),
+                       tot_discount.label("discount_total"))\
+                .order_by(Department.id)\
+                .group_by(Department).all()
+
     @property
     def user_totals(self):
         "Transaction lines broken down by User; also count of items sold."
@@ -698,9 +711,15 @@ class Transline(Base):
     def __str__(self):
         return "Transaction line {} in transaction {}".format(
             self.id, self.transaction.id)
+
     @hybrid_property
     def total(self):
         return self.items * self.amount
+
+    @hybrid_property
+    def total_discount(self):
+        return self.items * self.discount
+
     def __repr__(self):
         return "<Transline(%s,%s)>" % (self.id, self.transid)
 
@@ -725,7 +744,7 @@ class Transline(Base):
         The number of items and price formatted nicely for display in
         the register or on a receipt.
         """
-        if self.amount == zero and self.items > 0:
+        if self.amount == zero and self.discount == zero:
             return ""
         if self.items == 1:
             return "%s%s" % (currency, self.amount)
@@ -808,6 +827,16 @@ Session.closed_total = column_property(
     deferred=True,
     doc="Transaction lines total, closed transactions only")
 
+Session.discount_total = column_property(
+    select([func.coalesce(func.sum(Transline.items * Transline.discount),
+                          zero)],
+           whereclause=and_(Transline.transid == Transaction.id,
+                            Transaction.sessionid == Session.id)).\
+        correlate(Session.__table__).\
+        label('discount_total'),
+    deferred=True,
+    doc="Discount total")
+
 # Add Transline-related column properties to the Transaction class now
 # that transactions and translines are both defined
 Transaction.total = column_property(
@@ -818,6 +847,15 @@ Transaction.total = column_property(
         label('total'),
     deferred=True,
     doc="Transaction lines total")
+
+Transaction.discount_total = column_property(
+    select([func.coalesce(func.sum(Transline.items * Transline.discount),
+                          zero)],
+           whereclause=and_(Transline.transid == Transaction.id)).\
+        correlate(Transaction.__table__).\
+        label('discount_total'),
+    deferred=True,
+    doc="Transaction lines discount total")
 
 Transaction.age = column_property(
     select([func.coalesce(

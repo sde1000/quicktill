@@ -13,6 +13,8 @@ tillurls = [
             name="tillweb-session-takings-by-dept"),
         url(r'^takings-by-user.html$', session_takings_by_user,
             name="tillweb-session-takings-by-user"),
+        url(r'^discounts.html$', session_discounts,
+            name="tillweb-session-discounts"),
         url(r'^stock-sold.html$', session_stock_sold,
             name="tillweb-session-stock-sold"),
         url(r'^transactions.html$', session_transactions,

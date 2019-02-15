@@ -433,7 +433,8 @@ def sessionfinder(request, info, session):
     sessions = session\
                .query(Session)\
                .options(undefer('total'),
-                        undefer('actual_total'))\
+                        undefer('actual_total'),
+                        undefer('discount_total'))\
                .order_by(desc(Session.id))
 
     pager = Pager(request, sessions)
@@ -500,6 +501,49 @@ def session_takings_by_user(request, info, session, sessionid):
     return ('session-takings-by-user.ajax', {'session': s})
 
 @tillweb_view
+def session_discounts(request, info, session, sessionid):
+    s = session\
+        .query(Session)\
+        .get(int(sessionid))
+    if not s:
+        raise Http404
+
+    departments = session.query(Department).order_by(Department.id).all()
+
+    discounts = session.query(
+        Department,
+        Transline.discount_name,
+        func.sum(Transline.items * Transline.discount).label("discount"))\
+                       .select_from(Transaction)\
+                       .join(Transline, Department)\
+                       .filter(Transaction.sessionid == sessionid)\
+                       .filter(Transline.discount_name != None)\
+                       .group_by(Department, Transline.discount_name)\
+                       .order_by(Department.id, Transline.discount_name)\
+                       .all()
+    # discounts table: rows are departments, columns are discount names
+    discount_totals = {}
+    for d in discounts:
+        discount_totals[d.discount_name] = discount_totals.get(d.discount_name, zero) + d.discount
+    discount_names = sorted(discount_totals.keys())
+    discount_totals = [ discount_totals[x] for x in discount_names ]
+    discount_totals.append(sum(discount_totals))
+
+    for d in discounts:
+        dept = d.Department
+        d_info = getattr(dept, 'd_info', [zero] * (len(discount_names) + 1))
+        d_info[discount_names.index(d.discount_name)] = d.discount
+        d_info[-1] += d.discount
+        dept.d_info = d_info
+
+    return ('session-discounts.ajax',
+            {'session': s,
+             'departments': departments,
+             'discount_names': discount_names,
+             'discount_totals': discount_totals,
+            })
+
+@tillweb_view
 def session_stock_sold(request,info,session,sessionid):
     s = session\
         .query(Session)\
@@ -514,6 +558,7 @@ def session_transactions(request, info, session, sessionid):
     s = session\
         .query(Session)\
         .options(undefer('transactions.total'),
+                 undefer('transactions.discount_total'),
                  joinedload('transactions.payments'))\
         .get(int(sessionid))
     if not s:
@@ -554,7 +599,12 @@ def sessiondept(request, info, session, sessionid, dept):
                  .all()
 
     return ('sessiondept.html',
-            {'session': s, 'department': dept,
+            {'nav': s.tillweb_nav() + [
+                (dept.description,
+                 info.reverse("tillweb-session-department", kwargs={
+                     'sessionid': s.id,
+                     'dept': dept.id}))],
+             'session': s, 'department': dept,
              'translines': translines,
              'nextlink': nextlink, 'prevlink': prevlink})
 
@@ -579,7 +629,8 @@ def transaction(request, info, session, transid):
         .options(subqueryload_all('payments'),
                  joinedload('lines.department'),
                  joinedload('lines.user'),
-                 undefer('total'))\
+                 undefer('total'),
+                 undefer('discount_total'))\
         .get(int(transid))
     if not t:
         raise Http404

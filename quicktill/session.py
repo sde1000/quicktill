@@ -463,7 +463,7 @@ def currentsummary():
         return
     log.info("Totals popup for session %d (current)", s.id)
 
-    # list of (Dept, total, closed_total, pending_total) tuples
+    # list of (Dept, total, paid, pending) keyed tuples
     depts = s.dept_totals_closed
     paytotals = dict(s.payment_totals)
     l = []
@@ -482,16 +482,16 @@ def currentsummary():
     df = ui.tableformatter(" r l p r  r  r ")
     l.append(df(
         "", "Department", "Paid", "Pending", "Total"))
-    for dept, total, paid, pending in depts:
-        if paid or pending:
+    for x in depts:
+        if x.paid or x.pending:
             l.append(df(
-                dept.id, dept.description,
-                tillconfig.fc(paid) if paid else "",
-                tillconfig.fc(pending) if pending else "",
-                tillconfig.fc(total or zero)))
-            paid_total += paid or zero
-            pending_total += pending or zero
-            total_total += total or zero
+                x.Department.id, x.Department.description,
+                tillconfig.fc(x.paid) if x.paid else "",
+                tillconfig.fc(x.pending) if x.pending else "",
+                tillconfig.fc(x.total or zero)))
+            paid_total += x.paid or zero
+            pending_total += x.pending or zero
+            total_total += x.total or zero
     l.append(df(
         "", "Total:", tillconfig.fc(paid_total), tillconfig.fc(pending_total),
         tillconfig.fc(total_total)))

@@ -20,6 +20,8 @@
 <tr><th scope="row">Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
 <tr><th scope="row">Items</th><td>{{tl.items}}</td></tr>
 <tr><th scope="row">Amount per item</th><td>{{money}}{{tl.amount}}</td></tr>
+<tr><th scope="row">Discount per item</th><td>{{money}}{{tl.discount}}</td></tr>
+<tr><th scope="row">Discount type</th><td>{{tl.discount_name}}</td></tr>
 <tr><th scope="row">Total</th><td>{{money}}{{tl.total}}</td></tr>
 {% if tl.voided_by_id %}
 <tr><th scope="row">Voided by</th><td><a href="{{tl.voided_by.get_absolute_url}}" class="text-danger">{{tl.voided_by}}</td></tr>
