@@ -1,3 +1,27 @@
+quicktill (14.0) stable; urgency=low
+
+  * New release 14.0
+
+  * Update EMF 2018 example data with recent database schema changes
+
+  * Fix money formatting problem in stocktype detail page
+
+  * Minor format fixes to tillweb session page
+
+  * Show sale quantity in stocktype list
+
+  * Warn about unconfirmed deliveries in tillweb
+
+  * When splitting a transaction, drag along voided lines
+
+  * Tillweb support for displaying discounts
+
+  * Discounts feature
+
+  * Remove old odd/even stripe classes from sessions table
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 18 Feb 2019 18:52:11 +0000
+
 quicktill (0.13.5) stable; urgency=low
 
   * New release 0.13.5
