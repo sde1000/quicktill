@@ -17,7 +17,7 @@
 {% for p in session.actual_totals %}
 <td><strong>{{p.paytype.description}}</strong><br>{{money}}{{p.amount}}</td>
 {% endfor %}
-<td><strong>Error</strong><br /><span class="money">{{session.error}}</span></td>
+<td><strong>Error</strong><br />{{money}}{{session.error}}</td>
 {% for vb,t,ex,vat in session.vatband_totals %}
 {% if vb.business.show_vat_breakdown %}
 <td><strong>{{vb.business}} ex-VAT</strong><br>{{money}}{{ex}}</td>

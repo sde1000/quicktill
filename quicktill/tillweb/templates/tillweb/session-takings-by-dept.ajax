@@ -24,7 +24,7 @@
 <td class="money">{% if x.discount_total %}{{money}}{{x.discount_total}}{% endif %}</td>
 {% if not session.endtime %}
 <td class="money">{% if x.paid %}{{money}}{{x.paid}}{% endif %}</td>
-<td class="money">{{money}}{{x.pending}}</td>
+<td class="money">{% if x.pending %}{{money}}{{x.pending}}{% endif %}</td>
 {% endif %}
 <td class="money">{{money}}{{x.total}}</td>
 </tr>
