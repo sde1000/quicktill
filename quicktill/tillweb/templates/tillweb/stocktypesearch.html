@@ -31,7 +31,7 @@
 <td>{{t.abvstr}}</td>
 <td><a href="{{t.department.get_absolute_url}}">{{t.department}}</a></td>
 <td>{{t.unit.name}}</td>
-{% if t.saleprice %}<td class="money">{{money}}{{t.saleprice}}</td>
+{% if t.saleprice %}<td class="money">{{money}}{{t.pricestr}}</td>
 {% else %}<td></td>{% endif %}
 </tr>
 {% endfor %}
