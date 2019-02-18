@@ -2134,20 +2134,46 @@ class page(ui.basicpage):
                          discount_policy=trans.discount_policy)
         td.s.add(nt)
         for l in self.ml:
-            t = td.s.query(Transline).get(l.transline)
-            t.transaction = nt
-            del self.dl[self.dl.index(l)]
+            # Where a transaction line voids other transaction lines
+            # in the same transaction, we want to drag the other
+            # transaction lines along too.  This prevents the voided
+            # lines being in an open transaction (and so being subject
+            # to their value changing as discounts are applied) while
+            # the line that voids them is in a closed transaction and
+            # thus immutable.
+            tlid = l.transline
+            while tlid:
+                t = td.s.query(Transline).get(tlid)
+                if t.transaction != trans:
+                    break
+                t.transaction = nt
+                tlid = t.voids.id if t.voids else None
         td.s.flush()
         td.s.expire(trans, ['total'])
-        self._clear_marks()
-        self.cursor_off()
-        self.update_balance()
-        self._redraw()
-        ui.infopopup(["The selected lines were moved to a new transaction, "
-                      "number {}, called '{}'.  You can find it using the "
-                      "Recall Trans button.".format(nt.id, nt.notes)],
-                     title="Transaction split", colour=ui.colour_info,
-                     dismiss=keyboard.K_CASH)
+        self._loadtrans(trans.id)
+        # If the current transaction already has a note (i.e. pressing
+        # the "Recall Trans" button would give the list of
+        # transactions rather than a prompt to name the current
+        # transaction) then offer a shortcut to the new transaction
+        if trans.notes:
+            ui.infopopup(
+                ["The selected lines were moved to a new transaction, "
+                 "number {num}, called '{note}'.  Press {recall} to go "
+                 "to the new transaction now, or {clear} to stay on the "
+                 "current transaction.".format(
+                     num=nt.id, note=nt.notes,
+                     recall=keyboard.K_RECALLTRANS.keycap,
+                     clear=keyboard.K_CLEAR.keycap)],
+                title="Transaction split", colour=ui.colour_info,
+                dismiss=keyboard.K_CLEAR, keymap={
+                    keyboard.K_RECALLTRANS: (self.recalltrans, (nt.id,), True)})
+        else:
+            ui.infopopup(["The selected lines were moved to a new transaction, "
+                          "number {}, called '{}'.  You can find it using the "
+                          "{} button.".format(nt.id, nt.notes,
+                                              keyboard.K_RECALLTRANS.keycap)],
+                         title="Transaction split", colour=ui.colour_info,
+                         dismiss=keyboard.K_CASH)
 
     def settransnote(self, notes):
         if not self.entry():
