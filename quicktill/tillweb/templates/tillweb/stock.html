@@ -3,7 +3,12 @@
 {% block title %}{{till}} — Stock item  {{stock.id}}{% endblock %}
 
 {% block tillcontent %}
-
+{% if not stock.delivery.checked %}
+<div class="alert alert-warning">
+  This stock item is part of an unconfirmed delivery and its details
+  may still change.
+</div>
+{% endif %}
 <table class="kvtable">
 <tr><th scope="row">Stock ID</th><td>{{stock.id}}</td></tr>
 <tr><th scope="row">Check digits</th><td>{{stock.checkdigits}}</td></tr>
@@ -12,7 +17,7 @@
 <tr><th scope="row">ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
 <tr><th scope="row">Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
 <tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
-<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a></td></tr>
+<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.delivery.checked %} <span class="badge badge-warning">Not confirmed</span>{% endif %}</td></tr>
 <tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
 <tr><th scope="row">Stock unit</th><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
 <tr><th scope="row">Cost price</th>

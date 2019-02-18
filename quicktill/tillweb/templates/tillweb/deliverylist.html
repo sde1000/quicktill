@@ -12,7 +12,7 @@
   </thead>
   <tbody>
 {% for d in pager.items %}
-<tr>
+<tr{% if not d.checked %} class="table-warning"{% endif %}>
 <td><a href="{{d.get_absolute_url}}">{{d.id}}</a></td>
 <td><a href="{{d.get_absolute_url}}">{{d.date}}</a></td>
 {% if exclude_column != "supplier" %}
