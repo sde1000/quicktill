@@ -253,14 +253,19 @@ class Session(Base):
             group_by(PayType).all()
     # total and closed_total are declared after Transline
     # actual_total is declared after SessionTotal
-    @property
+    @hybrid_property
     def pending_total(self):
         "Total of open transactions"
         return self.total - self.closed_total
-    @property
+
+    @hybrid_property
     def error(self):
         "Difference between actual total and transaction line total."
-        return self.actual_total - self.total
+        return self.actual_total - self.total if self.actual_total else None
+    @error.expression
+    def error(cls):
+        return cls.actual_total - cls.total
+
     @property
     def vatband_totals(self):
         """Transaction lines broken down by VatBand.
