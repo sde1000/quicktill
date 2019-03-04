@@ -519,23 +519,25 @@ def stock(ds, stocklist, tillname="Till", filename=None):
     sheet.cell(2, 0, doc.headercell("Name"))
     sheet.cell(3, 0, doc.headercell("ABV"))
     sheet.cell(4, 0, doc.headercell("Cost Price"))
-    sheet.cell(5, 0, doc.headercell("Used"))
-    sheet.cell(6, 0, doc.headercell("Sold"))
-    sheet.cell(7, 0, doc.headercell("Size"))
-    sheet.cell(8, 0, doc.headercell("Remaining"))
-    sheet.cell(9, 0, doc.headercell("Unit"))
-    sheet.cell(10, 0, doc.headercell("Finish code"))
-    sheet.cell(11, 0, doc.headercell("Finish date"))
+    sheet.cell(5, 0, doc.headercell("Sale Price"))
+    sheet.cell(6, 0, doc.headercell("Used"))
+    sheet.cell(7, 0, doc.headercell("Sold"))
+    sheet.cell(8, 0, doc.headercell("Size"))
+    sheet.cell(9, 0, doc.headercell("Remaining"))
+    sheet.cell(10, 0, doc.headercell("Unit"))
+    sheet.cell(11, 0, doc.headercell("Finish code"))
+    sheet.cell(12, 0, doc.headercell("Finish date"))
 
     sheet.colstyle(0, doc.colwidth("1.8cm"))
     sheet.colstyle(1, doc.colwidth("3.4cm"))
     sheet.colstyle(2, doc.colwidth("5.0cm"))
     sheet.colstyle(3, doc.colwidth("1.2cm"))
     sheet.colstyle(4, doc.colwidth("2.1cm"))
-    sheet.colstyle(5, doc.colwidth("1.4cm"))
+    sheet.colstyle(5, doc.colwidth("2.1cm"))
     sheet.colstyle(6, doc.colwidth("1.4cm"))
     sheet.colstyle(7, doc.colwidth("1.4cm"))
-    sheet.colstyle(11, doc.colwidth("2.7cm"))
+    sheet.colstyle(8, doc.colwidth("1.4cm"))
+    sheet.colstyle(12, doc.colwidth("2.7cm"))
 
     row = 1
 
@@ -547,15 +549,17 @@ def stock(ds, stocklist, tillname="Till", filename=None):
             sheet.cell(3, row, doc.numbercell(s.stocktype.abv))
         if s.costprice:
             sheet.cell(4, row, doc.moneycell(s.costprice))
-        sheet.cell(5, row, doc.numbercell(s.used))
-        sheet.cell(6, row, doc.numbercell(s.sold))
-        sheet.cell(7, row, doc.numbercell(s.stockunit.size))
-        sheet.cell(8, row, doc.numbercell(s.remaining))
-        sheet.cell(9, row, doc.textcell(str(s.stocktype.unit)))
+        if s.stocktype.saleprice:
+            sheet.cell(5, row, doc.moneycell(s.stocktype.saleprice))
+        sheet.cell(6, row, doc.numbercell(s.used))
+        sheet.cell(7, row, doc.numbercell(s.sold))
+        sheet.cell(8, row, doc.numbercell(s.stockunit.size))
+        sheet.cell(9, row, doc.numbercell(s.remaining))
+        sheet.cell(10, row, doc.textcell(str(s.stocktype.unit)))
         if s.finishcode:
-            sheet.cell(10, row, doc.textcell(str(s.finishcode)))
+            sheet.cell(11, row, doc.textcell(str(s.finishcode)))
         if s.finished:
-            sheet.cell(11, row, doc.datetimecell(s.finished))
+            sheet.cell(12, row, doc.datetimecell(s.finished))
         row += 1
 
     doc.add_table(sheet)
