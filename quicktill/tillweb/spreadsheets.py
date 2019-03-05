@@ -4,6 +4,7 @@ from quicktill.models import *
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.sql import select
+from sqlalchemy.sql.expression import literal
 from odf.opendocument import OpenDocumentSpreadsheet
 from odf.style import Style, TextProperties, ParagraphProperties
 from odf.style import TableColumnProperties
@@ -576,11 +577,16 @@ def daterange(start, end):
 def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
     """A report on waste
 
-    Separate sheets for: totals, each type of waste Rows are dates,
-    columns are departments.  First row of each sheet is headers.
+    Rows are dates.  Columns can be departments or waste types.
+
+    Separate sheets are used for whichever of departments or waste
+    types is not a column.
+
+    The first row of each sheet is headers.
     """
     depts = ds.query(Department).order_by(Department.id).all()
     wastes = ds.query(RemoveCode).order_by(RemoveCode.id).all()
+    wastes = wastes + [RemoveCode(id="unaccounted", reason="Unaccounted")]
 
     date = func.date(StockOut.time)
     data = ds.query(date,
@@ -597,6 +603,22 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
     else:
         end = ds.query(func.max(date)).scalar()
     data = data.group_by(date, StockType.dept_id, StockOut.removecode_id).all()
+
+    date = func.date(StockItem.finished)
+    unaccounted = ds.query(date,
+                           StockType.dept_id,
+                           literal("unaccounted"),
+                           func.sum(StockUnit.size - StockItem.used))\
+                    .select_from(StockItem)\
+                    .join(StockUnit)\
+                    .join(StockType)\
+                    .filter(StockItem.finished != None)\
+                    .filter(StockItem.finished <= end)\
+                    .filter(StockItem.finished >= start)\
+                    .group_by(date, StockType.dept_id)\
+                    .all()
+
+    data = data + unaccounted
 
     filename = "{}-waste.ods".format(tillname)
     doc = Document(filename)
