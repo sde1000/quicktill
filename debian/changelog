@@ -1,3 +1,19 @@
+quicktill (14.1) stable; urgency=low
+
+  * New release 14.1
+
+  * Add 'unaccounted' waste to waste report spreadsheet
+
+  * Include sale price in stock spreadsheets
+
+  * Fix pending_total and error properties on Session
+
+  * Clarify transaction state in session transaction list
+
+  * Update copyright message for 2019 (and unicode!)
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 05 Mar 2019 16:01:21 +0000
+
 quicktill (14.0) stable; urgency=low
 
   * New release 14.0
