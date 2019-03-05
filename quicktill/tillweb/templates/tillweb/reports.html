@@ -7,8 +7,10 @@
 <h2>Wasted stock</h2>
 
 <p>This report shows stock explicitly recorded as used, either as
-  waste or by being sold.  It doesn't show stock implicitly wasted by
-  being marked as "finished".</p>
+  waste or by being sold, per department and per day.  It also shows
+  stock implicitly wasted by being marked as "finished" as
+  "Unaccounted"; this quantity is shown using the date the stock was
+  marked as "finished".</p>
 
 <form action="" method="post">{% csrf_token %}
   {% include "form-horizontal.html" with form=wasteform %}
