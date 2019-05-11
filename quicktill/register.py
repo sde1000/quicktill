@@ -149,7 +149,7 @@ class PercentageDiscount(DiscountPolicyPlugin):
 
     def discount_for(self, transline):
         if self._departments:
-            if transline.dept_id not in self._departments:
+            if transline.department.id not in self._departments:
                 return zero, self.policy_name
         return (transline.original_amount * Decimal(self._percentage / 100.0))\
             .quantize(penny), self.policy_name
