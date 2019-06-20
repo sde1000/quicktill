@@ -1187,7 +1187,8 @@ class page(ui.basicpage):
         if trans is None:
             return "Transaction cannot be started."
         for dept, text, items, amount in lines:
-            tl = Transline(transaction=trans, dept_id=dept,
+            tl = Transline(transaction=trans,
+                           department=td.s.query(Department).get(dept),
                            items=items, amount=amount,
                            transcode='S', text=text, user=self.user.dbuser)
             td.s.add(tl)
