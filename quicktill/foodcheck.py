@@ -5,6 +5,8 @@ from . import cmdline
 from . import event
 from . import user
 from . import ui_ncurses
+from . import printer
+from . import pdrivers
 
 import logging
 log = logging.getLogger(__name__)
@@ -71,6 +73,7 @@ class testmenu(cmdline.command):
     @staticmethod
     def run(args):
         tillconfig.mainloop = event.SelectorsMainLoop()
+        printer.driver = pdrivers.nullprinter(name="disabled-printer")
         tillconfig.firstpage = lambda: page(commitcode=args.commitcode,
                                             quitcode=args.quitcode,
                                             menuurl=args.url)
