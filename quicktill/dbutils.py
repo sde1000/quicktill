@@ -253,12 +253,12 @@ class checkdb(cmdline.command):
             engine = sqlalchemy.create_engine(
                 "postgresql+psycopg2:///{}".format(args.tempdb))
             models.metadata.bind = engine
-            models.metadata.create_all()
             try:
+                models.metadata.create_all()
                 pristine_schema = subprocess.check_output(
                     ["pg_dump", "-s", args.tempdb])
-            finally:
                 models.metadata.drop_all()
+            finally:
                 # If we don't explicitly close the connection to the
                 # database here, we won't be able to drop it
                 engine.dispose()
