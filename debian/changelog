@@ -1,3 +1,13 @@
+quicktill (14.4) stable; urgency=low
+
+  * New release 14.4
+
+  * Tidy up correctly if metadata.create_all() fails in checkdb
+
+  * Disable receipt printer in testmenu subcommand
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 27 Jun 2019 12:39:45 +0100
+
 quicktill (14.3) stable; urgency=low
 
   * New release 14.3
