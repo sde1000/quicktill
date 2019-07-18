@@ -147,11 +147,24 @@ def debug_menu():
                 d.printline("This line is printed before the exception")
                 raise Exception
 
+    def send_usertoken():
+        from .models import UserToken
+        tl = td.s.query(UserToken)\
+             .order_by(UserToken.user_id, UserToken.description)\
+             .all()
+        f = ui.tableformatter(' l L l ')
+        lines = [(f(x.user.fullname if x.user else "None",
+                    x.description, x.last_seen or ""),
+                  ui.handle_keyboard_input, (user.token(x.token),)) for x in tl]
+        ui.menu(lines, title="User tokens",
+            blurb="Choose a user token and press Cash/Enter.")
+
     menu = [
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
         ("3", "Toast covering a long operation", long_toast, None),
         ("4", "Raise exception while printing", raise_print_exception, None),
+        ("5", "Fake a usertoken", send_usertoken, None),
     ]
     ui.keymenu(menu, title="Debug")
 
