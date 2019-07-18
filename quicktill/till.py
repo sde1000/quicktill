@@ -500,6 +500,8 @@ def main():
     if args.database is not None:
         tillconfig.database = args.database
     if 'menuurl' in config:
+        log.warning("obsolete 'menuurl' key present in configuration; "
+                    "create FoodOrderPlugin instance instead")
         if 'kitchenprinter' in config:
             kitchenprinters = [config['kitchenprinter']]
         if 'kitchenprinters' in config:
