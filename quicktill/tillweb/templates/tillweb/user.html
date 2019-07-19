@@ -15,13 +15,38 @@
 <p>This user is marked as inactive and cannot use the till.</p>
 {% endif %}
 
-<h2>Permissions</h2>
-
 {% if tuser.superuser %}
 <p>This user can do anything that needs permissions without explicitly
-having the appropriate permission.  Any permissions shown below are
-irrelevant until the user's "superuser" status is revoked.</p>
+having the appropriate permission.  Any groups and permissions shown
+below are irrelevant until the user's "superuser" status is
+revoked.</p>  {% endif %}
+
+<h2>Groups</h2>
+
+{% if tuser.groups %}
+<table class="table table-striped table-hover table-sm w-auto" id="grouplist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Name</th>
+    <th scope="col">Description</th>
+  </tr>
+</thead>
+<tbody>
+{% for g in tuser.groups %}
+<tr><td><a href="{{g.get_absolute_url}}">{{g.id}}</a></td><td>{{g.description}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#grouplist").tablesorter();
+});
+</script>
+{% else %}
+<p>This user does not have any groups defined.</p>
 {% endif %}
+
+<h2>Permissions</h2>
 
 {% if tuser.permissions %}
 <table class="table table-striped table-hover table-sm w-auto" id="permissionlist">

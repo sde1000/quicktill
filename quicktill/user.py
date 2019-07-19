@@ -1,9 +1,6 @@
 """Users and permissions.
 
-For each user we store a set of strings which correspond to the
-actions that user is allowed to perform.  We also support the
-definition of "groups" which are themselves sets of strings
-corresponding to actions.
+Users are granted access to Groups of Permissions.
 
 We maintain a dictionary in which we can look up descriptions of
 actions that are collected from the places these actions are used.
@@ -17,13 +14,12 @@ indicate restricted functionality.
 """
 
 from . import ui, td, keyboard, tillconfig, cmdline
-from .models import User, UserToken, Permission
+from .models import User, UserToken, Permission, Group
 from sqlalchemy.orm import joinedload
 import types
 import socket
 import logging
 import datetime
-import collections
 log = logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
@@ -142,6 +138,107 @@ class permission_required:
         permission_check.allowed = allowed
         return permission_check
 
+# Subcommand to migrate existing explicit permission grants to groups.
+# XXX remove in release 16
+class migrate_permissions(cmdline.command):
+    """Migrate user permissions from v14 to v15
+    """
+    command = "migrate-permissions"
+    help = "migrate user permissions from v14 to v15"
+
+    @staticmethod
+    def run(args):
+        # Step 0: check that groups exist in the config file
+        if not group.all_groups:
+            log.error("no legacy groups defined in config; has migration "
+                      "already been done?")
+            return 1
+        with td.orm_session():
+            # Step 1: ensure all known permission exist in the database
+            for p, d in action_descriptions.items():
+                td.s.merge(Permission(id=p, description=d))
+            td.s.flush()
+            # Step 2: create or update groups in the database based on
+            # group definitions from the config file
+            for g in group.all_groups.values():
+                dbgroup = td.s.merge(
+                    Group(id=g.name, description=g.name))
+                for permission in g.members:
+                    dbperm = td.s.query(Permission).get(permission)
+                    if not dbperm:
+                        log.error(
+                            "permission %s not present in database - it may be "
+                            "declared in an optional module.  Re-run using "
+                            "a different configuration, eg. -c mainbar",
+                            permission)
+                        td.s.rollback()
+                        return 1
+                    dbgroup.permissions.append(
+                        td.s.query(Permission).get(permission))
+            td.s.flush()
+            # Step 3: add users to groups based on existing permission grants
+            for u in td.s.query(User).all():
+                for g in group.all_groups.keys():
+                    gperm = td.s.query(Permission).get(g)
+                    if gperm in u.old_permissions:
+                        u.groups.append(td.s.query(Group).get(g))
+            td.s.flush()
+
+            # Step 4: remove groups from permissions table and
+            # existing permission grants
+            for g in group.all_groups.keys():
+                gperm = td.s.query(Permission).get(g)
+                if gperm:
+                    td.s.delete(gperm)
+            td.s.flush()
+            td.s.expunge_all() # otherwise deleted group permissions
+                               # will still be present in
+                               # u.old_permissions - the model doesn't know
+                               # about the delete cascade
+
+            # Step 5: convert permission grants to group grants
+            for u in td.s.query(User).all():
+                pset = set(p.id for p in u.permissions)
+                for p in u.old_permissions:
+                    if p.id not in pset:
+                        dbgroup = td.s.merge(Group(id=p.id, description=p.description))
+                        dbgroup.permissions.append(p)
+                        u.groups.append(dbgroup)
+
+_permissions_checked = False
+def _check_permissions():
+    """Check that all permissions exist, and assign to default groups
+    """
+    global _permissions_checked
+    if _permissions_checked:
+        return
+    # The common case will be that no new permissions have been
+    # created.  Load all existing permissions at once in a single
+    # database query.  We'll only make further queries if we have a
+    # new permission.
+    dbpermissions = td.s.query(Permission).all()
+    for p, d in action_descriptions.items():
+        dbperm = td.s.query(Permission).get(p)
+        if dbperm:
+            if dbperm.description != d:
+                dbperm.description = d
+            continue
+        dbperm = Permission(id=p, description=d)
+        td.s.add(dbperm)
+        accumulated_permissions = set()
+        for group, description, permissions in default_groups.groups:
+            accumulated_permissions.update(permissions)
+            dbgroup = td.s.query(Group).get(group)
+            if not dbgroup:
+                dbgroup = Group(id=group, description=description)
+                td.s.add(dbgroup)
+            if p in accumulated_permissions:
+                dbgroup.permissions.append(dbperm)
+    td.s.flush()
+    _permissions_checked = True
+
+# This is now deprecated and should show a warning on startup when any
+# groups are created.  XXX remove for release 16.
 class group:
     """A group of permissions.
 
@@ -160,7 +257,7 @@ class group:
         return self
 
     def __init__(self, name, description, members=[]):
-        action_descriptions[name] = description
+        log.warning("legacy group \"%s\" present in config file", name)
         self.name = name
         if not hasattr(self, 'members'):
             self.members = set()
@@ -189,12 +286,7 @@ class built_in_user:
         self.shortname = shortname
         self.permissions = permissions
         self.is_superuser = is_superuser
-        self._flat_permissions = set()
-        for m in permissions:
-            if m in group.all_groups:
-                self._flat_permissions.update(group.all_groups[m].members)
-            else:
-                self._flat_permissions.add(m)
+        self._flat_permissions = set(permissions)
 
     def may(self, action):
         """May this user perform the specified action?
@@ -203,7 +295,7 @@ class built_in_user:
         """
         if self.is_superuser:
             return True
-        return action in self._flat_permissions
+        return self.has_permission(action)
 
     def has_permission(self,action):
         """Does this user have the specified permission?
@@ -229,9 +321,7 @@ class built_in_user:
         if self.is_superuser:
             info.append("Has all permissions.")
         else:
-            info = info + ["Explicit permissions:"]\
-                   + pl_display(self.permissions)\
-                   + ["", "All permissions:"]\
+            info = info + ["Permissions:"]\
                    + pl_display(self._flat_permissions)
         ui.infopopup(info, title="{} user information".format(self.fullname),
                      colour=ui.colour_info)
@@ -245,9 +335,10 @@ class database_user(built_in_user):
     def __init__(self, user):
         self.userid = user.id
         self.dbuser = user
-        built_in_user.__init__(self, user.fullname, user.shortname,
-                               permissions=[p.id for p in user.permissions],
-                               is_superuser=user.superuser)
+        super().__init__(
+            user.fullname, user.shortname,
+            permissions=[p.id for p in user.permissions],
+            is_superuser=user.superuser)
 
 def load_user(userid):
     """Load the specified user from the database
@@ -258,6 +349,7 @@ def load_user(userid):
     """
     if not userid:
         return
+    _check_permissions()
     dbuser = td.s.query(User).get(userid)
     if not dbuser or not dbuser.enabled:
         return
@@ -309,6 +401,7 @@ class tokenlistener:
 def user_from_token(t):
     """Find a user given a token object.
     """
+    _check_permissions()
     dbt = td.s.query(UserToken)\
               .options(joinedload('user'),
                        joinedload('user.permissions'))\
@@ -505,45 +598,28 @@ class manage_user_tokens(ui.dismisspopup):
                 td.s.add(dbt)
             dbt.description = self.description.f
 
-def do_add_permission(userid, permission):
+def do_add_group(userid, group):
     u = td.s.query(User).get(userid)
-    p = Permission(id=permission, description=action_descriptions[permission])
-    p = td.s.merge(p)
-    u.permissions.append(p)
+    g = td.s.query(Group).get(group)
+    u.groups.append(g)
     td.s.flush()
 
-def addpermission(userid):
+def addgroup(userid):
     """Add a permission to a user.
 
-    Displays a list of all available permissions.
+    Displays a list of all available groups.
     """
     cu = ui.current_user()
-    if cu.is_superuser:
-        pl = list(action_descriptions.keys())
-    else:
-        pl = cu.all_permissions
-        # Add in groups if the list of permissions includes everything
-        # in that group
-        for g in group.all_groups:
-            for m in group.all_groups[g].members:
-                if m not in pl:
-                    break
-            else: # else on a for loop is skipped if the loop was
-                  # exited with break
-                pl.append(g)
+    gl = td.s.query(Group).order_by(Group.id).all()
     # Remove permissions the user already has
     u = td.s.query(User).get(userid)
-    existing = [p.id for p in u.permissions]
-    pl = [p for p in pl if p not in existing]
-    # Generally most users will be given group permissions, so we want
-    # to sort the groups to the top of the list.
-    pl = sorted(pl)
-    pl = sorted(pl, key=lambda p: p not in group.all_groups)
+    existing = [g.id for g in u.groups]
+    gl = [ g for g in gl if g not in existing]
     f = ui.tableformatter(' l l ')
-    menu = [(f(p, action_descriptions[p]),
-             do_add_permission, (userid, p)) for p in pl]
-    ui.menu(menu, title="Give permission to {}".format(u.fullname),
-            blurb="Choose the permission to give to {}".format(u.fullname))
+    menu = [(f(g.id, g.description),
+             do_add_group, (userid, g.id)) for g in gl]
+    ui.menu(menu, title="Give permission group to {}".format(u.fullname),
+            blurb="Choose the permission group to give to {}".format(u.fullname))
 
 class edituser(permission_checked, ui.basicpopup):
     permission_required = ('edit-user', 'Edit a user')
@@ -589,19 +665,20 @@ class edituser(permission_checked, ui.basicpopup):
         u = td.s.query(User).get(self.userid)
         u.superuser = False
 
-    def removepermission(self, permission):
+    def removepermission(self, group):
         u = td.s.query(User).get(self.userid)
-        p = td.s.query(Permission).get(permission)
-        u.permissions.remove(p)
+        p = td.s.query(Group).get(group)
+        u.groups.remove(p)
 
     def editpermissions(self):
         u = td.s.query(User).get(self.userid)
         f = ui.tableformatter(' l l ')
-        pl = [(f(p.id, p.description),
-               self.removepermission, (p.id,)) for p in u.permissions]
-        pl.insert(0, ("Add permission", addpermission, (self.userid,)))
+        pl = [ (f(g.id, g.description),
+                self.removepermission, (g.id,)) for g in u.groups ]
+        pl.insert(0, ("Add permission group", addgroup, (self.userid,)))
         ui.menu(pl, title="Permissions for {}".format(u.fullname),
-                blurb="Select a permission and press Cash/Enter to remove it.")
+                blurb="Select a permission group and press Cash/Enter "
+                "to remove it.")
 
     def save(self):
         fn = self.fnfield.f.strip()
@@ -833,7 +910,7 @@ class default_groups:
     ])
 
     skilled_user = set([
-        "basic-user",
+        "basic-user", # XXX remove in release 16
         "drink-in",
         "nosale",
         "merge-trans",
@@ -850,7 +927,7 @@ class default_groups:
     ])
 
     manager = set([
-        "skilled-user",
+        "skilled-user", # XXX remove in release 16
         "print-receipt-by-number",
         "restore-deferred",
         "exit",
@@ -886,3 +963,9 @@ class default_groups:
         "apply-discount",
         "print-price-list",
     ])
+
+    groups = [
+        ('basic-user', "Default for all users", basic_user),
+        ('skilled-user', "Functions for more skilled users", skilled_user),
+        ('manager', "Management functions", manager),
+    ]

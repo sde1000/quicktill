@@ -1,0 +1,34 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Groups{% endblock %}
+
+{% block tillcontent %}
+
+{% if groups %}
+<table class="table table-striped table-hover table-sm" id="grouplist">
+  <thead class="thead-light">
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for group in groups %}
+<tr>
+<td><a href="{{group.get_absolute_url}}">{{group.id}}</a></td>
+<td><a href="{{group.get_absolute_url}}">{{group.description}}</a></td>
+</tr>
+{% endfor %}
+  </tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#grouplist").tablesorter();
+});
+</script>
+{% else %}
+<p>No groups have been defined.</p>
+{% endif %}
+
+{% endblock %}

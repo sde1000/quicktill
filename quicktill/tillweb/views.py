@@ -1038,6 +1038,31 @@ def user(request, info, session, userid):
              'annotations': annotations,
             })
 
+@tillweb_view
+def grouplist(request, info, session):
+    groups = session\
+             .query(Group)\
+             .order_by(Group.id)\
+             .all()
+
+    return ('grouplist.html',
+            {'nav': [("Groups", info.reverse("tillweb-till-groups"))],
+             'groups': groups,
+            })
+
+@tillweb_view
+def group(request, info, session, groupid):
+    g = session\
+        .query(Group)\
+        .get(groupid)
+    if not g:
+        raise Http404
+
+    return ('group.html',
+            {'tillobject': g,
+             'group': g,
+            })
+
 import matplotlib
 matplotlib.use("SVG")
 import matplotlib.pyplot as plt

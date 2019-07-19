@@ -237,5 +237,43 @@ class ModelTest(unittest.TestCase):
         self.s.commit()
         self.assertIsNone(delivery.costprice)
 
+    def template_user_setup(self):
+        user = models.User(fullname="A User", shortname="A", enabled=True)
+        permission_a = models.Permission(id="frob", description="Do Something")
+        permission_b = models.Permission(id="wibble",
+                                         description="Do something else")
+        group = models.Group(id="basic-users", description="General users")
+        group.permissions.append(permission_a)
+        user.groups.append(group)
+        self.s.add(user)
+        self.s.add(permission_b)
+        self.s.commit()
+        return user
+
+    def test_user_permissions(self):
+        user = self.template_user_setup()
+        pa = self.s.query(models.Permission).get('frob')
+        self.assertIsNotNone(pa)
+        pb = self.s.query(models.Permission).get('wibble')
+        self.assertIsNotNone(pb)
+        permissions = user.permissions
+        self.assertEqual(len(permissions), 1)
+        self.assertIn(pa, permissions)
+        self.assertNotIn(pb, permissions)
+
+    def test_group_rename(self):
+        user = self.template_user_setup()
+        group = self.s.query(models.Group).get('basic-users')
+        self.assertIsNotNone(group)
+        group.id = 'all-users'
+        self.s.flush()
+        groups = user.groups
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0].id, 'all-users')
+        self.s.flush()
+        pa = self.s.query(models.Permission).get('frob')
+        self.assertIsNotNone(pa)
+        self.assertEqual(pa.groups[0].id, 'all-users')
+
 if __name__ == '__main__':
     unittest.main()

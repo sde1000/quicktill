@@ -491,8 +491,16 @@ class User(Base):
                       doc="Terminal most recently used by this user")
     message = Column(String(), nullable=True,
                      doc="Message to present to user on their next keypress")
-    permissions = relationship("Permission", secondary="permission_grants",
-                               backref="users")
+    # XXX remove "old_permissions" in release 16, after all existing
+    # permission grants have been migrated to groups
+    old_permissions = relationship("Permission", secondary="permission_grants",
+                                   backref="users")
+    groups = relationship("Group", secondary="group_grants", backref="users")
+    permissions = relationship(
+        "Permission",
+        secondary="join(group_membership, group_grants, group_membership.c.group == group_grants.c.group)"
+        ".join(Permission, group_membership.c.permission == Permission.id)",
+        viewonly=True)
     transaction = relationship(Transaction, backref=backref(
         'user', uselist=False))
 
@@ -525,10 +533,8 @@ class Permission(Base):
     Permission to perform an operation on the till or on the web
     interface.  Permissions are identified by name; the description
     here is just for convenience.  Permissions are defined in the code
-    and a record is created here the first time the permission is
-    referred to.  Permissions may also be groups; the list of
-    permissions held by a group is defined in the till configuration
-    file.
+    and a record is created here the first time the till loads any
+    user information after startup.
     """
     __tablename__ = 'permissions'
     id = Column(String(), nullable=False, primary_key=True,
@@ -537,12 +543,90 @@ class Permission(Base):
                          doc="Brief description of the permission")
 
 # There is no need to access this table directly; it is handled through
-# the relationships on User and Permission.
-permission_association_table = Table(
+# User.old_permissions and Permission.users
+# XXX remove in release 16
+permission_grants_table = Table(
     'permission_grants', Base.metadata,
     Column('user', Integer, ForeignKey('users.id'), primary_key=True),
-    Column('permission', String(), ForeignKey('permissions.id'),
-           primary_key=True))
+    Column('permission', String(),
+           ForeignKey('permissions.id', ondelete='CASCADE'),
+           primary_key=True)
+)
+
+class Group(Base):
+    """A group of permissions
+
+    The groups 'basic-user', 'skilled-user' and 'manager' get newly
+    implemented permissions added to them automatically according to
+    the defaults in the 'user' module.  All other groups are managed
+    entirely by the users.
+    """
+    __tablename__ = 'groups'
+    id = Column(String(), nullable=False, primary_key=True,
+                doc="Name of the group")
+    description = Column(String(), nullable=False,
+                         doc="Brief description of the group")
+    permissions = relationship("Permission", secondary="group_membership",
+                               backref="groups")
+
+    tillweb_viewname = "tillweb-till-group"
+    tillweb_argname = "groupid"
+    def tillweb_nav(self):
+        return [("Groups", self.get_view_url("tillweb-till-groups")),
+                (self.id, self.get_absolute_url())]
+
+    def __repr__(self):
+        return "<Group({0.id},'{0.description}')>".format(self)
+
+# Accessed through Group.permissions and Permission.groups
+group_membership_table = Table(
+    'group_membership', Base.metadata,
+    Column('group', String(),
+           ForeignKey('groups.id', ondelete='CASCADE', onupdate='CASCADE'),
+           primary_key=True),
+    Column('permission', String(),
+           ForeignKey('permissions.id', ondelete='CASCADE'),
+           primary_key=True)
+)
+add_ddl(group_membership_table, """
+CREATE OR REPLACE FUNCTION notify_group_membership_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('group_membership_changed', '');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER group_membership_changed
+  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON group_membership
+  EXECUTE PROCEDURE notify_group_membership_change();
+""", """
+DROP TRIGGER group_membership_changed ON group_membership;
+DROP FUNCTION notify_group_membership_change();
+""")
+
+# Accessed through User.groups and Group.users
+group_grants_table = Table(
+    'group_grants', Base.metadata,
+    Column('user', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('group', String(),
+           ForeignKey('groups.id', ondelete='CASCADE', onupdate='CASCADE'),
+           primary_key=True)
+)
+add_ddl(group_grants_table, """
+CREATE OR REPLACE FUNCTION notify_group_grants_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('group_grants_changed', '');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER group_grants_changed
+  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON group_grants
+  EXECUTE PROCEDURE notify_group_grants_change();
+""", """
+DROP TRIGGER group_grants_changed ON group_grants;
+DROP FUNCTION notify_group_grants_change();
+""")
 
 class SessionNoteType(Base):
     __tablename__ = 'session_note_types'

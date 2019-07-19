@@ -73,6 +73,9 @@ tillurls = [
     url(r'^user/$', userlist, name="tillweb-till-users"),
     url(r'^user/(?P<userid>\d+)/$', user, name="tillweb-till-user"),
 
+    url(r'^group/$', grouplist, name="tillweb-till-groups"),
+    url(r'^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
+
     url(r'^reports/$', reportindex, name="tillweb-reports"),
 ]
 
