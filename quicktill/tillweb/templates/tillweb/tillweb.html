@@ -59,6 +59,11 @@
 	  </ul>
 	</div>
       </nav>
+      {% if tilluser %}
+      <div class="mt-2">
+	<p class="small">Working as <a href="{{tilluser.get_absolute_url}}">{{tilluser.fullname}}</a></p>
+      </div>
+      {% endif %}
     </div>
     <main class="col">
 {% block tillcontent %}

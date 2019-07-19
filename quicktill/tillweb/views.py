@@ -1,10 +1,10 @@
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.shortcuts import render
 from django.template import RequestContext, Context
 from django.template.loader import get_template, render_to_string
 from django.conf import settings
-from django.utils.safestring import mark_safe
 from django import forms
 import django.urls
 from .models import *
@@ -56,9 +56,11 @@ def publist(request):
 
 # Views are passed the following parameters:
 # request - the Django http request object
-# base - the base URL for the till's website
-# user - the quicktill.models.User object if available, or 'R','M','F'
+# info - a viewutils instance
 # session - sqlalchemy database session
+#
+# They should return either a (template, dict) tuple or a HttpResponse
+# instance.
 
 class viewutils:
     """Info and utilities passed to a view function"""
@@ -74,6 +76,19 @@ class viewutils:
             kwargs['kwargs'] = rev_kwargs
         rev_kwargs["pubname"] = self.pubname
         return django.urls.reverse(*args, **kwargs)
+
+    def user_has_perm(self, action):
+        if not self.user:
+            return False
+        if self.access == 'R':
+            return False
+        if self.access == 'F':
+            return True
+        if self.user.superuser:
+            return True
+        if not hasattr(self, "_permissions_cache"):
+            self._permissions_cache = set(p.id for p in self.user.permissions)
+        return action in self._permissions_cache
 
 def tillweb_view(view):
     single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
@@ -103,9 +118,19 @@ def tillweb_view(view):
             tillname = till.name
             access = access.permission
             money = till.money_symbol
+        # At this point, access will be "R", "M" or "F".
+        # For anything other than "R" access, we need a quicktill.models.User
+        tilluser = None
+        if request.user.is_authenticated:
+            tilluser = session.query(User)\
+                              .options(joinedload('permissions'))\
+                              .filter(User.webuser==request.user.username)\
+                              .one_or_none()
+
         try:
             info = viewutils(
                 access=access,
+                user=tilluser,
                 tillname=tillname, # Formatted for people
                 pubname=pubname, # Used in url
             )
@@ -119,6 +144,7 @@ def tillweb_view(view):
                 'single_site': single_site, # Used for breadcrumbs
                 'till': tillname,
                 'access': access,
+                'tilluser': tilluser,
                 'dtf': dtf,
                 'pubname': pubname,
                 'version': version,
@@ -1050,6 +1076,15 @@ def grouplist(request, info, session):
              'groups': groups,
             })
 
+class EditGroupForm(forms.Form):
+    name = forms.CharField()
+    description = forms.CharField()
+    permissions = forms.MultipleChoiceField()
+
+    def __init__(self, permissions, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['permissions'].choices = permissions
+
 @tillweb_view
 def group(request, info, session, groupid):
     g = session\
@@ -1058,9 +1093,43 @@ def group(request, info, session, groupid):
     if not g:
         raise Http404
 
+    form = None
+
+    # XXX may want to introduce a permission for editing groups?
+    # edit-user is the closest I could find
+    if info.user_has_perm("edit-user"):
+        permissions = session.query(Permission).order_by(Permission.id).all()
+        pchoices = [ (p.id, f"{p.id} — {p.description}") for p in permissions ]
+        initial = {
+            'name': g.id,
+            'description': g.description,
+            'permissions': [p.id for p in g.permissions],
+        }
+        if request.method == "POST":
+            if 'submit_delete' in request.POST:
+                messages.success(request, f"Group '{g.id}' deleted.")
+                session.delete(g)
+                return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
+            form = EditGroupForm(pchoices, request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                changed = form.changed_data
+                g.id = cd['name']
+                g.description = cd['description']
+                g.permissions = [
+                    session.query(Permission).get(p)
+                    for p in cd['permissions'] ]
+                session.commit()
+                messages.success(request, f"Group '{g.id}' updated.")
+                return HttpResponseRedirect(g.get_absolute_url())
+        else:
+            form = EditGroupForm(pchoices, initial=initial)
+
     return ('group.html',
             {'tillobject': g,
              'group': g,
+             'form': form,
+             'can_delete': len(g.users) == 0,
             })
 
 import matplotlib
