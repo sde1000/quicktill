@@ -10,8 +10,8 @@ import django.urls
 from .models import *
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import subqueryload, subqueryload_all
-from sqlalchemy.orm import joinedload, joinedload_all
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import undefer, defer, undefer_group
@@ -359,7 +359,9 @@ def pubroot(request, info, session):
                  .query(StockLine)\
                  .filter(StockLine.location == "Bar")\
                  .order_by(StockLine.dept_id,StockLine.name)\
-                 .options(joinedload_all('stockonsale.stocktype.unit'))\
+                 .options(joinedload('stockonsale')
+                          .joinedload('stocktype')
+                          .joinedload('unit'))\
                  .options(undefer_qtys("stockonsale"))\
                  .all()
 
@@ -374,8 +376,10 @@ def pubroot(request, info, session):
                    .group_by(StockAnnotation.text)))\
                .filter(StockItem.finished == None)\
                .order_by(StockLine.name != null(), StockAnnotation.time)\
-               .options(joinedload_all('stockitem.stocktype.unit'),
-                        joinedload_all('stockitem.stockline'),
+               .options(joinedload('stockitem')
+                        .joinedload('stocktype')
+                        .joinedload('unit'),
+                        joinedload('stockitem').joinedload('stockline'),
                         undefer_qtys('stockitem'))\
                .all()
 
@@ -618,7 +622,8 @@ def sessiondept(request, info, session, sessionid, dept):
                  .join(Transaction)\
                  .options(joinedload('transaction'),
                           joinedload('user'),
-                          joinedload_all('stockref.stockitem.stocktype.unit'))\
+                          joinedload('stockref').joinedload('stockitem')
+                          .joinedload('stocktype').joinedload('unit'))\
                  .filter(Transaction.sessionid == s.id)\
                  .filter(Transline.dept_id == dept.id)\
                  .order_by(Transline.id)\
@@ -652,7 +657,7 @@ def transactions_deferred(request, info, session):
 def transaction(request, info, session, transid):
     t = session\
         .query(Transaction)\
-        .options(subqueryload_all('payments'),
+        .options(subqueryload('payments'),
                  joinedload('lines.department'),
                  joinedload('lines.user'),
                  undefer('total'),
@@ -666,7 +671,8 @@ def transaction(request, info, session, transid):
 def transline(request, info, session, translineid):
     tl = session\
          .query(Transline)\
-         .options(joinedload_all('stockref.stockitem.stocktype'),
+         .options(joinedload('stockref').joinedload('stockitem')
+                  .joinedload('stocktype'),
                   joinedload('user'))\
          .get(int(translineid))
     if not tl:
@@ -722,8 +728,9 @@ def deliverylist(request, info, session):
 def delivery(request, info, session, deliveryid):
     d = session\
         .query(Delivery)\
-        .options(joinedload_all('items.stocktype.unit'),
-                 joinedload_all('items.stockline'),
+        .options(joinedload('items').joinedload('stocktype')
+                 .joinedload('unit'),
+                 joinedload('items').joinedload('stockline'),
                  undefer_qtys('items'))\
         .get(int(deliveryid))
     if not d:
@@ -804,7 +811,7 @@ def stocksearch(request, info, session):
             .query(StockItem)\
             .join(StockType)\
             .order_by(StockItem.id)\
-            .options(joinedload_all('stocktype.unit'),
+            .options(joinedload('stocktype').joinedload('unit'),
                      joinedload('stockline'),
                      joinedload('delivery'),
                      undefer_group('qtys'))
@@ -825,12 +832,14 @@ def stocksearch(request, info, session):
 def stock(request, info, session, stockid):
     s = session\
         .query(StockItem)\
-        .options(joinedload_all('stocktype.department'),
-                 joinedload_all('stocktype.stockline_log.stockline'),
-                 joinedload_all('delivery.supplier'),
-                 joinedload_all('stockunit.unit'),
-                 joinedload_all('annotations.type'),
-                 subqueryload_all('out.transline.transaction'),
+        .options(joinedload('stocktype').joinedload('department'),
+                 joinedload('stocktype').joinedload('stockline_log')
+                 .joinedload('stockline'),
+                 joinedload('delivery').joinedload('supplier'),
+                 joinedload('stockunit').joinedload('unit'),
+                 joinedload('annotations').joinedload('type'),
+                 subqueryload('out').subqueryload('transline')
+                 .subqueryload('transaction'),
                  undefer_group('qtys'))\
         .get(int(stockid))
     if not s:
@@ -873,8 +882,9 @@ def stocklinelist(request, info, session):
 def stockline(request, info, session, stocklineid):
     s = session\
         .query(StockLine)\
-        .options(joinedload_all('stockonsale.stocktype.unit'),
-                 joinedload_all('stockonsale.delivery'),
+        .options(joinedload('stockonsale').joinedload('stocktype')
+                 .joinedload('unit'),
+                 joinedload('stockonsale').joinedload('delivery'),
                  undefer_qtys('stockonsale'))\
         .get(int(stocklineid))
     if not s:
@@ -932,7 +942,7 @@ def department(request, info, session, departmentid, as_spreadsheet=False):
             .join(StockType)\
             .filter(StockType.department == d)\
             .order_by(desc(StockItem.id))\
-            .options(joinedload_all('stocktype.unit'),
+            .options(joinedload('stocktype').joinedload('unit'),
                      undefer_group('qtys'),
                      joinedload('stockline'),
                      joinedload('delivery'),
@@ -1039,7 +1049,8 @@ def user(request, info, session, userid):
             .query(Transline)\
             .filter(Transline.user == u)\
             .options(joinedload('transaction'),
-                     joinedload_all('stockref.stockitem.stocktype.unit'))\
+                     joinedload('stockref').joinedload('stockitem')
+                     .joinedload('stocktype').joinedload('unit'))\
             .order_by(desc(Transline.time))[:50]
 
     payments = session\
@@ -1051,7 +1062,7 @@ def user(request, info, session, userid):
 
     annotations = session\
                   .query(StockAnnotation)\
-                  .options(joinedload_all('stockitem.stocktype'),
+                  .options(joinedload('stockitem').joinedload('stocktype'),
                            joinedload('type'))\
                   .filter(StockAnnotation.user == u)\
                   .order_by(desc(StockAnnotation.time))[:50]
