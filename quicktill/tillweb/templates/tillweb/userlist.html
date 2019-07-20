@@ -15,7 +15,7 @@
   </thead>
   <tbody>
 {% for user in users %}
-<tr>
+<tr{% if not user.enabled %} class="table-secondary"{% endif %}>
 <td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
 <td><a href="{{user.get_absolute_url}}">{{user.shortname}}</a></td>
 <td>{% if user.webuser %}<a href="{{user.get_absolute_url}}">{{user.webuser}}</a>{% endif %}</td>

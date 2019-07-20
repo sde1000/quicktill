@@ -80,6 +80,8 @@ class viewutils:
     def user_has_perm(self, action):
         if not self.user:
             return False
+        if not self.user.enabled:
+            return False
         if self.access == 'R':
             return False
         if self.access == 'F':
@@ -1037,6 +1039,17 @@ def userlist(request, info, session):
              'include_inactive': include_inactive,
             })
 
+class EditUserForm(forms.Form):
+    fullname = forms.CharField()
+    shortname = forms.CharField()
+    web_username = forms.CharField(required=False)
+    enabled = forms.BooleanField(required=False)
+    groups = forms.MultipleChoiceField()
+
+    def __init__(self, groups, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['groups'].choices = groups
+
 @tillweb_view
 def user(request, info, session, userid):
     u = session\
@@ -1044,6 +1057,41 @@ def user(request, info, session, userid):
         .get(int(userid))
     if not u:
         raise Http404
+
+    form = None
+    if not u.superuser and info.user_has_perm("edit-user"):
+        groups = session.query(Group).order_by(Group.id).all()
+        gchoices = [ (g.id, f"{g.id} — {g.description}") for g in groups ]
+        initial = {
+            'fullname': u.fullname,
+            'shortname': u.shortname,
+            'web_username': u.webuser,
+            'enabled': u.enabled,
+            'groups': [g.id for g in u.groups],
+        }
+        if request.method == "POST":
+            form = EditUserForm(gchoices, request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                u.fullname = cd['fullname']
+                u.shortname = cd['shortname']
+                u.webuser = cd['web_username'] if cd['web_username'] else None
+                u.enabled = cd['enabled']
+                u.groups = [
+                    session.query(Group).get(g)
+                    for g in cd['groups'] ]
+                try:
+                    session.commit()
+                    messages.success(request, f"User '{u.fullname}' updated.")
+                    return HttpResponseRedirect(u.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    session.rollback()
+                    form.add_error("web_username", "Username already in use")
+                    messages.error(
+                        request, "Could not update user: the web username "
+                        "is already in use by another till user")
+        else:
+            form = EditUserForm(gchoices, initial=initial)
 
     sales = session\
             .query(Transline)\
@@ -1073,6 +1121,7 @@ def user(request, info, session, userid):
              'sales': sales,
              'payments': payments,
              'annotations': annotations,
+             'form': form,
             })
 
 @tillweb_view
@@ -1120,6 +1169,7 @@ def group(request, info, session, groupid):
             if 'submit_delete' in request.POST:
                 messages.success(request, f"Group '{g.id}' deleted.")
                 session.delete(g)
+                session.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
             form = EditGroupForm(pchoices, request.POST, initial=initial)
             if form.is_valid():

@@ -4,6 +4,21 @@
 
 {% block tillcontent %}
 
+{% if form %}
+{% if tuser.webuser == user.username %}
+<div class="alert alert-danger">
+  Warning: this is you! If you make a change here that removes your
+  access to the web interface or your ability to edit users, you won't
+  be able to reverse it.
+</div>
+{% endif %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_find">
+    Update
+  </button>
+</form>
+{% else %}
 <table class="kvtable">
 <tr><th scope="row">Full name:</th><td>{{tuser.fullname}}</td></tr>
 <tr><th scope="row">Short name:</th><td>{{tuser.shortname}}</td></tr>
@@ -13,6 +28,7 @@
 </table>
 {% if not tuser.enabled %}
 <p>This user is marked as inactive and cannot use the till.</p>
+{% endif %}
 {% endif %}
 
 {% if tuser.superuser %}
