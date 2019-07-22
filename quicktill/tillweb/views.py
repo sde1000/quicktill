@@ -1061,7 +1061,8 @@ def user(request, info, session, userid):
     form = None
     if not u.superuser and info.user_has_perm("edit-user"):
         groups = session.query(Group).order_by(Group.id).all()
-        gchoices = [ (g.id, f"{g.id} — {g.description}") for g in groups ]
+        gchoices = [ (g.id, "{g.id} — {g.description}".format(g=g))
+                     for g in groups ]
         initial = {
             'fullname': u.fullname,
             'shortname': u.shortname,
@@ -1082,7 +1083,8 @@ def user(request, info, session, userid):
                     for g in cd['groups'] ]
                 try:
                     session.commit()
-                    messages.success(request, f"User '{u.fullname}' updated.")
+                    messages.success(request, "User '{}' updated.".format(
+                        u.fullname))
                     return HttpResponseRedirect(u.get_absolute_url())
                 except sqlalchemy.exc.IntegrityError:
                     session.rollback()
@@ -1159,7 +1161,8 @@ def group(request, info, session, groupid):
     # edit-user is the closest I could find
     if info.user_has_perm("edit-user"):
         permissions = session.query(Permission).order_by(Permission.id).all()
-        pchoices = [ (p.id, f"{p.id} — {p.description}") for p in permissions ]
+        pchoices = [ (p.id, "{p.id} — {p.description}".format(p=p))
+                     for p in permissions ]
         initial = {
             'name': g.id,
             'description': g.description,
@@ -1167,7 +1170,7 @@ def group(request, info, session, groupid):
         }
         if request.method == "POST":
             if 'submit_delete' in request.POST:
-                messages.success(request, f"Group '{g.id}' deleted.")
+                messages.success(request, "Group '{}' deleted.".format(g.id))
                 session.delete(g)
                 session.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
@@ -1181,7 +1184,7 @@ def group(request, info, session, groupid):
                     session.query(Permission).get(p)
                     for p in cd['permissions'] ]
                 session.commit()
-                messages.success(request, f"Group '{g.id}' updated.")
+                messages.success(request, "Group '{}' updated.".format(g.id))
                 return HttpResponseRedirect(g.get_absolute_url())
         else:
             form = EditGroupForm(pchoices, initial=initial)
