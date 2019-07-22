@@ -1,3 +1,25 @@
+quicktill (15.0) stable; urgency=low
+
+  * New release 15.0
+
+  * Bump package name to quicktill15
+
+  * Editing of users and their groups through the web interface
+
+  * joinedload_all -> chained joinedload, subqueryload_all -> chained subquery
+
+  * staticfiles -> static because staticfiles is removed in django-3.0
+
+  * Support for editing groups in tillweb
+
+  * New permissions / group system
+
+  * Add warning when legacy menuurl config is present
+
+  * Debug menu option to fake using a usertoken
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 22 Jul 2019 08:06:45 +0100
+
 quicktill (14.4) stable; urgency=low
 
   * New release 14.4
