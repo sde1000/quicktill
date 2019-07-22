@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.6 (Ubuntu 10.6-0ubuntu0.18.04.1)
--- Dumped by pg_dump version 10.6 (Ubuntu 10.6-0ubuntu0.18.04.1)
+-- Dumped from database version 10.9 (Ubuntu 10.9-0ubuntu0.18.04.1)
+-- Dumped by pg_dump version 10.9 (Ubuntu 10.9-0ubuntu0.18.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12,6 +12,7 @@ SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
+SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
@@ -112,6 +113,40 @@ $$;
 
 
 ALTER FUNCTION public.check_transaction_balances() OWNER TO steve;
+
+--
+-- Name: notify_group_grants_change(); Type: FUNCTION; Schema: public; Owner: steve
+--
+
+CREATE FUNCTION public.notify_group_grants_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('group_grants_changed', '');
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_group_grants_change() OWNER TO steve;
+
+--
+-- Name: notify_group_membership_change(); Type: FUNCTION; Schema: public; Owner: steve
+--
+
+CREATE FUNCTION public.notify_group_membership_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('group_membership_changed', '');
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_group_membership_change() OWNER TO steve;
 
 --
 -- Name: notify_keycap_change(); Type: FUNCTION; Schema: public; Owner: steve
@@ -222,6 +257,42 @@ CREATE SEQUENCE public.foodorder_seq
 
 
 ALTER TABLE public.foodorder_seq OWNER TO steve;
+
+--
+-- Name: group_grants; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.group_grants (
+    "user" integer NOT NULL,
+    "group" character varying NOT NULL
+);
+
+
+ALTER TABLE public.group_grants OWNER TO steve;
+
+--
+-- Name: group_membership; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.group_membership (
+    "group" character varying NOT NULL,
+    permission character varying NOT NULL
+);
+
+
+ALTER TABLE public.group_membership OWNER TO steve;
+
+--
+-- Name: groups; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.groups (
+    id character varying NOT NULL,
+    description character varying NOT NULL
+);
+
+
+ALTER TABLE public.groups OWNER TO steve;
 
 --
 -- Name: keyboard; Type: TABLE; Schema: public; Owner: steve
@@ -942,6 +1013,181 @@ COPY public.departments (dept, description, vatband, notes, minprice, maxprice, 
 14	Tschunk	A	\N	1.00	10.00	\N
 6	Cans and Bottles	A	\N	\N	\N	\N
 7	Soft Drinks	A	\N	0.80	10.00	\N
+\.
+
+
+--
+-- Data for Name: group_grants; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.group_grants ("user", "group") FROM stdin;
+3	manager
+4	manager
+5	manager
+6	manager
+8	basic-user
+9	basic-user
+10	basic-user
+11	basic-user
+12	basic-user
+13	basic-user
+14	basic-user
+15	basic-user
+16	basic-user
+17	basic-user
+18	basic-user
+19	skilled-user
+20	basic-user
+21	basic-user
+22	manager
+23	basic-user
+24	basic-user
+25	basic-user
+26	basic-user
+27	basic-user
+28	basic-user
+29	basic-user
+30	basic-user
+32	basic-user
+33	basic-user
+34	basic-user
+35	basic-user
+36	basic-user
+37	skilled-user
+38	skilled-user
+39	basic-user
+40	basic-user
+41	basic-user
+42	basic-user
+43	basic-user
+44	basic-user
+45	basic-user
+46	basic-user
+47	basic-user
+48	basic-user
+49	basic-user
+50	basic-user
+51	basic-user
+2	manager
+7	basic-user
+\.
+
+
+--
+-- Data for Name: group_membership; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.group_membership ("group", permission) FROM stdin;
+basic-user	sell-dept
+basic-user	print-receipt
+basic-user	recall-trans
+basic-user	netinfo
+basic-user	edit-transaction-note
+basic-user	cancel-line-in-open-transaction
+basic-user	current-session-summary
+basic-user	sell-plu
+basic-user	price-check
+basic-user	sell-stock
+basic-user	record-waste
+basic-user	version
+basic-user	take-payment
+skilled-user	sell-dept
+skilled-user	print-receipt
+skilled-user	recall-trans
+skilled-user	stock-check
+skilled-user	nosale
+skilled-user	current-session-summary
+skilled-user	price-check
+skilled-user	sell-stock
+skilled-user	stock-level-check
+skilled-user	use-stock
+skilled-user	version
+skilled-user	take-payment
+skilled-user	merge-trans
+skilled-user	auto-allocate
+skilled-user	split-trans
+skilled-user	void-from-closed-transaction
+skilled-user	manage-stockline-associations
+skilled-user	netinfo
+skilled-user	drink-in
+skilled-user	edit-transaction-note
+skilled-user	restock
+skilled-user	cancel-line-in-open-transaction
+skilled-user	annotate
+skilled-user	sell-plu
+skilled-user	twitter
+skilled-user	record-waste
+manager	add-best-before
+manager	edit-user
+manager	recall-trans
+manager	update-supplier
+manager	add-custom-transline
+manager	print-receipt-by-number
+manager	override-price
+manager	list-users
+manager	nosale
+manager	current-session-summary
+manager	stock-history
+manager	use-stock
+manager	record-takings
+manager	alter-stockline
+manager	edit-supplier
+manager	reprice-stock
+manager	split-trans
+manager	create-stockline
+manager	edit-keycaps
+manager	alter-plu
+manager	manage-stockline-associations
+manager	reprint-stocklabel
+manager	netinfo
+manager	end-session
+manager	restock
+manager	finish-unconnected-stock
+manager	apply-discount
+manager	print-price-list
+manager	cancel-line-in-open-transaction
+manager	annotate
+manager	deliveries
+manager	record-waste
+manager	exit
+manager	alter-modifier
+manager	print-stocklist
+manager	sell-dept
+manager	purge-finished-stock
+manager	print-receipt
+manager	start-session
+manager	session-summary
+manager	stock-check
+manager	recall-any-trans
+manager	price-check
+manager	sell-stock
+manager	manage-tokens
+manager	stock-level-check
+manager	version
+manager	take-payment
+manager	merge-trans
+manager	auto-allocate
+manager	restore-deferred
+manager	return-finished-item
+manager	void-from-closed-transaction
+manager	defer-trans
+manager	drink-in
+manager	edit-transaction-note
+manager	alter-stocktype
+manager	sell-plu
+manager	twitter
+manager	create-plu
+\.
+
+
+--
+-- Data for Name: groups; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.groups (id, description) FROM stdin;
+skilled-user	skilled-user
+basic-user	Default for all till users
+manager	Bar managers
 \.
 
 
@@ -10206,56 +10452,7 @@ CARD	Card
 --
 
 COPY public.permission_grants ("user", permission) FROM stdin;
-2	manager
-3	manager
-4	manager
-7	basic-user
-8	basic-user
-9	basic-user
-10	basic-user
-11	basic-user
-12	basic-user
-13	basic-user
-14	basic-user
-15	basic-user
-16	basic-user
-17	basic-user
-18	basic-user
-20	basic-user
-21	basic-user
-22	manager
-23	basic-user
-24	basic-user
-25	basic-user
-26	basic-user
-27	basic-user
-28	basic-user
-29	basic-user
-30	basic-user
-5	manager
 10	nosale
-32	basic-user
-33	basic-user
-34	basic-user
-35	basic-user
-36	basic-user
-37	skilled-user
-38	skilled-user
-19	skilled-user
-39	basic-user
-40	basic-user
-41	basic-user
-42	basic-user
-43	basic-user
-44	basic-user
-45	basic-user
-46	basic-user
-47	basic-user
-48	basic-user
-49	basic-user
-6	manager
-50	basic-user
-51	basic-user
 \.
 
 
@@ -10264,10 +10461,68 @@ COPY public.permission_grants ("user", permission) FROM stdin;
 --
 
 COPY public.permissions (id, description) FROM stdin;
-manager	Pub manager [group]
-skilled-user	Skilled user [group]
-basic-user	Basic user [group]
 nosale	Open the cash drawer with no payment
+edit-user	Edit a user
+list-users	List till users
+manage-tokens	Manage user login tokens
+twitter	Use the Twitter client
+edit-keycaps	Change the names of keys on the keyboard
+annotate	Add an annotation to a stock item
+alter-modifier	Alter the key bindings for a modifier
+reprice-stock	Change the sale price of stock
+restock	Re-stock items on display stocklines
+manage-stockline-associations	View and delete stocktype <-> stockline links
+create-stockline	Create a new stock line
+alter-stockline	Modify or delete an existing stock line
+use-stock	Allocate stock to lines
+auto-allocate	Automatically allocate stock to lines
+price-check	Check prices without selling anything
+deliveries	List deliveries
+edit-supplier	Create or edit supplier details
+update-supplier	Update supplier details
+finish-unconnected-stock	Finish stock not currently on sale
+print-stocklist	Print a list of stock
+stock-check	List unfinished stock items
+stock-history	List finished stock
+stock-level-check	Check stock levels
+purge-finished-stock	Mark empty stock items on display stocklines as finished
+alter-stocktype	Alter an existing stock type to make minor corrections
+reprint-stocklabel	Re-print a single stock label
+add-best-before	Add a best-before date to a stock item
+return-finished-item	Return a finished item to stock
+print-price-list	Print a price list
+start-session	Start a session
+end-session	End a session
+record-takings	Record takings for a session
+session-summary	Display a summary for any session
+current-session-summary	Display a takings summary for the current session
+restore-deferred	Restore deferred transactions to the current session
+create-plu	Create a new price lookup
+alter-plu	Modify or delete an existing price lookup
+print-receipt-by-number	Print any receipt given the transaction number
+version	See version information
+exit	Exit the till software
+netinfo	See network information
+fullscreen	Enter / leave fullscreen mode
+record-waste	Record waste
+override-price	Override the sale price of an item
+suppress-refund-help-text	Don't show the refund help text
+cancel-line-in-open-transaction	Delete or reverse a line in an open transaction
+void-from-closed-transaction	Create a transaction voiding lines from a closed transaction
+sell-dept	Sell items using a department key
+edit-transaction-note	Alter a transactions's note
+split-trans	Split a transaction into two parts
+add-custom-transline	Add a custom transaction line
+recall-any-trans	Recall any transaction, even from previous sessions
+sell-plu	Sell items using a price lookup
+sell-stock	Sell stock from a stockline
+drink-in	Use the "Drink In" function
+take-payment	Take a payment
+print-receipt	Print a receipt
+recall-trans	Change to a different transaction
+defer-trans	Defer a transaction to a later session
+merge-trans	Merge two transactions
+apply-discount	Apply a discount to a transaction
 \.
 
 
@@ -27540,6 +27795,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 769	525	1	1.00	7	2	855	S	2018-08-31 16:49:54.111928	Coca Cola Diet 330ml can	0.00	\N
 856	525	-1	4.50	6	2	\N	V	2018-08-31 17:19:45.110392	Amundsen Ink & Dagger (6.5% ABV) can	0.00	\N
 768	525	1	4.50	6	2	856	S	2018-08-31 16:49:50.383984	Amundsen Ink & Dagger (6.5% ABV) can	0.00	\N
+1789	1184	1	1.00	7	20	\N	S	2018-08-31 21:26:57.812001	Coca Cola 330ml can	0.00	\N
 857	525	-1	3.50	1	2	\N	V	2018-08-31 17:19:45.110392	Milton Pegasus (4.1% ABV) pint	0.00	\N
 765	525	1	3.50	1	2	857	S	2018-08-31 16:49:09.858023	Milton Pegasus (4.1% ABV) pint	0.00	\N
 858	592	1	1.80	7	16	\N	S	2018-08-31 17:19:47.927984	Club Mate Regular 330ml bottle	0.00	\N
@@ -28094,6 +28350,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 1436	946	1	2.60	7	17	\N	S	2018-08-31 20:12:06.366901	ChariTea Sparkling Iced Mate Tea 330ml bottle	0.00	\N
 1437	947	1	3.60	2	15	\N	S	2018-08-31 20:12:40.584517	Beach Dynamo (3.9% ABV) pint	0.00	\N
 1439	949	1	3.30	1	20	\N	S	2018-08-31 20:13:36.816886	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
+1907	1260	1	1.00	7	19	\N	S	2018-08-31 21:49:54.781376	Coca Cola 330ml can	0.00	\N
 1442	952	1	3.80	2	18	\N	S	2018-08-31 20:14:58.878854	Five Points Pale (4.4% ABV) pint	0.00	\N
 1444	954	1	3.60	2	15	\N	S	2018-08-31 20:15:06.572836	Beach Dynamo (3.9% ABV) pint	0.00	\N
 1446	956	2	2.50	4	19	\N	S	2018-08-31 20:15:32.666939	Portobello Gin (42.0% ABV) 25ml	0.00	\N
@@ -28443,7 +28700,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 1787	1179	1	3.30	1	13	\N	S	2018-08-31 21:26:55.999965	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
 1788	1179	1	3.30	1	13	\N	S	2018-08-31 21:26:56.465947	Ledbury Bitter (3.8% ABV) pint	0.00	\N
 1786	1183	2	1.80	7	24	\N	S	2018-08-31 21:26:55.59136	Club Mate Regular 330ml bottle	0.00	\N
-1789	1184	1	1.00	7	20	\N	S	2018-08-31 21:26:57.812001	Coca Cola 330ml can	0.00	\N
 1790	1183	1	5.60	6	24	\N	S	2018-08-31 21:27:22.695253	Duvel Duvel (8.5% ABV) bottle	0.00	\N
 1791	1183	1	4.50	6	24	\N	S	2018-08-31 21:27:29.149416	Cloudwater Helles Tettnanger (4.8% ABV) can	0.00	\N
 1792	1185	2	4.10	6	23	\N	S	2018-08-31 21:28:15.977378	Yeastie Boys Pot Kettle Black (6.0% ABV) can	0.00	\N
@@ -28514,7 +28770,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 1899	1255	2	2.50	4	12	\N	S	2018-08-31 21:48:36.638105	Smirnoff Red (37.5% ABV) 25ml	0.00	\N
 1900	1255	1	1.80	7	12	\N	S	2018-08-31 21:48:40.163463	Club Mate Regular 330ml bottle	0.00	\N
 1905	1260	2	2.50	4	19	\N	S	2018-08-31 21:49:49.930011	Sailor Jerry Spiced Rum (40.0% ABV) 25ml	0.00	\N
-1907	1260	1	1.00	7	19	\N	S	2018-08-31 21:49:54.781376	Coca Cola 330ml can	0.00	\N
 1911	1265	1	2.70	9	12	\N	S	2018-08-31 21:51:08.125895	Central Monte Sauvignon Blanc (13.0% ABV) 175ml glass	0.00	\N
 1915	1265	1	4.00	1	12	\N	S	2018-08-31 21:51:41.959586	Milton Nero (5.0% ABV) pint	0.00	\N
 1922	1274	2	3.60	2	18	\N	S	2018-08-31 21:54:00.939378	Beach Dynamo (3.9% ABV) pint	0.00	\N
@@ -28584,6 +28839,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 1938	1282	3	1.00	7	17	\N	S	2018-08-31 21:56:38.954062	Coca Cola 330ml can	0.00	\N
 1940	1282	1	1.80	7	17	\N	S	2018-08-31 21:56:48.426872	Club Mate Regular 330ml bottle	0.00	\N
 1988	1318	1	1.00	7	17	\N	S	2018-08-31 22:06:25.241693	Fanta Orange 330ml can	0.00	\N
+2334	1544	1	1.00	7	3	\N	S	2018-08-31 23:05:50.092325	Coca Cola 330ml can	0.00	\N
 1856	1226	3	3.90	6	23	\N	S	2018-08-31 21:40:19.878011	Beavertown Gamma Ray (5.4% ABV) can	0.00	\N
 1883	1243	1	1.00	7	24	\N	S	2018-08-31 21:46:24.784614	Fanta Orange 330ml can	0.00	\N
 1895	1253	1	2.50	7	24	\N	S	2018-08-31 21:48:00.573537	Club Mate Granat 500ml bottle	0.00	\N
@@ -28793,6 +29049,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 2142	1413	1	4.10	3	13	\N	S	2018-08-31 22:34:06.457435	Parson's Choice Medium Dry (7.0% ABV) pint	0.00	\N
 2143	1414	1	4.00	1	21	\N	S	2018-08-31 22:34:37.4946	Milton Nero (5.0% ABV) pint	0.00	\N
 2144	1415	2	3.80	2	12	\N	S	2018-08-31 22:34:40.490515	Five Points Pale (4.4% ABV) pint	0.00	\N
+2335	1545	1	1.00	7	13	\N	S	2018-08-31 23:06:01.962183	Coca Cola 330ml can	0.00	\N
 2145	1416	1	3.30	1	17	\N	S	2018-08-31 22:34:43.374357	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
 2146	1416	1	4.00	1	17	\N	S	2018-08-31 22:34:44.01955	Milton Nero (5.0% ABV) pint	0.00	\N
 2147	1414	2	2.50	4	21	\N	S	2018-08-31 22:34:44.903216	Sailor Jerry Spiced Rum (40.0% ABV) 25ml	0.00	\N
@@ -28863,8 +29120,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 2330	1544	1	3.30	1	3	\N	S	2018-08-31 23:05:45.017286	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
 2332	1544	1	3.80	2	3	\N	S	2018-08-31 23:05:45.916366	Five Points Pale (4.4% ABV) pint	0.00	\N
 2333	1544	2	2.50	4	3	\N	S	2018-08-31 23:05:46.924316	Smirnoff Red (37.5% ABV) 25ml	0.00	\N
-2334	1544	1	1.00	7	3	\N	S	2018-08-31 23:05:50.092325	Coca Cola 330ml can	0.00	\N
-2335	1545	1	1.00	7	13	\N	S	2018-08-31 23:06:01.962183	Coca Cola 330ml can	0.00	\N
 2175	1437	1	1.65	1	18	\N	S	2018-08-31 22:39:19.186699	Lakehouse Amber Session Ale (3.9% ABV) half pint	0.00	\N
 2180	1442	2	3.60	13	12	\N	S	2018-08-31 22:40:27.284614	San Miguel Lager (5.0% ABV) pint	0.00	\N
 2189	1449	2	2.50	4	2	\N	S	2018-08-31 22:41:37.472209	Whyte & Mackay Whisky (40.0% ABV) 25ml	0.00	\N
@@ -29415,6 +29670,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 2786	1842	4	3.60	2	25	\N	S	2018-09-01 01:07:38.435928	Beach Dynamo (3.9% ABV) pint	0.00	\N
 2787	1843	1	5.60	6	22	\N	S	2018-09-01 01:11:31.480509	Duvel Duvel (8.5% ABV) bottle	0.00	\N
 2788	1844	1	3.30	13	2	\N	S	2018-09-01 01:11:55.534625	Westons Stowford Press (4.5% ABV) pint	0.00	\N
+3115	2077	1	1.00	7	5	\N	S	2018-09-01 12:52:14.883392	Coca Cola 330ml can	0.00	\N
 2789	1844	1	5.00	4	2	\N	S	2018-09-01 01:12:00.208463	Sailor Jerry Spiced Rum (40.0% ABV) double 25ml	0.00	\N
 2791	1846	1	0.75	7	25	\N	S	2018-09-01 01:13:04.89172	Sunpride Orange half pint	0.00	\N
 2792	1847	2	1.90	2	10	\N	S	2018-09-01 01:13:10.596223	Five Points Pale (4.4% ABV) half pint	0.00	\N
@@ -29776,7 +30032,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 3111	2074	-2	3.30	13	2	\N	V	2018-09-01 12:51:19.575589	Westons Stowford Press (4.5% ABV) pint	0.00	\N
 3092	2062	2	3.30	13	5	3111	S	2018-09-01 12:46:56.16839	Westons Stowford Press (4.5% ABV) pint	0.00	\N
 3114	2077	2	2.50	4	5	\N	S	2018-09-01 12:52:11.712134	Smirnoff Red (37.5% ABV) 25ml	0.00	\N
-3115	2077	1	1.00	7	5	\N	S	2018-09-01 12:52:14.883392	Coca Cola 330ml can	0.00	\N
 3116	2078	1	3.60	2	16	\N	S	2018-09-01 12:52:25.635751	Beach Dynamo (3.9% ABV) pint	0.00	\N
 3119	2081	1	15.00	12	16	\N	S	2018-09-01 12:52:44.357347	EMF 2018 T-shirt	0.00	\N
 3121	2083	1	1.50	7	5	\N	S	2018-09-01 12:53:28.14127	Karma Lemony Lemonade can	0.00	\N
@@ -29994,6 +30249,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 3482	2316	1	3.30	1	5	\N	S	2018-09-01 14:20:55.905012	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
 3452	2300	2	15.00	12	10	3486	S	2018-09-01 14:13:38.640244	EMF 2018 T-shirt	0.00	\N
 3488	2321	1	3.30	1	16	\N	S	2018-09-01 14:22:13.349059	Ledbury Gold (4.0% ABV) pint	0.00	\N
+3614	2396	-1	15.00	12	30	\N	V	2018-09-01 14:58:49.787149	EMF 2018 T-shirt	0.00	\N
 3494	2327	1	3.50	1	29	\N	S	2018-09-01 14:23:37.04759	Lakehouse Citrus Pale Ale (4.0% ABV) pint	0.00	\N
 3495	2328	1	1.80	7	10	\N	S	2018-09-01 14:23:52.63735	Club Mate Regular 330ml bottle	0.00	\N
 3496	2328	1	1.00	7	10	\N	S	2018-09-01 14:23:54.717425	Coca Cola 330ml can	0.00	\N
@@ -30065,7 +30321,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 3603	2398	1	3.30	1	28	\N	S	2018-09-01 14:54:31.903566	Lakehouse Amber Session Ale (3.9% ABV) pint	0.00	\N
 3604	2399	1	15.00	12	29	\N	S	2018-09-01 14:54:51.67951	EMF 2018 T-shirt	0.00	\N
 3605	2400	1	3.60	2	2	\N	S	2018-09-01 14:55:19.983043	Kentish Town Fleet Lager (5.0% ABV) pint	0.00	\N
-3614	2396	-1	15.00	12	30	\N	V	2018-09-01 14:58:49.787149	EMF 2018 T-shirt	0.00	\N
 3619	2407	1	1.00	7	30	\N	S	2018-09-01 15:00:08.061063	Coca Cola 330ml can	0.00	\N
 3622	2410	1	4.50	6	16	\N	S	2018-09-01 15:00:56.767013	Lost and Grounded Hop-Hand Fallacy (4.4% ABV) can	0.00	\N
 3396	2262	1	15.00	12	5	\N	S	2018-09-01 13:57:32.733312	EMF 2018 T-shirt	0.00	\N
@@ -30915,6 +31170,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 4363	2911	1	3.50	1	32	\N	S	2018-09-01 18:05:41.634492	Lakehouse Citrus Pale Ale (4.0% ABV) pint	0.00	\N
 4364	2909	1	1.00	7	2	\N	S	2018-09-01 18:05:48.68045	Coca Cola 330ml can	0.00	\N
 4369	2915	2	1.00	7	2	\N	S	2018-09-01 18:06:20.808465	Coca Cola Diet 330ml can	0.00	\N
+6025	3993	2	1.00	7	12	\N	S	2018-09-01 23:20:49.553183	Coca Cola 330ml can	0.00	\N
 4371	2917	1	3.50	1	2	\N	S	2018-09-01 18:06:36.864144	Lakehouse Citrus Pale Ale (4.0% ABV) pint	0.00	\N
 4367	2913	1	4.50	6	23	\N	S	2018-09-01 18:06:11.1967	Lost and Grounded Hop-Hand Fallacy (4.4% ABV) can	0.00	\N
 4370	2916	1	3.60	2	10	\N	S	2018-09-01 18:06:29.297503	Beach Dynamo (3.9% ABV) pint	0.00	\N
@@ -31954,6 +32210,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 5411	3590	2	3.60	2	39	\N	S	2018-09-01 21:38:58.234675	Beach Dynamo (3.9% ABV) pint	0.00	\N
 5413	3591	1	3.60	1	12	\N	S	2018-09-01 21:39:21.080321	Ledbury Dr Rudi's Extra Pale (4.1% ABV) pint	0.00	\N
 5419	3594	1	3.30	13	11	\N	S	2018-09-01 21:40:14.5408	Westons Stowford Press (4.5% ABV) pint	0.00	\N
+6809	4507	2	15.00	12	1	\N	S	2018-09-02 12:03:55.119511	T-shirt (Sunday)	0.00	\N
 5427	3598	1	3.60	13	17	\N	S	2018-09-01 21:41:19.057849	San Miguel Lager (5.0% ABV) pint	0.00	\N
 5429	3598	1	3.80	2	17	\N	S	2018-09-01 21:41:19.699484	Five Points Pale (4.4% ABV) pint	0.00	\N
 5435	3604	2	4.10	3	19	\N	S	2018-09-01 21:43:15.613688	Wilkins Sweet (6.5% ABV) pint	0.00	\N
@@ -32023,6 +32280,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 6668	4398	1	1.00	7	43	\N	S	2018-09-02 01:26:28.487309	Coca Cola 330ml can	0.00	\N
 5521	3657	1	1.80	2	39	\N	S	2018-09-01 21:58:17.145123	Five Points Railway Porter (4.8% ABV) half pint	0.00	\N
 5522	3662	1	3.50	1	11	\N	S	2018-09-01 21:58:20.168349	Milton Pegasus (4.1% ABV) pint	0.00	\N
+7070	4714	1	1.50	7	44	\N	S	2018-09-02 13:00:00.938163	Sunpride Orange	0.00	\N
 5523	3663	1	2.50	7	27	\N	S	2018-09-01 21:58:53.478195	Club Mate Granat 500ml bottle	0.00	\N
 5524	3664	1	2.50	4	17	\N	S	2018-09-01 21:58:56.954747	Jack Daniels Whiskey (40.0% ABV) 25ml	0.00	\N
 5525	3664	1	1.00	7	17	\N	S	2018-09-01 21:58:58.503205	Coca Cola 330ml can	0.00	\N
@@ -32642,6 +32900,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 6243	4123	2	3.60	2	6	\N	S	2018-09-02 00:02:26.476318	Five Points Railway Porter (4.8% ABV) pint	0.00	\N
 6249	4127	1	3.80	1	6	\N	S	2018-09-02 00:03:57.350109	Wye Valley Hereford Pale Ale (4.0% ABV) pint	0.00	\N
 6253	4130	1	3.60	13	42	\N	S	2018-09-02 00:04:17.892444	San Miguel Lager (5.0% ABV) pint	0.00	\N
+7020	4678	-2	15.00	12	1	\N	V	2018-09-02 12:48:10.829817	T-shirt (Sunday)	0.00	\N
 6254	4130	1	1.80	13	42	\N	S	2018-09-02 00:04:18.197153	San Miguel Lager (5.0% ABV) half pint	0.00	\N
 6256	4130	1	3.80	1	42	\N	S	2018-09-02 00:04:22.429817	Wye Valley Hereford Pale Ale (4.0% ABV) pint	0.00	\N
 6257	4130	1	1.00	7	42	\N	S	2018-09-02 00:04:33.694528	Coca Cola Diet 330ml can	0.00	\N
@@ -32710,7 +32969,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 6016	3981	1	3.60	13	43	\N	S	2018-09-01 23:19:43.967275	San Miguel Lager (5.0% ABV) pint	0.00	\N
 6020	3988	1	3.60	2	5	\N	S	2018-09-01 23:20:12.849387	Five Points Railway Porter (4.8% ABV) pint	0.00	\N
 6023	3991	1	2.50	7	5	\N	S	2018-09-01 23:20:39.369394	Club Mate Granat 500ml bottle	0.00	\N
-6025	3993	2	1.00	7	12	\N	S	2018-09-01 23:20:49.553183	Coca Cola 330ml can	0.00	\N
 6026	3993	1	2.50	7	12	\N	S	2018-09-01 23:20:52.627832	Club Mate Granat 500ml bottle	0.00	\N
 6028	3995	1	3.30	13	12	\N	S	2018-09-01 23:21:46.631458	Westons Stowford Press (4.5% ABV) pint	0.00	\N
 6030	3995	1	1.00	7	12	\N	S	2018-09-01 23:22:14.375466	Coca Cola 330ml can	0.00	\N
@@ -32983,6 +33241,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 6489	4273	4	2.50	4	26	\N	S	2018-09-02 00:47:18.379104	Whyte & Mackay Whisky (40.0% ABV) 25ml	0.00	\N
 6496	4277	3	2.50	4	26	\N	S	2018-09-02 00:49:44.593511	Disaronno Amaretto (28.0% ABV) 25ml	0.00	\N
 6508	4286	1	2.50	4	41	\N	S	2018-09-02 00:53:10.855335	Disaronno Amaretto (28.0% ABV) 25ml	0.00	\N
+7021	4679	-1	15.00	12	1	\N	V	2018-09-02 12:49:01.413916	EMF 2018 T-shirt	0.00	\N
 6513	4288	1	3.60	13	26	\N	S	2018-09-02 00:53:51.255791	San Miguel Lager (5.0% ABV) pint	0.00	\N
 6514	4288	1	3.70	2	26	\N	S	2018-09-02 00:53:51.651575	Five Points XPA (4.0% ABV) pint	0.00	\N
 6518	4292	1	3.70	2	43	\N	S	2018-09-02 00:55:09.073182	Five Points XPA (4.0% ABV) pint	0.00	\N
@@ -33194,7 +33453,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 6783	4486	4	1.80	7	34	\N	S	2018-09-02 11:53:32.165617	Club Mate Regular 330ml bottle	0.00	\N
 6789	4491	1	1.80	7	3	\N	S	2018-09-02 11:56:08.292488	Club Mate Regular 330ml bottle	0.00	\N
 6806	4504	1	15.00	12	1	\N	S	2018-09-02 12:03:08.100463	T-shirt (Sunday)	0.00	\N
-6809	4507	2	15.00	12	1	\N	S	2018-09-02 12:03:55.119511	T-shirt (Sunday)	0.00	\N
 6811	4509	2	3.60	2	44	\N	S	2018-09-02 12:04:33.332165	Kentish Town Fleet Lager (5.0% ABV) pint	0.00	\N
 6817	4515	1	15.00	12	10	\N	S	2018-09-02 12:06:02.208819	T-shirt (Sunday)	0.00	\N
 6820	4518	1	15.00	12	45	\N	S	2018-09-02 12:06:35.308146	T-shirt (Sunday)	0.00	\N
@@ -33416,7 +33674,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7060	4704	1	4.80	3	10	\N	S	2018-09-02 12:55:56.876945	Pagett's Traditional Golden Slipper (6.5% ABV) pint	0.00	\N
 7065	4709	1	1.75	1	44	\N	S	2018-09-02 12:57:51.778621	Wye Valley Bitter (3.7% ABV) half pint	0.00	\N
 7068	4712	1	1.00	7	45	\N	S	2018-09-02 12:59:19.558371	Coca Cola 330ml can	0.00	\N
-7070	4714	1	1.50	7	44	\N	S	2018-09-02 13:00:00.938163	Sunpride Orange	0.00	\N
 7077	4720	1	2.50	7	45	\N	S	2018-09-02 13:02:55.894141	Club Mate Granat 500ml bottle	0.00	\N
 7081	4724	1	3.60	2	44	\N	S	2018-09-02 13:04:15.20223	Five Points Railway Porter (4.8% ABV) pint	0.00	\N
 7095	4737	1	2.50	7	45	\N	S	2018-09-02 13:09:13.116105	Club Mate Granat 500ml bottle	0.00	\N
@@ -33490,8 +33747,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7013	4673	1	3.60	2	44	\N	S	2018-09-02 12:46:30.532544	Kentish Town Fleet Lager (5.0% ABV) pint	0.00	\N
 7018	4676	1	15.00	12	1	\N	S	2018-09-02 12:47:21.715807	T-shirt (Sunday)	0.00	\N
 7019	4677	2	15.00	12	1	\N	S	2018-09-02 12:47:39.49222	T-shirt (Sunday)	0.00	\N
-7020	4678	-2	15.00	12	1	\N	V	2018-09-02 12:48:10.829817	T-shirt (Sunday)	0.00	\N
-7021	4679	-1	15.00	12	1	\N	V	2018-09-02 12:49:01.413916	EMF 2018 T-shirt	0.00	\N
 2858	1897	1	15.00	12	16	7021	S	2018-09-01 11:23:01.013998	EMF 2018 T-shirt	0.00	\N
 7025	4682	1	1.00	7	44	\N	S	2018-09-02 12:49:30.640569	Coca Cola 330ml can	0.00	\N
 7028	4684	-4	15.00	12	1	\N	V	2018-09-02 12:50:00.547283	T-shirt (Sunday)	0.00	\N
@@ -33563,6 +33818,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7162	4791	4	1.00	7	2	\N	S	2018-09-02 13:30:46.174956	Coca Cola 330ml can	0.00	\N
 7163	4791	2	2.50	7	2	\N	S	2018-09-02 13:30:50.065338	Club Mate Granat 500ml bottle	0.00	\N
 7164	4792	1	2.50	7	10	\N	S	2018-09-02 13:30:55.219728	Club Mate Granat 500ml bottle	0.00	\N
+7272	4876	1	1.00	7	11	\N	S	2018-09-02 14:03:06.224345	Coca Cola 330ml can	0.00	\N
 7165	4793	1	4.80	3	3	\N	S	2018-09-02 13:31:08.458806	Pagett's Traditional Golden Slipper (6.5% ABV) pint	0.00	\N
 7166	4794	1	1.00	7	10	\N	S	2018-09-02 13:31:18.855652	Coca Cola 330ml can	0.00	\N
 7167	4795	1	1.80	7	10	\N	S	2018-09-02 13:31:46.396385	Club Mate Regular 330ml bottle	0.00	\N
@@ -33775,7 +34031,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7263	4869	1	3.80	1	45	\N	S	2018-09-02 14:00:55.021852	Wye Valley Hereford Pale Ale (4.0% ABV) pint	0.00	\N
 7268	4872	1	1.80	7	45	\N	S	2018-09-02 14:01:52.652081	Club Mate Regular 330ml bottle	0.00	\N
 7270	4874	2	1.00	7	11	\N	S	2018-09-02 14:02:31.21876	Coca Cola 330ml can	0.00	\N
-7272	4876	1	1.00	7	11	\N	S	2018-09-02 14:03:06.224345	Coca Cola 330ml can	0.00	\N
 7275	4878	1	3.50	1	32	\N	S	2018-09-02 14:03:19.196606	Milton Pegasus (4.1% ABV) pint	0.00	\N
 7277	4878	1	3.50	1	32	\N	S	2018-09-02 14:03:19.862648	Wye Valley Bitter (3.7% ABV) pint	0.00	\N
 7278	4878	1	15.00	12	32	\N	S	2018-09-02 14:03:21.739229	T-shirt (Sunday)	0.00	\N
@@ -33846,6 +34101,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7284	4883	1	3.30	13	11	\N	S	2018-09-02 14:05:44.333494	Westons Stowford Press (4.5% ABV) pint	0.00	\N
 7294	4889	2	1.00	7	28	\N	S	2018-09-02 14:07:47.041317	Coca Cola 330ml can	0.00	\N
 7299	4893	1	1.80	7	44	\N	S	2018-09-02 14:08:39.729623	Club Mate Regular 330ml bottle	0.00	\N
+7677	5185	1	1.00	7	47	\N	S	2018-09-02 16:01:28.722772	Coca Cola 330ml can	0.00	\N
 7301	4895	1	2.60	7	11	\N	S	2018-09-02 14:09:37.525216	ChariTea Sparkling Iced Mate Tea 330ml bottle	0.00	\N
 7302	4895	1	0.75	7	11	\N	S	2018-09-02 14:09:43.415184	Sunpride Orange half pint	0.00	\N
 7310	4902	2	2.50	7	11	\N	S	2018-09-02 14:11:21.265	Club Mate Granat 500ml bottle	0.00	\N
@@ -34057,7 +34313,6 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 7649	5162	1	1.00	7	47	\N	S	2018-09-02 15:54:05.617052	Coca Cola Diet 330ml can	0.00	\N
 7654	5167	2	1.00	7	11	\N	S	2018-09-02 15:55:44.251012	Coca Cola Diet 330ml can	0.00	\N
 7676	5183	1	4.80	3	11	\N	S	2018-09-02 16:01:10.476544	Pagett's Traditional Golden Slipper (6.5% ABV) pint	0.00	\N
-7677	5185	1	1.00	7	47	\N	S	2018-09-02 16:01:28.722772	Coca Cola 330ml can	0.00	\N
 7678	5185	1	1.00	7	47	\N	S	2018-09-02 16:01:30.058678	Coca Cola Diet 330ml can	0.00	\N
 7680	5187	2	1.00	7	47	\N	S	2018-09-02 16:02:00.300659	Coca Cola Diet 330ml can	0.00	\N
 7683	5189	2	1.00	7	47	\N	S	2018-09-02 16:02:38.748516	Coca Cola 330ml can	0.00	\N
@@ -35940,9 +36195,9 @@ COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid
 49	Bella Martin	Bella	\N	t	f	6116	dbb7d8f0-76f0-4b43-9143-4f0ba29df512	\N
 50	Mia Allan	Mia	\N	t	f	6449	e803a3b5-b620-4b3a-a354-2c140d67cc65	\N
 51	Thomas Taylor	Thomas	\N	t	f	6445	dbb7d8f0-76f0-4b43-9143-4f0ba29df512	\N
-1	Alice (superuser)	Alice (superuser)	\N	t	t	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
 2	Bob (manager)	Bob (manager)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
 7	Charlie (basic user)	Charlie (basic user)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
+1	Alice (superuser)	Alice (superuser)	sde	t	t	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
 \.
 
 
@@ -36142,6 +36397,30 @@ ALTER TABLE ONLY public.deliveries
 
 ALTER TABLE ONLY public.departments
     ADD CONSTRAINT departments_pkey PRIMARY KEY (dept);
+
+
+--
+-- Name: group_grants group_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_grants
+    ADD CONSTRAINT group_grants_pkey PRIMARY KEY ("user", "group");
+
+
+--
+-- Name: group_membership group_membership_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_membership
+    ADD CONSTRAINT group_membership_pkey PRIMARY KEY ("group", permission);
+
+
+--
+-- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.groups
+    ADD CONSTRAINT groups_pkey PRIMARY KEY (id);
 
 
 --
@@ -36517,6 +36796,20 @@ CREATE CONSTRAINT TRIGGER close_only_if_balanced AFTER INSERT OR UPDATE ON publi
 
 
 --
+-- Name: group_grants group_grants_changed; Type: TRIGGER; Schema: public; Owner: steve
+--
+
+CREATE TRIGGER group_grants_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_grants FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_grants_change();
+
+
+--
+-- Name: group_membership group_membership_changed; Type: TRIGGER; Schema: public; Owner: steve
+--
+
+CREATE TRIGGER group_membership_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_membership FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_membership_change();
+
+
+--
 -- Name: keycaps keycap_changed; Type: TRIGGER; Schema: public; Owner: steve
 --
 
@@ -36558,6 +36851,38 @@ ALTER TABLE ONLY public.deliveries
 
 ALTER TABLE ONLY public.departments
     ADD CONSTRAINT departments_vatband_fkey FOREIGN KEY (vatband) REFERENCES public.vat(band);
+
+
+--
+-- Name: group_grants group_grants_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_grants
+    ADD CONSTRAINT group_grants_group_fkey FOREIGN KEY ("group") REFERENCES public.groups(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: group_grants group_grants_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_grants
+    ADD CONSTRAINT group_grants_user_fkey FOREIGN KEY ("user") REFERENCES public.users(id);
+
+
+--
+-- Name: group_membership group_membership_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_membership
+    ADD CONSTRAINT group_membership_group_fkey FOREIGN KEY ("group") REFERENCES public.groups(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: group_membership group_membership_permission_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.group_membership
+    ADD CONSTRAINT group_membership_permission_fkey FOREIGN KEY (permission) REFERENCES public.permissions(id) ON DELETE CASCADE;
 
 
 --
@@ -36605,7 +36930,7 @@ ALTER TABLE ONLY public.payments
 --
 
 ALTER TABLE ONLY public.permission_grants
-    ADD CONSTRAINT permission_grants_permission_fkey FOREIGN KEY (permission) REFERENCES public.permissions(id);
+    ADD CONSTRAINT permission_grants_permission_fkey FOREIGN KEY (permission) REFERENCES public.permissions(id) ON DELETE CASCADE;
 
 
 --

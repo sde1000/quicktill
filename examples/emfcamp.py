@@ -9,7 +9,6 @@ from quicktill.keyboard import *
 import quicktill.pdrivers
 import quicktill.ui
 import quicktill.stockterminal
-import quicktill.user
 import quicktill.stocktype
 import quicktill.usestock
 import quicktill.cash
@@ -20,18 +19,6 @@ from decimal import Decimal, ROUND_UP
 import datetime
 import logging
 log = logging.getLogger('config')
-
-# Define three groups of permissions based on built-in lists.  If you
-# want any extra groups, or to modify the built-in lists, do that
-# here.
-quicktill.user.group('basic-user', 'Basic user [group]',
-                     quicktill.user.default_groups.basic_user)
-
-quicktill.user.group('skilled-user','Skilled user [group]',
-                     quicktill.user.default_groups.skilled_user)
-
-quicktill.user.group('manager','Pub manager [group]',
-                     quicktill.user.default_groups.manager)
 
 # Declare the modifiers available to the till.  This is site-specific
 # because modifiers refer to things like departments and stock types
@@ -334,8 +321,7 @@ global_hotkeys = quicktill.localutils.global_hotkeys(register_hotkeys)
 config0 = {
     'description': "Stock-control terminal, default user is manager",
     'firstpage': lambda: quicktill.stockterminal.page(
-        register_hotkeys, ["Bar"], user=quicktill.user.built_in_user(
-            "Stock Terminal", "Stock Terminal", ['manager'])),
+        register_hotkeys, ["Bar"]),
 }
 config0.update(std)
 config0.update(windowprinter)
