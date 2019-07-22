@@ -37,8 +37,8 @@ class Till(models.Model):
 
 PERMISSIONS = (
     ('R', 'Read-only'),
-    ('M', 'Pub manager'),
-    ('F', 'Full access'),
+    ('M', 'Read/write, following till permissions'),
+    ('F', 'Full access, ignoring till permissions'),
 )
 
 class Access(models.Model):
