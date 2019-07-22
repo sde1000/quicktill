@@ -1,4 +1,15 @@
 {% extends "tillweb/tillweb.html" %}
+{% load static %}
+
+{% block style %}
+{{ block.super }}
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/multi-select/css/multi-select.css" %}" />
+{% endblock %}
+
+{% block jquery %}
+{{ block.super }}
+<script type="text/javascript" src="{% static "tillweb/multi-select/js/jquery.multi-select.js" %}"></script>
+{% endblock %}
 
 {% block title %}{{till}} — User "{{tuser.fullname}}"{% endblock %}
 
@@ -18,6 +29,13 @@
     Update
   </button>
 </form>
+<script type="text/javascript">
+$(document).ready(function(){
+$("#id_groups").multiSelect({
+selectableHeader: "<div>Available groups</div>",
+selectionHeader: "<div>Selected groups</div>"});
+});
+</script>
 {% else %}
 <table class="kvtable">
 <tr><th scope="row">Full name:</th><td>{{tuser.fullname}}</td></tr>

@@ -1,4 +1,15 @@
 {% extends "tillweb/tillweb.html" %}
+{% load static %}
+
+{% block style %}
+{{ block.super }}
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/multi-select/css/multi-select.css" %}" />
+{% endblock %}
+
+{% block jquery %}
+{{ block.super }}
+<script type="text/javascript" src="{% static "tillweb/multi-select/js/jquery.multi-select.js" %}"></script>
+{% endblock %}
 
 {% block title %}{{till}} — Group "{{group.id}}"{% endblock %}
 
@@ -14,6 +25,13 @@
     Delete
   </button>
 </form>
+<script type="text/javascript">
+$(document).ready(function(){
+$("#id_permissions").multiSelect({
+selectableHeader: "<div>Available permissions</div>",
+selectionHeader: "<div>Selected permissions</div>"});
+});
+</script>
 {% else %}
 <table class="kvtable">
 <tr><th scope="row">ID:</th><td>{{group.id}}</td></tr>
