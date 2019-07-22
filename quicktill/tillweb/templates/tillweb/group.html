@@ -18,7 +18,7 @@
 {% if form %}
 <form action="" method="post">{% csrf_token %}
   {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_find">
+  <button class="btn btn-primary" type="submit" name="submit_update">
     Update
   </button>
   <button class="btn btn-danger" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
