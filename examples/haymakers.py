@@ -7,7 +7,6 @@ import quicktill.pdrivers
 import quicktill.register
 import quicktill.ui
 import quicktill.stockterminal
-import quicktill.user
 import quicktill.managetill
 import quicktill.managestock
 import quicktill.stocktype
@@ -23,23 +22,11 @@ import quicktill.modifiers
 import quicktill.timesheets
 import quicktill.xero
 import quicktill.localutils
+import quicktill.foodorder
 from decimal import Decimal, ROUND_UP
 import datetime
 import logging
 log = logging.getLogger('config')
-
-quicktill.user.group(
-    'basic-user', 'Basic user [group]',
-    set.union(quicktill.user.default_groups.basic_user,
-              set(["merge-trans", "record-waste"])))
-
-quicktill.user.group(
-    'skilled-user', 'Skilled user [group]',
-    quicktill.user.default_groups.skilled_user)
-
-quicktill.user.group(
-    'manager','Pub manager [group]',
-    quicktill.user.default_groups.manager)
 
 class Half(quicktill.modifiers.SimpleModifier):
     """Half pint modifier.
@@ -218,8 +205,14 @@ cash = quicktill.cash.CashPayment(
 def card_expected_payment_date(sessiondate):
     return quicktill.localutils.delta_england_banking_days(sessiondate, 3)
 card = quicktill.card.CardPayment(
-    'CARD', 'Card', machines=2, cashback_method=cash,
+    'CARD', 'Card', machines=3, cashback_method=cash,
     max_cashback=Decimal("50.00"), kickout=True,
+    rollover_guard_time=datetime.time(4, 0, 0),
+    account_code="011", account_date_policy=card_expected_payment_date,
+    ask_for_machine_id=False)
+amex = quicktill.card.CardPayment(
+    'AMEX', 'AmEx', machines=3,
+    kickout=True,
     rollover_guard_time=datetime.time(4, 0, 0),
     account_code="011", account_date_policy=card_expected_payment_date,
     ask_for_machine_id=False)
@@ -227,8 +220,8 @@ bitcoin = quicktill.bitcoin.BitcoinPayment(
     'BTC', 'Bitcoin', site='haymakers', username='haymakers',
     base_url='http://btcmerch.i.individualpubs.co.uk/merchantservice/',
     password='not-a-real-password', account_code="641")
-all_payment_methods = [cash, card] # Used for session totals entry
-payment_methods = all_payment_methods # Used in register
+all_payment_methods = [cash, card, amex] # Used for session totals entry
+payment_methods = [cash, card] # Used in register
 
 # Declare discount policies: all simple percentages
 quicktill.register.PercentageDiscount("Staff food", 20, [10])
@@ -280,17 +273,17 @@ except:
 
 # Contact ID and shortcode have been replaced with details from Xero
 # demo company
-xapi = quicktill.xero.XeroIntegration(
-    consumer_key=xero_consumer_key,
-    private_key=xero_private_key,
-    sales_contact_id="fe196ff8-8b29-4090-b059-380bff6013c5",
-    reference_template="Haymakers takings session {session.id}",
-    tracking_category_name="Site",
-    tracking_category_value="Haymakers",
-    shortcode="!w3V8N",
-    discrepancy_account="405",
-    tillweb_base_url="https://www.individualpubs.co.uk/tillweb/haymakers/",
-    start_date=datetime.date(2016, 12, 1))
+#xapi = quicktill.xero.XeroIntegration(
+#    consumer_key=xero_consumer_key,
+#    private_key=xero_private_key,
+#    sales_contact_id="fe196ff8-8b29-4090-b059-380bff6013c5",
+#    reference_template="Haymakers takings session {session.id}",
+#    tracking_category_name="Site",
+#    tracking_category_value="Haymakers",
+#    shortcode="!w3V8N",
+#    discrepancy_account="405",
+#    tillweb_base_url="https://www.individualpubs.co.uk/tillweb/haymakers/",
+#    start_date=datetime.date(2016, 12, 1))
 
 def appsmenu():
     menu = [
@@ -336,10 +329,10 @@ std = {
     'checkdigit_on_usestock': True,
 }
 
-kitchen = {
-    'kitchenprinter': quicktill.pdrivers.nullprinter("kitchen"),
-    'menuurl': 'http://till.haymakers.i.individualpubs.co.uk/foodmenu.py',
-}
+quicktill.foodorder.FoodOrderPlugin(
+    'http://till.haymakers.i.individualpubs.co.uk/foodmenu.py',
+    [quicktill.pdrivers.nullprinter("kitchen")],
+    K_FOODORDER, K_FOODMESSAGE)
 
 noprinter = {
     'printer': quicktill.pdrivers.nullprinter(),
@@ -439,23 +432,12 @@ config1.update(std)
 config1.update(kb1)
 config1.update(localprinter)
 config1.update(labelprinter)
-config1.update(kitchen)
 
 config2 = {'description':"Stock-control terminal, card reader"}
 config2.update(std)
 config2.update(stockcontrol_terminal)
 config2.update(xpdfprinter)
 config2.update(labelprinter)
-
-config3 = {'description':"Test menu file 'testmenu.py' in current directory",
-           'menuurl': "file:testmenu.py",
-           'kitchenprinter': quicktill.pdrivers.nullprinter("kitchen"),
-           'printer': quicktill.pdrivers.nullprinter("bar"),
-           'firstpage': lambda: quicktill.foodcheck.page(
-               [], user=quicktill.user.built_in_user(
-                   "Food check", "Food check", ['kitchen-order'])),
-}
-config3.update(std)
 
 config4 = {'description': "Haymakers festival bar",
            'hotkeys': global_hotkeys}
@@ -465,12 +447,10 @@ config4['keyboard'] = quicktill.localutils.stdkeyboard_20by7(
     151, cash_payment_method=cash, card_payment_method=card)
 config4.update(localprinter)
 config4.update(labelprinter)
-config4.update(kitchen)
 
 configurations = {
     'default': config0,
     'mainbar': config1,
     'stockterminal': config2,
-    'testmenu': config3,
     'festival': config4,
 }
