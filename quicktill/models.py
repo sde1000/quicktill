@@ -1540,12 +1540,15 @@ class StockItem(Base):
     def shelflife(self):
         """The shelf-life of the item, in days.
 
+        If the item is finished, gives the shelf life at the time it
+        was finished; otherwise gives the shelf life now.
+
         None if the best-before date is not known.  Negative if the
-        item is out of date.
+        item is/was out of date.
         """
         if self.bestbefore is None:
             return None
-        return (self.bestbefore - datetime.date.today()).days
+        return (self.bestbefore - (self.finished or datetime.date.today())).days
     @property
     def displayqty_or_zero(self):
         """displayqty is always null when a stockline has no display
