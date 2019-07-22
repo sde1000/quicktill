@@ -7,7 +7,7 @@ Homepage: https://github.com/sde1000/quicktill
 Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools, python3-sqlalchemy
 Standards-Version: 3.9.6
 
-Package: quicktill14
+Package: quicktill15
 Architecture: all
 Depends: ${python3:Depends}, python3-psycopg2, python3-reportlab, python3-httplib2, python3-sqlalchemy, python3-qrcode, python3-yaml, python3-odf, python3-twython, python3-requests-oauthlib, python3-cups, python3-dateutil
 Conflicts: quicktill, quicktill1, quicktill2, quicktill3, quicktill4
