@@ -655,6 +655,9 @@ def transactions_deferred(request, info, session):
         'nav': [("Deferred transactions", info.reverse('tillweb-deferred-transactions'))],
     })
 
+class TransactionNotesForm(forms.Form):
+    notes = forms.CharField(required=False, max_length=60)
+
 @tillweb_view
 def transaction(request, info, session, transid):
     t = session\
@@ -667,7 +670,25 @@ def transaction(request, info, session, transid):
         .get(int(transid))
     if not t:
         raise Http404
-    return ('transaction.html', {'transaction': t, 'tillobject': t})
+
+    form = None
+    if info.user_has_perm("edit-transaction-note"):
+        initial = {'notes': t.notes }
+        if request.method == "POST":
+            form = TransactionNotesForm(request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                t.notes = cd["notes"]
+                session.commit()
+                return HttpResponseRedirect(t.get_absolute_url())
+        else:
+            form = TransactionNotesForm(initial=initial)
+
+    return ('transaction.html', {
+        'transaction': t,
+        'tillobject': t,
+        'form': form,
+    })
 
 @tillweb_view
 def transline(request, info, session, translineid):

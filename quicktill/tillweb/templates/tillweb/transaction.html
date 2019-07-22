@@ -6,6 +6,9 @@
 
 {% block tillcontent %}
 
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+{% endif %}
 <table class="kvtable">
 <tr><th>ID</th><td>{{transaction.id}}</td></tr>
 {% if transaction.session %}
@@ -13,10 +16,22 @@
 <tr><th>Date</th><td>{{transaction.session.date}}</td></tr>
 <tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 {% endif %}
-<tr><th>Notes</th><td>{{transaction.notes}}</td></tr>
+<tr><th>Notes</th>
+  {% if form %}
+  <td>{% include "form-field.html" with field=form.notes %}</td>
+  {% else %}
+  <td>{{transaction.notes}}</td>
+  {% endif %}
+</tr>
 <tr><th>Discount amount</th><td>{{money}}{{transaction.discount_total}}</td></tr>
 <tr><th>Total</th><td>{{money}}{{transaction.total}}</td></tr>
 </table>
+{% if form %}
+<button class="btn btn-primary" type="submit" name="submit_update">
+  Update notes
+</button>
+</form>
+{% endif %}
 
 {% if not transaction.session %}
 <p><strong>This transaction has been deferred to the next session.</strong></p>
