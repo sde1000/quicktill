@@ -1229,23 +1229,6 @@ K_LINE228	1	119	\N	Mixer
 K_LINE228	2	120	\N	Mixer
 K_LINE203	1	\N	\N	Case
 K_LINE3	1	\N	\N	Case
-K_LINE71	1	100	\N	\N
-K_LINE71	2	101	\N	\N
-K_LINE71	3	102	\N	\N
-K_LINE71	4	103	\N	\N
-K_LINE71	5	104	\N	\N
-K_LINE71	6	105	\N	\N
-K_LINE71	7	106	\N	\N
-K_LINE71	8	107	\N	\N
-K_LINE87	1	108	\N	\N
-K_LINE87	2	109	\N	\N
-K_LINE87	3	110	\N	\N
-K_LINE87	4	111	\N	\N
-K_LINE87	5	112	\N	\N
-K_LINE87	6	113	\N	\N
-K_LINE87	7	114	\N	\N
-K_LINE70	1	115	\N	\N
-K_LINE70	2	116	\N	\N
 K_LINE4	1	117	\N	\N
 K_LINE5	1	118	\N	\N
 K_LINE20	1	127	\N	\N
@@ -1260,50 +1243,67 @@ K_LINE44	1	123	\N	\N
 K_LINE59	2	125	\N	\N
 K_LINE59	1	124	\N	\N
 K_LINE60	1	126	\N	\N
-K_LINE88	1	\N	\N	Small
-K_LINE89	1	\N	\N	Medium
-K_LINE90	1	\N	\N	Large
-K_LINE125	1	\N	\N	Half
-K_LINE51	1	\N	\N	Double
-K_LINE83	1	128	\N	\N
-K_LINE67	1	128	\N	Half
-K_LINE84	1	129	\N	\N
-K_LINE68	1	129	\N	Half
-K_LINE85	1	130	\N	\N
-K_LINE69	1	130	\N	Half
-K_LINE52	1	131	\N	\N
-K_LINE53	1	132	\N	\N
-K_LINE54	1	133	\N	\N
-K_LINE55	1	134	\N	\N
-K_LINE56	1	135	\N	\N
-K_LINE57	1	136	\N	\N
-K_LINE58	1	137	\N	\N
-K_LINE115	1	138	\N	\N
-K_LINE99	1	138	\N	Half
-K_LINE116	1	139	\N	\N
-K_LINE100	1	139	\N	Half
-K_LINE117	1	140	\N	\N
-K_LINE101	1	140	\N	Half
-K_LINE118	1	141	\N	\N
-K_LINE102	1	141	\N	Half
-K_LINE119	1	142	\N	\N
-K_LINE103	1	142	\N	Half
-K_LINE120	1	143	\N	\N
-K_LINE104	1	143	\N	Half
-K_LINE121	1	144	\N	\N
-K_LINE105	1	144	\N	Half
-K_LINE122	1	145	\N	\N
-K_LINE106	1	145	\N	Half
-K_LINE123	1	146	\N	\N
-K_LINE107	1	146	\N	Half
-K_LINE124	1	147	\N	\N
-K_LINE108	1	147	\N	Half
-K_LINE73	1	148	\N	Wine Bottle
-K_LINE74	1	150	\N	Wine Bottle
-K_LINE74	2	151	\N	Wine Bottle
 K_LINE8	1	\N	2	\N
 K_LINE43	1	121	\N	\N
 K_LINE243	1	121	\N	\N
+K_LINE35	1	\N	\N	Double
+K_LINE36	1	131	\N	\N
+K_LINE37	1	132	\N	\N
+K_LINE38	1	133	\N	\N
+K_LINE39	1	134	\N	\N
+K_LINE40	1	135	\N	\N
+K_LINE41	1	136	\N	\N
+K_LINE42	1	137	\N	\N
+K_LINE51	1	128	\N	Half
+K_LINE52	1	129	\N	Half
+K_LINE53	1	130	\N	Half
+K_LINE54	1	115	\N	\N
+K_LINE54	2	116	\N	\N
+K_LINE55	1	100	\N	\N
+K_LINE55	2	101	\N	\N
+K_LINE55	3	102	\N	\N
+K_LINE55	4	103	\N	\N
+K_LINE55	5	104	\N	\N
+K_LINE55	6	105	\N	\N
+K_LINE55	7	106	\N	\N
+K_LINE55	8	107	\N	\N
+K_LINE57	1	148	\N	Wine Bottle
+K_LINE58	1	150	\N	Wine Bottle
+K_LINE58	2	151	\N	Wine Bottle
+K_LINE67	1	128	\N	\N
+K_LINE68	1	129	\N	\N
+K_LINE69	1	130	\N	\N
+K_LINE71	1	108	\N	\N
+K_LINE71	2	109	\N	\N
+K_LINE71	3	110	\N	\N
+K_LINE71	4	111	\N	\N
+K_LINE71	5	112	\N	\N
+K_LINE71	6	113	\N	\N
+K_LINE71	7	114	\N	\N
+K_LINE72	1	\N	\N	Small
+K_LINE73	1	\N	\N	Medium
+K_LINE74	1	\N	\N	Large
+K_LINE83	1	138	\N	Half
+K_LINE84	1	139	\N	Half
+K_LINE85	1	140	\N	Half
+K_LINE86	1	141	\N	Half
+K_LINE87	1	142	\N	Half
+K_LINE88	1	143	\N	Half
+K_LINE89	1	144	\N	Half
+K_LINE90	1	145	\N	Half
+K_LINE91	1	146	\N	Half
+K_LINE92	1	147	\N	Half
+K_LINE99	1	138	\N	\N
+K_LINE100	1	139	\N	\N
+K_LINE101	1	140	\N	\N
+K_LINE102	1	141	\N	\N
+K_LINE103	1	142	\N	\N
+K_LINE104	1	143	\N	\N
+K_LINE105	1	144	\N	\N
+K_LINE106	1	145	\N	\N
+K_LINE107	1	146	\N	\N
+K_LINE108	1	147	\N	\N
+K_LINE109	1	\N	\N	Half
 \.
 
 
@@ -1312,66 +1312,47 @@ K_LINE243	1	121	\N	\N
 --
 
 COPY public.keycaps (keycode, keycap, css_class) FROM stdin;
-K_LINE19	Line 19	
-K_LINE115	Pint 1	
-K_LINE116	Pint 2	
-K_LINE117	Pint 3	
-K_LINE118	Pint 4	
-K_LINE119	Pint 5	
-K_LINE120	Pint 6	
-K_LINE121	Pint 7	
-K_LINE122	Pint 8	
-K_LINE123	Pint 9	
-K_LINE124	Pint 10	
-K_LINE125	Half	
-K_LINE99	Half 1	
-K_LINE100	Half 2	
-K_LINE101	Half 3	
-K_LINE102	Half 4	
-K_LINE103	Half 5	
-K_LINE104	Half 6	
-K_LINE105	Half 7	
-K_LINE106	Half 8	
-K_LINE107	Half 9	
-K_LINE108	Half 10	
-K_LINE109	Staff	
-K_LINE83	Pint Cider 1	
-K_LINE84	Pint Cider 2	
-K_LINE85	Pint Cider 3	
-K_LINE67	Half Cider 1	
-K_LINE68	Half Cider 2	
-K_LINE69	Half Cider 3	
-K_LINE3	Case	
-K_LINE4	Club Mate Regular	
-K_LINE5	Club Mate Granat	
-K_LINE6	Tshunk	
-K_LINE8	T-shirts	
-K_LINE11	Half Juice	
-K_LINE90	Large	
-K_LINE89	Medium	
-K_LINE88	Small	
-K_LINE87	Cans M-Z	
-K_LINE71	Cans A-L	
-K_LINE70	Belgian Bottle	
-K_LINE51	Double	
-K_LINE52	Amaretto	
-K_LINE53	Dark Rum	
-K_LINE54	Light Rum	
-K_LINE55	Jack Daniels	
-K_LINE56	Whisky	
-K_LINE57	Vodka	
-K_LINE58	Gin	
-K_LINE59	Tonic	
-K_LINE60	Lemonade	
-K_LINE43	Coke	
-K_LINE44	Fanta	
-K_LINE27	Pint Juice	
-K_LINE28	Juice Mixer	
-K_LINE74	Red Wine	
-K_LINE73	White Wine	
-K_LINE20	Line 20	
-K_LINE21	Line 21	
-K_LINE22	Line 22	
+K_LINE19		
+K_LINE20		
+K_LINE21		
+K_LINE22		
+K_LINE35	Double	modifiers
+K_LINE109	Half	modifiers
+K_LINE93	Staff	modifiers
+K_LINE72	Small	winemod
+K_LINE73	Medium	winemod
+K_LINE74	Large	winemod
+K_LINE57	White Wine	wine
+K_LINE58	Red Wine	wine
+K_LINE59	Tonic	soft
+K_LINE60	Lemonade	soft
+K_LINE44	Fanta	soft
+K_LINE43	Coke	soft
+K_LINE28	Juice Mixer	soft
+K_LINE27	Pint Juice	soft
+K_LINE11	Half Juice	soft
+K_LINE42	Gin	spirits
+K_LINE41	Vodka	spirits
+K_LINE40	Whisky	spirits
+K_LINE55	Cans A-L	fridge
+K_LINE71	Cans M-Z	fridge
+K_LINE54	Belgian Bottle	fridge
+K_LINE99	Pint 1	ale
+K_LINE83	Half 1	alehalf
+K_LINE100	Pint 2	ale
+K_LINE84	Half 2	alehalf
+K_LINE101	Pint 3	ale
+K_LINE85	Half 3	alehalf
+K_LINE102	Pint 4	ale
+K_LINE86	Half 4	alehalf
+K_LINE103	Pint 5	keg
+K_LINE87	Half 5	keghalf
+K_LINE104	Pint 6	keg
+K_LINE88	Half 6	keghalf
+K_LINE105	Pint 7	keg
+K_LINE89	Half 7	keghalf
+K_LINE106	Pint 8	keg
+K_LINE90	Half 8	keghalf
 K_LINE300	Magic Rock	
 K_LINE301	Moor	
 K_LINE302	Nomad	
@@ -1398,6 +1379,25 @@ K_LINE260	Lemonade
 K_LINE228	Juice Mixer	
 K_LINE220	Mate Tea	
 K_LINE206	Tschunk	
+K_LINE107	Pint 9	keg
+K_LINE91	Half 9	keghalf
+K_LINE108	Pint 10	keg
+K_LINE92	Half 10	keghalf
+K_LINE67	Pint Cider 1	cider
+K_LINE51	Half Cider 1	ciderhalf
+K_LINE68	Pint Cider 2	cider
+K_LINE69	Pint Cider 3	cider
+K_LINE52	Half Cider 2	ciderhalf
+K_LINE53	Half Cider 3	ciderhalf
+K_LINE39	Jack Daniels	spirits
+K_LINE38	Light Rum	spirits
+K_LINE37	Dark Rum	spirits
+K_LINE36	Amaretto	spirits
+K_LINE3	Case	modifiers
+K_LINE8	T-shirts	tshirt
+K_LINE4	Club Mate Regular	mate
+K_LINE5	Club Mate Granat	mate
+K_LINE6	Tshunk	mate
 \.
 
 
@@ -36197,7 +36197,7 @@ COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid
 51	Thomas Taylor	Thomas	\N	t	f	6445	dbb7d8f0-76f0-4b43-9143-4f0ba29df512	\N
 2	Bob (manager)	Bob (manager)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
 7	Charlie (basic user)	Charlie (basic user)	\N	t	f	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
-1	Alice (superuser)	Alice (superuser)	sde	t	t	\N	ccdb1140-e720-4930-8a3b-549b76f484f0	\N
+1	Alice (superuser)	Alice (superuser)	sde	t	t	\N	c268786a-b437-4c71-97c6-1076ea64ded1	\N
 \.
 
 
@@ -36217,7 +36217,6 @@ nfc:048aba72d84981	\N	red	40	2018-09-02 21:44:03.103206
 nfc:04bac072d84980	\N	red	38	\N
 nfc:04fabe72d84980	\N	red	7	2018-09-02 21:44:16.921076
 nfc:04efc472d84980	\N	red	19	2018-09-01 22:25:06.071409
-nfc:04dad572d84980	\N	Red	1	2018-09-07 12:06:59.69625
 nfc:04a9d672d84980	\N	red	5	2018-09-03 00:53:16.435203
 nfc:0459aa72d84980	\N	blue	18	2018-08-31 23:33:30.443125
 nfc:0497c072d84980	\N	red	28	2018-09-02 17:00:25.284662
@@ -36229,9 +36228,10 @@ nfc:0470b272d84980	\N	Red	2	2018-09-02 22:59:25.602385
 nfc:0415be72d84981	\N	red	22	2018-09-01 01:31:00.543364
 nfc:0412c372d84981	\N	red	14	2018-08-31 20:00:10.660142
 nfc:058503d3de7000	\N	Monzo	1	2018-09-12 14:06:22.882348
-builtin:alice	\N	Alice	1	2018-09-12 14:09:13.554112
 builtin:bob	\N	Bob	2	2018-09-12 14:10:32.447789
 builtin:charlie	\N	Charlie	7	2018-09-12 14:10:33.479701
+nfc:04dad572d84980	\N	Red	1	2019-07-22 18:11:36.557963
+builtin:alice	\N	Alice	1	2019-07-22 19:11:27.218089
 \.
 
 

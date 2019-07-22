@@ -256,19 +256,99 @@ std = {
 button:not(:active) {
     transition: 250ms ease-in-out;
 }
-@define-color pumps deepskyblue;
-.pint {
-    background-color: @pumps;
-    color: black;
-}
 .linekey:active {
     border-color: white;
 }
 
-.half {
-    background-color: lighter(@pumps);
+.tshirt {
+    background-color: deepskyblue;
     color: black;
 }
+
+.mate {
+    background-color: lighter(deepskyblue);
+    color: black;
+}
+
+.modifiers {
+  background-color: khaki;
+  color: black;
+}
+
+.modifiers label {
+  text-decoration-line: underline;
+}
+
+.spirits {
+  background-color: orange;
+  color: black;
+}
+
+.soft {
+  background-color: lightseagreen;
+  color: black;
+}
+
+.keg {
+/* Purple wanted */
+/* background-color: sandybrown; */
+  background-color: rgb(198, 63, 175);
+  color: white;
+}
+
+.keghalf {
+  background-color: lighter(rgb(198, 63, 175));
+  color: white;
+}
+
+.ale {
+/* Blue wanted */
+/* background-color: wheat; */
+  background-color: rgb(46, 23, 198);
+  color: white;
+}
+.alehalf {
+    background-color: lighter(rgb(46, 23, 198));
+/* rgb(66, 43, 198);*/
+  color: white;
+}
+
+.cider {
+  background-color: greenyellow;
+  color: black;
+}
+.ciderhalf {
+    background-color: lighter(greenyellow);
+  color: black;
+}
+
+.wine, .winemod {
+/* Brighter pink wanted */
+/* background-color: darksalmon; */
+  background-color: rgb(242, 43, 215);
+  color: black;
+}
+.winemod label {
+  text-decoration-line: underline;
+}
+
+.fridge {
+  background-color: powderblue;
+  color: black;
+}
+
+.snacks {
+/* White-ish wanted */
+/* background-color: coral; */
+  background-color: rgb(240, 242, 232);
+  color: black;
+}
+
+.linekey:active {
+  background-color: black;
+  color: white;
+}
+
 """
 }
 
@@ -330,10 +410,8 @@ config0.update(labelprinter)
 config1 = {
     'description': "Main bar",
     'hotkeys': global_hotkeys,
-    'keyboard': quicktill.localutils.resize(
-        quicktill.localutils.stdkeyboard_16by8(
-            line_base=1, cash_payment_method=cash, card_payment_method=card),
-        maxwidth=13, maxheight=8),
+    'keyboard': quicktill.localutils.keyboard(
+        13, 7, line_base=1, maxwidth=16),
     'keyboard_right': quicktill.localutils.keyboard_rhpanel(
         cash, card),
 }
