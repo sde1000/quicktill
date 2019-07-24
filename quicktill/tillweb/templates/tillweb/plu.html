@@ -4,6 +4,18 @@
 
 {% block tillcontent %}
 
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_update">
+    Update
+  </button>
+  <button class="btn btn-danger" type="submit" name="submit_delete">
+    Delete
+  </button>
+</form>
+<p>Note: clicking Delete will remove this price lookup and its keyboard bindings immediately.</p>
+{% else %}
 <table class="kvtable">
 <tr><th>Description</th><td>{{plu.description}}</td></tr>
 <tr><th>Department</th><td>{{plu.department}}</td></tr>
@@ -13,9 +25,13 @@
 <tr><th>Alt price 2</th>{% if plu.altprice2 %}<td class="money">{{money}}{{plu.altprice2}}</td>{% else %}<td></td>{% endif %}</tr>
 <tr><th>Alt price 3</th>{% if plu.altprice3 %}<td class="money">{{money}}{{plu.altprice3}}</td>{% else %}<td></td>{% endif %}</tr>
 </table>
+{% endif %}
 
 {% if plu.keyboard_bindings %}
-<h2>Keyboard bindings</h2>
+<h2 class="mt-2">Keyboard bindings</h2>
+{% if form %}
+<p>Note: keyboard bindings must be created and modified on the till</p>
+{% endif %}
 <table class="table table-striped table-hover w-auto">
   <thead class="thead-light">
     <tr>

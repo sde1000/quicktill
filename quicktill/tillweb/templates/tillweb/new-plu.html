@@ -1,0 +1,15 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — create price lookup{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Create price lookup
+  </button>
+</form>
+<p>Note: keyboard bindings for this price lookup can only be created on the till.</p>
+
+{% endblock %}

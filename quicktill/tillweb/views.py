@@ -1,4 +1,5 @@
 from django.http import HttpResponse, Http404, HttpResponseRedirect
+from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render
@@ -923,10 +924,36 @@ def plulist(request, info, session):
            .query(PriceLookup)\
            .order_by(PriceLookup.dept_id, PriceLookup.description)\
            .all()
+
+    may_create_plu = info.user_has_perm("create-plu")
+
     return ('plus.html', {
         'nav': [("Price lookups", info.reverse("tillweb-plus"))],
         'plus': plus,
+        'may_create_plu': may_create_plu,
     })
+
+class PLUForm(forms.Form):
+    def __init__(self, depts, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['department'].choices = [
+            (d.id, d.description) for d in depts]
+
+    description = forms.CharField()
+    department = forms.ChoiceField()
+    note = forms.CharField(required=False)
+    price = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    altprice1 = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    altprice2 = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    altprice3 = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
 
 @tillweb_view
 def plu(request, info, session, pluid):
@@ -935,9 +962,83 @@ def plu(request, info, session, pluid):
         .get(int(pluid))
     if not p:
         raise Http404
+
+    form = None
+    if info.user_has_perm("alter-plu"):
+        depts = session\
+                .query(Department)\
+                .order_by(Department.id)\
+                .all()
+        initial = {
+            'description': p.description,
+            'note': p.note,
+            'department': p.department.id,
+            'price': p.price,
+            'altprice1': p.altprice1,
+            'altprice2': p.altprice2,
+            'altprice3': p.altprice3,
+        }
+        if request.method == "POST":
+            if 'submit_delete' in request.POST:
+                messages.success(request, "Price lookup '{}' deleted.".format(p.description))
+                session.delete(p)
+                session.commit()
+                return HttpResponseRedirect(info.reverse("tillweb-plus"))
+            form = PLUForm(depts, request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                p.description = cd['description']
+                p.note = cd['note']
+                p.dept_id = cd['department']
+                p.price = cd['price']
+                p.altprice1 = cd['altprice1']
+                p.altprice2 = cd['altprice2']
+                p.altprice3 = cd['altprice3']
+                session.commit()
+                messages.success(request, "Price lookup '{}' updated.".format(p.description))
+                return HttpResponseRedirect(p.get_absolute_url())
+        else:
+            form = PLUForm(depts, initial=initial)
+
     return ('plu.html', {
         'tillobject': p,
         'plu': p,
+        'form': form,
+    })
+
+@tillweb_view
+def create_plu(request, info, session):
+    if not info.user_has_perm("create-plu"):
+        return HttpResponseForbidden("You don't have permission to create new price lookups")
+
+    depts = session\
+            .query(Department)\
+            .order_by(Department.id)\
+            .all()
+
+    if request.method == "POST":
+        form = PLUForm(depts, request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            p = PriceLookup(
+                description=cd['description'],
+                note=cd['note'],
+                dept_id=cd['department'],
+                price=cd['price'],
+                altprice1=cd['altprice1'],
+                altprice2=cd['altprice2'],
+                altprice3=cd['altprice3'])
+            session.add(p)
+            session.commit()
+            messages.success(request, "Price lookup '{}' created.".format(p.description))
+            return HttpResponseRedirect(p.get_absolute_url())
+    else:
+        form = PLUForm(depts)
+
+    return ('new-plu.html', {
+        'nav': [("Price lookups", info.reverse("tillweb-plus")),
+                ("New", info.reverse("tillweb-create-plu"))],
+        'form': form,
     })
 
 @tillweb_view

@@ -57,6 +57,7 @@ tillurls = [
 
     url(r'^plu/$', plulist, name="tillweb-plus"),
     url(r'^plu/(?P<pluid>\d+)/$', plu, name="tillweb-plu"),
+    url(r'^plu/new/$', create_plu, name="tillweb-create-plu"),
 
     url(r'^location/$', locationlist, name="tillweb-locations"),
     url(r'^location/(?P<location>[\w\- ]+)/$', location,
