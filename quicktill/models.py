@@ -34,20 +34,13 @@ max_quantity = Decimal("9999999.9")
 
 metadata = MetaData()
 
+# The base class has a couple of methods that are used in the web interface
 class _pubobject:
-    @reconstructor
-    def init_on_load(self):
-        # Stash the django "reverse" function and session's configured
-        # pub name for use in get_absolute_url() methods
-        s = object_session(self)
-        if "reverse" in s.info:
-            self.reverse = s.info["reverse"]
-        if "pubname" in s.info:
-            self.pubname = s.info["pubname"]
-
     def get_view_url(self, viewname, *args, **kwargs):
-        kwargs['pubname'] = self.pubname
-        return self.reverse(viewname, args=args, kwargs=kwargs)
+        s = object_session(self)
+        reverse = s.info["reverse"]
+        kwargs['pubname'] = s.info["pubname"]
+        return reverse(viewname, args=args, kwargs=kwargs)
 
     def get_absolute_url(self):
         return self.get_view_url(self.tillweb_viewname,
