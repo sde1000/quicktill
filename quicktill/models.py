@@ -16,13 +16,19 @@ import datetime
 import hashlib
 from decimal import Decimal
 
+# Configuration of money
+money_max_digits = 10
+money_decimal_places = 2
+
 # Used for quantization of money
-zero = Decimal("0.00")
-penny = Decimal("0.01")
+zero = Decimal("0.{}".format("0" * money_decimal_places))
+penny = Decimal("0.{}1".format("0" * (money_decimal_places - 1)))
 
 # Common column types
-money = Numeric(10, 2)
-max_money = Decimal("99999999.99")
+money = Numeric(money_max_digits, money_decimal_places)
+max_money = Decimal("9" * (money_max_digits - money_decimal_places)
+                    + "."
+                    + "9" * money_decimal_places)
 quantity = Numeric(8, 1)
 max_quantity = Decimal("9999999.9")
 
