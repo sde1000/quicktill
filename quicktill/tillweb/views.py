@@ -1123,6 +1123,7 @@ def stockcheck(request, info, session):
             dept = int(cd['department'])
             r = session\
                 .query(StockType, func.sum(StockOut.qty) / behind.days)\
+                .select_from(StockType)\
                 .join(StockItem)\
                 .join(StockOut)\
                 .options(lazyload(StockType.department),

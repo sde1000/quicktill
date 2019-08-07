@@ -182,6 +182,7 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
         dept = self.deptfield.read()
         self.dismiss()
         q = td.s.query(StockType, func.sum(StockOut.qty) / behind.days)\
+                .select_from(StockType)\
                 .join(StockItem)\
                 .join(StockOut)\
                 .options(lazyload(StockType.department))\
