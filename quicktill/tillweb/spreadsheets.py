@@ -593,6 +593,7 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
                     StockType.dept_id,
                     StockOut.removecode_id,
                     func.sum(StockOut.qty))\
+             .select_from(StockOut)\
              .join(StockItem, StockType)
     if start:
         data = data.filter(date >= start)
