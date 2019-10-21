@@ -916,6 +916,7 @@ class page(ui.basicpage):
         self._clear_marks()
         self.update_balance()
         self.cursor_off()
+        self.prompt = self.defaultprompt
         self._redraw()
 
     @user.permission_required('sell-stock', 'Sell stock from a stockline')
