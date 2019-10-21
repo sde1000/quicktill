@@ -1,3 +1,39 @@
+quicktill (15.2) stable; urgency=low
+
+  * New release 15.2
+
+  * Reset prompt to default when selling an item from a PLU
+
+  * Fix waste report spreadsheet
+
+  * Fix buying list query to work with more recent sqlalchemy
+
+  * Creating, editing and deleting of price lookups through the web interface
+
+  * Simplify the database model base class
+
+  * Add useful constants for money datatype to models
+
+  * Update emfcamp example to use touchscreen layout for on-screen keyboard
+
+  * Update 2018 EMF example data to current schema
+
+  * Freeze StockItem.shelflife property when stock is finished
+
+  * Update 'haymakers' example config file
+
+  * Enable transaction note editing in tillweb
+
+  * Rename submit buttons appropriately
+
+  * Add multi-column multiple select to web interface for users and groups
+
+  * Update web access descriptions
+
+  * Remove f-strings: we still need to support python3.5
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 21 Oct 2019 17:28:21 +0100
+
 quicktill (15.1) stable; urgency=low
 
   * New release 15.1
