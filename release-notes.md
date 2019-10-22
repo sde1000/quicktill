@@ -1,6 +1,27 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v15.x to v16
+--------------------
+
+There are database changes this release.
+
+Upgrade v14.x to v15
+--------------------
+
+There are database changes this release relating to users, groups and
+permissions.  The changes are not backwards-compatible with v14, so
+install the new version before making the changes.
+
+To upgrade the database:
+
+  - run "runtill syncdb" to create new tables
+
+  - run "runtill migrate-permissions" to migrate permissions to groups
+
+After installing this version, you may find it useful to use the web
+interface to rationalise the set of groups.
+
 Upgrade v0.13.x to v14
 ----------------------
 
