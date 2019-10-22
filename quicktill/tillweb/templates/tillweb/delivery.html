@@ -6,6 +6,10 @@
 
 {% block tillcontent %}
 
+{% if delivery.accounts_url %}
+<a class="btn btn-secondary float-right" href="{{ delivery.accounts_url }}">View in accounts</a>
+{% endif %}
+
 <table class="kvtable">
 <tr><th>ID</th><td>{{delivery.id}}</td></tr>
 <tr><th>Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">

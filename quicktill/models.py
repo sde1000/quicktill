@@ -188,6 +188,17 @@ class Session(Base):
         primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
 
     @property
+    def accounts_url(self):
+        """Accounting system URL for this session
+        """
+        if not self.accinfo:
+            return
+        s = object_session(self)
+        accounts = s.info.get("accounts") if s else None
+        if accounts:
+            return accounts.url_for_invoice(self.accinfo)
+
+    @property
     def dept_totals(self):
         """Transaction lines broken down by Department.
 
@@ -1325,6 +1336,16 @@ class Delivery(Base):
                 ("{} ({} {})".format(self.id, self.supplier.name, self.date),
                  self.get_absolute_url())]
 
+    @property
+    def accounts_url(self):
+        """Accounting system URL for this delivery
+        """
+        if not self.accinfo:
+            return
+        s = object_session(self)
+        accounts = s.info.get("accounts") if s else None
+        if accounts:
+            return accounts.url_for_bill(self.accinfo)
 
     def __repr__(self):
         return "<Delivery(%s)>" % (self.id,)

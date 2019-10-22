@@ -4,6 +4,10 @@
 
 {% block tillcontent %}
 
+{% if session.accounts_url %}
+<a class="btn btn-secondary float-right" href="{{ session.accounts_url }}">View in accounts</a>
+{% endif %}
+
 {% if session.endtime %}
 <p>{{session.starttime}}–{{session.endtime}}</p>
 {% else %}

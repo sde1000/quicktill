@@ -509,13 +509,6 @@ class XeroIntegration:
             td.s.flush()
             ui.toast("Delivery sent to Xero as draft bill")
 
-    def url_for_invoice(self, id):
-        url = "/AccountsReceivable/View.aspx?InvoiceID={}".format(id)
-        if self.shortcode:
-            url = "/organisationlogin/default.aspx?shortcode={}"\
-                  "&redirecturl={}".format(self.shortcode, url)
-        return "https://go.xero.com" + url
-
     def _link_supplier_with_contact(self, supplierid):
         s = td.s.query(Supplier).get(supplierid)
         # Fetch possible contacts
@@ -614,6 +607,28 @@ class XeroIntegration:
                       "Short code: {}".format(_fieldtext(org, "ShortCode"))],
                      title="Connected to Xero", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
+
+class XeroWebInfo:
+    """Class to be used as sqlalchemy session info member "accounts"
+
+    This class enables the web interface to construct links to Xero
+    invoices and bills.
+    """
+    def __init__(self, shortcode=None):
+        self.shortcode = shortcode
+
+    def _url_for_id(self, id, doctype):
+        url = "/AccountsReceivable/View.aspx?InvoiceID={}".format(id)
+        if self.shortcode:
+            url = "/organisationlogin/default.aspx?shortcode={}"\
+                  "&redirecturl={}".format(self.shortcode, url)
+        return "https://go.xero.com" + url
+
+    def url_for_invoice(self, id):
+        return self._url_for_id(id, "AccountsReceivable")
+
+    def url_for_bill(self, id):
+        return self._url_for_id(id, "AccountsPayable")
 
 def _textelem(name, text):
     e = Element(name)
