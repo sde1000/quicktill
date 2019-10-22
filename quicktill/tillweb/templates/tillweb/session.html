@@ -79,14 +79,6 @@
   </div>
   <div class="tab-pane fade" id="info" aria-labelledby="infoTab">
     <a class="btn btn-secondary mt-3 mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
-
-{% if session.notes %}
-    <ul>
-      {% for note in session.notes %}
-      <li>{{note.type.description}}: {{note.text}}</li>
-      {% endfor %}
-    </ul>
-{% endif %}
   </div>
 </div>
 

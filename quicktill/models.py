@@ -166,6 +166,7 @@ class Session(Base):
     starttime = Column(DateTime, nullable=False)
     endtime = Column(DateTime)
     date = Column('sessiondate', Date, nullable=False)
+    accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
     def __init__(self, date):
         self.date=date
@@ -627,37 +628,6 @@ CREATE TRIGGER group_grants_changed
 DROP TRIGGER group_grants_changed ON group_grants;
 DROP FUNCTION notify_group_grants_change();
 """)
-
-class SessionNoteType(Base):
-    __tablename__ = 'session_note_types'
-    id = Column('ntype', String(8), nullable=False, primary_key=True)
-    description = Column(String(20), nullable=False)
-    def __str__(self):
-        return self.description
-    def __repr__(self):
-        return "<SessionNoteType('{}','{}')>".format(self.id, self.description)
-
-session_note_seq = Sequence('session_note_seq');
-
-class SessionNote(Base):
-    __tablename__ = 'session_notes'
-    id = Column(Integer, session_note_seq, nullable=False, primary_key=True)
-    sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
-                       nullable=False)
-    ntype = Column(String(8), ForeignKey('session_note_types.ntype'),
-                   nullable=False)
-    time = Column(DateTime, nullable=False,
-                  server_default=func.current_timestamp())
-    text = Column(String(), nullable=False)
-    user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
-                     doc="User who created this note")
-    session = relationship(Session, backref=backref(
-        'notes', order_by=time))
-    type = relationship(SessionNoteType)
-    user = relationship(User, backref=backref("session_notes", order_by=time))
-    def __repr__(self):
-        return "<SessionNote({}, {}, '{}', '{}')>".format(
-            self.id, self.sessionid, self.ntype, self.text)
 
 payments_seq = Sequence('payments_seq', start=1)
 

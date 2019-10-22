@@ -11,7 +11,7 @@ from . import td
 from . import user
 from . import delivery
 from . import keyboard
-from .models import Session, SessionNoteType, SessionNote, zero
+from .models import Session, zero
 from .models import Delivery, Supplier
 log = logging.getLogger(__name__)
 
@@ -47,12 +47,8 @@ class XeroSessionHooks(session.SessionHooks):
                     sessionid, approve=True)
         except XeroError:
             return
-        # Record the Xero invoice ID as a note against the session
-        id_note_type = td.s.merge(
-            SessionNoteType(id="xeroinv", description="Xero InvoiceID"))
-        id_note = SessionNote(session=session, type=id_note_type,
-                              text=invid, user=user.current_dbuser())
-        td.s.add(id_note)
+        # Record the Xero invoice ID
+        session.accinfo = invid
         # We want to commit the invoice ID to the database even if adding
         # payments fails, so we can try again later
         td.s.commit()
@@ -253,6 +249,9 @@ class XeroIntegration:
     def _debug_send_invoice_and_payments(self, sessionid):
         log.info("Sending invoice and payments for %d", sessionid)
         iid = self._create_invoice_for_session(sessionid, approve=True)
+        session = td.s.query(Session).get(sessionid)
+        session.accinfo = iid
+        td.s.commit()
         self._add_payments_for_session(sessionid, iid)
         log.info("...new invoice ID is %s", iid)
         ui.infopopup(["Invoice ID is {}".format(iid)])
@@ -264,18 +263,12 @@ class XeroIntegration:
         ui.infopopup(["Invoice ID is {}".format(iid)])
 
     def _debug_send_payments(self, sessionid):
-        ids = td.s.query(SessionNote)\
-                  .filter(SessionNote.sessionid == sessionid)\
-                  .filter(SessionNote.ntype == 'xeroinv')\
-                  .order_by(SessionNote.time.desc())\
-                  .all()
-        log.info("Sending payments for %d: %d available invoices",
-                 sessionid, len(ids))
-        ui.infopopup(["Available invoice IDs:"] + [x.text for x in ids])
-        if ids:
-            self._add_payments_for_session(sessionid, ids[0].text)
+        session = td.s.query(Session).get(sessionid)
+        if session.accinfo:
+            ui.toast("Sending payments for session {}".format(sessionid))
+            self._add_payments_for_session(sessionid, session.accinfo)
         else:
-            ui.toast("No invoice - doing nothing")
+            ui.toast("Session has no invoice - doing nothing")
 
     def _debug_send_bill(self, deliveryid):
         log.info("Sending bill for delivery %d", deliveryid)

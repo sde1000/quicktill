@@ -6,6 +6,32 @@ Upgrade v15.x to v16
 
 There are database changes this release.
 
+To upgrade the database:
+
+  - run psql and give the following commands to the database:
+
+```BEGIN;
+
+ALTER TABLE sessions
+      ADD COLUMN accinfo character varying;
+
+UPDATE sessions s SET accinfo=(
+      SELECT text FROM session_notes n
+        WHERE n.sessionid = s.sessionid
+	AND time=(
+	  SELECT MAX(time) FROM session_notes nn
+	    WHERE nn.sessionid = n.sessionid
+	    GROUP BY n.sessionid));
+
+DROP TABLE session_notes;
+
+DROP SEQUENCE session_note_seq;
+
+DROP TABLE session_note_types;
+
+COMMIT;
+```
+
 Upgrade v14.x to v15
 --------------------
 
