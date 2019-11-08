@@ -63,10 +63,10 @@ def line_chosen(line):
             blurb = ["'{}' is still associated with stock number {} "
                      "({}, {:0.1f} {}s remaining).  ".format(
                          line.name, item.id, item.stocktype.fullname,
-                         item.remaining, item.stockunit.unit.name)]
+                         item.remaining, item.unit.name)]
             fl = [("Stock still ok, will use again later",
                    finish_disconnect, (line, item.id))]
-            if item.used / item.stockunit.size < 0.2:
+            if item.used / item.size < 0.2:
                 blurb += [
                     "", "This item is less than 20% used.  To avoid "
                     "mistakes, you can't tell the till this item "

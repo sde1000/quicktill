@@ -448,7 +448,8 @@ class XeroIntegration:
             # None explicitly.  Silly etree API!
             if previtem and prevqty != None \
                and item.stocktype.id == previtem.stocktype.id \
-               and item.stockunit.id == previtem.stockunit.id \
+               and item.description == previtem.description \
+               and item.size == previtem.size \
                and item.costprice == previtem.costprice:
                 # We can bump up the quantity on the previous invoice line
                 # rather than add a new one
@@ -457,7 +458,7 @@ class XeroIntegration:
             li = SubElement(litems, "LineItem")
             li.append(_textelem(
                 "Description",
-                item.stocktype.format() + " " + item.stockunit.name))
+                item.stocktype.format() + " " + item.description))
             li.append(_textelem(
                 "AccountCode",
                 self._purchases_account_for_department(

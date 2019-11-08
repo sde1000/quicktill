@@ -93,9 +93,15 @@ class ModelTest(unittest.TestCase):
         self.s.add_all([business, vatband, dept, sale, void])
         self.s.commit()
 
+    def template_removecode_setup(self):
+        """Add a removecode to the database to make other tests shorter."""
+        self.s.add(models.RemoveCode(id='test', reason='Test'))
+        self.s.commit()
+
     def template_stocktype_setup(self):
         """Add a stocktype to the database to make other tests shorter."""
-        pint = models.UnitType(id='pt', name='pint')
+        pint = models.Unit(name='pint', description='Pint',
+                           item_name='pint', item_name_plural='pint')
         beer = models.StockType(
             manufacturer="A Brewery", name="A Beer",
             abv=5, unit=pint, dept_id=1)
@@ -214,8 +220,6 @@ class ModelTest(unittest.TestCase):
     def test_delivery_costprice(self):
         self.template_setup()
         beer = self.template_stocktype_setup()
-        firkin = models.StockUnit(
-            id='firkin', name='Firkin', size=72, unit_id='pt')
         delivery = models.Delivery(
             date=datetime.date.today(),
             supplier=models.Supplier(name="Test supplier"),
@@ -226,16 +230,62 @@ class ModelTest(unittest.TestCase):
         self.s.add(models.StockItem(
             delivery=delivery,
             stocktype=beer,
-            stockunit=firkin,
+            description="Firkin",
+            size=72,
             costprice=72))
         self.s.commit()
         self.assertEqual(delivery.costprice, Decimal("72.00"))
         self.s.add(models.StockItem(
             delivery=delivery,
             stocktype=beer,
-            stockunit=firkin))
+            description="Firkin",
+            size=72))
         self.s.commit()
         self.assertIsNone(delivery.costprice)
+
+    def test_stockitem_remaining(self):
+        self.template_setup()
+        self.template_removecode_setup()
+        beer = self.template_stocktype_setup()
+        delivery = models.Delivery(
+            date=datetime.date.today(),
+            supplier=models.Supplier(name="Test supplier"),
+            docnumber="test")
+        item = models.StockItem(
+            delivery=delivery,
+            stocktype=beer,
+            description="Firkin",
+            size=72)
+        self.s.add(item)
+        self.s.commit()
+        self.assertEqual(item.remaining, Decimal("72.0"))
+        self.s.add(models.StockOut(stockitem=item, removecode_id='test', qty=1))
+        self.s.commit()
+        self.assertEqual(item.remaining, Decimal("71.0"))
+
+    def test_stocktype_remaining(self):
+        self.template_setup()
+        self.template_removecode_setup()
+        beer = self.template_stocktype_setup()
+        delivery = models.Delivery(
+            date=datetime.date.today(),
+            supplier=models.Supplier(name="Test supplier"),
+            docnumber="test")
+        for i in range(2):
+            item = models.StockItem(
+                delivery=delivery,
+                stocktype=beer,
+                description="Firkin",
+                size=72)
+            self.s.add(item)
+        self.s.commit()
+        self.assertEqual(beer.remaining, Decimal("0.0"))
+        delivery.checked = True
+        self.s.commit()
+        self.assertEqual(beer.remaining, Decimal("144.0"))
+        self.s.add(models.StockOut(stockitem=item, removecode_id='test', qty=1))
+        self.s.commit()
+        self.assertEqual(beer.remaining, Decimal("143.0"))
 
     def template_user_setup(self):
         user = models.User(fullname="A User", shortname="A", enabled=True)

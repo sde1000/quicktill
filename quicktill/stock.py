@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 def stockinfo_linelist(sn):
     s=td.s.query(StockItem).get(sn)
     l=[]
-    l.append(s.stocktype.format()+" - %d"%s.id)
+    l.append("{} - {} - {}".format(s.stocktype.format(), s.id, s.description))
     l.append("Sells for %s%s/%s.  "
              "%s %ss used; %s %ss remaining."%(
             tillconfig.currency,s.stocktype.saleprice,s.stocktype.unit.name,
@@ -289,7 +289,7 @@ class stockpicker(ui.dismisspopup):
                            .options(undefer('remaining'))[:100]
         f = ui.tableformatter(' r l c ')
         sl = [ (f(s.id, s.stocktype.format(), "{} {}s".format(
-            s.remaining, s.stockunit.unit.name)),
+            s.remaining, s.unit.name)),
                 self.item_chosen, (s.id,))
                for s in items]
         ui.menu(sl, title=self.title)

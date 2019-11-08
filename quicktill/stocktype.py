@@ -3,7 +3,8 @@
 import logging
 log = logging.getLogger(__name__)
 from . import ui, td, keyboard, tillconfig, user
-from .models import Department, UnitType, StockType, StockItem, Delivery, penny
+from .models import Department, Unit, StockType, StockItem, Delivery, penny
+from .models import StockUnit
 from .plugins import ClassPluginMount
 from decimal import Decimal
 import datetime
@@ -62,9 +63,9 @@ class choose_stocktype(ui.dismisspopup):
             d=lambda x: x.description)
         self.abvfield = ui.editfield(7, 42, 4, validate=ui.validate_float)
         self.unitfield = ui.modellistfield(
-            8, 16, 30, UnitType,
-            lambda q: q.order_by(UnitType.id),
-            d=lambda x: x.name,
+            8, 16, 30, Unit,
+            lambda q: q.order_by(Unit.description),
+            d=lambda x: x.description,
             readonly=(mode == 2))
         self.confirmbutton = ui.buttonfield(10, 15, 20, prompt, keymap={
             keyboard.K_CASH: (self.finish_select if mode == 1
@@ -163,10 +164,9 @@ class choose_stocktype(ui.dismisspopup):
             self.deptfield.focus()
             return
         f = ui.tableformatter(' l l l l l ')
-        header = f("Manufacturer", "Name", "ABV", "Unit",
-                   "Department")
+        header = f("Manufacturer", "Name", "ABV", "Unit", "Department")
         lines = [(f(st.manufacturer, st.name, st.abv,
-                    st.unit.name, st.department.description),
+                    st.unit.description, st.department.description),
                   self.existing_stocktype_chosen, (st.id,)) for st in l]
 
         ui.menu(lines, blurb=header, title="Choose existing stock type")
@@ -238,8 +238,8 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
     def __init__(self, st):
         """We are passed a StockType that may not be in the current session."""
         mh, mw = ui.rootwin.size()
-        self.st = st
         td.s.add(st)
+        self.st_id = st.id
         name = st.format()
         sl = td.s.query(StockItem)\
                  .filter(StockItem.stocktype==st)\
@@ -258,9 +258,14 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
         headerline = f("StockID", "Delivered", "Cost", "Size", "Remaining",
                        "Guide price")
         ll = [f(x.id, x.delivery.date, tillconfig.fc(x.costprice),
-                x.stockunit.size, x.remaining,
-                PriceGuessHook.guess_price(
-                    x.stocktype, x.stockunit, x.costprice))
+                x.size, x.remaining,
+                tillconfig.fc(PriceGuessHook.guess_price(
+                    x.stocktype,
+                    StockUnit(name=x.description,
+                              unit_id=x.stocktype.unit_id,
+                              size=x.size,
+                              unit=x.stocktype.unit),
+                    x.costprice)))
               for x in sl]
         w = min(max(f.idealwidth() + 2, len(name) + 4, 30), mw)
         ui.dismisspopup.__init__(self, h, w, title="Re-price {}".format(name),
@@ -270,16 +275,12 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
             2, 14 + len(tillconfig.currency), 6, validate=ui.validate_float,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.salefield.set(st.saleprice)
-        self.addstr(2, 21 + len(tillconfig.currency), "per")
-        self.unitsfield = ui.editfield(2, 25 + len(tillconfig.currency), 6,
-                                       validate=ui.validate_float)
-        self.unitsfield.set(st.saleprice_units)
-        self.addstr(2, 32 + len(tillconfig.currency), "{}s".format(
-            st.unit.name))
+        self.addstr(2, 21 + len(tillconfig.currency), "per {}".format(
+            st.unit.item_name))
         self.addstr(4, 1, headerline.display(w - 2)[0])
         s = ui.scrollable(5, 1, w - 2, h - 6, dl=ll, show_cursor=False)
-        self.unitsfield.keymap[keyboard.K_CASH] = (self.reprice, None)
-        ui.map_fieldlist([self.salefield, self.unitsfield, s])
+        self.salefield.keymap[keyboard.K_CASH] = (self.reprice, None)
+        ui.map_fieldlist([self.salefield, s])
         self.salefield.focus()
 
     def reprice(self):
@@ -287,29 +288,15 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
             ui.infopopup(["You must specify a sale price."],
                          title="Error")
             return
-        if len(self.unitsfield.f) == 0:
-            ui.infopopup(["You must specify the number of units sold "
-                          "for the sale price."],
-                         title="Error")
-            return
-        newunits = Decimal(self.unitsfield.f)
-        if newunits < 1:
-            ui.infopopup(["You must sell at least one unit of stock "
-                          "for the sale price."],
-                         title="Error")
-            return
         self.dismiss()
-        td.s.add(self.st)
-        oldprice = self.st.saleprice
-        oldunits = self.st.saleprice_units
-        self.st.saleprice = Decimal(self.salefield.f).quantize(penny)
-        self.st.saleprice_units = newunits
-        if self.st.saleprice != oldprice \
-           or self.st.saleprice_units != oldunits:
-            self.st.pricechanged = datetime.datetime.now()
+        st = td.s.query(StockType).get(self.st_id)
+        oldprice = st.saleprice
+        st.saleprice = Decimal(self.salefield.f).quantize(penny)
+        if st.saleprice != oldprice:
+            st.pricechanged = datetime.datetime.now()
             td.s.flush()
             ui.infopopup(["Price of {} changed to {}{}.".format(
-                self.st.format(), tillconfig.currency, self.st.pricestr)],
+                st.format(), tillconfig.currency, st.pricestr)],
                          title="Price changed",
                          colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)

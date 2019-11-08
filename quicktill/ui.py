@@ -1850,7 +1850,7 @@ class modellistfield(modelpopupfield):
         self._query = l
         l = self._query(td.s.query(self.model)).all()
         current = self.read()
-        if current in l:
+        if current is None or current in l:
             return
         if len(l) > 0:
             self.set(l[0])

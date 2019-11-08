@@ -41,16 +41,16 @@ class page(ui.basicpage):
             if line.linetype == "regular" and line.stockonsale:
                 sos = line.stockonsale[0]
                 return (line.name, sos.id, sos.stocktype.format(),
-                        "{} {}".format(sos.used, sos.stocktype.unit_id),
-                        "{} {}".format(sos.remaining, sos.stocktype.unit_id))
+                        "{} {}".format(sos.used, sos.stocktype.unit.name),
+                        "{} {}".format(sos.remaining, sos.stocktype.unit.name))
             elif line.linetype == "continuous":
                 return (line.name, "", line.stocktype.format(), "",
                         "{} {}".format(line.stocktype.remaining,
-                                       line.stocktype.unit_id))
+                                       line.stocktype.unit.name))
             elif line.linetype == "display":
                 return (line.name, "", line.stocktype.format(), "",
                         "{}+{} {}".format(line.ondisplay, line.instock,
-                                          line.stocktype.unit_id))
+                                          line.stocktype.unit.name))
             return (line.name, "", "", "", "")
         ml = [header] + [f(*fl(line)) for line in sl]
         y = 0

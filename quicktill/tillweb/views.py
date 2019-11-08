@@ -859,8 +859,8 @@ def stock(request, info, session, stockid):
         .options(joinedload('stocktype').joinedload('department'),
                  joinedload('stocktype').joinedload('stockline_log')
                  .joinedload('stockline'),
+                 joinedload('stocktype').joinedload('unit'),
                  joinedload('delivery').joinedload('supplier'),
-                 joinedload('stockunit').joinedload('unit'),
                  joinedload('annotations').joinedload('type'),
                  subqueryload('out').subqueryload('transline')
                  .subqueryload('transaction'),

@@ -948,9 +948,8 @@ class page(ui.basicpage):
             return
         sale = ProposedSale(
             stocktype=st,
-            qty=st.saleprice_units,
-            description=st.format() + (
-                " {}".format(st.unit.name) if st.saleprice_units == 1 else ""),
+            qty=st.unit.units_per_item,
+            description=st.format() + " {}".format(st.unit.item_name),
             price=st.saleprice,
             whole_items=(stockline.linetype == "display"))
 
@@ -1122,9 +1121,10 @@ class page(ui.basicpage):
             # We are using the last value of so from either the
             # previous for loop, or the handling of may_repeat
             stockitem = so.stockitem
-            self.prompt = "{}: {} {}s of {} remaining".format(
-                stockline.name, stockitem.remaining,
-                stockitem.stocktype.unit.name, stockitem.stocktype.format())
+            self.prompt = "{}: {} of {} remaining".format(
+                stockline.name,
+                stockitem.stocktype.unit.format_qty(stockitem.remaining),
+                stockitem.stocktype.format())
             if stockitem.remaining < Decimal("0.0"):
                 ui.infopopup([
                     "There appears to be {} {}s of {} left!  Please "
@@ -1144,8 +1144,8 @@ class page(ui.basicpage):
             self.prompt = "{}: {} left on display; {} in stock".format(
                 stockline.name, int(remaining[0]), int(remaining[1]))
         elif stockline.linetype == "continuous":
-            self.prompt = "{}: {} {}s of {} remaining".format(
-                stockline.name, remaining, stockline.stocktype.unit.name,
+            self.prompt = "{}: {} of {} remaining".format(
+                stockline.name, stockline.stocktype.unit.format_qty(remaining),
                 stockline.stocktype.format())
             if remaining < Decimal("0.0"):
                 ui.infopopup([

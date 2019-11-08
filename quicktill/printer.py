@@ -212,7 +212,7 @@ def stock_label(f,d):
     y=y-pitch
     f.drawCentredString(width/2,y,ui.formatdate(d.delivery.date))
     y=y-pitch
-    f.drawCentredString(width/2,y,d.stockunit.name)
+    f.drawCentredString(width / 2, y, d.description)
     if tillconfig.checkdigit_print:
         y=y-pitch
         f.drawCentredString(width/2,y,"Check digits: %s"%(d.checkdigits,))

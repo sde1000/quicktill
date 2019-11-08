@@ -4,7 +4,24 @@ quicktill — cash register software
 Upgrade v15.x to v16
 --------------------
 
-There are database changes this release.
+What's new:
+
+ * session notes table has been removed and replaced with 'accinfo'
+   column in sessions table; this is a simplification
+
+ * "link to accounts" buttons in the web interface!
+
+ * the way StockType.saleprice_units is handled has changed: this is
+   now part of the units table.  This makes defining new types of wine
+   and soft drink carton much simpler - no need for the user to enter
+   "magic" sizes.
+
+ * the StockUnits table is now a list of defaults for entering new
+   stock; actual stock sizes have moved to the StockItems table.
+
+There are database changes this release.  These changes are not
+backward-compatible to v15, so install the new version before making
+the changes.
 
 To upgrade the database:
 
@@ -12,22 +29,142 @@ To upgrade the database:
 
 ```BEGIN;
 
+/* sessions / session_notes table changes */
 ALTER TABLE sessions
       ADD COLUMN accinfo character varying;
 
 UPDATE sessions s SET accinfo=(
-      SELECT text FROM session_notes n
-        WHERE n.sessionid = s.sessionid
-	AND time=(
-	  SELECT MAX(time) FROM session_notes nn
-	    WHERE nn.sessionid = n.sessionid
-	    GROUP BY n.sessionid));
+       SELECT text FROM session_notes n
+       WHERE n.sessionid = s.sessionid
+       AND time=(
+         SELECT MAX(time) FROM session_notes nn
+         WHERE nn.sessionid = n.sessionid
+         GROUP BY n.sessionid));
 
 DROP TABLE session_notes;
 
 DROP SEQUENCE session_note_seq;
 
 DROP TABLE session_note_types;
+
+/* unittypes table changes */
+
+CREATE SEQUENCE units_seq
+       START WITH 1
+       INCREMENT BY 1
+       NO MAXVALUE
+       NO MINVALUE
+       CACHE 1;
+
+ALTER TABLE unittypes
+      ADD COLUMN id integer NOT NULL DEFAULT nextval('units_seq'),
+      ADD COLUMN description character varying,
+      ADD COLUMN item_name character varying,
+      ADD COLUMN item_name_plural character varying,
+      ADD COLUMN units_per_item numeric(8,1) NOT NULL DEFAULT 1.0,
+      ALTER COLUMN name TYPE character varying USING name::character varying;
+
+UPDATE unittypes SET description=name,
+                 item_name=name,
+                 item_name_plural=CONCAT(name,'s');
+
+/* Two special entries to enable migration of wine and soft drink cartons */
+INSERT INTO unittypes (unit, description, name, item_name, item_name_plural, units_per_item)
+       VALUES
+       ('wineml', 'Wine (bottles)', 'ml', 'bottle', 'bottles', 750),
+       ('softml', 'Soft drink (cartons)', 'ml', 'pint', 'pints', 568);
+UPDATE stocktypes
+       SET unit = 'wineml'
+       WHERE saleprice_units=750;
+UPDATE stocktypes
+       SET unit = 'softml'
+       WHERE saleprice_units=568;
+UPDATE stockunits
+       SET unit='wineml' WHERE size IN (750, 4500, 9000);
+UPDATE stockunits
+       SET unit='softml' WHERE size IN (1000, 6000, 8000, 12000);
+DELETE FROM unittypes WHERE unit='ml';
+
+ALTER TABLE stocktypes
+      ADD COLUMN unit_id integer;
+UPDATE stocktypes
+       SET unit_id = unittypes.id
+       FROM unittypes
+       WHERE stocktypes.unit = unittypes.unit;
+ALTER TABLE stocktypes
+      DROP CONSTRAINT stocktypes_unit_fkey,
+      DROP COLUMN unit,
+      ALTER COLUMN unit_id SET NOT NULL;
+
+ALTER TABLE stockunits
+      ADD COLUMN unit_id integer,
+      ALTER COLUMN name TYPE character varying USING name::character varying;
+UPDATE stockunits
+       SET unit_id = unittypes.id
+       FROM unittypes
+       WHERE stockunits.unit = unittypes.unit;
+ALTER TABLE stockunits
+      DROP CONSTRAINT stockunits_unit_fkey,
+      DROP COLUMN unit,
+      ALTER COLUMN unit_id SET NOT NULL;
+
+ALTER TABLE unittypes
+      DROP CONSTRAINT unittypes_pkey,
+      DROP COLUMN unit,
+      ADD CONSTRAINT unittypes_pkey PRIMARY KEY (id),
+      ALTER COLUMN id DROP DEFAULT,
+      ALTER COLUMN description SET NOT NULL,
+      ALTER COLUMN item_name SET NOT NULL,
+      ALTER COLUMN item_name_plural SET NOT NULL,
+      ALTER COLUMN units_per_item DROP DEFAULT;
+
+ALTER TABLE stocktypes
+      ADD CONSTRAINT stocktypes_unit_id_fkey
+          FOREIGN KEY (unit_id) REFERENCES unittypes(id),
+      DROP COLUMN saleprice_units;
+
+ALTER TABLE stockunits
+      ADD CONSTRAINT stockunits_unit_id_fkey
+          FOREIGN KEY (unit_id) REFERENCES unittypes(id);
+
+/* Move stockunits info into stock table */
+
+ALTER TABLE stock
+      ADD COLUMN description character varying,
+      ADD COLUMN "size" numeric(8,1),
+      ADD CONSTRAINT stock_size_check CHECK ((size > 0.0));
+
+UPDATE stock
+       SET description = su.name,
+           size = su.size
+       FROM stockunits su
+       WHERE stock.stockunit = su.stockunit;
+
+ALTER TABLE stock
+      DROP COLUMN stockunit,
+      ALTER COLUMN description SET NOT NULL,
+      ALTER COLUMN "size" SET NOT NULL;
+
+ALTER TABLE stockunits
+      DROP CONSTRAINT stockunits_pkey;
+
+CREATE SEQUENCE stockunits_seq
+       START WITH 1
+       INCREMENT BY 1
+       NO MAXVALUE
+       NO MINVALUE
+       CACHE 1;
+
+ALTER TABLE stockunits
+      DROP COLUMN stockunit,
+      ADD COLUMN "merge" boolean DEFAULT false NOT NULL,
+      ADD COLUMN id integer NOT NULL DEFAULT nextval('stockunits_seq');
+
+ALTER TABLE stockunits
+      ADD CONSTRAINT stockunits_pkey PRIMARY KEY (id);
+
+ALTER TABLE stockunits
+      ALTER COLUMN id DROP DEFAULT;
 
 COMMIT;
 ```

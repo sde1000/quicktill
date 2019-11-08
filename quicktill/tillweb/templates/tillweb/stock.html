@@ -19,7 +19,7 @@
 <tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
 <tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.delivery.checked %} <span class="badge badge-warning">Not confirmed</span>{% endif %}</td></tr>
 <tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
-<tr><th scope="row">Stock unit</th><td>{{stock.stockunit.name}} ({{stock.stockunit.size}} {{stock.stockunit.unit.name}}s)</td></tr>
+<tr><th scope="row">Stock unit</th><td>{{stock.description}} ({{stock.size}} {{stock.stocktype.unit.name}}s)</td></tr>
 <tr><th scope="row">Cost price</th>
 {% if stock.costprice %}
 <td>{{money}}{{stock.costprice}} (ex-VAT)</td>
@@ -37,8 +37,8 @@
 {% if stock.bestbefore %}
 <tr><th scope="row">Best before</th><td>{{stock.bestbefore}}</td></tr>
 {% endif %}
-<tr><th scope="row">Amount used</th><td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
-<tr><th scope="row">Amount remaining</th><td>{{stock.remaining}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th scope="row">Amount used</th><td>{{stock.used}} {{stock.stocktype.unit.name}}s</td></tr>
+<tr><th scope="row">Amount remaining</th><td>{{stock.remaining}} {{stock.stocktype.unit.name}}s</td></tr>
 {% if stock.annotations %}
 <tr><th scope="row">Notes</th><td>
 {% with annotationlist=stock.annotations excluded_column="stock" %}
@@ -51,7 +51,7 @@
 <h2>Usage summary</h2>
 <table class="kvtable">
 {% for rc,qty in stock.removed %}
-<tr><th scope="row">{{rc.reason}}</th><td>{{qty}} {{stock.stockunit.unit.name}}s</td></tr>
+<tr><th scope="row">{{rc.reason}}</th><td>{{qty}} {{stock.stocktype.unit.name}}s</td></tr>
 {% endfor %}
 </table>
 
@@ -70,13 +70,13 @@
 <tr>
 <td>{{so.time|date:dtf}}</td>
 <td>{% if so.removecode_id == 'sold' %}<a href="{{so.transline.transaction.get_absolute_url}}">Sold for {{money}}{{so.transline.total}}</span> in transaction {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td>
-<td>{{so.qty}} {{stock.stockunit.unit.name}}s</td>
+<td>{{so.qty}} {{stock.stocktype.unit.name}}s</td>
 </tr>
 {% endfor %}
 </tbody>
 <tfoot>
 <tr><th scope="row" colspan="2" style="text-align: right;">Total:</th>
-<td>{{stock.used}} {{stock.stockunit.unit.name}}s</td></tr>
+<td>{{stock.used}} {{stock.stocktype.unit.name}}s</td></tr>
 </tfoot>
 </table>
 <script type="text/javascript">

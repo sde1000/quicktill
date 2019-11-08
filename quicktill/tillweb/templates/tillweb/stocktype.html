@@ -13,7 +13,7 @@
 <tr><th>ABV</th><td>{{stocktype.abv}}%</td></tr>
 {% endif %}
 <tr><th>Department</th><td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td></tr>
-<tr><th>Unit</th><td>{{stocktype.unit}}</td></tr>
+<tr><th>Unit</th><td>{{stocktype.unit.description}}</td></tr>
 <tr><th>Sale price</th><td>{{money}}{{stocktype.pricestr}}</span> (inc-VAT)</td></tr>
 </table>
 

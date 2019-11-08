@@ -38,9 +38,9 @@ class Half(quicktill.modifiers.SimpleModifier):
     (soft drinks) and halves the price.
     """
     def mod_stockline(self, stockline, sale):
-        if sale.stocktype.unit_id == 'pt' \
-           or (sale.stocktype.unit_id == 'ml'
-               and sale.stocktype.saleprice_units == 568):
+        if sale.stocktype.unit.name == 'pint' \
+           or (sale.stocktype.unit.name == 'ml'
+               and sale.stocktype.unit.units_per_item == 568):
             # There may not be a price at this point
             if sale.price:
                 sale.price = sale.price / 2
@@ -71,8 +71,8 @@ class Mixer(quicktill.modifiers.SimpleModifier):
     (soft drinks) and quarters the price.
     """
     def mod_stockline(self, stockline, sale):
-        if sale.stocktype.unit_id != 'ml' \
-           or sale.stocktype.saleprice_units != 568:
+        if sale.stocktype.unit.name != 'ml' \
+           or sale.stocktype.unit.units_per_item != 568:
             raise quicktill.modifiers.Incompatible(
                 "The {} modifier can only be used with soft drinks."\
                 .format(self.name))
@@ -98,7 +98,7 @@ class Double(quicktill.modifiers.SimpleModifier):
     price, and subtracts 50p.
     """
     def mod_stockline(self, stockline, sale):
-        if sale.stocktype.unit_id not in ('25ml', '50ml'):
+        if sale.stocktype.unit.name not in ('25ml', '50ml'):
             raise quicktill.modifiers.Incompatible(
                 "The {} modifier can only be used with spirits."\
                 .format(self.name))
@@ -144,13 +144,13 @@ class Wine(quicktill.modifiers.BaseModifier):
 
     def mod_stockline(self, stockline, sale):
         if stockline.linetype != "continuous" \
-           or (stockline.stocktype.unit_id != 'ml') \
-           or (stockline.stocktype.saleprice_units != 750) \
+           or (stockline.stocktype.unit.name != 'ml') \
+           or (stockline.stocktype.unit.units_per_item != 750) \
            or (stockline.stocktype.dept_id != 9):
             raise quicktill.modifiers.Incompatible(
                 "This modifier can only be used with wine.")
         sale.qty = self.size
-        sale.description = sale.description + " " + self.text
+        sale.description = stockline.stocktype.format() + " " + self.text
         if sale.price:
             sale.price = (self.size / Decimal("750.0") * sale.price)\
                 .quantize(Decimal("0.1"), rounding=ROUND_UP)\

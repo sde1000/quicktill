@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Date
 from sqlalchemy import ForeignKey, Numeric, CHAR, Boolean, Text, Interval
 from sqlalchemy.schema import Sequence, Index, MetaData, DDL
 from sqlalchemy.schema import CheckConstraint, Table
+from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.sql.expression import text, alias, case, literal
 from sqlalchemy.orm import relationship, backref, object_session, sessionmaker
 from sqlalchemy.orm import joinedload, subqueryload, lazyload
@@ -303,7 +304,7 @@ class Session(Base):
         "Returns a list of (StockType, quantity) tuples."
         return object_session(self).\
             query(StockType, func.sum(StockOut.qty)).\
-            join(UnitType).\
+            join(Unit).\
             join(StockItem).\
             join(StockOut).\
             join(Transline).\
@@ -311,7 +312,7 @@ class Session(Base):
             filter(Transaction.sessionid == self.id).\
             options(lazyload(StockType.department)).\
             options(contains_eager(StockType.unit)).\
-            group_by(StockType, UnitType).\
+            group_by(StockType, Unit).\
             order_by(StockType.dept_id, desc(func.sum(StockOut.qty))).\
             all()
     @classmethod
@@ -1127,6 +1128,18 @@ class StockLine(Base):
         elif self.linetype == "continuous":
             return self.stocktype.remaining
 
+    @property
+    def remaining_str(self):
+        """Amount of unsold stock on the stock line, including unit"""
+        unit = None
+        if self.linetype == "regular":
+            if self.stockonsale:
+                unit = self.stockonsale[0].stocktype.unit
+        else:
+            unit = self.stocktype.unit
+        if unit:
+            return unit.format_qty(self.remaining)
+
     def calculate_restock(self, target=None):
         """Prepare list of stock movements
 
@@ -1160,7 +1173,7 @@ class StockLine(Base):
                 move = max(needed, 0 - i.ondisplay)
             needed = needed - move
             newdisplayqty = i.displayqty_or_zero + move
-            instock_after_move = int(i.stockunit.size) - newdisplayqty
+            instock_after_move = int(i.size) - newdisplayqty
             if move != 0:
                 sm.append((i, move, newdisplayqty, instock_after_move))
         return sm
@@ -1350,23 +1363,65 @@ class Delivery(Base):
     def __repr__(self):
         return "<Delivery(%s)>" % (self.id,)
 
-class UnitType(Base):
+units_seq = Sequence('units_seq')
+
+class Unit(Base):
+    """A unit in which stock is held, and its default quantity for pricing
+
+    Often these will be the same, eg. beer is counted by the "pint"
+    and priced per one "pint"; 1 pint is called a "pint".  For some
+    types of stock they will be different, eg. wine is counted by the
+    "ml" and priced per 750 "ml"; 750ml is called a "wine bottle".
+
+    Stock can be bought in different units.  For example, soft drink
+    cartons can be sold by the pint (568ml) but bought by the 1l
+    carton (1000ml).  The size of a stock item is stored with the
+    item, and default purchase units are described by the StockUnit class.
+    """
     __tablename__ = 'unittypes'
-    id = Column('unit', String(10), nullable=False, primary_key=True)
-    name = Column(String(30), nullable=False)
+    id = Column(Integer, units_seq, nullable=False, primary_key=True)
+    # How this unit appears in menus
+    description = Column(String(), nullable=False)
+    # Name of the fundamental unit, eg. ml, pint
+    name = Column(String(), nullable=False)
+    # Name of the pricing / stock-keeping unit, singular and plural form
+    item_name = Column(String(), nullable=False)
+    item_name_plural = Column(String(), nullable=False)
+    units_per_item = Column(quantity, nullable=False, default=Decimal("1.0"))
+    # This may be a good place to put a stocktake_method column,
+    # eg. "by item" or "by stocktype".
+
+    def format_qty(self, qty):
+        if qty < self.units_per_item:
+            return "{} {}".format(qty, self.name)
+        n = self.item_name if qty == self.units_per_item \
+            else self.item_name_plural
+        return "{:0.1f} {}".format(qty / self.units_per_item, n)
+
     def __str__(self):
         return "%s" % (self.name,)
     def __repr__(self):
-        return "<UnitType('%s','%s')>" % (self.id, self.name)
+        return "<Unit('%s','%s')>" % (self.id, self.name)
+
+stockunits_seq = Sequence('stockunits_seq')
 
 class StockUnit(Base):
+    """A unit in which stock is bought
+
+    This class describes default units in which stock is bought, for
+    example a "firkin" is 72 "pints" and a "1l carton of soft drink"
+    is 1000 "ml".
+
+    Actual sizes and item descriptions are stored per StockItem.
+    """
     __tablename__ = 'stockunits'
-    id = Column('stockunit', String(8), nullable=False, primary_key=True)
-    name = Column(String(30), nullable=False)
-    unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
-                     nullable=False)
+    id = Column(Integer, stockunits_seq, nullable=False, primary_key=True)
+    name = Column(String(), nullable=False)
+    unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     size = Column(quantity, nullable=False)
-    unit = relationship(UnitType)
+    merge = Column(Boolean, nullable=False, default=False,
+                   server_default=literal(False))
+    unit = relationship(Unit)
     def __repr__(self):
         return "<StockUnit('%s',%s)>" % (self.id, self.size)
     def __str__(self):
@@ -1383,13 +1438,19 @@ class StockType(Base):
     manufacturer = Column(String(30), nullable=False)
     name = Column(String(30), nullable=False)
     abv = Column(Numeric(3, 1))
-    unit_id = Column('unit', String(10), ForeignKey('unittypes.unit'),
-                     nullable=False)
+    unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     saleprice = Column(money, nullable=True) # inc VAT
-    saleprice_units = Column(quantity, nullable=False, default=Decimal("1.0"))
     pricechanged = Column(DateTime, nullable=True) # Last time price was changed
     department = relationship(Department, lazy="joined")
-    unit = relationship(UnitType, lazy="joined")
+    unit = relationship(Unit, lazy="joined")
+
+    # XXX introduce the following constraint in a later version, along with
+    # a script to de-duplicate stocktypes
+    #__table_args__ = (
+    #    UniqueConstraint('dept', 'manufacturer', 'name', 'abv', 'unit_id',
+    #                     name="stocktypes_ambiguity_key"),
+    #)
+
     @hybrid_property
     def fullname(self):
         return self.manufacturer + ' ' + self.name
@@ -1405,19 +1466,19 @@ class StockType(Base):
     def __repr__(self):
         return "<StockType(%s,'%s','%s')>" % (
             self.id, self.manufacturer, self.name)
+
     @property
     def abvstr(self):
         if self.abv:
             return "{}%".format(self.abv)
         return ""
+
     @property
     def pricestr(self):
         if self.saleprice is not None:
-            if self.saleprice_units == 1:
-                return "{}/{}".format(self.saleprice, self.unit.name)
-            return "{}/{} {}s".format(
-                self.saleprice, self.saleprice_units, self.unit.name)
+            return "{}/{}".format(self.saleprice, self.unit.item_name)
         return ""
+
     @property
     def descriptions(self):
         """List of possible descriptions
@@ -1482,7 +1543,7 @@ class StockItem(Base):
 
     0     1     2     3     4     5     6     7     8     9    10
     |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
-    <--------------------- stockunit.size ----------------------> = 10
+    <--------------------------- size --------------------------> = 10
     <-------- used -------->|<------------ remaining ----------->
                             |<-- ondisplay -->|<--- instock ---->
     <-------------- displayqty -------------->|
@@ -1494,8 +1555,8 @@ class StockItem(Base):
                         nullable=False)
     stocktype_id = Column('stocktype', Integer,
                           ForeignKey('stocktypes.stocktype'), nullable=False)
-    stockunit_id = Column('stockunit', String(8),
-                          ForeignKey('stockunits.stockunit'), nullable=False)
+    description = Column(String(), nullable=False)
+    size = Column(quantity, CheckConstraint("size > 0.0"), nullable=False)
     costprice = Column(money) # ex VAT
     onsale = Column(DateTime)
     finished = Column(DateTime)
@@ -1504,7 +1565,6 @@ class StockItem(Base):
     bestbefore = Column(Date)
     delivery = relationship(Delivery, backref=backref('items', order_by=id))
     stocktype = relationship(StockType, backref=backref('items', order_by=id))
-    stockunit = relationship(StockUnit, lazy="joined")
     finishcode = relationship(FinishCode, lazy="joined")
     stocklineid = Column(Integer, ForeignKey('stocklines.stocklineid',
                                              ondelete='SET NULL'),
@@ -1566,7 +1626,7 @@ class StockItem(Base):
         """
         if self.stockline.capacity is None:
             return None
-        return self.stockunit.size - self.displayqty_or_zero
+        return self.size - self.displayqty_or_zero
 
     # used and remaining column properties are added after the
     # StockOut class is defined
@@ -1714,9 +1774,8 @@ StockItem.sold = column_property(
     group="qtys",
     doc="Amount of this item that has been used by being sold")
 StockItem.remaining = column_property(
-    select([select([StockUnit.size], StockUnit.id == StockItem.stockunit_id
-                   ).correlate(StockItem.__table__) -
-                func.coalesce(func.sum(StockOut.qty), text("0.0"))]).\
+    select([StockItem.size
+            - func.coalesce(func.sum(StockOut.qty), text("0.0"))]).\
         where(StockOut.stockid == StockItem.id).\
         label('remaining'),
     deferred=True,
@@ -1746,9 +1805,7 @@ StockItem.lastsale = column_property(
 # doing that job.  Let's add an alias.
 StockType.instock = column_property(
     select([func.coalesce(func.sum(
-                    select([func.sum(StockUnit.size)],
-                           StockUnit.id == StockItem.stockunit_id,
-                           ).as_scalar() -
+                    StockItem.size -
                     select([func.coalesce(func.sum(StockOut.qty), text("0.0"))],
                            StockOut.stockid == StockItem.id,
                            ).as_scalar()
