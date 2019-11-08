@@ -11,38 +11,43 @@ from sqlalchemy.orm import joinedload,undefer
 log = logging.getLogger(__name__)
 
 def stockinfo_linelist(sn):
-    s=td.s.query(StockItem).get(sn)
-    l=[]
-    l.append("{} - {} - {}".format(s.stocktype.format(), s.id, s.description))
-    l.append("Sells for %s%s/%s.  "
-             "%s %ss used; %s %ss remaining."%(
-            tillconfig.currency,s.stocktype.saleprice,s.stocktype.unit.name,
-            s.used,s.stocktype.unit.name,s.remaining,s.stocktype.unit.name))
+    s = td.s.query(StockItem).get(sn)
+    l = []
+    l.append(ui.lrline("{} - {} - {}".format(
+        s.stocktype.format(), s.id, s.description)))
+    l.append("Sells for %s%s.  "
+             "%s %ss used; %s %ss remaining." % (
+                 tillconfig.currency, s.stocktype.pricestr,
+                 s.used, s.stocktype.unit.name,
+                 s.remaining, s.stocktype.unit.name))
     l.append("")
-    l.append("Delivered %s by %s"%(s.delivery.date,s.delivery.supplier.name))
-    if s.bestbefore: l.append("Best Before %s"%s.bestbefore)
-    if s.onsale: l.append("Put on sale {:%c}".format(s.onsale))
+    l.append("Delivered %s by %s" % (s.delivery.date, s.delivery.supplier.name))
+    if s.bestbefore:
+        l.append("Best Before %s" % s.bestbefore)
+    if s.onsale:
+        l.append("Put on sale {:%c}".format(s.onsale))
     if s.firstsale:
         l.append("First sale: {:%c} Last sale: {:%c}".format(
-            s.firstsale,s.lastsale))
+            s.firstsale, s.lastsale))
     if s.finished:
-        l.append("Finished {:%c} {}".format(s.finished,s.finishcode.description))
+        l.append("Finished {:%c} {}".format(
+            s.finished, s.finishcode.description))
     l.append("")
-    for code,qty in s.removed:
-        l.append("%s: %s"%(code.reason,qty))
-    if len(s.annotations)>0:
+    for code, qty in s.removed:
+        l.append("%s: %s" % (code.reason, qty))
+    if len(s.annotations) > 0:
         l.append("Annotations:")
     for a in s.annotations:
-        l.append(ui.lrline("{:%c}{}: {}".format(a.time,a.type.description,a.text)))
+        l.append(ui.lrline("{:%c}{}: {}".format(
+            a.time, a.type.description, a.text)))
     return l
 
-def stockinfo_popup(sn, keymap={}):
-    keymap=keymap.copy()
+def stockinfo_popup(sn):
     ui.listpopup(stockinfo_linelist(sn),
                  title="Stock Item {}".format(sn),
                  dismiss=keyboard.K_CASH,
                  show_cursor=False,
-                 colour=ui.colour_info,keymap=keymap)
+                 colour=ui.colour_info)
 
 class annotate(user.permission_checked,ui.dismisspopup):
     """This class permits annotations to be made to stock items.

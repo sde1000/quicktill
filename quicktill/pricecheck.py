@@ -89,7 +89,7 @@ class pricecheck_stockitem(pricecheck_keypress, ui.listpopup):
     def __init__(self, stockitem):
         td.s.add(stockitem)
         super().__init__(
-            [ui.lrline(x) for x in stock.stockinfo_linelist(stockitem.id)],
+            stock.stockinfo_linelist(stockitem.id),
             title="Stock item {}".format(stockitem.id),
             dismiss=keyboard.K_CASH,
             show_cursor=False,
