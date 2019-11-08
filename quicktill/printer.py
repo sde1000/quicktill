@@ -1,6 +1,6 @@
 from . import td, ui, tillconfig, payment
 from decimal import Decimal
-from .models import Delivery,VatBand,Business,Transline,Transaction
+from .models import Delivery, VatBand, Business, Transline, Transaction
 from .models import zero,penny
 from . import pdrivers
 
@@ -99,25 +99,26 @@ def print_sessioncountup(s):
         d.printline("  Ended %s"%ui.formattime(s.endtime))
         d.printline()
         d.printline("Amounts registered:")
-        for paytype,total in s.payment_totals:
-            d.printline("%s: %s"%(paytype.description,tillconfig.fc(total)))
+        for paytype, total in s.payment_totals:
+            d.printline("%s: %s" % (paytype.description, tillconfig.fc(total)))
         d.printline()
         # Now go through the current payment methods printing out their
         # input fields, with countup totals if necessary
-        d.printline("",underline=1)
+        d.printline("", underline=1)
         for pm in tillconfig.all_payment_methods:
-            for name,validator,print_fields in pm.total_fields:
+            for name, validator, print_fields in pm.total_fields:
                 for i in print_fields if print_fields else []:
                     d.printline("{:>10}".format(i))
                     d.printline()
-                if print_fields: d.printline("",underline=1)
+                if print_fields:
+                    d.printline("", underline=1)
                 if len(pm.total_fields)>1:
-                    d.printline("{} {}".format(pm.description,name),
-                                     colour=1,emph=1)
+                    d.printline("{} {}".format(pm.description, name),
+                                colour=1, emph=1)
                 else:
-                    d.printline(pm.description,colour=1,emph=1)
+                    d.printline(pm.description, colour=1, emph=1)
                 d.printline()
-                d.printline("",underline=1)
+                d.printline("", underline=1)
         d.printline("Enter totals into till using")
         d.printline("management menu option 1,3.")
 
@@ -144,15 +145,15 @@ def print_sessiontotals(s):
             pms.append(payment.methods[pt])
 
     with driver as d:
-        d.printline("\t%s"%tillconfig.pubname,emph=1)
-        d.printline("\tSession %d"%s.id,colour=1)
-        d.printline("\t%s"%ui.formatdate(s.date),colour=1)
-        d.printline("Started %s"%ui.formattime(s.starttime))
+        d.printline("\t%s" % tillconfig.pubname, emph=1)
+        d.printline("\tSession %d" % s.id, colour=1)
+        d.printline("\t%s" % ui.formatdate(s.date), colour=1)
+        d.printline("Started %s" % ui.formattime(s.starttime))
         if s.endtime is None:
             d.printline("Session still in progress")
-            d.printline("Printed %s"%ui.formattime(now()))
+            d.printline("Printed %s" % ui.formattime(now()))
         else:
-            d.printline("  Ended %s"%ui.formattime(s.endtime))
+            d.printline("  Ended %s" % ui.formattime(s.endtime))
         d.printline("Till total:\t\tActual total:")
         ttt = Decimal("0.00")
         att = Decimal("0.00")
@@ -189,46 +190,44 @@ def print_sessiontotals(s):
         d.printline("\tPrinted %s" % ui.formattime(now()))
 
 def label_print_delivery(p,delivery):
-    d=td.s.query(Delivery).get(delivery)
-    stocklabel_print(p,d.items)
+    d = td.s.query(Delivery).get(delivery)
+    stocklabel_print(p, d.items)
 
-def stock_label(f,d):
+def stock_label(f, d):
     """Draw a stock label (d) on a PDF canvas (f).
-
     """
-    (width,height)=f.getPageSize()
-    fontsize=12
-    margin=12
-    pitch=fontsize+2
-    fontname="Times-Roman"
-    f.setFont(fontname,fontsize)
+    width, height = f.getPageSize()
+    fontsize = 12
+    margin = 12
+    pitch = fontsize + 2
+    fontname = "Times-Roman"
+    f.setFont(fontname, fontsize)
     def fits(s):
-        sw=f.stringWidth(s,fontname,fontsize)
-        return sw<(width-(2*margin))
-    y=height-margin-fontsize
-    f.drawCentredString(width/2,y,d.stocktype.format(fits))
-    y=y-pitch
-    f.drawCentredString(width/2,y,d.delivery.supplier.name)
-    y=y-pitch
-    f.drawCentredString(width/2,y,ui.formatdate(d.delivery.date))
-    y=y-pitch
+        sw = f.stringWidth(s, fontname, fontsize)
+        return sw < (width - (2 * margin))
+    y = height - margin - fontsize
+    f.drawCentredString(width / 2, y, d.stocktype.format(fits))
+    y = y - pitch
+    f.drawCentredString(width / 2, y, d.delivery.supplier.name)
+    y = y - pitch
+    f.drawCentredString(width / 2, y, ui.formatdate(d.delivery.date))
+    y = y - pitch
     f.drawCentredString(width / 2, y, d.description)
     if tillconfig.checkdigit_print:
-        y=y-pitch
-        f.drawCentredString(width/2,y,"Check digits: %s"%(d.checkdigits,))
-    f.setFont(fontname,y-margin)
-    f.drawCentredString(width/2,margin,str(d.id))
+        y = y - pitch
+        f.drawCentredString(width / 2, y, "Check digits: %s" % (d.checkdigits,))
+    f.setFont(fontname, y - margin)
+    f.drawCentredString(width / 2, margin, str(d.id))
     f.showPage()
 
-def stocklabel_print(p,sl):
+def stocklabel_print(p, sl):
     """Print stock labels for a list of stock numbers to the specified
     printer.
-
     """
     td.s.add_all(sl)
     with p as d:
         for sd in sl:
-            stock_label(d,sd)
+            stock_label(d, sd)
 
 def print_restock_list(rl):
     """
@@ -237,25 +236,24 @@ def print_restock_list(rl):
 
     We can't assume that any of these objects are in the current
     session.
-
     """
     with driver as d:
-        d.printline("\t%s"%tillconfig.pubname,emph=1)
+        d.printline("\t%s" % tillconfig.pubname, emph=1)
         d.printline("\tRe-stock list")
-        d.printline("\tPrinted %s"%ui.formattime(now()))
+        d.printline("\tPrinted %s" % ui.formattime(now()))
         d.printline()
-        for sl,sm in rl:
+        for sl, sm in rl:
             td.s.add(sl)
-            d.printline("%s:"%sl.name)
-            d.printline("%d/%d displayed"%(sl.ondisplay,sl.capacity))
-            for item,move,newdisplayqty,stockqty_after_move in sm:
+            d.printline("%s:" % sl.name)
+            d.printline("%d/%d displayed" % (sl.ondisplay, sl.capacity))
+            for item, move, newdisplayqty, stockqty_after_move in sm:
                 td.s.add(item)
-                if move>0:
-                    d.printline(" %d from item %d leaving %d"%(
-                        move,item.id,stockqty_after_move))
-                if move<0:
-                    d.printline(" %d to item %d making %d"%(
-                        -move,item.id,stockqty_after_move),colour=1)
+                if move > 0:
+                    d.printline(" %d from item %d leaving %d" % (
+                        move, item.id, stockqty_after_move))
+                if move < 0:
+                    d.printline(" %d to item %d making %d" % (
+                        -move, item.id, stockqty_after_move), colour=1)
         d.printline()
         d.printline("\tEnd of list")
 
