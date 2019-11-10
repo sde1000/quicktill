@@ -27,6 +27,14 @@ There are database changes this release.  These changes are not
 backward-compatible to v15, so install the new version before making
 the changes.
 
+Modifiers declared in the configuration file must be updated:
+
+ * if you refer to `sale.stocktype.unit_id`, refer to
+   `sale.stocktype.unit.name` instead.
+
+ * if you refer to `sale.stocktype.saleprice_units`, refer to
+   `sale.stocktype.unit.units_per_item` instead.
+
 To upgrade the database:
 
   - run psql and give the following commands to the database:
