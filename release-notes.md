@@ -9,7 +9,8 @@ What's new:
  * session notes table has been removed and replaced with 'accinfo'
    column in sessions table; this is a simplification
 
- * "link to accounts" buttons in the web interface!
+ * "link to accounts" buttons in the web interface for sessions and
+   deliveries!
 
  * the way StockType.saleprice_units is handled has changed: this is
    now part of the units table.  This makes defining new types of wine
@@ -18,6 +19,9 @@ What's new:
 
  * the StockUnits table is now a list of defaults for entering new
    stock; actual stock sizes have moved to the StockItems table.
+
+ * the code to migrate from the old permissions system has been
+   removed.
 
 There are database changes this release.  These changes are not
 backward-compatible to v15, so install the new version before making
@@ -166,8 +170,19 @@ ALTER TABLE stockunits
 ALTER TABLE stockunits
       ALTER COLUMN id DROP DEFAULT;
 
+/* Remove old permissions table */
+
+DROP TABLE permission_grants;
+
 COMMIT;
 ```
+
+  - run "runtill checkdb" to check that no other database changes are
+    required.
+
+After installing this version, you may find it useful to set the
+"merge" flag on wine bottles and soft drink carton stockunits, and
+remove stockunits for cases of wine and soft drink cartons.
 
 Upgrade v14.x to v15
 --------------------

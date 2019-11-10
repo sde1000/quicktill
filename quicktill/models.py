@@ -504,10 +504,6 @@ class User(Base):
                       doc="Terminal most recently used by this user")
     message = Column(String(), nullable=True,
                      doc="Message to present to user on their next keypress")
-    # XXX remove "old_permissions" in release 16, after all existing
-    # permission grants have been migrated to groups
-    old_permissions = relationship("Permission", secondary="permission_grants",
-                                   backref="users")
     groups = relationship("Group", secondary="group_grants", backref="users")
     permissions = relationship(
         "Permission",
@@ -554,17 +550,6 @@ class Permission(Base):
                 doc="Name of the permission")
     description = Column(String(), nullable=False,
                          doc="Brief description of the permission")
-
-# There is no need to access this table directly; it is handled through
-# User.old_permissions and Permission.users
-# XXX remove in release 16
-permission_grants_table = Table(
-    'permission_grants', Base.metadata,
-    Column('user', Integer, ForeignKey('users.id'), primary_key=True),
-    Column('permission', String(),
-           ForeignKey('permissions.id', ondelete='CASCADE'),
-           primary_key=True)
-)
 
 class Group(Base):
     """A group of permissions

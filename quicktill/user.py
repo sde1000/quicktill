@@ -138,73 +138,6 @@ class permission_required:
         permission_check.allowed = allowed
         return permission_check
 
-# Subcommand to migrate existing explicit permission grants to groups.
-# XXX remove in release 16
-class migrate_permissions(cmdline.command):
-    """Migrate user permissions from v14 to v15
-    """
-    command = "migrate-permissions"
-    help = "migrate user permissions from v14 to v15"
-
-    @staticmethod
-    def run(args):
-        # Step 0: check that groups exist in the config file
-        if not group.all_groups:
-            log.error("no legacy groups defined in config; has migration "
-                      "already been done?")
-            return 1
-        with td.orm_session():
-            # Step 1: ensure all known permission exist in the database
-            for p, d in action_descriptions.items():
-                td.s.merge(Permission(id=p, description=d))
-            td.s.flush()
-            # Step 2: create or update groups in the database based on
-            # group definitions from the config file
-            for g in group.all_groups.values():
-                dbgroup = td.s.merge(
-                    Group(id=g.name, description=g.name))
-                for permission in g.members:
-                    dbperm = td.s.query(Permission).get(permission)
-                    if not dbperm:
-                        log.error(
-                            "permission %s not present in database - it may be "
-                            "declared in an optional module.  Re-run using "
-                            "a different configuration, eg. -c mainbar",
-                            permission)
-                        td.s.rollback()
-                        return 1
-                    dbgroup.permissions.append(
-                        td.s.query(Permission).get(permission))
-            td.s.flush()
-            # Step 3: add users to groups based on existing permission grants
-            for u in td.s.query(User).all():
-                for g in group.all_groups.keys():
-                    gperm = td.s.query(Permission).get(g)
-                    if gperm in u.old_permissions:
-                        u.groups.append(td.s.query(Group).get(g))
-            td.s.flush()
-
-            # Step 4: remove groups from permissions table and
-            # existing permission grants
-            for g in group.all_groups.keys():
-                gperm = td.s.query(Permission).get(g)
-                if gperm:
-                    td.s.delete(gperm)
-            td.s.flush()
-            td.s.expunge_all() # otherwise deleted group permissions
-                               # will still be present in
-                               # u.old_permissions - the model doesn't know
-                               # about the delete cascade
-
-            # Step 5: convert permission grants to group grants
-            for u in td.s.query(User).all():
-                pset = set(p.id for p in u.permissions)
-                for p in u.old_permissions:
-                    if p.id not in pset:
-                        dbgroup = td.s.merge(Group(id=p.id, description=p.description))
-                        dbgroup.permissions.append(p)
-                        u.groups.append(dbgroup)
-
 _permissions_checked = False
 def _check_permissions():
     """Check that all permissions exist, and assign to default groups
@@ -236,36 +169,6 @@ def _check_permissions():
                 dbgroup.permissions.append(dbperm)
     td.s.flush()
     _permissions_checked = True
-
-# This is now deprecated and should show a warning on startup when any
-# groups are created.  XXX remove for release 16.
-class group:
-    """A group of permissions.
-
-    Groups always store their contents as a set, even if they are
-    passed other groups.  Groups cannot refer to themselves.
-    """
-    all_groups = {}
-
-    def __new__(cls, name, *args, **kwargs):
-        # Prevent creation of multiple groups with the same name -
-        # merge them instead.
-        if name in group.all_groups:
-            return group.all_groups[name]
-        self = object.__new__(cls)
-        group.all_groups[name] = self
-        return self
-
-    def __init__(self, name, description, members=[]):
-        log.warning("legacy group \"%s\" present in config file", name)
-        self.name = name
-        if not hasattr(self, 'members'):
-            self.members = set()
-        for m in members:
-            if m in group.all_groups:
-                self.members.update(group.all_groups[m].members)
-            else:
-                self.members.add(m)
 
 def current_dbuser():
     user = ui.current_user()
