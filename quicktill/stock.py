@@ -294,7 +294,7 @@ class stockpicker(ui.dismisspopup):
                            .options(undefer('remaining'))[:100]
         f = ui.tableformatter(' r l c ')
         sl = [ (f(s.id, s.stocktype.format(), "{} {}s".format(
-            s.remaining, s.unit.name)),
+            s.remaining, s.stocktype.unit.name)),
                 self.item_chosen, (s.id,))
                for s in items]
         ui.menu(sl, title=self.title)
