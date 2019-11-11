@@ -87,12 +87,12 @@ INSERT INTO unittypes (unit, description, name, item_name, item_name_plural, uni
        ('softml', 'Soft drink (cartons)', 'ml', 'pint', 'pints', 568);
 UPDATE stocktypes
        SET unit = 'wineml'
-       WHERE saleprice_units=750;
+       WHERE saleprice_units in (250, 750);
 UPDATE stocktypes
        SET unit = 'softml'
        WHERE saleprice_units=568;
 UPDATE stockunits
-       SET unit='wineml' WHERE size IN (750, 4500, 9000);
+       SET unit='wineml' WHERE size IN (750, 4500, 9000, 20000);
 UPDATE stockunits
        SET unit='softml' WHERE size IN (1000, 6000, 8000, 12000);
 DELETE FROM unittypes WHERE unit='ml';
