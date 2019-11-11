@@ -1,3 +1,41 @@
+quicktill (16.0) stable; urgency=low
+
+  * New release 16.0
+
+  * Fix Xero URL for bills
+
+  * Fix annotate stock popup
+
+  * Command to de-duplicate stocktypes
+
+  * Better repr() for stocktypes
+
+  * Update migration script to cope with more wine sizes
+
+  * Add note about updating modifers to release notes
+
+  * Update emf2018 data for new schema
+
+  * Remove migration code for old permissions system
+
+  * Fix pricecheck popup
+
+  * PEP8 in printers module
+
+  * Major units update
+
+  * Bump Debian package version
+
+  * Add links to accounting system for sessions and deliveries
+
+  * Remove models.SessionNote and models.SessionNoteType
+
+  * Update release notes for v15
+
+  * Tidy up imports in models
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 11 Nov 2019 17:34:42 +0000
+
 quicktill (15.2) stable; urgency=low
 
   * New release 15.2
