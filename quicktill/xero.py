@@ -619,7 +619,7 @@ class XeroWebInfo:
         self.shortcode = shortcode
 
     def _url_for_id(self, id, doctype):
-        url = "/AccountsReceivable/View.aspx?InvoiceID={}".format(id)
+        url = "/{}/View.aspx?InvoiceID={}".format(doctype, id)
         if self.shortcode:
             url = "/organisationlogin/default.aspx?shortcode={}"\
                   "&redirecturl={}".format(self.shortcode, url)
