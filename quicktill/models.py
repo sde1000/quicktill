@@ -1449,8 +1449,9 @@ class StockType(Base):
     def __str__(self):
         return "%s %s" % (self.manufacturer, self.name)
     def __repr__(self):
-        return "<StockType(%s,'%s','%s')>" % (
-            self.id, self.manufacturer, self.name)
+        return "StockType({}, '{}', '{}', {}, {}, {}, {})".format(
+            self.id, self.manufacturer, self.name, self.abv, self.dept_id,
+            self.unit_id, self.saleprice)
 
     @property
     def abvstr(self):
