@@ -39,7 +39,8 @@ To upgrade the database:
 
   - run psql and give the following commands to the database:
 
-```BEGIN;
+```
+BEGIN;
 
 /* sessions / session_notes table changes */
 ALTER TABLE sessions
@@ -221,7 +222,8 @@ To upgrade the database:
 
   - run psql and give the following commands to the database:
 
-```BEGIN;
+```
+BEGIN;
 ALTER TABLE transactions
       ADD COLUMN discount_policy character varying;
 
@@ -260,7 +262,8 @@ To upgrade the database:
 
  - run psql and give the following commands to the database:
 
-```BEGIN;
+```
+BEGIN;
 -- Ensure all amounts in transaction lines are non-negative
 SET session_replication_role = replica;
 UPDATE translines SET items=-items, amount=-amount WHERE amount<0;
