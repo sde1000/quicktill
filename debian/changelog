@@ -1,3 +1,13 @@
+quicktill (16.1) stable; urgency=low
+
+  * New release 16.1
+
+  * Fix reference to unit name in usestock
+
+  * Fix formatting in release notes
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 12 Nov 2019 14:52:19 +0000
+
 quicktill (16.0) stable; urgency=low
 
   * New release 16.0

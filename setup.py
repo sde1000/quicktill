@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='quicktill16',
-      version='16.0',
+      version='16.1',
       description='Quick till and stock control library',
       author='Stephen Early',
       author_email='steve@assorted.org.uk',
