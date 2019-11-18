@@ -1701,8 +1701,10 @@ class StockAnnotation(Base):
     text = Column(String(), nullable=False)
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this annotation")
+    # XXX change this cascade to a passive_delete in a future release
+    # where we are making schema changes
     stockitem = relationship(StockItem, backref=backref(
-        'annotations', order_by=time))
+        'annotations', cascade='all,delete', order_by=time))
     type = relationship(AnnotationType)
     user = relationship(User, backref=backref("annotations", order_by=time))
     def __repr__(self):

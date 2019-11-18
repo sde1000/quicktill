@@ -287,6 +287,27 @@ class ModelTest(unittest.TestCase):
         self.s.commit()
         self.assertEqual(beer.remaining, Decimal("143.0"))
 
+    def test_annotation_delete_cascade(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        user = self.template_user_setup()
+        atype = models.AnnotationType(id='test', description='test')
+        delivery = models.Delivery(
+            date=datetime.date.today(),
+            supplier=models.Supplier(name="Test supplier"),
+            docnumber="test")
+        item = models.StockItem(
+            delivery=delivery,
+            stocktype=beer,
+            description="Firkin",
+            size=72)
+        annotation = models.StockAnnotation(
+            stockitem=item, type=atype, user=user, text='test')
+        self.s.add(annotation)
+        self.s.commit()
+        self.s.delete(item)
+        self.s.commit()
+
     def template_user_setup(self):
         user = models.User(fullname="A User", shortname="A", enabled=True)
         permission_a = models.Permission(id="frob", description="Do Something")
