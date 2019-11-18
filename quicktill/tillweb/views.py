@@ -1323,13 +1323,9 @@ def session_sales_pie_chart(request, info, session, sessionid):
         p.set_linewidth(0.5)
         p.set_joinstyle("bevel")
     response = HttpResponse(content_type="image/svg+xml")
-    # XXX the use of the io.StringIO wrapper is temporary until django's
-    # HttpResponse object is fixed, possibly in django-1.10
-    # See https://code.djangoproject.com/ticket/25576
-    wrapper = io.StringIO()
+    wrapper = io.TextIOWrapper(response, encoding="utf-8")
     fig.savefig(wrapper, format="svg", transparent=True)
     plt.close(fig)
-    response.write(wrapper.getvalue())
     return response
 
 @tillweb_view
@@ -1350,13 +1346,9 @@ def session_users_pie_chart(request, info, session, sessionid):
         p.set_linewidth(0.5)
         p.set_joinstyle("bevel")
     response = HttpResponse(content_type="image/svg+xml")
-    # XXX the use of the io.StringIO wrapper is temporary until django's
-    # HttpResponse object is fixed, possibly in django-1.10
-    # See https://code.djangoproject.com/ticket/25576
-    wrapper = io.StringIO()
+    wrapper = io.TextIOWrapper(response, encoding="utf-8")
     fig.savefig(wrapper, format="svg", transparent=True)
     plt.close(fig)
-    response.write(wrapper.getvalue())
     return response
 
 class WasteReportForm(forms.Form):
