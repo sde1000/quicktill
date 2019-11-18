@@ -38,7 +38,7 @@ $(document).ready(function(){
 </script>
 
 {% if may_create_plu %}
-<a href="{% url "tillweb-create-plu" pubname=pubname %}">Add new price lookup</a>
+<a class="btn btn-primary" href="{% url "tillweb-create-plu" pubname=pubname %}">Add new price lookup</a>
 {% endif %}
 
 {% endblock %}
