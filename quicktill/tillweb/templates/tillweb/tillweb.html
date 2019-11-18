@@ -44,9 +44,13 @@
 	  <ul class="navbar-nav flex-column w-100 justify-content-between">
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
 	    <li class="nav-item"><a class="nav-link "href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a></li>
-	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
-	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-stocksearch" pubname=pubname %}">Stock</a>
-	    <li class="nav-item" ><a class="nav-link" href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Stock</a>
+	      <div class="dropdown-menu">
+		<a class="dropdown-item" href="{% url "tillweb-stocksearch" pubname=pubname %}">Search</a>
+		<a class="dropdown-item" href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a>
+	      </div>
+	    </li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-stocklines" pubname=pubname %}">Stock lines</a></li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-locations" pubname=pubname %}">Locations</a></li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-plus" pubname=pubname %}">Price lookups</a></li>
