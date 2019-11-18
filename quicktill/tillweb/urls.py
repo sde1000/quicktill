@@ -1,87 +1,80 @@
-from django.conf.urls import include, url
+from django.urls import include, path, re_path
 from quicktill.tillweb.views import *
 
 tillurls = [
-    url(r'^$', pubroot, name="tillweb-pubroot"),
+    path('', pubroot, name="tillweb-pubroot"),
 
-    url(r'^session/$', sessionfinder, name="tillweb-sessions"),
-    url(r'^session/(?P<sessionid>\d+)/', include([
-        url(r'^$', session, name="tillweb-session"),
-        url(r'^spreadsheet.ods$', session_spreadsheet,
-            name="tillweb-session-spreadsheet"),
-        url(r'^takings-by-dept.html$', session_takings_by_dept,
-            name="tillweb-session-takings-by-dept"),
-        url(r'^takings-by-user.html$', session_takings_by_user,
-            name="tillweb-session-takings-by-user"),
-        url(r'^discounts.html$', session_discounts,
-            name="tillweb-session-discounts"),
-        url(r'^stock-sold.html$', session_stock_sold,
-            name="tillweb-session-stock-sold"),
-        url(r'^transactions.html$', session_transactions,
-            name="tillweb-session-transactions"),
-        url(r'^sales-pie-chart.svg$', session_sales_pie_chart,
-            name="tillweb-session-sales-pie-chart"),
-        url(r'^users-pie-chart.svg$', session_users_pie_chart,
-            name="tillweb-session-users-pie-chart"),
-        url(r'^dept(?P<dept>\d+)/$', sessiondept,
-            name="tillweb-session-department"),
+    path('session/', sessionfinder, name="tillweb-sessions"),
+    path('session/<int:sessionid>/', include([
+        path('', session, name="tillweb-session"),
+        path('spreadsheet.ods', session_spreadsheet,
+             name="tillweb-session-spreadsheet"),
+        path('takings-by-dept.html', session_takings_by_dept,
+             name="tillweb-session-takings-by-dept"),
+        path('takings-by-user.html', session_takings_by_user,
+             name="tillweb-session-takings-by-user"),
+        path('discounts.html', session_discounts,
+             name="tillweb-session-discounts"),
+        path('stock-sold.html', session_stock_sold,
+             name="tillweb-session-stock-sold"),
+        path('transactions.html', session_transactions,
+             name="tillweb-session-transactions"),
+        path('sales-pie-chart.svg', session_sales_pie_chart,
+             name="tillweb-session-sales-pie-chart"),
+        path('users-pie-chart.svg', session_users_pie_chart,
+             name="tillweb-session-users-pie-chart"),
+        path('dept<int:dept>/', sessiondept,
+             name="tillweb-session-department"),
         ])),
 
-    url(r'^transaction/deferred/$', transactions_deferred,
-        name="tillweb-deferred-transactions"),
-    url(r'^transaction/(?P<transid>\d+)/$', transaction,
-        name="tillweb-transaction"),
+    path('transaction/deferred/', transactions_deferred,
+         name="tillweb-deferred-transactions"),
+    path('transaction/<int:transid>/', transaction, name="tillweb-transaction"),
 
-    url(r'^transline/(?P<translineid>\d+)/$', transline,
-        name="tillweb-transline"),
+    path('transline/<int:translineid>/', transline, name="tillweb-transline"),
 
-    url(r'^supplier/$', supplierlist, name="tillweb-suppliers"),
-    url(r'^supplier/(?P<supplierid>\d+)/$', supplier,
-        name="tillweb-supplier"),
+    path('supplier/', supplierlist, name="tillweb-suppliers"),
+    path('supplier/<int:supplierid>/', supplier, name="tillweb-supplier"),
 
-    url(r'^delivery/$', deliverylist, name="tillweb-deliveries"),
-    url(r'^delivery/(?P<deliveryid>\d+)/$', delivery,
-        name="tillweb-delivery"),
+    path('delivery/', deliverylist, name="tillweb-deliveries"),
+    path('delivery/<int:deliveryid>/', delivery, name="tillweb-delivery"),
 
-    url(r'^stocktype/$', stocktypesearch, name="tillweb-stocktype-search"),
-    url(r'^stocktype/(?P<stocktype_id>\d+)/$', stocktype,
-        name="tillweb-stocktype"),
+    path('stocktype/', stocktypesearch, name="tillweb-stocktype-search"),
+    path('stocktype/<int:stocktype_id>/', stocktype, name="tillweb-stocktype"),
 
-    url(r'^stock/$', stocksearch, name="tillweb-stocksearch"),
-    url(r'^stock/(?P<stockid>\d+)/$', stock,
-        name="tillweb-stock"),
+    path('stock/', stocksearch, name="tillweb-stocksearch"),
+    path('stock/<int:stockid>/', stock, name="tillweb-stock"),
 
-    url(r'^stockline/$', stocklinelist, name="tillweb-stocklines"),
-    url(r'^stockline/(?P<stocklineid>\d+)/$', stockline,
-        name="tillweb-stockline"),
+    path('stockline/', stocklinelist, name="tillweb-stocklines"),
+    path('stockline/<int:stocklineid>/', stockline, name="tillweb-stockline"),
 
-    url(r'^plu/$', plulist, name="tillweb-plus"),
-    url(r'^plu/(?P<pluid>\d+)/$', plu, name="tillweb-plu"),
-    url(r'^plu/new/$', create_plu, name="tillweb-create-plu"),
+    path('plu/', plulist, name="tillweb-plus"),
+    path('plu/<int:pluid>/', plu, name="tillweb-plu"),
+    path('plu/new/', create_plu, name="tillweb-create-plu"),
 
-    url(r'^location/$', locationlist, name="tillweb-locations"),
-    url(r'^location/(?P<location>[\w\- ]+)/$', location,
-        name="tillweb-location"),
+    path('location/', locationlist, name="tillweb-locations"),
+    re_path(r'^location/(?P<location>[\w\- ]+)/$', location,
+            name="tillweb-location"),
 
-    url(r'^department/$', departmentlist, name="tillweb-departments"),
-    url(r'^department/(?P<departmentid>\d+)/$', department,
-        name="tillweb-department"),
-    url(r'^department/(?P<departmentid>\d+)/spreadsheet.ods$', department,
-        {'as_spreadsheet': True}, name="tillweb-department-sheet"),
+    path('department/', departmentlist, name="tillweb-departments"),
+    path('department/<int:departmentid>/', department,
+         name="tillweb-department"),
+    path('department/<int:departmentid>/spreadsheet.ods', department,
+         {'as_spreadsheet': True}, name="tillweb-department-sheet"),
 
-    url(r'^stockcheck/$', stockcheck, name="tillweb-stockcheck"),
+    path('stockcheck/', stockcheck, name="tillweb-stockcheck"),
 
-    url(r'^user/$', userlist, name="tillweb-till-users"),
-    url(r'^user/(?P<userid>\d+)/$', user, name="tillweb-till-user"),
+    path('user/', userlist, name="tillweb-till-users"),
+    path('user/<int:userid>/', user, name="tillweb-till-user"),
 
-    url(r'^group/$', grouplist, name="tillweb-till-groups"),
-    url(r'^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
+    path('group/', grouplist, name="tillweb-till-groups"),
+    re_path('^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
 
-    url(r'^reports/$', reportindex, name="tillweb-reports"),
+    path('reports/', reportindex, name="tillweb-reports"),
 ]
 
 urls = [
     # Index page
-    url(r'^$', publist, name="tillweb-publist"),
-    url(r'^(?P<pubname>[\w\-]+)/', include(tillurls)),
+    path('', publist, name="tillweb-publist"),
+    re_path(r'^(?P<pubname>[\w\-]+)/', include(tillurls)),
 ]

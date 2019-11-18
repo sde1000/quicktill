@@ -488,7 +488,7 @@ def session(request, info, session, sessionid):
         .options(undefer('total'),
                  undefer('closed_total'),
                  undefer('actual_total'))\
-        .get(int(sessionid))
+        .get(sessionid)
     if not s:
         raise Http404
 
@@ -508,16 +508,14 @@ def session_spreadsheet(request, info, session, sessionid):
         .query(Session)\
         .options(undefer('transactions.total'),
                  joinedload('transactions.payments'))\
-        .get(int(sessionid))
+        .get(sessionid)
     if not s:
         raise Http404
     return spreadsheets.session(session, s, info.tillname)
 
 @tillweb_view
 def session_takings_by_dept(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
 
@@ -525,9 +523,7 @@ def session_takings_by_dept(request, info, session, sessionid):
 
 @tillweb_view
 def session_takings_by_user(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
 
@@ -535,9 +531,7 @@ def session_takings_by_user(request, info, session, sessionid):
 
 @tillweb_view
 def session_discounts(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
 
@@ -577,10 +571,8 @@ def session_discounts(request, info, session, sessionid):
             })
 
 @tillweb_view
-def session_stock_sold(request,info,session,sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+def session_stock_sold(request, info, session, sessionid):
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
 
@@ -593,7 +585,7 @@ def session_transactions(request, info, session, sessionid):
         .options(undefer('transactions.total'),
                  undefer('transactions.discount_total'),
                  joinedload('transactions.payments'))\
-        .get(int(sessionid))
+        .get(sessionid)
     if not s:
         raise Http404
 
@@ -601,15 +593,11 @@ def session_transactions(request, info, session, sessionid):
 
 @tillweb_view
 def sessiondept(request, info, session, sessionid, dept):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
 
-    dept = session\
-           .query(Department)\
-           .get(int(dept))
+    dept = session.query(Department).get(dept)
     if not dept:
         raise Http404
 
@@ -668,7 +656,7 @@ def transaction(request, info, session, transid):
                  joinedload('lines.user'),
                  undefer('total'),
                  undefer('discount_total'))\
-        .get(int(transid))
+        .get(transid)
     if not t:
         raise Http404
 
@@ -698,7 +686,7 @@ def transline(request, info, session, translineid):
          .options(joinedload('stockref').joinedload('stockitem')
                   .joinedload('stocktype'),
                   joinedload('user'))\
-         .get(int(translineid))
+         .get(translineid)
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
@@ -718,7 +706,7 @@ def supplierlist(request, info, session):
 def supplier(request, info, session, supplierid):
     s = session\
         .query(Supplier)\
-        .get(int(supplierid))
+        .get(supplierid)
     if not s:
         raise Http404
 
@@ -756,7 +744,7 @@ def delivery(request, info, session, deliveryid):
                  .joinedload('unit'),
                  joinedload('items').joinedload('stockline'),
                  undefer_qtys('items'))\
-        .get(int(deliveryid))
+        .get(deliveryid)
     if not d:
         raise Http404
     return ('delivery.html', {
@@ -802,7 +790,7 @@ def stocktypesearch(request, info, session):
 def stocktype(request, info, session, stocktype_id):
     s = session\
         .query(StockType)\
-        .get(int(stocktype_id))
+        .get(stocktype_id)
     if not s:
         raise Http404
     include_finished = request.GET.get("show_finished", "off") == "on"
@@ -865,7 +853,7 @@ def stock(request, info, session, stockid):
                  subqueryload('out').subqueryload('transline')
                  .subqueryload('transaction'),
                  undefer_group('qtys'))\
-        .get(int(stockid))
+        .get(stockid)
     if not s:
         raise Http404
     return ('stock.html', {
@@ -910,7 +898,7 @@ def stockline(request, info, session, stocklineid):
                  .joinedload('unit'),
                  joinedload('stockonsale').joinedload('delivery'),
                  undefer_qtys('stockonsale'))\
-        .get(int(stocklineid))
+        .get(stocklineid)
     if not s:
         raise Http404
     return ('stockline.html', {
@@ -957,9 +945,7 @@ class PLUForm(forms.Form):
 
 @tillweb_view
 def plu(request, info, session, pluid):
-    p = session\
-        .query(PriceLookup)\
-        .get(int(pluid))
+    p = session.query(PriceLookup).get(pluid)
     if not p:
         raise Http404
 
@@ -1056,7 +1042,7 @@ def departmentlist(request, info, session):
 def department(request, info, session, departmentid, as_spreadsheet=False):
     d = session\
         .query(Department)\
-        .get(int(departmentid))
+        .get(departmentid)
     if d is None:
         raise Http404
 
@@ -1175,9 +1161,7 @@ class EditUserForm(forms.Form):
 
 @tillweb_view
 def user(request, info, session, userid):
-    u = session\
-        .query(User)\
-        .get(int(userid))
+    u = session.query(User).get(userid)
     if not u:
         raise Http404
 
@@ -1272,9 +1256,7 @@ class EditGroupForm(forms.Form):
 
 @tillweb_view
 def group(request, info, session, groupid):
-    g = session\
-        .query(Group)\
-        .get(groupid)
+    g = session.query(Group).get(groupid)
     if not g:
         raise Http404
 
@@ -1325,9 +1307,7 @@ import matplotlib.pyplot as plt
 
 @tillweb_view
 def session_sales_pie_chart(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
     dt = s.dept_totals
@@ -1354,9 +1334,7 @@ def session_sales_pie_chart(request, info, session, sessionid):
 
 @tillweb_view
 def session_users_pie_chart(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .get(int(sessionid))
+    s = session.query(Session).get(sessionid)
     if not s:
         raise Http404
     ut = s.user_totals
