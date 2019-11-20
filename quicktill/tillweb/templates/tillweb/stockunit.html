@@ -1,0 +1,29 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — item size "{{stockunit.name}}"{% endblock %}
+
+{% block tillcontent %}
+
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <p>If you select the "merge" option, then entering a quantity of
+    more than one when recording a delivery will create a single,
+    larger stock item instead of multiple items of this size.</p>
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+    Update
+  </button>
+  <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
+    Delete
+  </button>
+</form>
+{% else %}
+<table class="kvtable">
+<tr><th>Description</th><td>{{stockunit.name}}</td></tr>
+<tr><th>Unit</th><td><a href="{{stockunit.unit.get_absolute_url}}">{{stockunit.unit.description}}</a></td></tr>
+<tr><th>Size</th><td>{{stockunit.size}} {{stockunit.unit.name}}</td></tr>
+<tr><th>Merge?</th><td>{% if stockunit.merge %}Yes{% else %}No{% endif %}</td></tr>
+</table>
+{% endif %}
+
+{% endblock %}

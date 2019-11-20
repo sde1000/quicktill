@@ -1,0 +1,58 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Units{% endblock %}
+
+{% block tillcontent %}
+
+<p>This table defines the units in which the system counts the amount
+  of stock held.  Each <a href="{% url "tillweb-stocktype-search" pubname=pubname %}">stock type</a> specifies which one of these will be used for that type of stock.</p>
+
+<p>The "base unit" is the physical unit used by the system to count
+  how much stock we have: when we have "1" of something, this is how
+  much we have.</p>
+
+<p>It isn't always sensible to price stock using base units.  For
+  example, in the UK wine is generally bought in 75cl bottles
+  (although sometimes also in 1.5l bottles, or 5l, 10l or 20l
+  bags-in-boxes), but is sold in 125ml, 175ml or 250ml glasses.  175ml
+  doesn't divide exactly into 75cl so we can't use "bottle" as the
+  base unit; we use "ml" instead.  When we're setting a price for
+  wine, though, we don't want to price per ml, we want to price per
+  bottle.  This is what the "base units per item" and "item name"
+  columns are for: the price set for a stock type is
+  per <em>item</em>, not per base unit.</p>
+
+<table class="table table-striped table-hover" id="unitlist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Description</th>
+    <th scope="col">Base unit</th>
+    <th scope="col">Base units per item</th>
+    <th scope="col">Item name</th>
+    <th scope="col">Item name plural</th>
+  </tr>
+</thead>
+<tbody>
+{% for u in units %}
+<tr>
+<td><a href="{{u.get_absolute_url}}">{{u.description}}</a></td>
+<td>{{u.name}}</td>
+<td>{{u.units_per_item}}</td>
+<td>{{u.item_name}}</td>
+<td>{{u.item_name_plural}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#unitlist").tablesorter();
+});
+</script>
+
+{% if may_create_unit %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-unit" pubname=pubname %}">Add new unit</a>
+{% endif %}
+
+{% endblock %}

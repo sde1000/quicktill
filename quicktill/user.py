@@ -865,6 +865,8 @@ class default_groups:
         "recall-any-trans",
         "apply-discount",
         "print-price-list",
+        "edit-unit",
+        "edit-stockunit",
     ])
 
     groups = [

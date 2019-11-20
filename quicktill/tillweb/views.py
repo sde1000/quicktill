@@ -862,6 +862,194 @@ def stock(request, info, session, stockid):
     })
 
 @tillweb_view
+def units(request, info, session):
+    u = session.query(Unit).order_by(Unit.description).all()
+    may_edit = info.user_has_perm("edit-unit")
+    return ('units.html', {
+        'units': u,
+        'nav': [("Units", info.reverse("tillweb-units"))],
+        'may_create_unit': may_edit,
+    })
+
+class UnitForm(forms.Form):
+    description = forms.CharField()
+    base_unit = forms.CharField()
+    base_units_per_item = forms.DecimalField(
+        min_value=min_quantity, max_digits=qty_max_digits,
+        decimal_places=qty_decimal_places, initial=1)
+    item_name = forms.CharField()
+    item_name_plural = forms.CharField()
+
+@tillweb_view
+def unit(request, info, session, unit_id):
+    u = session.query(Unit).get(unit_id)
+    if not u:
+        raise Http404
+
+    form = None
+    can_delete = False
+    if info.user_has_perm("edit-unit"):
+        initial = {
+            'description': u.description,
+            'base_unit': u.name,
+            'base_units_per_item': u.units_per_item,
+            'item_name': u.item_name,
+            'item_name_plural': u.item_name_plural,
+        }
+        if len(u.stocktypes) == 0 and len(u.stockunits) == 0:
+            can_delete = True
+        if request.method == "POST":
+            if can_delete and 'submit_delete' in request.POST:
+                messages.success(request, f"Unit '{u.description}' deleted.")
+                session.delete(u)
+                session.commit()
+                return HttpResponseRedirect(info.reverse("tillweb-units"))
+            form = UnitForm(request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                u.description = cd['description']
+                u.name = cd['base_unit']
+                u.units_per_item = cd['base_units_per_item']
+                u.item_name = cd['item_name']
+                u.item_name_plural = cd['item_name_plural']
+                session.commit()
+                messages.success(request, f"Unit '{u.description}' updated.")
+                return HttpResponseRedirect(u.get_absolute_url())
+        else:
+            form = UnitForm(initial=initial)
+
+    return ('unit.html', {
+        'tillobject': u,
+        'unit': u,
+        'form': form,
+        'can_delete': can_delete,
+    })
+
+@tillweb_view
+def create_unit(request, info, session):
+    if not info.user_has_perm("edit-unit"):
+        return HttpResponseForbidden("You don't have permission to create new units")
+
+    if request.method == "POST":
+        form = UnitForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            u = Unit(
+                description=cd['description'],
+                name=cd['base_unit'],
+                units_per_item=cd['base_units_per_item'],
+                item_name=cd['item_name'],
+                item_name_plural=cd['item_name_plural'])
+            session.add(u)
+            session.commit()
+            messages.success(request, f"Unit '{u.description}' created.")
+            return HttpResponseRedirect(u.get_absolute_url())
+    else:
+        form = UnitForm()
+
+    return ('new-unit.html', {
+        'nav': [("Units", info.reverse("tillweb-units")),
+                ("New", info.reverse("tillweb-create-unit"))],
+        'form': form,
+    })
+
+@tillweb_view
+def stockunits(request, info, session):
+    su = session.query(StockUnit)\
+                .join(Unit)\
+                .order_by(Unit.description, StockUnit.size)\
+                .all()
+    may_edit = info.user_has_perm("edit-stockunit")
+    return ('stockunits.html', {
+        'stockunits': su,
+        'nav': [("Item sizes", info.reverse("tillweb-stockunits"))],
+        'may_create_stockunit': may_edit,
+    })
+
+class StockUnitForm(forms.Form):
+    def __init__(self, units, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['unit'].choices = [
+            (u.id, f"{u.description} (base unit: {u.name})") for u in units]
+
+    description = forms.CharField()
+    unit = forms.ChoiceField()
+    size = forms.DecimalField(
+        label="Size in base units",
+        min_value=min_quantity, max_digits=qty_max_digits,
+        decimal_places=qty_decimal_places)
+    merge = forms.BooleanField(required=False)
+
+@tillweb_view
+def stockunit(request, info, session, stockunit_id):
+    su = session.query(StockUnit).get(stockunit_id)
+    if not su:
+        raise Http404
+
+    form = None
+    if info.user_has_perm("edit-stockunit"):
+        units = session.query(Unit).order_by(Unit.description).all()
+        initial = {
+            'description': su.name,
+            'unit': su.unit_id,
+            'size': su.size,
+            'merge': su.merge,
+        }
+        if request.method == "POST":
+            if 'submit_delete' in request.POST:
+                messages.success(request, f"Item size '{su.name}' deleted.")
+                session.delete(su)
+                session.commit()
+                return HttpResponseRedirect(info.reverse("tillweb-stockunits"))
+            form = StockUnitForm(units, request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                su.name = cd['description']
+                su.unit_id = cd['unit']
+                su.size = cd['size']
+                su.merge = cd['merge']
+                session.commit()
+                messages.success(request, f"Item size '{su.name}' updated.")
+                return HttpResponseRedirect(su.get_absolute_url())
+        else:
+            form = StockUnitForm(units, initial=initial)
+
+    return ('stockunit.html', {
+        'tillobject': su,
+        'stockunit': su,
+        'form': form,
+    })
+
+@tillweb_view
+def create_stockunit(request, info, session):
+    if not info.user_has_perm("edit-stockunit"):
+        return HttpResponseForbidden("You don't have permission to create new item sizes")
+
+    units = session.query(Unit).order_by(Unit.description).all()
+
+    if request.method == "POST":
+        form = StockUnitForm(units, request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            su = StockUnit(
+                name=cd['description'],
+                unit_id=cd['unit'],
+                size=cd['size'],
+                merge=cd['merge'])
+            session.add(su)
+            session.commit()
+            messages.success(request, f"Item size '{su.name}' created.")
+            return HttpResponseRedirect(su.get_absolute_url())
+    else:
+        form = StockUnitForm(units)
+
+    return ('new-stockunit.html', {
+        'nav': [("Item sizes", info.reverse("tillweb-stockunits")),
+                ("New", info.reverse("tillweb-create-stockunit"))],
+        'form': form,
+    })
+
+@tillweb_view
 def stocklinelist(request, info, session):
     regular = session\
               .query(StockLine)\

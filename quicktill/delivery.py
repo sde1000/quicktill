@@ -691,6 +691,22 @@ def updatesupplier():
     ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
             title="Edit Supplier")
 
+@user.permission_required('edit-unit', 'Add or edit a unit')
+def edit_unit():
+    """Add or edit a unit
+
+    This is a placeholder to ensure the permission is created.
+    """
+    pass
+
+@user.permission_required('edit-stockunit', 'Add or edit a stock unit')
+def edit_stockunit():
+    """Add or edit a stockunit
+
+    This is a placeholder to ensure the permission is created.
+    """
+    pass
+
 class DeliveryHooks(metaclass=InstancePluginMount):
     """Hooks for deliveries
 

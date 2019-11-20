@@ -45,6 +45,14 @@ tillurls = [
     path('stock/', stocksearch, name="tillweb-stocksearch"),
     path('stock/<int:stockid>/', stock, name="tillweb-stock"),
 
+    path('unit/', units, name="tillweb-units"),
+    path('unit/<int:unit_id>/', unit, name="tillweb-unit"),
+    path('unit/new/', create_unit, name="tillweb-create-unit"),
+
+    path('stockunit/', stockunits, name="tillweb-stockunits"),
+    path('stockunit/<int:stockunit_id>/', stockunit, name="tillweb-stockunit"),
+    path('stockunit/new/', create_stockunit, name="tillweb-create-stockunit"),
+
     path('stockline/', stocklinelist, name="tillweb-stocklines"),
     path('stockline/<int:stocklineid>/', stockline, name="tillweb-stockline"),
 

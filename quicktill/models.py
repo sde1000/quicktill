@@ -22,6 +22,10 @@ from decimal import Decimal
 money_max_digits = 10
 money_decimal_places = 2
 
+# Configuration of quantities
+qty_max_digits = 8
+qty_decimal_places = 1
+
 # Used for quantization of money
 zero = Decimal("0.{}".format("0" * money_decimal_places))
 penny = Decimal("0.{}1".format("0" * (money_decimal_places - 1)))
@@ -31,8 +35,12 @@ money = Numeric(money_max_digits, money_decimal_places)
 max_money = Decimal("9" * (money_max_digits - money_decimal_places)
                     + "."
                     + "9" * money_decimal_places)
-quantity = Numeric(8, 1)
-max_quantity = Decimal("9999999.9")
+
+quantity = Numeric(qty_max_digits, qty_decimal_places)
+min_quantity = Decimal("0." + "0" * (qty_decimal_places - 1) + "1")
+max_quantity = Decimal("9" * (qty_max_digits - qty_decimal_places)
+                       + "."
+                       + "9" * qty_decimal_places)
 
 metadata = MetaData()
 
@@ -1376,6 +1384,12 @@ class Unit(Base):
     # This may be a good place to put a stocktake_method column,
     # eg. "by item" or "by stocktype".
 
+    tillweb_viewname = "tillweb-unit"
+    tillweb_argname = "unit_id"
+    def tillweb_nav(self):
+        return [("Units", self.get_view_url("tillweb-units")),
+                (self.description, self.get_absolute_url())]
+
     def format_qty(self, qty):
         if qty < self.units_per_item:
             return "{} {}".format(qty, self.name)
@@ -1385,6 +1399,7 @@ class Unit(Base):
 
     def __str__(self):
         return "%s" % (self.name,)
+
     def __repr__(self):
         return "<Unit('%s','%s')>" % (self.id, self.name)
 
@@ -1406,7 +1421,14 @@ class StockUnit(Base):
     size = Column(quantity, nullable=False)
     merge = Column(Boolean, nullable=False, default=False,
                    server_default=literal(False))
-    unit = relationship(Unit)
+    unit = relationship(Unit, backref=backref('stockunits', order_by=size))
+
+    tillweb_viewname = "tillweb-stockunit"
+    tillweb_argname = "stockunit_id"
+    def tillweb_nav(self):
+        return [("Item sizes", self.get_view_url("tillweb-stockunits")),
+                (self.name, self.get_absolute_url())]
+
     def __repr__(self):
         return "<StockUnit('%s',%s)>" % (self.id, self.size)
     def __str__(self):
@@ -1427,7 +1449,8 @@ class StockType(Base):
     saleprice = Column(money, nullable=True) # inc VAT
     pricechanged = Column(DateTime, nullable=True) # Last time price was changed
     department = relationship(Department, lazy="joined")
-    unit = relationship(Unit, lazy="joined")
+    unit = relationship(Unit, lazy="joined",
+                        backref=backref("stocktypes", order_by=id))
 
     # XXX introduce the following constraint in a later version, along with
     # a script to de-duplicate stocktypes

@@ -4,7 +4,7 @@
 
 {% block tillcontent %}
 
-<h2>Regular stock lines</h2>
+<h2 id="regular">Regular stock lines</h2>
 
 <p>Regular stock lines can have at most one stock item on sale at any
   one time.  Finishing that stock item and putting another item on
@@ -43,7 +43,7 @@ $(document).ready(function(){
 });
 </script>
 
-<h2>Display stock lines</h2>
+<h2 id="display">Display stock lines</h2>
 
 <p>Display stock lines can have several stock items on sale at once.
   Moving from one stock item to the next is automatic; when one item
@@ -87,7 +87,7 @@ $(document).ready(function(){
 });
 </script>
 
-<h2>Continuous stock lines</h2>
+<h2 id="continuous">Continuous stock lines</h2>
 
 <p>Continuous stock lines never have any stock items explicitly on
   sale.  Instead, when a sale is made the till searches for stock of

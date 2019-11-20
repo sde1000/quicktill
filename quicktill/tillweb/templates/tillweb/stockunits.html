@@ -1,0 +1,64 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Item sizes{% endblock %}
+
+{% block tillcontent %}
+
+<p>When you enter a new stock item into a
+  <a href="{% url "tillweb-deliveries" pubname=pubname %}">delivery</a>,
+  you have to tell the system how large it is.  You do this by choosing a
+  size from this table.  The description and size become part of the
+  stock item; it's safe to delete entries from this table when they are
+  not being used.</p>
+
+<p>Each of the entries in this table only applies to stock types that
+  share the same
+  <a href="{% url "tillweb-units" pubname=pubname %}">Unit</a>.</p>
+
+<p>The table states how many <em>base units</em> of the Unit are in a
+  particular size of item.  For example, a firkin contains
+  72&nbsp;"pints" and a 1l soft drink carton contains 1000&nbsp;"ml".
+  The item sizes in the Units table are not referred to here; they are
+  only used when selling stock, not when buying it.</p>
+
+<p>When stock is sold on a continuous
+  <a href="{% url "tillweb-stocklines" pubname=pubname %}#continuous">stock line</a>,
+  it's only necessary to create a single stock item for it no matter how
+  much is being recorded in a delivery.  This will be done when the "merge"
+  option is chosen in this table.  For example, if a 1l soft drink carton
+  is 1000ml and its "merge" option is set, entering 7&nbsp;1l soft drink
+  cartons will create one stock item of size 7000ml, instead of 7 stock
+  items of size 1000ml each.</p>
+
+<table class="table table-striped table-hover" id="stockunitlist">
+<thead class="thead-light">
+  <tr>
+    <th scope="col">Description</th>
+    <th scope="col">Unit</th>
+    <th scope="col">Size</th>
+    <th scope="col">Merge?</th>
+  </tr>
+</thead>
+<tbody>
+{% for su in stockunits %}
+<tr>
+<td><a href="{{su.get_absolute_url}}">{{su.name}}</a></td>
+<td><a href="{{su.unit.get_absolute_url}}">{{su.unit.description}}</a></td>
+<td>{{su.size}} {{su.unit.name}}</td>
+<td>{% if su.merge %}Yes{% else %}No{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#stockunitlist").tablesorter();
+});
+</script>
+
+{% if may_create_stockunit %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-stockunit" pubname=pubname %}">Add new item size</a>
+{% endif %}
+
+{% endblock %}
