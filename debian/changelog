@@ -1,3 +1,23 @@
+quicktill (16.2) stable; urgency=low
+
+  * New release 16.2
+
+  * Editing of units and stockunits through the web interface
+
+  * Convert "Add new price lookup" to a button
+
+  * Change "Add new price lookup" into a button
+
+  * Remove workaround for Django bug
+
+  * Change urls+views to django 2 path/re_path scheme
+
+  * Add drop-down menu for tillweb stock options
+
+  * Delete annotations when stock item is deleted
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 20 Nov 2019 15:14:02 +0000
+
 quicktill (16.1) stable; urgency=low
 
   * New release 16.1
