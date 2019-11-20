@@ -693,8 +693,10 @@ class Department(Base):
                       "single item in this department.")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     vat = relationship(VatBand)
+
     def __str__(self):
         return "%s" % (self.description,)
+
     def __repr__(self):
         return "<Department(%s,'%s')>" % (self.id, self.description)
 
@@ -704,6 +706,17 @@ class Department(Base):
         return [("Departments", self.get_view_url("tillweb-departments")),
                 ("{}. {}".format(self.id, self.description),
                  self.get_absolute_url())]
+
+    @property
+    def decoded_accinfo(self):
+        """Return a list of (description, data) explaining accinfo
+        """
+        if not self.accinfo:
+            return
+        s = object_session(self)
+        accounts = s.info.get("accounts") if s else None
+        if accounts:
+            return accounts.decode_dept_accinfo(self.accinfo)
 
 class TransCode(Base):
     __tablename__ = 'transcodes'

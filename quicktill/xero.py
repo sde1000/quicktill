@@ -631,6 +631,13 @@ class XeroWebInfo:
     def url_for_bill(self, id):
         return self._url_for_id(id, "AccountsPayable")
 
+    def decode_dept_accinfo(self, accinfo):
+        """Return a list of strings to display given department accinfo
+        """
+        x = accinfo.split('/')
+        return zip(
+            ("Sales account", "Purchases account", "Tracking category"), x)
+
 def _textelem(name, text):
     e = Element(name)
     e.text = text
