@@ -12,6 +12,7 @@
     <th scope="col">Telephone</th>
     <th scope="col">Email</th>
     <th scope="col">Web</th>
+    <th scope="col">Accounts</th>
   </tr>
 </thead>
 <tbody>
@@ -20,7 +21,8 @@
 <td><a href="{{s.get_absolute_url}}">{{s.name}}</a></td>
 <td>{{s.tel}}</td>
 <td>{% if s.email %}<a href="mailto:{{s.email|urlencode}}">{{s.email}}</a>{% endif %}</td>
-<td>{% if s.web %}<a href="{{s.web}}">{{s.web}}</a>{% endif %}</td>
+<td>{% if s.web %}{{s.web}}{% endif %}</td>
+<td>{% if s.accounts_url %}<a class="btn btn-secondary" href="{{s.accounts_url}}">View in accounts</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -31,5 +33,9 @@ $(document).ready(function(){
   $("#suppliers").tablesorter();
 });
 </script>
+
+{% if may_create_supplier %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-supplier" pubname=pubname %}">Add new supplier</a>
+{% endif %}
 
 {% endblock %}

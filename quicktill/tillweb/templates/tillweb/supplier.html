@@ -4,12 +4,27 @@
 
 {% block tillcontent %}
 
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+    Update
+  </button>
+  <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
+    Delete
+  </button>
+</form>
+{% else %}
 <table class="kvtable">
 <tr><th scope="row">Name:</th><td>{{supplier.name}}</td></tr>
 <tr><th scope="row">Telephone:</th><td>{{supplier.tel}}</td></tr>
 <tr><th scope="row">Email:</th><td>{{supplier.email}}</td></tr>
 <tr><th scope="row">Web:</th><td>{% if supplier.web %}<a href="{{supplier.web|urlencode}}">{{supplier.web}}</a>{% endif %}</td></tr>
 </table>
+{% endif %}
+{% if supplier.accounts_url %}
+<a class="btn btn-secondary float-right" href="{{supplier.accounts_url}}">View in accounts</a>
+{% endif %}
 
 <h2>Deliveries</h2>
 

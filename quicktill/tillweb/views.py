@@ -697,16 +697,22 @@ def supplierlist(request, info, session):
          .query(Supplier)\
          .order_by(Supplier.name)\
          .all()
+    may_edit = info.user_has_perm("edit-supplier")
     return ('suppliers.html', {
         'nav': [("Suppliers", info.reverse("tillweb-suppliers"))],
         'suppliers': sl,
+        'may_create_supplier': may_edit,
     })
+
+class SupplierForm(forms.Form):
+    name = forms.CharField(max_length=60)
+    telephone = forms.CharField(max_length=20, required=False)
+    email = forms.EmailField(max_length=60, required=False)
+    web = forms.URLField(required=False)
 
 @tillweb_view
 def supplier(request, info, session, supplierid):
-    s = session\
-        .query(Supplier)\
-        .get(supplierid)
+    s = session.query(Supplier).get(supplierid)
     if not s:
         raise Http404
 
@@ -715,11 +721,84 @@ def supplier(request, info, session, supplierid):
                  .order_by(desc(Delivery.id))\
                  .filter(Delivery.supplier == s)
 
+    form = None
+    can_delete = False
+    if info.user_has_perm("edit-supplier"):
+        initial = {
+            'name': s.name,
+            'telephone': s.tel,
+            'email': s.email,
+            'web': s.web,
+        }
+        if deliveries.count() == 0:
+            can_delete = True
+        if request.method == "POST":
+            if can_delete and 'submit_delete' in request.POST:
+                messages.success(request, f"Supplier '{s.name}' deleted.")
+                session.delete(s)
+                session.commit()
+                return HttpResponseRedirect(info.reverse("tillweb-suppliers"))
+            form = SupplierForm(request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                s.name = cd['name']
+                s.tel = cd['telephone']
+                s.email = cd['email']
+                s.web = cd['web']
+                try:
+                    session.commit()
+                    messages.success(request, f"Supplier '{s.name}' updated.")
+                    return HttpResponseRedirect(s.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    session.rollback()
+                    form.add_error("name", "There is another supplier with this name")
+                    messages.error(
+                        request, "Could not update supplier: there is "
+                        "another supplier with this name")
+        else:
+            form = SupplierForm(initial=initial)
+
     pager = Pager(request, deliveries)
     return ('supplier.html', {
         'tillobject': s,
         'supplier': s,
+        'form': form,
         'pager': pager,
+        'can_delete': can_delete,
+    })
+
+@tillweb_view
+def create_supplier(request, info, session):
+    if not info.user_has_perm("edit-supplier"):
+        return HttpResponseForbidden("You don't have permission to create new suppliers")
+
+    if request.method == "POST":
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            s = Supplier(
+                name=cd['name'],
+                tel=cd['telephone'],
+                email=cd['email'],
+                web=cd['web'])
+            session.add(s)
+            try:
+                session.commit()
+                messages.success(request, f"Supplier '{s.name}' created.")
+                return HttpResponseRedirect(s.get_absolute_url())
+            except sqlalchemy.exc.IntegrityError:
+                session.rollback()
+                form.add_error("name", "There is another supplier with this name")
+                messages.error(
+                    request, "Could not add supplier: there is "
+                    "another supplier with this name")
+    else:
+        form = SupplierForm()
+
+    return ('new-supplier.html', {
+        'nav': [("Suppliers", info.reverse("tillweb-suppliers")),
+                ("New", info.reverse("tillweb-create-supplier"))],
+        'form': form,
     })
 
 @tillweb_view

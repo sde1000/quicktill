@@ -1321,8 +1321,10 @@ class Supplier(Base):
     email = Column(String(60))
     web = Column(String())
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
+
     def __repr__(self):
         return "<Supplier(%s,'%s')>" % (self.id, self.name)
+
     def __str__(self):
         return "%s" % (self.name,)
 
@@ -1331,6 +1333,18 @@ class Supplier(Base):
     def tillweb_nav(self):
         return [("Suppliers", self.get_view_url("tillweb-suppliers")),
                 (self.name, self.get_absolute_url())]
+
+    @property
+    def accounts_url(self):
+        """Accounting system URL for this supplier
+        """
+        if not self.accinfo:
+            return
+        s = object_session(self)
+        accounts = s.info.get("accounts") if s else None
+        if accounts:
+            return accounts.url_for_contact(self.accinfo)
+
 
 deliveries_seq = Sequence('deliveries_seq')
 

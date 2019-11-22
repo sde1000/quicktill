@@ -618,18 +618,24 @@ class XeroWebInfo:
     def __init__(self, shortcode=None):
         self.shortcode = shortcode
 
-    def _url_for_id(self, id, doctype):
-        url = "/{}/View.aspx?InvoiceID={}".format(doctype, id)
+    def _wrap(self, url):
         if self.shortcode:
             url = "/organisationlogin/default.aspx?shortcode={}"\
                   "&redirecturl={}".format(self.shortcode, url)
         return "https://go.xero.com" + url
+
+    def _url_for_id(self, id, doctype):
+        url = "/{}/View.aspx?InvoiceID={}".format(doctype, id)
+        return self._wrap(url)
 
     def url_for_invoice(self, id):
         return self._url_for_id(id, "AccountsReceivable")
 
     def url_for_bill(self, id):
         return self._url_for_id(id, "AccountsPayable")
+
+    def url_for_contact(self, id):
+        return self._wrap("/Contacts/View/" + id)
 
     def decode_dept_accinfo(self, accinfo):
         """Return a list of strings to display given department accinfo

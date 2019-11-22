@@ -683,7 +683,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
         self.dismiss()
         self.func(supplier)
 
-@user.permission_required('update-supplier', 'Update supplier details')
+@user.permission_required('edit-supplier')
 def updatesupplier():
     log.info("Update supplier")
     sl = td.s.query(Supplier).order_by(Supplier.name).all()

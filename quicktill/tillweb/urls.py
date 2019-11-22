@@ -35,6 +35,7 @@ tillurls = [
 
     path('supplier/', supplierlist, name="tillweb-suppliers"),
     path('supplier/<int:supplierid>/', supplier, name="tillweb-supplier"),
+    path('supplier/new/', create_supplier, name="tillweb-create-supplier"),
 
     path('delivery/', deliverylist, name="tillweb-deliveries"),
     path('delivery/<int:deliveryid>/', delivery, name="tillweb-delivery"),

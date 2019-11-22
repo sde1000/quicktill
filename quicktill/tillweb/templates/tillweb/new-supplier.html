@@ -1,0 +1,14 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — add supplier{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Add supplier
+  </button>
+</form>
+
+{% endblock %}

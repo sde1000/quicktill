@@ -849,7 +849,6 @@ class default_groups:
         "edit-keycaps",
         "finish-unconnected-stock",
         "stock-history",
-        "update-supplier",
         "purge-finished-stock",
         "alter-stocktype",
         "add-custom-transline",
@@ -874,3 +873,8 @@ class default_groups:
         ('skilled-user', "Functions for more skilled users", skilled_user),
         ('manager', "Management functions", manager),
     ]
+
+# I'm not doing anything with this list yet, but here are permissions
+# that have been retired:
+
+# update-supplier - redundant, edit-supplier is used instead
