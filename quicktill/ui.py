@@ -2015,3 +2015,7 @@ def beep():
     """
     # display system patches this to work
     log.warning("ui.beep() called before display system init")
+
+# Turn off the screensaver if the screen has gone blank
+def unblank_screen():
+    log.info("dummy ui.unblank_screen() called")

@@ -5,10 +5,11 @@ gi.require_version('PangoCairo', '1.0')
 gi.require_foreign('cairo')
 from gi.repository import Gtk, Pango, GLib, Gdk, PangoCairo
 import sys
+import os
+import subprocess
 import cairo
 import time
 import math
-import textwrap
 from . import keyboard_gtk
 
 if not hasattr(cairo, 'OPERATOR_DIFFERENCE'):
@@ -513,10 +514,19 @@ def _onscreen_keyboard_input(keycode):
     except Exception as e:
         tillconfig.mainloop._exc_info = sys.exc_info()
 
+def _x_unblank_screen():
+    r = subprocess.run(["/usr/bin/xset", "s", "reset"])
+    if r.returncode != 0:
+            log.error("_x_unblank_screen: xset returned %s", r.returncode)
+
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
         keyboard=False, geometry=None):
     """Start running with the GTK display system
     """
+    if os.getenv('DISPLAY'):
+        log.info("Running on X: using _x_unblank_screen")
+        ui.unblank_screen = _x_unblank_screen
+
     monospace_font = Pango.FontDescription(monospace_font)
     font = Pango.FontDescription(font)
     ui.rootwin = gtk_root(monospace_font, font,

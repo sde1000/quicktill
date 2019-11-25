@@ -297,7 +297,7 @@ class tokenlistener:
         d = self.s.recv(1024).strip().decode("utf-8")
         log.debug("Received: {}".format(repr(d)))
         if d:
-            tillconfig.unblank_screen()
+            ui.unblank_screen()
             with td.orm_session():
                 ui.handle_keyboard_input(token(d))
 

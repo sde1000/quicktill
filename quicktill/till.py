@@ -10,15 +10,10 @@ module.
 
 import urllib.request
 import sys
-import os
 import logging
 import logging.config
-import locale
 import argparse
 import yaml
-import termios
-import fcntl
-import array
 import socket
 import time
 from types import ModuleType
@@ -359,16 +354,8 @@ class totals(cmdline.command):
                     b[x[0].businessid]=o
                 print(f.format(s=s,p=p,error=s.actual_total-s.total,b=b))
 
-def _linux_unblank_screen():
-    TIOCL_UNBLANKSCREEN=4
-    buf=array.array(str('b'),[TIOCL_UNBLANKSCREEN])
-    fcntl.ioctl(sys.stdin,termios.TIOCLINUX,buf)
-
-def _x_unblank_screen():
-    os.system("xset s reset")
-
 class ToastHandler(logging.Handler):
-    def emit(self,record):
+    def emit(self, record):
         ui.toast(self.format(record))
 
 def main():
@@ -561,17 +548,6 @@ def main():
         tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
     if 'custom_css' in config:
         tillconfig.custom_css = config['custom_css']
-
-    if os.uname()[0] == 'Linux':
-        if os.getenv('TERM') == 'linux':
-            tillconfig.unblank_screen = _linux_unblank_screen
-        elif os.getenv('TERM') == 'xterm':
-            os.putenv('TERM', 'linux')
-
-    if os.getenv('DISPLAY'):
-        tillconfig.unblank_screen = _x_unblank_screen
-
-    locale.setlocale(locale.LC_ALL,'')
 
     if tillconfig.database:
         td.init(tillconfig.database)

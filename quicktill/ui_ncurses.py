@@ -1,4 +1,8 @@
 import sys
+import os
+import array
+import termios
+import fcntl
 import locale
 import textwrap
 import time
@@ -332,6 +336,13 @@ def _curses_keyboard_input():
     elif curses.ascii.isprint(i):
         ui.handle_raw_keyboard_input(chr(i))
 
+def _linux_unblank_screen():
+    """Unblank the screen when running on Linux console
+    """
+    TIOCL_UNBLANKSCREEN = 4
+    buf = array.array('b', [TIOCL_UNBLANKSCREEN])
+    fcntl.ioctl(sys.stdin, termios.TIOCLINUX, buf)
+
 def _init(w):
     """ncurses has been initialised, and calls us with the root window.
 
@@ -358,4 +369,11 @@ def _init(w):
 def run():
     """Start running with the ncurses display system
     """
+    if os.uname()[0] == 'Linux':
+        if os.getenv('TERM') == 'linux':
+            log.info("Running on Linux console: using _linux_unblank_screen")
+            ui.unblank_screen = _linux_unblank_screen
+        elif os.getenv('TERM') == 'xterm':
+            os.putenv('TERM', 'linux')
+
     curses.wrapper(_init)
