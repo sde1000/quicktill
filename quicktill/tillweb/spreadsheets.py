@@ -554,9 +554,9 @@ def stock(ds, stocklist, tillname="Till", filename=None):
             sheet.cell(5, row, doc.moneycell(s.stocktype.saleprice))
         sheet.cell(6, row, doc.numbercell(s.used))
         sheet.cell(7, row, doc.numbercell(s.sold))
-        sheet.cell(8, row, doc.numbercell(s.stockunit.size))
+        sheet.cell(8, row, doc.numbercell(s.size))
         sheet.cell(9, row, doc.numbercell(s.remaining))
-        sheet.cell(10, row, doc.textcell(str(s.stocktype.unit)))
+        sheet.cell(10, row, doc.textcell(str(s.stocktype.unit.name)))
         if s.finishcode:
             sheet.cell(11, row, doc.textcell(str(s.finishcode)))
         if s.finished:
@@ -609,9 +609,8 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
     unaccounted = ds.query(date,
                            StockType.dept_id,
                            literal("unaccounted"),
-                           func.sum(StockUnit.size - StockItem.used))\
+                           func.sum(StockItem.size - StockItem.used))\
                     .select_from(StockItem)\
-                    .join(StockUnit)\
                     .join(StockType)\
                     .filter(StockItem.finished != None)\
                     .filter(StockItem.finished <= end)\
