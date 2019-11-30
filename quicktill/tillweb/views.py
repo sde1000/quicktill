@@ -24,6 +24,7 @@ from quicktill.models import *
 from quicktill.version import version
 from . import spreadsheets
 import io
+from .db import td
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
@@ -58,7 +59,6 @@ def publist(request):
 # Views are passed the following parameters:
 # request - the Django http request object
 # info - a viewutils instance
-# session - sqlalchemy database session
 #
 # They should return either a (template, dict) tuple or a HttpResponse
 # instance.
@@ -137,7 +137,8 @@ def tillweb_view(view):
                 tillname=tillname, # Formatted for people
                 pubname=pubname, # Used in url
             )
-            result = view(request, info, session, *args, **kwargs)
+            td.s = session
+            result = view(request, info, *args, **kwargs)
             if isinstance(result, HttpResponse):
                 return result
             t, d = result
@@ -169,6 +170,7 @@ def tillweb_view(view):
                            'error': oe},
                           status=503)
         finally:
+            td.s = None
             session.close()
     if tillweb_login_required or not single_site:
         new_view = login_required(new_view)
@@ -184,11 +186,11 @@ def undefer_qtys(entity):
             .undefer("remaining")
     return defaultload(entity).undefer_group("qtys")
 
-def business_totals(session, firstday, lastday):
+def business_totals(firstday, lastday):
     # This query is wrong in that it ignores the 'business' field in
     # VatRate objects.  Fixes that don't involve a database round-trip
     # per session are welcome!
-    return session.query(
+    return td.s.query(
         Business,
         func.sum(Transline.items * Transline.amount))\
                   .join(VatBand)\
@@ -330,7 +332,7 @@ class Pager:
             'pager': self})
 
 @tillweb_view
-def pubroot(request, info, session):
+def pubroot(request, info):
     date = datetime.date.today()
     # If it's the early hours of the morning, it's more useful for us
     # to consider it still to be yesterday.
@@ -344,54 +346,50 @@ def pubroot(request, info, session):
     weekbefore_end = lastweek_end - datetime.timedelta(7)
 
     weeks = [("Current week", thisweek_start, thisweek_end,
-              business_totals(session, thisweek_start, thisweek_end)),
+              business_totals(thisweek_start, thisweek_end)),
              ("Last week", lastweek_start, lastweek_end,
-              business_totals(session, lastweek_start, lastweek_end)),
+              business_totals(lastweek_start, lastweek_end)),
              ("The week before last", weekbefore_start, weekbefore_end,
-              business_totals(session, weekbefore_start, weekbefore_end))]
+              business_totals(weekbefore_start, weekbefore_end))]
 
     #currentsession = Session.current(session)
-    currentsession = session\
-                     .query(Session)\
-                     .filter_by(endtime=None)\
-                     .options(undefer('total'),
-                              undefer('closed_total'))\
-                     .first()
+    currentsession = td.s.query(Session)\
+                         .filter_by(endtime=None)\
+                         .options(undefer('total'),
+                                  undefer('closed_total'))\
+                         .first()
 
-    barsummary = session\
-                 .query(StockLine)\
-                 .filter(StockLine.location == "Bar")\
-                 .order_by(StockLine.dept_id,StockLine.name)\
-                 .options(joinedload('stockonsale')
-                          .joinedload('stocktype')
-                          .joinedload('unit'))\
-                 .options(undefer_qtys("stockonsale"))\
-                 .all()
+    barsummary = td.s.query(StockLine)\
+                     .filter(StockLine.location == "Bar")\
+                     .order_by(StockLine.dept_id,StockLine.name)\
+                     .options(joinedload('stockonsale')
+                              .joinedload('stocktype')
+                              .joinedload('unit'))\
+                     .options(undefer_qtys("stockonsale"))\
+                     .all()
 
-    stillage = session\
-               .query(StockAnnotation)\
-               .join(StockItem)\
-               .outerjoin(StockLine)\
-               .filter(tuple_(StockAnnotation.text, StockAnnotation.time).in_(
-                   select([StockAnnotation.text,
-                           func.max(StockAnnotation.time)],
-                          StockAnnotation.atype == 'location')\
-                   .group_by(StockAnnotation.text)))\
-               .filter(StockItem.finished == None)\
-               .order_by(StockLine.name != null(), StockAnnotation.time)\
-               .options(joinedload('stockitem')
-                        .joinedload('stocktype')
-                        .joinedload('unit'),
-                        joinedload('stockitem').joinedload('stockline'),
-                        undefer_qtys('stockitem'))\
-               .all()
+    stillage = td.s.query(StockAnnotation)\
+                   .join(StockItem)\
+                   .outerjoin(StockLine)\
+                   .filter(tuple_(StockAnnotation.text, StockAnnotation.time).in_(
+                       select([StockAnnotation.text,
+                               func.max(StockAnnotation.time)],
+                              StockAnnotation.atype == 'location')\
+                       .group_by(StockAnnotation.text)))\
+                   .filter(StockItem.finished == None)\
+                   .order_by(StockLine.name != null(), StockAnnotation.time)\
+                   .options(joinedload('stockitem')
+                            .joinedload('stocktype')
+                            .joinedload('unit'),
+                            joinedload('stockitem').joinedload('stockline'),
+                            undefer_qtys('stockitem'))\
+                   .all()
 
-    deferred = session\
-               .query(func.sum(Transline.items * Transline.amount))\
-               .select_from(Transaction)\
-               .join(Transline)\
-               .filter(Transaction.sessionid == None)\
-               .scalar()
+    deferred = td.s.query(func.sum(Transline.items * Transline.amount))\
+                   .select_from(Transaction)\
+                   .join(Transline)\
+                   .filter(Transaction.sessionid == None)\
+                   .scalar()
 
     return ('index.html',
             {'currentsession': currentsession,
@@ -402,22 +400,21 @@ def pubroot(request, info, session):
             })
 
 @tillweb_view
-def locationlist(request, info, session):
+def locationlist(request, info):
     return ('locations.html', {
         'nav': [("Locations", info.reverse('tillweb-locations'))],
-        'locations': StockLine.locations(session),
+        'locations': StockLine.locations(td.s),
     })
 
 @tillweb_view
-def location(request, info, session, location):
-    lines = session\
-            .query(StockLine)\
-            .filter(StockLine.location == location)\
-            .order_by(StockLine.dept_id, StockLine.name)\
-            .options(joinedload('stockonsale'),
-                     joinedload('stockonsale.stocktype'),
-                     undefer_qtys('stockonsale'))\
-            .all()
+def location(request, info, location):
+    lines = td.s.query(StockLine)\
+                .filter(StockLine.location == location)\
+                .order_by(StockLine.dept_id, StockLine.name)\
+                .options(joinedload('stockonsale'),
+                         joinedload('stockonsale.stocktype'),
+                         undefer_qtys('stockonsale'))\
+                .all()
     return ('location.html', {
         'nav': [("Locations", info.reverse('tillweb-locations')),
                 (location, info.reverse('tillweb-location',
@@ -439,11 +436,11 @@ class SessionSheetForm(forms.Form):
         ])
 
 @tillweb_view
-def sessionfinder(request, info, session):
+def sessionfinder(request, info):
     if request.method == 'POST' and "submit_find" in request.POST:
         form = SessionFinderForm(request.POST)
         if form.is_valid():
-            s = session.query(Session).get(form.cleaned_data['session'])
+            s = td.s.query(Session).get(form.cleaned_data['session'])
             if s:
                 return HttpResponseRedirect(s.get_absolute_url())
             form.add_error(None, "This session does not exist.")
@@ -455,7 +452,6 @@ def sessionfinder(request, info, session):
         if rangeform.is_valid():
             cd = rangeform.cleaned_data
             return spreadsheets.sessionrange(
-                session,
                 start=cd['startdate'],
                 end=cd['enddate'],
                 rows=cd['rows'],
@@ -463,12 +459,11 @@ def sessionfinder(request, info, session):
     else:
         rangeform = SessionSheetForm()
 
-    sessions = session\
-               .query(Session)\
-               .options(undefer('total'),
-                        undefer('actual_total'),
-                        undefer('discount_total'))\
-               .order_by(desc(Session.id))
+    sessions = td.s.query(Session)\
+                   .options(undefer('total'),
+                            undefer('actual_total'),
+                            undefer('discount_total'))\
+                   .order_by(desc(Session.id))
 
     pager = Pager(request, sessions)
 
@@ -482,13 +477,12 @@ def sessionfinder(request, info, session):
              'rangeform': rangeform})
 
 @tillweb_view
-def session(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .options(undefer('total'),
-                 undefer('closed_total'),
-                 undefer('actual_total'))\
-        .get(sessionid)
+def session(request, info, sessionid):
+    s = td.s.query(Session)\
+            .options(undefer('total'),
+                     undefer('closed_total'),
+                     undefer('actual_total'))\
+            .get(sessionid)
     if not s:
         raise Http404
 
@@ -503,51 +497,50 @@ def session(request, info, session, sessionid):
             })
 
 @tillweb_view
-def session_spreadsheet(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .options(undefer('transactions.total'),
-                 joinedload('transactions.payments'))\
-        .get(sessionid)
+def session_spreadsheet(request, info, sessionid):
+    s = td.s.query(Session)\
+            .options(undefer('transactions.total'),
+                     joinedload('transactions.payments'))\
+            .get(sessionid)
     if not s:
         raise Http404
-    return spreadsheets.session(session, s, info.tillname)
+    return spreadsheets.session(s, info.tillname)
 
 @tillweb_view
-def session_takings_by_dept(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_takings_by_dept(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
 
     return ('session-takings-by-dept.ajax', {'session': s})
 
 @tillweb_view
-def session_takings_by_user(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_takings_by_user(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
 
     return ('session-takings-by-user.ajax', {'session': s})
 
 @tillweb_view
-def session_discounts(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_discounts(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
 
-    departments = session.query(Department).order_by(Department.id).all()
+    departments = td.s.query(Department).order_by(Department.id).all()
 
-    discounts = session.query(
+    discounts = td.s.query(
         Department,
         Transline.discount_name,
         func.sum(Transline.items * Transline.discount).label("discount"))\
-                       .select_from(Transaction)\
-                       .join(Transline, Department)\
-                       .filter(Transaction.sessionid == sessionid)\
-                       .filter(Transline.discount_name != None)\
-                       .group_by(Department, Transline.discount_name)\
-                       .order_by(Department.id, Transline.discount_name)\
-                       .all()
+                    .select_from(Transaction)\
+                    .join(Transline, Department)\
+                    .filter(Transaction.sessionid == sessionid)\
+                    .filter(Transline.discount_name != None)\
+                    .group_by(Department, Transline.discount_name)\
+                    .order_by(Department.id, Transline.discount_name)\
+                    .all()
     # discounts table: rows are departments, columns are discount names
     discount_totals = {}
     for d in discounts:
@@ -571,33 +564,32 @@ def session_discounts(request, info, session, sessionid):
             })
 
 @tillweb_view
-def session_stock_sold(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_stock_sold(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
 
     return ('session-stock-sold.ajax', {'session': s})
 
 @tillweb_view
-def session_transactions(request, info, session, sessionid):
-    s = session\
-        .query(Session)\
-        .options(undefer('transactions.total'),
-                 undefer('transactions.discount_total'),
-                 joinedload('transactions.payments'))\
-        .get(sessionid)
+def session_transactions(request, info, sessionid):
+    s = td.s.query(Session)\
+            .options(undefer('transactions.total'),
+                     undefer('transactions.discount_total'),
+                     joinedload('transactions.payments'))\
+            .get(sessionid)
     if not s:
         raise Http404
 
     return ('session-transactions.ajax', {'session': s})
 
 @tillweb_view
-def sessiondept(request, info, session, sessionid, dept):
-    s = session.query(Session).get(sessionid)
+def sessiondept(request, info, sessionid, dept):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
 
-    dept = session.query(Department).get(dept)
+    dept = td.s.query(Department).get(dept)
     if not dept:
         raise Http404
 
@@ -608,17 +600,16 @@ def sessiondept(request, info, session, sessionid, dept):
         'sessionid': s.previous.id,
         'dept': dept.id}) if s.previous else None
 
-    translines = session\
-                 .query(Transline)\
-                 .join(Transaction)\
-                 .options(joinedload('transaction'),
-                          joinedload('user'),
-                          joinedload('stockref').joinedload('stockitem')
-                          .joinedload('stocktype').joinedload('unit'))\
-                 .filter(Transaction.sessionid == s.id)\
-                 .filter(Transline.dept_id == dept.id)\
-                 .order_by(Transline.id)\
-                 .all()
+    translines = td.s.query(Transline)\
+                     .join(Transaction)\
+                     .options(joinedload('transaction'),
+                              joinedload('user'),
+                              joinedload('stockref').joinedload('stockitem')
+                              .joinedload('stocktype').joinedload('unit'))\
+                     .filter(Transaction.sessionid == s.id)\
+                     .filter(Transline.dept_id == dept.id)\
+                     .order_by(Transline.id)\
+                     .all()
 
     return ('sessiondept.html',
             {'nav': s.tillweb_nav() + [
@@ -631,14 +622,13 @@ def sessiondept(request, info, session, sessionid, dept):
              'nextlink': nextlink, 'prevlink': prevlink})
 
 @tillweb_view
-def transactions_deferred(request, info, session):
+def transactions_deferred(request, info):
     """Page showing all deferred transactions"""
-    td = session\
-         .query(Transaction)\
-         .options(undefer('total'))\
-         .filter(Transaction.sessionid == None)\
-         .order_by(Transaction.id)\
-         .all()
+    td = td.s.query(Transaction)\
+             .options(undefer('total'))\
+             .filter(Transaction.sessionid == None)\
+             .order_by(Transaction.id)\
+             .all()
     return ('transactions-deferred.html', {
         'transactions': td,
         'nav': [("Deferred transactions", info.reverse('tillweb-deferred-transactions'))],
@@ -648,15 +638,14 @@ class TransactionNotesForm(forms.Form):
     notes = forms.CharField(required=False, max_length=60)
 
 @tillweb_view
-def transaction(request, info, session, transid):
-    t = session\
-        .query(Transaction)\
-        .options(subqueryload('payments'),
-                 joinedload('lines.department'),
-                 joinedload('lines.user'),
-                 undefer('total'),
-                 undefer('discount_total'))\
-        .get(transid)
+def transaction(request, info, transid):
+    t = td.s.query(Transaction)\
+            .options(subqueryload('payments'),
+                     joinedload('lines.department'),
+                     joinedload('lines.user'),
+                     undefer('total'),
+                     undefer('discount_total'))\
+            .get(transid)
     if not t:
         raise Http404
 
@@ -668,7 +657,7 @@ def transaction(request, info, session, transid):
             if form.is_valid():
                 cd = form.cleaned_data
                 t.notes = cd["notes"]
-                session.commit()
+                td.s.commit()
                 return HttpResponseRedirect(t.get_absolute_url())
         else:
             form = TransactionNotesForm(initial=initial)
@@ -680,23 +669,21 @@ def transaction(request, info, session, transid):
     })
 
 @tillweb_view
-def transline(request, info, session, translineid):
-    tl = session\
-         .query(Transline)\
-         .options(joinedload('stockref').joinedload('stockitem')
-                  .joinedload('stocktype'),
-                  joinedload('user'))\
-         .get(translineid)
+def transline(request, info, translineid):
+    tl = td.s.query(Transline)\
+             .options(joinedload('stockref').joinedload('stockitem')
+                      .joinedload('stocktype'),
+                      joinedload('user'))\
+             .get(translineid)
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
 
 @tillweb_view
-def supplierlist(request, info, session):
-    sl = session\
-         .query(Supplier)\
-         .order_by(Supplier.name)\
-         .all()
+def supplierlist(request, info):
+    sl = td.s.query(Supplier)\
+             .order_by(Supplier.name)\
+             .all()
     may_edit = info.user_has_perm("edit-supplier")
     return ('suppliers.html', {
         'nav': [("Suppliers", info.reverse("tillweb-suppliers"))],
@@ -711,13 +698,12 @@ class SupplierForm(forms.Form):
     web = forms.URLField(required=False)
 
 @tillweb_view
-def supplier(request, info, session, supplierid):
-    s = session.query(Supplier).get(supplierid)
+def supplier(request, info, supplierid):
+    s = td.s.query(Supplier).get(supplierid)
     if not s:
         raise Http404
 
-    deliveries = session\
-                 .query(Delivery)\
+    deliveries = td.s.query(Delivery)\
                  .order_by(desc(Delivery.id))\
                  .filter(Delivery.supplier == s)
 
@@ -735,8 +721,8 @@ def supplier(request, info, session, supplierid):
         if request.method == "POST":
             if can_delete and 'submit_delete' in request.POST:
                 messages.success(request, f"Supplier '{s.name}' deleted.")
-                session.delete(s)
-                session.commit()
+                td.s.delete(s)
+                td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-suppliers"))
             form = SupplierForm(request.POST, initial=initial)
             if form.is_valid():
@@ -746,11 +732,11 @@ def supplier(request, info, session, supplierid):
                 s.email = cd['email']
                 s.web = cd['web']
                 try:
-                    session.commit()
+                    td.s.commit()
                     messages.success(request, f"Supplier '{s.name}' updated.")
                     return HttpResponseRedirect(s.get_absolute_url())
                 except sqlalchemy.exc.IntegrityError:
-                    session.rollback()
+                    td.s.rollback()
                     form.add_error("name", "There is another supplier with this name")
                     messages.error(
                         request, "Could not update supplier: there is "
@@ -768,7 +754,7 @@ def supplier(request, info, session, supplierid):
     })
 
 @tillweb_view
-def create_supplier(request, info, session):
+def create_supplier(request, info):
     if not info.user_has_perm("edit-supplier"):
         return HttpResponseForbidden("You don't have permission to create new suppliers")
 
@@ -781,13 +767,13 @@ def create_supplier(request, info, session):
                 tel=cd['telephone'],
                 email=cd['email'],
                 web=cd['web'])
-            session.add(s)
+            td.s.add(s)
             try:
-                session.commit()
+                td.s.commit()
                 messages.success(request, f"Supplier '{s.name}' created.")
                 return HttpResponseRedirect(s.get_absolute_url())
             except sqlalchemy.exc.IntegrityError:
-                session.rollback()
+                td.s.rollback()
                 form.add_error("name", "There is another supplier with this name")
                 messages.error(
                     request, "Could not add supplier: there is "
@@ -802,11 +788,10 @@ def create_supplier(request, info, session):
     })
 
 @tillweb_view
-def deliverylist(request, info, session):
-    dl = session\
-         .query(Delivery)\
-         .order_by(desc(Delivery.id))\
-         .options(joinedload('supplier'))
+def deliverylist(request, info):
+    dl = td.s.query(Delivery)\
+             .order_by(desc(Delivery.id))\
+             .options(joinedload('supplier'))
 
     pager = Pager(request, dl)
 
@@ -816,14 +801,13 @@ def deliverylist(request, info, session):
         })
 
 @tillweb_view
-def delivery(request, info, session, deliveryid):
-    d = session\
-        .query(Delivery)\
-        .options(joinedload('items').joinedload('stocktype')
-                 .joinedload('unit'),
-                 joinedload('items').joinedload('stockline'),
-                 undefer_qtys('items'))\
-        .get(deliveryid)
+def delivery(request, info, deliveryid):
+    d = td.s.query(Delivery)\
+            .options(joinedload('items').joinedload('stocktype')
+                     .joinedload('unit'),
+                     joinedload('items').joinedload('stockline'),
+                     undefer_qtys('items'))\
+            .get(deliveryid)
     if not d:
         raise Http404
     return ('delivery.html', {
@@ -850,13 +834,13 @@ class StockTypeForm(forms.Form):
         return q
 
 @tillweb_view
-def stocktypesearch(request, info, session):
+def stocktypesearch(request, info):
     form = StockTypeForm(request.GET)
     result = []
     if form.is_valid() and form.is_filled_in():
-        q = session\
-            .query(StockType)\
-            .order_by(StockType.dept_id, StockType.manufacturer, StockType.name)
+        q = td.s.query(StockType)\
+                .order_by(StockType.dept_id, StockType.manufacturer,
+                          StockType.name)
         q = form.filter(q)
         result = q.all()
     return ('stocktypesearch.html', {
@@ -866,19 +850,17 @@ def stocktypesearch(request, info, session):
     })
 
 @tillweb_view
-def stocktype(request, info, session, stocktype_id):
-    s = session\
-        .query(StockType)\
-        .get(stocktype_id)
+def stocktype(request, info, stocktype_id):
+    s = td.s.query(StockType)\
+            .get(stocktype_id)
     if not s:
         raise Http404
     include_finished = request.GET.get("show_finished", "off") == "on"
-    items = session\
-            .query(StockItem)\
-            .filter(StockItem.stocktype == s)\
-            .options(undefer_group('qtys'),
-                     joinedload('delivery'))\
-            .order_by(desc(StockItem.id))
+    items = td.s.query(StockItem)\
+                .filter(StockItem.stocktype == s)\
+                .options(undefer_group('qtys'),
+                         joinedload('delivery'))\
+                .order_by(desc(StockItem.id))
     if not include_finished:
         items = items.filter(StockItem.finished == None)
     items = items.all()
@@ -894,18 +876,17 @@ class StockForm(StockTypeForm):
         required=False, label="Include finished items")
 
 @tillweb_view
-def stocksearch(request, info, session):
+def stocksearch(request, info):
     form = StockForm(request.GET)
     pager = None
     if form.is_valid() and form.is_filled_in():
-        q = session\
-            .query(StockItem)\
-            .join(StockType)\
-            .order_by(StockItem.id)\
-            .options(joinedload('stocktype').joinedload('unit'),
-                     joinedload('stockline'),
-                     joinedload('delivery'),
-                     undefer_group('qtys'))
+        q = td.s.query(StockItem)\
+                .join(StockType)\
+                .order_by(StockItem.id)\
+                .options(joinedload('stocktype').joinedload('unit'),
+                         joinedload('stockline'),
+                         joinedload('delivery'),
+                         undefer_group('qtys'))
         q = form.filter(q)
         if not form.cleaned_data['include_finished']:
             q = q.filter(StockItem.finished == None)
@@ -920,19 +901,18 @@ def stocksearch(request, info, session):
         'pager': pager})
 
 @tillweb_view
-def stock(request, info, session, stockid):
-    s = session\
-        .query(StockItem)\
-        .options(joinedload('stocktype').joinedload('department'),
-                 joinedload('stocktype').joinedload('stockline_log')
-                 .joinedload('stockline'),
-                 joinedload('stocktype').joinedload('unit'),
-                 joinedload('delivery').joinedload('supplier'),
-                 joinedload('annotations').joinedload('type'),
-                 subqueryload('out').subqueryload('transline')
-                 .subqueryload('transaction'),
-                 undefer_group('qtys'))\
-        .get(stockid)
+def stock(request, info, stockid):
+    s = td.s.query(StockItem)\
+            .options(joinedload('stocktype').joinedload('department'),
+                     joinedload('stocktype').joinedload('stockline_log')
+                     .joinedload('stockline'),
+                     joinedload('stocktype').joinedload('unit'),
+                     joinedload('delivery').joinedload('supplier'),
+                     joinedload('annotations').joinedload('type'),
+                     subqueryload('out').subqueryload('transline')
+                     .subqueryload('transaction'),
+                     undefer_group('qtys'))\
+            .get(stockid)
     if not s:
         raise Http404
     return ('stock.html', {
@@ -941,8 +921,8 @@ def stock(request, info, session, stockid):
     })
 
 @tillweb_view
-def units(request, info, session):
-    u = session.query(Unit).order_by(Unit.description).all()
+def units(request, info):
+    u = td.s.query(Unit).order_by(Unit.description).all()
     may_edit = info.user_has_perm("edit-unit")
     return ('units.html', {
         'units': u,
@@ -960,8 +940,8 @@ class UnitForm(forms.Form):
     item_name_plural = forms.CharField()
 
 @tillweb_view
-def unit(request, info, session, unit_id):
-    u = session.query(Unit).get(unit_id)
+def unit(request, info, unit_id):
+    u = td.s.query(Unit).get(unit_id)
     if not u:
         raise Http404
 
@@ -980,8 +960,8 @@ def unit(request, info, session, unit_id):
         if request.method == "POST":
             if can_delete and 'submit_delete' in request.POST:
                 messages.success(request, f"Unit '{u.description}' deleted.")
-                session.delete(u)
-                session.commit()
+                td.s.delete(u)
+                td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-units"))
             form = UnitForm(request.POST, initial=initial)
             if form.is_valid():
@@ -991,7 +971,7 @@ def unit(request, info, session, unit_id):
                 u.units_per_item = cd['base_units_per_item']
                 u.item_name = cd['item_name']
                 u.item_name_plural = cd['item_name_plural']
-                session.commit()
+                td.s.commit()
                 messages.success(request, f"Unit '{u.description}' updated.")
                 return HttpResponseRedirect(u.get_absolute_url())
         else:
@@ -1005,7 +985,7 @@ def unit(request, info, session, unit_id):
     })
 
 @tillweb_view
-def create_unit(request, info, session):
+def create_unit(request, info):
     if not info.user_has_perm("edit-unit"):
         return HttpResponseForbidden("You don't have permission to create new units")
 
@@ -1019,8 +999,8 @@ def create_unit(request, info, session):
                 units_per_item=cd['base_units_per_item'],
                 item_name=cd['item_name'],
                 item_name_plural=cd['item_name_plural'])
-            session.add(u)
-            session.commit()
+            td.s.add(u)
+            td.s.commit()
             messages.success(request, f"Unit '{u.description}' created.")
             return HttpResponseRedirect(u.get_absolute_url())
     else:
@@ -1033,11 +1013,11 @@ def create_unit(request, info, session):
     })
 
 @tillweb_view
-def stockunits(request, info, session):
-    su = session.query(StockUnit)\
-                .join(Unit)\
-                .order_by(Unit.description, StockUnit.size)\
-                .all()
+def stockunits(request, info):
+    su = td.s.query(StockUnit)\
+             .join(Unit)\
+             .order_by(Unit.description, StockUnit.size)\
+             .all()
     may_edit = info.user_has_perm("edit-stockunit")
     return ('stockunits.html', {
         'stockunits': su,
@@ -1060,14 +1040,14 @@ class StockUnitForm(forms.Form):
     merge = forms.BooleanField(required=False)
 
 @tillweb_view
-def stockunit(request, info, session, stockunit_id):
-    su = session.query(StockUnit).get(stockunit_id)
+def stockunit(request, info, stockunit_id):
+    su = td.s.query(StockUnit).get(stockunit_id)
     if not su:
         raise Http404
 
     form = None
     if info.user_has_perm("edit-stockunit"):
-        units = session.query(Unit).order_by(Unit.description).all()
+        units = td.s.query(Unit).order_by(Unit.description).all()
         initial = {
             'description': su.name,
             'unit': su.unit_id,
@@ -1077,8 +1057,8 @@ def stockunit(request, info, session, stockunit_id):
         if request.method == "POST":
             if 'submit_delete' in request.POST:
                 messages.success(request, f"Item size '{su.name}' deleted.")
-                session.delete(su)
-                session.commit()
+                td.s.delete(su)
+                td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-stockunits"))
             form = StockUnitForm(units, request.POST, initial=initial)
             if form.is_valid():
@@ -1087,7 +1067,7 @@ def stockunit(request, info, session, stockunit_id):
                 su.unit_id = cd['unit']
                 su.size = cd['size']
                 su.merge = cd['merge']
-                session.commit()
+                td.s.commit()
                 messages.success(request, f"Item size '{su.name}' updated.")
                 return HttpResponseRedirect(su.get_absolute_url())
         else:
@@ -1100,11 +1080,11 @@ def stockunit(request, info, session, stockunit_id):
     })
 
 @tillweb_view
-def create_stockunit(request, info, session):
+def create_stockunit(request, info):
     if not info.user_has_perm("edit-stockunit"):
         return HttpResponseForbidden("You don't have permission to create new item sizes")
 
-    units = session.query(Unit).order_by(Unit.description).all()
+    units = td.s.query(Unit).order_by(Unit.description).all()
 
     if request.method == "POST":
         form = StockUnitForm(units, request.POST)
@@ -1115,8 +1095,8 @@ def create_stockunit(request, info, session):
                 unit_id=cd['unit'],
                 size=cd['size'],
                 merge=cd['merge'])
-            session.add(su)
-            session.commit()
+            td.s.add(su)
+            td.s.commit()
             messages.success(request, f"Item size '{su.name}' created.")
             return HttpResponseRedirect(su.get_absolute_url())
     else:
@@ -1129,27 +1109,24 @@ def create_stockunit(request, info, session):
     })
 
 @tillweb_view
-def stocklinelist(request, info, session):
-    regular = session\
-              .query(StockLine)\
-              .order_by(StockLine.dept_id, StockLine.name)\
-              .filter(StockLine.linetype == "regular")\
-              .options(joinedload("stockonsale"))\
-              .options(joinedload("stockonsale.stocktype"))\
-              .all()
-    display = session\
-              .query(StockLine)\
-              .filter(StockLine.linetype == "display")\
-              .order_by(StockLine.name)\
-              .options(joinedload("stockonsale"))\
-              .options(undefer("stockonsale.used"))\
-              .all()
-    continuous = session\
-                 .query(StockLine)\
-                 .filter(StockLine.linetype == "continuous")\
-                 .order_by(StockLine.name)\
-                 .options(undefer("stocktype.remaining"))\
-                 .all()
+def stocklinelist(request, info):
+    regular = td.s.query(StockLine)\
+                  .order_by(StockLine.dept_id, StockLine.name)\
+                  .filter(StockLine.linetype == "regular")\
+                  .options(joinedload("stockonsale"))\
+                  .options(joinedload("stockonsale.stocktype"))\
+                  .all()
+    display = td.s.query(StockLine)\
+                  .filter(StockLine.linetype == "display")\
+                  .order_by(StockLine.name)\
+                  .options(joinedload("stockonsale"))\
+                  .options(undefer("stockonsale.used"))\
+                  .all()
+    continuous = td.s.query(StockLine)\
+                     .filter(StockLine.linetype == "continuous")\
+                     .order_by(StockLine.name)\
+                     .options(undefer("stocktype.remaining"))\
+                     .all()
     return ('stocklines.html', {
         'nav': [("Stock lines", info.reverse("tillweb-stocklines"))],
         'regular': regular,
@@ -1158,14 +1135,13 @@ def stocklinelist(request, info, session):
     })
 
 @tillweb_view
-def stockline(request, info, session, stocklineid):
-    s = session\
-        .query(StockLine)\
-        .options(joinedload('stockonsale').joinedload('stocktype')
-                 .joinedload('unit'),
-                 joinedload('stockonsale').joinedload('delivery'),
-                 undefer_qtys('stockonsale'))\
-        .get(stocklineid)
+def stockline(request, info, stocklineid):
+    s = td.s.query(StockLine)\
+            .options(joinedload('stockonsale').joinedload('stocktype')
+                     .joinedload('unit'),
+                     joinedload('stockonsale').joinedload('delivery'),
+                     undefer_qtys('stockonsale'))\
+            .get(stocklineid)
     if not s:
         raise Http404
     return ('stockline.html', {
@@ -1174,11 +1150,10 @@ def stockline(request, info, session, stocklineid):
     })
 
 @tillweb_view
-def plulist(request, info, session):
-    plus = session\
-           .query(PriceLookup)\
-           .order_by(PriceLookup.dept_id, PriceLookup.description)\
-           .all()
+def plulist(request, info):
+    plus = td.s.query(PriceLookup)\
+               .order_by(PriceLookup.dept_id, PriceLookup.description)\
+               .all()
 
     may_create_plu = info.user_has_perm("create-plu")
 
@@ -1211,17 +1186,16 @@ class PLUForm(forms.Form):
         max_digits=money_max_digits, decimal_places=money_decimal_places)
 
 @tillweb_view
-def plu(request, info, session, pluid):
-    p = session.query(PriceLookup).get(pluid)
+def plu(request, info, pluid):
+    p = td.s.query(PriceLookup).get(pluid)
     if not p:
         raise Http404
 
     form = None
     if info.user_has_perm("alter-plu"):
-        depts = session\
-                .query(Department)\
-                .order_by(Department.id)\
-                .all()
+        depts = td.s.query(Department)\
+                    .order_by(Department.id)\
+                    .all()
         initial = {
             'description': p.description,
             'note': p.note,
@@ -1234,8 +1208,8 @@ def plu(request, info, session, pluid):
         if request.method == "POST":
             if 'submit_delete' in request.POST:
                 messages.success(request, "Price lookup '{}' deleted.".format(p.description))
-                session.delete(p)
-                session.commit()
+                td.s.delete(p)
+                td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-plus"))
             form = PLUForm(depts, request.POST, initial=initial)
             if form.is_valid():
@@ -1247,7 +1221,7 @@ def plu(request, info, session, pluid):
                 p.altprice1 = cd['altprice1']
                 p.altprice2 = cd['altprice2']
                 p.altprice3 = cd['altprice3']
-                session.commit()
+                td.s.commit()
                 messages.success(request, "Price lookup '{}' updated.".format(p.description))
                 return HttpResponseRedirect(p.get_absolute_url())
         else:
@@ -1260,14 +1234,13 @@ def plu(request, info, session, pluid):
     })
 
 @tillweb_view
-def create_plu(request, info, session):
+def create_plu(request, info):
     if not info.user_has_perm("create-plu"):
         return HttpResponseForbidden("You don't have permission to create new price lookups")
 
-    depts = session\
-            .query(Department)\
-            .order_by(Department.id)\
-            .all()
+    depts = td.s.query(Department)\
+                .order_by(Department.id)\
+                .all()
 
     if request.method == "POST":
         form = PLUForm(depts, request.POST)
@@ -1281,8 +1254,8 @@ def create_plu(request, info, session):
                 altprice1=cd['altprice1'],
                 altprice2=cd['altprice2'],
                 altprice3=cd['altprice3'])
-            session.add(p)
-            session.commit()
+            td.s.add(p)
+            td.s.commit()
             messages.success(request, "Price lookup '{}' created.".format(p.description))
             return HttpResponseRedirect(p.get_absolute_url())
     else:
@@ -1295,41 +1268,38 @@ def create_plu(request, info, session):
     })
 
 @tillweb_view
-def departmentlist(request, info, session):
-    depts = session\
-            .query(Department)\
-            .order_by(Department.id)\
-            .all()
+def departmentlist(request, info):
+    depts = td.s.query(Department)\
+                .order_by(Department.id)\
+                .all()
     return ('departmentlist.html', {
         'nav': [("Departments", info.reverse("tillweb-departments"))],
         'depts': depts,
     })
 
 @tillweb_view
-def department(request, info, session, departmentid, as_spreadsheet=False):
-    d = session\
-        .query(Department)\
-        .get(departmentid)
+def department(request, info, departmentid, as_spreadsheet=False):
+    d = td.s.query(Department)\
+            .get(departmentid)
     if d is None:
         raise Http404
 
     include_finished = request.GET.get("show_finished", "off") == "on"
-    items = session\
-            .query(StockItem)\
-            .join(StockType)\
-            .filter(StockType.department == d)\
-            .order_by(desc(StockItem.id))\
-            .options(joinedload('stocktype').joinedload('unit'),
-                     undefer_group('qtys'),
-                     joinedload('stockline'),
-                     joinedload('delivery'),
-                     joinedload('finishcode'))
+    items = td.s.query(StockItem)\
+                .join(StockType)\
+                .filter(StockType.department == d)\
+                .order_by(desc(StockItem.id))\
+                .options(joinedload('stocktype').joinedload('unit'),
+                         undefer_group('qtys'),
+                         joinedload('stockline'),
+                         joinedload('delivery'),
+                         joinedload('finishcode'))
     if not include_finished:
         items = items.filter(StockItem.finished == None)
 
     if as_spreadsheet:
         return spreadsheets.stock(
-            session, items.all(), tillname=info.tillname,
+            items.all(), tillname=info.tillname,
             filename="{}-dept{}-stock.ods".format(
                 info.tillname, departmentid))
 
@@ -1359,12 +1329,11 @@ class StockCheckForm(forms.Form):
     department = forms.ChoiceField()
 
 @tillweb_view
-def stockcheck(request, info, session):
+def stockcheck(request, info):
     buylist = []
-    depts = session\
-            .query(Department)\
-            .order_by(Department.id)\
-            .all()
+    depts = td.s.query(Department)\
+                .order_by(Department.id)\
+                .all()
 
     if request.method == 'POST':
         form = StockCheckForm(depts, request.POST)
@@ -1374,20 +1343,19 @@ def stockcheck(request, info, session):
             behind = datetime.timedelta(days=cd['months_behind'] * 30.4)
             min_sale = cd['minimum_sold']
             dept = int(cd['department'])
-            r = session\
-                .query(StockType, func.sum(StockOut.qty) / behind.days)\
-                .select_from(StockType)\
-                .join(StockItem)\
-                .join(StockOut)\
-                .options(lazyload(StockType.department),
-                         lazyload(StockType.unit),
-                         undefer(StockType.instock))\
-                .filter(StockOut.removecode_id == 'sold')\
-                .filter((func.now() - StockOut.time) < behind)\
-                .filter(StockType.dept_id == dept)\
-                .having(func.sum(StockOut.qty) / behind.days > min_sale)\
-                .group_by(StockType)\
-                .all()
+            r = td.s.query(StockType, func.sum(StockOut.qty) / behind.days)\
+                    .select_from(StockType)\
+                    .join(StockItem)\
+                    .join(StockOut)\
+                    .options(lazyload(StockType.department),
+                             lazyload(StockType.unit),
+                             undefer(StockType.instock))\
+                    .filter(StockOut.removecode_id == 'sold')\
+                    .filter((func.now() - StockOut.time) < behind)\
+                    .filter(StockType.dept_id == dept)\
+                    .having(func.sum(StockOut.qty) / behind.days > min_sale)\
+                    .group_by(StockType)\
+                    .all()
             buylist = [(st, '{:0.1f}'.format(sold),
                         '{:0.1f}'.format(sold * ahead.days - st.instock))
                        for st, sold in r]
@@ -1401,10 +1369,8 @@ def stockcheck(request, info, session):
     })
 
 @tillweb_view
-def userlist(request, info, session):
-    q = session\
-        .query(User)\
-        .order_by(User.fullname)
+def userlist(request, info):
+    q = td.s.query(User).order_by(User.fullname)
     include_inactive = request.GET.get("include_inactive", "off") == "on"
     if not include_inactive:
         q = q.filter(User.enabled == True)
@@ -1427,14 +1393,14 @@ class EditUserForm(forms.Form):
         self.fields['groups'].choices = groups
 
 @tillweb_view
-def user(request, info, session, userid):
-    u = session.query(User).get(userid)
+def user(request, info, userid):
+    u = td.s.query(User).get(userid)
     if not u:
         raise Http404
 
     form = None
     if not u.superuser and info.user_has_perm("edit-user"):
-        groups = session.query(Group).order_by(Group.id).all()
+        groups = td.s.query(Group).order_by(Group.id).all()
         gchoices = [ (g.id, "{g.id} — {g.description}".format(g=g))
                      for g in groups ]
         initial = {
@@ -1453,15 +1419,15 @@ def user(request, info, session, userid):
                 u.webuser = cd['web_username'] if cd['web_username'] else None
                 u.enabled = cd['enabled']
                 u.groups = [
-                    session.query(Group).get(g)
+                    td.s.query(Group).get(g)
                     for g in cd['groups'] ]
                 try:
-                    session.commit()
+                    td.s.commit()
                     messages.success(request, "User '{}' updated.".format(
                         u.fullname))
                     return HttpResponseRedirect(u.get_absolute_url())
                 except sqlalchemy.exc.IntegrityError:
-                    session.rollback()
+                    td.s.rollback()
                     form.add_error("web_username", "Username already in use")
                     messages.error(
                         request, "Could not update user: the web username "
@@ -1469,27 +1435,24 @@ def user(request, info, session, userid):
         else:
             form = EditUserForm(gchoices, initial=initial)
 
-    sales = session\
-            .query(Transline)\
-            .filter(Transline.user == u)\
-            .options(joinedload('transaction'),
-                     joinedload('stockref').joinedload('stockitem')
-                     .joinedload('stocktype').joinedload('unit'))\
-            .order_by(desc(Transline.time))[:50]
+    sales = td.s.query(Transline)\
+                .filter(Transline.user == u)\
+                .options(joinedload('transaction'),
+                         joinedload('stockref').joinedload('stockitem')
+                         .joinedload('stocktype').joinedload('unit'))\
+                .order_by(desc(Transline.time))[:50]
 
-    payments = session\
-               .query(Payment)\
-               .filter(Payment.user == u)\
-               .options(joinedload('transaction'),
-                        joinedload('paytype'))\
-               .order_by(desc(Payment.time))[:50]
+    payments = td.s.query(Payment)\
+                   .filter(Payment.user == u)\
+                   .options(joinedload('transaction'),
+                            joinedload('paytype'))\
+                   .order_by(desc(Payment.time))[:50]
 
-    annotations = session\
-                  .query(StockAnnotation)\
-                  .options(joinedload('stockitem').joinedload('stocktype'),
-                           joinedload('type'))\
-                  .filter(StockAnnotation.user == u)\
-                  .order_by(desc(StockAnnotation.time))[:50]
+    annotations = td.s.query(StockAnnotation)\
+                      .options(joinedload('stockitem').joinedload('stocktype'),
+                               joinedload('type'))\
+                      .filter(StockAnnotation.user == u)\
+                      .order_by(desc(StockAnnotation.time))[:50]
 
     return ('user.html',
             {'tillobject': u,
@@ -1501,11 +1464,10 @@ def user(request, info, session, userid):
             })
 
 @tillweb_view
-def grouplist(request, info, session):
-    groups = session\
-             .query(Group)\
-             .order_by(Group.id)\
-             .all()
+def grouplist(request, info):
+    groups = td.s.query(Group)\
+                 .order_by(Group.id)\
+                 .all()
 
     return ('grouplist.html',
             {'nav': [("Groups", info.reverse("tillweb-till-groups"))],
@@ -1522,8 +1484,8 @@ class EditGroupForm(forms.Form):
         self.fields['permissions'].choices = permissions
 
 @tillweb_view
-def group(request, info, session, groupid):
-    g = session.query(Group).get(groupid)
+def group(request, info, groupid):
+    g = td.s.query(Group).get(groupid)
     if not g:
         raise Http404
 
@@ -1532,7 +1494,7 @@ def group(request, info, session, groupid):
     # XXX may want to introduce a permission for editing groups?
     # edit-user is the closest I could find
     if info.user_has_perm("edit-user"):
-        permissions = session.query(Permission).order_by(Permission.id).all()
+        permissions = td.s.query(Permission).order_by(Permission.id).all()
         pchoices = [ (p.id, "{p.id} — {p.description}".format(p=p))
                      for p in permissions ]
         initial = {
@@ -1543,8 +1505,8 @@ def group(request, info, session, groupid):
         if request.method == "POST":
             if 'submit_delete' in request.POST:
                 messages.success(request, "Group '{}' deleted.".format(g.id))
-                session.delete(g)
-                session.commit()
+                td.s.delete(g)
+                td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
             form = EditGroupForm(pchoices, request.POST, initial=initial)
             if form.is_valid():
@@ -1555,7 +1517,7 @@ def group(request, info, session, groupid):
                 g.permissions = [
                     session.query(Permission).get(p)
                     for p in cd['permissions'] ]
-                session.commit()
+                td.s.commit()
                 messages.success(request, "Group '{}' updated.".format(g.id))
                 return HttpResponseRedirect(g.get_absolute_url())
         else:
@@ -1573,8 +1535,8 @@ matplotlib.use("SVG")
 import matplotlib.pyplot as plt
 
 @tillweb_view
-def session_sales_pie_chart(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_sales_pie_chart(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
     dt = s.dept_totals
@@ -1596,8 +1558,8 @@ def session_sales_pie_chart(request, info, session, sessionid):
     return response
 
 @tillweb_view
-def session_users_pie_chart(request, info, session, sessionid):
-    s = session.query(Session).get(sessionid)
+def session_users_pie_chart(request, info, sessionid):
+    s = td.s.query(Session).get(sessionid)
     if not s:
         raise Http404
     ut = s.user_totals
@@ -1635,13 +1597,12 @@ class StockSoldReportForm(forms.Form):
     ])
 
 @tillweb_view
-def reportindex(request, info, session):
+def reportindex(request, info):
     if request.method == 'POST' and "submit_waste" in request.POST:
         wasteform = WasteReportForm(request.POST, prefix="waste")
         if wasteform.is_valid():
             cd = wasteform.cleaned_data
             return spreadsheets.waste(
-                session,
                 start=cd['startdate'],
                 end=cd['enddate'],
                 cols=cd['columns'],
@@ -1654,7 +1615,6 @@ def reportindex(request, info, session):
         if stocksoldform.is_valid():
             cd = stocksoldform.cleaned_data
             return spreadsheets.stocksold(
-                session,
                 start=cd['startdate'],
                 end=cd['enddate'],
                 dates=cd['dates'],

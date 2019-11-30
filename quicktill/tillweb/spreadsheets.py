@@ -11,6 +11,7 @@ from odf.style import TableColumnProperties
 from odf.text import P
 from odf.table import Table, TableColumn, TableRow, TableCell
 import odf.number as number
+from .db import td
 
 class Sheet:
     """A table in a spreadsheet"""
@@ -230,39 +231,39 @@ class Document:
         self.doc.write(r)
         return r
 
-def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
+def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
     """A spreadsheet summarising sessions between the start and end date.
     """
-    depts = ds.query(Department).order_by(Department.id).all()
+    depts = td.s.query(Department).order_by(Department.id).all()
     tf = func.sum(Transline.items * Transline.amount).label("depttotal")
     # I believe weeks run Monday to Sunday!
     weeks = func.div(Session.date - datetime.date(2002, 8, 5), 7)
 
     if start is None:
-        start = ds.query(func.min(Session.date)).scalar()
+        start = td.s.query(func.min(Session.date)).scalar()
     if end is None:
-        end = ds.query(func.max(Session.date)).scalar()
+        end = td.s.query(func.max(Session.date)).scalar()
 
     if rows == "Sessions":
-        depttotals = ds.query(Session, Department.id, tf)\
-                       .select_from(Session)\
-                       .options(undefer('actual_total'))\
-                       .order_by(Session.id, Department.id)\
-                       .group_by(Session.id, Department.id)\
-                       .filter(select([func.count(SessionTotal.sessionid)],
-                                      whereclause=SessionTotal.sessionid == Session.id)\
-                               .correlate(Session.__table__)\
-                               .as_scalar() != 0)\
-                       .filter(Session.endtime != None)\
-                       .filter(Session.date >= start)\
-                       .filter(Session.date <= end)\
-                       .join(Transaction, Transline, Department)
+        depttotals = td.s.query(Session, Department.id, tf)\
+                         .select_from(Session)\
+                         .options(undefer('actual_total'))\
+                         .order_by(Session.id, Department.id)\
+                         .group_by(Session.id, Department.id)\
+                         .filter(select([func.count(SessionTotal.sessionid)],
+                                        whereclause=SessionTotal.sessionid == Session.id)\
+                                 .correlate(Session.__table__)\
+                                 .as_scalar() != 0)\
+                         .filter(Session.endtime != None)\
+                         .filter(Session.date >= start)\
+                         .filter(Session.date <= end)\
+                         .join(Transaction, Transline, Department)
     else:
-        dateranges = ds.query(func.min(Session.date).label("start"),
-                              func.max(Session.date).label("end"))\
-                       .filter(Session.date >= start)\
-                       .filter(Session.date <= end)\
-                       .filter(Session.endtime != None)
+        dateranges = td.s.query(func.min(Session.date).label("start"),
+                                func.max(Session.date).label("end"))\
+                         .filter(Session.date >= start)\
+                         .filter(Session.date <= end)\
+                         .filter(Session.endtime != None)
 
         if rows == "Days":
             dateranges = dateranges.group_by(Session.date)
@@ -270,22 +271,22 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
             dateranges = dateranges.group_by(weeks)
         dateranges = dateranges.cte(name="dateranges")
 
-        depttotals = ds.query(
+        depttotals = td.s.query(
             dateranges.c.start,
             dateranges.c.end,
             Transline.dept_id,
             tf)\
-                       .select_from(dateranges.join(Session, and_(
-                           Session.date >= dateranges.c.start,
-                           Session.date <= dateranges.c.end))
-                                    .join(Transaction)\
-                                    .join(Transline))\
-                       .group_by(dateranges.c.start,
-                                 dateranges.c.end,
-                                 Transline.dept_id)\
-                       .order_by(dateranges.c.start, Transline.dept_id)
+                         .select_from(dateranges.join(Session, and_(
+                             Session.date >= dateranges.c.start,
+                             Session.date <= dateranges.c.end))
+                                      .join(Transaction)\
+                                      .join(Transline))\
+                         .group_by(dateranges.c.start,
+                                   dateranges.c.end,
+                                   Transline.dept_id)\
+                         .order_by(dateranges.c.start, Transline.dept_id)
 
-        acttotals = ds.query(
+        acttotals = td.s.query(
             dateranges.c.start, dateranges.c.end,
             select([func.sum(SessionTotal.amount)])\
             .correlate(dateranges)\
@@ -294,10 +295,10 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
                 Session.date <= dateranges.c.end))\
             .select_from(Session.__table__.join(SessionTotal))\
             .label('actual_total'))\
-                      .select_from(dateranges)\
-                      .group_by(dateranges.c.start,
-                                dateranges.c.end)\
-                      .order_by(dateranges.c.start)
+                        .select_from(dateranges)\
+                        .group_by(dateranges.c.start,
+                                  dateranges.c.end)\
+                        .order_by(dateranges.c.start)
 
         acttotal_dict = {}
         for start, end, total in acttotals:
@@ -416,7 +417,7 @@ def sessionrange(ds, start=None, end=None, rows="Sessions", tillname="Till"):
 
     return doc.as_response()
 
-def session(ds, s, tillname="Till"):
+def session(s, tillname="Till"):
     """A spreadsheet giving full details for a session
     """
     filename = "{}-session-{}{}.ods".format(
@@ -506,7 +507,7 @@ def session(ds, s, tillname="Till"):
 
     return doc.as_response()
 
-def stock(ds, stocklist, tillname="Till", filename=None):
+def stock(stocklist, tillname="Till", filename=None):
     """A list of stock items as a spreadsheet
     """
     if not filename:
@@ -574,7 +575,7 @@ def daterange(start, end):
         yield n
         n += datetime.timedelta(days=1)
 
-def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
+def waste(start=None, end=None, cols="depts", tillname="Till"):
     """A report on waste
 
     Rows are dates.  Columns can be departments or waste types.
@@ -584,39 +585,39 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
 
     The first row of each sheet is headers.
     """
-    depts = ds.query(Department).order_by(Department.id).all()
-    wastes = ds.query(RemoveCode).order_by(RemoveCode.id).all()
+    depts = td.s.query(Department).order_by(Department.id).all()
+    wastes = td.s.query(RemoveCode).order_by(RemoveCode.id).all()
     wastes = wastes + [RemoveCode(id="unaccounted", reason="Unaccounted")]
 
     date = func.date(StockOut.time)
-    data = ds.query(date,
-                    StockType.dept_id,
-                    StockOut.removecode_id,
-                    func.sum(StockOut.qty))\
-             .select_from(StockOut)\
-             .join(StockItem, StockType)
+    data = td.s.query(date,
+                      StockType.dept_id,
+                      StockOut.removecode_id,
+                      func.sum(StockOut.qty))\
+               .select_from(StockOut)\
+               .join(StockItem, StockType)
     if start:
         data = data.filter(date >= start)
     else:
-        start = ds.query(func.min(date)).scalar()
+        start = td.s.query(func.min(date)).scalar()
     if end:
         data = data.filter(date <= end)
     else:
-        end = ds.query(func.max(date)).scalar()
+        end = td.s.query(func.max(date)).scalar()
     data = data.group_by(date, StockType.dept_id, StockOut.removecode_id).all()
 
     date = func.date(StockItem.finished)
-    unaccounted = ds.query(date,
-                           StockType.dept_id,
-                           literal("unaccounted"),
-                           func.sum(StockItem.size - StockItem.used))\
-                    .select_from(StockItem)\
-                    .join(StockType)\
-                    .filter(StockItem.finished != None)\
-                    .filter(StockItem.finished <= end)\
-                    .filter(StockItem.finished >= start)\
-                    .group_by(date, StockType.dept_id)\
-                    .all()
+    unaccounted = td.s.query(date,
+                             StockType.dept_id,
+                             literal("unaccounted"),
+                             func.sum(StockItem.size - StockItem.used))\
+                      .select_from(StockItem)\
+                      .join(StockType)\
+                      .filter(StockItem.finished != None)\
+                      .filter(StockItem.finished <= end)\
+                      .filter(StockItem.finished >= start)\
+                      .group_by(date, StockType.dept_id)\
+                      .all()
 
     data = data + unaccounted
 
@@ -681,16 +682,16 @@ def waste(ds, start=None, end=None, cols="depts", tillname="Till"):
 
     return doc.as_response()
 
-def stocksold(ds, start=None, end=None, dates="transaction", tillname="Till"):
-    sold = ds.query(StockType, func.sum(StockOut.qty))\
-             .options(contains_eager(StockType.department))\
-             .join(Department)\
-             .options(contains_eager(StockType.unit))\
-             .join(UnitType)\
-             .join(StockItem, StockOut)\
-             .group_by(StockType, Department, UnitType)\
-             .order_by(StockType.dept_id,
-                       func.sum(StockOut.qty).desc())
+def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
+    sold = td.s.query(StockType, func.sum(StockOut.qty))\
+               .options(contains_eager(StockType.department))\
+               .join(Department)\
+               .options(contains_eager(StockType.unit))\
+               .join(UnitType)\
+               .join(StockItem, StockOut)\
+               .group_by(StockType, Department, UnitType)\
+               .order_by(StockType.dept_id,
+                         func.sum(StockOut.qty).desc())
 
     if dates == "transaction":
         sold = sold.join(Transline, Transaction, Session)
