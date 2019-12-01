@@ -1,3 +1,31 @@
+quicktill (16.3) stable; urgency=low
+
+  * New release 16.3
+
+  * Don't create temporary StockUnit instances
+
+  * Enable superusers to edit their own user details
+
+  * Whitespace fix
+
+  * Add custom fields for sqlalchemy model instances
+
+  * Fix deferred transactions view
+
+  * Use thread-local storage for database session in web interface
+
+  * Fix spreadsheet download - no reference to StockUnit from StockItem
+
+  * Move screen unblanking code around and add some logging
+
+  * Edit supplier details through web interface
+
+  * Show accounting system info on department page
+
+  * Show user access permission in django admin
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 01 Dec 2019 16:54:39 +0000
+
 quicktill (16.2) stable; urgency=low
 
   * New release 16.2
