@@ -14,7 +14,7 @@
   </thead>
   <tbody>
 {% for group in groups %}
-<tr>
+<tr id="row-{{group.id}}">
 <td><a href="{{group.get_absolute_url}}">{{group.id}}</a></td>
 <td><a href="{{group.get_absolute_url}}">{{group.description}}</a></td>
 </tr>
@@ -29,6 +29,10 @@ $(document).ready(function(){
 </script>
 {% else %}
 <p>No groups have been defined.</p>
+{% endif %}
+
+{% if may_create_group %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-till-group" pubname=pubname %}">Add new group</a>
 {% endif %}
 
 {% endblock %}

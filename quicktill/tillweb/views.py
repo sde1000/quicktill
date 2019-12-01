@@ -1450,6 +1450,7 @@ def grouplist(request, info):
     return ('grouplist.html',
             {'nav': [("Groups", info.reverse("tillweb-till-groups"))],
              'groups': groups,
+             'may_create_group': info.user_has_perm("edit-user"),
             })
 
 class EditGroupForm(forms.Form):
@@ -1491,7 +1492,8 @@ def group(request, info, groupid):
                 g.permissions = cd['permissions']
                 td.s.commit()
                 messages.success(request, "Group '{}' updated.".format(g.id))
-                return HttpResponseRedirect(g.get_absolute_url())
+                return HttpResponseRedirect(
+                    info.reverse("tillweb-till-groups") + "#row-" + g.id)
         else:
             form = EditGroupForm(initial=initial)
 
@@ -1500,6 +1502,42 @@ def group(request, info, groupid):
              'group': g,
              'form': form,
              'can_delete': len(g.users) == 0,
+            })
+
+@tillweb_view
+def create_group(request, info):
+    # XXX may want to introduce a permission for editing groups?
+    # edit-user is the closest I could find
+    if not info.user_has_perm("edit-user"):
+        return HttpResponseForbidden(
+            "You don't have permission to create new groups")
+
+    if request.method == "POST":
+        form = EditGroupForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            g = Group(id=cd['name'],
+                      description=cd['description'],
+                      permissions=cd['permissions'])
+            td.s.add(g)
+            try:
+                td.s.commit()
+                messages.success(request, "Group '{}' created.".format(g.id))
+                return HttpResponseRedirect(
+                    info.reverse("tillweb-till-groups") + "#row-" + g.id)
+            except sqlalchemy.exc.IntegrityError:
+                td.s.rollback()
+                form.add_error("name", "There is another group with this name")
+                messages.error(
+                    request, "Could not create the group: there is "
+                    "another group with this name")
+    else:
+        form = EditGroupForm()
+
+    return ('new-group.html',
+            {'form': form,
+             'nav': [("Groups", info.reverse("tillweb-till-groups")),
+                     ("New", info.reverse("tillweb-create-till-group"))],
             })
 
 import matplotlib

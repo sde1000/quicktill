@@ -66,3 +66,16 @@ form table tr td ul {
 	font-size: 100%;
 	text-decoration: none;
 }
+
+tr:target {
+    animation: target-fade 3s ease;
+}
+@keyframes target-fade {
+    0% {
+	background-color: rgba(255,255,0,1);
+    }
+
+    100% {
+	background-color: rgba(0,0,0,0);
+    }
+}

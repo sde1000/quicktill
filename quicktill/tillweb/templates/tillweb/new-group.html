@@ -1,0 +1,32 @@
+{% extends "tillweb/tillweb.html" %}
+{% load static %}
+
+{% block title %}{{till}} — create new group{% endblock %}
+
+{% block style %}
+{{ block.super }}
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/multi-select/css/multi-select.css" %}" />
+{% endblock %}
+
+{% block jquery %}
+{{ block.super }}
+<script type="text/javascript" src="{% static "tillweb/multi-select/js/jquery.multi-select.js" %}"></script>
+{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Create group
+  </button>
+</form>
+<script type="text/javascript">
+$(document).ready(function(){
+$("#id_permissions").multiSelect({
+selectableHeader: "<div>Available permissions</div>",
+selectionHeader: "<div>Selected permissions</div>"});
+});
+</script>
+
+{% endblock %}

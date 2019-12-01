@@ -35,7 +35,7 @@ tillurls = [
 
     path('supplier/', supplierlist, name="tillweb-suppliers"),
     path('supplier/<int:supplierid>/', supplier, name="tillweb-supplier"),
-    path('supplier/new/', create_supplier, name="tillweb-create-supplier"),
+    path('new/supplier/', create_supplier, name="tillweb-create-supplier"),
 
     path('delivery/', deliverylist, name="tillweb-deliveries"),
     path('delivery/<int:deliveryid>/', delivery, name="tillweb-delivery"),
@@ -48,18 +48,18 @@ tillurls = [
 
     path('unit/', units, name="tillweb-units"),
     path('unit/<int:unit_id>/', unit, name="tillweb-unit"),
-    path('unit/new/', create_unit, name="tillweb-create-unit"),
+    path('new/unit/', create_unit, name="tillweb-create-unit"),
 
     path('stockunit/', stockunits, name="tillweb-stockunits"),
     path('stockunit/<int:stockunit_id>/', stockunit, name="tillweb-stockunit"),
-    path('stockunit/new/', create_stockunit, name="tillweb-create-stockunit"),
+    path('new/stockunit/', create_stockunit, name="tillweb-create-stockunit"),
 
     path('stockline/', stocklinelist, name="tillweb-stocklines"),
     path('stockline/<int:stocklineid>/', stockline, name="tillweb-stockline"),
 
     path('plu/', plulist, name="tillweb-plus"),
     path('plu/<int:pluid>/', plu, name="tillweb-plu"),
-    path('plu/new/', create_plu, name="tillweb-create-plu"),
+    path('new/plu/', create_plu, name="tillweb-create-plu"),
 
     path('location/', locationlist, name="tillweb-locations"),
     re_path(r'^location/(?P<location>[\w\- ]+)/$', location,
@@ -78,6 +78,7 @@ tillurls = [
 
     path('group/', grouplist, name="tillweb-till-groups"),
     re_path('^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
+    path('new/group/', create_group, name="tillweb-create-till-group"),
 
     path('reports/', reportindex, name="tillweb-reports"),
 ]
