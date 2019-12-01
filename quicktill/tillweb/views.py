@@ -25,6 +25,9 @@ from quicktill.version import version
 from . import spreadsheets
 import io
 from .db import td
+from .forms import SQLAModelChoiceField
+from .forms import SQLAModelMultipleChoiceField
+from .forms import StringIDMultipleChoiceField
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
@@ -1026,13 +1029,11 @@ def stockunits(request, info):
     })
 
 class StockUnitForm(forms.Form):
-    def __init__(self, units, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['unit'].choices = [
-            (u.id, f"{u.description} (base unit: {u.name})") for u in units]
-
     description = forms.CharField()
-    unit = forms.ChoiceField()
+    unit = SQLAModelChoiceField(
+        Unit,
+        query_filter=lambda x:x.order_by(Unit.name),
+        label_function=lambda u:f"{u.description} (base unit: {u.name})")
     size = forms.DecimalField(
         label="Size in base units",
         min_value=min_quantity, max_digits=qty_max_digits,
@@ -1047,10 +1048,9 @@ def stockunit(request, info, stockunit_id):
 
     form = None
     if info.user_has_perm("edit-stockunit"):
-        units = td.s.query(Unit).order_by(Unit.description).all()
         initial = {
             'description': su.name,
-            'unit': su.unit_id,
+            'unit': su.unit,
             'size': su.size,
             'merge': su.merge,
         }
@@ -1060,18 +1060,18 @@ def stockunit(request, info, stockunit_id):
                 td.s.delete(su)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-stockunits"))
-            form = StockUnitForm(units, request.POST, initial=initial)
+            form = StockUnitForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
                 su.name = cd['description']
-                su.unit_id = cd['unit']
+                su.unit = cd['unit']
                 su.size = cd['size']
                 su.merge = cd['merge']
                 td.s.commit()
                 messages.success(request, f"Item size '{su.name}' updated.")
                 return HttpResponseRedirect(su.get_absolute_url())
         else:
-            form = StockUnitForm(units, initial=initial)
+            form = StockUnitForm(initial=initial)
 
     return ('stockunit.html', {
         'tillobject': su,
@@ -1164,13 +1164,11 @@ def plulist(request, info):
     })
 
 class PLUForm(forms.Form):
-    def __init__(self, depts, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['department'].choices = [
-            (d.id, d.description) for d in depts]
-
     description = forms.CharField()
-    department = forms.ChoiceField()
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q:q.order_by(Department.id),
+        required=True)
     note = forms.CharField(required=False)
     price = forms.DecimalField(
         required=False, min_value=zero,
@@ -1193,13 +1191,10 @@ def plu(request, info, pluid):
 
     form = None
     if info.user_has_perm("alter-plu"):
-        depts = td.s.query(Department)\
-                    .order_by(Department.id)\
-                    .all()
         initial = {
             'description': p.description,
             'note': p.note,
-            'department': p.department.id,
+            'department': p.department,
             'price': p.price,
             'altprice1': p.altprice1,
             'altprice2': p.altprice2,
@@ -1211,12 +1206,12 @@ def plu(request, info, pluid):
                 td.s.delete(p)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-plus"))
-            form = PLUForm(depts, request.POST, initial=initial)
+            form = PLUForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
                 p.description = cd['description']
                 p.note = cd['note']
-                p.dept_id = cd['department']
+                p.department = cd['department']
                 p.price = cd['price']
                 p.altprice1 = cd['altprice1']
                 p.altprice2 = cd['altprice2']
@@ -1225,7 +1220,7 @@ def plu(request, info, pluid):
                 messages.success(request, "Price lookup '{}' updated.".format(p.description))
                 return HttpResponseRedirect(p.get_absolute_url())
         else:
-            form = PLUForm(depts, initial=initial)
+            form = PLUForm(initial=initial)
 
     return ('plu.html', {
         'tillobject': p,
@@ -1238,18 +1233,14 @@ def create_plu(request, info):
     if not info.user_has_perm("create-plu"):
         return HttpResponseForbidden("You don't have permission to create new price lookups")
 
-    depts = td.s.query(Department)\
-                .order_by(Department.id)\
-                .all()
-
     if request.method == "POST":
-        form = PLUForm(depts, request.POST)
+        form = PLUForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
             p = PriceLookup(
                 description=cd['description'],
                 note=cd['note'],
-                dept_id=cd['department'],
+                department=cd['department'],
                 price=cd['price'],
                 altprice1=cd['altprice1'],
                 altprice2=cd['altprice2'],
@@ -1259,7 +1250,7 @@ def create_plu(request, info):
             messages.success(request, "Price lookup '{}' created.".format(p.description))
             return HttpResponseRedirect(p.get_absolute_url())
     else:
-        form = PLUForm(depts)
+        form = PLUForm()
 
     return ('new-plu.html', {
         'nav': [("Price lookups", info.reverse("tillweb-plus")),
@@ -1311,11 +1302,6 @@ def department(request, info, departmentid, as_spreadsheet=False):
              'include_finished': include_finished})
 
 class StockCheckForm(forms.Form):
-    def __init__(self, depts, *args, **kwargs):
-        super(StockCheckForm, self).__init__(*args, **kwargs)
-        self.fields['department'].choices = [
-            (d.id, d.description) for d in depts]
-
     short = forms.TextInput(attrs={'size': 3, 'maxlength': 3})
     weeks_ahead = forms.IntegerField(
         label="Weeks ahead", widget=short,
@@ -1326,23 +1312,21 @@ class StockCheckForm(forms.Form):
     minimum_sold = forms.FloatField(
         label="Minimum sold", widget=short,
         min_value=0.0, initial=1.0)
-    department = forms.ChoiceField()
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q:q.order_by(Department.id))
 
 @tillweb_view
 def stockcheck(request, info):
     buylist = []
-    depts = td.s.query(Department)\
-                .order_by(Department.id)\
-                .all()
-
     if request.method == 'POST':
-        form = StockCheckForm(depts, request.POST)
+        form = StockCheckForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
             ahead = datetime.timedelta(days=cd['weeks_ahead'] * 7)
             behind = datetime.timedelta(days=cd['months_behind'] * 30.4)
             min_sale = cd['minimum_sold']
-            dept = int(cd['department'])
+            dept = cd['department']
             r = td.s.query(StockType, func.sum(StockOut.qty) / behind.days)\
                     .select_from(StockType)\
                     .join(StockItem)\
@@ -1352,7 +1336,7 @@ def stockcheck(request, info):
                              undefer(StockType.instock))\
                     .filter(StockOut.removecode_id == 'sold')\
                     .filter((func.now() - StockOut.time) < behind)\
-                    .filter(StockType.dept_id == dept)\
+                    .filter(StockType.department == dept)\
                     .having(func.sum(StockOut.qty) / behind.days > min_sale)\
                     .group_by(StockType)\
                     .all()
@@ -1361,7 +1345,7 @@ def stockcheck(request, info):
                        for st, sold in r]
             buylist.sort(key=lambda l: float(l[2]), reverse=True)
     else:
-        form = StockCheckForm(depts)
+        form = StockCheckForm()
     return ('stockcheck.html', {
         'nav': [("Buying list", info.reverse("tillweb-stockcheck"))],
         'form': form,
@@ -1386,11 +1370,10 @@ class EditUserForm(forms.Form):
     shortname = forms.CharField()
     web_username = forms.CharField(required=False)
     enabled = forms.BooleanField(required=False)
-    groups = forms.MultipleChoiceField()
-
-    def __init__(self, groups, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['groups'].choices = groups
+    groups = StringIDMultipleChoiceField(
+        Group,
+        query_filter=lambda q:q.order_by(Group.id),
+        required=False)
 
 @tillweb_view
 def user(request, info, userid):
@@ -1400,27 +1383,22 @@ def user(request, info, userid):
 
     form = None
     if not u.superuser and info.user_has_perm("edit-user"):
-        groups = td.s.query(Group).order_by(Group.id).all()
-        gchoices = [ (g.id, "{g.id} — {g.description}".format(g=g))
-                     for g in groups ]
         initial = {
             'fullname': u.fullname,
             'shortname': u.shortname,
             'web_username': u.webuser,
             'enabled': u.enabled,
-            'groups': [g.id for g in u.groups],
+            'groups': u.groups,
         }
         if request.method == "POST":
-            form = EditUserForm(gchoices, request.POST, initial=initial)
+            form = EditUserForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
                 u.fullname = cd['fullname']
                 u.shortname = cd['shortname']
                 u.webuser = cd['web_username'] if cd['web_username'] else None
                 u.enabled = cd['enabled']
-                u.groups = [
-                    td.s.query(Group).get(g)
-                    for g in cd['groups'] ]
+                u.groups = cd['groups']
                 try:
                     td.s.commit()
                     messages.success(request, "User '{}' updated.".format(
@@ -1433,7 +1411,7 @@ def user(request, info, userid):
                         request, "Could not update user: the web username "
                         "is already in use by another till user")
         else:
-            form = EditUserForm(gchoices, initial=initial)
+            form = EditUserForm(initial=initial)
 
     sales = td.s.query(Transline)\
                 .filter(Transline.user == u)\
@@ -1477,11 +1455,10 @@ def grouplist(request, info):
 class EditGroupForm(forms.Form):
     name = forms.CharField()
     description = forms.CharField()
-    permissions = forms.MultipleChoiceField()
-
-    def __init__(self, permissions, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['permissions'].choices = permissions
+    permissions = StringIDMultipleChoiceField(
+        Permission,
+        query_filter=lambda q:q.order_by(Permission.id),
+        required=False)
 
 @tillweb_view
 def group(request, info, groupid):
@@ -1494,13 +1471,10 @@ def group(request, info, groupid):
     # XXX may want to introduce a permission for editing groups?
     # edit-user is the closest I could find
     if info.user_has_perm("edit-user"):
-        permissions = td.s.query(Permission).order_by(Permission.id).all()
-        pchoices = [ (p.id, "{p.id} — {p.description}".format(p=p))
-                     for p in permissions ]
         initial = {
             'name': g.id,
             'description': g.description,
-            'permissions': [p.id for p in g.permissions],
+            'permissions': g.permissions,
         }
         if request.method == "POST":
             if 'submit_delete' in request.POST:
@@ -1508,20 +1482,18 @@ def group(request, info, groupid):
                 td.s.delete(g)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
-            form = EditGroupForm(pchoices, request.POST, initial=initial)
+            form = EditGroupForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
                 changed = form.changed_data
                 g.id = cd['name']
                 g.description = cd['description']
-                g.permissions = [
-                    session.query(Permission).get(p)
-                    for p in cd['permissions'] ]
+                g.permissions = cd['permissions']
                 td.s.commit()
                 messages.success(request, "Group '{}' updated.".format(g.id))
                 return HttpResponseRedirect(g.get_absolute_url())
         else:
-            form = EditGroupForm(pchoices, initial=initial)
+            form = EditGroupForm(initial=initial)
 
     return ('group.html',
             {'tillobject': g,

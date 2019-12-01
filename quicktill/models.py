@@ -559,6 +559,9 @@ class Permission(Base):
     description = Column(String(), nullable=False,
                          doc="Brief description of the permission")
 
+    def __str__(self):
+        return f"{self.id} — {self.description}"
+
 class Group(Base):
     """A group of permissions
 
@@ -580,6 +583,9 @@ class Group(Base):
     def tillweb_nav(self):
         return [("Groups", self.get_view_url("tillweb-till-groups")),
                 (self.id, self.get_absolute_url())]
+
+    def __str__(self):
+        return f"{self.id} — {self.description}"
 
     def __repr__(self):
         return "<Group({0.id},'{0.description}')>".format(self)
