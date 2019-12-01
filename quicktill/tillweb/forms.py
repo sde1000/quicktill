@@ -76,7 +76,7 @@ class SQLAModelChoiceField(Field):
     def values_to_filter(self, query, values):
         """Update the query to filter for a list of values
 
-        "values" is supposed to be a list of unique strings.  
+        "values" is supposed to be a list of unique strings.
         """
         try:
             return query.filter(self.model.id.in_(int(x) for x in values))
