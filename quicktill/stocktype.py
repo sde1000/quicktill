@@ -4,11 +4,20 @@ import logging
 log = logging.getLogger(__name__)
 from . import ui, td, keyboard, tillconfig, user
 from .models import Department, Unit, StockType, StockItem, Delivery, penny
-from .models import StockUnit
 from .plugins import ClassPluginMount
 from .cmdline import command
 from decimal import Decimal
 import datetime
+
+class TempStockUnit:
+    """StockUnit-compatible class that is not persisted to the database
+
+    This is used when passing a StockUnit that potentially does not
+    exist in the database to the PriceGuess hook.
+    """
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 class choose_stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
@@ -262,10 +271,10 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
                 x.size, x.remaining,
                 tillconfig.fc(PriceGuessHook.guess_price(
                     x.stocktype,
-                    StockUnit(name=x.description,
-                              unit_id=x.stocktype.unit_id,
-                              size=x.size,
-                              unit=x.stocktype.unit),
+                    TempStockUnit(name=x.description,
+                                  unit_id=x.stocktype.unit_id,
+                                  size=x.size,
+                                  unit=x.stocktype.unit),
                     x.costprice)))
               for x in sl]
         w = min(max(f.idealwidth() + 2, len(name) + 4, 30), mw)

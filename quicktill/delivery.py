@@ -569,9 +569,10 @@ class edit_stockitem(ui.basicpopup):
         su = self.unitfield.read()
         if not su:
             td.s.add(self.item)
-            su = StockUnit(name=self.item.description,
-                           size=self.item.size,
-                           unit=self.item.stocktype.unit)
+            su = stocktype.TempStockUnit(
+                name=self.item.description,
+                size=self.item.size,
+                unit=self.item.stocktype.unit)
         cost = self.costfield.f
         if st is None or len(cost) == 0:
             self.suggested_price.set("")
