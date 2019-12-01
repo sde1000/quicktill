@@ -1382,7 +1382,7 @@ def user(request, info, userid):
         raise Http404
 
     form = None
-    if not u.superuser and info.user_has_perm("edit-user"):
+    if (u == info.user or not u.superuser) and info.user_has_perm("edit-user"):
         initial = {
             'fullname': u.fullname,
             'shortname': u.shortname,
