@@ -687,9 +687,9 @@ def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
                .options(contains_eager(StockType.department))\
                .join(Department)\
                .options(contains_eager(StockType.unit))\
-               .join(UnitType)\
+               .join(Unit)\
                .join(StockItem, StockOut)\
-               .group_by(StockType, Department, UnitType)\
+               .group_by(StockType, Department, Unit)\
                .order_by(StockType.dept_id,
                          func.sum(StockOut.qty).desc())
 
@@ -712,7 +712,7 @@ def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
 
     sheet = Sheet("Stock sold")
     # Columns are:
-    # Manufacturer  Name  ABV  Dept  qty  UnitType
+    # Manufacturer  Name  ABV  Dept  qty  Unit
     sheet.cell(0, 0, doc.headercell("Manufacturer"))
     sheet.cell(1, 0, doc.headercell("Name"))
     sheet.cell(2, 0, doc.headercell("ABV"))
