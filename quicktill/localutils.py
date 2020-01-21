@@ -114,6 +114,13 @@ def delta_england_banking_days(date, n):
             n = n - 1
     return date
 
+def next_england_banking_day(date):
+    """Return the next banking day on or after date
+    """
+    while not is_england_banking_day(date):
+        date = date + datetime.timedelta(days=1)
+    return date
+
 def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
                       card_payment_method=None, overrides={}):
     """Standard 16x8 keyboard layout
