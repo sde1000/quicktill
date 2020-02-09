@@ -171,10 +171,11 @@ class modify(user.permission_checked,ui.dismisspopup):
                     display(56)[0])
         self.kbs.set(kbl)
 
-class listunbound(ui.listpopup):
+class listunbound(user.permission_checked, ui.listpopup):
     """Pop up a list of price lookups with no key bindings on any keyboard.
-
     """
+    permission_required = ('list-unbound-plus',
+                           "List price lookups with no keyboard bindings")
     def __init__(self):
         l=td.s.query(PriceLookup).outerjoin(KeyboardBinding).\
             filter(KeyboardBinding.pluid==None).\

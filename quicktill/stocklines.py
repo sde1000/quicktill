@@ -520,8 +520,10 @@ class modify(user.permission_checked, ui.dismisspopup):
                         display(75)[0])
         self.kbs.set(kbl)
 
-class listunbound(ui.listpopup):
+class listunbound(user.permission_checked, ui.listpopup):
     """Pop up a list of stock lines with no key bindings on any keyboard."""
+    permission_required = ('list-unbound-stocklines',
+                           "List stock lines with no keyboard bindings")
     def __init__(self):
         l = td.s.query(StockLine)\
                 .outerjoin(KeyboardBinding)\
