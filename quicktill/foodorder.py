@@ -585,7 +585,11 @@ class FoodOrderPlugin(register.RegisterPlugin):
         if k == self._order_key:
             trans = reg.get_open_trans()
             if trans:
-                popup(reg.deptlines, trans.id, self._menuurl, self._printers)
+                if reg.transaction_locked:
+                    reg.transaction_lock_popup()
+                else:
+                    popup(reg.deptlines, trans.id, self._menuurl,
+                          self._printers)
             return True
         elif k == self._message_key:
             message(self._printers)

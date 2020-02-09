@@ -82,3 +82,9 @@ max_transline_modify_age = datetime.timedelta(minutes=1)
 # When recalling an open transaction, warn if it is older than this
 # If set to None, never warn
 open_transaction_warn_after = datetime.timedelta(days=2)
+
+# Prohibit adding lines to a transaction if it is older than this
+open_transaction_lock_after = None
+
+# Message to give to the user when a transaction is locked
+open_transaction_lock_message = ""

@@ -51,6 +51,9 @@ from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import undefer
 import uuid
 
+# Colour used for locked transactions in transaction lists
+colour_locked = ui.colourpair("locked", "yellow", "blue")
+
 # Permissions checked for explicitly in this module
 user.action_descriptions['override-price'] = "Override the sale price of an item"
 user.action_descriptions['nosale'] = "Open the cash drawer with no payment"
@@ -151,6 +154,13 @@ class PercentageDiscount(DiscountPolicyPlugin):
                 return zero, self.policy_name
         return (transline.original_amount * Decimal(self._percentage / 100.0))\
             .quantize(penny), self.policy_name
+
+def _transaction_age_locked(trans):
+    """Is the transaction to be treated as locked?
+    """
+    if trans.closed or not tillconfig.open_transaction_lock_after:
+        return False
+    return trans.age > tillconfig.open_transaction_lock_after
 
 class bufferline(ui.lrline):
     """The last line on the register display
@@ -616,6 +626,10 @@ class page(ui.basicpage):
         self.transid = None # Current transaction
         self.discount_policy = None
         self.user.dbuser.transaction = None
+        # If the transaction is locked this will be a list of messages to
+        # display to the user about why the transaction is locked.  Otherwise,
+        # it will be an empty list.
+        self.transaction_locked = []
         self.repeat = None # If dept/line button pressed, update this transline
         self.keyguard = False
         self.clearbuffer()
@@ -661,6 +675,14 @@ class page(ui.basicpage):
                   + [payment.pline(i) for i in trans.payments]
         self.s.set(self.dl)
         self.ml = set()
+        if _transaction_age_locked(trans):
+            self.transaction_locked = [
+                "This transaction is locked because it is more than "
+                f"{tillconfig.open_transaction_lock_after.days} days old."]
+            if tillconfig.open_transaction_lock_message:
+                self.transaction_locked.append("")
+                self.transaction_locked.append(
+                    tillconfig.open_transaction_lock_message)
         self._redraw_note()
         self.close_if_balanced()
         self.repeat = None
@@ -683,9 +705,10 @@ class page(ui.basicpage):
     def pagename(self):
         trans = self._gettrans()
         if trans:
-            return "{0} - Transaction {1} ({2})".format(
-                self.user.shortname, trans.id,
-                ("open", "closed")[trans.closed])
+            state = "closed" if trans.closed \
+                    else "locked" if self.transaction_locked \
+                         else "open"
+            return f"{self.user.shortname} — Transaction {trans.id} ({state})"
         return self.user.shortname
 
     def _redraw(self):
@@ -756,6 +779,14 @@ class page(ui.basicpage):
             self.mod = mod
             self.cursor_off()
             self._redraw()
+
+    def transaction_lock_popup(self):
+        """Pop up a message explaining that the current transaction is locked
+
+        This function is part of the public API and may be used by
+        plugins.
+        """
+        ui.infopopup(self.transaction_locked, title="Transaction locked")
 
     def _read_explicitprice(
             self, buf, department,
@@ -901,6 +932,11 @@ class page(ui.basicpage):
                 ui.infopopup([msg], title="Price not set")
             return
 
+        # If the transaction is locked, we can't continue
+        if self.transaction_locked:
+            self.transaction_lock_popup()
+            return
+
         tl = Transline(transaction=trans, items=items, amount=sale.price,
                        department=plu.department, user=self.user.dbuser,
                        transcode='S', text=sale.description)
@@ -1030,6 +1066,11 @@ class page(ui.basicpage):
         trans = self.get_open_trans()
         if trans is None:
             return # Will already be displaying an error.
+
+        # If the transaction is locked, we can't continue
+        if self.transaction_locked:
+            self.transaction_lock_popup()
+            return
 
         # Consider adding on to the previous transaction line if the
         # same stockline key has been pressed again.
@@ -1185,6 +1226,11 @@ class page(ui.basicpage):
         trans = self.get_open_trans()
         if trans is None:
             return "Transaction cannot be started."
+
+        # If the transaction is locked, we can't continue
+        if self.transaction_locked:
+            return "Transaction is locked"
+
         for dept, text, items, amount in lines:
             tl = Transline(transaction=trans,
                            department=td.s.query(Department).get(dept),
@@ -1947,11 +1993,15 @@ class page(ui.basicpage):
             self.close_if_balanced()
             if not trans.closed:
                 age = trans.age
-                if tillconfig.open_transaction_warn_after \
+                if not self.transaction_locked \
+                   and tillconfig.open_transaction_warn_after \
                    and age > tillconfig.open_transaction_warn_after:
-                    ui.infopopup(["This transaction is {} days old.  Please "
-                                  "arrange for it to be paid soon.".format(age.days)],
-                                 title="Warning")
+                    ui.infopopup(
+                        [f"This transaction is {age.days} days old.  Please "
+                         "arrange for it to be paid soon."],
+                        title="Warning")
+                if self.transaction_locked:
+                    self.transaction_lock_popup()
         self.cursor_off()
         self.update_balance()
         self._redraw()
@@ -1978,6 +2028,7 @@ class page(ui.basicpage):
             return
         transactions = td.s.query(Transaction).\
                        filter(Transaction.session == sc).\
+                       options(undefer('age')).\
                        options(undefer('total')).\
                        options(joinedload('user')).\
                        order_by(Transaction.closed == True).\
@@ -1986,7 +2037,8 @@ class page(ui.basicpage):
         f = ui.tableformatter(' r l r l l ')
         sl = [(f(x.id, ('open', 'closed')[x.closed],
                  tillconfig.fc(x.total),
-                 x.user.shortname if x.user else "", x.notes),
+                 x.user.shortname if x.user else "", x.notes,
+                 colour=colour_locked if _transaction_age_locked(x) else None),
                self.recalltrans, (x.id,)) for x in transactions]
         if trans and not trans.closed:
             firstline = ("Save current transaction and lock register",
@@ -2078,9 +2130,22 @@ class page(ui.basicpage):
         sc = self._check_session_and_open_transaction()
         if not sc:
             return
-        tl = [t for t in sc.transactions if not t.closed]
-        f = ui.tableformatter(' r r l ')
-        sl = [(f(x.id, tillconfig.fc(x.total), x.notes or ""),
+        # XXX it would be sensible to order by descending transaction
+        # ID (i.e. most recent transaction first), but we've been
+        # doing it the other way long enough that changing would upset
+        # people!  Consult first, and possibly make it configurable.
+        tl = td.s.query(Transaction).\
+             filter(Transaction.session == sc).\
+             filter(Transaction.closed == False).\
+             options(undefer('age')).\
+             options(undefer('total')).\
+             options(joinedload('user')).\
+             order_by(Transaction.id).\
+             all()
+        f = ui.tableformatter(' r r l l ')
+        sl = [(f(x.id, tillconfig.fc(x.total),
+                 x.user.shortname if x.user else "", x.notes or "",
+                 colour=colour_locked if _transaction_age_locked(x) else None),
                self._mergetrans, (x.id,)) for x in tl if x.id != self.transid]
         ui.menu(sl,
                 title="Merge with transaction",
@@ -2106,6 +2171,17 @@ class page(ui.basicpage):
                 ["Transaction {} has been closed, so we can't "
                  "merge this transaction into it.".format(othertrans.id)],
                 title="Error")
+            return
+        if _transaction_age_locked(othertrans):
+            message = [
+                f"Transaction {othertrans.id} ({othertrans.notes}) is "
+                 "locked because it is more than "
+                 f"than {tillconfig.open_transaction_lock_after.days} days "
+                 "old."]
+            if tillconfig.open_transaction_lock_message:
+                message.append("")
+                message.append(tillconfig.open_transaction_lock_message)
+            ui.infopopup(message, title="Other transaction locked")
             return
         # Leave a message if the other transaction belonged to another
         # user.
