@@ -1,3 +1,31 @@
+quicktill (16.4) stable; urgency=low
+
+  * New release 16.4
+
+  * Add permissions for listing unbound stocklines and PLUs
+
+  * Add 'return-stock' permission
+
+  * Implement a 'move-keys' permission
+
+  * Show default modifiers in key menus
+
+  * Freezing long-running tabs
+
+  * Make time after which warnings are given for open transactions configurable
+
+  * PEP8 on tillconfig module
+
+  * Enable max_transline_modify_age to be configured
+
+  * Add a function to localutils that returns the next banking day in England
+
+  * Update UnitType->Unit in spreadsheets
+
+  * Add new group function
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 09 Feb 2020 19:05:25 +0000
+
 quicktill (16.3) stable; urgency=low
 
   * New release 16.3
