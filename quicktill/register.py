@@ -2415,6 +2415,16 @@ class page(ui.basicpage):
         self._update_timeout()
         return True
 
+    @staticmethod
+    def _add_linemenu_query_options(q):
+        return q.options(joinedload('stockline'))\
+                .options(joinedload('stockline.stockonsale'))\
+                .options(joinedload('stockline.stockonsale.stocktype'))\
+                .options(joinedload('stockline.stocktype'))\
+                .options(joinedload('plu'))\
+                .options(undefer('stockline.stockonsale.used'))\
+                .options(undefer('stockline.stockonsale.remaining'))
+
     def keypress(self, k):
         # This is our main entry point.  We will have a new database session.
         # Update the transaction object before we do anything else!
@@ -2432,17 +2442,11 @@ class page(ui.basicpage):
             if i.keypress(self, k):
                 return
         if hasattr(k, 'line'):
-            def add_query_options(q):
-                return q.options(joinedload('stockline'))\
-                        .options(joinedload('stockline.stockonsale'))\
-                        .options(joinedload('stockline.stockonsale.stocktype'))\
-                        .options(joinedload('stockline.stocktype'))\
-                        .options(joinedload('plu'))\
-                        .options(undefer('stockline.stockonsale.used'))\
-                        .options(undefer('stockline.stockonsale.remaining'))
-            linekeys.linemenu(k, self.linekey, allow_stocklines=True,
-                              allow_plus=True, allow_mods=True,
-                              add_query_options=add_query_options)
+            linekeys.linemenu(
+                k, self.linekey, allow_stocklines=True,
+                allow_plus=True, allow_mods=True,
+                add_query_options=self._add_linemenu_query_options,
+                suppress_modifier_display=self.mod)
             return
         self.repeat = None
         if hasattr(k, 'notevalue'):

@@ -267,8 +267,9 @@ class move_keys(ui.dismisspopup):
         else:
             super().keypress(k)
 
-def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
-             allow_mods=False, add_query_options=None):
+def linemenu(keycode, func, allow_stocklines=True, allow_plus=False,
+             allow_mods=False, add_query_options=None,
+             suppress_modifier_display=False):
     """Resolve a keycode to a keyboard binding
 
     Given a keycode, find out what is bound to it.  If there's more
@@ -298,10 +299,15 @@ def linemenu(keycode,func,allow_stocklines=True,allow_plus=False,
     if len(kb) == 1:
         func(kb[0])
     elif len(kb) > 1:
-        il = sorted([(keyboard.__dict__.get(x.menukey, x.menukey),
-                      x.name, _linemenu_chosen,
-                      (x.keycode, x.menukey, func, add_query_options))
-                     for x in kb], key=lambda x:str(x[0]))
+        il = sorted(
+            [(keyboard.__dict__.get(x.menukey, x.menukey),
+              f"{x.name} ({x.modifier})" if x.modifier \
+              and (x.stockline or x.plu) \
+              and not suppress_modifier_display \
+              else x.name,
+              _linemenu_chosen,
+              (x.keycode, x.menukey, func, add_query_options))
+             for x in kb], key=lambda x:str(x[0]))
         ui.keymenu(il, title=keycode.keycap, colour=ui.colour_line)
     return len(kb)
 
