@@ -30,7 +30,7 @@ class edit_keycaps(user.permission_checked, ui.dismisspopup):
     """This popup window enables the keycaps of line keys to be edited.
     """
     permission_required = ('edit-keycaps',
-                         'Change the names of keys on the keyboard')
+                           'Change the names of keys on the keyboard')
     def __init__(self):
         super().__init__(11, 60, title="Edit Keycaps",
                          colour=ui.colour_input)
@@ -196,7 +196,10 @@ def _finish_changebinding(binding,func,mod):
     binding.modifier=mod
     func()
 
-class move_keys(ui.dismisspopup):
+class move_keys(user.permission_checked, ui.dismisspopup):
+    permission_required = ('move-keys',
+                           'Change the positions of keys on the keyboard')
+
     def __init__(self):
         super().__init__(10, 60, title="Move keys", colour=ui.colour_input)
         self.win.set_cursor(False)

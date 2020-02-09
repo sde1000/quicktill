@@ -847,6 +847,7 @@ class default_groups:
         "reprice-stock",
         "defer-trans",
         "edit-keycaps",
+        "move-keys",
         "finish-unconnected-stock",
         "stock-history",
         "purge-finished-stock",
