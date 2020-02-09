@@ -550,6 +550,8 @@ def main():
         tillconfig.custom_css = config['custom_css']
     if 'max_transline_modify_age' in config:
         tillconfig.max_transline_modify_age = config['max_transline_modify_age']
+    if 'open_transaction_warn_after' in config:
+        tillconfig.open_transaction_warn_after = config['open_transaction_warn_after']
 
     if tillconfig.database:
         td.init(tillconfig.database)

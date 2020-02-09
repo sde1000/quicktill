@@ -78,3 +78,7 @@ custom_css = None
 # How old can a transaction line be before it is unable to be modified
 # in place?
 max_transline_modify_age = datetime.timedelta(minutes=1)
+
+# When recalling an open transaction, warn if it is older than this
+# If set to None, never warn
+open_transaction_warn_after = datetime.timedelta(days=2)

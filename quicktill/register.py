@@ -1947,7 +1947,8 @@ class page(ui.basicpage):
             self.close_if_balanced()
             if not trans.closed:
                 age = trans.age
-                if age > datetime.timedelta(days=2):
+                if tillconfig.open_transaction_warn_after \
+                   and age > tillconfig.open_transaction_warn_after:
                     ui.infopopup(["This transaction is {} days old.  Please "
                                   "arrange for it to be paid soon.".format(age.days)],
                                  title="Warning")
