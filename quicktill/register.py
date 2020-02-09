@@ -51,8 +51,6 @@ from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import undefer
 import uuid
 
-max_transline_modify_age = datetime.timedelta(minutes=1)
-
 # Permissions checked for explicitly in this module
 user.action_descriptions['override-price'] = "Override the sale price of an item"
 user.action_descriptions['nosale'] = "Open the cash drawer with no payment"
@@ -842,7 +840,7 @@ class page(ui.basicpage):
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
         if may_repeat and len(self.dl) > 0 and \
-           self.dl[-1].age() < max_transline_modify_age:
+           self.dl[-1].age() < tillconfig.max_transline_modify_age:
             otl = td.s.query(Transline).get(self.dl[-1].transline)
             otl.items = otl.items + 1
             self.dl[-1].update()
@@ -1037,7 +1035,7 @@ class page(ui.basicpage):
         # same stockline key has been pressed again.
         repeated = False
         if may_repeat and len(self.dl) > 0 \
-           and self.dl[-1].age() < max_transline_modify_age \
+           and self.dl[-1].age() < tillconfig.max_transline_modify_age \
            and len(sell) == 1:
             otl = td.s.query(Transline).get(self.dl[-1].transline)
             # If the stockref has more than one item, we don't repeat
@@ -1646,7 +1644,7 @@ class page(ui.basicpage):
             if not closed and (
                     self.keyguard or 
                     (len(self.dl) > 0 and
-                     self.dl[0].age() > max_transline_modify_age)):
+                     self.dl[0].age() > tillconfig.max_transline_modify_age)):
                 log.info("Register: cancelkey kill transaction denied")
                 ui.infopopup(
                     ["This transaction is old; you can't cancel it all in "
@@ -1733,7 +1731,7 @@ class page(ui.basicpage):
                      "transaction."],
                     title="Not allowed")
                 return
-            can_delete = all(l.age() <= max_transline_modify_age for l in tl)
+            can_delete = all(l.age() <= tillconfig.max_transline_modify_age for l in tl)
             voids = []
             for l in tl:
                 if can_delete:
@@ -1796,7 +1794,7 @@ class page(ui.basicpage):
     def cancelline(self, l):
         if not self.entry():
             return
-        if l.age() < max_transline_modify_age:
+        if l.age() < tillconfig.max_transline_modify_age:
             self._delete_line(l)
         else:
             self._void_lines([l])

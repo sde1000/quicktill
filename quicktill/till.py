@@ -548,6 +548,8 @@ def main():
         tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
     if 'custom_css' in config:
         tillconfig.custom_css = config['custom_css']
+    if 'max_transline_modify_age' in config:
+        tillconfig.max_transline_modify_age = config['max_transline_modify_age']
 
     if tillconfig.database:
         td.init(tillconfig.database)

@@ -5,6 +5,7 @@ most of the entries here.
 
 """
 
+import datetime
 from .models import penny
 
 # Has the --debug flag been set on the command line?
@@ -72,3 +73,7 @@ start_time = 0.0
 
 # Custom CSS for Gtk
 custom_css = None
+
+# How old can a transaction line be before it is unable to be modified
+# in place?
+max_transline_modify_age = datetime.timedelta(minutes=1)
