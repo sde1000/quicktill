@@ -110,6 +110,7 @@ class stockline_associations(user.permission_checked,ui.listpopup):
         else:
             ui.listpopup.keypress(self,k)
 
+@user.permission_required('return-stock',"Return items on display stocklines to stock")
 def return_stock(stockline):
     td.s.add(stockline)
     rsl=stockline.calculate_restock(target=0)

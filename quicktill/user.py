@@ -824,6 +824,7 @@ class default_groups:
         "twitter",
         "use-stock",
         "restock",
+        "return-stock",
         "auto-allocate",
         "manage-stockline-associations",
         "annotate",
