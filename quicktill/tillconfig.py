@@ -17,42 +17,43 @@ configname = "default"
 keyboard = None
 keyboard_right = None
 
-pubname="Test Pub Name"
-pubnumber="07715 422132"
-pubaddr=("31337 Beer Street","Burton","ZZ9 9AA")
+pubname = "Test Pub Name"
+pubnumber = "07715 422132"
+pubaddr = ("31337 Beer Street", "Burton", "ZZ9 9AA")
 
 # Test multi-character currency name... monopoly money!
-currency="MPL"
+currency = "MPL"
 
-hotkeys={}
+hotkeys = {}
 
-all_payment_methods=[]
-payment_methods=[]
+all_payment_methods = []
+payment_methods = []
 
 def fc(a):
     """Format currency, using the configured currency symbol."""
-    if a is None: return "None"
+    if a is None:
+        return "None"
     return "".join([currency, str(a.quantize(penny))])
 
 # Do we print check digits on stock labels?
-checkdigit_print=False
+checkdigit_print = False
 # Do we ask the user to input check digits when using stock?
-checkdigit_on_usestock=False
+checkdigit_on_usestock = False
 
-database=None
+database = None
 
-firstpage=None
+firstpage = None
 
 # Called by ui code whenever a usertoken is processed by the default
 # page's hotkey handler
 def usertoken_handler(t):
     pass
-usertoken_listen=None
-usertoken_listen_v6=None
+usertoken_listen = None
+usertoken_listen_v6 = None
 
 # The user ID to use for creating a page if not otherwise specified.
 # An integer if present.
-default_user=None
+default_user = None
 
 # The options for the "exit / restart" menu.
 exitoptions = []
