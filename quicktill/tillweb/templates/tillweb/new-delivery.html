@@ -1,0 +1,20 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — add delivery{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Add delivery
+  </button>
+</form>
+<script type="text/javascript">
+ $(document).ready(function(){
+     $("#id_date").datepicker({firstDay: 1,
+			       dateFormat: 'yy-mm-dd'});
+ });
+</script>
+
+{% endblock %}

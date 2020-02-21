@@ -39,9 +39,17 @@ tillurls = [
 
     path('delivery/', deliverylist, name="tillweb-deliveries"),
     path('delivery/<int:deliveryid>/', delivery, name="tillweb-delivery"),
+    path('new/delivery/', create_delivery, name="tillweb-create-delivery"),
 
     path('stocktype/', stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', stocktype, name="tillweb-stocktype"),
+    path('stocktype/search.json', stocktype_search_json,
+         name="tillweb-stocktype-search-json"),
+    path('stocktype/search-with-stockunits.json', stocktype_search_json,
+         name="tillweb-stocktype-search-stockunits-json",
+         kwargs={'include_stockunits': True}),
+    path('stocktype/info.json', stocktype_info_json,
+         name="tillweb-stocktype-info-json"),
 
     path('stock/', stocksearch, name="tillweb-stocksearch"),
     path('stock/<int:stockid>/', stock, name="tillweb-stock"),

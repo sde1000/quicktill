@@ -6,6 +6,162 @@
 
 {% block tillcontent %}
 
+{% if form %}
+{% comment %}
+We are going to use custom rendering for the form, so the fields used to add
+new stock items can be placed at appropriate places in the table.
+{% endcomment %}
+<form action="" method="post">{% csrf_token %}
+    {% for hidden_field in form.hidden_fields %}
+    {{ hidden_field }}
+    {% endfor %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+	{% for error in form.non_field_errors %}
+	{{ error }}
+	{% endfor %}
+    </div>
+    {% endif %}
+
+    {% for field in form.header_fields %}
+    <div class="form-group row align-items-center">
+	<label for="{{ field.id_for_label }}" class="col-sm-4 col-md-3 col-lg-2 col-form-label">{{ field.label }}</label>
+	<div class="col-sm-8 col-md-9 col-lg-10">
+	    {% include "form-field.html" %}
+	    {% if field.help_text %}
+            <small class="form-text text-muted">{{ field.help_text }}</small>
+	    {% endif %}
+	</div>
+    </div>
+    {% endfor %}
+
+    <div class="table-responsive">
+	<table class="table table-striped table-sm table-hover">
+	    <thead class="thead-light">
+		<tr>
+		    <th scope="col">Stock ID</th>
+		    <th scope="col">Manufacturer</th>
+		    <th scope="col">Name</th>
+		    <th scope="col">ABV</th>
+		    <th scope="col">Size</th>
+		    <th scope="col">Cost Price</th>
+		    <th scope="col">Best Before</th>
+		</tr>
+	    </thead>
+	    <tbody>
+		{% for s in delivery.items %}
+		<tr>
+		    <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
+		    <td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
+		    <td><a href="{{s.stocktype.get_absolute_url}}">{{s.stocktype.name}}</a></td>
+		    <td>{{s.stocktype.abvstr}}</td>
+		    <td>{{s.description}}</td>
+		    <td>{% if s.costprice %}{{money}}{{s.costprice}}{% endif %}</td>
+		    {% if s.bestbefore != None %}<td {% if s.shelflife > 28 %}class="bbok"{% elif s.shelflife <= 0 %}class="bberr"{% else %}class="bbwarn"{% endif %}>{{s.bestbefore}}</td>
+		    {% else %}<td></td>{% endif %}
+		</tr>
+		{% endfor %}
+		<tr>
+		    <td></td>
+		    <td colspan="3">
+			<label for="{{form.stocktype.id_for_label}}" class="sr-only">{{form.stocktype.label}}</label>
+			{% include "form-field.html" with field=form.stocktype %}
+		    </td>
+		    <td>
+			<div class="form-inline flex-column align-items-start">
+			    <div>
+				<label for="{{form.itemsize.id_for_label}}" class="sr-only">{{form.itemsize.label}}</label>
+				{% include "form-field.html" with field=form.itemsize %}
+			    </div>
+			    <div class="d-flex flex-row">
+				<label for="{{form.quantity.id_for_label}}" class="mr-1">{{form.quantity.label}}</label>
+				{% include "form-field.html" with field=form.quantity %}
+			    </div>
+			</div>
+		    </td>
+		    <td>
+			<label for="{{form.costprice.id_for_label}}" class="sr-only">{{form.costprice.label}}</label>
+			{% include "form-field.html" with field=form.costprice %}
+		    </td>
+		    <td>
+			<label for="{{form.bestbefore.id_for_label}}" class="sr-only">{{form.bestbefore.label}}</label>
+			{% include "form-field.html" with field=form.bestbefore %}
+		    </td>
+		</tr>
+	    </tbody>
+	</table>
+    </div>
+
+    <div class="mt-4"</div>
+    <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+	Update
+    </button>
+    <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
+	Delete
+    </button>
+</form>
+<script type="text/javascript">
+ var dtpicker_options = {firstDay: 1,
+			 dateFormat: 'yy-mm-dd'};
+
+ function detail_set_disable(d) {
+     $("#id_itemsize").prop('disabled', d);
+     $("#id_quantity").prop('disabled', d);
+     $("#id_costprice").prop('disabled', d);
+     $("#id_saleprice").prop('disabled', d);
+     $("#id_bestbefore").prop('disabled', d);
+ }
+
+ function set_fields(data) {
+     saved_itemsize = $("#id_itemsize").val();
+     if (data) {
+	 stockunits = $("#id_itemsize");
+	 stockunits.empty();
+	 data.stockunits.forEach(function (item, index) {
+	     stockunits.append($("<option></option>").attr("value", item.id).text(item.text));
+	 });
+	 // $("#id_costprice").val(null);
+	 $("#id_saleprice").val(data.saleprice);
+	 // $("#id_bestbefore").val(null);
+	 detail_set_disable(false);
+	 $("#id_itemsize").val(saved_itemsize);
+	 $("#id_itemsize").focus();
+     } else {
+	 detail_set_disable(true);
+     }
+ }
+
+ $(document).ready(function(){
+     $("#id_date").datepicker(dtpicker_options);
+
+     $("#id_stocktype").on('select2:select', function (e) {
+	 var data = e.params.data;
+	 set_fields(data);
+     });
+
+     $("#id_stocktype").on('select2:clear', function (e) {
+	 set_fields(null);
+     });
+
+     // Load info for the initial value of the stocktype selector
+     current_stocktype = $("#id_stocktype").val();
+     if (current_stocktype != null) {
+	 // Disable the data entry fields while we fetch the stocktype data
+	 detail_set_disable(true);
+	 $.ajax({
+	     type: 'GET',
+	     url: '{% url "tillweb-stocktype-info-json" pubname=pubname %}?id='
+		+ current_stocktype}).then(set_fields);
+     } else {
+	 // Open the selector if it's blank
+	 set_fields(null);
+	 $("#id_stocktype").select2('open');
+     }
+ });
+</script>
+
+{% else %}
 {% if delivery.accounts_url %}
 <a class="btn btn-secondary float-right" href="{{ delivery.accounts_url }}">View in accounts</a>
 {% endif %}
@@ -18,12 +174,13 @@
 <tr><th>Date</th><td>{{delivery.date}}</td></tr>
 <tr><th>Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
 </table>
-
 {% if delivery.items %}
 <h2>Items in this delivery</h2>
 {% with delivery.items as stocklist %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
+{% endif %}
+
 {% endif %}
 
 {% endblock %}

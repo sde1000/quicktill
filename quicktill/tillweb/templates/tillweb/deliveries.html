@@ -4,6 +4,10 @@
 
 {% block tillcontent %}
 
+{% if may_create_delivery %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-delivery" pubname=pubname %}">Add new delivery</a>
+{% endif %}
+
 {% include "tillweb/deliverylist.html" %}
 
 {% endblock %}

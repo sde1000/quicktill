@@ -1,5 +1,6 @@
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render
@@ -24,14 +25,22 @@ from quicktill.models import *
 from quicktill.version import version
 from . import spreadsheets
 import io
+import logging
 from .db import td
 from .forms import SQLAModelChoiceField
 from .forms import SQLAModelMultipleChoiceField
 from .forms import StringIDMultipleChoiceField
+from .forms import Select2, Select2Ajax
+
+log = logging.getLogger(__name__)
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
 dtf = "Y-m-d H:i"
+
+# Format a StockType model as a string for Select widgets
+def stocktype_widget_label(x):
+    return f"{x.format()} ({x.department}, sold in {x.unit.item_name_plural})"
 
 # This view is only used when the tillweb is integrated into another
 # django-based website.
@@ -73,11 +82,7 @@ class viewutils:
             setattr(self, a, b)
 
     def reverse(self, *args, **kwargs):
-        if 'kwargs' in kwargs:
-            rev_kwargs = kwargs['kwargs']
-        else:
-            rev_kwargs = {}
-            kwargs['kwargs'] = rev_kwargs
+        rev_kwargs = kwargs.setdefault('kwargs', {})
         rev_kwargs["pubname"] = self.pubname
         return django.urls.reverse(*args, **kwargs)
 
@@ -134,6 +139,14 @@ def tillweb_view(view):
                               .one_or_none()
 
         try:
+            if settings.DEBUG:
+                queries = []
+                def querylog_callback(_conn, _cur, query, params, *_):
+                    queries.append(query)
+                sqlalchemy.event.listen(
+                    session.get_bind(), "before_cursor_execute",
+                    querylog_callback)
+
             info = viewutils(
                 access=access,
                 user=tilluser,
@@ -173,6 +186,14 @@ def tillweb_view(view):
                            'error': oe},
                           status=503)
         finally:
+            if settings.DEBUG:
+                sqlalchemy.event.remove(
+                    session.get_bind(), "before_cursor_execute",
+                    querylog_callback)
+                if len(queries) > 3:
+                    log.warning("Excessive number of queries in view (%d)",
+                                len(queries))
+
             td.s = None
             session.close()
     if tillweb_login_required or not single_site:
@@ -798,10 +819,93 @@ def deliverylist(request, info):
 
     pager = Pager(request, dl)
 
+    may_create_delivery = info.user_has_perm("deliveries")
+
     return ('deliveries.html', {
         'nav': [("Deliveries", info.reverse("tillweb-deliveries"))],
-                'pager': pager,
+        'pager': pager,
+        'may_create_delivery': may_create_delivery,
         })
+
+class DeliveryForm(forms.Form):
+    supplier = SQLAModelChoiceField(
+        Supplier,
+        query_filter=lambda x:x.order_by(Supplier.name),
+        widget=Select2)
+    docnumber = forms.CharField(
+        label="Document number", required=False, max_length=40)
+    date = forms.DateField()
+
+@tillweb_view
+def create_delivery(request, info):
+    if not info.user_has_perm("deliveries"):
+        return HttpResponseForbidden("You don't have permission to create new deliveries")
+
+    if request.method == "POST":
+        form = DeliveryForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            d = Delivery(
+                supplier=cd['supplier'],
+                docnumber=cd['docnumber'],
+                date=cd['date'])
+            td.s.add(d)
+            td.s.commit()
+            messages.success(request, f"Draft delivery created.")
+            return HttpResponseRedirect(d.get_absolute_url())
+    else:
+        form = DeliveryForm()
+
+    return ('new-delivery.html', {
+        'nav': [("Deliveries", info.reverse("tillweb-deliveries")),
+                ("New", info.reverse("tillweb-create-delivery"))],
+        'form': form,
+    })
+
+class EditDeliveryForm(DeliveryForm):
+    def __init__(self, info, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the URL for the stocktype widget ajax
+        self.fields['stocktype'].widget.ajax = {
+            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'dataType': 'json',
+            'delay': 250,
+        }
+        self.header_fields = [
+            self['supplier'], self['docnumber'], self['date'],
+        ]
+
+    stocktype = SQLAModelChoiceField(
+        StockType,
+        required=False,
+        label_function=stocktype_widget_label,
+        query_filter=lambda x:x.order_by(StockType.manufacturer,
+                                         StockType.name),
+        widget=Select2Ajax(min_input_length=2))
+    itemsize = SQLAModelChoiceField(StockUnit, required=False)
+    quantity = forms.IntegerField(min_value=1, required=False, initial=1)
+    costprice = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    saleprice = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    bestbefore = forms.DateField(required=False)
+
+    def clean(self):
+        cd = super().clean()
+        if cd['stocktype'] or cd['itemsize'] or cd['quantity'] \
+           or cd['costprice'] or cd['saleprice'] or cd['bestbefore']:
+            msg = 'Required when adding stock to a delivery'
+            if not cd['stocktype']:
+                self.add_error('stocktype', msg)
+            if not cd['itemsize']:
+                self.add_error('itemsize', msg)
+            if not cd['quantity']:
+                self.add_error('quantity', msg)
+            if cd['itemsize'].unit != cd['stocktype'].unit:
+                self.add_error('itemsize', 'Item size is not valid for '
+                               'the selected stock type')
 
 @tillweb_view
 def delivery(request, info, deliveryid):
@@ -813,9 +917,42 @@ def delivery(request, info, deliveryid):
             .get(deliveryid)
     if not d:
         raise Http404
+
+    may_edit = not d.checked and info.user_has_perm('deliveries')
+    form = None
+
+    if may_edit:
+        initial = {
+            'supplier': d.supplier,
+            'docnumber': d.docnumber,
+            'date': d.date,
+        }
+        if request.method == 'POST':
+            form = EditDeliveryForm(info, request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                d.supplier = cd['supplier']
+                d.docnumber = cd['docnumber']
+                d.date = cd['date']
+                if cd['stocktype']:
+                    stockunit = cd['itemsize']
+                    stocktype = cd['stocktype']
+                    if cd['saleprice'] != stocktype.saleprice:
+                        stocktype.saleprice = cd['saleprice']
+                        stocktype.pricechanged = datetime.datetime.now()
+                    qty = cd['quantity']
+                    d.add_items(stocktype, stockunit, qty, cd['costprice'],
+                                cd['bestbefore'])
+                td.s.commit()
+                return HttpResponseRedirect(d.get_absolute_url())
+        else:
+            form = EditDeliveryForm(info, initial=initial)
+
     return ('delivery.html', {
         'tillobject': d,
         'delivery': d,
+        'may_edit': may_edit,
+        'form': form,
     })
 
 class StockTypeForm(forms.Form):
@@ -851,6 +988,51 @@ def stocktypesearch(request, info):
         'form': form,
         'stocktypes': result,
     })
+
+def _stocktype_to_dict(x, include_stockunits):
+    return {'id': str(x.id), 'text': stocktype_widget_label(x),
+            'saleprice': x.saleprice,
+            'stockunits': [{'id': str(su.id), 'text': str(su.name)}
+                           for su in x.unit.stockunits]
+            if include_stockunits else []}
+
+@tillweb_view
+def stocktype_search_json(request, info, include_stockunits=False):
+    if 'q' not in request.GET:
+        return JsonResponse({'results': []})
+    words = request.GET['q'].split()
+    if not words:
+        return JsonResponse({'results': []})
+    q = td.s.query(StockType)\
+            .order_by(StockType.dept_id, StockType.manufacturer,
+                      StockType.name)
+    if len(words) == 1:
+        q = q.filter((StockType.manufacturer.ilike(f"%{words[0]}%"))
+                     | (StockType.name.ilike(f"%{words[0]}%")))
+    else:
+        q = q.filter(StockType.manufacturer.ilike(f"%{words[0]}%"))\
+             .filter(StockType.name.ilike(f"%{words[1]}%"))
+    if include_stockunits:
+        q = q.options(joinedload('unit').joinedload('stockunits'))
+    results = q.all()
+    return JsonResponse(
+        {'results': [_stocktype_to_dict(x, include_stockunits)
+                     for x in results]})
+
+@tillweb_view
+def stocktype_info_json(request, info):
+    if 'id' not in request.GET:
+        raise Http404
+    try:
+        id = int(request.GET['id'])
+    except:
+        raise Http404
+    st = td.s.query(StockType)\
+             .options(joinedload('unit').joinedload('stockunits'))\
+             .get(id)
+    if not st:
+        raise Http404
+    return JsonResponse(_stocktype_to_dict(st, True))
 
 @tillweb_view
 def stocktype(request, info, stocktype_id):
