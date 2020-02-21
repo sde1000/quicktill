@@ -1,11 +1,13 @@
 from django.forms import Form
 from django.forms.fields import Field
+from django.forms.widgets import Widget
 from django.forms.widgets import Select, SelectMultiple, MultipleHiddenInput
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext, gettext_lazy as _
 from sqlalchemy import inspect
 from .db import td
 import copy
+import json
 
 class _model_choice_iterator:
     def __init__(self, field):
@@ -27,6 +29,8 @@ class _model_choice_iterator:
         mq = self.field.query_filter(mq)
         yield from ((self.field.model_to_value(x), self.field.label_function(x))
                     for x in mq.all())
+
+# Fields
 
 class SQLAModelChoiceField(Field):
     """A Field whose choices are sqlalchemy ORM model instances
@@ -50,11 +54,12 @@ class SQLAModelChoiceField(Field):
         'invalid_list': _('Enter a list of values.'),
     }
 
-    def __init__(self, model, *, empty_label="---------",
+    def __init__(self, model, *, empty_label=None,
                  required=True, widget=None, label=None, initial=None,
                  help_text='', label_function=str, query_filter=lambda x: x,
                  **kwargs):
-        self.empty_label = empty_label
+        self.empty_label = empty_label if empty_label \
+                           else f"Choose a {model.__name__}"
         super().__init__(
             required=required, widget=widget, label=label,
             initial=initial, help_text=help_text, **kwargs)
@@ -97,6 +102,10 @@ class SQLAModelChoiceField(Field):
         # can find to do it!
         if hasattr(result.widget, 'choices'):
             result.widget.choices = self.choices
+        if hasattr(result.widget, 'empty_label'):
+            result.widget.empty_label = self.empty_label
+        if hasattr(result.widget, 'value_to_label'):
+            result.widget.label_function = lambda x:self.label_function(self.to_python(x))
 
         # Opinion: django's use of special-case __deepcopy__ all over
         # the forms, fields and widgets implementations is a complete
@@ -180,3 +189,84 @@ class StringIDMultipleChoiceField(SQLAModelMultipleChoiceField):
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')
 
+# Widgets
+
+# Subclass the existing Select and SelectMultiple widgets to enable
+# select2 where options are rendered in the page
+
+class _select2_mixin:
+    # XXX add a Media class here?
+
+    empty_label = ''
+
+    def build_attrs(self, base_attrs, extra_attrs=None):
+        default_attrs = {'data-minimum-input-length': 0}
+        default_attrs['data-placeholder'] = self.empty_label
+        if self.is_required:
+            default_attrs['data-allow-clear'] = 'false'
+        else:
+            default_attrs['data-allow-clear'] = 'true'
+
+        default_attrs.update(base_attrs)
+        attrs = super().build_attrs(default_attrs, extra_attrs=extra_attrs)
+        return attrs
+
+    def render(self, name, value, attrs=None, renderer=None):
+        final_attrs = self.build_attrs(self.attrs, attrs)
+        output = super().render(name, value, attrs=final_attrs, renderer=renderer)
+        output += f'''
+<script type="text/javascript">
+  $(document).ready(function(){{
+    $("#{final_attrs.get('id')}").select2();
+}});
+</script>'''
+        return output
+
+class Select2(_select2_mixin, Select):
+    pass
+
+class Select2Multiple(_select2_mixin, SelectMultiple):
+    pass
+
+# Implement a new widget to enable select2 where options are fetched using ajax
+
+class Select2Ajax(Widget):
+    template_name = 'tillweb/select2_widget.html'
+    allow_multiple_selected = False
+
+    def __init__(self, attrs=None, ajax={}, empty_label='', min_input_length=0):
+        """ajax will be passed as the ajax option to select2()"""
+        super().__init__(attrs)
+        self.ajax = ajax
+        self.min_input_length = min_input_length
+        self.empty_label = empty_label
+        self.value_to_label = str # will be set when copied by field
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context['widget']['options'] = [
+            (x, self.label_function(x))
+            for x in context['widget']['value'] if x]
+        select2_args = {"ajax": self.ajax, "placeholder": self.empty_label,
+                        "minimumInputLength": self.min_input_length,
+                        "allowClear": not self.is_required}
+        context['widget']['select2_args'] = json.dumps(select2_args)
+        print(f"context: {context}")
+        return context
+
+    def value_from_datadict(self, data, files, name):
+        getter = data.get
+        if self.allow_multiple_selected:
+            getter = data.getlist
+        return getter(name)
+
+    def format_value(self, value):
+        """Return selected values as a list."""
+        if value is None and self.allow_multiple_selected:
+            return []
+        if not isinstance(value, (tuple, list)):
+            value = [value]
+        return [str(v) if v is not None else '' for v in value]
+
+class Select2MultipleAjax(Select2Ajax):
+    allow_multiple_selected = True

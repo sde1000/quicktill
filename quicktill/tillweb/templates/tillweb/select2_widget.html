@@ -1,0 +1,9 @@
+<select name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
+  {% for value, label in widget.options %}<option value="{{value}}" selected>{{label}}</option>
+  {% endfor %}
+</select>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#{{widget.attrs.id}}").select2({{widget.select2_args|safe}});
+  });
+</script>

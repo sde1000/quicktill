@@ -6,11 +6,17 @@
 {# We assume the base template provides Bootstrap 4 #}
 {{ block.super }}
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/tillweb-bootstrap.css" %}" />
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2/select2.min.css" %}" />
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2-bootstrap4.min.css" %}" />
 {% endblock %}
 {% block jquery %}
 {# We assume jquery and jquery-ui are already present #}
 {{ block.super }}
 <script type="text/javascript" src="{% static "tillweb/jquery.tablesorter.js" %}"></script>
+<script type="text/javascript" src="{% static "tillweb/select2/select2.min.js" %}"></script>
+<script type="text/javascript">
+  $.fn.select2.defaults.set("theme", "bootstrap4");
+</script>
 {% endblock %}
 {% block breadcrumbs %}
 {{ block.super }}
