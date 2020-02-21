@@ -101,7 +101,7 @@ class ModelTest(unittest.TestCase):
     def template_stocktype_setup(self):
         """Add a stocktype to the database to make other tests shorter."""
         pint = models.Unit(name='pint', description='Pint',
-                           item_name='pint', item_name_plural='pint')
+                           item_name='pint', item_name_plural='pints')
         beer = models.StockType(
             manufacturer="A Brewery", name="A Beer",
             abv=5, unit=pint, dept_id=1)
@@ -242,6 +242,30 @@ class ModelTest(unittest.TestCase):
             size=72))
         self.s.commit()
         self.assertIsNone(delivery.costprice)
+
+    def test_delivery_add_items(self):
+        self.template_setup()
+        beer = self.template_stocktype_setup()
+        pint = beer.unit
+        firkin = models.StockUnit(name="Firkin", unit=pint, size=72.0,
+                                  merge=False)
+        self.s.add(firkin)
+        delivery = models.Delivery(
+            date=datetime.date.today(),
+            supplier=models.Supplier(name="Test supplier"),
+            docnumber="test")
+        self.s.add(delivery)
+        self.s.commit()
+        # Add three firkins to the delivery.  If this fails, has
+        # autoflush somehow been turned on?
+        items = delivery.add_items(beer, firkin, 3, Decimal("157.00"))
+        self.s.flush()
+        # Test adding a merged item
+        merge_stockunit = models.StockUnit(name="Test", unit=pint, size=10,
+                                           merge=True)
+        self.s.add(merge_stockunit)
+        items = delivery.add_items(beer, merge_stockunit, 2, Decimal("201.00"))
+        self.s.commit()
 
     def test_stockitem_remaining(self):
         self.template_setup()

@@ -450,28 +450,8 @@ class new_stockitem(ui.basicpopup):
             stocktype.saleprice = saleprice
             stocktype.pricechanged = datetime.datetime.now()
         qty = int(self.qtyfield.f)
-        # If the stockunit allows merging, do so now
-        description = stockunit.name
-        size = stockunit.size
-        if stockunit.merge and qty > 1:
-            description = "{}×{}".format(qty, description)
-            size = size * qty
-            qty = 1
-        costper = (cost / qty).quantize(penny) if cost else None
-        remaining_cost = cost
-        items = []
-        while qty > 0:
-            thiscost = remaining_cost if qty == 1 else costper
-            remaining_cost = remaining_cost - thiscost if cost else None
-            item = StockItem(deliveryid=self.deliveryid,
-                             stocktype=stocktype,
-                             description=description,
-                             size=size,
-                             costprice=thiscost,
-                             bestbefore=bestbefore)
-            td.s.add(item)
-            items.append(item)
-            qty -= 1
+        delivery = td.s.query(Delivery).get(self.deliveryid)
+        items = delivery.add_items(stocktype, stockunit, qty, cost, bestbefore)
         td.s.flush()
         for item in items:
             self.func(item)

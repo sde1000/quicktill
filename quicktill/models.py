@@ -1368,6 +1368,9 @@ class Delivery(Base):
                             lazy="joined")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
+    items = relationship("StockItem", order_by="StockItem.id",
+                         back_populates="delivery")
+
     tillweb_viewname = "tillweb-delivery"
     tillweb_argname = "deliveryid"
     def tillweb_nav(self):
@@ -1388,6 +1391,35 @@ class Delivery(Base):
 
     def __repr__(self):
         return "<Delivery(%s)>" % (self.id,)
+
+    def add_items(self, stocktype, stockunit, qty, cost, bestbefore=None):
+        description = stockunit.name
+        size = stockunit.size
+        # If the stockunit allows merging, do so now
+        if stockunit.merge and qty > 1:
+            description = f"{qty}×{description}"
+            size = size * qty
+            qty = 1
+        costper = (cost / qty).quantize(penny) if cost else None
+        remaining_cost = cost
+        items = []
+        # It's necessary to disable autoflush here, otherwise some of
+        # the new StockItem rows may be autoflushed with deliveryid
+        # still set to None if sqlalchemy has to issue a query to load
+        # stocktype
+        with object_session(self).no_autoflush:
+            while qty > 0:
+                thiscost = remaining_cost if qty == 1 else costper
+                remaining_cost = remaining_cost - thiscost if cost else None
+                item = StockItem(stocktype=stocktype,
+                                 description=description,
+                                 size=size,
+                                 costprice=thiscost,
+                                 bestbefore=bestbefore)
+                self.items.append(item)
+                items.append(item)
+                qty -= 1
+        return items
 
 units_seq = Sequence('units_seq')
 
@@ -1605,7 +1637,7 @@ class StockItem(Base):
     finishcode_id = Column('finishcode', String(8),
                            ForeignKey('stockfinish.finishcode'))
     bestbefore = Column(Date)
-    delivery = relationship(Delivery, backref=backref('items', order_by=id))
+    delivery = relationship(Delivery, back_populates="items")
     stocktype = relationship(StockType, backref=backref('items', order_by=id))
     finishcode = relationship(FinishCode, lazy="joined")
     stocklineid = Column(Integer, ForeignKey('stocklines.stocklineid',
