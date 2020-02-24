@@ -179,8 +179,8 @@ class SQLAModelMultipleChoiceField(SQLAModelChoiceField):
         data_set = set(data)
         return data_set != initial_set
 
-class StringIDMultipleChoiceField(SQLAModelMultipleChoiceField):
-    """SQL Alchemy model multiple choice field with string primary key
+class _StringIDMixin:
+    """SQL Alchemy model field with string primary key
     """
     def values_to_filter(self, query, values):
         try:
@@ -188,6 +188,16 @@ class StringIDMultipleChoiceField(SQLAModelMultipleChoiceField):
         except:
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')
+
+class StringIDChoiceField(_StringIDMixin, SQLAModelChoiceField):
+    """SQL Alchemy model choice field with string primary key
+    """
+    pass
+
+class StringIDMultipleChoiceField(_StringIDMixin, SQLAModelMultipleChoiceField):
+    """SQL Alchemy model multiple choice field with string primary key
+    """
+    pass
 
 # Widgets
 
