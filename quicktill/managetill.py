@@ -43,7 +43,7 @@ def versioninfo():
     """
     log.info("Version popup")
     ui.infopopup(["Quick till software %s"%version,
-                  "© Copyright 2004-2019 Stephen Early",
+                  "© Copyright 2004–2020 Stephen Early",
                   "Configuration URL: %s"%tillconfig.configversion,
                   "Configuration name: %s"%tillconfig.configname,
                   "Operating system: %s %s %s"%(os.uname()[0],
