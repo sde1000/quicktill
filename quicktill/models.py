@@ -1743,10 +1743,10 @@ class StockItem(Base):
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
     def tillweb_nav(self):
-        return [("Stock", self.get_view_url("tillweb-stocksearch")),
-                ("Item {} ({} {})".format(
-                    self.id, self.stocktype.manufacturer, self.stocktype.name),
-                 self.get_absolute_url())]
+        return self.delivery.tillweb_nav() + [
+            ("Item {} ({} {})".format(
+                self.id, self.stocktype.manufacturer, self.stocktype.name),
+             self.get_absolute_url())]
 
     def __str__(self):
         return "<StockItem({})>".format(self.id)

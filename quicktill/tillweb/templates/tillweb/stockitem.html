@@ -47,6 +47,36 @@
 </td></tr>{% endif %}
 </table>
 
+<div class="row">
+{% if aform %}
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add annotation</button>
+  <div class="dropdown-menu" style="width: 600px;">
+    <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
+      {% include "form.html" with form=aform %}
+      <button class="btn btn-primary" type="submit" name="submit_annotate">
+	Add annotation
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if wform %}
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Record waste</button>
+  <div class="dropdown-menu" style="width: 600px;">
+    <form class="px-4 py-3" action="" method="post">{% csrf_token %}
+      {% include "form.html" with form=wform %}
+      <button class="btn btn-primary" type="submit" name="submit_waste">
+	Record waste
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+</div>
+
 {% if stock.out %}
 <h2>Usage summary</h2>
 <table class="kvtable">

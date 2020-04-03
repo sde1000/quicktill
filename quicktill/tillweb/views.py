@@ -30,6 +30,7 @@ from .db import td
 from .forms import SQLAModelChoiceField
 from .forms import SQLAModelMultipleChoiceField
 from .forms import StringIDMultipleChoiceField
+from .forms import StringIDChoiceField
 from .forms import Select2, Select2Ajax
 
 log = logging.getLogger(__name__)
@@ -878,11 +879,13 @@ class EditDeliveryForm(DeliveryForm):
     stocktype = SQLAModelChoiceField(
         StockType,
         required=False,
+        empty_label='Choose a stock type',
         label_function=stocktype_widget_label,
         query_filter=lambda x:x.order_by(StockType.manufacturer,
                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
-    itemsize = SQLAModelChoiceField(StockUnit, required=False)
+    itemsize = SQLAModelChoiceField(StockUnit, required=False,
+                                    empty_label='Choose an item size')
     quantity = forms.IntegerField(min_value=1, required=False, initial=1)
     costprice = forms.DecimalField(
         required=False, min_value=zero,
@@ -921,6 +924,8 @@ def delivery(request, info, deliveryid):
     may_edit = not d.checked and info.user_has_perm('deliveries')
     form = None
 
+    total = sum(i.costprice or zero for i in d.items)
+
     if may_edit:
         initial = {
             'supplier': d.supplier,
@@ -928,6 +933,21 @@ def delivery(request, info, deliveryid):
             'date': d.date,
         }
         if request.method == 'POST':
+            if 'submit_delete' in request.POST:
+                if d.items:
+                    messages.error(
+                        request, "There are items in this delivery.  The "
+                        "delivery can't be deleted until they are removed.")
+                    return HttpResponseRedirect(d.get_absolute_url())
+                messages.success(request, f"Delivery deleted.")
+                td.s.delete(d)
+                td.s.commit()
+                return HttpResponseRedirect(info.reverse("tillweb-deliveries"))
+            for s in d.items:
+                if f'del{s.id}' in request.POST:
+                    td.s.delete(s)
+                    td.s.commit()
+                    return HttpResponseRedirect(d.get_absolute_url())
             form = EditDeliveryForm(info, request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -937,7 +957,8 @@ def delivery(request, info, deliveryid):
                 if cd['stocktype']:
                     stockunit = cd['itemsize']
                     stocktype = cd['stocktype']
-                    if cd['saleprice'] != stocktype.saleprice:
+                    if cd['saleprice'] \
+                       and cd['saleprice'] != stocktype.saleprice:
                         stocktype.saleprice = cd['saleprice']
                         stocktype.pricechanged = datetime.datetime.now()
                     qty = cd['quantity']
@@ -948,14 +969,15 @@ def delivery(request, info, deliveryid):
         else:
             form = EditDeliveryForm(info, initial=initial)
 
-    return ('delivery.html', {
+    return ('edit_delivery.html' if may_edit else 'delivery.html', {
         'tillobject': d,
         'delivery': d,
         'may_edit': may_edit,
         'form': form,
+        'total': total,
     })
 
-class StockTypeForm(forms.Form):
+class StockTypeSearchForm(forms.Form):
     manufacturer = forms.CharField(required=False)
     name = forms.CharField(required=False)
 
@@ -975,7 +997,7 @@ class StockTypeForm(forms.Form):
 
 @tillweb_view
 def stocktypesearch(request, info):
-    form = StockTypeForm(request.GET)
+    form = StockTypeSearchForm(request.GET)
     result = []
     if form.is_valid() and form.is_filled_in():
         q = td.s.query(StockType)\
@@ -1056,13 +1078,13 @@ def stocktype(request, info, stocktype_id):
              'include_finished': include_finished,
             })
 
-class StockForm(StockTypeForm):
+class StockSearchForm(StockTypeSearchForm):
     include_finished = forms.BooleanField(
         required=False, label="Include finished items")
 
 @tillweb_view
 def stocksearch(request, info):
-    form = StockForm(request.GET)
+    form = StockSearchForm(request.GET)
     pager = None
     if form.is_valid() and form.is_filled_in():
         q = td.s.query(StockItem)\
@@ -1085,6 +1107,52 @@ def stocksearch(request, info):
         'stocklist': pager.items() if pager else [],
         'pager': pager})
 
+class StockAnnotateForm(forms.Form):
+    annotation_type = StringIDChoiceField(
+        AnnotationType,
+        query_filter=lambda x:x.order_by(AnnotationType.description)\
+        .filter(~(AnnotationType.id.in_(["start", "stop"]))),
+        empty_label="Choose a type of annotation"
+    )
+    annotation = forms.CharField()
+
+class StockWasteForm(forms.Form):
+    waste_type = StringIDChoiceField(
+        RemoveCode,
+        query_filter=lambda x:x.order_by(RemoveCode.reason)\
+        .filter(RemoveCode.id != 'sold'),
+        empty_label="Choose the type of waste to record"
+        )
+    amount = forms.DecimalField(
+        max_digits=qty_max_digits, decimal_places=qty_decimal_places)
+
+class EditStockForm(forms.Form):
+    def __init__(self, info, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the URL for the stocktype widget ajax
+        self.fields['stocktype'].widget.ajax = {
+            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'dataType': 'json',
+            'delay': 250,
+        }
+
+    stocktype = SQLAModelChoiceField(
+        StockType,
+        label="Stock type",
+        label_function=stocktype_widget_label,
+        query_filter=lambda x:x.order_by(StockType.manufacturer,
+                                         StockType.name),
+        widget=Select2Ajax(min_input_length=2))
+    description = forms.CharField()
+    size = forms.DecimalField(
+        min_value=min_quantity, max_digits=qty_max_digits,
+        decimal_places=qty_decimal_places, initial=1)
+    costprice = forms.DecimalField(
+        label="Cost price",
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places)
+    bestbefore = forms.DateField(label="Best before", required=False)
+
 @tillweb_view
 def stock(request, info, stockid):
     s = td.s.query(StockItem)\
@@ -1100,9 +1168,78 @@ def stock(request, info, stockid):
             .get(stockid)
     if not s:
         raise Http404
-    return ('stock.html', {
+
+    may_edit = not s.delivery.checked and info.user_has_perm("deliveries")
+    may_annotate = s.delivery.checked and info.user_has_perm("annotate")
+    may_record_waste = s.delivery.checked and info.user_has_perm("record-waste")
+
+    sform = None
+    aform = None
+    wform = None
+
+    if may_annotate:
+        if request.method == 'POST' and 'submit_annotate' in request.POST:
+            aform = StockAnnotateForm(request.POST)
+            if aform.is_valid():
+                cd = aform.cleaned_data
+                td.s.add(StockAnnotation(
+                    stockitem=s, type=cd['annotation_type'],
+                    text=cd['annotation'], user=info.user))
+                td.s.commit()
+                messages.success(request, "Annotation added")
+                return HttpResponseRedirect(s.get_absolute_url())
+        else:
+            aform = StockAnnotateForm()
+
+    if may_record_waste:
+        if request.method == 'POST' and 'submit_waste' in request.POST:
+            wform = StockWasteForm(request.POST)
+            if wform.is_valid():
+                cd = wform.cleaned_data
+                td.s.add(StockOut(
+                    stockitem=s, removecode=cd['waste_type'],
+                    qty=cd['amount']))
+                td.s.commit()
+                messages.success(request, "Waste recorded")
+                return HttpResponseRedirect(s.get_absolute_url())
+        else:
+            wform = StockWasteForm()
+
+    if may_edit:
+        initial = {
+            'stocktype': s.stocktype,
+            'description': s.description,
+            'size': s.size,
+            'costprice': s.costprice,
+            'bestbefore': s.bestbefore,
+        }
+        if request.method == 'POST' and 'submit_update' in request.POST:
+            sform = EditStockForm(info, request.POST, initial=initial)
+            if sform.is_valid():
+                cd = sform.cleaned_data
+                s.stocktype = cd['stocktype']
+                s.description = cd['description']
+                s.size = cd['size']
+                s.costprice = cd['costprice']
+                s.bestbefore = cd['bestbefore']
+                td.s.commit()
+                messages.success(request, f"Stock item {s.id} updated")
+                return HttpResponseRedirect(s.delivery.get_absolute_url())
+        else:
+            sform = EditStockForm(info, initial=initial)
+        if request.method == 'POST' and 'submit_delete' in request.POST:
+            r = s.delivery.get_absolute_url()
+            td.s.delete(s)
+            td.s.commit()
+            messages.success(request, f"Stock item {s.id} deleted")
+            return HttpResponseRedirect(r)
+
+    return ('stockitem.html' if s.delivery.checked else 'edit_stockitem.html', {
         'tillobject': s,
         'stock': s,
+        'aform': aform,
+        'sform': sform,
+        'wform': wform,
     })
 
 @tillweb_view

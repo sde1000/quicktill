@@ -261,7 +261,6 @@ class Select2Ajax(Widget):
                         "minimumInputLength": self.min_input_length,
                         "allowClear": not self.is_required}
         context['widget']['select2_args'] = json.dumps(select2_args)
-        print(f"context: {context}")
         return context
 
     def value_from_datadict(self, data, files, name):
