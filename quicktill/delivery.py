@@ -39,10 +39,14 @@ class deliveryline(ui.line):
         try:
             coststr = format(s.costprice, ">-6.2f")
         except:
-            coststr = "????? "
-        self.text = "{:>7} {:<37} {:<8} {} {:>-5.2f} {:10}".format(
+            coststr = "??????"
+        try:
+            salestr = format(s.stocktype.saleprice, ">-5.2f")
+        except:
+            salestr = "?????"
+        self.text = "{:>7} {:<37} {:<8} {} {} {:10}".format(
             s.id, s.stocktype.format(maxw=37), s.description[:8],
-            coststr, s.stocktype.saleprice, ui.formatdate(s.bestbefore))
+            coststr, salestr, ui.formatdate(s.bestbefore))
 
 class delivery(ui.basicpopup):
     """Delivery popup
@@ -152,7 +156,7 @@ class delivery(ui.basicpopup):
         if self.dn:
             d = td.s.query(Delivery).get(self.dn)
             self.costfield.set(
-                tillconfig.fc(d.costprice) if d.costprice else "?????")
+                tillconfig.fc(d.costprice) if d.costprice else "??????")
 
     def update_model(self):
         # Called whenever one of the three fields at the top changes.
