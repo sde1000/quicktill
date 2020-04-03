@@ -106,6 +106,7 @@ new stock items can be placed at appropriate places in the table.
     <button class="btn btn-primary mb-2" type="submit" name="submit_update">
 	Update
     </button>
+    <a class="btn btn-secondary mb-2" role="button" href="{% url "tillweb-create-stocktype" pubname=pubname %}">New stock type</a>
     <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if delivery.items %} disabled{% endif %}>
 	Delete this delivery
     </button>

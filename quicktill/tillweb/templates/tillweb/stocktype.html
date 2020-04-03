@@ -13,10 +13,51 @@
 <tr><th>ABV</th><td>{{stocktype.abv}}%</td></tr>
 {% endif %}
 <tr><th>Department</th><td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td></tr>
-<tr><th>Unit</th><td>{{stocktype.unit.description}}</td></tr>
-<tr><th>Sale price</th><td>{{money}}{{stocktype.pricestr}}</span> (inc-VAT)</td></tr>
+<tr><th>Unit</th><td><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></td></tr>
+<tr><th>Sale price</th><td>{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
 </table>
 
+<div class="row">
+{% if alter_form %}
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Fix mistakes</button>
+  <div class="dropdown-menu" style="width: 600px;">
+    <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
+      {% include "form-horizontal.html" with form=alter_form %}
+      <p><strong>N.B.</strong> If you change the Department of this
+      stock type, only future sales of stock will be counted under the
+      new department.  Past sales will remain in the previous
+      department.  Consider creating a new stock type instead.</p>
+      <button class="btn btn-primary" type="submit" name="submit_alter">
+	Alter stocktype to fix mistakes
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if reprice_form %}
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Re-price stock</button>
+  <div class="dropdown-menu" style="width: 600px;">
+    <form class="px-4 py-3" action="" method="post">{% csrf_token %}
+      {% include "form.html" with form=reprice_form %}
+      <button class="btn btn-primary" type="submit" name="submit_reprice">
+	Set new sale price
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+</div>
+
+{% if may_delete %}
+<form action="" method="post">{% csrf_token %}
+  <button class="btn btn-danger mt-2" name="submit_delete">
+    Delete this stock type
+  </button>
+</form>
+{% else %}
 <h2>Stock of this type</h2>
 {% if items %}
 {% with items as stocklist %}
@@ -28,6 +69,7 @@
 
 {% if not include_finished %}
 <p><a href="?show_finished=on">Include finished items</a></p>
+{% endif %}
 {% endif %}
 
 {% endblock %}

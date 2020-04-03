@@ -1005,10 +1005,71 @@ def stocktypesearch(request, info):
                           StockType.name)
         q = form.filter(q)
         result = q.all()
+
+    may_alter = info.user_has_perm("alter-stocktype")
+
     return ('stocktypesearch.html', {
         'nav': [("Stock types", info.reverse("tillweb-stocktype-search"))],
         'form': form,
         'stocktypes': result,
+        'may_alter': may_alter,
+    })
+
+class NewStockTypeForm(forms.Form):
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q:q.order_by(Department.id),
+        required=True)
+    manufacturer = forms.CharField(max_length=30, widget=forms.TextInput(
+        attrs={'list': 'manufacturers', 'autocomplete': 'off'}))
+    name = forms.CharField(max_length=30, widget=forms.TextInput(
+        attrs={'autocomplete': 'off'}))
+    abv = forms.DecimalField(label="ABV",
+                             required=False, decimal_places=1,
+                             min_value=Decimal("0.1"),
+                             max_value=Decimal("99.9"))
+    unit = SQLAModelChoiceField(
+        Unit,
+        query_filter=lambda x:x.order_by(Unit.name),
+        label_function=lambda u:f"{u.description} (base unit: {u.name})")
+    saleprice = forms.DecimalField(
+        label="Sale price inc. VAT",
+        required=False, decimal_places=money_decimal_places,
+        min_value=zero, max_digits=money_max_digits)
+
+@tillweb_view
+def create_stocktype(request, info):
+    if not info.user_has_perm("alter-stocktype"):
+        return HttpResponseForbidden("You don't have permission to create new stock types")
+
+    manufacturers = [x[0].strip() for x in
+                     td.s.query(distinct(StockType.manufacturer))\
+                     .order_by(StockType.manufacturer)\
+                     .all()]
+
+    if request.method == 'POST':
+        form = NewStockTypeForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            s = StockType(department=cd['department'],
+                          manufacturer=cd['manufacturer'],
+                          name=cd['name'],
+                          abv=cd['abv'],
+                          unit=cd['unit'],
+                          saleprice=cd['saleprice'],
+                          pricechanged=datetime.datetime.now())
+            td.s.add(s)
+            td.s.commit()
+            messages.success(request, "New stock type created")
+            return HttpResponseRedirect(s.get_absolute_url())
+    else:
+        form = NewStockTypeForm()
+
+    return ('new-stocktype.html', {
+        'nav': [("Stock types", info.reverse("tillweb-stocktype-search")),
+                ("New", info.reverse("tillweb-create-stocktype"))],
+        'form': form,
+        'manufacturers': manufacturers,
     })
 
 def _stocktype_to_dict(x, include_stockunits):
@@ -1056,24 +1117,97 @@ def stocktype_info_json(request, info):
         raise Http404
     return JsonResponse(_stocktype_to_dict(st, True))
 
+class EditStockTypeForm(forms.Form):
+    manufacturer = forms.CharField(max_length=30)
+    name = forms.CharField(max_length=30)
+    abv = forms.DecimalField(label="ABV",
+                             required=False, decimal_places=1,
+                             min_value=Decimal("0.1"),
+                             max_value=Decimal("99.9"))
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q:q.order_by(Department.id),
+        required=True)
+
+class RepriceStockTypeForm(forms.Form):
+    saleprice = forms.DecimalField(
+        label="New sale price inc. VAT",
+        required=False, decimal_places=money_decimal_places,
+        min_value=zero, max_digits=money_max_digits)
+
 @tillweb_view
 def stocktype(request, info, stocktype_id):
     s = td.s.query(StockType)\
             .get(stocktype_id)
     if not s:
         raise Http404
+    may_alter = info.user_has_perm("alter-stocktype")
+    may_reprice = info.user_has_perm("reprice-stock")
+
+    alter_form = None
+    reprice_form = None
+
+    if may_alter:
+        if request.method == 'POST' and 'submit_alter' in request.POST:
+            alter_form = EditStockTypeForm(request.POST)
+            if alter_form.is_valid():
+                cd = alter_form.cleaned_data
+                s.manufacturer = cd['manufacturer']
+                s.name = cd['name']
+                s.abv = cd['abv']
+                s.department = cd['department']
+                td.s.commit()
+                messages.success(request, "Stock type updated")
+                return HttpResponseRedirect(s.get_absolute_url())
+        else:
+            alter_form = EditStockTypeForm(initial={
+                'manufacturer': s.manufacturer.strip(),
+                'name': s.name.strip(),
+                'abv': s.abv,
+                'department': s.department,
+            })
+
+    if may_reprice:
+        if request.method == 'POST' and 'submit_reprice' in request.POST:
+            reprice_form = RepriceStockTypeForm(request.POST)
+            if reprice_form.is_valid():
+                new_price = reprice_form.cleaned_data['saleprice']
+                old_price = s.saleprice
+                if new_price != s.saleprice:
+                    s.saleprice = reprice_form.cleaned_data['saleprice']
+                    s.saleprice_changed = datetime.datetime.now()
+                    td.s.commit()
+                    messages.success(request, "Sale price changed")
+                return HttpResponseRedirect(s.get_absolute_url())
+        else:
+            reprice_form = RepriceStockTypeForm(initial={
+                'saleprice': s.saleprice,
+            })
+
     include_finished = request.GET.get("show_finished", "off") == "on"
     items = td.s.query(StockItem)\
                 .filter(StockItem.stocktype == s)\
                 .options(undefer_group('qtys'),
                          joinedload('delivery'))\
                 .order_by(desc(StockItem.id))
+    may_delete = may_alter and items.count() == 0
+
+    if may_delete and request.method == 'POST' \
+       and 'submit_delete' in request.POST:
+        td.s.delete(s)
+        td.s.commit()
+        messages.success(request, "Stock type deleted")
+        return HttpResponseRedirect(info.reverse("tillweb-stocktype-search"))
+
     if not include_finished:
         items = items.filter(StockItem.finished == None)
     items = items.all()
     return ('stocktype.html',
             {'tillobject': s,
              'stocktype': s,
+             'alter_form': alter_form,
+             'reprice_form': reprice_form,
+             'may_delete': may_delete,
              'items': items,
              'include_finished': include_finished,
             })

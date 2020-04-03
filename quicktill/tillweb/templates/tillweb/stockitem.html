@@ -1,6 +1,6 @@
 {% extends "tillweb/tillweb.html" %}
 
-{% block title %}{{till}} — Stock item  {{stock.id}}{% endblock %}
+{% block title %}{{till}} — Stock item {{stock.id}}{% endblock %}
 
 {% block tillcontent %}
 {% if not stock.delivery.checked %}
@@ -24,7 +24,7 @@
 {% if stock.costprice %}
 <td>{{money}}{{stock.costprice}} (ex-VAT)</td>
 {% else %}<td>Unknown</td>{% endif %}</tr>
-<tr><th scope="row">Sale price</th><td>{% if stock.stocktype.saleprice %}{{money}}{{stock.stocktype.pricestr}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
+<tr><th scope="row">Sale price</th><td>{% if stock.stocktype.saleprice != None %}{{money}}{{stock.stocktype.pricestr}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
 {% if stock.onsale %}
 <tr><th scope="row">Put on sale</th><td>{{stock.onsale}}
 {% if stock.stockonsale %} on line <a href="{{stock.stockonsale.stockline.get_absolute_url}}">{{stock.stockonsale.stockline.name}}</a>

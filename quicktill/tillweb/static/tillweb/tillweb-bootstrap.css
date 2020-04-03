@@ -79,3 +79,9 @@ tr:target {
 	background-color: rgba(0,0,0,0);
     }
 }
+
+.dropdown-menu {
+    /* bootstrap sets navbar z-index to 1020; we need dropdowns to appear
+       over the navbar when necessary */
+    z-index: 2000;
+}

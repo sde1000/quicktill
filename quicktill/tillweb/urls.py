@@ -43,6 +43,7 @@ tillurls = [
 
     path('stocktype/', stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', stocktype, name="tillweb-stocktype"),
+    path('new/stocktype/', create_stocktype, name="tillweb-create-stocktype"),
     path('stocktype/search.json', stocktype_search_json,
          name="tillweb-stocktype-search-json"),
     path('stocktype/search-with-stockunits.json', stocktype_search_json,

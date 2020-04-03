@@ -1,0 +1,18 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — create stock type{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Create stock type
+  </button>
+  <datalist id="manufacturers">
+    {% for m in manufacturers %}<option value="{{m}}">
+    {% endfor %}
+  </datalist>
+</form>
+
+{% endblock %}
