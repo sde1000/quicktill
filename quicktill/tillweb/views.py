@@ -835,7 +835,8 @@ class DeliveryForm(forms.Form):
         widget=Select2)
     docnumber = forms.CharField(
         label="Document number", required=False, max_length=40)
-    date = forms.DateField()
+    date = forms.DateField(widget=forms.DateInput(attrs={
+        'autocomplete': 'off'}))
 
 @tillweb_view
 def create_delivery(request, info):
