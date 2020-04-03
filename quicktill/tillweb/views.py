@@ -39,6 +39,31 @@ log = logging.getLogger(__name__)
 # to keep repeating it.  It's available in templates as 'dtf'
 dtf = "Y-m-d H:i"
 
+# Custom DateInput widget: use ISO 8601 dates only
+class DateInput(forms.DateInput):
+    def __init__(self, *args, **kwargs):
+        attrs = kwargs.setdefault('attrs', {})
+        attrs['autocomplete'] = 'off'
+
+        # Uncomment the next line to enable native datepickers
+        #attrs['type'] = 'date'
+
+        super().__init__(*args, **kwargs, format='%Y-%m-%d')
+
+# Several forms require the user to input an optional date period first
+class DatePeriodForm(forms.Form):
+    startdate = forms.DateField(label="Start date", required=False,
+                                widget=DateInput)
+    enddate = forms.DateField(label="End date", required=False,
+                              widget=DateInput)
+
+    def clean(self):
+        cd = super().clean()
+        if cd['startdate'] and cd['enddate'] \
+           and cd['startdate'] > cd['enddate']:
+            self.add_error('startdate', 'Start date cannot be after end date')
+        return cd
+
 # Format a StockType model as a string for Select widgets
 def stocktype_widget_label(x):
     return f"{x.format()} ({x.department}, sold in {x.unit.item_name_plural})"
@@ -451,9 +476,7 @@ def location(request, info, location):
 class SessionFinderForm(forms.Form):
     session = forms.IntegerField(label="Session ID")
 
-class SessionSheetForm(forms.Form):
-    startdate = forms.DateField(label="Start date", required=False)
-    enddate = forms.DateField(label="End date", required=False)
+class SessionSheetForm(DatePeriodForm):
     rows = forms.ChoiceField(label="Rows show", choices=[
         ("Sessions", "Sessions"),
         ("Days", "Days"),
@@ -835,8 +858,7 @@ class DeliveryForm(forms.Form):
         widget=Select2)
     docnumber = forms.CharField(
         label="Document number", required=False, max_length=40)
-    date = forms.DateField(widget=forms.DateInput(attrs={
-        'autocomplete': 'off'}))
+    date = forms.DateField(widget=DateInput)
 
 @tillweb_view
 def create_delivery(request, info):
@@ -894,7 +916,7 @@ class EditDeliveryForm(DeliveryForm):
     saleprice = forms.DecimalField(
         required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
-    bestbefore = forms.DateField(required=False)
+    bestbefore = forms.DateField(required=False, widget=DateInput)
 
     def clean(self):
         cd = super().clean()
@@ -1286,7 +1308,8 @@ class EditStockForm(forms.Form):
         label="Cost price",
         required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
-    bestbefore = forms.DateField(label="Best before", required=False)
+    bestbefore = forms.DateField(label="Best before", required=False,
+                                 widget=DateInput)
 
 @tillweb_view
 def stock(request, info, stockid):
@@ -2044,17 +2067,13 @@ def session_users_pie_chart(request, info, sessionid):
     plt.close(fig)
     return response
 
-class WasteReportForm(forms.Form):
-    startdate = forms.DateField(label="Start date", required=False)
-    enddate = forms.DateField(label="End date", required=False)
+class WasteReportForm(DatePeriodForm):
     columns = forms.ChoiceField(label="Columns show", choices=[
         ("depts", "Departments"),
         ("waste", "Waste type"),
     ])
 
-class StockSoldReportForm(forms.Form):
-    startdate = forms.DateField(label="Start date", required=False)
-    enddate = forms.DateField(label="End date", required=False)
+class StockSoldReportForm(DatePeriodForm):
     dates = forms.ChoiceField(label="Based on", choices=[
         ("transaction", "Transaction Date"),
         ("stockusage", "Date entered"),
