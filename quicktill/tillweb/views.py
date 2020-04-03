@@ -969,7 +969,7 @@ def delivery(request, info, deliveryid):
         else:
             form = EditDeliveryForm(info, initial=initial)
 
-    return ('edit_delivery.html' if may_edit else 'delivery.html', {
+    return ('edit-delivery.html' if may_edit else 'delivery.html', {
         'tillobject': d,
         'delivery': d,
         'may_edit': may_edit,
@@ -1368,7 +1368,7 @@ def stock(request, info, stockid):
             messages.success(request, f"Stock item {s.id} deleted")
             return HttpResponseRedirect(r)
 
-    return ('stockitem.html' if s.delivery.checked else 'edit_stockitem.html', {
+    return ('stockitem.html' if s.delivery.checked else 'edit-stockitem.html', {
         'tillobject': s,
         'stock': s,
         'aform': aform,
