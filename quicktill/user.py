@@ -619,6 +619,39 @@ def usersmenu():
         ("3", "Current user information", display_info, None),
         ], title="Manage Users")
 
+def reactivate_user(userid):
+    u = td.s.query(User).get(userid)
+    u.enabled = True
+    td.s.commit()
+    ui.toast(f'User "{u.fullname}" reactivated.')
+    edituser(userid)
+
+@permission_required('edit-user', 'Edit a user')
+def maybe_adduser():
+    """Check for inactive users before adding a new user
+
+    Experience shows that managers tend to add duplicate users rather
+    than reactivating existing users.
+
+    If there are any inactive users, show a list of them and invite
+    the user to reactivate one instead of adding a new user.
+    """
+    inactive_users = td.s.query(User).filter(User.enabled == False)\
+                                     .order_by(User.fullname)\
+                                     .all()
+    if not inactive_users:
+        return adduser()
+
+    f = ui.tableformatter(' l l ')
+    lines = [(f(x.fullname, x.shortname), reactivate_user, (x.id,))
+             for x in inactive_users]
+    lines.append(("Add new user", adduser, None))
+
+    ui.menu(lines, title="Check inactive users",
+            blurb="Is the person you want to add already in this list "
+            "of inactive user records?  If they are, pick them from the list "
+            "to reactivate them.")
+
 @permission_required("list-users", "List till users")
 def manageusers(include_inactive=False):
     """List, create and edit users.
@@ -638,7 +671,7 @@ def manageusers(include_inactive=False):
     if not include_inactive:
         lines.insert(0, ("Include inactive users", manageusers, (True,)))
     if u.may('edit-user'):
-        lines.insert(0, ("Add new user", adduser, None))
+        lines.insert(0, ("Add new user", maybe_adduser, None))
     ui.menu(lines, title="User list",
             blurb="Select a user and press Cash/Enter")
 
