@@ -1456,7 +1456,7 @@ class Unit(Base):
                 (self.description, self.get_absolute_url())]
 
     def format_qty(self, qty):
-        if qty < self.units_per_item:
+        if qty < self.units_per_item and qty != 0:
             return "{} {}".format(qty, self.name)
         n = self.item_name if qty == self.units_per_item \
             else self.item_name_plural
