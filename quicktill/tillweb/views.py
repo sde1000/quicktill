@@ -1621,9 +1621,234 @@ def stockline(request, info, stocklineid):
             .get(stocklineid)
     if not s:
         raise Http404
+    if s.linetype == "regular":
+        return stockline_regular(request, info, s)
+    elif s.linetype == "display":
+        return stockline_display(request, info, s)
+    elif s.linetype == "continuous":
+        return stockline_continuous(request, info, s)
+
     return ('stockline.html', {
         'tillobject': s,
         'stockline': s,
+    })
+
+class RegularStockLineForm(forms.Form):
+    def __init__(self, info, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the URL for the stocktype widget ajax
+        self.fields['stocktype'].widget.ajax = {
+            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'dataType': 'json',
+            'delay': 250,
+        }
+
+    name = forms.CharField(max_length=30)
+    location = forms.CharField(max_length=20, widget=forms.TextInput(
+        attrs={'list': 'locations', 'autocomplete': 'off'}))
+    stocktype = SQLAModelChoiceField(
+        StockType,
+        required=False,
+        label="Restrict new stock to this type",
+        empty_label="Don't restrict by stock type",
+        label_function=stocktype_widget_label,
+        query_filter=lambda x:x.order_by(StockType.manufacturer,
+                                         StockType.name),
+        widget=Select2Ajax(min_input_length=2))
+    department = SQLAModelChoiceField(
+        Department,
+        label="Restrict new stock to this department",
+        empty_label="Don't restrict by department",
+        query_filter=lambda q:q.order_by(Department.id),
+        required=False)
+    pullthru = forms.DecimalField(
+        label="Pull-through amount",
+        max_digits=qty_max_digits, decimal_places=qty_decimal_places,
+        required=False)
+
+def stockline_regular(request, info, s):
+    form = None
+    if info.user_has_perm("alter-stockline"):
+        if request.method == 'POST' and 'submit_update' in request.POST:
+            form = RegularStockLineForm(info, request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                s.name = cd['name']
+                s.location = cd['location']
+                s.stocktype = cd['stocktype']
+                s.department = cd['department']
+                s.pullthru = cd['pullthru']
+                try:
+                    td.s.commit()
+                    messages.success(request, "Stock line updated")
+                    return HttpResponseRedirect(s.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error("name", "Name already in use")
+                    messages.error(
+                        request, "Could not update stock line: the name "
+                        "is already in use by another stock line")
+        elif request.method == 'POST' and 'submit_delete' in request.POST:
+            td.s.delete(s)
+            td.s.commit()
+            messages.success(request, "Stock line deleted")
+            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        else:
+            form = RegularStockLineForm(info, initial={
+                "name": s.name,
+                "location": s.location,
+                "stocktype": s.stocktype,
+                "department": s.department,
+                "pullthru": s.pullthru,
+            })
+
+    locations = StockLine.locations(td.s) if form else None
+
+    return ('stockline-regular.html', {
+        'tillobject': s,
+        'stockline': s,
+        'form': form,
+        'locations': locations,
+    })
+
+class DisplayStockLineForm(forms.Form):
+    def __init__(self, info, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the URL for the stocktype widget ajax
+        self.fields['stocktype'].widget.ajax = {
+            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'dataType': 'json',
+            'delay': 250,
+        }
+
+    name = forms.CharField(max_length=30)
+    location = forms.CharField(max_length=20, widget=forms.TextInput(
+        attrs={'list': 'locations', 'autocomplete': 'off'}))
+    stocktype = SQLAModelChoiceField(
+        StockType,
+        required=True,
+        label="Type of stock on sale",
+        empty_label="Choose a stock type",
+        label_function=stocktype_widget_label,
+        query_filter=lambda x:x.order_by(StockType.manufacturer,
+                                         StockType.name),
+        widget=Select2Ajax(min_input_length=2))
+    capacity = forms.IntegerField(
+        label="Maximum number of items on display", min_value=1)
+
+def stockline_display(request, info, s):
+    form = None
+    if info.user_has_perm("alter-stockline"):
+        if request.method == 'POST' and 'submit_update' in request.POST:
+            form = DisplayStockLineForm(info, request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                s.name = cd['name']
+                s.location = cd['location']
+                s.stocktype = cd['stocktype']
+                s.capacity = cd['capacity']
+                try:
+                    td.s.commit()
+                    for item in list(s.stockonsale):
+                        if item.stocktype != s.stocktype:
+                            messages.info(request,
+                                          f"Item {item.id} was removed "
+                                          "because it is the wrong type")
+                            item.displayqty = None
+                            item.stockline = None
+                    td.s.commit()
+                    messages.success(request, "Stock line updated")
+                    return HttpResponseRedirect(s.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error("name", "Name already in use")
+                    messages.error(
+                        request, "Could not update stock line: the name "
+                        "is already in use by another stock line")
+        elif request.method == 'POST' and 'submit_delete' in request.POST:
+            td.s.delete(s)
+            td.s.commit()
+            messages.success(request, "Stock line deleted")
+            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        else:
+            form = DisplayStockLineForm(info, initial={
+                "name": s.name,
+                "location": s.location,
+                "stocktype": s.stocktype,
+                "capacity": s.capacity,
+            })
+
+    locations = StockLine.locations(td.s) if form else None
+
+    return ('stockline-display.html', {
+        'tillobject': s,
+        'stockline': s,
+        'form': form,
+        'locations': locations,
+    })
+
+class ContinuousStockLineForm(forms.Form):
+    def __init__(self, info, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the URL for the stocktype widget ajax
+        self.fields['stocktype'].widget.ajax = {
+            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'dataType': 'json',
+            'delay': 250,
+        }
+
+    name = forms.CharField(max_length=30)
+    location = forms.CharField(max_length=20, widget=forms.TextInput(
+        attrs={'list': 'locations', 'autocomplete': 'off'}))
+    stocktype = SQLAModelChoiceField(
+        StockType,
+        required=True,
+        label="Type of stock on sale",
+        empty_label="Choose a stock type",
+        label_function=stocktype_widget_label,
+        query_filter=lambda x:x.order_by(StockType.manufacturer,
+                                         StockType.name),
+        widget=Select2Ajax(min_input_length=2))
+
+def stockline_continuous(request, info, s):
+    form = None
+    if info.user_has_perm("alter-stockline"):
+        if request.method == 'POST' and 'submit_update' in request.POST:
+            form = ContinuousStockLineForm(info, request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                s.name = cd['name']
+                s.location = cd['location']
+                s.stocktype = cd['stocktype']
+                try:
+                    td.s.commit()
+                    messages.success(request, "Stock line updated")
+                    return HttpResponseRedirect(s.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error("name", "Name already in use")
+                    messages.error(
+                        request, "Could not update stock line: the name "
+                        "is already in use by another stock line")
+        elif request.method == 'POST' and 'submit_delete' in request.POST:
+            td.s.delete(s)
+            td.s.commit()
+            messages.success(request, "Stock line deleted")
+            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        else:
+            form = ContinuousStockLineForm(info, initial={
+                "name": s.name,
+                "location": s.location,
+                "stocktype": s.stocktype,
+            })
+
+    locations = StockLine.locations(td.s) if form else None
+
+    return ('stockline-continuous.html', {
+        'tillobject': s,
+        'stockline': s,
+        'form': form,
+        'locations': locations,
     })
 
 @tillweb_view

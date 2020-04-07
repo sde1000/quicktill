@@ -1,0 +1,62 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
+
+{% block heading %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
+
+{% block tillcontent %}
+
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_update">
+    Update stock line
+  </button>
+  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+    Delete stock line
+  </button>
+  <datalist id="locations">
+    {% for l in locations %}<option value="{{l}}">{% endfor %}
+  </datalist>
+</form>
+{% else %}
+<table class="kvtable">
+<tr><th>Name</th><td>{{stockline.name}}</td></tr>
+<tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
+<tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
+<tr><th>Capacity</th><td>{{stockline.capacity}}</td></tr>
+</table>
+{% endif %}
+
+<p class="mt-2">This is a "display" stock line.  Display stock lines
+  can have several stock items on sale at once.  Moving from one stock
+  item to the next is automatic; when one item is empty the next is
+  used.  These stock lines have a "capacity", and the system keeps
+  track of how many units of each stock item are "on display" and
+  available to be sold; the "capacity" is the number of units that can
+  be on display at any one time (for example, in a fridge).  Display
+  stock lines are typically used where it isn't obvious to the member
+  of staff where one stock item finishes and another one starts; for
+  example, the bottles on display in a fridge may come from several
+  different stock items.</p>
+
+{% if stockline.stockonsale %}
+<h2>Items on sale</h2>
+
+{% with stocklist=stockline.stockonsale exclude_column="stockline" %}
+{% include "tillweb/stocklist.html" %}
+{% endwith %}
+{% endif %}
+
+{% if stockline.keyboard_bindings %}
+<h2>Keyboard bindings</h2>
+<table>
+<tr><th>Keycode</th><th>Menu key</th><th>Default modifier</th></tr>
+{% for kb in stockline.keyboard_bindings %}
+<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
+<td>{{kb.menukey}}</td><td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+{% endblock %}
