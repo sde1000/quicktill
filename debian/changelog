@@ -1,3 +1,11 @@
+quicktill (16.8) stable; urgency=low
+
+  * New release 16.8
+
+  * Fix regression in creating new stockunits
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 10 Apr 2020 15:36:08 +0100
+
 quicktill (16.7) stable; urgency=low
 
   * New release 16.7
