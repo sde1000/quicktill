@@ -1,3 +1,37 @@
+quicktill (16.5) stable; urgency=low
+
+  * New release 16.5
+
+  * Handle unit correctly when displaying qty zero
+
+  * Editing of stock lines in the web interface
+
+  * Check list of inactive users before adding a new user record
+
+  * Add a custom DateInput widget
+
+  * Turn off autofill on new delivery date
+
+  * Rename edit_*.html to edit-*.html for consistency
+
+  * Creating, updating and deleting stock types
+
+  * Display absent sale prices appropriately in delivery popup
+
+  * Improve editing of deliveries in the web interface
+
+  * It's 2020 now
+
+  * Add string-key version of SQLAModelChoiceField
+
+  * Creation and editing of deliveries through the web interface
+
+  * Add select2 control and supporting forms code
+
+  * Move delivery code into model
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 10 Apr 2020 13:59:08 +0100
+
 quicktill (16.4) stable; urgency=low
 
   * New release 16.4
