@@ -1,3 +1,11 @@
+quicktill (16.6) stable; urgency=low
+
+  * New release 16.6
+
+  * Include multi-select in package
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 10 Apr 2020 14:47:58 +0100
+
 quicktill (16.5) stable; urgency=low
 
   * New release 16.5
