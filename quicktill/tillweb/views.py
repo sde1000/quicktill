@@ -1561,15 +1561,13 @@ def create_stockunit(request, info):
     if not info.user_has_perm("edit-stockunit"):
         return HttpResponseForbidden("You don't have permission to create new item sizes")
 
-    units = td.s.query(Unit).order_by(Unit.description).all()
-
     if request.method == "POST":
-        form = StockUnitForm(units, request.POST)
+        form = StockUnitForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
             su = StockUnit(
                 name=cd['description'],
-                unit_id=cd['unit'],
+                unit=cd['unit'],
                 size=cd['size'],
                 merge=cd['merge'])
             td.s.add(su)
@@ -1577,7 +1575,7 @@ def create_stockunit(request, info):
             messages.success(request, f"Item size '{su.name}' created.")
             return HttpResponseRedirect(su.get_absolute_url())
     else:
-        form = StockUnitForm(units)
+        form = StockUnitForm()
 
     return ('new-stockunit.html', {
         'nav': [("Item sizes", info.reverse("tillweb-stockunits")),
