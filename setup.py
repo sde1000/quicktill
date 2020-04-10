@@ -13,6 +13,7 @@ setup(name='quicktill16',
       package_data={'quicktill.tillweb':
                     ['static/tillweb/*.js', 'templates/tillweb/*.html',
                      'templates/tillweb/*.ajax',
+                     'static/tillweb/multi-select/*/*',
                      'static/tillweb/*.css', 'static/tillweb/images/*']},
       scripts=['runtill'],
 )
