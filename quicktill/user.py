@@ -846,7 +846,6 @@ class default_groups:
     ])
 
     skilled_user = set([
-        "basic-user", # XXX remove in release 16
         "drink-in",
         "nosale",
         "merge-trans",
@@ -864,7 +863,6 @@ class default_groups:
     ])
 
     manager = set([
-        "skilled-user", # XXX remove in release 16
         "print-receipt-by-number",
         "restore-deferred",
         "exit",
