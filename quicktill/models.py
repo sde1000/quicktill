@@ -1984,10 +1984,9 @@ class StockLineTypeLog(Base):
     """Association table for stocklines to stocktypes
 
     This table records all the stocktypes that have been used on each
-    stockline.  This information is used in the "auto-allocate stock
-    to display stocklines" function, and is also used to sort sensible
-    defaults to the top of the list when displaying lists of stock
-    that can be put on sale on a stockline.
+    stockline.  This information is used to sort sensible defaults to
+    the top of the list when displaying lists of stock that can be put
+    on sale on a stockline.
     """
     __tablename__ = 'stockline_stocktype_log'
     stocklineid = Column(
