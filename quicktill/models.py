@@ -1781,7 +1781,8 @@ stock_annotation_seq = Sequence('stock_annotation_seq');
 class StockAnnotation(Base):
     __tablename__ = 'stock_annotations'
     id = Column(Integer, stock_annotation_seq, nullable=False, primary_key=True)
-    stockid = Column(Integer, ForeignKey('stock.stockid'), nullable=False)
+    stockid = Column(Integer, ForeignKey('stock.stockid', ondelete='CASCADE'),
+                     nullable=False)
     atype = Column(String(8), ForeignKey('annotation_types.atype'),
                    nullable=False)
     time = Column(DateTime, nullable=False,
@@ -1789,10 +1790,8 @@ class StockAnnotation(Base):
     text = Column(String(), nullable=False)
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this annotation")
-    # XXX change this cascade to a passive_delete in a future release
-    # where we are making schema changes
     stockitem = relationship(StockItem, backref=backref(
-        'annotations', cascade='all,delete', order_by=time))
+        'annotations', passive_deletes=True, order_by=time))
     type = relationship(AnnotationType)
     user = relationship(User, backref=backref("annotations", order_by=time))
     def __repr__(self):
