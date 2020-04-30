@@ -19,7 +19,6 @@ import quicktill.cash
 import quicktill.card
 import quicktill.bitcoin
 import quicktill.modifiers
-import quicktill.timesheets
 import quicktill.xero
 import quicktill.localutils
 import quicktill.foodorder
@@ -255,10 +254,10 @@ class UseStockTwitterHook(quicktill.usestock.UseStockHook):
             quicktill.extras.twitter_post(
                 tapi, default_text=t, fail_silently=True)
 
-tsapi = quicktill.timesheets.Api(
+import ipltimesheets
+tsapi = ipltimesheets.Api(
     "haymakers", "not-a-real-password",
-    "https://www.individualpubs.co.uk",
-    "/schedule/haymakers/api/users/")
+    "https://www.individualpubs.co.uk")
 
 try:
     with open("xero-consumer-key") as f:
@@ -291,9 +290,9 @@ def appsmenu():
     ]
     if configname == 'mainbar':
         menu.append(
-            ("2", "Timesheets", quicktill.timesheets.popup, (tsapi,)))
-    menu.append(
-        ("4", "Xero integration", xapi.app_menu, ()))
+            ("2", "Timesheets", ipltimesheets.popup, (tsapi,)))
+    #menu.append(
+    #    ("4", "Xero integration", xapi.app_menu, ()))
     quicktill.ui.keymenu(menu, title="Apps")
 
 register_hotkeys = {
