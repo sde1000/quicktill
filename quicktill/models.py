@@ -1480,12 +1480,10 @@ class StockType(Base):
     unit = relationship(Unit, lazy="joined",
                         backref=backref("stocktypes", order_by=id))
 
-    # XXX introduce the following constraint in a later version, along with
-    # a script to de-duplicate stocktypes
-    #__table_args__ = (
-    #    UniqueConstraint('dept', 'manufacturer', 'name', 'abv', 'unit_id',
-    #                     name="stocktypes_ambiguity_key"),
-    #)
+    __table_args__ = (
+        UniqueConstraint('dept', 'manufacturer', 'name', 'abv', 'unit_id',
+                         name="stocktypes_ambiguity_key"),
+    )
 
     @hybrid_property
     def fullname(self):
