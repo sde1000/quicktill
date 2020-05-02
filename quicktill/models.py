@@ -13,6 +13,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select, func, desc, and_
 from sqlalchemy import event
 from sqlalchemy import distinct
+from sqlalchemy import inspect
 
 import datetime
 import hashlib
@@ -56,6 +57,12 @@ class _pubobject:
         return self.get_view_url(self.tillweb_viewname,
                                  **{self.tillweb_argname: self.id})
 
+    # repr() of an instance is used in log entries
+    def __repr__(self):
+        insp = inspect(self)
+        return f"{self.__class__.__name__}"\
+            f"({','.join(str(x) for x in insp.identity)})"
+
 Base = declarative_base(metadata=metadata, cls=_pubobject)
 
 # Rules that depend on the existence of more than one table must be
@@ -84,8 +91,6 @@ class Business(Base):
     show_vat_breakdown = Column(Boolean(),nullable=False,default=False)
     def __str__(self):
         return "%s" % (self.abbrev,)
-    def __repr__(self):
-        return "<Business('%s')>" % (self.name,)
 
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
@@ -135,8 +140,6 @@ class VatBand(Base, Vat):
     __tablename__ = 'vat'
     band = Column(CHAR(1), primary_key=True)
     business = relationship(Business, backref='vatbands')
-    def __repr__(self):
-        return "<VatBand('%s')>" % (self.band,)
 
 # Note that the tillweb index page code ignores the 'business' field
 # in VatRate and only uses VatBand.  Until this is fixed you should
@@ -147,8 +150,6 @@ class VatRate(Base, Vat):
     band = Column(CHAR(1), ForeignKey('vat.band'), primary_key=True)
     active = Column(Date, nullable=False, primary_key=True)
     business = relationship(Business, backref='vatrates')
-    def __repr__(self):
-        return "<VatRate('%s',%s,'%s')>" % (self.band, self.rate, self.active)
 
 class PayType(Base):
     __tablename__ = 'paytypes'
@@ -156,8 +157,6 @@ class PayType(Base):
     description = Column(String(10), nullable=False)
     def __str__(self):
         return "%s" % (self.description,)
-    def __repr__(self):
-        return "<PayType('%s')>" % (self.paytype,)
 
 sessions_seq = Sequence('sessions_seq')
 
@@ -181,8 +180,6 @@ class Session(Base):
         self.date=date
         self.starttime = datetime.datetime.now()
 
-    def __repr__(self):
-        return "<Session(%s,'%s')>" % (self.id, self.date,)
     def __str__(self):
         return "Session %d" % self.id
 
@@ -390,9 +387,6 @@ class SessionTotal(Base):
     session = relationship(Session, backref=backref(
         'actual_totals', order_by=desc('paytype')))
     paytype = relationship(PayType)
-    def __repr__(self):
-        return "<SessionTotal(%s,'%s','%s')>" % (
-            self.sessionid, self.paytype, self.amount)
 
 Session.actual_total = column_property(
     select([func.sum(SessionTotal.amount)],
@@ -463,8 +457,6 @@ class Transaction(Base):
 
     def __str__(self):
         return "Transaction %d" % self.id
-    def __repr__(self):
-        return "<Transaction(%s,%s,%s)>" % (self.id, self.sessionid, self.closed)
 
 add_ddl(Transaction.__table__, """
 CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
@@ -527,9 +519,6 @@ class User(Base):
         return [("Users", self.get_view_url("tillweb-till-users")),
                 (self.fullname, self.get_absolute_url())]
 
-    def __repr__(self):
-        return "<User({0.id},'{0.fullname}')>".format(self)
-
 class UserToken(Base):
     """A token used by a till user to identify themselves
 
@@ -586,9 +575,6 @@ class Group(Base):
 
     def __str__(self):
         return f"{self.id} — {self.description}"
-
-    def __repr__(self):
-        return "<Group({0.id},'{0.description}')>".format(self)
 
 # Accessed through Group.permissions and Permission.groups
 group_membership_table = Table(
@@ -664,9 +650,6 @@ class Payment(Base):
                         passive_deletes="all"))
     paytype = relationship(PayType)
     user = relationship(User)
-    def __repr__(self):
-        return "<Payment(%s,%s,%s,'%s')>" % (
-            self.id, self.transid, self.amount, self.paytype_id)
 
 add_ddl(Payment.__table__, """
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
@@ -703,9 +686,6 @@ class Department(Base):
     def __str__(self):
         return "%s" % (self.description,)
 
-    def __repr__(self):
-        return "<Department(%s,'%s')>" % (self.id, self.description)
-
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
     def tillweb_nav(self):
@@ -728,10 +708,9 @@ class TransCode(Base):
     __tablename__ = 'transcodes'
     code = Column('transcode', CHAR(1), nullable=False, primary_key=True)
     description = Column(String(20), nullable=False)
+
     def __str__(self):
         return "%s" % (self.description,)
-    def __repr__(self):
-        return "<TransCode('%s','%s')>" % (self.code, self.description)
 
 translines_seq = Sequence('translines_seq', start=1)
 
@@ -802,9 +781,6 @@ class Transline(Base):
     @hybrid_property
     def total_discount(self):
         return self.items * self.discount
-
-    def __repr__(self):
-        return "<Transline(%s,%s)>" % (self.id, self.transid)
 
     tillweb_viewname = "tillweb-transline"
     tillweb_argname = "translineid"
@@ -1102,8 +1078,6 @@ class StockLine(Base):
         return [("Stock lines", self.get_view_url("tillweb-stocklines")),
                 (self.name, self.get_absolute_url())]
 
-    def __repr__(self):
-        return "<StockLine(%s,'%s')>" % (self.id, self.name)
     @property
     def ondisplay(self):
         """Number of units of stock on display
@@ -1328,9 +1302,6 @@ class Supplier(Base):
     web = Column(String())
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
-    def __repr__(self):
-        return "<Supplier(%s,'%s')>" % (self.id, self.name)
-
     def __str__(self):
         return "%s" % (self.name,)
 
@@ -1388,9 +1359,6 @@ class Delivery(Base):
         accounts = s.info.get("accounts") if s else None
         if accounts:
             return accounts.url_for_bill(self.accinfo)
-
-    def __repr__(self):
-        return "<Delivery(%s)>" % (self.id,)
 
     def add_items(self, stocktype, stockunit, qty, cost, bestbefore=None):
         description = stockunit.name
@@ -1465,9 +1433,6 @@ class Unit(Base):
     def __str__(self):
         return "%s" % (self.name,)
 
-    def __repr__(self):
-        return "<Unit('%s','%s')>" % (self.id, self.name)
-
 stockunits_seq = Sequence('stockunits_seq')
 
 class StockUnit(Base):
@@ -1494,8 +1459,6 @@ class StockUnit(Base):
         return [("Item sizes", self.get_view_url("tillweb-stockunits")),
                 (self.name, self.get_absolute_url())]
 
-    def __repr__(self):
-        return "<StockUnit('%s',%s)>" % (self.id, self.size)
     def __str__(self):
         return self.name
 
@@ -1536,10 +1499,6 @@ class StockType(Base):
 
     def __str__(self):
         return "%s %s" % (self.manufacturer, self.name)
-    def __repr__(self):
-        return "StockType({}, '{}', '{}', {}, {}, {}, {})".format(
-            self.id, self.manufacturer, self.name, self.abv, self.dept_id,
-            self.unit_id, self.saleprice)
 
     @property
     def abvstr(self):
@@ -1595,10 +1554,9 @@ class FinishCode(Base):
     __tablename__ = 'stockfinish'
     id = Column('finishcode', String(8), nullable=False, primary_key=True)
     description = Column(String(50), nullable=False)
+
     def __str__(self):
         return "%s" % self.description
-    def __repr__(self):
-        return "<FinishCode('%s','%s')>" % (self.id, self.description)
 
 stock_seq = Sequence('stock_seq')
 class StockItem(Base):
@@ -1750,8 +1708,6 @@ class StockItem(Base):
 
     def __str__(self):
         return "<StockItem({})>".format(self.id)
-    def __repr__(self):
-        return "<StockItem(%s)>" % (self.id,)
 
 Delivery.costprice = column_property(
     select([
@@ -1773,8 +1729,6 @@ class AnnotationType(Base):
     description = Column(String(20), nullable=False)
     def __str__(self):
         return "%s" % (self.description,)
-    def __repr__(self):
-        return "<AnnotationType('%s','%s')>" % (self.id,self.description)
 
 stock_annotation_seq = Sequence('stock_annotation_seq');
 
@@ -1794,9 +1748,6 @@ class StockAnnotation(Base):
         'annotations', passive_deletes=True, order_by=time))
     type = relationship(AnnotationType)
     user = relationship(User, backref=backref("annotations", order_by=time))
-    def __repr__(self):
-        return "<StockAnnotation(%s,%s,'%s','%s')>" % (
-            self.id, self.stockitem, self.atype, self.text)
 
 class RemoveCode(Base):
     __tablename__ = 'stockremove'
@@ -1804,8 +1755,6 @@ class RemoveCode(Base):
     reason = Column(String(80))
     def __str__(self):
         return "%s" % (self.reason,)
-    def __repr__(self):
-        return "<RemoveCode('%s','%s')>" % (self.id, self.reason)
 
 stockout_seq = Sequence('stockout_seq')
 
@@ -1826,8 +1775,6 @@ class StockOut(Base):
     removecode = relationship(RemoveCode, lazy="joined")
     transline = relationship(Transline,
                              backref=backref('stockref', cascade="all,delete"))
-    def __repr__(self):
-        return "<StockOut(%s,%s)>" % (self.id, self.stockid)
 
 # These are added to the StockItem class here because they refer
 # directly to the StockOut class, defined just above.
@@ -1929,8 +1876,7 @@ class KeyboardBinding(Base):
             "stocklineid IS NULL OR pluid IS NULL",
             name="be_unambiguous_constraint"),
     )
-    def __repr__(self):
-        return "<KeyboardBinding({},{})>".format(self.keycode, self.menukey)
+
     @property
     def name(self):
         """Look up the name of this binding
@@ -1961,8 +1907,6 @@ class KeyCap(Base):
     keycode = Column(String(20), nullable=False, primary_key=True)
     keycap = Column(String(), nullable=False, server_default=literal(''))
     css_class = Column(String(), nullable=False, server_default=literal(''))
-    def __repr__(self):
-        return "<KeyCap('%s','%s')>" % (self.keycode, self.keycap)
 
 add_ddl(KeyCap.__table__, """
 CREATE OR REPLACE FUNCTION notify_keycap_change() RETURNS trigger AS $$
@@ -2002,9 +1946,6 @@ class StockLineTypeLog(Base):
     stocktype = relationship(
         StockType, backref=backref('stockline_log', passive_deletes=True),
         lazy='joined')
-    def __repr__(self):
-        return "<StockLineTypeLog(%s,%s)>" % (
-            self.stocklineid, self.stocktype_id)
 
 add_ddl(StockLineTypeLog.__table__, """
 CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
