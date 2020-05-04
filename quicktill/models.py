@@ -1,11 +1,13 @@
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, DateTime, Date
+from sqlalchemy.dialects import postgresql
 from sqlalchemy import ForeignKey, Numeric, CHAR, Boolean, Text, Interval
 from sqlalchemy.schema import Sequence, Index, MetaData, DDL
 from sqlalchemy.schema import CheckConstraint, Table
 from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy.schema import ForeignKeyConstraint
 from sqlalchemy.sql.expression import text, alias, case, literal
-from sqlalchemy.orm import relationship, backref, object_session, sessionmaker
+from sqlalchemy.orm import relationship, backref, object_session
 from sqlalchemy.orm import joinedload, subqueryload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
 from sqlalchemy.orm import undefer
@@ -18,6 +20,8 @@ from sqlalchemy import inspect
 import datetime
 import hashlib
 from decimal import Decimal
+from inspect import isclass
+import re
 
 # Configuration of money
 money_max_digits = 10
@@ -45,8 +49,8 @@ max_quantity = Decimal("9" * (qty_max_digits - qty_decimal_places)
 
 metadata = MetaData()
 
-# The base class has a couple of methods that are used in the web interface
-class _pubobject:
+# Methods common to all models
+class Base:
     def get_view_url(self, viewname, *args, **kwargs):
         s = object_session(self)
         reverse = s.info["reverse"]
@@ -60,10 +64,40 @@ class _pubobject:
     # repr() of an instance is used in log entries
     def __repr__(self):
         insp = inspect(self)
-        return f"{self.__class__.__name__}"\
-            f"({','.join(str(x) for x in insp.identity)})"
+        if insp.identity:
+            return f"{self.__class__.__name__}"\
+                f"({','.join(str(x) for x in insp.identity)})"
+        else:
+            return f"{self.__class__.__name__}(no-identity)"
 
-Base = declarative_base(metadata=metadata, cls=_pubobject)
+    # What to use as the 'text' part of a log reference?  Override in
+    # models as required.
+    @property
+    def logtext(self):
+        return ""
+
+    @property
+    def logref(self):
+        """A suitable log reference for this model
+        """
+        # Log references look like [text]ModelName(pk1,pk2,...)
+        # If text is absent, the primary key is used instead.
+        # Text may not contain ']'!
+        return f"[{str(self.logtext).replace(']', '')}]{self!r}"
+
+    # What name does the relationship to this model have, in the log
+    # model?
+    @classmethod
+    def _log_relationship_name(cls):
+        return cls.__name__.lower()
+
+Base = declarative_base(metadata=metadata, cls=Base)
+
+# Use this class as a mixin to request a foreign key relationship from
+# the 'log' table.  Log entries are accessible using the 'logs'
+# relationship.
+class Logged:
+    pass
 
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
@@ -81,7 +115,7 @@ def add_ddl(target, create, drop):
         event.listen(target, "before_drop",
                      DDL(drop).execute_if(dialect='postgresql'))
 
-class Business(Base):
+class Business(Base, Logged):
     __tablename__ = 'businesses'
     id = Column('business', Integer, primary_key=True, autoincrement=False)
     name = Column(String(80), nullable=False)
@@ -136,7 +170,7 @@ class Vat:
         """
         return self.at(datetime.datetime.now())
 
-class VatBand(Base, Vat):
+class VatBand(Base, Vat, Logged):
     __tablename__ = 'vat'
     band = Column(CHAR(1), primary_key=True)
     business = relationship(Business, backref='vatbands')
@@ -145,7 +179,7 @@ class VatBand(Base, Vat):
 # in VatRate and only uses VatBand.  Until this is fixed you should
 # not use a VatRate entry to change the business for a VatBand -
 # create a new department instead.
-class VatRate(Base, Vat):
+class VatRate(Base, Vat, Logged):
     __tablename__ = 'vatrates'
     band = Column(CHAR(1), ForeignKey('vat.band'), primary_key=True)
     active = Column(Date, nullable=False, primary_key=True)
@@ -160,7 +194,7 @@ class PayType(Base):
 
 sessions_seq = Sequence('sessions_seq')
 
-class Session(Base):
+class Session(Base, Logged):
     """A group of transactions with an accounting date
 
     As well as a start and end time, sessions have an accounting date.
@@ -398,7 +432,7 @@ Session.actual_total = column_property(
 
 transactions_seq = Sequence('transactions_seq')
 
-class Transaction(Base):
+class Transaction(Base, Logged):
     __tablename__ = 'transactions'
     id = Column('transid', Integer, transactions_seq, nullable=False,
                 primary_key=True)
@@ -480,7 +514,7 @@ DROP FUNCTION check_transaction_balances();
 
 user_seq = Sequence('user_seq')
 
-class User(Base):
+class User(Base, Logged):
     """A till user.
 
     When the web-based admin system is in use, the web server may
@@ -519,7 +553,7 @@ class User(Base):
         return [("Users", self.get_view_url("tillweb-till-users")),
                 (self.fullname, self.get_absolute_url())]
 
-class UserToken(Base):
+class UserToken(Base, Logged):
     """A token used by a till user to identify themselves
 
     These will typically be NFC cards or iButton tags.  This table
@@ -551,7 +585,7 @@ class Permission(Base):
     def __str__(self):
         return f"{self.id} — {self.description}"
 
-class Group(Base):
+class Group(Base, Logged):
     """A group of permissions
 
     The groups 'basic-user', 'skilled-user' and 'manager' get newly
@@ -628,7 +662,7 @@ DROP FUNCTION notify_group_grants_change();
 
 payments_seq = Sequence('payments_seq', start=1)
 
-class Payment(Base):
+class Payment(Base, Logged):
     __tablename__ = 'payments'
     id = Column('paymentid', Integer, payments_seq, nullable=False,
                 primary_key=True)
@@ -668,7 +702,7 @@ DROP TRIGGER no_modify_closed ON payments;
 DROP FUNCTION check_modify_closed_trans_payment();
 """)
 
-class Department(Base):
+class Department(Base, Logged):
     __tablename__ = 'departments'
     id = Column('dept', Integer, nullable=False, primary_key=True,
                 autoincrement=False)
@@ -685,6 +719,10 @@ class Department(Base):
 
     def __str__(self):
         return "%s" % (self.description,)
+
+    @property
+    def logtext(self):
+        return self.description
 
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
@@ -714,7 +752,7 @@ class TransCode(Base):
 
 translines_seq = Sequence('translines_seq', start=1)
 
-class Transline(Base):
+class Transline(Base, Logged):
     __tablename__ = 'translines'
     id = Column('translineid', Integer, translines_seq, nullable=False,
                 primary_key=True)
@@ -935,7 +973,7 @@ Transaction.payments_total = column_property(
     doc="Payments total")
 
 stocklines_seq = Sequence('stocklines_seq', start=100)
-class StockLine(Base):
+class StockLine(Base, Logged):
     """A place where stock is sold
 
     All stock is sold through stocklines.  An item of stock is "on
@@ -1046,6 +1084,10 @@ class StockLine(Base):
             "capacity IS NULL OR capacity > 0",
             name="capacity_greater_than_zero_constraint"),
         )
+
+    @property
+    def logtext(self):
+        return self.name
 
     @property
     def typeinfo(self):
@@ -1254,7 +1296,7 @@ class StockLine(Base):
 
 plu_seq = Sequence('plu_seq')
 
-class PriceLookup(Base):
+class PriceLookup(Base, Logged):
     """A PriceLookup enables an item or service to be sold that is not
     covered by the stock management system.
 
@@ -1292,7 +1334,7 @@ class PriceLookup(Base):
 
 suppliers_seq = Sequence('suppliers_seq')
 
-class Supplier(Base):
+class Supplier(Base, Logged):
     __tablename__ = 'suppliers'
     id = Column('supplierid', Integer, suppliers_seq,
                 nullable=False, primary_key=True)
@@ -1325,7 +1367,7 @@ class Supplier(Base):
 
 deliveries_seq = Sequence('deliveries_seq')
 
-class Delivery(Base):
+class Delivery(Base, Logged):
     __tablename__ = 'deliveries'
     id = Column('deliveryid', Integer, deliveries_seq,
                 nullable=False, primary_key=True)
@@ -1391,7 +1433,7 @@ class Delivery(Base):
 
 units_seq = Sequence('units_seq')
 
-class Unit(Base):
+class Unit(Base, Logged):
     """A unit in which stock is held, and its default quantity for pricing
 
     Often these will be the same, eg. beer is counted by the "pint"
@@ -1435,7 +1477,7 @@ class Unit(Base):
 
 stockunits_seq = Sequence('stockunits_seq')
 
-class StockUnit(Base):
+class StockUnit(Base, Logged):
     """A unit in which stock is bought
 
     This class describes default units in which stock is bought, for
@@ -1557,7 +1599,7 @@ class FinishCode(Base):
         return "%s" % self.description
 
 stock_seq = Sequence('stock_seq')
-class StockItem(Base):
+class StockItem(Base, Logged):
     """An item of stock - a cask, keg, case of bottles, card of snacks,
     and so on.
 
@@ -1730,7 +1772,7 @@ class AnnotationType(Base):
 
 stock_annotation_seq = Sequence('stock_annotation_seq');
 
-class StockAnnotation(Base):
+class StockAnnotation(Base, Logged):
     __tablename__ = 'stock_annotations'
     id = Column(Integer, stock_annotation_seq, nullable=False, primary_key=True)
     stockid = Column(Integer, ForeignKey('stock.stockid', ondelete='CASCADE'),
@@ -1747,7 +1789,7 @@ class StockAnnotation(Base):
     type = relationship(AnnotationType)
     user = relationship(User, backref=backref("annotations", order_by=time))
 
-class RemoveCode(Base):
+class RemoveCode(Base, Logged):
     __tablename__ = 'stockremove'
     id = Column('removecode', String(8), nullable=False, primary_key=True)
     reason = Column(String(80))
@@ -1756,7 +1798,7 @@ class RemoveCode(Base):
 
 stockout_seq = Sequence('stockout_seq')
 
-class StockOut(Base):
+class StockOut(Base, Logged):
     __tablename__ = 'stockout'
     id = Column('stockoutid', Integer, stockout_seq,
                 nullable=False, primary_key=True)
@@ -1964,6 +2006,111 @@ CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
 """, """
 DROP RULE log_stocktype ON stock
 """)
+
+log_seq = Sequence('log_seq')
+
+class LogEntry(Base):
+    """A user did something, possibly involving some other tables
+    """
+    __tablename__ = "log"
+    id = Column(Integer, log_seq, primary_key=True)
+    time = Column(DateTime, nullable=False,
+                  server_default=func.current_timestamp())
+    sourceaddr = Column(postgresql.INET)
+    source = Column(String(), nullable=False)
+    user_id = Column('user', Integer, ForeignKey(
+        'users.id', name="log_loguser_fkey"), nullable=False)
+    loguser = relationship(User, foreign_keys=[user_id],
+                           backref=backref("activity", order_by=time))
+    description = Column(String(), nullable=False)
+
+    # These models subclass the Logged class; we need to generate columns
+    # and foreign key constraints that link to their primary keys
+    _logged_models = [x for x in globals().values()
+                      if isclass(x) and x != Logged and issubclass(x, Logged)]
+
+    # A reference looks like [description]Model(pk1,pk2,...)
+    # If description is blank, the primary keys will be used instead.
+    _ref_re = re.compile(
+        f"\[(.*)\]({'|'.join(m.__name__ for m in _logged_models)})\\((.*)\\)")
+
+    @staticmethod
+    def _str_to_date(ds):
+        return datetime.date(*(int(x) for x in ds.split('-')))
+
+    @classmethod
+    def _match_to_model(cls, match, session):
+        """Return model and model instance when passed a _ref_re match
+
+        If no instance can be found, returns model, None
+        """
+        modelname = match.group(2)
+        keys = match.group(3).split(',')
+        model = globals()[modelname]
+        pk_types = [x.type.python_type
+                    if x.type.python_type != datetime.date
+                    else cls._str_to_date
+                    for x in inspect(model).primary_key]
+        if len(keys) != len(pk_types):
+            return model, None
+        obj = None
+        obj = session.query(model).get(
+            c(k) for c, k in zip(pk_types, keys))
+        return model, obj
+
+    def update_refs(self, session):
+        # Look for object references in the description and add links
+        # to them.  We're going to use .get() a lot here, which is ok
+        # because the objects referred to are guaranteed to be in the
+        # session.
+        for match in self._ref_re.finditer(self.description):
+            model, obj = self._match_to_model(match, session)
+            if obj:
+                setattr(self, model._log_relationship_name(), obj)
+
+    def as_text(self):
+        """Return description with object references converted to text
+        """
+        return self._ref_re.sub(
+            lambda x: x.group(1) if x.group(1) else x.group(3),
+            self.description)
+
+_constraints = []
+
+# Add the columns, foreign key constraints and relationships to
+# LogEntry for all models that subclassed Logged
+for _m in LogEntry._logged_models:
+    _relationship_name = _m._log_relationship_name()
+    _primary_keys = list(inspect(_m).primary_key)
+    _cols = []
+    for _num, _key in enumerate(_primary_keys):
+        _colname = f"{_key.table.name}_id{_num if len(_primary_keys) > 1 else ''}"
+        _colval = Column(_colname, _key.type, nullable=True)
+        setattr(LogEntry, _colname, _colval)
+        _cols.append(_colval)
+    _constraints.append(ForeignKeyConstraint(
+        _cols, _primary_keys, ondelete="SET NULL",
+        name=f"log_{_relationship_name}_fkey"))
+    setattr(LogEntry, _relationship_name, relationship(
+        _m, foreign_keys=_cols, backref=backref(
+            "logs", order_by="LogEntry.time")))
+LogEntry.__table_args__ = tuple(_constraints)
+
+#add_ddl(LogEntry.__table__, """
+#CREATE OR REPLACE FUNCTION notify_log_entry() RETURNS trigger AS $$
+#DECLARE
+#BEGIN
+#  PERFORM pg_notify('log', NEW.id);
+#  RETURN NEW;
+#END;
+#$$ LANGUAGE plpgsql;
+#CREATE TRIGGER log_entry
+#  AFTER INSERT OR UPDATE ON log
+#  FOR EACH ROW EXECUTE PROCEDURE notify_log_entry();
+#""", """
+#DROP TRIGGER log_entry ON log;
+#DROP FUNCTION notify_log_entry();
+#""")
 
 # Add indexes here
 Index('translines_transid_key', Transline.transid)

@@ -1,6 +1,43 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v16.x to v17
+--------------------
+
+What's new:
+
+ * duplicate stocktypes are now prevented at the database level
+
+ * stock annotations are removed via cascade in the database when a
+   stock item is deleted
+
+ * there is a new activity log system
+
+Before installing this release, you must run "runtill
+remove-duplicate-stocktypes" using v16.x to ensure that there will be
+no problems during the database update.
+
+There are database changes this release.  The changes are not
+backwards-compatible with v16, so install the new version before
+making the changes.
+
+To upgrade the database:
+
+  - run "runtill syncdb" to create the new activity log table
+
+  - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+# TODO
+
+COMMIT;
+```
+
+  - run "runtill checkdb" to check that no other database changes are
+    required.
+
 Upgrade v15.x to v16
 --------------------
 

@@ -14,13 +14,15 @@ indicate restricted functionality.
 """
 
 from . import ui, td, keyboard, tillconfig, cmdline
-from .models import User, UserToken, Permission, Group
+from .models import User, UserToken, Permission, Group, LogEntry
 from sqlalchemy.orm import joinedload
 import types
 import socket
 import logging
 import datetime
-log = logging.getLogger(__name__)
+
+# We declare 'log' later on for writing log entries to the database
+debug_log = logging.getLogger(__name__)
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self, key):
@@ -295,7 +297,7 @@ class tokenlistener:
 
     def doread(self):
         d = self.s.recv(1024).strip().decode("utf-8")
-        log.debug("Received: {}".format(repr(d)))
+        debug_log.debug("Received: {}".format(repr(d)))
         if d:
             ui.unblank_screen()
             with td.orm_session():
@@ -322,6 +324,23 @@ def user_from_token(t):
         ui.toast("User '{}' is not active.".format(u.fullname))
         return
     return database_user(u)
+
+class LogError(Exception):
+    """Tried to make an entry in the user activity log with no current user
+    """
+    pass
+
+def log(message):
+    """Record an entry in the user activity log
+    """
+    u = current_dbuser()
+    if not u:
+        raise LogError
+    l = LogEntry(source=tillconfig.configname,
+                 loguser=u,
+                 description=message)
+    l.update_refs(td.s)
+    td.s.add(l)
 
 # Here is the user interface for adding, editing and deleting users.
 class adduser(permission_checked, ui.dismisspopup):
