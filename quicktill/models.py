@@ -553,6 +553,9 @@ class User(Base, Logged):
         return [("Users", self.get_view_url("tillweb-till-users")),
                 (self.fullname, self.get_absolute_url())]
 
+    def __str__(self):
+        return self.fullname
+
 class UserToken(Base, Logged):
     """A token used by a till user to identify themselves
 
@@ -2024,6 +2027,9 @@ class LogEntry(Base):
                            backref=backref("activity", order_by=time))
     description = Column(String(), nullable=False)
 
+    tillweb_viewname = "tillweb-logentry"
+    tillweb_argname = "logid"
+
     # These models subclass the Logged class; we need to generate columns
     # and foreign key constraints that link to their primary keys
     _logged_models = [x for x in globals().values()
@@ -2074,6 +2080,21 @@ class LogEntry(Base):
         return self._ref_re.sub(
             lambda x: x.group(1) if x.group(1) else x.group(3),
             self.description)
+
+    def as_html(self):
+        """Return description with object references converted to links
+        """
+        def make_link(match):
+            model, obj = self._match_to_model(match, object_session(self))
+            linktext = match.group(1) if match.group(1) else match.group(3)
+            if obj:
+                return f'<a href="{obj.get_absolute_url()}">{linktext}</a>'
+            else:
+                return linktext
+        return self._ref_re.sub(make_link, self.description)
+
+    def __str__(self):
+        return self.as_text()
 
 _constraints = []
 

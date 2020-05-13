@@ -1,0 +1,18 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — log entry {{log.id}}{% endblock %}
+
+{% block heading %}{{till}} — log entry {{log.id}}{% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable">
+  <tr><th>ID</th><td>{{log.id}}</td></tr>
+  <tr><th>Time</th><td>{{log.time}}</td></tr>
+  <tr><th>Source</th><td>{{log.source}}</td></tr>
+  <tr><th>User</th><td><a href="{{log.loguser.get_absolute_url}}">{{log.loguser}}</a></td></tr>
+  {% if log.sourceaddr %}<tr><th>Source address</th><td>{{log.sourceaddr}}</td></tr>{% endif %}
+  <tr><th>Description</th><td>{{log.as_html|safe}}</td></tr>
+</table>
+
+{% endblock %}

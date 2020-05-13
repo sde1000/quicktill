@@ -2290,6 +2290,32 @@ def session_users_pie_chart(request, info, sessionid):
     plt.close(fig)
     return response
 
+@tillweb_view
+def logsindex(request, info):
+    logs = td.s.query(LogEntry)\
+               .order_by(desc(LogEntry.id))
+
+    pager = Pager(request, logs)
+
+    return ('logs.html',
+            {'nav': [("Logs", info.reverse("tillweb-logs"))],
+             'recent': pager.items,
+             'pager': pager,
+             'nextlink': pager.nextlink(),
+             'prevlink': pager.prevlink(),
+            })
+
+@tillweb_view
+def logdetail(request, info, logid):
+    l = td.s.query(LogEntry)\
+             .get(logid)
+    if not l:
+        raise Http404
+    return ('logentry.html',
+            {'log': l,
+             'tillobject': l,
+            })
+
 class WasteReportForm(DatePeriodForm):
     columns = forms.ChoiceField(label="Columns show", choices=[
         ("depts", "Departments"),

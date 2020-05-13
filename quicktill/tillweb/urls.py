@@ -89,6 +89,9 @@ tillurls = [
     re_path('^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
     path('new/group/', create_group, name="tillweb-create-till-group"),
 
+    path('logs/', logsindex, name="tillweb-logs"),
+    path('logs/<int:logid>', logdetail, name="tillweb-logentry"),
+
     path('reports/', reportindex, name="tillweb-reports"),
 ]
 

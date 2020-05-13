@@ -1349,6 +1349,8 @@ class page(ui.basicpage):
                 if self.user.may('nosale'):
                     if printer.kickout():
                         ui.toast("No Sale has been recorded.")
+                        # Finally!  We're not lying any more!
+                        user.log("No Sale")
                 else:
                     ui.infopopup(["You don't have permission to use "
                                   "the No Sale function."], title="No Sale")
@@ -1620,6 +1622,7 @@ class page(ui.basicpage):
                           "'Manage Till'."], title="Error")
             return
         log.info("Register: printing transaction %d", trans.id)
+        user.log(f"Printed transaction {trans.logref}")
         ui.toast("The receipt is being printed.")
         with ui.exception_guard("printing the receipt", title="Printer error"):
             printer.print_receipt(trans.id)

@@ -22,6 +22,7 @@ def restock_list(stockline_list):
                      title="Stock movement")
         return
     printer.print_restock_list(sl)
+    user.log("Printed restock list")
     ui.infopopup([
             "The list of stock to be put on display has been printed.","",
             "Please choose one of the following options:","",
@@ -34,6 +35,7 @@ def restock_list(stockline_list):
         unsaved_data="confirm stock movements"
 
 def abandon_restock(sl):
+    user.log("Abandoned restock")
     ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
                  title="Stock movement abandoned")
 
@@ -43,6 +45,7 @@ def finish_restock(rsl):
         for sos,move,newdisplayqty,instock_after_move in stockmovement:
             td.s.add(sos)
             sos.displayqty=newdisplayqty
+    user.log("Finished restock")
     td.s.flush()
     ui.infopopup(["The till has recorded all the stock movements "
                   "in the list."],title="Stock movement confirmed",
@@ -249,6 +252,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
         td.s.add(sl)
         try:
             td.s.flush()
+            user.log(f"Created stockline '{sl.logref}'")
         except IntegrityError:
             td.s.rollback()
             ui.infopopup(["Could not create stock line '{}'; there is "
@@ -462,6 +466,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                 self.stockline.name)], title="Error")
             return
         self.dismiss()
+        user.log(f"Updated stock line '{self.stockline.logref}'")
         ui.infopopup(["Updated stock line '{}'.".format(self.stockline.name),
                       ""] + additional,
                      colour=ui.colour_info, dismiss=keyboard.K_CASH,
@@ -485,6 +490,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                 for x in self.stockline.stockonsale]
         else:
             message = ["The stock line has been deleted."]
+        user.log(f"Deleted stockline '{self.stockline.logref}'")
         td.s.delete(self.stockline)
         # Any StockItems that point to this stockline should have their
         # stocklineid set to null by the database.
