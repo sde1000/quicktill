@@ -204,6 +204,7 @@ class delivery(ui.basicpopup):
         d.docnumber = self.docnumfield.f
         td.s.add(d)
         td.s.flush()
+        user.log(f"Created delivery {d.logref}")
         self.dn = d.id
         del self.supfield.keymap[keyboard.K_CLEAR]
         self.addstr(0, 1, "Delivery Details - {}".format(d.id))
@@ -249,6 +250,7 @@ class delivery(ui.basicpopup):
             return
         d = td.s.query(Delivery).get(self.dn)
         d.checked = True
+        user.log(f"Confirmed delivery {d.logref}")
         td.s.flush()
         self.dismiss()
         usestock.auto_allocate_internal(deliveryid=self.dn,
@@ -325,6 +327,7 @@ class delivery(ui.basicpopup):
         d = td.s.query(Delivery).get(self.dn)
         for i in d.items:
             td.s.delete(i)
+        user.log(f"Deleted delivery {d.logref}")
         td.s.delete(d)
         self.dismiss()
 

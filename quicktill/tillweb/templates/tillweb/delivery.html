@@ -25,4 +25,11 @@
 {% endwith %}
 {% endif %}
 
+{% if delivery.logs %}
+<h2>Log entries</h2>
+{% with delivery.logs as logs %}
+{% include "tillweb/loglist.html" %}
+{% endwith %}
+{% endif %}
+
 {% endblock %}
