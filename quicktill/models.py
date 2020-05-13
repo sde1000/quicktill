@@ -2117,21 +2117,21 @@ for _m in LogEntry._logged_models:
             "logs", order_by="LogEntry.time")))
 LogEntry.__table_args__ = tuple(_constraints)
 
-#add_ddl(LogEntry.__table__, """
-#CREATE OR REPLACE FUNCTION notify_log_entry() RETURNS trigger AS $$
-#DECLARE
-#BEGIN
-#  PERFORM pg_notify('log', NEW.id);
-#  RETURN NEW;
-#END;
-#$$ LANGUAGE plpgsql;
-#CREATE TRIGGER log_entry
-#  AFTER INSERT OR UPDATE ON log
-#  FOR EACH ROW EXECUTE PROCEDURE notify_log_entry();
-#""", """
-#DROP TRIGGER log_entry ON log;
-#DROP FUNCTION notify_log_entry();
-#""")
+add_ddl(LogEntry.__table__, """
+CREATE OR REPLACE FUNCTION notify_log_entry() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('log', NEW.id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER log_entry
+  AFTER INSERT OR UPDATE ON log
+  FOR EACH ROW EXECUTE PROCEDURE notify_log_entry();
+""", """
+DROP TRIGGER log_entry ON log;
+DROP FUNCTION notify_log_entry();
+""")
 
 # Add indexes here
 Index('translines_transid_key', Transline.transid)

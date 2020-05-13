@@ -13,7 +13,7 @@ What's new:
 
  * there is a new activity log system
 
-Before installing this release, you must run "runtill
+**Before installing this release**, you must run "runtill
 remove-duplicate-stocktypes" using v16.x to ensure that there will be
 no problems during the database update.
 
@@ -30,7 +30,14 @@ To upgrade the database:
 ```
 BEGIN;
 
-# TODO
+ALTER TABLE stock_annotations
+	DROP CONSTRAINT stock_annotations_stockid_fkey;
+
+ALTER TABLE stock_annotations
+	ADD CONSTRAINT stock_annotations_stockid_fkey FOREIGN KEY (stockid) REFERENCES public.stock(stockid) ON DELETE CASCADE;
+
+ALTER TABLE stocktypes
+	ADD CONSTRAINT stocktypes_ambiguity_key UNIQUE (dept, manufacturer, name, abv, unit_id);
 
 COMMIT;
 ```
