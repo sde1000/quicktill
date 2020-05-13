@@ -1,0 +1,31 @@
+{% if logs %}
+<div class="table-responsive">
+<table class="table table-striped table-hover table-sm" id="logs">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Time</th>
+      <th scope="col">Source</th>
+      {% if excluded_column != "user" %}<th scope="col">User</th>{% endif %}
+      <th scope="col">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for l in logs %}
+    <tr>
+      <td><a href="{{l.get_absolute_url}}">{{l.id}}</a></td>
+      <td><a href="{{l.get_absolute_url}}">{{l.time}}</a></td>
+      <td>{{l.source}}</td>
+      {% if excluded_column != "user" %}<td><a href="{{l.loguser.get_absolute_url}}">{{l.loguser}}</a></td>{% endif %}
+      <td>{{l}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#logs").tablesorter();
+});
+</script>
+{% endif %}

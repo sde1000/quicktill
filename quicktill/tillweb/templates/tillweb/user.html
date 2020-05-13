@@ -160,4 +160,12 @@ permission.</p>
 {% endwith %}
 {% endif %}
 
+{% if logs %}
+<h3>Log entries</h3>
+
+{% with excluded_column="user" %}
+{% include "tillweb/loglist.html" %}
+{% endwith %}
+{% endif %}
+
 {% endblock %}

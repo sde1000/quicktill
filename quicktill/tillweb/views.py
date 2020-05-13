@@ -2132,12 +2132,17 @@ def user(request, info, userid):
                       .filter(StockAnnotation.user == u)\
                       .order_by(desc(StockAnnotation.time))[:50]
 
+    logs = td.s.query(LogEntry)\
+               .filter(LogEntry.loguser == u)\
+               .order_by(desc(LogEntry.id))[:50]
+
     return ('user.html',
             {'tillobject': u,
              'tuser': u,
              'sales': sales,
              'payments': payments,
              'annotations': annotations,
+             'logs': logs,
              'form': form,
             })
 
