@@ -831,14 +831,20 @@ class listusers(cmdline.command):
     help = "list active users"
 
     @staticmethod
+    def add_arguments(parser):
+        parser.add_argument(
+            "-i", "--include-inactive", action="store_true",
+            dest="inactive", help="include inactive users")
+
+    @staticmethod
     def run(args):
         with td.orm_session():
             users = td.s.query(User)\
-                        .filter_by(enabled=True)\
-                        .order_by(User.id)\
-                        .all()
-            for u in users:
-                print("{:>4}: {}".format(u.id, u.fullname))
+                        .order_by(User.id)
+            if not args.inactive:
+                users = users.filter_by(enabled=True)
+            for u in users.all():
+                print(f"{u.id:>4}: {u.fullname} ({u.shortname})")
 
 class default_groups:
     """Three basic group definitions.
