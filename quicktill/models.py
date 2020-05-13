@@ -2121,7 +2121,7 @@ add_ddl(LogEntry.__table__, """
 CREATE OR REPLACE FUNCTION notify_log_entry() RETURNS trigger AS $$
 DECLARE
 BEGIN
-  PERFORM pg_notify('log', NEW.id);
+  PERFORM pg_notify('log', NEW.id::text);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
