@@ -60,6 +60,7 @@ class ssdialog(ui.dismisspopup):
         deferred = trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d", sc.id)
+        user.log(f"Started session {sc.logref}")
         printer.kickout()
         if deferred:
             deferred = [
@@ -114,6 +115,7 @@ def confirmendsession():
         return
     r.endtime = datetime.datetime.now()
     log.info("End of session %d confirmed.", r.id)
+    user.log(f"Ended session {r.logref}")
     ui.infopopup(["Session {} has ended.".format(r.id),
                   "",
                   "Please count the cash in the drawer and enter the "
@@ -345,6 +347,7 @@ class record(ui.dismisspopup):
                 td.s.rollback()
                 return
         td.s.flush()
+        user.log(f"Recorded totals for session {self.session.logref}")
         for pm in self.pms:
             r = pm.pm.commit_total(self.session, pm.actual_total)
             if r is not None:
@@ -505,6 +508,7 @@ def currentsummary():
     'restore-deferred','Restore deferred transactions to the current session')
 def restore_deferred():
     log.info("Restore deferred transactions")
+    user.log("Restored deferred transactions")
     deferred = trans_restore()
     if deferred:
         ui.infopopup(["The following deferred transactions were restored "
