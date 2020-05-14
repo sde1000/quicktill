@@ -1688,6 +1688,10 @@ class StockItem(Base, Logged):
                 StockItem.id)))
 
     @property
+    def logtext(self):
+        return f"{self.id} ({self.stocktype})"
+
+    @property
     def shelflife(self):
         """The shelf-life of the item, in days.
 
