@@ -127,6 +127,20 @@ class viewutils:
             self._permissions_cache = set(p.id for p in self.user.permissions)
         return action in self._permissions_cache
 
+class user:
+    @staticmethod
+    def log(message):
+        """Record an entry in the user activity log
+
+        NB does not commit automatically
+        """
+        l = LogEntry(source="Web",
+                     sourceaddr=td.request.META['REMOTE_ADDR'],
+                     loguser=td.info.user,
+                     description=message)
+        l.update_refs(td.s)
+        td.s.add(l)
+
 def tillweb_view(view):
     single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
     tillweb_login_required = getattr(settings, 'TILLWEB_LOGIN_REQUIRED', True)
@@ -179,6 +193,8 @@ def tillweb_view(view):
                 tillname=tillname, # Formatted for people
                 pubname=pubname, # Used in url
             )
+            td.request = request
+            td.info = info
             td.s = session
             result = view(request, info, *args, **kwargs)
             if isinstance(result, HttpResponse):
@@ -769,6 +785,7 @@ def supplier(request, info, supplierid):
         if request.method == "POST":
             if can_delete and 'submit_delete' in request.POST:
                 messages.success(request, f"Supplier '{s.name}' deleted.")
+                user.log(f"Deleted supplier {s.logref}")
                 td.s.delete(s)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-suppliers"))
@@ -817,6 +834,8 @@ def create_supplier(request, info):
                 web=cd['web'])
             td.s.add(s)
             try:
+                td.s.flush()
+                user.log(f"Created supplier {s.logref}")
                 td.s.commit()
                 messages.success(request, f"Supplier '{s.name}' created.")
                 return HttpResponseRedirect(s.get_absolute_url())
@@ -2076,7 +2095,7 @@ class EditUserForm(forms.Form):
         required=False)
 
 @tillweb_view
-def user(request, info, userid):
+def userdetail(request, info, userid):
     u = td.s.query(User).get(userid)
     if not u:
         raise Http404

@@ -83,7 +83,7 @@ tillurls = [
     path('stockcheck/', stockcheck, name="tillweb-stockcheck"),
 
     path('user/', userlist, name="tillweb-till-users"),
-    path('user/<int:userid>/', user, name="tillweb-till-user"),
+    path('user/<int:userid>/', userdetail, name="tillweb-till-user"),
 
     path('group/', grouplist, name="tillweb-till-groups"),
     re_path('^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),

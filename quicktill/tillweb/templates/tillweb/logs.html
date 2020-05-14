@@ -6,7 +6,7 @@
 
 {% block tillcontent %}
 
-{% with logs=pager.items excluded_column="user" %}
+{% with logs=pager.items %}
 {% include "tillweb/loglist.html" %}
 {% endwith %}
 <p></p>

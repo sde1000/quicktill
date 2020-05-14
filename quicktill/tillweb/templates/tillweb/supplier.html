@@ -36,4 +36,11 @@
 {% endif %}
 {% endwith %}
 
+{% if supplier.logs %}
+<h2>Log entries</h2>
+{% with logs=supplier.logs %}
+{% include "tillweb/loglist.html" %}
+{% endwith %}
+{% endif %}
+
 {% endblock %}
