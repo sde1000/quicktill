@@ -304,6 +304,8 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
         st.saleprice = Decimal(self.salefield.f).quantize(penny)
         if st.saleprice != oldprice:
             st.pricechanged = datetime.datetime.now()
+            user.log(f"Changed sale price of {st.logref} from "
+                     f"{tillconfig.fc(oldprice)} to {tillconfig.fc(st.saleprice)}")
             td.s.flush()
             ui.infopopup(["Price of {} changed to {}{}.".format(
                 st.format(), tillconfig.currency, st.pricestr)],
