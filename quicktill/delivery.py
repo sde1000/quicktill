@@ -453,11 +453,16 @@ class new_stockitem(ui.basicpopup):
         stocktype = self.typefield.read()
         stockunit = self.unitfield.read()
         bestbefore = self.bestbeforefield.read()
+        delivery = td.s.query(Delivery).get(self.deliveryid)
         if stocktype.saleprice != saleprice:
+            user.log(
+                f"Changed sale price of {stocktype.logref} from "
+                f"{tillconfig.fc(stocktype.saleprice)} to "
+                f"{tillconfig.fc(saleprice)} while working on delivery "
+                f"{delivery.logref}")
             stocktype.saleprice = saleprice
             stocktype.pricechanged = datetime.datetime.now()
         qty = int(self.qtyfield.f)
-        delivery = td.s.query(Delivery).get(self.deliveryid)
         items = delivery.add_items(stocktype, stockunit, qty, cost, bestbefore)
         td.s.flush()
         for item in items:
@@ -663,6 +668,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
         supplier.web = self.webfield.f.strip()
         try:
             td.s.flush()
+            user.log(f"Supplier {supplier.logref} created or updated")
         except IntegrityError:
             td.s.rollback()
             ui.infopopup(["There is already a supplier called {}.".format(

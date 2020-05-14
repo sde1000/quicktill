@@ -192,6 +192,7 @@ def tillweb_view(view):
                 user=tilluser,
                 tillname=tillname, # Formatted for people
                 pubname=pubname, # Used in url
+                money=money,
             )
             td.request = request
             td.info = info
@@ -1001,6 +1002,11 @@ def delivery(request, info, deliveryid):
                     stocktype = cd['stocktype']
                     if cd['saleprice'] \
                        and cd['saleprice'] != stocktype.saleprice:
+                        user.log(
+                            f"Changed sale price of {stocktype.logref} from "
+                            f"{info.money}{stocktype.saleprice} to "
+                            f"{info.money}{cd['saleprice']} while working "
+                            f"on delivery {d.logref}")
                         stocktype.saleprice = cd['saleprice']
                         stocktype.pricechanged = datetime.datetime.now()
                     qty = cd['quantity']
@@ -1101,6 +1107,8 @@ def create_stocktype(request, info):
                           saleprice=cd['saleprice'],
                           pricechanged=datetime.datetime.now())
             td.s.add(s)
+            td.s.flush()
+            user.log(f"Created stock type {s.logref}")
             td.s.commit()
             messages.success(request, "New stock type created")
             return HttpResponseRedirect(s.get_absolute_url())
@@ -1194,13 +1202,22 @@ def stocktype(request, info, stocktype_id):
             alter_form = EditStockTypeForm(request.POST)
             if alter_form.is_valid():
                 cd = alter_form.cleaned_data
-                s.manufacturer = cd['manufacturer']
-                s.name = cd['name']
-                s.abv = cd['abv']
-                s.department = cd['department']
-                td.s.commit()
-                messages.success(request, "Stock type updated")
-                return HttpResponseRedirect(s.get_absolute_url())
+                try:
+                    s.manufacturer = cd['manufacturer']
+                    s.name = cd['name']
+                    s.abv = cd['abv']
+                    s.department = cd['department']
+                    user.log(f"Updated stock type {s.logref}")
+                    td.s.commit()
+                    messages.success(request, "Stock type updated")
+                    return HttpResponseRedirect(s.get_absolute_url())
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    messages.error(
+                        request, "Could not update this stock type: there is "
+                        "another stock type that's an exact match for the new "
+                        "details.")
+
         else:
             alter_form = EditStockTypeForm(initial={
                 'manufacturer': s.manufacturer.strip(),
@@ -1216,7 +1233,9 @@ def stocktype(request, info, stocktype_id):
                 new_price = reprice_form.cleaned_data['saleprice']
                 old_price = s.saleprice
                 if new_price != s.saleprice:
-                    s.saleprice = reprice_form.cleaned_data['saleprice']
+                    user.log(f"Changed sale price of {s.logref} from "
+                             f"{info.money}{s.saleprice} to {info.money}{new_price}")
+                    s.saleprice = new_price
                     s.saleprice_changed = datetime.datetime.now()
                     td.s.commit()
                     messages.success(request, "Sale price changed")

@@ -72,4 +72,9 @@
 {% endif %}
 {% endif %}
 
+{% if stocktype.logs %}
+<h2>Log entries</h2>
+{% with logs=stocktype.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
 {% endblock %}
