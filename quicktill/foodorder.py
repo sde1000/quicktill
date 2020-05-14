@@ -213,27 +213,21 @@ def print_food_order(driver,number,ol,verbose=True,tablenumber=None,footer="",
 
 
 class tablenumber(ui.dismisspopup):
+    """Request a table number and call a function with it.
     """
-    Request a table number and call a function with it.
-
-    """
-    def __init__(self,func):
-        ui.dismisspopup.__init__(self,5,20,title="Table number",
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_line)
-        self.addstr(2,2,"Table number:")
-        self.numberfield=ui.editfield(
-            2,16,5,validate=ui.validate_int,
-            keymap={keyboard.K_CASH: (self.enter,None)})
-        self.func=func
+    def __init__(self, func):
+        super().__init__(5, 20, title="Table number",
+                         dismiss=keyboard.K_CLEAR,
+                         colour=ui.colour_line)
+        self.addstr(2, 2, "Table number:")
+        self.numberfield = ui.editfield(
+            2, 16, 5, keymap={keyboard.K_CASH: (self.enter, None)})
+        self.func = func
         self.numberfield.focus()
+
     def enter(self):
-        try:
-            number=int(self.numberfield.f)
-        except:
-            number=None
         self.dismiss()
-        self.func(number)
+        self.func(self.numberfield.f)
 
 class edititem(ui.dismisspopup):
     """
@@ -292,10 +286,6 @@ class popup(user.permission_checked, ui.basicpopup):
                           "contain a menu definition."],
                          title="No menu defined")
             return
-        if "staffdiscount" not in foodmenu.__dict__:
-            ui.infopopup(["The menu file is missing a discount policy."],
-                         title="Discount policy missing")
-            return
         if "footer" not in foodmenu.__dict__:
             ui.infopopup(["The recipt footer definition is missing from "
                           "the menu file."],title="Footer missing")
@@ -304,7 +294,6 @@ class popup(user.permission_checked, ui.basicpopup):
             ui.infopopup(["The department for food is missing from the "
                           "menu file."],title="Department missing")
             return
-        self.staffdiscount=foodmenu.staffdiscount
         self.footer=foodmenu.footer
         self.dept=foodmenu.dept
         self.print_total=(
@@ -421,9 +410,6 @@ class popup(user.permission_checked, ui.basicpopup):
                  "The problem is: {}".format(rpprob)],
                 title="Receipt printer problem")
             return
-        discount=sum([self.staffdiscount(tablenumber,x) for x in self.ml],zero)
-        if discount>zero:
-            self.ml.append(fooditem("Staff discount",zero-discount))
         tot=sum([x.price for x in self.ml],zero)
         number=self.ordernumberfunc()
         # We need to prepare a list of (dept,text,items,amount) tuples
