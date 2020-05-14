@@ -1541,7 +1541,7 @@ class StockUnit(Base, Logged):
 
 stocktypes_seq = Sequence('stocktypes_seq')
 
-class StockType(Base):
+class StockType(Base, Logged):
     __tablename__ = 'stocktypes'
     id = Column('stocktype', Integer, stocktypes_seq, nullable=False,
                 primary_key=True)
@@ -1573,6 +1573,10 @@ class StockType(Base):
                 (str(self), self.get_absolute_url())]
 
     def __str__(self):
+        return f"{self.manufacturer} {self.name}"
+
+    @property
+    def logtext(self):
         return f"{self.manufacturer} {self.name}"
 
     @property
