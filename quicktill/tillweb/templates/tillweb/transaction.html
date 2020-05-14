@@ -52,4 +52,9 @@
 <p>There are no payments towards this transaction.</p>
 {% endif %}
 
+{% if transaction.logs %}
+<h2>Log entries</h2>
+{% with logs=transaction.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
 {% endblock %}

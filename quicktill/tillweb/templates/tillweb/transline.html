@@ -61,4 +61,9 @@
 <p>No stock recorded against this transaction line.</p>
 {% endif %}
 
+{% if tl.logs %}
+<h2>Log entries</h2>
+{% with logs=tl.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
 {% endblock %}
