@@ -95,6 +95,9 @@ class Base:
         # Log references look like [text]ModelName(pk1,pk2,...)
         # If text is absent, the primary key is used instead.
         # Text may not contain ']'!
+        if not hasattr(self, 'logs'):
+            raise Exception(f"logref requested for {self.__class__.__name__} "
+                            "which is not logged")
         return f"[{str(self.logtext).replace(']', '')}]{self!r}"
 
     # What name does the relationship to this model have, in the log
