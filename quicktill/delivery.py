@@ -250,7 +250,7 @@ class delivery(ui.basicpopup):
             return
         d = td.s.query(Delivery).get(self.dn)
         d.checked = True
-        user.log(f"Confirmed delivery {d.logref}")
+        user.log(f"Confirmed delivery {d.logref} from {d.supplier.logref}")
         td.s.flush()
         self.dismiss()
         usestock.auto_allocate_internal(deliveryid=self.dn,

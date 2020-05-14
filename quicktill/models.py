@@ -1348,7 +1348,11 @@ class Supplier(Base, Logged):
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
     def __str__(self):
-        return "%s" % (self.name,)
+        return self.name
+
+    @property
+    def logtext(self):
+        return self.name
 
     tillweb_viewname = "tillweb-supplier"
     tillweb_argname = "supplierid"
@@ -2037,8 +2041,11 @@ class LogEntry(Base):
 
     # A reference looks like [description]Model(pk1,pk2,...)
     # If description is blank, the primary keys will be used instead.
-    _ref_re = re.compile(
-        f"\[(.*)\]({'|'.join(m.__name__ for m in _logged_models)})\\((.*)\\)")
+    _ref_re = re.compile(fr"""
+            \[(.*?)\]                                        # description
+            ({'|'.join(m.__name__ for m in _logged_models)}) # model
+            \((.*?)\)                                        # primary keys
+        """, re.VERBOSE)
 
     @staticmethod
     def _str_to_date(ds):
