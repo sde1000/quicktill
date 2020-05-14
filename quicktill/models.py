@@ -61,7 +61,7 @@ class Base:
         return self.get_view_url(self.tillweb_viewname,
                                  **{self.tillweb_argname: self.id})
 
-    # repr() of an instance is used in log entries
+    # repr() of an instance is used in log entries.
     def __repr__(self):
         insp = inspect(self)
         if insp.identity:
@@ -70,8 +70,20 @@ class Base:
         else:
             return f"{self.__class__.__name__}(no-identity)"
 
-    # What to use as the 'text' part of a log reference?  Override in
-    # models as required.
+    # The __str__ method should be used to return a description of the
+    # instance suitable for use in sentences like "session {s}" or
+    # "the {d} department".  If it's sensible to refer to an instance
+    # by name or description instead of primary key, override this
+    # method.
+    def __str__(self):
+        insp = inspect(self)
+        if insp.identity:
+            return f"({','.join(str(x) for x in insp.identity)})"
+        return "<unknown>"
+
+    # What to use as the 'text' part of a log reference?  When empty,
+    # the primary keys are used by default.  Override in models as
+    # required.
     @property
     def logtext(self):
         return ""
@@ -123,8 +135,13 @@ class Business(Base, Logged):
     address = Column(String(), nullable=False)
     vatno = Column(String(30))
     show_vat_breakdown = Column(Boolean(),nullable=False,default=False)
+
     def __str__(self):
-        return "%s" % (self.abbrev,)
+        return self.abbrev
+
+    @property
+    def logtext(self):
+        return self.abbrev
 
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
@@ -189,8 +206,9 @@ class PayType(Base):
     __tablename__ = 'paytypes'
     paytype = Column(String(8), nullable=False, primary_key=True)
     description = Column(String(10), nullable=False)
+
     def __str__(self):
-        return "%s" % (self.description,)
+        return self.description
 
 sessions_seq = Sequence('sessions_seq')
 
@@ -211,11 +229,8 @@ class Session(Base, Logged):
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
     def __init__(self, date):
-        self.date=date
+        self.date = date
         self.starttime = datetime.datetime.now()
-
-    def __str__(self):
-        return "Session %d" % self.id
 
     tillweb_viewname = "tillweb-session"
     tillweb_argname = "sessionid"
@@ -489,9 +504,6 @@ class Transaction(Base, Logged):
 
     # age is now a column property, defined below
 
-    def __str__(self):
-        return "Transaction %d" % self.id
-
 add_ddl(Transaction.__table__, """
 CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
 BEGIN
@@ -721,7 +733,7 @@ class Department(Base, Logged):
     vat = relationship(VatBand)
 
     def __str__(self):
-        return "%s" % (self.description,)
+        return self.description
 
     @property
     def logtext(self):
@@ -751,7 +763,7 @@ class TransCode(Base):
     description = Column(String(20), nullable=False)
 
     def __str__(self):
-        return "%s" % (self.description,)
+        return self.description
 
 translines_seq = Sequence('translines_seq', start=1)
 
@@ -811,9 +823,6 @@ class Transline(Base, Logged):
     voided_by = relationship(
         "Transline", remote_side=[id], uselist=False,
         backref=backref('voids', uselist=False, passive_deletes=True))
-    def __str__(self):
-        return "Transaction line {} in transaction {}".format(
-            self.id, self.transaction.id)
 
     @hybrid_property
     def total(self):
@@ -1088,6 +1097,9 @@ class StockLine(Base, Logged):
             name="capacity_greater_than_zero_constraint"),
         )
 
+    def __str__(self):
+        return self.name
+
     @property
     def logtext(self):
         return self.name
@@ -1325,8 +1337,16 @@ class PriceLookup(Base, Logged):
     altprice2 = Column(money)
     altprice3 = Column(money)
     department = relationship(Department, lazy='joined')
+
     @property
     def name(self):
+        return self.description
+
+    def __str__(self):
+        return self.description
+
+    @property
+    def logtext(self):
         return self.description
 
     tillweb_viewname = "tillweb-plu"
@@ -1480,7 +1500,11 @@ class Unit(Base, Logged):
         return "{:0.1f} {}".format(qty / self.units_per_item, n)
 
     def __str__(self):
-        return "%s" % (self.name,)
+        return self.name
+
+    @property
+    def logtext(self):
+        return self.name
 
 stockunits_seq = Sequence('stockunits_seq')
 
@@ -1509,6 +1533,10 @@ class StockUnit(Base, Logged):
                 (self.name, self.get_absolute_url())]
 
     def __str__(self):
+        return self.name
+
+    @property
+    def logtext(self):
         return self.name
 
 stocktypes_seq = Sequence('stocktypes_seq')
@@ -1545,18 +1573,18 @@ class StockType(Base):
                 (str(self), self.get_absolute_url())]
 
     def __str__(self):
-        return "%s %s" % (self.manufacturer, self.name)
+        return f"{self.manufacturer} {self.name}"
 
     @property
     def abvstr(self):
         if self.abv:
-            return "{}%".format(self.abv)
+            return f"{self.abv}%"
         return ""
 
     @property
     def pricestr(self):
         if self.saleprice is not None:
-            return "{}/{}".format(self.saleprice, self.unit.item_name)
+            return f"{self.saleprice}/{self.unit.item_name}"
         return ""
 
     @property
@@ -1568,34 +1596,18 @@ class StockType(Base):
         """
         if self.abv:
             return [
-                '%s (%0.1f%% ABV)' % (self.fullname, self.abv),
+                f'{self.fullname} ({self.abv}% ABV)',
                 self.fullname,
             ]
         return [self.fullname]
 
     def format(self, maxw=None):
         """Format this stocktype with optional maximum width
-
-        maxw can be an integer specifying the maximum number of
-        characters, or a function with a single string argument that
-        returns True if the string will fit.  Note that if maxw is a
-        function, we do not _guarantee_ to return a string that will fit.
         """
-        d = self.descriptions
-        if maxw is None:
-            return d[0]
-        if isinstance(maxw, int):
-            maxwf = lambda x: len(x) <= maxw
-        else:
-            maxwf = maxw
-        
-        while len(d) > 1:
-            if maxwf(d[0]):
-                return d[0]
-            d = d[1:]
-        if isinstance(maxw, int):
-            return d[0][:maxw]
-        return d[0]
+        for x in self.descriptions:
+            if maxw is None or len(x) <= maxw:
+                return x
+        return self.descriptions[-1][:maxw]
 
 class FinishCode(Base):
     __tablename__ = 'stockfinish'
@@ -1603,7 +1615,7 @@ class FinishCode(Base):
     description = Column(String(50), nullable=False)
 
     def __str__(self):
-        return "%s" % self.description
+        return self.description
 
 stock_seq = Sequence('stock_seq')
 class StockItem(Base, Logged):
@@ -1649,6 +1661,7 @@ class StockItem(Base, Logged):
                                              ondelete='SET NULL'),
                          nullable=True)
     displayqty = Column(quantity, nullable=True)
+
     __table_args__ = (
         CheckConstraint(
             "not(stocklineid is null) or displayqty is null",
@@ -1660,6 +1673,7 @@ class StockItem(Base, Logged):
             "not(finished is not null) or stocklineid is null",
             name="stocklineid_null_if_finished"),
     )
+
     stockline = relationship(StockLine, backref=backref(
             'stockonsale',
             order_by=lambda: (
@@ -1679,6 +1693,7 @@ class StockItem(Base, Logged):
         if self.bestbefore is None:
             return None
         return (self.bestbefore - (self.finished or datetime.date.today())).days
+
     @property
     def displayqty_or_zero(self):
         """displayqty is always null when a stockline has no display
@@ -1692,6 +1707,7 @@ class StockItem(Base, Logged):
         if self.displayqty is None:
             return Decimal("0.0")
         return self.displayqty
+
     @property
     def ondisplay(self):
         """The number of units of stock on display waiting to be sold.
@@ -1699,6 +1715,7 @@ class StockItem(Base, Logged):
         if self.stockline.capacity is None:
             return None
         return self.displayqty_or_zero - self.used
+
     @property
     def instock(self):
         """The number of units of stock not yet on display.
@@ -1718,8 +1735,9 @@ class StockItem(Base, Logged):
         can be used to confirm that a member of staff really does have
         a particular item of stock in front of them.
         """
-        a = hashlib.sha1(("quicktill-%d-quicktill" % self.id).encode('utf-8'))
+        a = hashlib.sha1((f"quicktill-{self.id}-quicktill").encode('utf-8'))
         return str(int(a.hexdigest(), 16))[-3:]
+
     @property
     def removed(self):
         """Amount of stock removed from this item under all the
@@ -1735,26 +1753,22 @@ class StockItem(Base, Logged):
             group_by(RemoveCode).\
             order_by(desc(func.sum(StockOut.qty))).\
             all()
+
     @property
     def remaining_units(self):
         """Quantity remaining as a string with the unit name
 
         eg. 2 pints, 1 pint, 3 bottles
         """
-        return "%s %s%s" % (
-            self.remaining, self.stocktype.unit.name,
-            "s" if self.remaining != Decimal(1) else "")
+        return f"{self.remaining} {self.stocktype.unit.name}"\
+            f"{'s' if self.remaining != Decimal(1) else ''}"
 
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
     def tillweb_nav(self):
         return self.delivery.tillweb_nav() + [
-            ("Item {} ({} {})".format(
-                self.id, self.stocktype.manufacturer, self.stocktype.name),
+            (f"Item {self.id} ({self.stocktype.manufacturer} {self.stocktype.name})",
              self.get_absolute_url())]
-
-    def __str__(self):
-        return "<StockItem({})>".format(self.id)
 
 Delivery.costprice = column_property(
     select([
@@ -1774,8 +1788,9 @@ class AnnotationType(Base):
     __tablename__ = 'annotation_types'
     id = Column('atype', String(8), nullable=False, primary_key=True)
     description = Column(String(20), nullable=False)
+
     def __str__(self):
-        return "%s" % (self.description,)
+        return self.description
 
 stock_annotation_seq = Sequence('stock_annotation_seq');
 
@@ -1800,8 +1815,9 @@ class RemoveCode(Base, Logged):
     __tablename__ = 'stockremove'
     id = Column('removecode', String(8), nullable=False, primary_key=True)
     reason = Column(String(80))
+
     def __str__(self):
-        return "%s" % (self.reason,)
+        return self.reason
 
 stockout_seq = Sequence('stockout_seq')
 
@@ -1936,6 +1952,7 @@ class KeyboardBinding(Base):
         if self.plu:
             return self.plu.description
         return self.modifier
+
     @property
     def keycap(self):
         """Look up the keycap corresponding to the keycode of this binding.
