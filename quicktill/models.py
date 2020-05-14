@@ -78,7 +78,7 @@ class Base:
     def __str__(self):
         insp = inspect(self)
         if insp.identity:
-            return f"({','.join(str(x) for x in insp.identity)})"
+            return ','.join(str(x) for x in insp.identity)
         return "<unknown>"
 
     # What to use as the 'text' part of a log reference?  When empty,
