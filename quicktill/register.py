@@ -943,6 +943,10 @@ class page(ui.basicpage):
         td.s.add(tl)
         self._apply_discount(tl)
         td.s.flush()
+        if explicitprice and plu.price:
+            user.log(f"Price override on {plu.logref} to "
+                     f"{tillconfig.fc(sale.price)} for transaction "
+                     f"line {tl.logref}")
         td.s.refresh(tl, ['time']) # load time from database
         self.dl.append(tline(tl.id))
         self.repeat = repeatinfo(plu=plu.id, mod=mod)
@@ -1151,6 +1155,11 @@ class page(ui.basicpage):
                     ['used', 'sold', 'remaining', 'firstsale', 'lastsale'])
             self._apply_discount(tl)
             td.s.flush()
+            if explicitprice:
+                logmsg = f"Price override to {tillconfig.fc(sale.price)} " \
+                    f"for transaction line {tl.logref} stock item "
+                for stockitem, items_to_sell in sell:
+                    user.log(logmsg + stockitem.logref)
             td.s.refresh(tl, ['time']) # load time from database
             self.dl.append(tline(tl.id))
 
@@ -2088,6 +2097,8 @@ class page(ui.basicpage):
             # XXX consider printing out a ticket on the receipt printer
             # to be stored with the money.
             pm.add_change(trans, "Deferred", zero - amount)
+            user.log(f"Deferred transaction {trans.logref} which was part-paid "
+                     f"by {tillconfig.fc(amount)}")
             printer.kickout()
         transid = trans.id
         trans.session = None
@@ -2305,6 +2316,11 @@ class page(ui.basicpage):
         for tline in trans.lines:
             self._apply_discount(tline)
         td.s.flush()
+        if policy:
+            user.log(f"Set the discount on {trans.logref} "
+                     f"to '{policy.policy_name}'")
+        else:
+            user.log(f"Removed the discount on {trans.logref}")
         # Since everything is changing, just reload the whole transaction
         self._loadtrans(trans.id)
 
