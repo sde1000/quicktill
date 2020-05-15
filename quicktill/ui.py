@@ -636,13 +636,15 @@ class label(basicwin):
         self.win = self.parent.win
         self._y = y
         self._x = x
-        self._format = "%s%d.%d" % (align, w, w)
+        self._w = w
+        self._align = align
         self.set(contents, colour=colour)
 
     def set(self, contents, colour=None):
         y, x = self.win.getyx()
-        self.win.addstr(self._y, self._x,
-                        format(str(contents), self._format), colour)
+        self.win.clear(self._y, self._x, 1, self._w)
+        self.win.drawstr(self._y, self._x, self._w, contents, align=self._align,
+                         colour=colour)
         self.win.move(y, x)
 
 class field(basicwin):
@@ -1906,10 +1908,12 @@ class modellistfield(modelpopupfield):
 
 class buttonfield(field):
     def __init__(self, y, x, w, text, keymap={}):
-        self.y = y
-        self.x = x
-        self.t = text.center(w - 2)
+        self._y = y
+        self._x = x
+        self._w = w
         super().__init__(keymap)
+        self.win.clear(y, x, 1, w, colour=self.win.colour.reversed)
+        self.win.drawstr(y, x, w, text, align="^", colour=self.win.colour.reversed)
         self.draw()
 
     def focus(self):
@@ -1929,15 +1933,16 @@ class buttonfield(field):
         return self.focused
 
     def draw(self):
-        if self.focused:
-            s = "[%s]" % self.t
-        else:
-            s = " %s " % self.t
         pos = self.win.getyx()
-        self.win.addstr(self.y, self.x, s, self.win.colour.reversed)
         if self.focused:
-            self.win.move(self.y, self.x)
+            self.win.addstr(self._y, self._x, '[', self.win.colour.reversed)
+            self.win.addstr(self._y, self._x + self._w - 1, ']',
+                            self.win.colour.reversed)
+            self.win.move(self._y, self._x)
         else:
+            self.win.addstr(self._y, self._x, ' ', self.win.colour.reversed)
+            self.win.addstr(self._y, self._x + self._w - 1, ' ',
+                            self.win.colour.reversed)
             self.win.move(*pos)
 
 def map_fieldlist(fl):
