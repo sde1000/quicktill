@@ -1616,6 +1616,26 @@ class StockType(Base, Logged):
                 return x
         return self.descriptions[-1][:maxw]
 
+    _specre = re.compile(r"^(?:(?P<fill>.?)(?P<align>[<>^]))?#?0?(?P<minwidth>\d+)?(?:\.(?P<maxwidth>\d+))?(?P<type>s)?$")
+    def __format__(self, spec):
+        """Format the stock type according to the supplied specification
+        """
+        m = self._specre.match(spec)
+        if m is None:
+            raise ValueError("Invalid format specifier")
+        fill = m['fill'] or ' '
+        align = m['align'] or '<'
+        minwidth = int(m['minwidth']) if m['minwidth'] else 0
+        maxwidth = int(m['maxwidth']) if m['maxwidth'] else None
+        s = self.format(maxw=maxwidth)
+        if align == '<':
+            s = s.ljust(minwidth, fill)
+        elif align == '^':
+            s = s.center(minwidth, fill)
+        else:
+            s = s.rjust(minwidth, fill)
+        return s
+
 class FinishCode(Base):
     __tablename__ = 'stockfinish'
     id = Column('finishcode', String(8), nullable=False, primary_key=True)

@@ -250,10 +250,10 @@ class stockpicker(ui.dismisspopup):
                        .options(joinedload('stocktype'))\
                        .get(stockid)
             if item:
-                self.addstr(3, 15, item.stocktype.format(maxw=43))
+                self.addstr(3, 15, f"{item.stocktype:.43}")
                 not_ok = self.filter.item_problem(item)
                 if not_ok:
-                    self.addstr(4, 15, "({})".format(not_ok))
+                    self.addstr(4, 15, f"({not_ok})")
 
     def checkfield_set(self):
         self.addstr(6, 20, " " * 7)
@@ -349,8 +349,7 @@ class stockfield(ui.modelpopupfield):
                  title="Choose stock item"):
         ui.modelpopupfield.__init__(
             self, y, x, w, StockItem, popupfunc=stockpicker, # Pass on args?
-            valuefunc=lambda x: "{}: {}".format(
-                x.id, x.stocktype.format(maxw=w - 2 - len(str(x.id)))),
+            valuefunc=lambda x: f"{x.id}: {x.stocktype:.{w - 2 - len(str(x.id))}}",
             f=f, readonly=readonly, keymap=keymap)
         self.filter = filter
         self.check_checkdigits = check_checkdigits
@@ -375,8 +374,7 @@ class stockfield(ui.modelpopupfield):
             item = line.stockonsale[0]
             problem = self.filter.item_problem(item)
             if problem:
-                ui.infopopup(["You can't choose {}: {}".format(
-                    item.stocktype.format(), problem)],
+                ui.infopopup([f"You can't choose {item.stocktype}: {problem}"],
                              title="Error")
                 return
             self.setf(item)

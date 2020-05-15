@@ -44,9 +44,8 @@ class deliveryline(ui.line):
             salestr = format(s.stocktype.saleprice, ">-5.2f")
         except:
             salestr = "?????"
-        self.text = "{:>7} {:<37} {:<8} {} {} {:10}".format(
-            s.id, s.stocktype.format(maxw=37), s.description[:8],
-            coststr, salestr, ui.formatdate(s.bestbefore))
+        self.text = f"{s.id:>7} {s.stocktype:<37.37} {s.description[:8]:<8} " \
+            f"{coststr} {salestr} {ui.formatdate(s.bestbefore):<10}"
 
 class delivery(ui.basicpopup):
     """Delivery popup

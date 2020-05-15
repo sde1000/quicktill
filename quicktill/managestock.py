@@ -14,7 +14,6 @@ import datetime
 
 import logging
 log = logging.getLogger(__name__)
-from functools import reduce
 
 def finish_reason(item, reason):
     stockitem = td.s.merge(item)
@@ -97,7 +96,7 @@ def stockcheck(dept=None):
     # We might want to sort the list at this point... sorting by ascending
     # amount remaining will put the things that are closest to running out
     # near the start - handy!
-    remfunc = lambda a: reduce(lambda x, y: x + y, [x.remaining for x in a])
+    remfunc = lambda a: sum(x.remaining for x in a)
     st.sort(key=remfunc)
     # We want to show name, remaining, items in each line
     # and when a line is selected we want to pop up the list of individual
@@ -105,17 +104,14 @@ def stockcheck(dept=None):
     sl = []
     f = ui.tableformatter(' l l l ')
     for i in st:
-        name = i[0].stocktype.format(maxw=40)
-        remaining = reduce(lambda x, y : x + y, [x.remaining for x in i])
-        items = len(i)
-        unit = i[0].stocktype.unit.name
+        remaining = sum(x.remaining for x in i)
         sl.append(
-            (f(name,
-               "{:.0f} {}s".format(remaining, unit),
-               "({} item{})".format(items, ("s", "")[items == 1])),
+            (f(f"{i[0].stocktype:.40}",
+               f"{remaining:.0f} {i[0].stocktype.unit.name}s",
+               f"({len(i)} item{('s', '')[len(i) == 1]})"),
              stockdetail, (i,)))
     title = "Stock Check" if dept is None \
-            else "Stock Check department {}".format(dept)
+            else f"Stock Check department {dept}"
     ui.menu(sl, title=title, blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
             dismiss_on_select=False, keymap={
@@ -334,12 +330,11 @@ def add_bestbefore():
                       check_checkdigits=False)
 
 class add_bestbefore_dialog(ui.dismisspopup):
-    def __init__(self,stockitem):
+    def __init__(self, stockitem):
         self.stockid = stockitem.id
         ui.dismisspopup.__init__(self, 7, 60, title="Set best-before date",
                                  colour=ui.colour_input)
-        self.addstr(2, 2, "Stock item {}: {}".format(
-            stockitem.id, stockitem.stocktype.format(maxw=40)))
+        self.addstr(2, 2, f"Stock item {stockitem.id}: {stockitem.stocktype:.40}")
         self.addstr(4, 2, "Best before: ")
         self.bbfield = ui.datefield(4, 15, keymap={
             keyboard.K_CASH: (self.finish, None)})
@@ -356,8 +351,8 @@ class add_bestbefore_dialog(ui.dismisspopup):
             td.s.commit()
             self.dismiss()
             ui.infopopup(
-                ["Best-before date for {} [{}] set to {}.".format(
-                    self.stockid, item.stocktype.format(), ui.formatdate(bb))],
+                [f"Best-before date for {self.stockid} [{item.stocktype}] "
+                 f"set to {ui.formatdate(bb)}."],
                 title="Best-before date set", dismiss=keyboard.K_CASH,
                 colour=ui.colour_info)
         else:
