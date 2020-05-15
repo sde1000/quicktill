@@ -27,14 +27,14 @@ Features
  * Works on multiple terminals at once; transactions follow users
    between terminals
 
- * Web-based reporting interface (read-only for now)
+ * Web interface for reporting and management
 
  * [Xero](https://www.xero.com/) integration
 
  * Flexible discount policies, and reporting on discounts given
 
 It should be possible to run this software on any system that supports
-python 3.  Usually it runs on Debian-derived Linux systems like
+Python 3.6.  Usually it runs on Debian-derived Linux systems like
 Ubuntu.
 
 Misfeatures
