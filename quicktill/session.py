@@ -6,6 +6,7 @@ from .td import undefer, func, desc, select
 from .plugins import InstancePluginMount
 from decimal import Decimal
 import datetime
+import itertools
 
 import logging
 log = logging.getLogger(__name__)
@@ -30,17 +31,19 @@ def trans_restore():
 class ssdialog(ui.dismisspopup):
     """Session start dialog box."""
     def __init__(self):
-        ui.dismisspopup.__init__(self, 8, 63, title="Session date",
-                                 colour=ui.colour_input,
-                                 dismiss=keyboard.K_CLEAR)
-        self.addstr(2, 2, "Please check the session date, and correct it "
-                    "if necessary.")
-        self.addstr(3, 2, "Press Cash/Enter to continue and start the session.")
-        self.addstr(5, 2, "Session date:")
+        super().__init__(9, 63, title="Session date",
+                         colour=ui.colour_input,
+                         dismiss=keyboard.K_CLEAR)
+        self.win.drawstr(
+            2, 2, 59, "Please check the session date, and correct it "
+                         "if necessary.")
+        self.win.drawstr(
+            4, 2, 59, "Press Cash/Enter to continue and start the session.")
+        self.win.drawstr(6, 2, 14, "Session date: ", align=">")
         date = datetime.datetime.now()
         if date.hour >= 23:
             date = date + datetime.timedelta(days=1)
-        self.datefield = ui.datefield(5, 16, f=date, keymap={
+        self.datefield = ui.datefield(6, 16, f=date, keymap={
             keyboard.K_CASH: (self.key_enter, None)})
         self.datefield.focus()
 
@@ -66,9 +69,9 @@ class ssdialog(ui.dismisspopup):
             deferred = [
                 "",
                 "The following deferred transactions were restored:",
-                ""] + ["{} - {}".format(d.id, d.notes) if d.notes else
-                       "{}".format(d.id) for d in deferred]
-        ui.infopopup(["Started session number {}.".format(sc.id)] + deferred,
+                ""] + [f"{d.id} — {d.notes}" if d.notes else
+                       f"{d.id}" for d in deferred]
+        ui.infopopup([f"Started session number {sc.id}."] + deferred,
                      title="Session started", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
@@ -79,10 +82,10 @@ def start():
     sc = Session.current(td.s)
     if sc:
         log.info("Start session: session %d still in progress", sc.id)
-        ui.infopopup(["There is already a session in progress (number {}, "
-                      "started {:%H:%M on %A}).".format(
-                          sc.id, sc.starttime)],
-                     title="Error")
+        ui.infopopup(
+            [f"There is already a session in progress (number {sc.id}, "
+             f"started {sc.starttime:%H:%M on %A})."],
+            title="Error")
     else:
         ssdialog()
 
@@ -111,12 +114,12 @@ def confirmendsession():
     pp = printer.driver.offline()
     if pp:
         ui.infopopup(["Could not end the session: there is a problem with "
-                      "the printer: {}".format(pp)], title="Printer problem")
+                      f"the printer: {pp}"], title="Printer problem")
         return
     r.endtime = datetime.datetime.now()
     log.info("End of session %d confirmed.", r.id)
     user.log(f"Ended session {r.logref}")
-    ui.infopopup(["Session {} has ended.".format(r.id),
+    ui.infopopup([f"Session {r.id} has ended.",
                   "",
                   "Please count the cash in the drawer and enter the "
                   "actual amounts using management option 1, 3."],
@@ -138,7 +141,7 @@ def end():
         km = {keyboard.K_CASH: (confirmendsession, None, True)}
         log.info("End session popup: asking for confirmation")
         ui.infopopup(["Press Cash/Enter to confirm you want to end "
-                      "session number {}.".format(r.id)], title="Session End",
+                      f"session number {r.id}."], title="Session End",
                      keymap=km, colour=ui.colour_confirm)
 
 def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
@@ -176,14 +179,15 @@ class _PMWrapper:
         self.fields = []
         self.popup = popup
 
+    def set_y(self, y):
+        self.total_label = ui.label(
+            y, self.popup.atx, self.popup.ffw, align=">")
+
     def display_total(self):
         if isinstance(self.actual_total, Decimal):
-            self.popup.addstr(
-                self.y, self.popup.atx,
-                self.popup.ff.format(tillconfig.fc(self.actual_total)))
+            self.total_label.set(tillconfig.fc(self.actual_total))
         else:
-            self.popup.addstr(
-                self.y, self.popup.atx, self.popup.ff.format("Error"))
+            self.total_label.set("Error", colour=ui.colour_error)
 
     def update_total(self):
         # One of the fields has been changed; redraw the total
@@ -203,6 +207,7 @@ class record(ui.dismisspopup):
     ttx = 30
     atx = 45
     ff = "{:>13}"
+    ffw = 13
 
     def __init__(self, sessionid):
         s = td.s.query(Session).get(sessionid)
@@ -227,21 +232,19 @@ class record(ui.dismisspopup):
         # top (3) and a total and button at the bottom (4) and the
         # bottom border (2).
         h = h + 11
-        ui.dismisspopup.__init__(self, h, 60,title="Session {0.id}".format(s),
-                                 colour=ui.colour_input)
-        self.addstr(2, 2,
-                    "Please enter the actual takings for session {}.".format(
-                        s.id))
-        self.addstr(4, self.ttx, "  Till total:")
-        self.addstr(4, self.atx, "Actual total:")
+        super().__init__(h, 60, title=f"Session {s.id}", colour=ui.colour_input)
+        self.win.drawstr(
+            2, 2, 56, f"Please enter the actual takings for session {s.id}.")
+        self.win.drawstr(4, self.ttx, self.ffw, "Till total:", align=">")
+        self.win.drawstr(4, self.atx, self.ffw, "Actual total:", align=">")
         y = 5
         self.fl = []
         for pm in self.pms:
-            pm.y = y
-            self.addstr(y, self.ttx, self.ff.format(
-                tillconfig.fc(pm.till_total)))
+            pm.set_y(y)
+            self.win.drawstr(y, self.ttx, self.ffw, tillconfig.fc(pm.till_total),
+                             align=">")
             pm.display_total()
-            self.addstr(y, 2, "{}:".format(pm.pm.description))
+            self.win.drawstr(y, 2, 18, f"{pm.pm.description}:")
             if len(pm.pm.total_fields) == 0:
                 # No data entry; just the description
                 pm.fields = []
@@ -257,7 +260,7 @@ class record(ui.dismisspopup):
                 # one line per field with indent
                 for field in pm.pm.total_fields:
                     y = y + 1
-                    self.addstr(y, 4, "{}:".format(field[0]))
+                    self.win.drawstr(y, 4, 16, f"{field[0]}:")
                     f = ui.editfield(y, 20, 8, validate=field[1])
                     self.fl.append(f)
                     pm.fields.append(f)
@@ -265,6 +268,16 @@ class record(ui.dismisspopup):
             y = y + 1
         y = y + 1
         self.total_y = y
+        self.total_label = ui.label(self.total_y, 2, self.ttx - 4)
+        # Draw the till total now, because it doesn't change
+        self.win.clear(self.total_y, self.ttx, 1, self.ffw,
+                       colour=ui.colour_confirm)
+        self.win.drawstr(
+            self.total_y, self.ttx, self.ffw,
+            tillconfig.fc(self.till_total), colour=ui.colour_confirm,
+            align=">")
+        self.total_amount = ui.label(self.total_y, self.atx, self.ffw,
+                                     align=">")
         self.update_total()
         y = y + 2
         self.fl.append(ui.buttonfield(y, 20, 20, 'Record'))
@@ -279,10 +292,6 @@ class record(ui.dismisspopup):
 
         Redraw the total line at the bottom of the window.
         """
-        self.win.addstr(self.total_y, 2, ' ' * 28)
-        self.win.addstr(self.total_y, self.ttx,
-                        self.ff.format(tillconfig.fc(self.till_total)),
-                        ui.colour_confirm)
         try:
             total = sum(pm.actual_total for pm in self.pms)
             difference = self.till_total - total
@@ -294,19 +303,14 @@ class record(ui.dismisspopup):
                 description = "Total (UP by {})"
             colour = ui.colour_error if difference > Decimal(20) \
                      else ui.colour_input
-            self.win.addstr(
-                self.total_y, 2,
-                description.format(tillconfig.fc(difference)),
-                colour)
-            self.win.addstr(
-                self.total_y, self.atx,
-                self.ff.format(tillconfig.fc(total)),
-                ui.colour_confirm)
+            self.total_label.set(description.format(tillconfig.fc(difference)),
+                                 colour=colour)
+            self.total_amount.set(tillconfig.fc(total),
+                                  colour=ui.colour_confirm)
         except:
-            self.win.addstr(self.total_y, 2, "Can't calculate total",
-                            ui.colour_error)
-            self.win.addstr(self.total_y, self.atx, self.ff.format("Error"),
-                            ui.colour_error)
+            self.total_label.set("Can't calculate total",
+                                 colour=ui.colour_error)
+            self.total_amount.set("Error", colour=ui.colour_error)
 
     def session_valid(self):
         """Is the session eligible to have its totals recorded?
@@ -318,12 +322,12 @@ class record(ui.dismisspopup):
         an error dialog and returns False.
         """
         if self.session.endtime is None:
-            ui.infopopup(["Session {s.id} is not finished.".format(
-                        s=self.session)], title="Error")
+            ui.infopopup([f"Session {self.session.id} is not finished."],
+                         title="Error")
             return False
         if self.session.actual_totals:
-            ui.infopopup(["Session {s.id} has already had totals "
-                          "recorded.".format(s=self.session)], title="Error")
+            ui.infopopup([f"Session {self.session.id} has already had totals "
+                          "recorded."], title="Error")
             return False
         return True
 
@@ -338,8 +342,8 @@ class record(ui.dismisspopup):
                                       amount=pm.actual_total))
             else:
                 ui.infopopup(
-                    ["The {} payment method can't supply an actual total "
-                     "at the moment.".format(pm.pm.description), "",
+                    [f"The {pm.pm.description} payment method can't "
+                     "supply an actual total at the moment.", "",
                      "Its error message is:",
                      str(pm.actual_total), "",
                      "Please try again later."],
@@ -385,23 +389,32 @@ def totalpopup(sessionid):
     s = td.s.query(Session).get(sessionid)
     log.info("Totals popup for session %d", s.id)
 
-    depts = s.dept_totals # list of (Dept,total) tuples
+    # All configured PayTypes
+    all_pts = [pm.get_paytype() for pm in tillconfig.all_payment_methods]
+    # list of (Dept, total) tuples
+    depts = s.dept_totals
+    # dict of {PayType: total} for transactions
     paytotals = dict(s.payment_totals)
-    payments = dict([(x.paytype, x) for x in s.actual_totals])
+    # dict of {PayType: SessionTotal} for actual amounts paid
+    payments = {x.paytype: x for x in s.actual_totals}
+    # If this session has PayTypes not currently configured,
+    # add them to the end of the list of PayTypes
+    for pt in itertools.chain(paytotals.keys(), payments.keys()):
+        if pt not in all_pts:
+            all_pts.append(pt)
     l = []
-    l.append(" Accounting date {} ".format(s.date))
-    l.append(" Started {:%Y-%m-%d %H:%M:%S} ".format(s.starttime))
+    l.append(f" Accounting date {s.date} ")
+    l.append(f" Started {s.starttime:%Y-%m-%d %H:%M:%S} ")
     if s.endtime is None:
         l.append(" Session is still open. ")
     else:
-        l.append(" Ended {:%Y-%m-%d %H:%M:%S} ".format(s.endtime))
+        l.append(f" Ended {s.endtime:%Y-%m-%d %H:%M:%S} ")
     l.append("")
     tf = ui.tableformatter(" l pr  r ")
     l.append(tf("", "Till:", "Actual:"))
     ttt = zero
     att = zero
-    for pm in tillconfig.all_payment_methods:
-        pt = pm.get_paytype()
+    for pt in all_pts:
         till_total = paytotals.get(pt, zero)
         ttt += till_total
         actual_total = payments[pt].amount if pt in payments else zero
@@ -430,7 +443,7 @@ def totalpopup(sessionid):
         keyboard.K_PRINT: (printer.print_sessiontotals, (s,), False),
     }
     ui.listpopup(l,
-                 title="Session number {}".format(s.id),
+                 title=f"Session number {s.id}",
                  colour=ui.colour_info, keymap=keymap,
                  dismiss=keyboard.K_CASH, show_cursor=False)
 
@@ -470,8 +483,8 @@ def currentsummary():
     depts = s.dept_totals_closed
     paytotals = dict(s.payment_totals)
     l = []
-    l.append(" Accounting date {} ".format(s.date))
-    l.append(" Started {:%Y-%m-%d %H:%M:%S} ".format(s.starttime))
+    l.append(f" Accounting date {s.date} ")
+    l.append(f" Started {s.starttime:%Y-%m-%d %H:%M:%S} ")
     l.append("")
     tf = ui.tableformatter(" l rp")
     for pm in tillconfig.payment_methods:
@@ -500,7 +513,7 @@ def currentsummary():
         tillconfig.fc(total_total)))
     l.append("")
     ui.listpopup(l,
-                 title="Session number {}".format(s.id),
+                 title=f"Session number {s.id}",
                  colour=ui.colour_info,
                  dismiss=keyboard.K_CASH, show_cursor=False)
 
@@ -513,8 +526,8 @@ def restore_deferred():
     if deferred:
         ui.infopopup(["The following deferred transactions were restored "
                       "to this session:", ""] + [
-                "{} - {}".format(d.id, d.notes) if d.notes else
-                "{}".format(d.id) for d in deferred],
+                          f"{d.id} — {d.notes}" if d.notes else
+                          f"{d.id}" for d in deferred],
                      title="Deferred transactions restored",
                      colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
     else:

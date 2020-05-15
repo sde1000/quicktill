@@ -6,13 +6,16 @@ class DuplicatePayType(Exception):
     pass
 
 class PaymentMethodRegistry(dict):
-    def __getitem__(self,key):
-        if key in self: return dict.__getitem__(self,key)
+    def __getitem__(self, key):
+        if key in self:
+            return dict.__getitem__(self, key)
         # Unknown payment method: create a default one and return it
-        return PaymentMethod(key,key)
-    def __setitem__(self,key,val):
-        if key in self: raise DuplicatePayType()
-        dict.__setitem__(self,key,val)
+        return PaymentMethod(key, key)
+
+    def __setitem__(self, key, val):
+        if key in self:
+            raise DuplicatePayType()
+        dict.__setitem__(self, key, val)
 
 methods = PaymentMethodRegistry()
 
