@@ -500,7 +500,7 @@ class Transaction(Base, Logged):
     def tillweb_nav(self):
         if self.session:
             return self.session.tillweb_nav() \
-                + [(str(self), self.get_absolute_url())]
+                + [(f"Transaction {self.id}", self.get_absolute_url())]
         return [("Deferred transactions",
                  self.get_view_url("tillweb-deferred-transactions")),
                 (str(self), self.get_absolute_url())]
