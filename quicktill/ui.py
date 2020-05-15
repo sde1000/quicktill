@@ -642,7 +642,7 @@ class label(basicwin):
 
     def set(self, contents, colour=None):
         y, x = self.win.getyx()
-        self.win.clear(self._y, self._x, 1, self._w)
+        self.win.clear(self._y, self._x, 1, self._w, colour=colour)
         self.win.drawstr(self._y, self._x, self._w, contents, align=self._align,
                          colour=colour)
         self.win.move(y, x)
