@@ -263,6 +263,33 @@ class curses_window:
                 lines += 1
         return lines
 
+    def drawstr(self, y, x, width, s, colour=None, align="<", display=True):
+        """Display a string.
+
+        Align may be '<', '^' or '>', as for format specs.  If the
+        string does not fit in the specified space, it will be clipped
+        to that space and the method will return False; otherwise the
+        method will return True.
+
+        Should be called as if it does not clear the background
+        (i.e. does not draw the whole width).
+        """
+        chop = min(0, width - len(s))
+        if align == "<":
+            if chop:
+                s = s[: -chop]
+            self.addstr(y, x, s, colour=colour)
+        elif align == "^":
+            if chop:
+                lchop = chop // 2
+                rchop = chop - lchop
+                s = s[lchop : -rchop]
+            self.addstr(y, x, s.center(width), colour=colour)
+        else:
+            if chop:
+                s = s[chop:]
+            self.addstr(y, x, s.rjust(width), colour=colour)
+
     def getyx(self):
         return self._win.getyx()
 

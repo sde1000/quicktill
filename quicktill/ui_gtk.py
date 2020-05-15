@@ -397,6 +397,8 @@ class text_window(window):
                     height * self.fontheight, width * self.fontwidth)
 
     def addstr(self, y, x, text, colour=None):
+        """Clear the background and draw monospace text
+        """
         if not colour:
             colour = self.colour
         ctx = cairo.Context(self._surface)
@@ -423,6 +425,8 @@ class text_window(window):
         """Display a string wrapped to specified width.
 
         Returns the number of lines that the string was wrapped over.
+
+        Does not clear the background.
         """
         if not colour:
             colour = self.colour
@@ -440,6 +444,42 @@ class text_window(window):
             self.damage(y * self.fontheight, x * self.fontwidth,
                         height, width)
         return lines
+
+    def drawstr(self, y, x, width, s, colour=None, align="<", display=True):
+        """Display a string.
+
+        Align may be '<', '^' or '>', as for format specs.  If the
+        string does not fit in the specified space, it will be clipped
+        to that space and the method will return False; otherwise the
+        method will return True.
+
+        Does not clear the background.
+        """
+        if not colour:
+            colour = self.colour
+        ctx = cairo.Context(self._surface)
+        ctx.set_source_rgb(*colours[colour.foreground])
+        layout = PangoCairo.create_layout(ctx)
+        layout.set_text(s, -1)
+        layout.set_font_description(self.font)
+        lwidth, lheight = layout.get_pixel_size()
+        if display:
+            # XXX maybe add some height at top and bottom for ascenders and
+            # descenders - only really want to clip left and right!
+            ctx.rectangle(x * self.fontwidth, y * self.fontheight,
+                          width * self.fontwidth, lheight)
+            ctx.clip()
+            if align == '<':
+                left = x * self.fontwidth
+            elif align == '^':
+                left = (x + width / 2) * self.fontwidth - (lwidth / 2)
+            else:
+                left = (x + width) * self.fontwidth - lwidth
+            ctx.move_to(left, y * self.fontheight)
+            PangoCairo.show_layout(ctx, layout)
+            self.damage(y * self.fontheight, left,
+                        lheight, lwidth)
+        return lwidth > width * self.fontwidth
 
     def flush(self):
         pass
