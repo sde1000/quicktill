@@ -81,14 +81,14 @@ class delivery(ui.basicpopup):
             self.dl = []
             self.dn = None
         if d and d.checked:
-            title = "Delivery Details - %d - read only (already confirmed)" % d.id
+            title = f"Delivery Details — {d.id} — read only (already confirmed)"
             cleartext = "Press Clear to go back"
             skm = {keyboard.K_CASH: (self.view_line, None)}
             readonly = True
         else:
             title = "Delivery Details"
             if self.dn:
-                title = title + " - %d" % self.dn
+                title = title + f" — {self.dn}"
             cleartext = None
             skm = {keyboard.K_CASH: (self.edit_line, None),
                    keyboard.K_CANCEL: (self.deleteline, None),
@@ -97,14 +97,13 @@ class delivery(ui.basicpopup):
         # The window can be as tall as the screen; we expand the scrollable
         # field to fit.  The scrollable field must be at least three lines
         # high!
-        ui.basicpopup.__init__(
-            self, mh, 80, title=title, cleartext=cleartext,
-            colour=ui.colour_input)
+        super().__init__(
+            mh, 80, title=title, cleartext=cleartext, colour=ui.colour_input)
         if readonly:
             self.win.set_cursor(False)
-        self.addstr(2, 2, "       Supplier:")
-        self.addstr(3, 2, "           Date:")
-        self.addstr(4, 2, "Document number:")
+        self.win.drawstr(2, 2, 17, "Supplier: ", align=">")
+        self.win.drawstr(3, 2, 17, "Date: ", align=">")
+        self.win.drawstr(4, 2, 17, "Document number: ", align=">")
         self.addstr(6, 1, "StockNo Stock Type........................... "
                     "Unit.... Cost.. Sale  BestBefore")
         self.supfield = ui.modelfield(
@@ -124,9 +123,8 @@ class delivery(ui.basicpopup):
         self.s = ui.scrollable(
             7, 1, 78, mh - 9 if readonly else mh - 10, self.dl,
             lastline=self.entryprompt, keymap=skm)
-        self.addstr(mh - 2 if readonly else mh - 3, 33, "Total cost ex-VAT:")
         self.costfield = ui.label(mh - 2 if readonly else mh - 3,
-                                  52, 10, align='>')
+                                  32, 30, align='>')
         self.update_costfield()
         if readonly:
             self.s.focus()
@@ -155,7 +153,10 @@ class delivery(ui.basicpopup):
         if self.dn:
             d = td.s.query(Delivery).get(self.dn)
             self.costfield.set(
-                tillconfig.fc(d.costprice) if d.costprice else "??????")
+                f"Total cost ex-VAT: {tillconfig.fc(d.costprice)}"
+                if d.costprice is not None else "Total cost unknown")
+        else:
+            self.costfield.set("")
 
     def update_model(self):
         # Called whenever one of the three fields at the top changes.
@@ -206,7 +207,7 @@ class delivery(ui.basicpopup):
         user.log(f"Created delivery {d.logref}")
         self.dn = d.id
         del self.supfield.keymap[keyboard.K_CLEAR]
-        self.addstr(0, 1, "Delivery Details - {}".format(d.id))
+        self.addstr(0, 1, f"Delivery Details — {d.id}")
 
     def finish(self):
         # Save and exit button
@@ -238,8 +239,8 @@ class delivery(ui.basicpopup):
     def printout(self):
         if self.dn is None:
             return
-        menu = [("Print labels on {}".format(str(x)),
-                 printer.label_print_delivery,(x,self.dn))
+        menu = [(f"Print labels on {x}",
+                 printer.label_print_delivery, (x, self.dn))
                 for x in printer.labelprinters]
         ui.automenu(menu, title="Delivery print options",
                     colour=ui.colour_confirm)
@@ -358,16 +359,17 @@ class new_stockitem(ui.basicpopup):
         self.func = func
         self.deliveryid = deliveryid
         cleartext = "Press Clear to exit without creating a new stock item"
-        ui.basicpopup.__init__(self, 13, 78, title="Stock Item",
-                               cleartext=cleartext, colour=ui.colour_line)
-        self.addstr(2, 2, "          Stock type:")
-        self.addstr(3, 2, "           Item size:")
-        self.addstr(4, 2, "     Number of items:")
-        self.addstr(5, 2, " Cost price (ex VAT): {}".format(tillconfig.currency))
-        self.addstr(6, 2, "Suggested sale price:")
-        self.addstr(7, 2, "Sale price (inc VAT): {}".format(tillconfig.currency))
-        self.addstr(7, 31 + len(tillconfig.currency), "per")
-        self.addstr(8, 2, "         Best before:")
+        super().__init__(13, 78, title="Stock Item",
+                         cleartext=cleartext, colour=ui.colour_line)
+        self.win.drawstr(2, 2, 22, "Stock type: ", align=">")
+        self.win.drawstr(3, 2, 22, "Item size: ", align=">")
+        self.win.drawstr(4, 2, 22, "Number of items: ", align=">")
+        self.win.drawstr(5, 2, 22, "Cost price (ex VAT): ", align=">")
+        self.win.addstr(5, 24, tillconfig.currency)
+        self.win.drawstr(6, 2, 22, "Suggested sale price: ", align=">")
+        self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
+        self.win.addstr(7, 24, tillconfig.currency)
+        self.win.drawstr(8, 2, 22, "Best before: ", align=">")
         self.typefield = ui.modelpopupfield(
             2, 24, 52, StockType, stocktype.choose_stocktype,
             lambda si: si.format(),
@@ -386,8 +388,8 @@ class new_stockitem(ui.basicpopup):
         self.suggested_price = ui.label(6, 24, 77 - 24)
         self.salefield = ui.editfield(7, 24 + len(tillconfig.currency), 6,
                                       validate=ui.validate_float)
-        self.saleunits = ui.label(7, 35 + len(tillconfig.currency),
-                                  77 - 35 - len(tillconfig.currency))
+        self.saleunits = ui.label(7, 31 + len(tillconfig.currency),
+                                  77 - 31 - len(tillconfig.currency))
         self.bestbeforefield = ui.datefield(8, 24)
         self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})
@@ -409,7 +411,7 @@ class new_stockitem(ui.basicpopup):
                         .order_by(StockUnit.size)
         self.unitfield.change_query(unit_list)
         self.update_suggested_price()
-        self.saleunits.set(stocktype.unit.item_name)
+        self.saleunits.set(f"per {stocktype.unit.item_name}")
         self.salefield.set(stocktype.saleprice)
 
     def update_suggested_price(self):
@@ -479,16 +481,17 @@ class edit_stockitem(ui.basicpopup):
         self.item = item
         self.deliveryid = deliveryid
         cleartext = "Press Clear to exit, forgetting all changes"
-        ui.basicpopup.__init__(self, 13, 78,
-                               title="Stock Item {}".format(item.id),
-                               cleartext=cleartext, colour=ui.colour_line)
-        self.addstr(2, 2, "          Stock type:")
-        self.addstr(3, 2, "           Item size:")
-        self.addstr(5, 2, " Cost price (ex VAT): {}".format(tillconfig.currency))
-        self.addstr(6, 2, "Suggested sale price:")
-        self.addstr(7, 2, "Sale price (inc VAT): {}".format(tillconfig.currency))
-        self.addstr(7, 31 + len(tillconfig.currency), "per")
-        self.addstr(8, 2, "         Best before:")
+        super().__init__(13, 78,
+                         title=f"Stock Item {item.id}",
+                         cleartext=cleartext, colour=ui.colour_line)
+        self.win.drawstr(2, 2, 22, "Stock type: ", align=">")
+        self.win.drawstr(3, 2, 22, "Item size: ", align=">")
+        self.win.drawstr(5, 2, 22, "Cost price (ex VAT): ", align=">")
+        self.win.addstr(5, 24, tillconfig.currency)
+        self.win.drawstr(6, 2, 22, "Suggested sale price: ", align=">")
+        self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
+        self.win.addstr(7, 24, tillconfig.currency)
+        self.win.drawstr(8, 2, 22, "Best before: ", align=">")
         self.typefield = ui.modelpopupfield(
             2, 24, 52, StockType, stocktype.choose_stocktype,
             lambda si: si.format(),
@@ -504,8 +507,8 @@ class edit_stockitem(ui.basicpopup):
         self.suggested_price = ui.label(6, 24, 77 - 24)
         self.salefield = ui.editfield(7, 24 + len(tillconfig.currency), 6,
                                       validate=ui.validate_float)
-        self.saleunits = ui.label(7, 35 + len(tillconfig.currency),
-                                  77 - 35 - len(tillconfig.currency))
+        self.saleunits = ui.label(7, 31 + len(tillconfig.currency),
+                                  77 - 31 - len(tillconfig.currency))
         self.bestbeforefield = ui.datefield(8, 24)
         self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})
@@ -540,19 +543,18 @@ class edit_stockitem(ui.basicpopup):
                         .order_by(StockUnit.size)
         self.unitfield.change_query(unit_list)
         self.update_suggested_price()
-        self.saleunits.set(stocktype.unit.item_name)
+        self.saleunits.set(f"per {stocktype.unit.item_name}")
         self.salefield.set(stocktype.saleprice)
 
     def unitfield_changed(self):
         su = self.unitfield.read()
         if su:
-            self.description.set("{} ({} {}) - updated".format(
-                su.name, su.size, su.unit.name))
+            self.description.set(f"{su.name} ({su.size} {su.unit.name}) - updated")
         else:
             td.s.add(self.item)
-            self.description.set("{} ({} {})".format(
-                self.item.description, self.item.size,
-                self.item.stocktype.unit.name))
+            self.description.set(
+                f"{self.item.description} ({self.item.size} "
+                f"{self.item.stocktype.unit.name})")
         self.update_suggested_price()
 
     def update_suggested_price(self):
@@ -605,6 +607,11 @@ class edit_stockitem(ui.basicpopup):
         if len(self.salefield.f) > 0:
             saleprice = Decimal(self.salefield.f).quantize(penny)
             if st.saleprice != saleprice:
+                user.log(
+                    f"Changed sale price of {st.logref} from "
+                    f"{tillconfig.fc(st.saleprice)} to "
+                    f"{tillconfig.fc(saleprice)} while working on delivery "
+                    f"{self.item.delivery.logref}")
                 st.saleprice = saleprice
                 st.saleprice_changed = datetime.datetime.now()
         self.item.stocktype = st
@@ -630,12 +637,12 @@ class editsupplier(user.permission_checked, ui.basicpopup):
         super().__init__(
             13, 70, title="Supplier Details",
             colour=ui.colour_input, cleartext="Press Clear to go back")
-        self.addstr(2, 2, "Please enter the supplier's details. You may ")
-        self.addstr(3, 2, "leave the fields other than Name blank if you wish.")
-        self.addstr(5, 2, "     Name:")
-        self.addstr(6, 2, "Telephone:")
-        self.addstr(7, 2, "    Email:")
-        self.addstr(8, 2, "      Web:")
+        self.win.wrapstr(2, 2, 66, "Please enter the supplier's details. You may "
+                         "leave the fields other than Name blank if you wish.")
+        self.win.drawstr(5, 2, 11, "Name: ", align=">")
+        self.win.drawstr(6, 2, 11, "Telephone: ", align=">")
+        self.win.drawstr(7, 2, 11, "Email: ", align=">")
+        self.win.drawstr(8, 2, 11, "Web: ", align=">")
         self.namefield = ui.editfield(
             5, 13, 55, flen=60, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)},
