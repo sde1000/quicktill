@@ -34,11 +34,11 @@ class edit_keycaps(user.permission_checked, ui.dismisspopup):
     def __init__(self):
         super().__init__(11, 60, title="Edit Keycaps",
                          colour=ui.colour_input)
-        self.win.addstr(
-            2, 2, "Press a line key; alter the legend and press Cash/Enter.")
-        self.win.addstr(4, 2, "  Keycode:")
-        self.win.addstr(5, 2, "   Legend:")
-        self.win.addstr(6, 2, "CSS class:")
+        self.win.drawstr(
+            2, 2, 56, "Press a line key; alter the legend and press Cash/Enter.")
+        self.win.drawstr(4, 2, 11, "Keycode: ", align=">")
+        self.win.drawstr(5, 2, 11, "Legend: ", align=">")
+        self.win.drawstr(6, 2, 11, "CSS class: ", align=">")
         self.keycode = None
         self.kclabel = ui.label(4, 13, 45)
         self.kcfield = ui.editfield(5, 13, 45)
@@ -97,50 +97,49 @@ def keyboard_bindings_table(bindings, formatter):
 class addbinding(ui.listpopup):
     """Add a binding for a stockline, PLU or modifier to the database.
     """
-    def __init__(self,target,keycode,func,available_modifiers=None):
-        self.func=func
-        self.target=target
-        self.available_modifiers=available_modifiers
-        if isinstance(target,StockLine) or isinstance(target,PriceLookup):
+    def __init__(self, target, keycode, func, available_modifiers=None):
+        self.func = func
+        self.target = target
+        self.available_modifiers = available_modifiers
+        if isinstance(target, StockLine) or isinstance(target, PriceLookup):
             td.s.add(target)
-        self.name=target.name
-        self.keycode=keycode
-        existing=td.s.query(KeyboardBinding).\
-            filter(KeyboardBinding.keycode==self.keycode.name).\
-            all()
-        self.exdict={}
-        lines=[]
-        f=ui.tableformatter(' l l l   c ')
-        if len(existing)>0:
-            lines=[
+        self.name = target.name
+        self.keycode = keycode
+        existing = td.s.query(KeyboardBinding)\
+                       .filter(KeyboardBinding.keycode == self.keycode.name)\
+                       .all()
+        self.exdict = {}
+        lines = []
+        f = ui.tableformatter(' l l l   c ')
+        if len(existing) > 0:
+            lines = [
                 ui.emptyline(),
-                ui.lrline("The '{}' key already has some other "
+                ui.lrline(f"The '{keycode.keycap}' key already has some other "
                           "stock lines, PLUs or modifiers associated "
-                          "with it; they are listed below.".format(
-                              keycode.keycap)),
+                          "with it; they are listed below."),
                 ui.emptyline(),
                 ui.lrline("When the key is pressed, a menu will be displayed "
                           "enabling the till user to choose between them.  "
                           "You must now choose which key the user must press "
-                          "to select '{}'; make sure it isn't "
-                          "already in the list!".format(self.name)),
+                          f"to select '{self.name}'; make sure it isn't "
+                          "already in the list!"),
                 ui.emptyline(),
-                f('Menu key','','Name','Default modifier'),
-                ]
+                f('Menu key', '', 'Name', 'Default modifier'),
+            ]
         else:
-            lines=[
+            lines = [
                 ui.emptyline(),
-                ui.lrline("There are no other options on the '{}' key, "
+                ui.lrline("There are no other options on the "
+                          f"'{keycode.keycap}' key, "
                           "so when it's used there will be no need "
                           "for a menu to be displayed.  However, in case "
                           "you add more options to the key in the future, "
                           "you must now choose which key the user will have "
-                          "to press to select '{}'.".format(
-                              keycode.keycap, self.name)),
+                          f"to press to select '{self.name}'."),
                 ui.emptyline(),
                 ui.lrline("Pressing '1' now is usually the right thing to do!"),
-                ]
-        existing.sort(key=lambda x:str(
+            ]
+        existing.sort(key=lambda x: str(
             keyboard.__dict__.get(x.menukey, x.menukey)))
         for kb in existing:
             keycode = keyboard.__dict__.get(kb.menukey, kb.menukey)
@@ -148,24 +147,25 @@ class addbinding(ui.listpopup):
                 f(str(keycode), '->', kb.name, kb.modifier))
             self.exdict[keycode] = None
         lines.append(ui.emptyline())
-        lines=[ui.marginline(x,margin=1) for x in lines]
-        ui.listpopup.__init__(
-            self,lines,title="Add keyboard binding for {}".format(self.name),
-            colour=ui.colour_input,show_cursor=False,w=58)
-    def keypress(self,k):
-        if k==keyboard.K_CLEAR:
+        lines = [ui.marginline(x, margin=1) for x in lines]
+        super().__init__(
+            lines, title=f"Add keyboard binding for {self.name}",
+            colour=ui.colour_input, show_cursor=False, w=58)
+
+    def keypress(self, k):
+        if k == keyboard.K_CLEAR:
             self.dismiss()
             return self.func()
         if k in keyboard.cursorkeys:
-            return ui.listpopup.keypress(self,k)
+            return super().keypress(k)
         if k in self.exdict:
             return
-        if isinstance(self.target,StockLine):
-            args={'stockline':self.target}
-        elif isinstance(self.target,PriceLookup):
-            args={'plu':self.target}
+        if isinstance(self.target, StockLine):
+            args = {'stockline': self.target}
+        elif isinstance(self.target, PriceLookup):
+            args = {'plu': self.target}
         else:
-            args={'modifier':self.target.name}
+            args = {'modifier': self.target.name}
         binding = KeyboardBinding(
             keycode=self.keycode.name,
             menukey=k.name if hasattr(k, 'name') else k,
@@ -174,26 +174,28 @@ class addbinding(ui.listpopup):
         td.s.flush()
         self.dismiss()
         if self.available_modifiers:
-            changebinding(binding,self.func,self.available_modifiers)
+            changebinding(binding, self.func, self.available_modifiers)
         else:
             self.func()
 
-def changebinding(binding,func,available_modifiers):
+def changebinding(binding, func, available_modifiers):
     """Enable the default modifier on the binding to be changed.
     """
     td.s.add(binding)
-    blurb=["","Choose the new default modifier for {} when accessed through "
-           "{} option {}.".format(
-               binding.name,keyboard.__dict__[binding.keycode].keycap,
-               keyboard.__dict__.get(binding.menukey, binding.menukey))]
-    ml=[(name,_finish_changebinding,(binding,func,name))
-        for name in available_modifiers]
-    ml=[("No modifier",_finish_changebinding,(binding,func,None))]+ml
-    ui.automenu(ml,title="Choose default modifier",blurb=blurb)
+    blurb = [
+        "",
+        f"Choose the new default modifier for {binding.name} "
+        f"when accessed through {keyboard.__dict__[binding.keycode].keycap} "
+        f"option {keyboard.__dict__.get(binding.menukey, binding.menukey)}.",
+    ]
+    ml = [(name, _finish_changebinding, (binding, func, name))
+          for name in available_modifiers]
+    ml = [("No modifier", _finish_changebinding, (binding, func, None))] + ml
+    ui.automenu(ml, title="Choose default modifier", blurb=blurb)
 
-def _finish_changebinding(binding,func,mod):
+def _finish_changebinding(binding, func, mod):
     td.s.add(binding)
-    binding.modifier=mod
+    binding.modifier = mod
     func()
 
 class move_keys(user.permission_checked, ui.dismisspopup):
@@ -222,8 +224,7 @@ class move_keys(user.permission_checked, ui.dismisspopup):
             self.swap(k)
         else:
             self.key = k
-            self.label.set("Push the key to swap with {}".format(
-                k.keycap))
+            self.label.set(f"Push the key to swap with {k.keycap}")
 
     def swap(self, k):
         ui.toast("{} swapped with {}".format(
@@ -258,8 +259,8 @@ class move_keys(user.permission_checked, ui.dismisspopup):
             .values(keycode=k.name))
         # Ensure that BOTH keycaps have been notified, even if there's no
         # database keycap record for one or the other of them
-        td.s.execute("notify keycaps, '{}'".format(self.key.name))
-        td.s.execute("notify keycaps, '{}'".format(k.name))
+        td.s.execute(f"notify keycaps, '{self.key.name}'")
+        td.s.execute(f"notify keycaps, '{k.name}'")
         self.reset()
 
     def keypress(self, k):
