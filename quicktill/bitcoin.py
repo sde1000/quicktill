@@ -1,3 +1,5 @@
+# This code is obsolete, and is just being kept around for reference.
+
 import requests
 from decimal import Decimal
 from . import payment, ui, tillconfig, printer, td, keyboard
@@ -18,6 +20,7 @@ class Api:
     def __init__(self, username, password, site, base_url):
         self._base_url = base_url + site + "/"
         self._auth = (username, password)
+
     def request_payment(self, ref, description, amount):
         response = requests.post(
             self._base_url + "payment.json",
@@ -26,6 +29,7 @@ class Api:
         response.raise_for_status()
 
         return response.json(parse_float=Decimal)
+
     def transactions_total(self, translist):
         response = requests.post(
             self._base_url + "totals.json",
@@ -34,6 +38,7 @@ class Api:
         response.raise_for_status()
 
         return response.json(parse_float=Decimal)
+
     def transactions_reconcile(self, ref, translist):
         response = requests.post(
             self._base_url + "totals.json",
@@ -55,11 +60,12 @@ class btcpopup(ui.dismisspopup):
         self.w = mh * 2
         self.response = {}
         # Title will be drawn in "refresh()"
-        ui.dismisspopup.__init__(
-            self, self.h, self.w, colour=ui.colour_input, keymap={
+        super().__init__(
+            self.h, self.w, colour=ui.colour_input, keymap={
                 keyboard.K_CASH: (self.refresh, None, False),
                 keyboard.K_PRINT: (self.printout, None, False)})
         self.refresh()
+
     @staticmethod
     def qrcode_data(response):
         """Construct a bitcoin URL using pay_to_address and to_pay from a
@@ -67,9 +73,11 @@ class btcpopup(ui.dismisspopup):
         """
         return "bitcoin:{}?amount={}".format(
             response['pay_to_address'], response['to_pay'])
+
     def draw_qrcode(self):
         if not _qrcode_available:
-            self.addstr(2, 2, "QR code library not installed. Press Print.")
+            self.win.drawstr(2, 2, self.w - 4,
+                             "QR code library not installed. Press Print.")
             return
         q = qrcode.QRCode(border=2)
         q.add_data(self.qrcode_data(self.response))
@@ -81,7 +89,7 @@ class btcpopup(ui.dismisspopup):
             x = (self.w // 2) - size
             y = (self.h - size) // 2
             for line in m:
-                self.addstr(
+                self.win.addstr(
                     y, x, ''.join(
                         ["  " if c else "\u2588\u2588" for c in line]))
                 y = y + 1
@@ -103,11 +111,13 @@ class btcpopup(ui.dismisspopup):
                 else:
                     row = zip(m[0], [True] * len(m[0]))
                 m = m[2:]
-                self.addstr(y, x, ''.join([lt[c] for c in row]))
+                self.win.addstr(y, x, ''.join([lt[c] for c in row]))
                 y = y + 1
         else:
-            self.addstr(
-                2, 2, "QR code will not fit on this screen.  Press Print.")
+            self.win.drawstr(
+                2, 2, self.w - 4,
+                "QR code will not fit on this screen.  Press Print.")
+
     def printout(self):
         if 'to_pay_url' in self.response:
             with ui.exception_guard("printing the QR code"):
@@ -124,6 +134,7 @@ class btcpopup(ui.dismisspopup):
                     d.printline("\t" + self.response['pay_to_address'])
                     d.printline()
                     d.printline()
+
     def refresh(self):
         payment = td.s.query(Payment).get(self._paymentid)
         if not payment:
@@ -157,14 +168,14 @@ class btcpopup(ui.dismisspopup):
                 self._pm.description))
         self.response = result
         if 'to_pay_url' in result:
-            self.addstr(
+            self.win.addstr(
                 0, 1, "{} payment of {} - press {} to recheck".format(
                     self._pm.description, tillconfig.fc(amount),
                     keyboard.K_CASH.keycap))
             self.draw_qrcode()
-        self.addstr(self.h - 1, 3, "Received {} of {} {} so far".format(
-                result['paid_so_far'], result['amount_in_btc'],
-                self._pm._currency))
+        self.win.addstr(self.h - 1, 3, "Received {} of {} {} so far".format(
+            result['paid_so_far'], result['amount_in_btc'],
+            self._pm._currency))
         if result['paid']:
             self.dismiss()
             self._pm._finish_payment(self._reg, payment,
@@ -180,6 +191,7 @@ class BitcoinPayment(payment.PaymentMethod):
         self._min_payment = min_payment
         self._currency = currency
         self.account_code = account_code
+
     def describe_payment(self, payment):
         if payment.amount == zero:
             # It's a pending payment.  The ref field is the amount in
@@ -188,12 +200,15 @@ class BitcoinPayment(payment.PaymentMethod):
             self.description, tillconfig.currency, payment.ref)
         return "{} ({} {})".format(self.description, payment.ref,
                                    self._currency)
+
     def payment_is_pending(self, pline_instance):
         return pline_instance.amount == zero
+
     def resume_payment(self, reg, pline_instance):
         if self.payment_is_pending(pline_instance):
             p = td.s.query(Payment).get(pline_instance.payment_id)
             btcpopup(self, reg, p)
+
     def start_payment(self, reg, transid, amount, outstanding):
         trans = td.s.query(Transaction).get(transid)
         # Search the transaction for an unfinished Bitcoin payment; if
@@ -231,6 +246,7 @@ class BitcoinPayment(payment.PaymentMethod):
         td.s.flush()
         reg.add_payments(transid, [payment.pline(p, method=self)])
         btcpopup(self, reg, p)
+
     def _finish_payment(self, reg, payment, btcamount):
         amount = Decimal(payment.ref)
         payment.ref = str(btcamount)
@@ -240,6 +256,7 @@ class BitcoinPayment(payment.PaymentMethod):
         ui.infopopup(["{} payment received".format(self.description)],
                      title=self.description,
                      dismiss=keyboard.K_CASH, colour=ui.colour_info)
+
     def _payment_ref_list(self, session):
         td.s.add(session)
         # Find all the payments in this session
@@ -249,6 +266,7 @@ class BitcoinPayment(payment.PaymentMethod):
             filter(Transaction.session == session).\
             all()
         return ["p{}".format(p.id) for p in payments]
+
     def total(self, session, fields):
         td.s.add(session)
         btcval = zero
@@ -258,6 +276,7 @@ class BitcoinPayment(payment.PaymentMethod):
         except Exception as e:
             return str(e)
         return btcval
+
     def commit_total(self, session, amount):
         td.s.add(session)
         payment_ref_list = self._payment_ref_list(session)

@@ -23,11 +23,10 @@ log = logging.getLogger(__name__)
 # For continuous stocklines it allows the stock type to be changed.
 
 class popup(user.permission_checked, ui.keymenu):
-    permission_required=("use-stock", "Allocate stock to lines")
+    permission_required = ("use-stock", "Allocate stock to lines")
     def __init__(self):
         log.info("Use Stock popup")
-        ui.keymenu.__init__(
-            self,
+        super().__init__(
             [("1", "Re-fill all stock lines", stocklines.restock_all, ()),
              ("2", "Re-fill stock lines in a particular location",
               stocklines.restock_location, ()),
@@ -44,10 +43,10 @@ class popup(user.permission_checked, ui.keymenu):
         line_chosen(kb.stockline)
 
     def keypress(self, k):
-        if hasattr(k,'line'):
+        if hasattr(k, 'line'):
             linekeys.linemenu(k, self.line_chosen)
         else:
-            ui.keymenu.keypress(self, k)
+            super().keypress(k)
 
 def line_chosen(line):
     td.s.add(line)
@@ -291,9 +290,8 @@ class change_continuous_stockline(ui.dismisspopup):
         super().__init__(
             9, 75, title="Change stock on sale on {}".format(stockline.name),
             colour=ui.colour_input)
-        self.addstr(2, 2, "Current stock type: {}".format(
-            stockline.stocktype.format()))
-        self.addstr(4, 2, "New stock type:")
+        self.win.drawstr(2, 2, 72, f"Current stock type: {stockline.stocktype}")
+        self.win.drawstr(4, 2, 16, "New stock type: ", align=">")
         self.stocktypefield = ui.modelpopupfield(
             4, 18, 54, StockType, stocktype.choose_stocktype,
             lambda si: si.format(),

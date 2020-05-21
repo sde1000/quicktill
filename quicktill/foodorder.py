@@ -55,15 +55,15 @@ class simplemenu:
                     title=self.title or default_title)
 
 class subopts:
-    """
-    A menu item which can have an arbitrary number of suboptions.
+    """A menu item which can have an arbitrary number of suboptions.
+
     Suboptions can have a price associated with them.  It's possible
     to create classes that override the pricing method to implement
     special price policies, eg. 'Ice cream: first two scoops for 3
     pounds, then 1 pound per extra scoop'.
-
     """
-    def __init__(self, name, itemprice, subopts, dept=None, atleast=0, atmost=None,
+    def __init__(self, name, itemprice, subopts, dept=None,
+                 atleast=0, atmost=None,
                  connector='; ', nameconnector=': '):
         self.name = name
         self.itemprice = itemprice
@@ -81,13 +81,12 @@ class subopts:
         return tot
 
     def display_menu(self, itemfunc, default_title=None):
-        """
-        Pop up the suboptions selection dialog.  This has a 'text
-        entry' area at the top which is initially filled in with the
-        item name.  The suboptions are shown below.  Pressing Enter
-        confirms the current entry.  Pressing a suboption number adds
-        the option to the dialog.
+        """Pop up the suboptions selection dialog.
 
+        This has a 'text entry' area at the top which is initially
+        filled in with the item name.  The suboptions are shown below.
+        Pressing Enter confirms the current entry.  Pressing a
+        suboption number adds the option to the dialog.
         """
         subopts_dialog(self.name, self.subopts, self.atleast, self.atmost,
                        self.connector, self.nameconnector, self.finish,
@@ -124,8 +123,10 @@ class subopts_dialog(ui.dismisspopup):
                          colour=ui.colour_line, keymap=km)
         y = 9
         for k, so in opts:
-           self.win.addstr(y, 2, f"{k:>2}: {so[0]}")
-           y = y + 1
+            self.win.drawstr(y, 2, 4, f"{k}: ", align=">")
+            self.win.drawstr(y, 6, self.w - 6, so[0])
+            y = y + 1
+        self.promptlabel = ui.label(7, 2, self.w - 4)
         self.ol = []
         self.name = name
         self.atleast = atleast
@@ -142,25 +143,18 @@ class subopts_dialog(ui.dismisspopup):
             o = self.name + self.nameconnector + listpart
         else:
             o = self.name
-        w = textwrap.wrap(o, self.w - 4)
-        while len(w) < 4:
-            w.append("")
-        if len(w) > 4:
+        self.win.clear(2, 2, 4, self.w - 4, colour=ui.colour_line.reversed)
+        lines = self.win.wrapstr(2, 2, self.w - 4, o,
+                                 colour=ui.colour_line.reversed)
+        if lines > 3:
             self.atmost = len(self.ol) - 1 # stop sillyness!
-        w = ["%s%s"%(x, ' ' * (self.w - 4 - len(x))) for x in w]
-        y = 2
-        colour = ui.colour_line.reversed
-        for i in w:
-            self.win.addstr(y, 2, i, colour)
-            y = y + 1
-        self.win.addstr(7, 2, ' ' * (self.w - 4))
         if len(self.ol) < self.atleast:
-            self.win.addstr(7, 2, "Choose options from the list below.")
+            self.promptlabel.set("Choose options from the list below.")
         elif self.atmost is None or len(self.ol) < self.atmost:
-            self.win.addstr(7, 2,
-                            "Choose options, and press Cash/Enter to confirm.")
+            self.promptlabel.set(
+                "Choose options, and press Cash/Enter to confirm.")
         else:
-            self.win.addstr(7, 2, "Press Cash/Enter to confirm.")
+            self.promptlabel.set("Press Cash/Enter to confirm.")
         self.win.move(2, 2)
 
     def newsubopt(self, so):
@@ -170,13 +164,23 @@ class subopts_dialog(ui.dismisspopup):
                 self.redraw()
             else:
                 il = [(opt[0], self.newsubopt, (opt,)) for opt in so[1]]
-                ui.automenu(il, spill="keymenu", colour=ui.colour_input, title=so[0])
+                ui.automenu(il, spill="keymenu", colour=ui.colour_input,
+                            title=so[0])
+        else:
+            ui.beep()
 
     def finish(self):
         if len(self.ol) < self.atleast:
             return
         self.func(self.itemfunc, self.ol)
         self.dismiss()
+
+    def keypress(self, k):
+        if k == keyboard.K_CLEAR and len(self.ol) > 0:
+            self.ol = self.ol[:-1]
+            self.redraw()
+        else:
+            super().keypress(k)
 
 def print_food_order(driver, number, ol, verbose=True, tablenumber=None, footer="",
                      transid=None, print_total=True, user=None):
@@ -228,7 +232,7 @@ class tablenumber(ui.dismisspopup):
         super().__init__(5, 20, title="Table number",
                          dismiss=keyboard.K_CLEAR,
                          colour=ui.colour_line)
-        self.addstr(2, 2, "Table number:")
+        self.win.drawstr(2, 2, 14, "Table number: ", align=">")
         self.numberfield = ui.editfield(
             2, 16, 5, keymap={keyboard.K_CASH: (self.enter, None)})
         self.func = func
@@ -245,9 +249,10 @@ class edititem(ui.dismisspopup):
         super().__init__(5, 66, title="Edit line",
                          dismiss=keyboard.K_CLEAR,
                          colour=ui.colour_line)
-        self.addstr(2, 2, "Edit this line:")
-        self.linefield = ui.editfield(3, 2, 62, f=item.name, flen=240,
-                                      keymap={keyboard.K_CASH: (self.enter, None)})
+        self.win.drawstr(2, 2, 16, "Edit this line:")
+        self.linefield = ui.editfield(
+            3, 2, 62, f=item.name, flen=240,
+            keymap={keyboard.K_CASH: (self.enter, None)})
         self.func = func
         self.item = item
         self.linefield.focus()
@@ -323,8 +328,8 @@ class popup(user.permission_checked, ui.basicpopup):
             return
         super().__init__(self.h, self.w, title="Food Order",
                          colour=ui.colour_input)
-        self.addstr(self.h - 1, 3, "Clear: abandon order   Print: finish   "
-                    "Cancel:  delete item")
+        self.win.addstr(self.h - 1, 3, "Clear: abandon order   Print: finish   "
+                        "Cancel:  delete item")
         # Split the top level menu into lines for display, and add the
         # options to the keymap
         possible_keys = [
@@ -349,7 +354,7 @@ class popup(user.permission_checked, ui.basicpopup):
         maxy = self.h - len(tlm) - 2
         y = maxy + 1
         for i in tlm:
-            self.addstr(y, 2, i)
+            self.win.addstr(y, 2, i)
             y = y + 1
         self.ml = [] # list of chosen items
         self.order = ui.scrollable(2, 2, self.w - 4, maxy - 1, self.ml,
@@ -518,13 +523,13 @@ class message(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["There is a problem with the kitchen printer:", "",
                           problem], title="Kitchen printer problem")
             return
-        ui.dismisspopup.__init__(self, 6, 78, title="Message to kitchen",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, "Order number:")
+        super().__init__(6, 78, title="Message to kitchen",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 14, "Order number: ", align=">")
         self.onfield = ui.editfield(2, 16, 5, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)})
-        self.addstr(2, 23, "(may be blank)")
-        self.addstr(3, 2, "     Message:")
+        self.win.drawstr(2, 23, 14, "(may be blank)")
+        self.win.drawstr(3, 2, 14, "Message: ", align=">")
         self.messagefield = ui.editfield(
             3, 16, 60, flen=160,
             keymap={keyboard.K_CASH: (self.finish, None)})

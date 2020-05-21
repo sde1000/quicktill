@@ -27,7 +27,7 @@ def finish_reason(item, reason):
     stockitem.stocklineid = None
     td.s.flush()
     log.info("Stock: finished item %d reason %s", stockitem.id, reason)
-    ui.infopopup(["Stock item {} is now finished.".format(stockitem.id)],
+    ui.infopopup([f"Stock item {stockitem.id} is now finished."],
                  dismiss=keyboard.K_CASH,
                  title="Stock Finished", colour=ui.colour_info)
 
@@ -35,7 +35,7 @@ def finish_item(item):
     sfl = td.s.query(FinishCode).all()
     fl = [(x.description, finish_reason, (item, x.id)) for x in sfl]
     ui.menu(fl, blurb="Please indicate why you are finishing stock "
-            "number {}:".format(item.id), title="Finish Stock", w=60)
+            f"number {item.id}:", title="Finish Stock", w=60)
 
 @user.permission_required('finish-unconnected-stock',
                           'Finish stock not currently on sale')
@@ -142,22 +142,23 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
     permission_required = ('stock-level-check', 'Check stock levels')
 
     def __init__(self):
-        ui.dismisspopup.__init__(self, 10, 52, title="Stock level check",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, 'Department:')
+        super().__init__(10, 52, title="Stock level check",
+                         colour=ui.colour_input)
+        self.win.addstr(2, 2, 'Department:')
         self.deptfield = ui.modellistfield(
             2, 14, 20, Department, lambda q: q.order_by(Department.id),
             d=lambda x: x.description,
             keymap={
                 keyboard.K_CLEAR: (self.dismiss, None)})
-        self.addstr(4, 2, 'Show stock to buy to cover the next     weeks')
+        self.win.addstr(4, 2, 'Show stock to buy to cover the next     weeks')
         self.wfield = ui.editfield(
             4, 38, 3, validate=ui.validate_positive_nonzero_int)
-        self.addstr(5, 2, 'based on sales over the last     months,')
+        self.win.addstr(5, 2, 'based on sales over the last     months,')
         self.mfield = ui.editfield(
             5, 31, 3, validate=ui.validate_positive_nonzero_int)
-        self.addstr(6, 2, 'ignoring stock where we sell less than     units')
-        self.addstr(7, 2, 'per day.')
+        self.win.addstr(6, 2,
+                        'ignoring stock where we sell less than     units')
+        self.win.addstr(7, 2, 'per day.')
         self.minfield = ui.editfield(
             6, 41, 3, validate=ui.validate_positive_float,
             keymap={
@@ -332,10 +333,11 @@ def add_bestbefore():
 class add_bestbefore_dialog(ui.dismisspopup):
     def __init__(self, stockitem):
         self.stockid = stockitem.id
-        ui.dismisspopup.__init__(self, 7, 60, title="Set best-before date",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, f"Stock item {stockitem.id}: {stockitem.stocktype:.40}")
-        self.addstr(4, 2, "Best before: ")
+        super().__init__(7, 60, title="Set best-before date",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 56,
+                         f"Stock item {stockitem.id}: {stockitem.stocktype:.40}")
+        self.win.drawstr(4, 2, 13, "Best before: ", align=">")
         self.bbfield = ui.datefield(4, 15, keymap={
             keyboard.K_CASH: (self.finish, None)})
         self.bbfield.focus()
@@ -348,10 +350,11 @@ class add_bestbefore_dialog(ui.dismisspopup):
                 ui.infopopup(["Error: item has gone away!"], title="Error")
                 return
             item.bestbefore = bb
-            td.s.commit()
+            user.log(f"Set best-before date of {item.logref} to "
+                     f"{ui.formatdate(bb)}")
             self.dismiss()
             ui.infopopup(
-                [f"Best-before date for {self.stockid} [{item.stocktype}] "
+                [f"Best-before date for {item} [{item.stocktype}] "
                  f"set to {ui.formatdate(bb)}."],
                 title="Best-before date set", dismiss=keyboard.K_CASH,
                 colour=ui.colour_info)

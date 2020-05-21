@@ -104,8 +104,8 @@ class delivery(ui.basicpopup):
         self.win.drawstr(2, 2, 17, "Supplier: ", align=">")
         self.win.drawstr(3, 2, 17, "Date: ", align=">")
         self.win.drawstr(4, 2, 17, "Document number: ", align=">")
-        self.addstr(6, 1, "StockNo Stock Type........................... "
-                    "Unit.... Cost.. Sale  BestBefore")
+        self.win.addstr(6, 1, "StockNo Stock Type........................... "
+                        "Unit.... Cost.. Sale  BestBefore")
         self.supfield = ui.modelfield(
             2, 19, 59, Supplier, 'name', default=d.supplier if d else None,
             create=createsupplier, readonly=readonly)
@@ -207,7 +207,7 @@ class delivery(ui.basicpopup):
         user.log(f"Created delivery {d.logref}")
         self.dn = d.id
         del self.supfield.keymap[keyboard.K_CLEAR]
-        self.addstr(0, 1, f"Delivery Details — {d.id}")
+        self.win.addstr(0, 1, f"Delivery Details — {d.id}")
 
     def finish(self):
         # Save and exit button

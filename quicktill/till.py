@@ -61,14 +61,17 @@ configurations = {
 class intropage(ui.basicpage):
     def __init__(self):
         super().__init__()
-        self.win.addstr(1, 1, "This is quicktill version {}".format(version))
+        h, w = self.win.size()
+        self.win.drawstr(1, 1, w - 2,
+                         f"This is quicktill version {version}")
         y = 5
         if tillconfig.hotkeys:
-            self.addstr(3, 1, "To continue, press one of these keys:")
+            self.win.drawstr(3, 1, w - 2,
+                             "To continue, press one of these keys:")
             for k in tillconfig.hotkeys:
-               self.addstr(y, 3, str(k))
+               self.win.drawstr(y, 3, w - 4, str(k))
                y = y + 1
-        self.addstr(y, 1, "Press Q to quit.")
+        self.win.drawstr(y, 1, w - 2, "Press Q to quit.")
         self.win.move(0, 0)
 
     def keypress(self, k):

@@ -571,6 +571,10 @@ class User(Base, Logged):
     def __str__(self):
         return self.fullname
 
+    @property
+    def logtext(self):
+        return self.fullname
+
 class UserToken(Base, Logged):
     """A token used by a till user to identify themselves
 

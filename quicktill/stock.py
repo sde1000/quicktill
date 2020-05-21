@@ -49,10 +49,10 @@ def stockinfo_popup(sn):
                  show_cursor=False,
                  colour=ui.colour_info)
 
-class annotate(user.permission_checked,ui.dismisspopup):
+class annotate(user.permission_checked, ui.dismisspopup):
     """This class permits annotations to be made to stock items.
     """
-    permission_required=("annotate","Add an annotation to a stock item")
+    permission_required = ("annotate", "Add an annotation to a stock item")
 
     @staticmethod
     def _annotation_type_query(q):
@@ -60,48 +60,49 @@ class annotate(user.permission_checked,ui.dismisspopup):
                 .order_by(AnnotationType.id)
 
     def __init__(self):
-        ui.dismisspopup.__init__(self,9,70,"Annotate Stock",
-                                 colour=ui.colour_input)
-        self.addstr(2,2,"Press stock line key or enter stock number.")
-        self.addstr(3,2,"       Stock item:")
-        stockfield_km={keyboard.K_CLEAR: (self.dismiss,None),}
-        self.stockfield=stockfield(3,21,47,keymap=stockfield_km,
-                                   filter=stockfilter(
-                allow_finished=True,sort_descending_stockid=True),
-                                   title="Choose stock item to annotate",
-                                   check_checkdigits=False)
-        self.addstr(4,2,"Annotation type:")
+        super().__init__(9, 70, "Annotate Stock", colour=ui.colour_input)
+        self.win.drawstr(2, 2, 66,
+                         "Press stock line key or enter stock number.")
+        self.win.drawstr(3, 2, 19, "Stock item: ", align=">")
+        self.stockfield = stockfield(
+            3, 21, 47, keymap={keyboard.K_CLEAR: (self.dismiss, None)},
+            filter=stockfilter(
+                allow_finished=True, sort_descending_stockid=True),
+            title="Choose stock item to annotate",
+            check_checkdigits=False)
+        self.win.drawstr(4, 2, 19, "Annotation type: ", align=">")
         self.anntypefield = ui.modellistfield(
             4, 21, 30, AnnotationType, self._annotation_type_query,
             d=lambda x: x.description)
-        self.addstr(5,2,"Annotation:")
-        self.annfield=ui.editfield(6,2,60,flen=120,keymap={
-                keyboard.K_CASH: (self.finish,None)})
-        ui.map_fieldlist([self.stockfield,self.anntypefield,self.annfield])
+        self.win.drawstr(5, 2, 19, "Annotation: ", align=">")
+        self.annfield = ui.editfield(6, 2, 60, flen=120, keymap={
+                keyboard.K_CASH: (self.finish, None)})
+        ui.map_fieldlist([self.stockfield, self.anntypefield, self.annfield])
         self.stockfield.focus()
         ui.handle_keyboard_input(keyboard.K_CASH) # Pop up picker
+
     def finish(self):
-        item=self.stockfield.read()
+        item = self.stockfield.read()
         if item is None:
-            ui.infopopup(["You must choose a stock item."],title="Error")
+            ui.infopopup(["You must choose a stock item."], title="Error")
             return
-        anntype=self.anntypefield.read()
+        anntype = self.anntypefield.read()
         if anntype is None:
-            ui.infopopup(["You must choose an annotation type!"],title="Error")
+            ui.infopopup(["You must choose an annotation type!"], title="Error")
             return
         if not self.annfield.f:
-            ui.infopopup(["You can't add a blank annotation!"],title="Error")
+            ui.infopopup(["You can't add a blank annotation!"], title="Error")
             return
-        annotation=self.annfield.f or ""
-        cu=ui.current_user()
-        user=cu.dbuser if cu and hasattr(cu,"dbuser") else None
-        td.s.add(StockAnnotation(stockitem=item,type=anntype,text=annotation,
+        annotation = self.annfield.f or ""
+        cu = ui.current_user()
+        user = cu.dbuser if cu and hasattr(cu,"dbuser") else None
+        td.s.add(StockAnnotation(stockitem=item, type=anntype, text=annotation,
                                  user=user))
         td.s.flush()
         self.dismiss()
         ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
-                    item.id,item.stocktype.format())],
-                     title="Annotation Recorded",dismiss=keyboard.K_CASH,
+                    item.id, item.stocktype.format())],
+                     title="Annotation Recorded", dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
 
 class stockfilter:
@@ -223,46 +224,49 @@ class stockpicker(ui.dismisspopup):
         self.filter = filter
         self.check = check_checkdigits and tillconfig.checkdigit_on_usestock
         h = 9 if self.check else 7
-        ui.dismisspopup.__init__(self, h, 62, title, colour=ui.colour_input)
-        self.addstr(2, 2, "   Stock ID:")
+        super().__init__(h, 62, title, colour=ui.colour_input)
+        self.win.drawstr(2, 2, 13, "Stock ID: ", align=">")
         self.numfield = ui.editfield(
             2, 15, 8, validate=ui.validate_positive_nonzero_int,
             f=default.id if default else None,
             keymap={keyboard.K_CASH: (self.numfield_enter, None),
                     keyboard.K_DOWN: (self.numfield_enter, None)})
         self.numfield.sethook = self.numfield_set
+        self.stocktype_label = ui.label(3, 15, 45)
+        self.problem_label = ui.label(4, 15, 45)
         if self.check:
-            self.addstr(6, 2, "Checkdigits:")
+            self.win.drawstr(6, 2, 13, "Checkdigits: ", align=">")
             self.checkfield = ui.editfield(
                 6, 15, 3,
                 keymap={keyboard.K_CASH: (self.checkfield_enter, None),
                         keyboard.K_CLEAR: (self.numfield.focus, None),
                         keyboard.K_UP: (self.numfield.focus, None)})
             self.checkfield.sethook = self.checkfield_set
+            self.checkfield_status = ui.label(6, 19, 7)
         self.numfield.focus()
 
     def numfield_set(self):
-        self.addstr(3, 15, " " * 45)
-        self.addstr(4, 15, " " * 45)
+        self.stocktype_label.set("")
+        self.problem_label.set("")
         if self.numfield.f:
             stockid = int(self.numfield.f)
             item = td.s.query(StockItem)\
                        .options(joinedload('stocktype'))\
                        .get(stockid)
             if item:
-                self.addstr(3, 15, f"{item.stocktype:.43}")
+                self.stocktype_label.set(f"{item.stocktype}")
                 not_ok = self.filter.item_problem(item)
                 if not_ok:
-                    self.addstr(4, 15, f"({not_ok})")
+                    self.problem_label.set(f"({not_ok})")
 
     def checkfield_set(self):
-        self.addstr(6, 20, " " * 7)
+        self.checkfield_status.set("")
         if len(self.checkfield.f) != 3:
             return
         stockid = int(self.numfield.f)
         item = td.s.query(StockItem).get(stockid)
-        self.addstr(
-            6, 20, "(OK)" if item and item.checkdigits == self.checkfield.f
+        self.checkfield_status.set(
+            "(OK)" if item and item.checkdigits == self.checkfield.f
             else "(wrong)")
 
     def numfield_enter(self):
@@ -334,7 +338,7 @@ class stockpicker(ui.dismisspopup):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.linekey)
         else:
-            ui.dismisspopup.keypress(self, k)
+            super().keypress(k)
 
 class stockfield(ui.modelpopupfield):
     """Field that allows a stock item to be chosen.

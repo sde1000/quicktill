@@ -276,8 +276,8 @@ class edittransnotes(user.permission_checked, ui.dismisspopup):
         self.transid = transid
         self.func = func
         trans = td.s.query(Transaction).get(transid)
-        ui.dismisspopup.__init__(
-            self, 5, 60, title="Notes for transaction {}".format(trans.id),
+        super().__init__(
+            5, 60, title=f"Notes for transaction {trans.id}",
             colour=ui.colour_input)
         notes = trans.notes
         self.notesfield = ui.editfield(2, 2, 56, f=notes, flen=60, keymap={
@@ -289,18 +289,19 @@ class edittransnotes(user.permission_checked, ui.dismisspopup):
         self.dismiss()
         self.func(notes)
 
-class splittrans(user.permission_checked,ui.dismisspopup):
-    """A popup to allow marked lines to be split into a different transaction."""
+class splittrans(user.permission_checked, ui.dismisspopup):
+    """A popup to allow marked lines to be split into a different transaction.
+    """
     permission_required = ("split-trans", "Split a transaction into two parts")
 
     def __init__(self, total, func):
-        ui.dismisspopup.__init__(
-            self, 8, 64, title="Move marked lines to new transaction",
+        super().__init__(
+            8, 64, title="Move marked lines to new transaction",
             colour=ui.colour_input)
         self._func = func
-        self.addstr(2, 2, "Total value of marked lines: {}".format(total))
-        self.addstr(4, 2, "Notes for the new transaction containing "
-                    "the marked lines:")
+        self.win.drawstr(2, 2, 60, f"Total value of marked lines: {total}")
+        self.win.drawstr(4, 2, 60, "Notes for the new transaction containing "
+                         "the marked lines:")
         self.notesfield = ui.editfield(5, 2, 60, flen=60, keymap={
             keyboard.K_CASH: (self.enter, None)})
         self.notesfield.focus()
@@ -325,11 +326,11 @@ class addtransline(user.permission_checked, ui.dismisspopup):
 
     def __init__(self, func):
         self.func = func
-        ui.dismisspopup.__init__(
-            self, 9, 70, title="Add a custom transaction line",
+        super().__init__(
+            9, 70, title="Add a custom transaction line",
             colour=ui.colour_input)
-        self.addstr(2, 2, " Department:")
-        self.addstr(3, 2, "Description:")
+        self.win.drawstr(2, 2, 13, "Department: ", align=">")
+        self.win.drawstr(3, 2, 13, "Description: ", align=">")
         self.deptfield = ui.modellistfield(
             2, 15, 20, Department,
             lambda q: q.order_by(Department.id),
@@ -338,10 +339,10 @@ class addtransline(user.permission_checked, ui.dismisspopup):
                 keyboard.K_CLEAR: (self.dismiss, None)})
         self.descfield = ui.editfield(3, 15, 53, flen=300)
         self.itemsfield = ui.editfield(4, 15, 5, validate=ui.validate_int)
-        self.addstr(4, 21, "items @ {}".format(tillconfig.currency))
+        self.win.addstr(4, 21, "items @ {}".format(tillconfig.currency))
         self.amountfield = ui.editfield(4, 29 + len(tillconfig.currency), 8,
                                         validate=ui.validate_positive_float)
-        self.addstr(4, 38 + len(tillconfig.currency), '=')
+        self.win.addstr(4, 38 + len(tillconfig.currency), '=')
         self.itemsfield.sethook = self.calculate_total
         self.amountfield.sethook = self.calculate_total
         self.addbutton = ui.buttonfield(
@@ -351,10 +352,11 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         ui.map_fieldlist(
             [self.deptfield, self.descfield, self.itemsfield,
              self.amountfield, self.addbutton])
+        self.total = ui.label(4, 40 + len(tillconfig.currency), 15)
         self.deptfield.focus()
 
     def calculate_total(self):
-        self.addstr(4, 40 + len(tillconfig.currency), ' ' * 15)
+        self.total.set("")
         try:
             items = int(self.itemsfield.f)
             amount = Decimal(self.amountfield.f)
@@ -362,8 +364,8 @@ class addtransline(user.permission_checked, ui.dismisspopup):
                 raise Exception("Zero items not permitted")
         except:
             return
-        self.addstr(4, 40 + len(tillconfig.currency),
-                    tillconfig.fc(items * amount))
+        self.total.set(tillconfig.fc(items * amount))
+
     def enter(self):
         dept = self.deptfield.read()
         if dept is None:
@@ -397,10 +399,12 @@ class recalltranspopup(user.permission_checked, ui.dismisspopup):
         "recall-any-trans", "Recall any transaction, even from previous sessions")
     def __init__(self, reg):
         self._reg = reg
-        ui.dismisspopup.__init__(self, 5, 34, title="Recall Transaction", colour=ui.colour_input)
-        self.addstr(2, 2, "Transaction number:")
-        self.transfield = ui.editfield(2, 22, 10, validate=ui.validate_int, keymap={
-            keyboard.K_CASH: (self.enterkey, None)})
+        super().__init__(5, 34, title="Recall Transaction",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 20, "Transaction number: ", align=">")
+        self.transfield = ui.editfield(
+            2, 22, 10, validate=ui.validate_int, keymap={
+                keyboard.K_CASH: (self.enterkey, None)})
         self.transfield.focus()
 
     def enterkey(self):
@@ -535,7 +539,7 @@ class page(ui.basicpage):
         self.transid = None
         self.user = user
         log.info("Page created for %s", self.user.fullname)
-        ui.basicpage.__init__(self)
+        super().__init__()
         self._autolock = autolock
         self.locked = False
         self._timeout = timeout
@@ -719,9 +723,9 @@ class page(ui.basicpage):
     def _redraw_note(self):
         trans = self._gettrans()
         note = trans.notes if trans else ""
-        note = note + " " * (self.w - len(note))
         c = self.win.getyx()
-        self.addstr(0, 0, note, ui.colour_changeline)
+        self.win.clear(0, 0, 1, self.w)
+        self.win.drawstr(0, 0, self.w, note, colour=ui.colour_changeline)
         self.win.move(*c)
 
     def cursor_off(self):
@@ -2182,8 +2186,8 @@ class page(ui.basicpage):
             return
         if othertrans.closed:
             ui.infopopup(
-                ["Transaction {} has been closed, so we can't "
-                 "merge this transaction into it.".format(othertrans.id)],
+                [f"Transaction {othertrans.id} has been closed, so we can't "
+                 "merge this transaction into it."],
                 title="Error")
             return
         if _transaction_age_locked(othertrans):
@@ -2523,7 +2527,7 @@ class page(ui.basicpage):
         if self.locked:
             self.locked = False
             self._redraw()
-        ui.basicpage.select(self)
+        super().select()
         log.info("Existing page selected for %s", self.user.fullname)
         self.entry()
 
@@ -2542,11 +2546,11 @@ class page(ui.basicpage):
                 log.info("Page for %s deselected; unsaved data (%s) so just "
                          "hiding the page", self.user.fullname, unsaved_data)
                 self.unsaved_data = unsaved_data
-                return ui.basicpage.deselect(self)
+                return super().deselect()
             focus = focus.parent
         log.info("Page for %s deselected with no unsaved data: deleting self",
                  self.user.fullname)
-        ui.basicpage.deselect(self)
+        super().deselect()
         self.dismiss()
         if self._timeout_handle:
             self._timeout_handle.cancel()

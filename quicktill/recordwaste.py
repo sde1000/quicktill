@@ -34,8 +34,9 @@ def stockline_chosen(stockline):
             if len(stockline.stockonsale) > 0:
                 record_item_waste(stockline.stockonsale[0])
             else:
-                ui.infopopup(["There is nothing on sale on {}.".format(
-                            stockline.name)], title="Error")
+                ui.infopopup(
+                    [f"There is nothing on sale on {stockline.name}."],
+                    title="Error")
 
 class record_item_waste(ui.dismisspopup):
     """Record waste against a single stock item.
@@ -43,15 +44,17 @@ class record_item_waste(ui.dismisspopup):
     The stock item may already be in use by a stock line of any type.
     """
     def __init__(self, stockitem=None):
-        ui.dismisspopup.__init__(self, 10, 70, title="Record Waste",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, "Press stock line key or enter stock number.")
-        self.addstr(4, 2, "       Stock item:")
-        self.addstr(5, 2, "Waste description:")
-        self.addstr(6, 2, "    Amount wasted:")
-        self.stockfield = stock.stockfield(4, 21, 47,keymap={
-            keyboard.K_CLEAR: (self.dismiss, None),},
-                                           check_checkdigits=True)
+        super().__init__(10, 70, title="Record Waste",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 66,
+                         "Press stock line key or enter stock number.")
+        self.win.drawstr(4, 2, 19, "Stock item: ", align=">")
+        self.win.drawstr(5, 2, 19, "Waste description: ", align=">")
+        self.win.drawstr(6, 2, 19, "Amount wasted: ", align=">")
+        self.stockfield = stock.stockfield(
+            4, 21, 47,keymap={
+                keyboard.K_CLEAR: (self.dismiss, None),},
+            check_checkdigits=True)
         self.stockfield.sethook = self.stockfield_updated
         self.wastedescfield = ui.modellistfield(
             5, 21, 30, RemoveCode,
@@ -60,6 +63,8 @@ class record_item_waste(ui.dismisspopup):
         self.amountfield = ui.editfield(
             6, 21, len(str(max_quantity)) + 1, validate=ui.validate_float,
             keymap={keyboard.K_CASH: (self.finish, None)})
+        self.unitlabel = ui.label(6, 23 + len(str(max_quantity)),
+                                  68 - 23 - len(str(max_quantity)))
         ui.map_fieldlist([self.stockfield, self.wastedescfield,
                           self.amountfield])
         if stockitem:
@@ -69,11 +74,11 @@ class record_item_waste(ui.dismisspopup):
             self.stockfield.focus()
 
     def stockfield_updated(self):
-        self.addstr(6, 23 + len(str(max_quantity)), " " * 18)
         s = self.stockfield.read()
         if s:
-            self.addstr(6, 23 + len(str(max_quantity)),
-                        "{}s".format(s.stocktype.unit.name))
+            self.unitlabel.set(f"{s.stocktype.unit.name}s")
+        else:
+            self.unitlabel.set("")
 
     def finish(self):
         item = self.stockfield.read()
@@ -126,19 +131,21 @@ class record_line_waste(ui.dismisspopup):
     """
     def __init__(self, stockline):
         self.stocklineid = stockline.id
-        ui.dismisspopup.__init__(self, 9, 70, title="Record Waste",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, "       Stock line: {}".format(stockline.name))
+        super().__init__(9, 70, title="Record Waste", colour=ui.colour_input)
+        self.win.drawstr(2, 2, 19, "Stock line: ", align=">")
+        self.win.drawstr(2, 21, 47, stockline.name)
         if stockline.linetype == "display":
-            self.addstr(3, 2, "Amount on display: {} {}s".format(
-                stockline.ondisplay, stockline.stocktype.unit.name))
+            self.win.drawstr(3, 2, 19, "Amount on display: ", align=">")
+            self.win.drawstr(3, 21, 47, f"{stockline.ondisplay} "
+                             f"{stockline.stocktype.unit.name}s")
         else:
-            self.addstr(3, 2, "  Amount in stock: {} {}s".format(
-                stockline.remaining, stockline.stocktype.unit.name))
-        self.addstr(5, 2, "Waste description:")
-        self.addstr(6, 2, "    Amount wasted: {} {}s".format(
-            ' ' * len(str(max_quantity)),
-            stockline.stocktype.unit.name))
+            self.win.drawstr(3, 2, 19, "Amount in stock: ", align=">")
+            self.win.drawstr(3, 21, 47, stockline.remaining_str)
+        self.win.drawstr(5, 2, 19, "Waste description: ", align=">")
+        self.win.drawstr(6, 2, 19, "Amount wasted: ", align=">")
+        self.win.drawstr(6, 22 + len(str(max_quantity)),
+                         68 - 22 - len(str(max_quantity)),
+                         f"{stockline.stocktype.unit.name}s")
         self.wastedescfield = ui.modellistfield(
             5, 21, 30, RemoveCode,
             lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),

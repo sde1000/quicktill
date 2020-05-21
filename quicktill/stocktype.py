@@ -55,11 +55,11 @@ class choose_stocktype(ui.dismisspopup):
         self.st = default.id if default else None
         super().__init__(13, 48, title=title, colour=ui.colour_input)
         self.win.wrapstr(2, 2, 44, blurb)
-        self.win.addstr(5, 2, "Manufacturer:")
-        self.win.addstr(6, 2, "        Name:")
-        self.win.addstr(7, 2, "  Department:")
-        self.win.addstr(7, 38, "ABV:")
-        self.win.addstr(8, 2, "        Unit:")
+        self.win.drawstr(5, 2, 14, "Manufacturer: ", align=">")
+        self.win.drawstr(6, 2, 14, "Name: ", align=">")
+        self.win.drawstr(7, 2, 14, "Department:", align=">")
+        self.win.drawstr(7, 37, 5, "ABV: ", align=">")
+        self.win.drawstr(8, 2, 14, "Unit: ", align=">")
         self.manufield = ui.editfield(
             5, 16, 30,
             validate=self.autocomplete_manufacturer if mode == 1 else None,
@@ -192,6 +192,7 @@ class choose_stocktype(ui.dismisspopup):
         self.update_model(st)
         td.s.add(st)
         td.s.flush() # ensures the model has an identity
+        user.log(f"Created stock type {st.logref}")
         self.func(st)
 
     def finish_select(self):
@@ -235,8 +236,9 @@ class choose_stocktype(ui.dismisspopup):
             self.dismiss()
             st = td.s.query(StockType).get(self.st)
             self.update_model(st)
+            user.log(f"Updated stock type {st.logref}")
 
-class reprice_stocktype(user.permission_checked,ui.dismisspopup):
+class reprice_stocktype(user.permission_checked, ui.dismisspopup):
     """Allow the sale price to be changed on a particular StockType.
 
     Shows a list of items that are currently in stock and their
@@ -278,16 +280,18 @@ class reprice_stocktype(user.permission_checked,ui.dismisspopup):
                     x.costprice)))
               for x in sl]
         w = min(max(f.idealwidth() + 2, len(name) + 4, 30), mw)
-        ui.dismisspopup.__init__(self, h, w, title="Re-price {}".format(name),
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, "Sale price: {}".format(tillconfig.currency))
+        super().__init__(h, w, title=f"Re-price {name}",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 12, "Sale price: ", align=">")
+        self.win.addstr(2, 14, tillconfig.currency)
         self.salefield = ui.editfield(
             2, 14 + len(tillconfig.currency), 6, validate=ui.validate_float,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.salefield.set(st.saleprice)
-        self.addstr(2, 21 + len(tillconfig.currency), "per {}".format(
-            st.unit.item_name))
-        self.addstr(4, 1, headerline.display(w - 2)[0])
+        self.win.drawstr(2, 21 + len(tillconfig.currency),
+                         w - 22 - len(tillconfig.currency),
+                         f"per {st.unit.item_name}")
+        self.win.addstr(4, 1, headerline.display(w - 2)[0])
         s = ui.scrollable(5, 1, w - 2, h - 6, dl=ll, show_cursor=False)
         self.salefield.keymap[keyboard.K_CASH] = (self.reprice, None)
         ui.map_fieldlist([self.salefield, s])

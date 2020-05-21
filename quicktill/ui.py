@@ -291,13 +291,6 @@ class basicpage(basicwin):
         if basicpage._basepage:
             basicpage._basepage.deselect()
         self.win = rootwin.new("page", "max", "page", 0)
-        # XXX In the past, self.win was a native ncurses window object
-        # and we had to use a wrapper for addstr to deal with
-        # character encodings.  Now self.win is a python object with
-        # its own addstr method; copying it here is redundant and done
-        # only for compatibility with code that hasn't been updated
-        # yet
-        self.addstr = self.win.addstr
         basicpage._pagelist.append(self)
         self.h, self.w = self.win.size()
         self.savedfocus = self
@@ -410,13 +403,6 @@ class basicpopup(basicwin):
         w = min(w, mw)
         h = min(h, mh)
         self.win = rootwin.new(h, w, "center", "center", colour=colour)
-        # XXX In the past, self.win was a native ncurses window object
-        # and we had to use a wrapper for addstr to deal with
-        # character encodings.  Now self.win is a python object with
-        # its own addstr method; copying it here is redundant and done
-        # only for compatibility with code that hasn't been updated
-        # yet
-        self.addstr = self.win.addstr
         self.win.border(title, cleartext)
 
     def dismiss(self):
@@ -1778,8 +1764,10 @@ class modelpopupfield(valuefield):
             s = ""
         if len(s) > self.w:
             s = s[:self.w]
-        self.win.addstr(self.y, self.x, ' ' * self.w, self.win.colour.reversed)
-        self.win.addstr(self.y, self.x, s, self.win.colour.reversed)
+        self.win.clear(self.y, self.x, 1, self.w,
+                       colour=self.win.colour.reversed)
+        self.win.drawstr(self.y, self.x, self.w, s,
+                         colour=self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x)
         else:

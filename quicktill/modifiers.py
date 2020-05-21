@@ -57,8 +57,8 @@ class SimpleModifier(BaseModifier, metaclass=RegisterSimpleModifier):
     pass
 
 class modify(user.permission_checked, ui.listpopup):
-    permission_required=('alter-modifier',
-                         'Alter the key bindings for a modifier')
+    permission_required = ('alter-modifier',
+                           'Alter the key bindings for a modifier')
 
     def __init__(self, name):
         # If the modifier does not exist, create it so that its
@@ -83,8 +83,7 @@ class modify(user.permission_checked, ui.listpopup):
                 ui.line("To delete a binding, highlight it and press Cancel."),
                 ui.emptyline(),
                 f("Line key", "Menu key")]
-        ui.listpopup.__init__(
-            self, kbl, header=hl, title="{} modifier".format(name), w=58)
+        super().__init__(kbl, header=hl, title=f"{name} modifier", w=58)
 
     def keypress(self, k):
         if hasattr(k, 'line'):
@@ -111,18 +110,19 @@ def defined_modifiers():
 
 class modifiermenu(ui.menu):
     def __init__(self):
-        ui.menu.__init__(self, [(x,modify,(x,)) for x in defined_modifiers()],
-                         blurb="Choose a modifier to alter from the list below, "
-                         "or press a line key that is already bound to the "
-                         "modifier.",
-                         title="Modifiers")
+        super().__init__(
+            [(x, modify, (x,)) for x in defined_modifiers()],
+            blurb="Choose a modifier to alter from the list below, "
+            "or press a line key that is already bound to the "
+            "modifier.",
+            title="Modifiers")
 
     def keypress(self, k):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.mod_selected, allow_stocklines=False,
                               allow_plus=False, allow_mods=True)
         else:
-            ui.menu.keypress(self, k)
+            super().keypress(k)
 
     def mod_selected(self, kb):
         self.dismiss()

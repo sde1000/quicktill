@@ -9,52 +9,54 @@ from .version import version
 import subprocess
 
 import logging
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
-class receiptprint(user.permission_checked,ui.dismisspopup):
-    permission_required=('print-receipt-by-number',
-                         'Print any receipt given the transaction number')
+class receiptprint(user.permission_checked, ui.dismisspopup):
+    permission_required = ('print-receipt-by-number',
+                           'Print any receipt given the transaction number')
+
     def __init__(self):
-        ui.dismisspopup.__init__(self,5,30,title="Receipt print",
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_input)
-        self.addstr(2,2,"Receipt number:")
+        super().__init__(5, 30, title="Receipt print",
+                         dismiss=keyboard.K_CLEAR,
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 16, "Receipt number: ", align=">")
         self.rnfield = ui.editfield(
             2, 18, 10, validate=ui.validate_positive_nonzero_int, keymap={
                 keyboard.K_CASH: (self.enter, None, True)})
         self.rnfield.focus()
+
     def enter(self):
         try:
-            rn=int(self.rnfield.f)
+            rn = int(self.rnfield.f)
         except:
-            rn=None
-        if rn is None: return
+            rn = None
+        if rn is None:
+            return
         self.dismiss()
         log.info("Manage Till: printing transaction %d",rn)
         ui.toast("The receipt is being printed.")
-        with ui.exception_guard("printing the receipt",title="Printer error"):
+        with ui.exception_guard("printing the receipt", title="Printer error"):
             printer.print_receipt(rn)
 
-@user.permission_required('version','See version information')
+@user.permission_required('version', 'See version information')
 def versioninfo():
-    """
-    Display the till version information.
-
+    """Display the till version information.
     """
     log.info("Version popup")
-    ui.infopopup(["Quick till software %s"%version,
-                  "© Copyright 2004–2020 Stephen Early",
-                  "Configuration URL: %s"%tillconfig.configversion,
-                  "Configuration name: %s"%tillconfig.configname,
-                  "Operating system: %s %s %s"%(os.uname()[0],
-                                                os.uname()[2],
-                                                os.uname()[3]),
-                  "Python version: %s %s"%tuple(sys.version.split('\n')),
-                  td.db_version()],
-                 title="Software Version Information",
-                 colour=ui.colour_info,dismiss=keyboard.K_CASH)
+    pver = sys.version.replace('\n', '')
+    ui.infopopup(
+        [f"Quick till software {version}",
+         "© Copyright 2004–2020 Stephen Early",
+         f"Configuration URL: {tillconfig.configversion}",
+         f"Configuration name: {tillconfig.configname}",
+         f"Operating system: {os.uname()[0]} {os.uname()[2]} {os.uname()[3]}",
+         f"Python version: {pver}",
+         td.db_version()],
+        title="Software Version Information",
+        colour=ui.colour_info,
+        dismiss=keyboard.K_CASH)
 
-@user.permission_required('exit',"Exit the till software")
+@user.permission_required('exit', "Exit the till software")
 def restartmenu():
     log.info("Restart menu")
     menu = [(x[1], tillconfig.mainloop.shutdown, (x[0],))
@@ -64,7 +66,7 @@ def restartmenu():
 class slmenu(ui.keymenu):
     def __init__(self):
         log.info("Stock line / PLU management popup")
-        menu=[
+        menu = [
             ("1", "Stock lines", stocklines.stocklinemenu, None),
             ("2", "Price lookups", plu.plumenu, None),
             ("3", "Modifiers", modifiers.modifiermenu, None),
@@ -79,17 +81,19 @@ class slmenu(ui.keymenu):
             ("7", "Edit key labels", linekeys.edit_keycaps, None),
             ("8", "Move keys", linekeys.move_keys, None),
         ]
-        ui.keymenu.__init__(
-            self, menu, title="Stock line and PLU options",
+        super().__init__(
+            menu, title="Stock line and PLU options",
             blurb="You can press a line key here to go directly to "
             "editing stock lines, price lookups and modifiers that are "
             "already bound to it.")
+
     def keypress(self, k):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.line_selected, allow_stocklines=True,
                               allow_plus=True, allow_mods=True)
         else:
-            ui.keymenu.keypress(self, k)
+            super().keypress(k)
+
     def line_selected(self, kb):
         self.dismiss()
         td.s.add(kb)
@@ -103,10 +107,10 @@ class slmenu(ui.keymenu):
 @user.permission_required('netinfo', 'See network information')
 def netinfo():
     log.info("Net info popup")
-    v4=subprocess.check_output(["ip","-4","addr"]).decode('ascii')
-    v6=subprocess.check_output(["ip","-6","addr"]).decode('ascii')
-    ui.infopopup(["IPv4:"]+v4.split('\n')+["IPv6:"]+v6.split('\n'),
-                 title="Network information",colour=ui.colour_info)
+    v4 = subprocess.check_output(["ip", "-4", "addr"]).decode('ascii')
+    v6 = subprocess.check_output(["ip", "-6", "addr"]).decode('ascii')
+    ui.infopopup(["IPv4:"] + v4.split('\n') + ["IPv6:"] + v6.split('\n'),
+                 title="Network information", colour=ui.colour_info)
 
 @user.permission_required('fullscreen', 'Enter / leave fullscreen mode')
 def fullscreen(setting):
@@ -178,7 +182,7 @@ def popup():
     else:
         exit = ("8", "Exit / restart till software",
                 restartmenu, None)
-    menu=[
+    menu = [
         ("1", "Sessions", session.menu, None),
         ("2", "Current session summary", session.currentsummary, None),
         ("4", "Stock lines, PLUs, modifiers and keyboard", slmenu, None),

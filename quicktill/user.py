@@ -347,10 +347,10 @@ class adduser(permission_checked, ui.dismisspopup):
     permission_required = ('edit-user', 'Edit a user')
 
     def __init__(self):
-        ui.dismisspopup.__init__(self, 6, 60, title="Add user",
-                                 colour=ui.colour_input)
-        self.addstr(2, 2, ' Full name:')
-        self.addstr(3, 2, 'Short name:')
+        super().__init__(6, 60, title="Add user",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 12, 'Full name: ', align=">")
+        self.win.drawstr(3, 2, 12, 'Short name: ', align=">")
         self.fullnamefield = ui.editfield(2, 14, 40, keymap={
             keyboard.K_CLEAR: (self.dismiss, None)})
         self.shortnamefield = ui.editfield(3, 14, 30, keymap={
@@ -370,6 +370,7 @@ class adduser(permission_checked, ui.dismisspopup):
                  enabled=True)
         td.s.add(u)
         td.s.flush()
+        log(f"Added new user {u.logref}")
         self.dismiss()
         edituser(u.id)
 
@@ -392,8 +393,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
         else:
             dbt = td.s.query(UserToken).get(t)
             if dbt and dbt.user and not self._allow_inuse:
-                self.message = "In use by {}".format(
-                    dbt.user.fullname)
+                self.message = f"In use by {dbt.user.fullname}"
                 self.f = None
             else:
                 self.f = t
@@ -402,15 +402,15 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
 
     def draw(self):
         pos = self.win.getyx()
-        self.win.addstr(self.y, self.x, ' ' * self.w,
-                        self.win.colour.reversed)
+        self.win.clear(self.y, self.x, 1, self.w,
+                       colour=self.win.colour.reversed)
         if self.f:
-            self.win.addstr(self.y, self.x, self.f[:self.w],
-                            self.win.colour.reversed)
+            self.win.drawstr(self.y, self.x, self.w, self.f,
+                             colour=self.win.colour.reversed)
         else:
             if self.focused:
-                self.win.addstr(self.y, self.x, self.message[:self.w],
-                                self.win.colour.reversed)
+                self.win.drawstr(self.y, self.x, self.w, self.message,
+                                 colour=self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x)
         else:
@@ -440,10 +440,10 @@ class manage_user_tokens(ui.dismisspopup):
     def __init__(self, userid):
         self.userid = userid
         user = td.s.query(User).get(userid)
-        super().__init__(15, 60, title="Manage tokens for {}".format(
-            user.fullname), colour=ui.colour_input)
-        self.win.addstr(2, 2, "      Token:")
-        self.win.addstr(3, 2, "Description:")
+        super().__init__(15, 60, title=f"Manage tokens for {user.fullname}",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 13, "Token: ", align=">")
+        self.win.drawstr(3, 2, 13, "Description: ", align=">")
         self.tokenfield = tokenfield(
             2, 15, 40,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
@@ -524,6 +524,7 @@ def do_add_group(userid, group):
     u = td.s.query(User).get(userid)
     g = td.s.query(Group).get(group)
     u.groups.append(g)
+    log(f"Granted permission group {g.logref} to {u.logref}")
     td.s.flush()
 
 def addgroup(userid):
@@ -540,8 +541,8 @@ def addgroup(userid):
     f = ui.tableformatter(' l l ')
     menu = [(f(g.id, g.description),
              do_add_group, (userid, g.id)) for g in gl]
-    ui.menu(menu, title="Give permission group to {}".format(u.fullname),
-            blurb="Choose the permission group to give to {}".format(u.fullname))
+    ui.menu(menu, title=f"Give permission group to {u.fullname}",
+            blurb=f"Choose the permission group to give to {u.fullname}")
 
 class edituser(permission_checked, ui.basicpopup):
     permission_required = ('edit-user', 'Edit a user')
@@ -550,16 +551,15 @@ class edituser(permission_checked, ui.basicpopup):
         self.userid = userid
         u = td.s.query(User).get(userid)
         if u.superuser and not ui.current_user().is_superuser:
-            ui.infopopup(["You can't edit {} because that user has the "
-                          "superuser bit set and you do not.".format(
-                              u.fullname)], title="Not allowed")
+            ui.infopopup(
+                [f"You can't edit {u.fullname} because that user has the "
+                 "superuser bit set and you do not."], title="Not allowed")
             return
-        ui.basicpopup.__init__(self, 12, 60, title="Edit user",
-                               colour=ui.colour_input)
-        self.addstr(2, 2, '   Full name:')
-        self.addstr(3, 2, '  Short name:')
-        self.addstr(4, 2, 'Web username:')
-        self.addstr(5, 2, '      Active:')
+        super().__init__(12, 60, title="Edit user", colour=ui.colour_input)
+        self.win.drawstr(2, 2, 14, 'Full name: ', align=">")
+        self.win.drawstr(3, 2, 14, 'Short name: ', align=">")
+        self.win.drawstr(4, 2, 14, 'Web username: ', align=">")
+        self.win.drawstr(5, 2, 14, 'Active: ', align=">")
         self.fnfield = ui.editfield(2, 16, 40, f=u.fullname)
         self.snfield = ui.editfield(3, 16, 30, f=u.shortname)
         self.wnfield = ui.editfield(4, 16, 30, f=u.webuser)
@@ -586,11 +586,13 @@ class edituser(permission_checked, ui.basicpopup):
         self.dismiss()
         u = td.s.query(User).get(self.userid)
         u.superuser = False
+        log(f"Removed superuser status from {u.logref}")
 
     def removepermission(self, group):
         u = td.s.query(User).get(self.userid)
-        p = td.s.query(Group).get(group)
-        u.groups.remove(p)
+        g = td.s.query(Group).get(group)
+        u.groups.remove(g)
+        log(f"Removed permission group {g.logref} from {u.logref}")
 
     def editpermissions(self):
         u = td.s.query(User).get(self.userid)
@@ -598,7 +600,7 @@ class edituser(permission_checked, ui.basicpopup):
         pl = [ (f(g.id, g.description),
                 self.removepermission, (g.id,)) for g in u.groups ]
         pl.insert(0, ("Add permission group", addgroup, (self.userid,)))
-        ui.menu(pl, title="Permissions for {}".format(u.fullname),
+        ui.menu(pl, title=f"Permissions for {u.fullname}",
                 blurb="Select a permission group and press Cash/Enter "
                 "to remove it.")
 
@@ -616,6 +618,7 @@ class edituser(permission_checked, ui.basicpopup):
         u.webuser = wn if len(wn) > 0 else None
         u.enabled = self.actfield.read()
         self.dismiss()
+        log(f"Updated details for user {u.logref}")
 
 def display_info(userid=None):
     if userid is None:
@@ -643,6 +646,7 @@ def reactivate_user(userid):
     u.enabled = True
     td.s.commit()
     ui.toast(f'User "{u.fullname}" reactivated.')
+    log(f"Reactivated user {u.logref}")
     edituser(userid)
 
 @permission_required('edit-user', 'Edit a user')
@@ -700,10 +704,10 @@ class managetokens(permission_checked, ui.dismisspopup):
     permission_required = ("manage-tokens", "Manage user login tokens")
     def __init__(self):
         super().__init__(12, 60, title="Manage tokens", colour=ui.colour_input)
-        self.addstr(2, 2, "      Token:")
-        self.addstr(3, 2, "Description:")
-        self.addstr(4, 2, "Assigned to:")
-        self.addstr(5, 2, "  Last used:")
+        self.win.drawstr(2, 2, 13, "Token: ", align=">")
+        self.win.drawstr(3, 2, 13, "Description: ", align=">")
+        self.win.drawstr(4, 2, 13, "Assigned to: ", align=">")
+        self.win.drawstr(5, 2, 13, "Last used: ", align=">")
         self.tokenfield = tokenfield(
             2, 15, 40, allow_inuse=True,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
@@ -725,7 +729,9 @@ class managetokens(permission_checked, ui.dismisspopup):
             if dbt and dbt.user:
                 self.description.set(dbt.description)
                 self.user.set(dbt.user.fullname)
-                self.lastused.set(dbt.last_seen)
+                self.lastused.set(
+                    f"{dbt.last_seen:%Y-%m-%d %H:%M}" if dbt.last_seen
+                    else "Never")
                 self.opt_1.set("1. Assign this token to a different user")
                 self.opt_2.set("2. Remove this token from {}".format(
                     dbt.user.fullname))

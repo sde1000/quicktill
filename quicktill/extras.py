@@ -124,12 +124,12 @@ class twitter_post(ui.dismisspopup):
                 ui.infopopup(["Unable to connect to Twitter"],
                              title="Error")
             return
-        ui.dismisspopup.__init__(self, 7, 76,
-                                 title="@{} Twitter".format(user["screen_name"]),
-                                 dismiss=keyboard.K_CLEAR,
-                                 colour=ui.colour_input)
+        super().__init__(7, 76,
+                         title=f'@{user["screen_name"]} Twitter',
+                         dismiss=keyboard.K_CLEAR,
+                         colour=ui.colour_input)
         self.tapi = tapi
-        self.addstr(2, 2, "Type in your update here and press Enter:")
+        self.win.drawstr(2, 2, 72, "Type in your update here and press Enter:")
         self.tfield = ui.editfield(
             4, 2, 72, f=default_text, flen=140, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None),
@@ -153,13 +153,13 @@ class twitter_post(ui.dismisspopup):
 class Tweet(ui.lrline):
     def __init__(self, status):
         self.status = status
-        ui.lrline.__init__(
-            self, ltext=status["text"],
-            rtext="(@{} {})".format(
-                status["user"]["screen_name"], status["created_at"]))
+        super().__init__(
+            ltext=status["text"],
+            rtext=f'(@{status["user"]["screen_name"]} {status["created_at"]})')
 
 class twitter_client(user.permission_checked, ui.dismisspopup):
     permission_required = ("twitter", "Use the Twitter client")
+
     def __init__(self, tapi):
         mh, mw = ui.rootwin.size()
         # We want to make our window very-nearly full screen
@@ -172,15 +172,15 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["Unable to connect to Twitter"],
                          title="Error")
             return
-        ui.dismisspopup.__init__(
-            self, h, w, title="@{} Twitter".format(user["screen_name"]),
+        super().__init__(
+            h, w, title=f'@{user["screen_name"]} Twitter',
             dismiss=keyboard.K_CLEAR,
             colour=ui.colour_input)
         self.tl = []
         # The first line of the window is a text entry line for tweeting.
         # The rest of the window is a scrollable list of tweets by us and
         # by other people.
-        self.addstr(2, 2, "Your tweet: ")
+        self.win.drawstr(2, 2, 12, "Your tweet: ", align=">")
         self.tfield = ui.editfield(
             2, 14, w - 16, flen=140, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None),
@@ -236,9 +236,9 @@ class _finish_refusal(ui.dismisspopup):
         self.reason = reason
         super().__init__(10, 76, title="Refusals log entry",
                          colour=ui.colour_input)
-        self.win.addstr(2, 2, "Please add any additional details below "
+        self.win.drawstr(2, 2, 72, "Please add any additional details below "
                         "and press Enter.")
-        self.win.addstr(4, 2, "Reason: {}".format(reason))
+        self.win.drawstr(4, 2, 72, f"Reason: {reason}")
         self.text = ui.editfield(
             6, 2, 72, keymap={
                 keyboard.K_CLEAR: (self.dismiss, None),
@@ -249,6 +249,6 @@ class _finish_refusal(ui.dismisspopup):
         td.s.add(RefusalsLog(
             user_id=ui.current_user().userid,
             terminal=tillconfig.configname,
-            details="{} - {}".format(self.reason, self.text.f)))
+            details=f"{self.reason} - {self.text.f}"))
         self.dismiss()
         ui.toast("Refusals log entry added")
