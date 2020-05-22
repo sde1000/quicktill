@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.10 (Ubuntu 10.10-0ubuntu0.18.04.1)
--- Dumped by pg_dump version 10.10 (Ubuntu 10.10-0ubuntu0.18.04.1)
+-- Dumped from database version 10.12 (Ubuntu 10.12-0ubuntu0.18.04.1)
+-- Dumped by pg_dump version 10.12 (Ubuntu 10.12-0ubuntu0.18.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -165,6 +165,23 @@ $$;
 
 ALTER FUNCTION public.notify_keycap_change() OWNER TO steve;
 
+--
+-- Name: notify_log_entry(); Type: FUNCTION; Schema: public; Owner: steve
+--
+
+CREATE FUNCTION public.notify_log_entry() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('log', NEW.id::text);
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_log_entry() OWNER TO steve;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -323,6 +340,59 @@ CREATE TABLE public.keycaps (
 
 
 ALTER TABLE public.keycaps OWNER TO steve;
+
+--
+-- Name: log; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.log (
+    id integer NOT NULL,
+    "time" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    sourceaddr inet,
+    source character varying NOT NULL,
+    "user" integer NOT NULL,
+    description character varying NOT NULL,
+    businesses_id integer,
+    vat_id character(1),
+    vatrates_id0 character(1),
+    vatrates_id1 date,
+    sessions_id integer,
+    transactions_id integer,
+    users_id integer,
+    usertokens_id character varying,
+    groups_id character varying,
+    payments_id integer,
+    departments_id integer,
+    translines_id integer,
+    stocklines_id integer,
+    pricelookups_id integer,
+    suppliers_id integer,
+    deliveries_id integer,
+    unittypes_id integer,
+    stockunits_id integer,
+    stocktypes_id integer,
+    stock_id integer,
+    stock_annotations_id integer,
+    stockremove_id character varying(8),
+    stockout_id integer
+);
+
+
+ALTER TABLE public.log OWNER TO steve;
+
+--
+-- Name: log_seq; Type: SEQUENCE; Schema: public; Owner: steve
+--
+
+CREATE SEQUENCE public.log_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.log_seq OWNER TO steve;
 
 --
 -- Name: payments; Type: TABLE; Schema: public; Owner: steve
@@ -1379,6 +1449,14 @@ K_LINE8	T-shirts	tshirt
 K_LINE4	Club Mate Regular	mate
 K_LINE5	Club Mate Granat	mate
 K_LINE6	Tshunk	mate
+\.
+
+
+--
+-- Data for Name: log; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.log (id, "time", sourceaddr, source, "user", description, businesses_id, vat_id, vatrates_id0, vatrates_id1, sessions_id, transactions_id, users_id, usertokens_id, groups_id, payments_id, departments_id, translines_id, stocklines_id, pricelookups_id, suppliers_id, deliveries_id, unittypes_id, stockunits_id, stocktypes_id, stock_id, stock_annotations_id, stockremove_id, stockout_id) FROM stdin;
 \.
 
 
@@ -36224,6 +36302,13 @@ SELECT pg_catalog.setval('public.foodorder_seq', 1, false);
 
 
 --
+-- Name: log_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+--
+
+SELECT pg_catalog.setval('public.log_seq', 1, false);
+
+
+--
 -- Name: payments_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
 --
 
@@ -36401,6 +36486,14 @@ ALTER TABLE ONLY public.keycaps
 
 
 --
+-- Name: log log_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
 --
 
@@ -36526,6 +36619,14 @@ ALTER TABLE ONLY public.stockout
 
 ALTER TABLE ONLY public.stockremove
     ADD CONSTRAINT stockremove_pkey PRIMARY KEY (removecode);
+
+
+--
+-- Name: stocktypes stocktypes_ambiguity_key; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.stocktypes
+    ADD CONSTRAINT stocktypes_ambiguity_key UNIQUE (dept, manufacturer, name, abv, unit_id);
 
 
 --
@@ -36754,6 +36855,13 @@ CREATE TRIGGER keycap_changed AFTER INSERT OR UPDATE ON public.keycaps FOR EACH 
 
 
 --
+-- Name: log log_entry; Type: TRIGGER; Schema: public; Owner: steve
+--
+
+CREATE TRIGGER log_entry AFTER INSERT OR UPDATE ON public.log FOR EACH ROW EXECUTE PROCEDURE public.notify_log_entry();
+
+
+--
 -- Name: sessions max_one_session_open; Type: TRIGGER; Schema: public; Owner: steve
 --
 
@@ -36839,6 +36947,190 @@ ALTER TABLE ONLY public.keyboard
 
 
 --
+-- Name: log log_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_business_fkey FOREIGN KEY (businesses_id) REFERENCES public.businesses(business) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_delivery_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_delivery_fkey FOREIGN KEY (deliveries_id) REFERENCES public.deliveries(deliveryid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_department_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_department_fkey FOREIGN KEY (departments_id) REFERENCES public.departments(dept) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_group_fkey FOREIGN KEY (groups_id) REFERENCES public.groups(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_loguser_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_loguser_fkey FOREIGN KEY ("user") REFERENCES public.users(id);
+
+
+--
+-- Name: log log_payment_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_payment_fkey FOREIGN KEY (payments_id) REFERENCES public.payments(paymentid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_pricelookup_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_pricelookup_fkey FOREIGN KEY (pricelookups_id) REFERENCES public.pricelookups(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_removecode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_removecode_fkey FOREIGN KEY (stockremove_id) REFERENCES public.stockremove(removecode) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_session_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_session_fkey FOREIGN KEY (sessions_id) REFERENCES public.sessions(sessionid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stockannotation_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stockannotation_fkey FOREIGN KEY (stock_annotations_id) REFERENCES public.stock_annotations(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stockitem_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stockitem_fkey FOREIGN KEY (stock_id) REFERENCES public.stock(stockid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stockline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stockline_fkey FOREIGN KEY (stocklines_id) REFERENCES public.stocklines(stocklineid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stockout_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stockout_fkey FOREIGN KEY (stockout_id) REFERENCES public.stockout(stockoutid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stocktype_fkey FOREIGN KEY (stocktypes_id) REFERENCES public.stocktypes(stocktype) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_stockunit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_stockunit_fkey FOREIGN KEY (stockunits_id) REFERENCES public.stockunits(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_supplier_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_supplier_fkey FOREIGN KEY (suppliers_id) REFERENCES public.suppliers(supplierid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_transaction_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_transaction_fkey FOREIGN KEY (transactions_id) REFERENCES public.transactions(transid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_transline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_transline_fkey FOREIGN KEY (translines_id) REFERENCES public.translines(translineid) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_unit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_unit_fkey FOREIGN KEY (unittypes_id) REFERENCES public.unittypes(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_user_fkey FOREIGN KEY (users_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_usertoken_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_usertoken_fkey FOREIGN KEY (usertokens_id) REFERENCES public.usertokens(token) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_vatband_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_vatband_fkey FOREIGN KEY (vat_id) REFERENCES public.vat(band) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_vatrate_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_vatrate_fkey FOREIGN KEY (vatrates_id0, vatrates_id1) REFERENCES public.vatrates(band, active) ON DELETE SET NULL;
+
+
+--
 -- Name: payments payments_paytype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
 --
 
@@ -36907,7 +37199,7 @@ ALTER TABLE ONLY public.stock_annotations
 --
 
 ALTER TABLE ONLY public.stock_annotations
-    ADD CONSTRAINT stock_annotations_stockid_fkey FOREIGN KEY (stockid) REFERENCES public.stock(stockid);
+    ADD CONSTRAINT stock_annotations_stockid_fkey FOREIGN KEY (stockid) REFERENCES public.stock(stockid) ON DELETE CASCADE;
 
 
 --
