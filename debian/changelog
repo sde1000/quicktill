@@ -1,3 +1,103 @@
+quicktill (17.0) stable; urgency=low
+
+  * New release 17.0
+
+  * Update example startup scripts for systemd
+
+  * Packaging updates
+
+  * Update EMF 2018 example data for new database schema
+
+  * Add a 'bordertext' method to draw text in the border of a window
+
+  * Prettify card payment popup
+
+  * Prettify more things
+
+  * Prettify PLU popups
+
+  * Prettify linekeys module
+
+  * Update README
+
+  * Prettify sessions menu
+
+  * Fix labels with coloured backgrounds
+
+  * Delivery popups now use proportional font for labels
+
+  * UI labels and buttons are now drawn with the proportional font
+
+  * Add new 'drawstr' method to windows
+
+  * Add custom formatter to stock types
+
+  * Return till nav for Transactions to previous state
+
+  * PEP8 on foodorder module
+
+  * Remove staffdiscount function, and allow table numbers to be strings
+
+  * Show log entries on transactions and transaction line detail pages
+
+  * Log some more actions in the register
+
+  * Remove brackets from default __str__ for models
+
+  * Add log text for stock items
+
+  * Log explicit price change on the till
+
+  * Log price changes and other delivery events
+
+  * Raise exception when logref requested for model that is not logged
+
+  * Log changes to StockType
+
+  * Move session logs to under the 'Info' tab
+
+  * Improve consistency of __str__ in models
+
+  * Add support for logging things done by web users
+
+  * Fix logentry regexp to cope with multiple references
+
+  * Add logs about delivery events
+
+  * Make log entries visible in session and user pages in tillweb
+
+  * Add log entries when sessions are managed
+
+  * Fix log notify function
+
+  * Enable listusers command to list inactive users too
+
+  * Remove the "remove-duplicate-stocktypes" subcommand
+
+  * Include notify trigger for new log entries, update release notes
+
+  * Add simple log viewer page to tillweb
+
+  * Fix html in sessions page when totals haven't been entered
+
+  * LogEntry table
+
+  * Enforce uniqueness of stock types
+
+  * Make repr() of ORM instances be consistent
+
+  * Update timesheets in haymakers example to use external module
+
+  * Remove timesheets module
+
+  * Update comment on StockLineTypeLog
+
+  * Cascade deletion of stock annotations in the database
+
+  * Prepare for quicktill17 release series
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 22 May 2020 16:36:26 +0100
+
 quicktill (16.8) stable; urgency=low
 
   * New release 16.8
