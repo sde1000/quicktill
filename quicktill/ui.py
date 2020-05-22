@@ -1418,8 +1418,8 @@ class editfield(valuefield):
             self.i = self.c - self.w
         if self.c < self.i:
             self.i = self.c
-        self.win.addstr(self.y, self.x, ' ' * self.w,
-                        self.win.colour.reversed)
+        self.win.clear(self.y, self.x, 1, self.w,
+                       colour=self.win.colour.reversed)
         self.win.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
                         self.win.colour.reversed)
         if self.focused:

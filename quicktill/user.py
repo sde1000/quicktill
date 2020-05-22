@@ -456,7 +456,7 @@ class manage_user_tokens(ui.dismisspopup):
             keyboard.K_CASH: (self.dismiss, None)})
         self.tokens = ui.scrollable(8, 1, 58, 6, [], keymap={
             keyboard.K_CANCEL: (self.delete_token, None)})
-        self.win.addstr(14, 1, "Press Cancel to delete a token")
+        self.win.bordertext("Press Cancel to delete a token", "L<")
         ui.map_fieldlist([self.tokenfield, self.description,
                           self.add_button, self.exit_button,
                           self.tokens])

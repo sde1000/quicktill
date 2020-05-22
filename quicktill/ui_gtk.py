@@ -511,31 +511,39 @@ class text_window(window):
         self._rect(ctx, self.fontwidth, x1, x2, y1, y2)
         ctx.stroke()
         if title:
-            layout = PangoCairo.create_layout(ctx)
-            layout.set_text(title, -1)
-            layout.set_font_description(self.font)
-            width, height = layout.get_pixel_size()
-            ctx.set_source_rgb(*colours[self.colour.background])
-            x = self.fontwidth + 4
-            ctx.rectangle(x, 0, width, self.fontheight)
-            ctx.fill()
-            ctx.set_source_rgb(*colours[self.colour.foreground])
-            ctx.move_to(x, 0)
-            PangoCairo.show_layout(ctx, layout)
+            self.bordertext(title, "U<")
         if clear:
-            layout = PangoCairo.create_layout(ctx)
-            layout.set_text(clear, -1)
-            layout.set_font_description(self.font)
-            width, height = layout.get_pixel_size()
-            ctx.set_source_rgb(*colours[self.colour.background])
-            x = self.width - self.fontwidth - width - 4
-            y = self.height - self.fontheight
-            ctx.rectangle(x, y, width, self.fontheight)
-            ctx.fill()
-            ctx.set_source_rgb(*colours[self.colour.foreground])
-            ctx.move_to(x, y)
-            PangoCairo.show_layout(ctx, layout)
+            self.bordertext(clear, "L>")
         self.damage(0, 0, self.height, self.width)
+
+    def bordertext(self, text, location, colour=None):
+        """Draw text in the border
+
+        location should be two characters; U or L as the first
+        character to indicate upper or lower; <, ^ or > as the second
+        character to indicate alignment.
+        """
+        ctx = cairo.Context(self._surface)
+        layout = PangoCairo.create_layout(ctx)
+        layout.set_text(text, -1)
+        layout.set_font_description(self.font)
+        width, height = layout.get_pixel_size()
+        y = 0 if location[0] == "U" else (self.height - self.fontheight)
+        if location[1] == "<":
+            x = self.fontwidth + 4
+        elif location[1] == "^":
+            x = (self.width - width) / 2
+        else:
+            x = self.width - self.fontwidth - width - 4
+        if colour is None:
+            colour = self.colour
+        ctx.set_source_rgb(*colours[colour.background])
+        ctx.rectangle(x, y, width, self.fontheight)
+        ctx.fill()
+        ctx.set_source_rgb(*colours[colour.foreground])
+        ctx.move_to(x, y)
+        PangoCairo.show_layout(ctx, layout)
+        self.damage(y, x, self.fontheight, width)
 
     def erase(self):
         # Fill with background colour

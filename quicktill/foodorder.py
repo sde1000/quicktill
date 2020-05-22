@@ -328,8 +328,9 @@ class popup(user.permission_checked, ui.basicpopup):
             return
         super().__init__(self.h, self.w, title="Food Order",
                          colour=ui.colour_input)
-        self.win.addstr(self.h - 1, 3, "Clear: abandon order   Print: finish   "
-                        "Cancel:  delete item")
+        self.win.bordertext("Clear: abandon order", "L<")
+        self.win.bordertext("Print: finish", "L^")
+        self.win.bordertext("Cancel: delete item", "L>")
         # Split the top level menu into lines for display, and add the
         # options to the keymap
         possible_keys = [

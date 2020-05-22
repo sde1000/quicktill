@@ -302,10 +302,20 @@ class curses_window:
     def border(self, title=None, clear=None):
         self._win.border()
         if title:
-            self.addstr(0, 1, title)
+            self.bordertext(title, "U<")
         if clear:
-            h, w = self.size()
-            self.addstr(h - 1, w - 1 - len(clear), clear)
+            self.bordertext(clear, "L>")
+
+    def bordertext(self, text, location, colour=None):
+        h, w = self.size()
+        y = 0 if location[0] == "U" else (h - 1)
+        if location[1] == "<":
+            x = 1
+        elif location[1] == "^":
+            x = (w - len(text)) // 2
+        else:
+            x = w - 1 - len(text)
+        self.addstr(y, x, text, colour=colour)
 
     def set_cursor(self, state):
         # Not yet implemented - we will have to keep track of which

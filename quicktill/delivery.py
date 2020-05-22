@@ -207,7 +207,7 @@ class delivery(ui.basicpopup):
         user.log(f"Created delivery {d.logref}")
         self.dn = d.id
         del self.supfield.keymap[keyboard.K_CLEAR]
-        self.win.addstr(0, 1, f"Delivery Details — {d.id}")
+        self.win.bordertext(f"Delivery Details — {d.id}", "U<")
 
     def finish(self):
         # Save and exit button

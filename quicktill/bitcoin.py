@@ -168,14 +168,13 @@ class btcpopup(ui.dismisspopup):
                 self._pm.description))
         self.response = result
         if 'to_pay_url' in result:
-            self.win.addstr(
-                0, 1, "{} payment of {} - press {} to recheck".format(
-                    self._pm.description, tillconfig.fc(amount),
-                    keyboard.K_CASH.keycap))
+            self.win.bordertext(
+                f"{self._pm.description} payment of {tillconfig.fc(amount)} "
+                f"- press {keyboard.K_CASH.keycap} to recheck", "U<")
             self.draw_qrcode()
-        self.win.addstr(self.h - 1, 3, "Received {} of {} {} so far".format(
-            result['paid_so_far'], result['amount_in_btc'],
-            self._pm._currency))
+        self.win.bordertext(
+            f"Received {result['paid_so_far']} of "
+            f"{result['amount_in_btc']} {self._pm._currency} so far", "L<")
         if result['paid']:
             self.dismiss()
             self._pm._finish_payment(self._reg, payment,
