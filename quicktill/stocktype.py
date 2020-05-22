@@ -57,7 +57,7 @@ class choose_stocktype(ui.dismisspopup):
         self.win.wrapstr(2, 2, 44, blurb)
         self.win.drawstr(5, 2, 14, "Manufacturer: ", align=">")
         self.win.drawstr(6, 2, 14, "Name: ", align=">")
-        self.win.drawstr(7, 2, 14, "Department:", align=">")
+        self.win.drawstr(7, 2, 14, "Department: ", align=">")
         self.win.drawstr(7, 37, 5, "ABV: ", align=">")
         self.win.drawstr(8, 2, 14, "Unit: ", align=">")
         self.manufield = ui.editfield(
