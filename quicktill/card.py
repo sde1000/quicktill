@@ -25,10 +25,10 @@ class _cardpopup(ui.dismisspopup):
             h += 1
         desc = "refund" if refund else "payment"
         super().__init__(
-            h, 44, title="Card {} transaction {}".format(
-                desc, transid), colour=ui.colour_input)
+            h, 44, title=f"Card {desc} transaction {transid}",
+            colour=ui.colour_input)
         self.win.wrapstr(
-            2, 2, 40, "Card {} of {}".format(desc, tillconfig.fc(amount)))
+            2, 2, 40, f"Card {desc} of {tillconfig.fc(amount)}")
         y = 4
         fields = []
         if cashback_in_use:
@@ -38,12 +38,12 @@ class _cardpopup(ui.dismisspopup):
                 "press Cash/Enter.  Leave blank and press "
                 "Cash/Enter if there is none.")
             y += 1
-            self.win.addstr(y, 2, "Cashback amount: %s" % tillconfig.currency)
-
+            self.win.drawstr(y, 2, 17, "Cashback amount: ", align=">")
+            self.win.addstr(y, 19, tillconfig.currency)
             self.cbfield = ui.moneyfield(y, 19 + len(tillconfig.currency), 6)
             fields.append(self.cbfield)
             y += 2
-            self._total_line = y
+            self.total_label = ui.label(y, 2, 40)
             y += 2
             self.cbfield.sethook = self.update_total_amount
             self.update_total_amount()
@@ -53,12 +53,12 @@ class _cardpopup(ui.dismisspopup):
         y += 1
 
         if self.pm._ask_for_machine_id:
-            self.win.addstr(y, 2, "Terminal number:")
+            self.win.drawstr(y, 2, 17, "Terminal number: ", align=">")
             self.mnfield = ui.editfield(y, 19, 3)
             fields.append(self.mnfield)
             y += 1
 
-        self.win.addstr(y, 2, " Receipt number:")
+        self.win.drawstr(y, 2, 17, "Receipt number: ", align=">")
         self.rnfield = ui.editfield(y, 19, 16)
         fields.append(self.rnfield)
         ui.map_fieldlist(fields)
@@ -67,17 +67,17 @@ class _cardpopup(ui.dismisspopup):
         fields[0].focus()
 
     def update_total_amount(self):
-        self.win.addstr(self._total_line, 2, ' ' * 40)
         try:
             cba = Decimal(self.cbfield.f).quantize(penny)
         except:
             cba = zero
         if cba > self.max_cashback:
-            self.win.addstr(self._total_line, 2, "Maximum cashback is %s" % (
-                tillconfig.fc(self.max_cashback)), ui.colour_error)
+            self.total_label.set(
+                f"Maximum cashback is {tillconfig.fc(self.max_cashback)}",
+                colour=ui.colour_error)
         else:
-            self.win.addstr(self._total_line, 2, "Total card payment: %s" % (
-                tillconfig.fc(self.amount + cba)))
+            self.total_label.set(
+                f"Total card payment: {tillconfig.fc(self.amount + cba)}")
 
     def enter(self):
         try:
