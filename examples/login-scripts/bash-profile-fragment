@@ -2,11 +2,6 @@
 # You may need to change the configuration number
 
 if [ "$AUTORUN" = "yes" ]; then
-    runtill -c mainbar
-    case "$?" in
-    0) exit ;;
-    2) userv root poweroff ;;
-    3) userv root reboot ;;
-    esac
-    sleep 1
+    startx /home/till/startup-with-matchbox.sh
+    exit
 fi
