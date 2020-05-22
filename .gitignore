@@ -1,8 +1,7 @@
-.svn
 *.pyc
-MANIFEST
 dist
 build
 release-tmp
 *~
 *.py.bak
+*.egg-info

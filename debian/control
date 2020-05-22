@@ -1,15 +1,15 @@
 Source: quicktill
 Section: python
-X-Python3-Version: >= 3.5
+X-Python3-Version: >= 3.6
 Priority: optional
 Maintainer: Stephen Early <steve@assorted.org.uk>
 Homepage: https://github.com/sde1000/quicktill
-Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools, python3-sqlalchemy
+Build-Depends: debhelper (>= 11), dh-python, python3-all, python3-setuptools, python3-sqlalchemy
 Standards-Version: 3.9.6
 
 Package: quicktill17
 Architecture: all
-Depends: ${python3:Depends}, python3-psycopg2, python3-reportlab, python3-httplib2, python3-sqlalchemy, python3-qrcode, python3-yaml, python3-odf, python3-twython, python3-requests-oauthlib, python3-cups, python3-dateutil
+Depends: ${python3:Depends}
 Conflicts: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16
 Replaces: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16
 Suggests: apgdiff

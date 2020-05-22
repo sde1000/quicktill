@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(name='quicktill17',
+setup(name='quicktill',
       version='16.8',
       description='Quick till and stock control library',
       author='Stephen Early',
@@ -19,4 +19,18 @@ setup(name='quicktill17',
                      'templates/tillweb/*.ajax',
                     ]},
       scripts=['runtill'],
+      install_requires=[
+          "psycopg2",
+          "reportlab",
+          "httplib2",
+          "sqlalchemy",
+          "qrcode",
+          "pyyaml",
+          "odfpy",
+          "twython",
+          "requests",
+          "requests-oauthlib",
+          "pycups",
+          "python-dateutil",
+      ],
 )
