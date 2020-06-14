@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload, subqueryload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
 from sqlalchemy.orm import undefer
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import select, func, desc, and_
+from sqlalchemy.sql import select, func, desc, and_, or_
 from sqlalchemy import event
 from sqlalchemy import distinct
 from sqlalchemy import inspect
@@ -81,6 +81,12 @@ class Base:
             return ','.join(str(x) for x in insp.identity)
         return "<unknown>"
 
+Base = declarative_base(metadata=metadata, cls=Base)
+
+# Use this class as a mixin to request a foreign key relationship from
+# the 'log' table.  Log entries are accessible using the 'logs'
+# relationship.
+class Logged:
     # What to use as the 'text' part of a log reference?  When empty,
     # the primary keys are used by default.  Override in models as
     # required.
@@ -95,9 +101,6 @@ class Base:
         # Log references look like [text]ModelName(pk1,pk2,...)
         # If text is absent, the primary key is used instead.
         # Text may not contain ']'!
-        if not hasattr(self, 'logs'):
-            raise Exception(f"logref requested for {self.__class__.__name__} "
-                            "which is not logged")
         return f"[{str(self.logtext).replace(']', '')}]{self!r}"
 
     # What name does the relationship to this model have, in the log
@@ -105,14 +108,6 @@ class Base:
     @classmethod
     def _log_relationship_name(cls):
         return cls.__name__.lower()
-
-Base = declarative_base(metadata=metadata, cls=Base)
-
-# Use this class as a mixin to request a foreign key relationship from
-# the 'log' table.  Log entries are accessible using the 'logs'
-# relationship.
-class Logged:
-    pass
 
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
@@ -1231,8 +1226,7 @@ class StockLine(Base, Logged):
     def continuous_stockonsale(self):
         return object_session(self)\
             .query(StockItem)\
-            .join(Delivery)\
-            .filter(Delivery.checked == True)\
+            .filter(StockItem.checked == True)\
             .filter(StockItem.stocktype == self.stocktype)\
             .filter(StockItem.finished == None)\
             .filter(StockItem.stockline == None)\
@@ -1465,6 +1459,136 @@ class Delivery(Base, Logged):
                 qty -= 1
         return items
 
+stocktake_seq = Sequence('stocktake_seq')
+
+class StockTake(Base, Logged):
+    __tablename__ = 'stocktakes'
+    id = Column('id', Integer, stocktake_seq,
+                nullable=False, primary_key=True)
+    description = Column(String(), nullable=False)
+
+    create_time = Column(DateTime, nullable=False,
+                         server_default=func.current_timestamp())
+    create_user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    # Start time of the stock take: when stock quantities were sampled
+    start_time = Column(DateTime, nullable=True)
+    commit_time = Column(DateTime, nullable=True)
+    commit_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+
+    create_user = relationship(
+        User, foreign_keys=[create_user_id],
+        backref=backref("stocktakes_created", order_by=desc(create_time)))
+
+    commit_user = relationship(
+        User, foreign_keys=[commit_user_id],
+        backref=backref("stocktakes_committed", order_by=desc(commit_time)))
+
+    scope = relationship("StockType", back_populates="stocktake",
+                         order_by="""[
+                         StockType.dept_id,
+                         StockType.manufacturer,
+                         StockType.name,
+                         StockType.abv]""",
+                         passive_deletes=True)
+
+    # NB these are stock items created by this stock take, not stock
+    # items in scope for it.
+    items = relationship("StockItem", back_populates="stocktake",
+                         order_by="StockItem.id")
+
+    snapshots = relationship("StockTakeSnapshot",
+                             order_by="StockTakeSnapshot.stock_id",
+                             passive_deletes=True)
+    __table_args__ = (
+        CheckConstraint(
+            "not(start_time is null) or commit_time is null",
+            name="commit_time_null_if_no_start_time"),
+        CheckConstraint(
+            "not(start_time is null) or commit_user_id is null",
+            name="commit_user_null_if_no_start_time"),
+        CheckConstraint(
+            "(commit_time is null)=(commit_user_id is null)",
+            name="commit_time_and_user_null_together"),
+        CheckConstraint(
+            "commit_time > start_time",
+            name="commit_time_after_start_time"),
+    )
+
+    @property
+    def state(self):
+        if not self.start_time:
+            return "pending"
+        if not self.commit_time:
+            return "in progress"
+        return "complete"
+
+    def __str__(self):
+        if self.state != "complete":
+            return f"{self.id} ({self.description}) — {self.state}"
+        return f"{self.id} ({self.description})"
+
+    @property
+    def contact(self):
+        """Contact details for stock take in progress
+
+        Describes the stock take, who started it, and when.
+        """
+        return f"{self.id} ({self.description}, {self.state()}) started at " \
+            f"{self.start_time:%Y-%m-%d %H:%M:%S} by {self.start_user}"
+
+    tillweb_viewname = "tillweb-stocktake"
+    tillweb_argname = "stocktake_id"
+    def tillweb_nav(self):
+        return [("Stock takes", self.get_view_url("tillweb-stocktakes")),
+                (str(self), self.get_absolute_url())]
+
+    def take_snapshot(self):
+        if self.start_time:
+            return
+        self.start_time = func.current_timestamp()
+        exc = (StockTakeSnapshot.__table__.insert()
+               .from_select(
+                   ['stocktake_id', 'stock_id', 'qty'],
+                   select([StockType.stocktake_id,
+                           StockItem.id,
+                           StockItem.remaining])
+                   .select_from(StockItem.__table__.join(StockType.__table__))
+                   .where(StockItem.checked == True)
+                   .where(StockType.stocktake_id == self.id)
+                   .where(StockItem.finished == None)))
+        object_session(self).execute(exc)
+
+    def commit_snapshot(self, user):
+        if not self.start_time:
+            return
+        if self.commit_time:
+            return
+        s = object_session(self)
+        self.commit_time = func.current_timestamp()
+        self.commit_user = user
+        for ss in self.snapshots:
+            if ss.finishcode:
+                ss.stockitem.finishcode = ss.finishcode
+                ss.stockitem.stockline = None
+                ss.stockitem.displayqty = None
+                if not ss.stockitem.finished:
+                    ss.stockitem.finished = func.current_timestamp()
+            if not ss.finishcode:
+                ss.stockitem.finishcode = None
+                ss.stockitem.finished = None
+            for a in ss.adjustments:
+                s.add(StockOut(
+                    stockitem=ss.stockitem,
+                    time=func.current_timestamp(),
+                    removecode=a.removecode,
+                    stocktake=self,
+                    qty=a.qty))
+        s.query(StockType).filter(StockType.stocktake == self).update({
+            StockType.stocktake_id: None})
+
+# XXX add rules to ensure that stocktakes cannot be deleted once committed
+
 units_seq = Sequence('units_seq')
 
 class Unit(Base, Logged):
@@ -1560,9 +1684,17 @@ class StockType(Base, Logged):
     unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     saleprice = Column(money, nullable=True) # inc VAT
     pricechanged = Column(DateTime, nullable=True) # Last time price was changed
+    stocktake_id = Column(
+        Integer, ForeignKey('stocktakes.id', ondelete='SET NULL'),
+        nullable=True)
+    stocktake_by_items = Column(Boolean, nullable=False,
+                                server_default=literal(True))
     department = relationship(Department, lazy="joined")
     unit = relationship(Unit, lazy="joined",
                         backref=backref("stocktypes", order_by=id))
+
+    # Currently in scope for this stock take
+    stocktake = relationship(StockTake, back_populates="scope")
 
     __table_args__ = (
         UniqueConstraint('dept', 'manufacturer', 'name', 'abv', 'unit_id',
@@ -1653,6 +1785,12 @@ class StockItem(Base, Logged):
     """An item of stock - a cask, keg, case of bottles, card of snacks,
     and so on.
 
+    Stock items are introduced to the database via either a delivery
+    or a stocktake; always one, never both.  A stock item is available
+    for use when delivery.checked is true, or stocktake.commit_time is
+    not null.  A column property, StockItem.checked, is available to
+    test this.
+
     When this item is prepared for sale, it is linked to a StockLine.
     If the stockline type is "display", the item will have a
     displayqty.  For all other stockline types, displayqty will be
@@ -1670,11 +1808,11 @@ class StockItem(Base, Logged):
                             |<-- ondisplay -->|<--- instock ---->
     <-------------- displayqty -------------->|
     """
-
     __tablename__ = 'stock'
     id = Column('stockid', Integer, stock_seq, nullable=False, primary_key=True)
     deliveryid = Column(Integer, ForeignKey('deliveries.deliveryid'),
-                        nullable=False)
+                        nullable=True)
+    stocktake_id = Column(Integer, ForeignKey('stocktakes.id'), nullable=True)
     stocktype_id = Column('stocktype', Integer,
                           ForeignKey('stocktypes.stocktype'), nullable=False)
     description = Column(String(), nullable=False)
@@ -1686,12 +1824,15 @@ class StockItem(Base, Logged):
                            ForeignKey('stockfinish.finishcode'))
     bestbefore = Column(Date)
     delivery = relationship(Delivery, back_populates="items")
+    stocktake = relationship(StockTake, back_populates="items")
     stocktype = relationship(StockType, backref=backref('items', order_by=id))
     finishcode = relationship(FinishCode, lazy="joined")
     stocklineid = Column(Integer, ForeignKey('stocklines.stocklineid',
                                              ondelete='SET NULL'),
                          nullable=True)
     displayqty = Column(quantity, nullable=True)
+
+    snapshots = relationship("StockTakeSnapshot", back_populates="stockitem")
 
     __table_args__ = (
         CheckConstraint(
@@ -1703,6 +1844,9 @@ class StockItem(Base, Logged):
         CheckConstraint(
             "not(finished is not null) or stocklineid is null",
             name="stocklineid_null_if_finished"),
+        CheckConstraint(
+            "(deliveryid is null)!=(stocktake_id is null)",
+            name="only_one_of_delivery_or_stocktake"),
     )
 
     stockline = relationship(StockLine, backref=backref(
@@ -1805,6 +1949,22 @@ class StockItem(Base, Logged):
             (f"Item {self.id} ({self.stocktype.manufacturer} {self.stocktype.name})",
              self.get_absolute_url())]
 
+StockItem.checked = column_property(
+    select([
+        func.coalesce(
+            select([Delivery.checked])
+            .correlate(StockItem.__table__)
+            .where(Delivery.id == StockItem.deliveryid)
+            .label("delivered"),
+            select([StockTake.commit_time != None])
+            .correlate(StockItem.__table__)
+            .where(StockTake.id == StockItem.stocktake_id)
+            .label("found_in_stocktake"))
+        ])
+    .label("checked"),
+    deferred=True,
+    doc="Is this item available for use?")
+
 Delivery.costprice = column_property(
     select([
         case(
@@ -1867,12 +2027,22 @@ class StockOut(Base, Logged):
     translineid = Column(Integer, ForeignKey('translines.translineid',
                                              ondelete='CASCADE'),
                          nullable=True)
+    stocktake_id = Column(
+        Integer, ForeignKey('stocktakes.id', ondelete='CASCADE'), nullable=True)
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
     stockitem = relationship(StockItem, backref=backref('out', order_by=id))
     removecode = relationship(RemoveCode, lazy="joined")
     transline = relationship(Transline,
                              backref=backref('stockref', cascade="all,delete"))
+    stocktake = relationship(StockTake)
+
+    # At most one of translineid and stocktake_id can be non-NULL
+    __table_args__ = (
+        CheckConstraint(
+            "translineid IS NULL OR stocktake_id IS NULL",
+            name="be_unambiguous_constraint"),
+    )
 
 # These are added to the StockItem class here because they refer
 # directly to the StockOut class, defined just above.
@@ -1932,8 +2102,7 @@ StockType.instock = column_property(
                     ), text("0.0"))],
            and_(StockItem.stocktype_id == StockType.id,
                 StockItem.finished == None,
-                Delivery.id == StockItem.deliveryid,
-                Delivery.checked == True)).\
+                StockItem.checked == True)).\
         correlate(StockType.__table__).\
         label('instock'),
     deferred=True,
@@ -1943,12 +2112,103 @@ StockType.lastsale = column_property(
     select([func.max(StockOut.time)],
            and_(StockItem.stocktype_id == StockType.id,
                 StockOut.stockid == StockItem.id,
-                Delivery.id == StockItem.deliveryid,
-                Delivery.checked == True)).\
+                StockItem.checked == True)).\
         correlate(StockType.__table__).\
         label('lastsale'),
     deferred=True,
     doc="Date of last sale")
+
+class StockTakeSnapshot(Base):
+    """Snapshot of stock levels at the start of a stock take
+
+    Primary key is (stocktake,stockitem)
+
+    If the item is discovered to be completely finished, missing, or
+    out of date, set 'finishcode' as appropriate.
+
+    If a finished item is manually added to the stock take (i.e. it's
+    been discovered in stock), initialise finishcode to the finishcode
+    of the item.
+
+    qty is the number of items in stock as at the start of the
+    stocktake.  newqty (added to the class later) is qty minus the sum
+    of all adjustments.  displayqty is the amount of qty considered to
+    be on display, and newdisplayqty is the amount of newqty
+    considered to be on display, i.e. it should be changed as
+    adjustments are added and if not null should be in the range 0 <=
+    newdisplayqty <= newqty, although it is not possible to add a check
+    constraint for this.
+    """
+    __tablename__ = 'stocktake_snapshots'
+    stocktake_id = Column(
+        Integer, ForeignKey('stocktakes.id', ondelete='CASCADE'),
+        primary_key=True)
+    stock_id = Column(Integer, ForeignKey('stock.stockid'), primary_key=True)
+    # Quantity recorded at start of stock take
+    qty = Column(quantity, nullable=False)
+    displayqty = Column(quantity, nullable=True)
+    newdisplayqty = Column(quantity, nullable=True)
+    checked = Column(Boolean, server_default=literal(False), nullable=False)
+    finishcode_id = Column('finishcode', String(8),
+                           ForeignKey('stockfinish.finishcode'))
+
+    stocktake = relationship(StockTake, back_populates='snapshots')
+    stockitem = relationship(StockItem, back_populates='snapshots')
+    finishcode = relationship(FinishCode)
+    adjustments = relationship("StockTakeAdjustment", back_populates='snapshot',
+                               passive_deletes=True)
+
+    @property
+    def qty_in_saleunits(self):
+        u = self.stockitem.stocktype.unit
+        if displayqty is not None:
+            return f'{u.format_qty(self.displayqty)} + ' \
+                f'{u.format_qty(self.qty - self.displayqty)}'
+        return u.format_qty(self.qty)
+
+    @property
+    def newqty_in_saleunits(self):
+        u = self.stockitem.stocktype.unit
+        if displayqty is not None:
+            return f'{u.format_qty(self.newdisplayqty)} + ' \
+                f'{u.format_qty(self.newqty - self.newdisplayqty)}'
+        return u.format_qty(self.newqty)
+
+class StockTakeAdjustment(Base):
+    """Adjustment to stock level during a stock take
+
+    Primary key is (stocktake,stockitem,removecode)
+
+    NB the foreign key constraint for stocktake,stockitem is a
+    compound constraint referencing the snapshots table, so
+    adjustments cannot be present when a snapshot has not been taken.
+    """
+    __tablename__ = 'stocktake_adjustments'
+    stocktake_id = Column(Integer, primary_key=True)
+    stock_id = Column(Integer, primary_key=True)
+    removecode_id = Column(
+        String(8), ForeignKey('stockremove.removecode'), primary_key=True)
+    qty = Column(quantity, CheckConstraint("qty != 0.0"), nullable=False)
+
+    snapshot = relationship(StockTakeSnapshot, back_populates='adjustments')
+    removecode = relationship(RemoveCode)
+
+    __table_args__ = (
+        ForeignKeyConstraint([stocktake_id, stock_id],
+                             [StockTakeSnapshot.stocktake_id,
+                              StockTakeSnapshot.stock_id],
+                             ondelete='CASCADE'),
+    )
+
+StockTakeSnapshot.newqty = column_property(
+    select([StockTakeSnapshot.qty - func.coalesce(func.sum(
+        StockTakeAdjustment.qty), text("0.0"))],
+           and_(StockTakeAdjustment.stocktake_id == StockTakeSnapshot.stocktake_id,
+                StockTakeAdjustment.stock_id == StockTakeSnapshot.stock_id)).\
+        correlate(StockTakeSnapshot.__table__).\
+        label('newqty'),
+    deferred=True,
+    doc="Amount remaining after adjustments")
 
 class KeyboardBinding(Base):
     __tablename__ = 'keyboard'

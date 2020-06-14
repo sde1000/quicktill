@@ -932,6 +932,7 @@ class default_groups:
         "print-price-list",
         "edit-unit",
         "edit-stockunit",
+        "stocktake",
     ])
 
     groups = [

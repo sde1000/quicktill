@@ -1,0 +1,132 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — stock take {{stocktake.id}} ({{stocktake.description}}){% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable">
+  <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
+  <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
+  <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
+  <tr><th scope="row">Description</th><td>{{stocktake.description}}</td></tr>
+  <tr><th scope="row">Started at</th><td>{{stocktake.start_time}}</td></tr>
+</table>
+
+{% comment %}
+Table rows are of two types:
+- stock type
+- stock item
+
+{% endcomment %}
+
+<form action="" method="post">{% csrf_token %}
+
+<table class="table table-sm table-striped table-hover">
+  <thead>
+    <tr>
+      <th scope="col">Expand</th>
+      <th scope="col">Stock type</th>
+      <th scope="col">Stock ID</th>
+      <th scope="col">Quantity</th>
+      <th scope="col">Finish?</th>
+      <th scope="col">Adjust to</th>
+      <th scope="col">How?</th>
+      <th scope="col">Checked</th>
+    </tr>
+  </thead>
+  {% for st in stocktypes %}
+  <tbody id="tbody-st{{st.id}}">
+    <tr class="stocktake-stocktype">
+      <td>{% if st.stocktake_by_items %}
+	<button type="submit" name="collapse-st{{st.id}}">
+	  -
+	</button>
+	{% else %}
+	<button type="submit" name="expand-st{{st.id}}">
+	  +
+	</button>{% endif %}
+      </td>
+      <td colspan="2">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
+      <td>
+	{{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
+	{% if st.adjustments %}
+	<br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      </td>
+      <td>
+	<select name="st{{st.id}}-finishcode">
+	  <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
+	  {% for opt in finishcodes %}
+	  <option value="{{opt.id}}"{% if st.snapshot_finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
+      <td>
+	<input type="number" name="st{{st.id}}-adjustqty"> {{st.unit.item_name_plural}}
+      </td>
+      <td>
+	<select name="st{{st.id}}-adjustreason">
+	  <option value="" selected></option>
+	  {% for opt in removecodes %}
+	  <option value="{{opt.id}}">{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
+      <td><input type="checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}></td>
+    </tr>
+    {% if st.stocktake_by_items %}
+    {% for ss in st.snapshots %}
+    <tr class="stocktake-item">
+      <td colspan="2"></td>
+      <td>{{ss.stock_id}}{% if ss.stockitem.stockline %} (<a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>){% endif %}</td>
+      <td>
+	{{ss.qty}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty}}{% endif %}
+	{% if ss.adjustments %}
+	<br>({% for a in ss.adjustments %}{{a.qty}} {{st.unit.name}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      </td>
+      <td>
+	<select name="ss{{ss.stock_id}}-finishcode">
+	  <option value=""{% if ss.finishcode == None %} selected{% endif %}></option>
+	  {% for opt in finishcodes %}
+	  <option value="{{opt.id}}"{% if ss.finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
+      <td>
+	<input type="number" name="ss{{ss.stock_id}}-adjustqty"> {{st.unit.item_name_plural}}
+      </td>
+      <td>
+	<select name="ss{{ss.stock_id}}-adjustreason">
+	  <option value="" selected></option>
+	  {% for opt in removecodes %}
+	  <option value="{{opt.id}}">{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
+      <td><input type="checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}></td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+  </tbody>
+  {% endfor %}
+</table>
+
+{{form}}
+
+<div id="fix-for-navbar-spacing" style="height: 42px;">&nbsp;</div>
+<nav class="navbar fixed-bottom navbar-light bg-light">
+<button class="btn btn-primary ml-auto" type="submit" name="submit_update">
+  Update values
+</button>
+
+<button class="btn btn-secondary ml-2" type="submit" name="submit_finish">
+  Finish stock take
+</button>
+
+<button class="btn btn-danger ml-2" type="submit" name="submit_abandon">
+  Abandon stock take
+</button>
+</div>
+
+</form>
+
+{% endblock %}

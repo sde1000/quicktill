@@ -448,6 +448,14 @@ def _finish_print_pricelist(dept_id, include_all):
         d.printline()
         d.printline("\tEnd of list")
 
+@user.permission_required('stocktake', 'Perform stock-takes')
+def stocktakes():
+    """View stock-takes
+
+    This is a placeholder to ensure the permission is created.
+    """
+    pass
+
 def popup():
     "Pop up the stock management menu."
     log.info("Stock management popup")

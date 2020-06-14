@@ -4,10 +4,11 @@
 
 import logging
 from decimal import Decimal
-from . import ui,td,keyboard,tillconfig,linekeys,department,user
-from .models import Department,StockType,StockItem,StockAnnotation
-from .models import AnnotationType,Delivery,desc,StockLineTypeLog
-from sqlalchemy.orm import joinedload,undefer
+from . import ui, td, keyboard, tillconfig, linekeys, department, user
+from .models import Department, StockType, StockItem, StockAnnotation
+from .models import AnnotationType, Delivery, desc, StockLineTypeLog
+from .models import StockTake
+from sqlalchemy.orm import joinedload, undefer
 log = logging.getLogger(__name__)
 
 def stockinfo_linelist(sn):
@@ -118,6 +119,7 @@ class stockfilter:
                  allow_on_sale=True,
                  allow_finished=False,
                  allow_has_bestbefore=True,
+                 allow_in_stocktake=False,
                  stockline_affinity=None,
                  sort_descending_stockid=False,
                  require_finished=False):
@@ -126,6 +128,7 @@ class stockfilter:
         self.allow_on_sale = allow_on_sale
         self.allow_finished = allow_finished
         self.allow_has_bestbefore = allow_has_bestbefore
+        self.allow_in_stocktake = allow_in_stocktake
         self.stockline_affinity_id = stockline_affinity.id \
                                      if stockline_affinity \
                                         else None
@@ -146,11 +149,16 @@ class stockfilter:
         """
         if not department_id:
             department_id = self.department_id
-        q = td.s.query(StockItem).join(Delivery).filter(Delivery.checked == True)
+        q = td.s.query(StockItem)
+        q = q.join(Delivery).filter(Delivery.checked == True)
+        q = q.join(StockTake).filter(StockTake.commit_time != None)
+
         # Unfinished items are sorted to the top
         q = q.order_by(StockItem.finished != None)
-        if department_id:
+        # StockType is accessed if we're checking department or stocktake scope
+        if department_id or not self.allow_in_stocktake:
             q = q.join(StockType)
+        if department_id:
             q = q.filter(StockType.dept_id == department_id)
         if self.stocktype_id:
             q = q.filter(StockItem.stocktype_id == self.stocktype_id)
@@ -158,6 +166,8 @@ class stockfilter:
             q = q.filter(StockItem.stocklineid == None)
         if not self.allow_finished:
             q = q.filter(StockItem.finished == None)
+        if not self.allow_in_stocktake:
+            q = q.filter(StockType.stocktake == None)
         if self.require_finished:
             q = q.filter(StockItem.finished != None)
         if not self.allow_has_bestbefore:
@@ -183,8 +193,10 @@ class stockfilter:
         with the item.  The item is expected to be attached to an ORM
         session.
         """
-        if not item.delivery.checked:
+        if item.delivery and not item.delivery.checked:
             return "delivery not checked"
+        if item.stocktake and not item.stocktake.commit_time:
+            return "stock take not finished"
         if self.department_id:
             if item.stocktype.dept_id != self.department_id:
                 return "wrong department"
@@ -192,14 +204,16 @@ class stockfilter:
             if item.stocktype_id != self.stocktype_id:
                 return "wrong type of stock"
         if item.stocklineid is not None and not self.allow_on_sale:
-            return "already on sale on {}".format(item.stockline.name)
+            return f"already on sale on {item.stockline.name}"
         if item.finished is not None and not self.allow_finished:
-            return "finished at {}".format(ui.formattime(item.finished))
+            return f"finished at {ui.formattime(item.finished)}"
         if item.finished is None and self.require_finished:
             return "not finished"
         if item.bestbefore is not None and not self.allow_has_bestbefore:
-            return "already has a best-before date: {}".format(
-                ui.formatdate(item.bestbefore))
+            return f"already has a best-before date: " \
+                f"{ui.formatdate(item.bestbefore)}"
+        if item.stocktype.stocktake and not self.allow_in_stocktake:
+            return f"in scope for stock-take {item.stocktype.stocktake}"
 
 class stockpicker(ui.dismisspopup):
     """Popup to choose a stock item.

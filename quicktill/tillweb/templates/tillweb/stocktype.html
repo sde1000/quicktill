@@ -15,6 +15,7 @@
 <tr><th>Department</th><td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td></tr>
 <tr><th>Unit</th><td><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></td></tr>
 <tr><th>Sale price</th><td>{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
+<tr><th>Stock take method</th><td>{% if stocktype.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %}</td></tr>
 </table>
 
 <div class="row">
@@ -50,6 +51,12 @@
 </div>
 {% endif %}
 </div>
+
+{% if stocktype.stocktake %}
+<p>This stock type is currently in scope
+for <a href="{{stocktype.stocktake.get_absolute_url}}">stock take
+    {{stocktype.stocktake.id}} ({{stocktype.stocktake.description}})</a>.</p>
+{% endif %}
 
 {% if may_delete %}
 <form action="" method="post">{% csrf_token %}

@@ -1,0 +1,80 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — stock take {{stocktake.id}} ({{stocktake.description}}){% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable">
+  <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
+  <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
+  <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
+{% if not form %}
+  <tr><th scope="row">Description</th><td>{{stocktake.description}}</td></tr>
+{% endif %}
+</table>
+
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  {% if stocktake.scope %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_start">
+    Start stock take
+  </button>
+  <button class="btn btn-secondary mb-2" type="submit" name="submit_update">
+    Update description
+  </button>
+  {% else %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+    Update description
+  </button>
+  {% endif %}
+  <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
+    Abandon this stock-take
+  </button>
+  <a href="{% url "tillweb-stocktype-search" pubname=pubname %}" class="btn btn-secondary mb-2">Add stock types to scope</a>
+</form>
+
+<p>This stock take is being set up.  Define the set of stock types the
+stock take will cover (its "scope") by adding stock types to it
+using <a href="{% url "tillweb-stocktype-search" %}">the stock type
+search page</a>.</p>
+{% endif %}
+
+<p>Stock that is in scope for a stock take is restricted on the till.
+Although it's still possible to sell stock, it's not possible to
+finish items, put new items on sale, or re-stock items when they are
+in scope for a stock take.</p>
+
+{% if stocktake.scope %}
+<p>These stock types are in scope for this stock take:</p>
+
+<table class="table table-striped table-hover table-sm">
+  <thead>
+    <tr>
+      <th scope="col">Manufacturer</th>
+      <th scope="col">Name</th>
+      <th scope="col">ABV</th>
+      <th scope="col">Department</th>
+      <th scope="col">Unit</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for st in stocktake.scope %}
+    <tr>
+      <td>{{st.manufacturer}}</td>
+      <td>{{st.name}}</td>
+      <td>{{st.abvstr}}</td>
+      <td><a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
+      <td>{{st.unit}}</td>
+      <td></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% else %}
+<p>There are currently no stock types in scope for this stock take.{% if form %}  <a href="{% url "tillweb-stocktype-search" pubname=pubname %}">Add some.</a></p>{% endif %}
+{% endif %}
+
+{% endblock %}

@@ -54,15 +54,27 @@ def line_chosen(line):
     if line.linetype == "regular":
         # We sell directly from a single stock item
         if len(sl) == 0:
-            pick_new_stock(line, blurb="Select a new stock item to put "
-                           "on sale as '{}', or press Clear to leave it "
-                           "unused.".format(line.name))
+            pick_new_stock(
+                line, blurb="Select a new stock item to put "
+                f"on sale as '{line.name}', or press Clear to leave it "
+                "unused.")
         else:
             item = line.stockonsale[0]
-            blurb = ["'{}' is still associated with stock number {} "
-                     "({}, {:0.1f} {}s remaining).  ".format(
-                         line.name, item.id, item.stocktype.fullname,
-                         item.remaining, item.stocktype.unit.name)]
+            if item.stocktype.stocktake:
+                ui.infopopup(
+                    [f"You can't remove {item.stocktype.fullname} from sale, "
+                     "because it is currently in scope for stock take "
+                     f"{item.stocktype.stocktake.contact}.  "
+                     "You will be able to remove the item from sale once "
+                     "the stock take is complete, or if the stock take "
+                     "is abandoned."],
+                    title="Can't finish stock",
+                    colour=ui.colour_error)
+                return
+            blurb = [
+                f"'{line.name}' is still associated with stock number "
+                f"{item.id} ({item.stocktype.fullname}, {item.remaining_units} "
+                f"remaining)."]
             fl = [("Stock still ok, will use again later",
                    finish_disconnect, (line, item.id))]
             if item.used / item.size < 0.2:
@@ -132,9 +144,9 @@ def finish_reason(line, sn, reason):
     stockitem.stockline = None
     td.s.flush()
     log.info("Use Stock: finished item %d reason %s", sn, reason)
-    pick_new_stock(line,"Stock item {} is finished.  Now select "
-                   "a new stock item to put on sale on {}, or press "
-                   "Clear to leave the line unused.".format(sn,line.name))
+    pick_new_stock(line, f"Stock item {sn} is finished.  Now select "
+                   f"a new stock item to put on sale on {line.name}, or press "
+                   "Clear to leave the line unused.")
 
 def pick_new_stock(line, blurb=""):
     """Pick new stock for a regular stockline.
@@ -158,7 +170,7 @@ def pick_new_stock(line, blurb=""):
         stockline_affinity=line,
         sort_descending_stockid=False)
     stock.stockpicker(lambda x: put_on_sale(line, x),
-                      title="Select Stock Item for {}".format(line.name),
+                      title=f"Select Stock Item for {line.name}",
                       filter=sf, check_checkdigits=line.linetype=="regular")
 
 def put_on_sale(line, si):
@@ -196,6 +208,14 @@ def add_display_line_stock(line):
     Line popup for the line.
     """
     td.s.add(line)
+    if line.stocktype.stocktake:
+        ui.infopopup(["You can't add stock to this stock line at the moment "
+                      f"because {line.stocktype} is currently in scope for "
+                      f"stock take [{line.stocktype.stocktake.contact}].  "
+                      "You will be able to add stock to the stock line "
+                      "once the stock take is completed or abandoned."],
+                     title="Can't add stock", colour=ui.colour_error)
+        return
     new_stock = td.s.query(StockItem)\
                     .join(Delivery)\
                     .filter(Delivery.checked == True)\
@@ -249,9 +269,8 @@ def select_display_line_stockitem(line, item):
     """
     td.s.add(line)
     td.s.add(item)
-    ui.infopopup(["To remove stock item {} ('{}') from {}, press "
-                  "Cash/Enter.".format(item.id, item.stocktype.format(),
-                                       line.name)],
+    ui.infopopup([f"To remove stock item {item.id} ('{item.stocktype}') "
+                  f"from {line.name}, press Cash/Enter."],
                  title="Remove stock from line",
                  colour=ui.colour_input,
                  keymap={keyboard.K_CASH: (remove_display_line_stockitem,
@@ -266,9 +285,9 @@ def remove_display_line_stockitem(line, item):
     td.s.add(line)
     td.s.add(item)
     if item.ondisplay > 0:
-        displaynote = "  Note: The till believes that {} items need to be " \
-                      "returned to stock.  Please check carefully!  ".format(
-                          item.ondisplay)
+        displaynote = \
+            f"  Note: The till believes that {item.ondisplay} items need " \
+            "to be returned to stock.  Please check carefully!  "
     else:
         displaynote = ""
     item.displayqty = None

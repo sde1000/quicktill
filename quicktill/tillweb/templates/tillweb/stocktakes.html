@@ -1,0 +1,110 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock takes{% endblock %}
+
+{% block tillcontent %}
+
+<p>Stock-takes enable to you to take a snapshot of the current stock
+  level for a group of stock types, compare the snapshot against
+  reality, and then record the differences all in one go.</p>
+
+<p>For the duration of the stock-take, the stock types involved are
+  restricted on the till: although stock can still be sold, items can't
+  be started or finished and stock can't be put on display.</p>
+
+{% if pending %}
+<h2>Pending stock-takes</h2>
+
+<p>Pending stock takes are still being set up: the group of stock
+  types covered by the stock take (the "scope") can be altered, and
+  the snapshot of stock levels has not yet been taken.</p>
+
+<table class="table table-striped table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Description</th>
+      <th scope="col">Stock types in scope</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in pending %}
+    <tr>
+      <td><a href="{{p.get_absolute_url}}">{{p.id}}</a></td>
+      <td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
+      <td>{{p.scope|length}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if in_progress %}
+<h2>Stock takes in progress</h2>
+
+<p>These stock takes have their scope defined and have taken a
+  snapshot of stock levels.  The difference between recorded and
+  actual stock levels can now be entered.</p>
+
+<table class="table table-striped table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Description</th>
+      <th scope="col">Start time</th>
+      <th scope="col">Stock types in scope</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in in_progress %}
+    <tr>
+      <td><a href="{{p.get_absolute_url}}">{{p.id}}</a></td>
+      <td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
+      <td>{{p.start_time}}</td>
+      <td>{{p.scope|length}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif %}
+
+{% if may_start %}
+<form action="" method="post">{% csrf_token %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_new">
+    Start new stock take
+  </button>
+</form>
+{% endif %}
+
+{% if completed %}
+<h2>Completed stock takes</h2>
+
+<p>These stock takes are finished.  Differences entered are now part
+  of the stock record.</p>
+
+<table class="table table-striped table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Description</th>
+      <th scope="col">Start time</th>
+      <th scope="col">End time</th>
+      <th scope="col">Stock items counted</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in completed %}
+    <tr>
+      <td><a href="{{p.get_absolute_url}}">{{p.id}}</a></td>
+      <td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
+      <td>{{p.start_time}}</td>
+      <td>{{p.commit_time}}</td>
+      <td>{{p.snapshots|length}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

@@ -6,6 +6,7 @@ from .models import penny
 from .plugins import InstancePluginMount
 import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 import logging
 log = logging.getLogger(__name__)
@@ -248,7 +249,20 @@ class delivery(ui.basicpopup):
     def reallyconfirm(self):
         if not self.dn:
             return
-        d = td.s.query(Delivery).get(self.dn)
+        d = td.s.query(Delivery)\
+                .options(joinedload("items").joinedload("stocktype")
+                         .joinedload("stocktake"))\
+                .get(self.dn)
+        for si in d.items:
+            if si.stocktype.stocktake:
+                ui.infopopup(["You can't confirm this delivery at the moment "
+                              "because one or more items in it are in scope "
+                              f"for stock take {si.stocktype.stocktake}.",
+                              "",
+                              "You will be able to confirm the delivery once "
+                              "the stock take is over."],
+                             title="Can't confirm", colour=ui.colour_error)
+                return
         d.checked = True
         user.log(f"Confirmed delivery {d.logref} from {d.supplier.logref}")
         td.s.flush()

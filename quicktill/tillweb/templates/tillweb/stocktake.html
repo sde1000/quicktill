@@ -1,0 +1,52 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — stock take {{stocktake.id}} ({{stocktake.description}}){% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable">
+  <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
+  <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
+  <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
+  <tr><th scope="row">Description</th><td>{{stocktake.description}}</td></tr>
+  <tr><th scope="row">Started at</th><td>{{stocktake.start_time}}</td></tr>
+  <tr><th scope="row">Committed at</th><td>{{stocktake.commit_time}}</td></tr>
+  <tr><th scope="row">Committed by</th><td>{{stocktake.commit_user}}</td></tr>
+</table>
+
+<table class="table table-sm table-striped table-hover">
+  <thead>
+    <tr>
+      <th scope="col">Stock type</th>
+      <th scope="col">Stock ID</th>
+      <th scope="col">Quantity</th>
+      <th scope="col">Finish?</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for st in stocktypes %}
+    <tr class="stocktake-stocktype">
+      <td colspan="2"><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
+      <td>{{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
+        {% if st.adjustments %}
+	<br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      </td>
+      <td>{% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}</td>
+    </tr>
+    {% if st.stocktake_by_items %}
+    {% for ss in st.snapshots %}
+    <tr class="stocktake-item">
+      <td></td>
+      <td><a href="{{ss.stockitem.get_absolute_url}}">{{ss.stock_id}}</a></td>
+      <td>{{ss.qty_in_saleunits}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_saleunits}}{% endif %}	{% if ss.adjustments %}
+	<br>({% for a in ss.adjustments %}{{a.qty}} {{st.unit.name}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      </td>
+      <td>{% if ss.finishcode %}{{ss.finishcode}}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

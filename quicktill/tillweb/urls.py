@@ -1,5 +1,6 @@
 from django.urls import include, path, re_path
 from quicktill.tillweb.views import *
+from .stocktake import *
 
 tillurls = [
     path('', pubroot, name="tillweb-pubroot"),
@@ -40,6 +41,9 @@ tillurls = [
     path('delivery/', deliverylist, name="tillweb-deliveries"),
     path('delivery/<int:deliveryid>/', delivery, name="tillweb-delivery"),
     path('new/delivery/', create_delivery, name="tillweb-create-delivery"),
+
+    path('stocktake/', stocktakelist, name="tillweb-stocktakes"),
+    path('stocktake/<int:stocktake_id>/', stocktake, name="tillweb-stocktake"),
 
     path('stocktype/', stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', stocktype, name="tillweb-stocktype"),
@@ -86,7 +90,8 @@ tillurls = [
     path('user/<int:userid>/', userdetail, name="tillweb-till-user"),
 
     path('group/', grouplist, name="tillweb-till-groups"),
-    re_path('^group/(?P<groupid>[\w\- ]+)/$', group, name="tillweb-till-group"),
+    re_path(r'^group/(?P<groupid>[\w\- ]+)/$', group,
+            name="tillweb-till-group"),
     path('new/group/', create_group, name="tillweb-create-till-group"),
 
     path('logs/', logsindex, name="tillweb-logs"),

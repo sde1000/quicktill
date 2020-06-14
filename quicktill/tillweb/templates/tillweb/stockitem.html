@@ -15,9 +15,13 @@
 <tr><th scope="row">Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
 <tr><th scope="row">Name</th><td><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></td></tr>
 <tr><th scope="row">ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
+{% if stock.delivery %}
 <tr><th scope="row">Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
 <tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
-<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.delivery.checked %} <span class="badge badge-warning">Not confirmed</span>{% endif %}</td></tr>
+<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.checked %} <span class="badge badge-warning">Not confirmed</span>{% endif %}</td></tr>
+{% else %}
+<tr><th scope="row">Discovered in stock take</th><td><a href="{{stock.stocktake.get_absolute_url}}">{{stock.stocktake.id}}</a>{% if not stock.checked %} <span class="badge badge-warning">Not committed</span>{% endif %}</td></tr>
+{% endif %}
 <tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
 <tr><th scope="row">Stock unit</th><td>{{stock.description}} ({{stock.size}} {{stock.stocktype.unit.name}}s)</td></tr>
 <tr><th scope="row">Cost price</th>
@@ -99,7 +103,15 @@
 {% for so in stock.out %}
 <tr>
 <td>{{so.time|date:dtf}}</td>
-<td>{% if so.removecode_id == 'sold' %}<a href="{{so.transline.transaction.get_absolute_url}}">Sold for {{money}}{{so.transline.total}}</span> in transaction {{so.transline.transaction.id}}</a>{% else %}{{so.removecode.reason}}{% endif %}</td>
+<td>
+  {% if so.transline %}
+  <a href="{{so.transline.transaction.get_absolute_url}}">Sold for {{money}}{{so.transline.total}} in transaction {{so.transline.transaction.id}}</a>
+  {% elif so.stocktake %}
+  <a href="{{so.stocktake.get_absolute_url}}">{{so.removecode.reason}} in stock take {{so.stocktake.id}}</a>
+  {% else %}
+  {{so.removecode.reason}}
+  {% endif %}
+</td>
 <td>{{so.qty}} {{stock.stocktype.unit.name}}s</td>
 </tr>
 {% endfor %}
@@ -114,6 +126,16 @@ $(document).ready(function(){
   $("#stockout").tablesorter();
 });
 </script>
+{% endif %}
+
+{% if stock.snapshots %}
+<h2>Stock take history</h2>
+
+<ul>
+  {% for ss in stock.snapshots %}{% if ss.stocktake.commit_time %}
+  <li><a href="{{ss.stocktake.get_absolute_url}}">{{ss.stocktake.commit_time}}</a>: {{ss.qty}} ⇨ {{ss.newqty}}{% if ss.finishcode %} (finished: {{ss.finishcode}}){% endif %}</li>
+  {% endif %}{% endfor %}
+</ul>
 {% endif %}
 
 {% if stock.stocktype.stockline_log %}

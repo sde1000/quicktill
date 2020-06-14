@@ -1028,10 +1028,14 @@ def delivery(request, info, deliveryid):
 class StockTypeSearchForm(forms.Form):
     manufacturer = forms.CharField(required=False)
     name = forms.CharField(required=False)
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q:q.order_by(Department.id),
+        required=False)
 
     def is_filled_in(self):
         cd = self.cleaned_data
-        return cd['manufacturer'] or cd['name']
+        return cd['manufacturer'] or cd['name'] or cd['department']
 
     def filter(self, q):
         cd = self.cleaned_data
@@ -1041,6 +1045,8 @@ class StockTypeSearchForm(forms.Form):
         if cd['name']:
             q = q.filter(StockType.name.ilike(
                 "%{}%".format(cd['name'])))
+        if cd['department']:
+            q = q.filter(StockType.department == cd['department'])
         return q
 
 @tillweb_view
@@ -1048,19 +1054,37 @@ def stocktypesearch(request, info):
     form = StockTypeSearchForm(request.GET)
     result = []
     if form.is_valid() and form.is_filled_in():
-        q = td.s.query(StockType)\
-                .order_by(StockType.dept_id, StockType.manufacturer,
-                          StockType.name)
-        q = form.filter(q)
-        result = q.all()
+        q = form.filter(td.s.query(StockType))
+        result = q.order_by(StockType.dept_id, StockType.manufacturer,
+                            StockType.name)\
+                  .all()
 
     may_alter = info.user_has_perm("alter-stocktype")
+
+    may_stocktake = info.user_has_perm("stocktake")
+
+    candidate_stocktakes = []
+    if may_stocktake and result:
+        # Find candidate stocktakes to add to
+        candidate_stocktakes = td.s.query(StockTake)\
+                                   .filter(StockTake.start_time == None)\
+                                   .order_by(desc(StockTake.id))\
+                                   .all()
+        if request.method == 'POST':
+            for c in candidate_stocktakes:
+                if f'submit_add_to_{c.id}' in request.POST:
+                    q.filter(StockType.stocktake == None).update({
+                        StockType.stocktake_id: c.id})
+                    td.s.commit()
+                    return HttpResponseRedirect(c.get_absolute_url())
 
     return ('stocktypesearch.html', {
         'nav': [("Stock types", info.reverse("tillweb-stocktype-search"))],
         'form': form,
         'stocktypes': result,
         'may_alter': may_alter,
+        'may_stocktake': may_stocktake,
+        'candidate_stocktakes': candidate_stocktakes,
     })
 
 class NewStockTypeForm(forms.Form):
@@ -1352,22 +1376,31 @@ class EditStockForm(forms.Form):
 @tillweb_view
 def stock(request, info, stockid):
     s = td.s.query(StockItem)\
-            .options(joinedload('stocktype').joinedload('department'),
+            .options(undefer('checked'),
+                     joinedload('stocktype').joinedload('department'),
                      joinedload('stocktype').joinedload('stockline_log')
                      .joinedload('stockline'),
                      joinedload('stocktype').joinedload('unit'),
                      joinedload('delivery').joinedload('supplier'),
-                     joinedload('annotations').joinedload('type'),
-                     subqueryload('out').subqueryload('transline')
-                     .subqueryload('transaction'),
+                     joinedload('stocktake'),
+                     subqueryload('annotations').joinedload('type'),
+                     subqueryload('annotations').joinedload('user'),
+                     subqueryload('out').joinedload('transline')
+                     .joinedload('transaction'),
+                     subqueryload('out').joinedload('removecode'),
+                     subqueryload('out').joinedload('stocktake'),
+                     subqueryload('snapshots').joinedload('adjustments')
+                     .joinedload('removecode'),
+                     subqueryload('snapshots').undefer('newqty'),
+                     subqueryload('snapshots').joinedload('stocktake'),
                      undefer_group('qtys'))\
             .get(stockid)
     if not s:
         raise Http404
 
     may_edit = not s.delivery.checked and info.user_has_perm("deliveries")
-    may_annotate = s.delivery.checked and info.user_has_perm("annotate")
-    may_record_waste = s.delivery.checked and info.user_has_perm("record-waste")
+    may_annotate = s.checked and info.user_has_perm("annotate")
+    may_record_waste = s.checked and info.user_has_perm("record-waste")
 
     sform = None
     aform = None
