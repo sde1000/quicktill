@@ -16,6 +16,8 @@ import argparse
 import yaml
 import socket
 import time
+import importlib
+from pathlib import Path
 from types import ModuleType
 from . import ui
 from . import td
@@ -42,7 +44,11 @@ from . import stocktype
 
 log = logging.getLogger(__name__)
 
-configurlfile = "/etc/quicktill/configurl"
+configurlfile = Path("/etc/quicktill/configurl")
+
+importsfile = Path("/etc/quicktill/default-imports")
+
+importsdir = Path("/etc/quicktill/default-imports.d")
 
 default_config = """
 configurations = {
@@ -361,6 +367,16 @@ class ToastHandler(logging.Handler):
     def emit(self, record):
         ui.toast(self.format(record))
 
+def _process_importsfile(path):
+    try:
+        f = path.open()
+        for l in f.readlines():
+            for i in l.partition('#')[0].split():
+                importlib.import_module(i)
+    except:
+        print(f"Exception raised while working on {path}")
+        raise
+
 def main():
     """Usual main entry point for the till software.
 
@@ -370,10 +386,24 @@ def main():
     """
 
     try:
-        with open(configurlfile) as f:
+        with configurlfile.open() as f:
             configurl = f.readline().strip()
     except FileNotFoundError:
         configurl = None
+
+    if importsdir.is_dir():
+        for path in importsdir.iterdir():
+            if path.suffixes:
+                continue
+            if path.name[-1] == "~":
+                continue
+            if not path.is_file():
+                continue
+            _process_importsfile(path)
+
+    if importsfile.is_file():
+        _process_importsfile(importsfile)
+
     parser = argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
     parser.add_argument("--version", action="version", version=version)
