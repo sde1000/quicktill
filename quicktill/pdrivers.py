@@ -642,12 +642,12 @@ class escpos:
                 if not center:
                     ll = _lrwrap(left, right, cpl)
                     for i in ll:
-                        f.write(("%s\n" % i).encode(self.coding))
+                        f.write(("%s\n" % i).encode(self.coding, 'replace'))
                 elif not left and not right:
                     f.write(escpos.ep_center)
                     ll = _wrap(center, cpl)
                     for i in ll:
-                        f.write(("%s\n" % i).encode(self.coding))
+                        f.write(("%s\n" % i).encode(self.coding, 'replace'))
                     f.write(escpos.ep_left)
                 else:
                     pad = max(cpl - len(left) - len(center) - len(right), 0)
