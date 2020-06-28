@@ -77,6 +77,33 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
 
     Create instances of subclasses of this class to add functions to
     the register.
+
+    A number of hooks are available; define a method "hook_{name}" to
+    make use of them.  If a hook returns trueish, the default action,
+    if any, is not performed.  The hook method is passed the register
+    as the first argument, and then any hook-specific arguments.
+    Available hooks are:
+
+     - new_page(); there is no default action
+     - recalltrans_loaded(trans); transaction loaded using Recall Trans; there
+         is no default action
+     - linekey(kb, mod)
+     - drinkin(trans, amount) - "drink in" function on open transaction
+     - cashkey(trans) - cash/enter on an open transaction
+     - paymentkey(method)
+     - start_payment(method, trans, amount, balance) - invoke a payment method
+     - printkey(trans)
+     - cancelkey(trans) - cancel key on an open or closed transaction
+     - cancelmarked(trans) - cancel marked lines on an open or closed transaction
+     - canceltrans(trans) - trans may be open or closed
+     - cancelline(l)
+     - markkey()
+     - recalltranskey()
+     - defertrans(trans) - trans is open
+     - mergetrans()
+     - apply_discount_menu()
+     - managetrans(trans) - Manage Transaction menu
+
     """
     def keypress(self, register, keypress):
         """Handle an unknown keypress on the register
@@ -88,6 +115,14 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
         up to date.
         """
         return False
+
+    def override_refund_help_text(self, register, trans):
+        """Customise the refund help text for a transaction
+
+        To override the default help text, return a string.  trans is
+        guaranteed to be an open transaction.
+        """
+        return
 
 class _DiscountPolicyMount(type):
     def __init__(cls, name, bases, attrs):
@@ -197,13 +232,7 @@ class bufferline(ui.lrline):
             cursorx = 0
             if self.reg.balance < zero and not self.reg.user.has_permission(
                     'suppress-refund-help-text'):
-                self.ltext = (
-                    "This transaction has a negative balance, so a "
-                    "refund is due.  Press the appropriate payment key "
-                    "to issue a refund of that type.  If you are replacing "
-                    "items for a customer you can enter the replacement "
-                    "items now; the till will show the difference in price "
-                    "between the original and replacement items.")
+                self.ltext = self.reg.refund_help_text
         if self.reg.ml:
             self.rtext = "{} {}".format(
                 "Marked lines total",
@@ -577,6 +606,7 @@ class page(ui.basicpage):
                 self.user.dbuser.message = None
         td.s.flush()
         self._redraw()
+        self.hook("new_page")
 
     def _gettrans(self):
         """Obtain the Transaction object for the current transaction
@@ -588,7 +618,9 @@ class page(ui.basicpage):
         referenced transaction doesn't exist) returns None.
         """
         if self.transid:
-            return td.s.query(Transaction).get(self.transid)
+            return td.s.query(Transaction)\
+                       .options(joinedload('meta'))\
+                       .get(self.transid)
 
     def gettrans(self):
         """Obtain the Transaction object for the current transaction
@@ -596,6 +628,13 @@ class page(ui.basicpage):
         Used by plugins.
         """
         return self._gettrans()
+
+    def clear(self):
+        """Clear the register
+
+        Used by plugins.
+        """
+        return self._clear()
 
     def _update_timeout(self):
         if self._timeout_handle:
@@ -659,6 +698,7 @@ class page(ui.basicpage):
                 filter_by(id=transid).\
                 options(subqueryload_all('payments')).\
                 options(joinedload('lines.user')).\
+                options(joinedload('meta')).\
                 options(undefer('total')).\
                 one()
         self.transid = trans.id
@@ -736,6 +776,20 @@ class page(ui.basicpage):
     def update_balance(self):
         trans = self._gettrans()
         self.balance = trans.balance if trans else zero
+        if self.balance < zero:
+            self.refund_help_text = (
+                "This transaction has a negative balance, so a "
+                "refund is due.  Press the appropriate payment key "
+                "to issue a refund of that type.  If you are replacing "
+                "items for a customer you can enter the replacement "
+                "items now; the till will show the difference in price "
+                "between the original and replacement items."
+            )
+            for i in RegisterPlugin.instances:
+                x = i.override_refund_help_text(self, trans)
+                if x:
+                    self.refund_help_text = x
+                    break
 
     def close_if_balanced(self):
         trans = self._gettrans()
@@ -773,6 +827,9 @@ class page(ui.basicpage):
                     title="Missing modifier")
                 return
             mod = modifiers.all[kb.modifier]
+
+        if self.hook("linekey", kb, mod):
+            return
 
         # Keyboard bindings can refer to a stockline, PLU or modifier
         if kb.stockline:
@@ -1323,6 +1380,8 @@ class page(ui.basicpage):
                           "that is already open."], title="Error")
             return
         self.clearbuffer()
+        if self.hook("drinkin", trans, amount):
+            return
         if len(tillconfig.payment_methods) < 1:
             self._redraw()
             ui.infopopup(["There are no payment methods configured."],
@@ -1386,6 +1445,9 @@ class page(ui.basicpage):
             self._redraw()
             return
 
+        if self.hook("cashkey", trans):
+            return
+
         # We now consider using the default payment method.  This is only
         # possible if there is one!
         if len(tillconfig.payment_methods) < 1:
@@ -1435,6 +1497,8 @@ class page(ui.basicpage):
         entered directly rather than through our keypress method, so
         refresh the transaction first.
         """
+        if self.hook("paymentkey", method):
+            return
         # UI sanity checks first
         if self.qty is not None:
             log.info("Register: paymentkey: payment with quantity not allowed")
@@ -1493,6 +1557,8 @@ class page(ui.basicpage):
             return
         # We have a non-zero amount and we're happy to proceed.  Pass
         # to the payment method.
+        if self.hook("start_payment", method, trans, amount, self.balance):
+            return
         method.start_payment(self, trans.id, amount, self.balance)
 
     def add_payments(self, transid, payments):
@@ -1626,6 +1692,8 @@ class page(ui.basicpage):
     @user.permission_required("print-receipt", "Print a receipt")
     def printkey(self):
         trans = self._gettrans()
+        if self.hook("printkey", trans):
+            return
         if not trans:
             log.info("Register: printkey without transaction")
             ui.infopopup(["There is no transaction currently selected to "
@@ -1678,6 +1746,8 @@ class page(ui.basicpage):
                  "the lines from the closed transaction."],
                 title="Help on Cancel",
                 colour=ui.colour_info)
+            return
+        if self.hook("cancelkey", trans):
             return
         closed = trans.closed
         if closed and not self.user.may("void-from-closed-transaction"):
@@ -1767,6 +1837,8 @@ class page(ui.basicpage):
             return
         tl = list(self.ml)
         trans = self._gettrans()
+        if self.hook("cancelmarked", trans):
+            return
         if trans.closed:
             if not self.user.may("void-from-closed-transaction"):
                 ui.infopopup(
@@ -1816,6 +1888,8 @@ class page(ui.basicpage):
         if not self.entry():
             return
         trans = self._gettrans()
+        if self.hook("canceltrans", trans):
+            return
         if trans.closed:
             log.info("Register: cancel closed transaction %d", trans.id)
             tl = self.dl
@@ -1855,6 +1929,8 @@ class page(ui.basicpage):
 
     def cancelline(self, l):
         if not self.entry():
+            return
+        if self.hook("cancelline", l):
             return
         if l.age() < tillconfig.max_transline_modify_age:
             self._delete_line(l)
@@ -1926,6 +2002,8 @@ class page(ui.basicpage):
         If a non-voided transaction line is selected, toggles the
         selection status of that line and updates the prompt.
         """
+        if self.hook("markkey"):
+            return
         trans = self._gettrans()
         if self.s.cursor >= len(self.dl):
             ui.infopopup(
@@ -2018,6 +2096,7 @@ class page(ui.basicpage):
                         title="Warning")
                 if self.transaction_locked:
                     self.transaction_lock_popup()
+            self.hook("recalltrans_loaded", trans)
         self.cursor_off()
         self.update_balance()
         self._redraw()
@@ -2025,6 +2104,8 @@ class page(ui.basicpage):
     @user.permission_required("recall-trans", "Change to a different "
                               "transaction")
     def recalltranskey(self):
+        if self.hook("recalltranskey"):
+            return
         sc = Session.current(td.s)
         if sc is None:
             log.info("Register: recalltrans: no session")
@@ -2077,6 +2158,8 @@ class page(ui.basicpage):
         if trans.closed:
             ui.infopopup(["Transaction {} has been closed, and cannot now "
                           "be deferred.".format(trans.id)], title="Error")
+            return
+        if self.hook("defertrans", trans):
             return
         amount = trans.payments_total
         if amount != zero:
@@ -2145,6 +2228,8 @@ class page(ui.basicpage):
 
     @user.permission_required("merge-trans", "Merge two transactions")
     def mergetransmenu(self):
+        if self.hook("mergetrans"):
+            return
         sc = self._check_session_and_open_transaction()
         if not sc:
             return
@@ -2331,6 +2416,8 @@ class page(ui.basicpage):
     @user.permission_required('apply-discount',
                               'Apply a discount to a transaction')
     def _discount_menu(self):
+        if self.hook("apply_discount_menu"):
+            return
         menu = [("No discount", self._apply_discount_policy, (None,))] \
                + [(x.policy_name, self._apply_discount_policy, (x,))
                   for x in DiscountPolicyPlugin.policies.values()]
@@ -2338,6 +2425,8 @@ class page(ui.basicpage):
 
     def managetranskey(self):
         trans = self._gettrans()
+        if self.hook("managetrans", trans):
+            return
         if self.ml:
             marked_total = tillconfig.fc(
                 self._total_value_of_marked_translines())
@@ -2437,6 +2526,17 @@ class page(ui.basicpage):
                           else None
         self._update_timeout()
         return True
+
+    def hook(self, action, *args, **kwargs):
+        """Check with plugins before performing an action
+
+        If any plugin returns True from its hook method, don't perform
+        the action.
+        """
+        for i in RegisterPlugin.instances:
+            method = getattr(i, "hook_" + action, None)
+            if method and method(self, *args, **kwargs):
+                return True
 
     @staticmethod
     def _add_linemenu_query_options(q):
