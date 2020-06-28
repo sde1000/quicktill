@@ -419,8 +419,6 @@ def register_hotkeys(appsmenu=None):
         'A': stock.annotate,
         'r': recordwaste.popup,
         'R': recordwaste.popup,
-        't': appsmenu,
-        'T': appsmenu,
         'm': managetill.popup,
         'M': managetill.popup,
     }
