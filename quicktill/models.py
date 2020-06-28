@@ -11,6 +11,7 @@ from sqlalchemy.orm import relationship, backref, object_session
 from sqlalchemy.orm import joinedload, subqueryload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select, func, desc, and_, or_
 from sqlalchemy import event
@@ -469,6 +470,11 @@ class Transaction(Base, Logged):
 
     session = relationship(Session, backref=backref('transactions', order_by=id))
 
+    meta = relationship("TransactionMeta",
+                        collection_class=attribute_mapped_collection('key'),
+                        back_populates="transaction",
+                        passive_deletes=True)
+
     # total is a column property defined below
 
     # payments_total is a column property defined below
@@ -501,6 +507,38 @@ class Transaction(Base, Logged):
                 (str(self), self.get_absolute_url())]
 
     # age is now a column property, defined below
+
+    def set_meta(self, key, val):
+        val = str(val)
+        if key in self.meta:
+            o = self.meta[key]
+            o.value = val
+        else:
+            self.meta[key] = TransactionMeta(
+                transaction=self,
+                key=key,
+                value=val)
+
+class TransactionMeta(Base):
+    """Metadata on a transaction
+
+    Acts as a key/value store per transaction.  Only one instance of a
+    key can exist per transaction: the primary key for this table is
+    (trans_id,key).
+
+    If the transaction is deleted, all its metadata is deleted too.
+
+    Transaction metadata is expected to be used by register plugins.
+    """
+    __tablename__ = 'transaction_meta'
+    trans_id = Column('transid', Integer,
+                      ForeignKey('transactions.transid',
+                                 ondelete='CASCADE'),
+                      primary_key=True, nullable=False)
+    key = Column(String(), nullable=False, primary_key=True)
+    value = Column(String(), nullable=False)
+
+    transaction = relationship(Transaction, back_populates='meta')
 
 add_ddl(Transaction.__table__, """
 CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
