@@ -1,6 +1,70 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v17.x to v18
+--------------------
+
+What's new:
+
+ * stock take system
+
+ * transaction metadata usable by register plugins
+
+This release is somewhat premature, lacking some database model test
+functions, but it's being rushed out for pub re-opening on July 4th.
+Expect a lengthy v18.x series fixing small and medium size bugs!
+
+There are database changes this release.  The changes are not
+backwards-compatible with v16, so install the new version before
+making the changes.
+
+To upgrade the database:
+
+  - run "runtill syncdb" to create the new activity log table
+
+  - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE log
+	ADD COLUMN stocktakes_id integer;
+
+ALTER TABLE stock
+	ADD COLUMN stocktake_id integer,
+	ALTER COLUMN deliveryid DROP NOT NULL;
+
+ALTER TABLE stockout
+	ADD COLUMN stocktake_id integer;
+
+ALTER TABLE stocktypes
+	ADD COLUMN stocktake_id integer,
+	ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
+
+ALTER TABLE log
+	ADD CONSTRAINT log_stocktake_fkey FOREIGN KEY (stocktakes_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
+
+ALTER TABLE stock
+	ADD CONSTRAINT only_one_of_delivery_or_stocktake CHECK (((deliveryid IS NULL) <> (stocktake_id IS NULL)));
+
+ALTER TABLE stock
+	ADD CONSTRAINT stock_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id);
+
+ALTER TABLE stockout
+	ADD CONSTRAINT be_unambiguous_constraint CHECK (((translineid IS NULL) OR (stocktake_id IS NULL)));
+
+ALTER TABLE stockout
+	ADD CONSTRAINT stockout_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE CASCADE;
+
+ALTER TABLE stocktypes
+	ADD CONSTRAINT stocktypes_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
+
+COMMIT;
+```
+
+  - run "runtill checkdb" to check that no other database changes are
+    required.
+
 Upgrade v16.x to v17
 --------------------
 
