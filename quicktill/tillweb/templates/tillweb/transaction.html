@@ -57,4 +57,13 @@
 {% with logs=transaction.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
 {% endif %}
 
+{% if transaction.meta.values %}
+<h2>Metadata</h2>
+<ul>
+  {% for m in transaction.meta.values %}
+  <li>{{m.key}}: {{m.value}}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
 {% endblock %}
