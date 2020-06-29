@@ -111,6 +111,7 @@ keycode("K_APPS", "Apps")
 keycode("K_MANAGESTOCK", "Manage Stock")
 keycode("K_PRICECHECK", "Price Check")
 keycode("K_LOCK", "Lock")
+keycode("K_ONLINE_ORDERS", "Online Orders")
 
 # Tendering keys referred to in the code
 keycode("K_CASH", "Cash / Enter")
