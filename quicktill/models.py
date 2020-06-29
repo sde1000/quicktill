@@ -2193,13 +2193,14 @@ class StockTakeSnapshot(Base):
     stocktake = relationship(StockTake, back_populates='snapshots')
     stockitem = relationship(StockItem, back_populates='snapshots')
     finishcode = relationship(FinishCode)
-    adjustments = relationship("StockTakeAdjustment", back_populates='snapshot',
+    adjustments = relationship("StockTakeAdjustment",
+                               back_populates='snapshot',
                                passive_deletes=True)
 
     @property
     def qty_in_saleunits(self):
         u = self.stockitem.stocktype.unit
-        if displayqty is not None:
+        if self.displayqty is not None:
             return f'{u.format_qty(self.displayqty)} + ' \
                 f'{u.format_qty(self.qty - self.displayqty)}'
         return u.format_qty(self.qty)
@@ -2207,7 +2208,7 @@ class StockTakeSnapshot(Base):
     @property
     def newqty_in_saleunits(self):
         u = self.stockitem.stocktype.unit
-        if displayqty is not None:
+        if self.displayqty is not None:
             return f'{u.format_qty(self.newdisplayqty)} + ' \
                 f'{u.format_qty(self.newqty - self.newdisplayqty)}'
         return u.format_qty(self.newqty)
