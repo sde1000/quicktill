@@ -1073,8 +1073,13 @@ def stocktypesearch(request, info):
         if request.method == 'POST':
             for c in candidate_stocktakes:
                 if f'submit_add_to_{c.id}' in request.POST:
-                    q.filter(StockType.stocktake == None).update({
-                        StockType.stocktake_id: c.id})
+                    # synchronize_session=False means that the session
+                    # will be out of sync after the update, but this
+                    # doesn't matter because we're expiring everything
+                    # on commit immediately afterwards.
+                    q.filter(StockType.stocktake == None).update(
+                        {StockType.stocktake_id: c.id},
+                        synchronize_session=False)
                     td.s.commit()
                     return HttpResponseRedirect(c.get_absolute_url())
 
