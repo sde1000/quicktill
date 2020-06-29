@@ -473,7 +473,8 @@ class Transaction(Base, Logged):
     meta = relationship("TransactionMeta",
                         collection_class=attribute_mapped_collection('key'),
                         back_populates="transaction",
-                        passive_deletes=True)
+                        passive_deletes=True,
+                        cascade="all,delete,delete-orphan")
 
     # total is a column property defined below
 
