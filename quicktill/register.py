@@ -90,8 +90,9 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - linekey(kb, mod)
      - drinkin(trans, amount) - "drink in" function on open transaction
      - cashkey(trans) - cash/enter on an open transaction
-     - paymentkey(method)
-     - start_payment(method, trans, amount, balance) - invoke a payment method
+     - paymentkey(method, trans) - payment key on an open transaction
+     - close_transaction(trans) - called just before closing a balanced transaction
+     - start_payment(method, trans, amount, balance) - about to invoke a payment method
      - printkey(trans)
      - cancelkey(trans) - cancel key on an open or closed transaction
      - cancelmarked(trans) - cancel marked lines on an open or closed transaction
@@ -121,6 +122,19 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
 
         To override the default help text, return a string.  trans is
         guaranteed to be an open transaction.
+        """
+        return
+
+    def update_tline(self, tline, tl):
+        """Customise the look of a transaction line in the register
+
+        tline is the tline object.  tl is the corresponding Transline
+        model instance.
+
+        This method may set:
+         - tline.ltext
+         - tline.rtext
+         - tline.default_colour
         """
         return
 
@@ -264,6 +278,7 @@ class tline(ui.lrline):
         super().__init__()
         self.transline = transline
         self.marked = False
+        self.default_colour = ui.colour_default
         self.update()
 
     def update(self):
@@ -277,6 +292,8 @@ class tline(ui.lrline):
             self.voided = False
             self.ltext = tl.description
         self.rtext = tl.regtotal(tillconfig.currency)
+        for i in RegisterPlugin.instances:
+            i.update_tline(self, tl)
         self.update_colour()
 
     def update_colour(self):
@@ -286,7 +303,7 @@ class tline(ui.lrline):
             if self.voided:
                 self.colour = ui.colour_error
             else:
-                self.colour = ui.colour_default
+                self.colour = self.default_colour
         self.cursor_colour = self.colour.reversed
 
     def age(self):
@@ -796,6 +813,8 @@ class page(ui.basicpage):
         if (trans and not trans.closed and (
                 trans.lines or trans.payments)
             and trans.total == trans.payments_total):
+            if self.hook("close_transaction", trans):
+                return
             # Yes, it's balanced!
             trans.closed = True
             trans.discount_policy = None
@@ -1497,8 +1516,6 @@ class page(ui.basicpage):
         entered directly rather than through our keypress method, so
         refresh the transaction first.
         """
-        if self.hook("paymentkey", method):
-            return
         # UI sanity checks first
         if self.qty is not None:
             log.info("Register: paymentkey: payment with quantity not allowed")
@@ -1523,6 +1540,8 @@ class page(ui.basicpage):
                          title="Error")
             self.clearbuffer()
             self._redraw()
+            return
+        if self.hook("paymentkey", method, trans):
             return
         self.prompt = self.defaultprompt
         self.balance = trans.balance
@@ -1930,12 +1949,11 @@ class page(ui.basicpage):
     def cancelline(self, l):
         if not self.entry():
             return
-        if self.hook("cancelline", l):
-            return
-        if l.age() < tillconfig.max_transline_modify_age:
-            self._delete_line(l)
-        else:
-            self._void_lines([l])
+        if not self.hook("cancelline", l):
+            if l.age() < tillconfig.max_transline_modify_age:
+                self._delete_line(l)
+            else:
+                self._void_lines([l])
         if len(self.dl) == 0:
             # The last transaction line was deleted, so also
             # delete the transaction.
