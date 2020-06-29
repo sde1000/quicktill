@@ -182,7 +182,8 @@ def stocktake_in_progress(request, info, stocktake):
         .filter(StockTakeSnapshot.stocktake == stocktake)\
         .options(undefer('newqty'),
                  joinedload('adjustments'),
-                 joinedload('stockitem').joinedload('stocktype'))\
+                 joinedload('stockitem').joinedload('stocktype'),
+                 joinedload('stockitem').joinedload('stockline'))\
         .order_by(StockTakeSnapshot.stock_id)\
         .all()
 
