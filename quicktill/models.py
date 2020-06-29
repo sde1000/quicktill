@@ -474,7 +474,7 @@ class Transaction(Base, Logged):
                         collection_class=attribute_mapped_collection('key'),
                         back_populates="transaction",
                         passive_deletes=True,
-                        cascade="all,delete,delete-orphan")
+                        cascade="all,delete-orphan")
 
     # total is a column property defined below
 
@@ -516,7 +516,6 @@ class Transaction(Base, Logged):
             o.value = val
         else:
             self.meta[key] = TransactionMeta(
-                transaction=self,
                 key=key,
                 value=val)
 
