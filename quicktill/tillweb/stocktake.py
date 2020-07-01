@@ -81,6 +81,7 @@ def stocktake(request, info, stocktake_id):
         .all()
 
     stocktypes = _snapshots_to_stocktypes(snapshots)
+
     return ('stocktake.html', {
         'tillobject': stocktake,
         'stocktake': stocktake,
@@ -157,6 +158,10 @@ def _snapshots_to_stocktypes(snapshots):
             st.unit.format_qty(st.snapshot_qty)
         st.snapshot_newqty_in_saleunits = \
             st.unit.format_qty(st.snapshot_newqty)
+
+    # Sort the stocktypes by department, manufacturer and name
+    stocktypes.sort(key=lambda x:(x.dept_id, x.manufacturer, x.name))
+
     return stocktypes
 
 class StockTakeInProgressForm(forms.Form):
@@ -365,9 +370,6 @@ def stocktake_in_progress(request, info, stocktake):
 
         td.s.commit()
         return HttpResponseRedirect(stocktake.get_absolute_url())
-
-    # Sort the stocktypes by department, manufacturer and name
-    stocktypes.sort(key=lambda x:(x.dept_id, x.manufacturer, x.name))
 
     return ('stocktake-in-progress.html', {
         'tillobject': stocktake,
