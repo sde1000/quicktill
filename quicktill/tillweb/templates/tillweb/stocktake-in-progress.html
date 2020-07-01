@@ -21,6 +21,12 @@ Table rows are of two types:
 
 <form action="" method="post">{% csrf_token %}
 
+  <button type="submit" name="expand-all" class="btn btn-secondary mb-2">
+    Expand all
+  </button>
+  <button type="submit" name="collapse-all" class="btn btn-secondary mb-2">
+    Collapse all
+  </button>
 <table class="table table-sm table-striped table-hover">
   <thead>
     <tr>
@@ -61,17 +67,19 @@ Table rows are of two types:
 	</select>
       </td>
       <td>
-	<input type="number" name="st{{st.id}}-adjustqty"> {{st.unit.item_name_plural}}
+	<input type="number" name="st{{st.id}}-adjustqty" step="0.1" min="0"> {{st.unit.item_name_plural}}
       </td>
       <td>
 	<select name="st{{st.id}}-adjustreason">
+	  {% if not default_adjustreason %}
 	  <option value="" selected></option>
+	  {% endif %}
 	  {% for opt in removecodes %}
-	  <option value="{{opt.id}}">{{opt}}</option>
+	  <option value="{{opt.id}}"{% if opt.id == default_adjustreason %} selected{% endif %}>{{opt}}</option>
 	  {% endfor %}
 	</select>
       </td>
-      <td><input type="checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}></td>
+      <td><input type="checkbox" class="stock-take-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}></td>
     </tr>
     {% if st.stocktake_by_items %}
     {% for ss in st.snapshots %}
@@ -92,17 +100,19 @@ Table rows are of two types:
 	</select>
       </td>
       <td>
-	<input type="number" name="ss{{ss.stock_id}}-adjustqty"> {{st.unit.item_name_plural}}
+	<input type="number" name="ss{{ss.stock_id}}-adjustqty" step="0.1" min="0"> {{st.unit.item_name_plural}}
       </td>
       <td>
 	<select name="ss{{ss.stock_id}}-adjustreason">
+	  {% if not default_adjustreason %}
 	  <option value="" selected></option>
+	  {% endif %}
 	  {% for opt in removecodes %}
-	  <option value="{{opt.id}}">{{opt}}</option>
+	  <option value="{{opt.id}}"{% if opt.id == default_adjustreason %} selected{% endif %}>{{opt}}</option>
 	  {% endfor %}
 	</select>
       </td>
-      <td><input type="checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}></td>
+      <td><input type="checkbox" class="stock-take-checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}></td>
     </tr>
     {% endfor %}
     {% endif %}
@@ -110,9 +120,9 @@ Table rows are of two types:
   {% endfor %}
 </table>
 
-{{form}}
+{% include "form-horizontal.html" %}
 
-<div id="fix-for-navbar-spacing" style="height: 42px;">&nbsp;</div>
+<div id="fix-for-navbar-spacing" style="height: 50px;">&nbsp;</div>
 <nav class="navbar fixed-bottom navbar-light bg-light">
 <button class="btn btn-primary ml-auto" type="submit" name="submit_update">
   Update values

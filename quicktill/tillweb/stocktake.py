@@ -191,6 +191,8 @@ def stocktake_in_progress(request, info, stocktake):
     finishcode_dict = {x.id: x for x in finishcodes}
     removecode_dict = {x.id: x for x in removecodes}
 
+    default_adjustreason = 'missing' if 'missing' in removecode_dict else None
+
     def lookup_code(d, k):
         code = request.POST.get(k, "")
         return d.get(code, None)
@@ -248,6 +250,10 @@ def stocktake_in_progress(request, info, stocktake):
                 try:
                     ss_adjustqty = Decimal(request.POST.get(
                         f'ss{ss.stock_id}-adjustqty', None))
+                    # Convert from sale units to base units
+                    ss_adjustqty = ss_adjustqty * stocktype.unit.units_per_item
+                    # Convert from relative adjustment to absolute
+                    ss_adjustqty = ss.newqty - ss_adjustqty
                 except:
                     ss_adjustqty = None
                 ss_adjustreason = lookup_code(
@@ -266,9 +272,8 @@ def stocktake_in_progress(request, info, stocktake):
                     ss.finishcode = ss_finishcode
                     ss.checked = True
 
-                if st_adjustreason:
-                    ss.checked = True
                 if st_adjustqty and st_adjustreason:
+                    ss.checked = True
                     with td.s.no_autoflush:
                         adjustment = \
                             td.s.query(StockTakeAdjustment)\
@@ -327,9 +332,11 @@ def stocktake_in_progress(request, info, stocktake):
             # expand and collapse must be processed after all other
             # options because processing of individual snapshots
             # depends on the state of the page as originally rendered
-            if f'expand-st{stocktype.id}' in request.POST:
+            if f'expand-st{stocktype.id}' in request.POST \
+               or 'expand-all' in request.POST:
                 stocktype.stocktake_by_items = True
-            if f'collapse-st{stocktype.id}' in request.POST:
+            if f'collapse-st{stocktype.id}' in request.POST \
+               or 'collapse-all' in request.POST:
                 stocktype.stocktake_by_items = False
 
         if 'submit_abandon' in request.POST:
@@ -368,6 +375,7 @@ def stocktake_in_progress(request, info, stocktake):
         'stocktypes': stocktypes,
         'finishcodes': finishcodes,
         'removecodes': removecodes,
+        'default_adjustreason': default_adjustreason,
         'form': form,
     })
 

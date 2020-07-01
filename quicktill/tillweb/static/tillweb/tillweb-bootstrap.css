@@ -2,6 +2,13 @@
 
 @charset "UTF-8";
 
+/* Stock-take forms */
+
+.stock-take-checkbox {
+    width: 25px;
+    height: 25px;
+}
+
 table.kvtable th {
     text-align: right;
 }
