@@ -14,6 +14,10 @@
   <tr><th scope="row">Committed by</th><td>{{stocktake.commit_user}}</td></tr>
 </table>
 
+<button type="button" data-toggle="collapse" class="btn btn-secondary mb-2" data-target=".stocktype-expanded">
+    Show/hide stock type summaries
+</button>
+
 <table class="table table-sm table-striped table-hover">
   <thead>
     <tr>
@@ -27,11 +31,18 @@
     {% for st in stocktypes %}
     <tr class="stocktake-stocktype">
       <td colspan="2"><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
-      <td>{{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
-        {% if st.adjustments %}
-	<br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      <td>
+	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	  {{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
+          {% if st.adjustments %}
+	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	</div>
       </td>
-      <td>{% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}</td>
+      <td>
+	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	  {% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}
+	</div>
+      </td>
     </tr>
     {% if st.stocktake_by_items %}
     {% for ss in st.snapshots %}
