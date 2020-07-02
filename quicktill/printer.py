@@ -205,8 +205,15 @@ def stock_label(f, d):
     def fits(s):
         sw = f.stringWidth(s, fontname, fontsize)
         return sw < (width - (2 * margin))
+    s = d.stocktype.format()
+    while len(s) > 10:
+        sw = f.stringWidth(s, fontname, fontsize)
+        if sw < (width - (2 * margin)):
+            break
+        s = d.stocktype.format(len(s)-1)
+
     y = height - margin - fontsize
-    f.drawCentredString(width / 2, y, d.stocktype.format(fits))
+    f.drawCentredString(width / 2, y, s)
     y = y - pitch
     f.drawCentredString(width / 2, y, d.delivery.supplier.name)
     y = y - pitch
