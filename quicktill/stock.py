@@ -150,8 +150,7 @@ class stockfilter:
         if not department_id:
             department_id = self.department_id
         q = td.s.query(StockItem)
-        q = q.join(Delivery).filter(Delivery.checked == True)
-        q = q.join(StockTake).filter(StockTake.commit_time != None)
+        q = q.filter(StockItem.checked == True)
 
         # Unfinished items are sorted to the top
         q = q.order_by(StockItem.finished != None)
