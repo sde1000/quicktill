@@ -1,3 +1,21 @@
+quicktill (18.1) stable; urgency=low
+
+  * New release 18.1
+
+  * Use StockItem.checked column in stock.stockfilter
+
+  * Fix stock label printing
+
+  * Add button to hide stocktype-level entry boxes for expanded stocktypes
+
+  * Sort finished stocktake page by stocktype
+
+  * Stock-take UI improvements
+
+  * Fix reverse url lookup for stocktype search in stocktake page
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 02 Jul 2020 16:57:06 +0100
+
 quicktill (18.0) stable; urgency=low
 
   * New release 18.0
