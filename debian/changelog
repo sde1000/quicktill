@@ -1,3 +1,13 @@
+quicktill (18.2) stable; urgency=low
+
+  * New release 18.2
+
+  * Hide whole-stocktype figures and inputs by default in stocktake
+
+  * When adjusting a stock type in a stock take, tick all stock items
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 19 Jul 2020 14:52:50 +0100
+
 quicktill (18.1) stable; urgency=low
 
   * New release 18.1
