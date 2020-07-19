@@ -236,6 +236,7 @@ def stocktake_in_progress(request, info, stocktake):
             st_finishcode = lookup_code(
                 finishcode_dict, f'st{stocktype.id}-finishcode')
             st_finishcode_changed = st_finishcode != stocktype.snapshot_finishcode
+            st_adjusting = False
             try:
                 st_adjustqty = Decimal(request.POST.get(
                     f'st{stocktype.id}-adjustqty', None))
@@ -278,7 +279,10 @@ def stocktake_in_progress(request, info, stocktake):
                     ss.checked = True
 
                 if st_adjustqty and st_adjustreason:
-                    ss.checked = True
+                    # We are making a whole-stocktype adjustment: ensure
+                    # we check each stockitem of the stocktype, even those
+                    # that don't end up being adjusted
+                    st_adjusting = True
                     with td.s.no_autoflush:
                         adjustment = \
                             td.s.query(StockTakeAdjustment)\
@@ -307,6 +311,9 @@ def stocktake_in_progress(request, info, stocktake):
                             td.s.expunge(adjustment)
                     else:
                         td.s.add(adjustment)
+
+                if st_adjusting:
+                    ss.checked = True
 
                 if ss_adjustqty and ss_adjustreason:
                     ss.checked = True
