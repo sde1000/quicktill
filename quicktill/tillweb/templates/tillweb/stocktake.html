@@ -32,14 +32,14 @@
     <tr class="stocktake-stocktype">
       <td colspan="2"><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  {{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
           {% if st.adjustments %}
 	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
 	</div>
       </td>
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  {% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}
 	</div>
       </td>

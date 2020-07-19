@@ -19,9 +19,11 @@
   <button type="submit" name="collapse-all" class="btn btn-secondary mb-2">
     Collapse all
   </button>
+{% comment %}
   <button type="button" data-toggle="collapse" class="btn btn-secondary mb-2" data-target=".stocktype-expanded">
     Show/hide stock type summaries
   </button>
+{% endcomment %}
 <table class="table table-sm table-striped table-hover">
   <thead>
     <tr>
@@ -49,14 +51,14 @@
       </td>
       <td colspan="2">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  {{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
 	  {% if st.adjustments %}
 	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
 	</div>
       </td>
       <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  <select name="st{{st.id}}-finishcode">
 	    <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
 	    {% for opt in finishcodes %}
@@ -66,12 +68,12 @@
 	</div>
       </td>
       <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  <input type="number" name="st{{st.id}}-adjustqty" step="0.1" min="0"> {{st.unit.item_name_plural}}
 	</div>
       </td>
       <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  <select name="st{{st.id}}-adjustreason">
 	    {% if not default_adjustreason %}
 	    <option value="" selected></option>
@@ -83,7 +85,7 @@
 	</div>
       </td>
       <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse show"{% endif %}>
+	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
 	  <input type="checkbox" class="stock-take-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}>
 	</div>
       </td>
