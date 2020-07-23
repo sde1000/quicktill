@@ -63,6 +63,7 @@ class lockpage(ui.basicpage):
                     call_at - now, self.alarm)
         self.win.wrapstr(
             self.h - 1, 0, self.w, "Till version: {}".format(version.version))
+        self.win.drawstr(self._y, 0, 3, '...')
         self.win.move(0, 0)
         self.refresh_timeout = tillconfig.mainloop.add_timeout(
             2, self.draw_plugins)
@@ -83,6 +84,7 @@ class lockpage(ui.basicpage):
 
     def draw_plugins(self):
         self.refresh_timeout = None
+        self.win.clear(self._y, 0, 1, 3)
         refresh_times = []
         for p in LockScreenPlugin.instances:
             l = p.add_note()
