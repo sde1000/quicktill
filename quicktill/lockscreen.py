@@ -61,20 +61,11 @@ class lockpage(ui.basicpage):
                     now + tillconfig.minimum_lock_screen_time)
                 self.idle_timeout = tillconfig.mainloop.add_timeout(
                     call_at - now, self.alarm)
-        refresh_times = []
-        for p in LockScreenPlugin.instances:
-            l = p.add_note()
-            if l:
-                self.line(l)
-            self._y = p.draw(self.win, self._y)
-            refresh_times.append(p.refresh())
-        refresh_time = min((x for x in refresh_times if x), default=0)
-        if refresh_time:
-            self.refresh_timeout = tillconfig.mainloop.add_timeout(
-                refresh_time, self.refresh)
         self.win.wrapstr(
             self.h - 1, 0, self.w, "Till version: {}".format(version.version))
         self.win.move(0, 0)
+        self.refresh_timeout = tillconfig.mainloop.add_timeout(
+            2, self.draw_plugins)
         log.info("lockpage gc stats: %s, len(gc.garbage)=%d", gc.get_count(),
                  len(gc.garbage))
 
@@ -89,6 +80,21 @@ class lockpage(ui.basicpage):
         log.info("Till is idle: exiting with code %s",
                  tillconfig.idle_exit_code)
         tillconfig.mainloop.shutdown(tillconfig.idle_exit_code)
+
+    def draw_plugins(self):
+        self.refresh_timeout = None
+        refresh_times = []
+        for p in LockScreenPlugin.instances:
+            l = p.add_note()
+            if l:
+                self.line(l)
+            self._y = p.draw(self.win, self._y)
+            refresh_times.append(p.refresh())
+        refresh_time = min((x for x in refresh_times if x), default=0)
+        if refresh_time:
+            self.refresh_timeout = tillconfig.mainloop.add_timeout(
+                refresh_time, self.refresh)
+        self.win.move(0, 0)
 
     def refresh(self):
         # Re-display the page
