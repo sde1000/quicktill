@@ -1,3 +1,13 @@
+quicktill (18.3) stable; urgency=low
+
+  * New release 18.3
+
+  * Draw '...' on the lock screen while waiting
+
+  * Delay running lockscreen plugins by 2s
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 23 Jul 2020 22:01:04 +0100
+
 quicktill (18.2) stable; urgency=low
 
   * New release 18.2

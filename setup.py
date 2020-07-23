@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='quicktill',
-      version='18.2',
+      version='18.3',
       description='Quick till and stock control library',
       author='Stephen Early',
       author_email='steve@assorted.org.uk',
