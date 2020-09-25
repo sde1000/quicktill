@@ -142,7 +142,7 @@ class runtill(cmdline.command):
             "the till to be idle")
         parser.add_argument(
             "-s", "--minimum-lockscreen-time",
-            dest="minimum_lock_screen_time", default=300,
+            dest="minimum_lock_screen_time", default=30,
             action="store", type=int, metavar="LOCKTIME",
             help="Display the lock screen for at least LOCKTIME seconds "
             "before considering the till to be idle")
