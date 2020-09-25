@@ -1,3 +1,13 @@
+quicktill (18.4) stable; urgency=low
+
+  * New release 18.4
+
+  * Use the middle section of the header for user messages
+
+  * Change the default minimum lock screen time for idle exit
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 25 Sep 2020 22:00:28 +0100
+
 quicktill (18.3) stable; urgency=low
 
   * New release 18.3
