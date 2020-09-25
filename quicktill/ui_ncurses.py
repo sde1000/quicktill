@@ -110,9 +110,11 @@ class curses_root:
             x = cat(m, s, t)
         self._win.addstr(0, 0, x.encode(c), _curses_attr(ui.colour_header))
 
-    def update_header(self, left, middle):
-        self.left = left
-        self.middle = middle
+    def update_header(self, left=None, middle=None):
+        if left is not None:
+            self.left = left
+        if middle is not None:
+            self.middle = middle
         self._redraw()
 
     def _clockalarm(self):

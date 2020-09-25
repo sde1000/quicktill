@@ -152,9 +152,11 @@ class gtk_root(Gtk.DrawingArea):
         height = self.get_allocated_height()
         return (height // self.fontheight, width // self.fontwidth)
 
-    def update_header(self, left, middle):
-        self.left = left
-        self.middle = middle
+    def update_header(self, left=None, middle=None):
+        if left is not None:
+            self.left = left
+        if middle is not None:
+            self.middle = middle
         width = self.get_allocated_width()
         self.damage(0, 0, self.fontheight, width)
 
@@ -234,15 +236,16 @@ class gtk_root(Gtk.DrawingArea):
         layout = PangoCairo.create_layout(ctx)
         layout.set_font_description(self.font)
         layout.set_text(self.left, -1)
+        leftw, lefth = layout.get_pixel_size()
         ctx.move_to(0, 0)
-        PangoCairo.show_layout(ctx, layout)
-        layout.set_text(self.middle, -1)
-        midw, midh = layout.get_pixel_size()
-        ctx.move_to((width - midw) / 2, 0)
         PangoCairo.show_layout(ctx, layout)
         layout.set_text(time.strftime("%a %d %b %Y %H:%M:%S %Z"), -1)
         timew, timeh = layout.get_pixel_size()
         ctx.move_to(width - timew, 0)
+        PangoCairo.show_layout(ctx, layout)
+        layout.set_text(self.middle, -1)
+        midw, midh = layout.get_pixel_size()
+        ctx.move_to((width - timew + leftw - midw) / 2, 0)
         PangoCairo.show_layout(ctx, layout)
         ctx.restore()
 

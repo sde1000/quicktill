@@ -217,6 +217,11 @@ def toast(message):
     """
     toaster.toast(message)
 
+def update_header_message(message):
+    """Update the message in the middle of the header
+    """
+    rootwin.update_header(middle=message)
+
 class ignore_hotkeys:
     """Mixin class for UI elements that disables handling of hotkeys
 
@@ -302,9 +307,6 @@ class basicpage(basicwin):
     def pagename(self):
         return "Basic page"
 
-    def pagesummary(self):
-        return ""
-
     def select(self):
         if basicpage._basepage == self:
             return # Nothing to do
@@ -342,15 +344,10 @@ class basicpage(basicwin):
     @staticmethod
     def updateheader():
         m = ""
-        s = ""
         for i in basicpage._pagelist:
             if i == basicpage._basepage:
-                m = i.pagename() + ' '
-            else:
-                ps = i.pagesummary()
-                if ps:
-                    s = s + i.pagesummary() + ' '
-        rootwin.update_header(m, s)
+                m = i.pagename()
+        rootwin.update_header(left=m)
 
     @staticmethod
     def _ensure_page_exists():
