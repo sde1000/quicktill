@@ -101,7 +101,8 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - markkey()
      - recalltranskey()
      - defertrans(trans) - trans is open
-     - mergetrans()
+     - mergetrans(trans) - merge transaction menu option
+     - mergetrans_finish(trans, othertrans) - about to merge trans into othertrans
      - apply_discount_menu()
      - managetrans(trans) - Manage Transaction menu
 
@@ -2228,28 +2229,28 @@ class page(ui.basicpage):
     def _check_session_and_open_transaction(self):
         # For transaction merging
         if not self.entry():
-            return False
+            return False, False
         sc = Session.current(td.s)
         if not sc:
             ui.infopopup(["There is no session active."], title="Error")
-            return False
+            return False, False
         trans = self._gettrans()
         if not trans:
             ui.infopopup(["There is no current transaction."], title="Error")
-            return False
+            return False, False
         if trans.closed:
             ui.infopopup(["The current transaction is closed and can't "
                           "be merged with another transaction."],
                          title="Error")
-            return False
-        return sc
+            return False, False
+        return sc, trans
 
     @user.permission_required("merge-trans", "Merge two transactions")
     def mergetransmenu(self):
-        if self.hook("mergetrans"):
-            return
-        sc = self._check_session_and_open_transaction()
+        sc, trans = self._check_session_and_open_transaction()
         if not sc:
+            return
+        if self.hook("mergetrans", trans):
             return
         # XXX it would be sensible to order by descending transaction
         # ID (i.e. most recent transaction first), but we've been
@@ -2275,10 +2276,9 @@ class page(ui.basicpage):
                 colour=ui.colour_input)
 
     def _mergetrans(self, othertransid):
-        sc = self._check_session_and_open_transaction()
+        sc, trans = self._check_session_and_open_transaction()
         if not sc:
             return
-        trans = self._gettrans()
         othertrans = td.s.query(Transaction).get(othertransid)
         if len(trans.payments) > 0:
             ui.infopopup(
@@ -2303,6 +2303,8 @@ class page(ui.basicpage):
                 message.append("")
                 message.append(tillconfig.open_transaction_lock_message)
             ui.infopopup(message, title="Other transaction locked")
+            return
+        if self.hook("mergetrans_finish", trans, othertrans):
             return
         # Leave a message if the other transaction belonged to another
         # user.
