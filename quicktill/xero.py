@@ -43,8 +43,8 @@ class XeroSessionHooks(session.SessionHooks):
         try:
             with ui.exception_guard("creating the Xero invoice",
                                     suppress_exception=False):
-                invid = self.xero._create_invoice_for_session(
-                    sessionid, approve=True)
+                invid, negative_totals = self.xero._create_invoice_for_session(
+                    sessionid, approve=self.xero.auto_approve_invoice)
         except XeroError:
             return
         # Record the Xero invoice ID
@@ -52,12 +52,13 @@ class XeroSessionHooks(session.SessionHooks):
         # We want to commit the invoice ID to the database even if adding
         # payments fails, so we can try again later
         td.s.commit()
-        try:
-            with ui.exception_guard("adding payments to the Xero invoice",
-                                    suppress_exception=False):
-                self.xero._add_payments_for_session(sessionid, invid)
-        except XeroError:
-            return
+        if self.xero.auto_approve_invoice and not negative_totals:
+            try:
+                with ui.exception_guard("adding payments to the Xero invoice",
+                                        suppress_exception=False):
+                    self.xero._add_payments_for_session(sessionid, invid)
+            except XeroError:
+                return
         ui.toast("Session details uploaded to Xero.")
 
 class XeroDeliveryHooks(delivery.DeliveryHooks):
@@ -132,6 +133,11 @@ class XeroIntegration:
                  shortcode=None,
                  # Use this account for till discrepancies
                  discrepancy_account=None,
+                 # Negative payment method totals should be sent to
+                 # this account instead, as an invoice line
+                 suspense_account=None,
+                 # Should the session invoice be approved automatically?
+                 auto_approve_invoice=True,
                  # Only start sending totals to Xero on or after this date
                  start_date=None):
         XeroSessionHooks(self)
@@ -155,6 +161,8 @@ class XeroIntegration:
         self.branding_theme_id = branding_theme_id
         self.shortcode = shortcode
         self.discrepancy_account = discrepancy_account
+        self.suspense_account = suspense_account
+        self.auto_approve_invoice = auto_approve_invoice
         self.start_date = start_date
 
     def _get_sales_contact(self, session):
@@ -248,17 +256,20 @@ class XeroIntegration:
 
     def _debug_send_invoice_and_payments(self, sessionid):
         log.info("Sending invoice and payments for %d", sessionid)
-        iid = self._create_invoice_for_session(sessionid, approve=True)
+        iid, negative_totals = self._create_invoice_for_session(
+            sessionid, approve=self.auto_approve_invoice)
         session = td.s.query(Session).get(sessionid)
         session.accinfo = iid
         td.s.commit()
-        self._add_payments_for_session(sessionid, iid)
+        if self.auto_approve_invoice and not negative_totals:
+            self._add_payments_for_session(sessionid, iid)
         log.info("...new invoice ID is %s", iid)
         ui.infopopup(["Invoice ID is {}".format(iid)])
 
     def _debug_send_invoice(self, sessionid):
         log.info("Sending invoice only for %d", sessionid)
-        iid = self._create_invoice_for_session(sessionid, approve=True)
+        iid, negative_totals = self._create_invoice_for_session(
+            sessionid, approve=True)
         log.info("...new invoice ID is %s", iid)
         ui.infopopup(["Invoice ID is {}".format(iid)])
 
@@ -294,9 +305,10 @@ class XeroIntegration:
     def _create_invoice_for_session(self, sessionid, approve=False):
         """Create an invoice for a session
 
-        Returns the invoice's GUID.  Does not check whether the
-        invoice has already been created, or record the GUID against
-        the session.
+        Returns the invoice's GUID, and whether any negative payment
+        method totals were added to the invoice.  Does not check
+        whether the invoice has already been created, or record the
+        GUID against the session.
         """
         session = td.s.query(Session).get(sessionid)
         if not session:
@@ -306,7 +318,9 @@ class XeroIntegration:
         if not session.actual_totals:
             raise XeroError("Session {} has no totals recorded".format(
                 sessionid))
-        
+
+        negative_totals = False
+
         invoices = Element("Invoices")
         inv = SubElement(invoices, "Invoice")
         inv.append(_textelem("Type", "ACCREC"))
@@ -323,8 +337,6 @@ class XeroIntegration:
         if self.branding_theme_id:
             inv.append(_textelem(
                 "BrandingThemeID", self.branding_theme_id))
-        if approve:
-            inv.append(_textelem("Status", "AUTHORISED"))
         litems = SubElement(inv, "LineItems")
         for dept, amount in session.dept_totals:
             li = SubElement(litems, "LineItem")
@@ -351,6 +363,26 @@ class XeroIntegration:
             tracking = self._get_tracking(None)
             if tracking:
                 li.append(tracking)
+        # Negative payment method totals are added as positive line items
+        # against the suspense account
+        for total in session.actual_totals:
+            if total.amount < zero:
+                if not self.suspense_account:
+                    raise XeroError(
+                        f"Session {session.id} has a negative till total, "
+                        "but no suspense account is configured to "
+                        "receive it.")
+                li = SubElement(litems, "LineItem")
+                li.append(_textelem(
+                    "Description",
+                    f"Negative {total.paytype.description} total"))
+                li.append(_textelem("AccountCode", self.suspense_account))
+                li.append(_textelem("LineAmount", str(zero - total.amount)))
+                li.append(_textelem("TaxType", "NONE"))
+                # No tracking category
+                negative_totals = True
+        if approve and not negative_totals:
+            inv.append(_textelem("Status", "AUTHORISED"))
         xml = tostring(invoices)
         r = requests.put(XERO_ENDPOINT_URL + "Invoices/",
                          data={'xml': xml},
@@ -373,7 +405,7 @@ class XeroIntegration:
         if not invid:
             raise XeroError("No invoice ID was returned")
         #warnings = [w.text for w in i.findall("./Warnings/Warning/Message")]
-        return invid
+        return invid, negative_totals
 
     def _add_payments_for_session(self, sessionid, invoice):
         """Add payments for a session to an existing invoice
