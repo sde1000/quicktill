@@ -740,7 +740,7 @@ class managetokens(permission_checked, ui.dismisspopup):
                 self.user.set("(not assigned)")
                 if dbt:
                     self.description.set(dbt.description)
-                    self.lastused.set(dbt.last_seen or "never")
+                    self.lastused.set(str(dbt.last_seen) or "never")
                 else:
                     self.description.set("")
                     self.lastused.set("")
