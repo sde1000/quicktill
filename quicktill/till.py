@@ -369,10 +369,10 @@ class ToastHandler(logging.Handler):
 
 def _process_importsfile(path):
     try:
-        f = path.open()
-        for l in f.readlines():
-            for i in l.partition('#')[0].split():
-                importlib.import_module(i)
+        with path.open() as f:
+            for l in f.readlines():
+                for i in l.partition('#')[0].split():
+                    importlib.import_module(i)
     except:
         print(f"Exception raised while working on {path}")
         raise
