@@ -96,7 +96,7 @@ class kbutton(Gtk.Button):
         super().__init__()
         self.key = key
         self._lw = Gtk.Label(
-            str(key.keycode), justify=Gtk.Justification.CENTER)
+            label=str(key.keycode), justify=Gtk.Justification.CENTER)
         self._lw.set_line_wrap(True)
         self.add(self._lw)
         self.connect("clicked", lambda widget: input_handler(self.key.keycode))
