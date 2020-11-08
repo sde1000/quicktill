@@ -46,8 +46,8 @@ from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
-from sqlalchemy.orm import subqueryload, subqueryload_all
-from sqlalchemy.orm import joinedload, joinedload_all
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
 import uuid
 
@@ -714,7 +714,7 @@ class page(ui.basicpage):
         # Reload the transaction and its related objects
         trans = td.s.query(Transaction).\
                 filter_by(id=transid).\
-                options(subqueryload_all('payments')).\
+                options(subqueryload('payments')).\
                 options(joinedload('lines.user')).\
                 options(joinedload('meta')).\
                 options(undefer('total')).\
