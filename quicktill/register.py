@@ -51,6 +51,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
 import uuid
 
+# Transaction metadata keys
+transaction_message_key = "register-message"
+
 # Colour used for locked transactions in transaction lists
 colour_locked = ui.colourpair("locked", "yellow", "blue")
 
@@ -2105,6 +2108,10 @@ class page(ui.basicpage):
             self.keyguard = True
             self.close_if_balanced()
             if not trans.closed:
+                message = trans.meta.get(transaction_message_key)
+                if message:
+                    ui.infopopup(
+                        [message.value], title="Note", colour=ui.colour_info)
                 age = trans.age
                 if not self.transaction_locked \
                    and tillconfig.open_transaction_warn_after \
