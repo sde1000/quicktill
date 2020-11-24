@@ -2182,13 +2182,45 @@ class page(ui.basicpage):
         if not trans:
             return
         if trans.closed:
-            ui.infopopup(["Transaction {} has been closed, and cannot now "
-                          "be deferred.".format(trans.id)], title="Error")
+            ui.infopopup([f"Transaction {trans.id} has been closed, and "
+                          "cannot now be deferred."], title="Error")
             return
+        if not trans.notes:
+            ui.infopopup(
+                ["This transaction doesn't have a note set.  You can't defer "
+                 "it until you have set one using 'Manage Transaction' "
+                 "option 4 or 5 so that we know who the transaction belongs "
+                 "to in the next session."],
+                title="Error")
+            return
+
         if self.hook("defertrans", trans):
             return
-        amount = trans.payments_total
-        if amount != zero:
+
+        # 1. Check the sum of non-deferrable payments.  If it's
+        # negative, the transaction can't be deferred (because the
+        # user would have to put cash _in_ to the register to defer
+        # successfully).
+        nds = zero
+        ndps = []
+        for p in trans.payments:
+            pm = payment.methods[p.paytype_id]
+            if not pm.deferrable:
+                nds = nds + p.amount
+                ndps.append(p)
+
+        if nds < zero:
+            ui.infopopup(
+                ["This transaction can't be deferred because it has "
+                 "non-deferrable payments that sum to less than zero."],
+                title="Error")
+            return
+
+        # 2. If non-deferrable payments sum to anything other than
+        # zero, check that there is a default payment method that
+        # supports both change and refunds; we will need it later.
+        defer_pm = None
+        if nds:
             # Check that there is a default payment method
             if len(tillconfig.payment_methods) < 1:
                 ui.infopopup(
@@ -2197,41 +2229,82 @@ class page(ui.basicpage):
                      "payment method so this can't be done now."],
                     title="Error")
                 return
-            pm = tillconfig.payment_methods[0]
+            defer_pm = tillconfig.payment_methods[0]
             # The payment method must support both change and refunds
-            if not pm.change_given or not pm.refund_supported:
+            if not defer_pm.change_given or not defer_pm.refund_supported:
                 ui.infopopup(
                     ["This transaction is part-paid; to defer it "
                      "we must refund the part-payment.  The default payment "
                      "method does not support this."],
                     title="Error")
                 return
-            # Refund the amount paid so far and ask the user to set it aside
-            # XXX consider printing out a ticket on the receipt printer
-            # to be stored with the money.
-            pm.add_change(trans, "Deferred", zero - amount)
-            user.log(f"Deferred transaction {trans.logref} which was part-paid "
-                     f"by {tillconfig.fc(amount)}")
-            printer.kickout()
+
+        # 3. Any non-deferrable payments are moved to a new transaction.
+        ptrans = None
+        if ndps:
+            ptrans = Transaction(
+                session=trans.session,
+                notes=f"Payments from deferred transaction {trans.id}")
+            td.s.add(ptrans)
+            for p in ndps:
+                p.transaction = ptrans
+
+            # 4. If the new transaction doesn't balance (i.e. it has a
+            # positive balance), a refund is made using the default
+            # payment method and a receipt is printed out stating that
+            # the cash should be used towards the deferred
+            # transaction.  A popup note is left in the deferred
+            # transaction's metadata explaining that there should be
+            # cash to use towards paying it
+
+            if nds != zero:
+                user.log(f"Deferred transaction {trans.logref} which was "
+                         f"part-paid by {tillconfig.fc(nds)}")
+                defer_pm.add_change(ptrans, "Deferred", zero - nds)
+                trans.set_meta(
+                    transaction_message_key,
+                    f"This transaction was part-paid when it was deferred on "
+                    f"{trans.session.date} by {self.user.fullname}.  There "
+                    f"should be {tillconfig.fc(nds)} {defer_pm.description} "
+                    f"set aside to be used towards this transaction "
+                    f"when you are ready to accept the final payment from "
+                    f"the customer.")
+                printer.print_deferred_payment_wrapper(
+                    trans, defer_pm, nds, self.user.fullname)
+                printer.kickout()
+
         transid = trans.id
         trans.session = None
         td.s.flush()
-        self._clear()
-        self._redraw()
-        message = ["Transaction {} has been deferred to the next "
+
+        # 5. If there's a new transaction, it's closed and loaded;
+        # otherwise the register is cleared.
+        if ptrans:
+            ptrans.closed = True
+            td.s.flush()
+            self._loadtrans(ptrans.id)
+        else:
+            self._clear()
+            self._redraw()
+
+        message = [f"Transaction {transid} has been deferred to the next "
                    "session.  Make sure you keep a note of the "
                    "transaction number and the name of the person "
-                   "responsible for paying it!".format(transid)]
-        if amount:
+                   "responsible for paying it!"]
+        if nds:
             message = message \
-                      + ["", "{} had been paid towards this transaction. "
-                         "You must remove this amount from the till and "
-                         "set it aside to be used to pay off the "
-                         "transaction in a later session.".format(
-                             tillconfig.fc(amount))]
-        ui.infopopup(message,
-                     title="Transaction defer confirmed",
-                     colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
+                + ["", f"{tillconfig.fc(nds)} had been paid towards this "
+                   "transaction. You must remove this amount from the "
+                   "till and set it aside to be used to pay off the "
+                   "transaction in a later session.",
+                   "",
+                   f"Wrap the {defer_pm.description} in the deferred "
+                   "transaction receipt that has just been printed."]
+        ui.infopopup(
+            message,
+            title="Transaction defer confirmed",
+            colour=ui.colour_confirm,
+            dismiss=keyboard.K_CLEAR if nds else keyboard.K_CASH)
 
     def _check_session_and_open_transaction(self):
         # For transaction merging

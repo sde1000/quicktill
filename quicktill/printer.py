@@ -189,6 +189,36 @@ def print_sessiontotals(s):
         d.printline()
         d.printline("\tPrinted %s" % ui.formattime(now()))
 
+def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
+    """Print a wrapper for a deferred payment
+
+    Print a wrapper for money (cash, etc.) to be set aside to use
+    towards paying a part-paid transaction in a future session.
+    """
+    with driver as d:
+        for i in range(4):
+            d.printline(f"\t{tillconfig.pubname}", emph=1)
+            d.printline(f"\tDeferred transaction {trans.id}", emph=1)
+            d.printline()
+            d.printline(
+                f"This is {tillconfig.fc(amount)} in "
+                f"{payment_method.description} to be used in part-payment "
+                f"of transaction {trans.id} ({trans.notes}) when that "
+                f"transaction is ready to be closed.")
+            d.printline()
+            d.printline(
+                f"This part-paid transaction was deferred by {user_name} "
+                f"at {datetime.datetime.now():%H:%M} on "
+                f"{datetime.date.today()}.")
+            d.printline()
+            d.printline(
+                f"Use this printout to wrap the {payment_method.description} "
+                "before putting it aside.")
+            d.printline()
+            d.printline()
+            d.printline()
+            d.printline()
+
 def label_print_delivery(p,delivery):
     d = td.s.query(Delivery).get(delivery)
     stocklabel_print(p, d.items)
