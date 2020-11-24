@@ -20,68 +20,82 @@ class PaymentMethodRegistry(dict):
 methods = PaymentMethodRegistry()
 
 class pline(ui.line):
-    """
+    """Payment line
+
     A payment in a transaction, suitable for inclusion in the display
     list of a register.
-
     """
-    def __init__(self,payment,method=None):
-        self.payment_id=payment.id
-        self.amount=payment.amount
-        if method is None: method=methods[payment.paytype_id]
-        self.method=method
-        super().__init__(colour=ui.colour_cashline if self.amount>=zero
+    def __init__(self, payment, method=None):
+        self.payment_id = payment.id
+        self.amount = payment.amount
+        if method is None:
+            method = methods[payment.paytype_id]
+        self.method = method
+        super().__init__(colour=ui.colour_cashline if self.amount >= zero
                          else ui.colour_changeline)
         self.update()
 
     def update(self):
         super().update()
-        payment=td.s.query(Payment).get(self.payment_id)
-        self.amount=payment.amount
-        self.transtime=payment.time
-        self.text="%s %s"%(self.method.describe_payment(payment),
-                           tillconfig.fc(payment.amount))
-        self.cursor=(0,0)
-    def display(self,width):
-        return [' '*(width-len(self.text))+self.text]
+        payment = td.s.query(Payment).get(self.payment_id)
+        self.amount = payment.amount
+        self.transtime = payment.time
+        self.text = self.method.describe_payment(payment) + " " + \
+            tillconfig.fc(payment.amount)
+        self.cursor = (0, 0)
+
+    def display(self, width):
+        return [' ' * (width - len(self.text)) + self.text]
+
     def age(self):
         return datetime.datetime.now() - self.transtime
+
     def description(self):
-        payment=td.s.query(Payment).get(self.payment_id)
+        payment = td.s.query(Payment).get(self.payment_id)
         return self.method.describe_payment(payment)
+
     def is_pending(self):
         return self.method.payment_is_pending(self)
-    def resume(self,register):
-        return self.method.resume_payment(register,self)
+
+    def resume(self, register):
+        return self.method.resume_payment(register, self)
 
 class PaymentMethod:
     change_given = False
     refund_supported = False
-    def __init__(self,paytype,description):
-        self.paytype=paytype
-        self.description=description
-        methods[paytype]=self
+
+    def __init__(self, paytype, description):
+        self.paytype = paytype
+        self.description = description
+        methods[paytype] = self
+
     def start_payment(self, register, transid, amount, outstanding):
         # We don't permit new payments of the default type
-        ui.infopopup(["New {} payments are not supported.".format(
-            self.description)], title="Payment type not supported")
-    def describe_payment(self,payment):
+        ui.infopopup([f"New {self.description} payments are not supported."],
+                     title="Payment type not supported")
+
+    def describe_payment(self, payment):
         return payment.paytype.description
-    def payment_is_pending(self,pline_instance):
+
+    def payment_is_pending(self, pline_instance):
         return False
-    def resume_payment(self,register,pline_instance):
+
+    def resume_payment(self, register, pline_instance):
         # The default payment method doesn't support pending payments
-        ui.infopopup(["{} payments can't be resumed.".format(self.description)],
+        ui.infopopup([f"{self.description} payments can't be resumed."],
                      title="Pending payments not supported")
+
     def get_paytype(self):
-        pt=PayType(paytype=self.paytype,description=self.description)
+        pt = PayType(paytype=self.paytype, description=self.description)
         return td.s.merge(pt)
+
     @property
     def total_fields(self):
-        """
-        A list of input fields for end of day session totals.  The
-        list consists of tuples of (name,validator,print_fields) and
-        may be empty if the payment method does not require manual
+        """Fetch a list of input fields for end of day session totals
+
+        Returns a list of input fields for end of day session totals.
+        The list consists of tuples of (name, validator, print_fields)
+        and may be empty if the payment method does not require manual
         entry of session totals.
 
         If the list has a length greater than 1, name does not need to
@@ -94,11 +108,11 @@ class PaymentMethod:
 
         print_fields may be None or a list of strings to print on the
         counting-up slip above the input field
-        (eg. "50","20","10",... for a cash drawer).
-
+        (eg. "50", "20", "10", ... for a cash drawer).
         """
         return []
-    def total(self,session,fields):
+
+    def total(self, session, fields):
         """Total to record for session
 
         Given a Session and the contents of the fields defined in the
@@ -114,13 +128,14 @@ class PaymentMethod:
         the reason they can't record session totals.
         """
         return zero
-    def commit_total(self,session,amount):
-        """
+
+    def commit_total(self, session, amount):
+        """Commit a total for this payment method
+
         Called when the total for a session is about to be committed
         to the database.  If we return anything other than None then
         the commit will be aborted and whatever we return will be
         displayed.
-
         """
         return
 
