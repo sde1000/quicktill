@@ -116,6 +116,6 @@ git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
 
 Run the following to update the package repository:
-scp ${tmpdir}/${packagename}_* ${tmpdir}/${packagename}?_* sde@ur.individualpubs.co.uk:~packages/incoming/
-ssh sde@ur.individualpubs.co.uk userv packages processincoming
+scp ${tmpdir}/${packagename}_* ${tmpdir}/${packagename}??_* quicktill@bag.assorted.org.uk:incoming/
+ssh quicktill@bag.assorted.org.uk "cd repo ; reprepro processincoming tills"
 EOF
