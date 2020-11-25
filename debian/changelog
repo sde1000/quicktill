@@ -1,3 +1,27 @@
+quicktill (18.6) stable; urgency=low
+
+  * New release 18.6
+
+  * Update make-release script for new repo location
+
+  * Better handling of deferral of part-paid transactions
+
+  * PEP8 payment.py
+
+  * Support popup message on open transactions from transaction metadata
+
+  * Update EMFCamp 2018 data for till version 18
+
+  * subqueryload_all and joinedload_all are deprecated in sqlalchemy
+
+  * Remember to close imports config files
+
+  * Don't use positional arguments in GObject constructors
+
+  * Don't pass a datetime.datetime to ui.label set() method
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 25 Nov 2020 13:10:51 +0000
+
 quicktill (18.5) stable; urgency=low
 
   * New release 18.5
