@@ -114,13 +114,19 @@ class optiongroup_selection:
         return len(self.o) >= self.option_group.min_choices
 
     def add_option(self, option):
+        """Add an option to the group
+
+        Return True if doing so had a visible effect
+        """
         count = self.o.count(option)
         if count >= option.max_allowed:
-            return
+            return False
         self.o.append(option)
         if self.option_group.max_choices \
            and len(self.o) > self.option_group.max_choices:
-            self.o.pop(0)
+            removed = self.o.pop(0)
+            return removed != option
+        return True
 
 class orderline(ui.lrline):
     def __init__(self, dish):
@@ -239,8 +245,9 @@ class orderline_dialog(ui.dismisspopup):
         # self.option_selections
         ogs = { og: optiongroup_selection(og)
                 for og in self.orderline.dish.option_groups }
-        for opt in self.option_selections:
-            ogs[opt.optiongroup].add_option(opt)
+        self.option_selections = [
+            opt for opt in self.option_selections
+            if ogs[opt.optiongroup].add_option(opt) ]
         valid = [ og.valid() for og in ogs.values() ]
         self.options = [ x for og in self.orderline.dish.option_groups
                          for x in ogs[og].options() ]
