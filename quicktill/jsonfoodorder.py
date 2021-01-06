@@ -201,7 +201,7 @@ class orderline_dialog(ui.dismisspopup):
         else:
             self.menu_keys = []
 
-        # We could go wider?
+        # We could go wider. But would it look odd?
         self.w = 68
         km = { keyboard.K_CASH: (self.finish, None, False) }
         super().__init__(h, self.w, orderline.dish.name + " options",
@@ -400,11 +400,16 @@ class popup(user.permission_checked, ui.basicpopup):
         self.message_department = message_department
         if not requests_session:
             requests_session = requests
-        r = requests_session.get(menuurl, timeout=3)
-        if r.status_code != 200:
-            ui.infopopup(["Could not read the menu: web request returned "
-                          f"status {r.status_code}."],
-                          title="Could not read menu")
+        try:
+            r = requests_session.get(menuurl, timeout=3)
+            if r.status_code != 200:
+                ui.infopopup(["Could not read the menu: web request returned "
+                              f"status {r.status_code}."],
+                             title="Could not read menu")
+                return
+        except requests.exceptions.ConnectionError:
+            ui.infopopup(["Unable to connect to the server to read the menu."],
+                         title="Could not read menu")
             return
         self.menu = Menu(r.json(), allowable_departments)
         self.func = func
