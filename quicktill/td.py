@@ -111,6 +111,7 @@ def stock_checkpullthru(stockid, maxtime):
         ).scalar()
 
 def foodorder_reset():
+    # XXX SQLAlchemy 2.0 will require engine to be passed explicitly
     foodorder_seq.drop()
     foodorder_seq.create()
 
@@ -118,6 +119,7 @@ def foodorder_ticket():
     return s.execute(select([foodorder_seq.next_value()])).scalar()
 
 def db_version():
+    # XXX needs update for SQLAlchemy 2.0
     return s.execute("select version()").scalar()
 
 # This is "pessimistic disconnect handling" as described in the
@@ -171,6 +173,8 @@ def init(database):
     database = parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'", database)
     engine = create_engine(database)
+    # XXX no longer supported in SQLAlchemy 2.0; pass engine to
+    # create_all() etc. instead
     models.metadata.bind = engine # for DDL, eg. to recreate foodorder_seq
     session_factory = sessionmaker(bind=engine)
     s = scoped_session(session_factory)
