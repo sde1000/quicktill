@@ -2461,7 +2461,8 @@ class page(ui.basicpage):
         trans = self._gettrans()
         if not trans or trans.closed:
             return
-        trans.notes = notes
+        # Truncate note to fit in field in model
+        trans.notes = notes[:60]
         self._redraw_note()
 
     def _apply_discount(self, tline):
