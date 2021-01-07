@@ -1,3 +1,19 @@
+quicktill (18.7) stable; urgency=low
+
+  * New release 18.7
+
+  * Notes about updates needed for sqlalchemy 2.0
+
+  * Ensure note fits in field in transaction model
+
+  * Deal with exception from requests.get() when reading the menu
+
+  * Improve 'Undo' list handling in json food order popup
+
+  * Add new food order module that uses json menus
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 07 Jan 2021 16:21:06 +0000
+
 quicktill (18.6) stable; urgency=low
 
   * New release 18.6
