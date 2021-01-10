@@ -69,7 +69,7 @@ class modify(user.permission_checked, ui.dismisspopup):
         self.win.drawstr(3, 2, 13, "Note: ", align=">")
         self.win.drawstr(4, 2, 13, "Department: ", align=">")
         self.win.drawstr(5, 2, 13, "Price: ", align=">")
-        self.win.addstr(5, 15, tillconfig.currency)
+        self.win.addstr(5, 15, tillconfig.currency())
         self.win.drawstr(6, 2, 54, "Alternative prices:")
         self.win.addstr(7, 2, "       1: {c}         2: {c}         3: {c}"
                         .format(c=tillconfig.currency))
@@ -83,16 +83,16 @@ class modify(user.permission_checked, ui.dismisspopup):
             d=lambda x: x.description,
             f=self.plu.department)
         self.pricefield = ui.editfield(
-            5, 15 + len(tillconfig.currency), 8,
+            5, 15 + len(tillconfig.currency()), 8,
             f=self.plu.price, validate=ui.validate_float)
         self.altprice1 = ui.editfield(
-            7, 12 + len(tillconfig.currency), 8,
+            7, 12 + len(tillconfig.currency()), 8,
             f = self.plu.altprice1, validate=ui.validate_float)
         self.altprice2 = ui.editfield(
-            7, 24 + len(tillconfig.currency) * 2, 8,
+            7, 24 + len(tillconfig.currency()) * 2, 8,
             f=self.plu.altprice2, validate=ui.validate_float)
         self.altprice3 = ui.editfield(
-            7, 36 + len(tillconfig.currency) * 3, 8,
+            7, 36 + len(tillconfig.currency()) * 3, 8,
             f=self.plu.altprice3, validate=ui.validate_float)
         self.savebutton = ui.buttonfield(9, 2, 8, "Save", keymap={
                 keyboard.K_CASH: (self.save, None)})

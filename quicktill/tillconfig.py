@@ -7,6 +7,7 @@ most of the entries here.
 
 import datetime
 from .models import penny
+from . import config
 
 # Has the --debug flag been set on the command line?
 debug = False
@@ -17,12 +18,20 @@ configname = "default"
 keyboard = None
 keyboard_right = None
 
-pubname = "Test Pub Name"
-pubnumber = "07715 422132"
-pubaddr = ("31337 Beer Street", "Burton", "ZZ9 9AA")
+pubname = config.ConfigItem(
+    'core:sitename', "Default site name", display_name="Site name",
+    description="Site name to be printed on receipts")
+pubnumber = config.ConfigItem(
+    'core:telephone', "01234 567890", display_name="Telephone number",
+    description="Telephone number to be printed on receipts")
+pubaddr = config.ConfigItem(
+    'core:address', "31337 Beer Street\nBurton\nZZ9 9AA",
+    display_name="Site address",
+    description="Site address to be printed on receipts")
 
-# Test multi-character currency name... monopoly money!
-currency = "MPL"
+currency = config.ConfigItem(
+    'core:currency', "", display_name="Currency symbol",
+    description="Currency symbol used throughout the system")
 
 hotkeys = {}
 
@@ -33,12 +42,7 @@ def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None:
         return "None"
-    return "".join([currency, str(a.quantize(penny))])
-
-# Do we print check digits on stock labels?
-checkdigit_print = False
-# Do we ask the user to input check digits when using stock?
-checkdigit_on_usestock = False
+    return f"{currency}{a.quantize(penny)}"
 
 database = None
 
@@ -71,20 +75,3 @@ minimum_lock_screen_time = 300
 
 # The time at which this instance of the till was started
 start_time = 0.0
-
-# Custom CSS for Gtk
-custom_css = None
-
-# How old can a transaction line be before it is unable to be modified
-# in place?
-max_transline_modify_age = datetime.timedelta(minutes=1)
-
-# When recalling an open transaction, warn if it is older than this
-# If set to None, never warn
-open_transaction_warn_after = datetime.timedelta(days=2)
-
-# Prohibit adding lines to a transaction if it is older than this
-open_transaction_lock_after = None
-
-# Message to give to the user when a transaction is locked
-open_transaction_lock_message = ""

@@ -2365,6 +2365,32 @@ CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
 DROP RULE log_stocktype ON stock
 """)
 
+class Config(Base, Logged):
+    """Till configuration
+    """
+    __tablename__ = "config"
+    key = Column(String(), primary_key=True)
+    value = Column(Text, nullable=False)
+    type = Column(String(), nullable=False)
+    display_name = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+
+add_ddl(Config.__table__, """
+CREATE OR REPLACE FUNCTION notify_config_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('config', NEW.key::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER config_change
+  AFTER UPDATE ON config
+  FOR EACH ROW EXECUTE PROCEDURE notify_config_change();
+""", """
+DROP TRIGGER config_change ON config;
+DROP FUNCTION notify_config_change();
+""")
+
 log_seq = Sequence('log_seq')
 
 class LogEntry(Base):

@@ -4,6 +4,7 @@ from gi.repository import Gtk, Gdk, GLib
 import sys
 from . import listen
 from . import tillconfig
+from . import config
 
 application_css = """
 window {
@@ -89,6 +90,10 @@ button.key2x1 {
 
 """
 
+custom_css = config.ConfigItem(
+    'gtk:custom_css', None, display_name="Custom CSS",
+    description="Custom CSS for till when running with gtk")
+
 class kbutton(Gtk.Button):
     """A button on an on-screen keyboard
     """
@@ -167,8 +172,9 @@ def _add_css(css, priority):
 
 def init_css():
     _add_css(application_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-    if tillconfig.custom_css:
-        _add_css(tillconfig.custom_css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+    # XXX can we change this css if the config item is changed?
+    if custom_css():
+        _add_css(custom_css(), Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
 def run_standalone(window):
     init_css()

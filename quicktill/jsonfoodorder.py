@@ -349,7 +349,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
     with driver as d:
         if verbose:
             d.printline(f"\t{tillconfig.pubname}", emph=1)
-            for i in tillconfig.pubaddr:
+            for i in tillconfig.pubaddr().splitlines():
                 d.printline(f"\t{i}",colour=1)
             d.printline(f"\tTel. {tillconfig.pubnumber}")
             d.printline()

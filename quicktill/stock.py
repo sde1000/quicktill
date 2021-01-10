@@ -8,8 +8,14 @@ from . import ui, td, keyboard, tillconfig, linekeys, department, user
 from .models import Department, StockType, StockItem, StockAnnotation
 from .models import AnnotationType, Delivery, desc, StockLineTypeLog
 from .models import StockTake
+from . import config
 from sqlalchemy.orm import joinedload, undefer
 log = logging.getLogger(__name__)
+
+# Do we ask the user to input check digits when using stock?
+checkdigit_on_usestock = config.BooleanConfigItem(
+    'core:checkdigit_on_usestock', False, display_name="Require check digits?",
+    description="Should check digits be enforced when putting stock on sale?")
 
 def stockinfo_linelist(sn):
     s = td.s.query(StockItem).get(sn)
@@ -18,7 +24,7 @@ def stockinfo_linelist(sn):
         s.stocktype.format(), s.id, s.description)))
     l.append("Sells for %s%s.  "
              "%s %ss used; %s %ss remaining." % (
-                 tillconfig.currency, s.stocktype.pricestr,
+                 tillconfig.currency(), s.stocktype.pricestr,
                  s.used, s.stocktype.unit.name,
                  s.remaining, s.stocktype.unit.name))
     l.append("")
@@ -235,7 +241,7 @@ class stockpicker(ui.dismisspopup):
         self.title = title
         self.func = func
         self.filter = filter
-        self.check = check_checkdigits and tillconfig.checkdigit_on_usestock
+        self.check = check_checkdigits and checkdigit_on_usestock()
         h = 9 if self.check else 7
         super().__init__(h, 62, title, colour=ui.colour_input)
         self.win.drawstr(2, 2, 13, "Stock ID: ", align=">")

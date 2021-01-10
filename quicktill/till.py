@@ -56,7 +56,7 @@ configurations = {
     'description': 'Built-in default configuration',
     'pubname': 'Not configured',
     'pubnumber': 'Not configured',
-    'pubaddr': 'Not configured',
+    'pubaddr': ('Not configured',),
     'currency': '',
     'all_payment_methods': [],
     'payment_methods': [],
@@ -248,6 +248,11 @@ class runtill(cmdline.command):
         if args.exit_when_idle is not None:
             # We should also exit if the "update" notification is sent
             listener.listen_for("update", runtill.update_notified)
+
+        # Load config from database, update database with new config items
+        from . import config
+        with td.orm_session():
+            config.ConfigItem.preload()
 
         dbg_kbd = None
         try:
@@ -531,10 +536,15 @@ def main():
         foodorder.FoodOrderPlugin(
             config['menuurl'], kitchenprinters,
             keyboard.K_FOODORDER, keyboard.K_FOODMESSAGE)
-    tillconfig.pubname = config['pubname']
-    tillconfig.pubnumber = config['pubnumber']
-    tillconfig.pubaddr = config['pubaddr']
-    tillconfig.currency = config['currency']
+    # Setting of .default items from the config file to be removed in release 20
+    if 'pubname' in config:
+        tillconfig.pubname.default = config['pubname']
+    if 'pubnumber' in config:
+        tillconfig.pubnumber.default = config['pubnumber']
+    if 'pubaddr' in config:
+        tillconfig.pubaddr.default = '\n'.join(config['pubaddr'])
+    if 'currency' in config:
+        tillconfig.currency.default = config['currency']
     tillconfig.all_payment_methods = config['all_payment_methods']
     tillconfig.payment_methods = config['payment_methods']
     tillconfig.keyboard_driver = kbdrivers.prehkeyboard # Default
@@ -560,9 +570,10 @@ def main():
     if 'deptkeycheck' in config:
         log.warning("Obsolete 'deptkeycheck' key present in configuration")
     if 'checkdigit_print' in config:
-        tillconfig.checkdigit_print = config['checkdigit_print']
+        printer.checkdigit_print.default = config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
-        tillconfig.checkdigit_on_usestock = config['checkdigit_on_usestock']
+        from . import stock
+        stock.checkdigit_on_usestock.default = config['checkdigit_on_usestock']
     if 'usestock_hook' in config:
         # Config files should subclass usestock.UseStockRegularHook
         # instead of specifying this
@@ -580,15 +591,24 @@ def main():
     if 'usertoken_listen_v6' in config:
         tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
     if 'custom_css' in config:
-        tillconfig.custom_css = config['custom_css']
+        from . import keyboard_gtk
+        keyboard_gtk.custom_css.default = config['custom_css']
     if 'max_transline_modify_age' in config:
-        tillconfig.max_transline_modify_age = config['max_transline_modify_age']
+        from . import register
+        register.max_transline_modify_age.default = \
+            config['max_transline_modify_age']
     if 'open_transaction_warn_after' in config:
-        tillconfig.open_transaction_warn_after = config['open_transaction_warn_after']
+        from . import register
+        register.open_transaction_warn_after.default = \
+            config['open_transaction_warn_after']
     if 'open_transaction_lock_after' in config:
-        tillconfig.open_transaction_lock_after = config['open_transaction_lock_after']
+        from . import register
+        register.open_transaction_lock_after.default = \
+            config['open_transaction_lock_after']
     if 'open_transaction_lock_message' in config:
-        tillconfig.open_transaction_lock_message = config['open_transaction_lock_message']
+        from . import register
+        register.open_transaction_lock_message.default = \
+            config['open_transaction_lock_message']
 
     if tillconfig.database:
         td.init(tillconfig.database)

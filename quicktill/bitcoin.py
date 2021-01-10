@@ -196,7 +196,7 @@ class BitcoinPayment(payment.PaymentMethod):
             # It's a pending payment.  The ref field is the amount in
             # our configured currency (i.e. NOT in Bitcoin).
             return "Pending {} payment of {}{}".format(
-            self.description, tillconfig.currency, payment.ref)
+            self.description, tillconfig.currency(), payment.ref)
         return "{} ({} {})".format(self.description, payment.ref,
                                    self._currency)
 

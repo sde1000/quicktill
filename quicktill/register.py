@@ -36,6 +36,7 @@ from . import modifiers
 from . import payment
 from . import user
 from . import plugins
+from . import config
 import logging
 import datetime
 log = logging.getLogger(__name__)
@@ -50,6 +51,36 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
 import uuid
+
+# How old can a transaction line be before it is unable to be modified
+# in place?
+max_transline_modify_age = config.IntervalConfigItem(
+    'register:max_transline_modify_age', datetime.timedelta(minutes=1),
+    display_name="Transaction line modify-in-place age limit",
+    description="For how long after it is created can a transaction line be "
+    "modified?  This applies both to adding additional items and voiding "
+    "the line.")
+
+# When recalling an open transaction, warn if it is older than this
+# If set to None, never warn
+open_transaction_warn_after = config.IntervalConfigItem(
+    'register:open_transaction_warn_after', datetime.timedelta(days=2),
+    display_name="Warn about open transactions after",
+    description="When recalling an open transaction, warn the user if it "
+    "is older than this.  If blank, never warn.")
+
+# Prohibit adding lines to a transaction if it is older than this
+open_transaction_lock_after = config.IntervalConfigItem(
+    'register:open_transaction_lock_after', None,
+    display_name="Lock open transactions after",
+    description="Prohibit adding lines to an open transaction when it is "
+    "older than this.  If blank, never lock.")
+
+# Message to give to the user when a transaction is locked
+open_transaction_lock_message = config.ConfigItem(
+    'register:open_transaction_lock_message', "",
+    display_name="Locked transaction message",
+    description="Display this message to the user when a transaction is locked.")
 
 # Transaction metadata keys
 transaction_message_key = "register-message"
@@ -211,9 +242,9 @@ class PercentageDiscount(DiscountPolicyPlugin):
 def _transaction_age_locked(trans):
     """Is the transaction to be treated as locked?
     """
-    if trans.closed or not tillconfig.open_transaction_lock_after:
+    if trans.closed or not open_transaction_lock_after():
         return False
-    return trans.age > tillconfig.open_transaction_lock_after
+    return trans.age > open_transaction_lock_after()
 
 class bufferline(ui.lrline):
     """The last line on the register display
@@ -295,7 +326,7 @@ class tline(ui.lrline):
         else:
             self.voided = False
             self.ltext = tl.description
-        self.rtext = tl.regtotal(tillconfig.currency)
+        self.rtext = tl.regtotal(tillconfig.currency())
         for i in RegisterPlugin.instances:
             i.update_tline(self, tl)
         self.update_colour()
@@ -390,9 +421,9 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.descfield = ui.editfield(3, 15, 53, flen=300)
         self.itemsfield = ui.editfield(4, 15, 5, validate=ui.validate_int)
         self.win.addstr(4, 21, "items @ {}".format(tillconfig.currency))
-        self.amountfield = ui.editfield(4, 29 + len(tillconfig.currency), 8,
+        self.amountfield = ui.editfield(4, 29 + len(tillconfig.currency()), 8,
                                         validate=ui.validate_positive_float)
-        self.win.addstr(4, 38 + len(tillconfig.currency), '=')
+        self.win.addstr(4, 38 + len(tillconfig.currency()), '=')
         self.itemsfield.sethook = self.calculate_total
         self.amountfield.sethook = self.calculate_total
         self.addbutton = ui.buttonfield(
@@ -402,7 +433,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         ui.map_fieldlist(
             [self.deptfield, self.descfield, self.itemsfield,
              self.amountfield, self.addbutton])
-        self.total = ui.label(4, 40 + len(tillconfig.currency), 15)
+        self.total = ui.label(4, 40 + len(tillconfig.currency()), 15)
         self.deptfield.focus()
 
     def calculate_total(self):
@@ -743,11 +774,10 @@ class page(ui.basicpage):
         if _transaction_age_locked(trans):
             self.transaction_locked = [
                 "This transaction is locked because it is more than "
-                f"{tillconfig.open_transaction_lock_after.days} days old."]
-            if tillconfig.open_transaction_lock_message:
+                f"{open_transaction_lock_after().days} days old."]
+            if open_transaction_lock_message():
                 self.transaction_locked.append("")
-                self.transaction_locked.append(
-                    tillconfig.open_transaction_lock_message)
+                self.transaction_locked.append(open_transaction_lock_message())
         self._redraw_note()
         self.close_if_balanced()
         self.repeat = None
@@ -955,7 +985,7 @@ class page(ui.basicpage):
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
         if may_repeat and len(self.dl) > 0 and \
-           self.dl[-1].age() < tillconfig.max_transline_modify_age:
+           self.dl[-1].age() < max_transline_modify_age():
             otl = td.s.query(Transline).get(self.dl[-1].transline)
             otl.items = otl.items + 1
             self.dl[-1].update()
@@ -1164,7 +1194,7 @@ class page(ui.basicpage):
         # same stockline key has been pressed again.
         repeated = False
         if may_repeat and len(self.dl) > 0 \
-           and self.dl[-1].age() < tillconfig.max_transline_modify_age \
+           and self.dl[-1].age() < max_transline_modify_age() \
            and len(sell) == 1:
             otl = td.s.query(Transline).get(self.dl[-1].transline)
             # If the stockref has more than one item, we don't repeat
@@ -1799,7 +1829,7 @@ class page(ui.basicpage):
             if not closed and (
                     self.keyguard or 
                     (len(self.dl) > 0 and
-                     self.dl[0].age() > tillconfig.max_transline_modify_age)):
+                     self.dl[0].age() > max_transline_modify_age())):
                 log.info("Register: cancelkey kill transaction denied")
                 ui.infopopup(
                     ["This transaction is old; you can't cancel it all in "
@@ -1888,7 +1918,7 @@ class page(ui.basicpage):
                      "transaction."],
                     title="Not allowed")
                 return
-            can_delete = all(l.age() <= tillconfig.max_transline_modify_age for l in tl)
+            can_delete = all(l.age() <= max_transline_modify_age() for l in tl)
             voids = []
             for l in tl:
                 if can_delete:
@@ -1954,7 +1984,7 @@ class page(ui.basicpage):
         if not self.entry():
             return
         if not self.hook("cancelline", l):
-            if l.age() < tillconfig.max_transline_modify_age:
+            if l.age() < max_transline_modify_age():
                 self._delete_line(l)
             else:
                 self._void_lines([l])
@@ -2114,8 +2144,8 @@ class page(ui.basicpage):
                         [message.value], title="Note", colour=ui.colour_info)
                 age = trans.age
                 if not self.transaction_locked \
-                   and tillconfig.open_transaction_warn_after \
-                   and age > tillconfig.open_transaction_warn_after:
+                   and open_transaction_warn_after() \
+                   and age > open_transaction_warn_after():
                     ui.infopopup(
                         [f"This transaction is {age.days} days old.  Please "
                          "arrange for it to be paid soon."],
@@ -2377,11 +2407,11 @@ class page(ui.basicpage):
             message = [
                 f"Transaction {othertrans.id} ({othertrans.notes}) is "
                  "locked because it is more than "
-                 f"than {tillconfig.open_transaction_lock_after.days} days "
+                 f"than {open_transaction_lock_after().days} days "
                  "old."]
-            if tillconfig.open_transaction_lock_message:
+            if open_transaction_lock_message():
                 message.append("")
-                message.append(tillconfig.open_transaction_lock_message)
+                message.append(open_transaction_lock_message())
             ui.infopopup(message, title="Other transaction locked")
             return
         if self.hook("mergetrans_finish", trans, othertrans):

@@ -379,10 +379,10 @@ class new_stockitem(ui.basicpopup):
         self.win.drawstr(3, 2, 22, "Item size: ", align=">")
         self.win.drawstr(4, 2, 22, "Number of items: ", align=">")
         self.win.drawstr(5, 2, 22, "Cost price (ex VAT): ", align=">")
-        self.win.addstr(5, 24, tillconfig.currency)
+        self.win.addstr(5, 24, tillconfig.currency())
         self.win.drawstr(6, 2, 22, "Suggested sale price: ", align=">")
         self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
-        self.win.addstr(7, 24, tillconfig.currency)
+        self.win.addstr(7, 24, tillconfig.currency())
         self.win.drawstr(8, 2, 22, "Best before: ", align=">")
         self.typefield = ui.modelpopupfield(
             2, 24, 52, StockType, stocktype.choose_stocktype,
@@ -396,14 +396,14 @@ class new_stockitem(ui.basicpopup):
             4, 24, 5, f=1,
             validate=ui.validate_positive_nonzero_int)
         self.qtyfield.sethook = self.update_suggested_price
-        self.costfield = ui.editfield(5, 24 + len(tillconfig.currency), 10,
+        self.costfield = ui.editfield(5, 24 + len(tillconfig.currency()), 10,
                                       validate=ui.validate_float)
         self.costfield.sethook = self.update_suggested_price
         self.suggested_price = ui.label(6, 24, 77 - 24)
-        self.salefield = ui.editfield(7, 24 + len(tillconfig.currency), 6,
+        self.salefield = ui.editfield(7, 24 + len(tillconfig.currency()), 6,
                                       validate=ui.validate_float)
-        self.saleunits = ui.label(7, 31 + len(tillconfig.currency),
-                                  77 - 31 - len(tillconfig.currency))
+        self.saleunits = ui.label(7, 31 + len(tillconfig.currency()),
+                                  77 - 31 - len(tillconfig.currency()))
         self.bestbeforefield = ui.datefield(8, 24)
         self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})
@@ -501,10 +501,10 @@ class edit_stockitem(ui.basicpopup):
         self.win.drawstr(2, 2, 22, "Stock type: ", align=">")
         self.win.drawstr(3, 2, 22, "Item size: ", align=">")
         self.win.drawstr(5, 2, 22, "Cost price (ex VAT): ", align=">")
-        self.win.addstr(5, 24, tillconfig.currency)
+        self.win.addstr(5, 24, tillconfig.currency())
         self.win.drawstr(6, 2, 22, "Suggested sale price: ", align=">")
         self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
-        self.win.addstr(7, 24, tillconfig.currency)
+        self.win.addstr(7, 24, tillconfig.currency())
         self.win.drawstr(8, 2, 22, "Best before: ", align=">")
         self.typefield = ui.modelpopupfield(
             2, 24, 52, StockType, stocktype.choose_stocktype,
@@ -515,14 +515,14 @@ class edit_stockitem(ui.basicpopup):
             3, 24, 52, StockUnit, self._null_list, lambda x: x.name)
         self.unitfield.sethook = self.unitfield_changed
         self.description = ui.label(4, 24, 77 - 24)
-        self.costfield = ui.editfield(5, 24 + len(tillconfig.currency), 10,
+        self.costfield = ui.editfield(5, 24 + len(tillconfig.currency()), 10,
                                       validate=ui.validate_float)
         self.costfield.sethook = self.update_suggested_price
         self.suggested_price = ui.label(6, 24, 77 - 24)
-        self.salefield = ui.editfield(7, 24 + len(tillconfig.currency), 6,
+        self.salefield = ui.editfield(7, 24 + len(tillconfig.currency()), 6,
                                       validate=ui.validate_float)
-        self.saleunits = ui.label(7, 31 + len(tillconfig.currency),
-                                  77 - 31 - len(tillconfig.currency))
+        self.saleunits = ui.label(7, 31 + len(tillconfig.currency()),
+                                  77 - 31 - len(tillconfig.currency()))
         self.bestbeforefield = ui.datefield(8, 24)
         self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})

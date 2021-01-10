@@ -3,6 +3,7 @@ from decimal import Decimal
 from .models import Delivery, VatBand, Business, Transline, Transaction
 from .models import zero,penny
 from . import pdrivers
+from . import config
 
 import datetime
 now = datetime.datetime.now
@@ -10,6 +11,11 @@ now = datetime.datetime.now
 # XXX should be in tillconfig?
 driver = None
 labelprinters = []
+
+# Do we print check digits on stock labels?
+checkdigit_print = config.BooleanConfigItem(
+    'core:checkdigit_print', False, display_name="Print check digits?",
+    description="Should check digits be printed on stock labels?")
 
 # All of these functions assume there's a database session in td.s
 # This should be the case if called during a keypress!  If being used
@@ -22,10 +28,10 @@ def print_receipt(transid):
     if not trans.lines:
         return
     with driver as d:
-        d.printline("\t{}".format(tillconfig.pubname), emph=1)
-        for i in tillconfig.pubaddr:
-            d.printline("\t{}".format(i), colour=1)
-        d.printline("\tTel. {}".format(tillconfig.pubnumber))
+        d.printline(f"\t{tillconfig.pubname}", emph=1)
+        for i in tillconfig.pubaddr().splitlines():
+            d.printline(f"\t{i}", colour=1)
+        d.printline(f"\tTel. {tillconfig.pubnumber}")
         d.printline()
         bandtotals = {}
         for tl in trans.lines:
@@ -33,7 +39,7 @@ def print_receipt(transid):
                 tl.department.vatband, Decimal("0.00")) + tl.total
         for tl in trans.lines:
             left = tl.description
-            right = tl.regtotal(tillconfig.currency)
+            right = tl.regtotal(tillconfig.currency())
             if len(bandtotals) > 1 and trans.closed:
                 d.printline(
                     "{}\t\t{} {}".format(left, right, tl.department.vatband),
@@ -250,7 +256,7 @@ def stock_label(f, d):
     f.drawCentredString(width / 2, y, ui.formatdate(d.delivery.date))
     y = y - pitch
     f.drawCentredString(width / 2, y, d.description)
-    if tillconfig.checkdigit_print:
+    if checkdigit_print():
         y = y - pitch
         f.drawCentredString(width / 2, y, "Check digits: %s" % (d.checkdigits,))
     f.setFont(fontname, y - margin)

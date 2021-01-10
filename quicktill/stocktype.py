@@ -283,13 +283,13 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
         super().__init__(h, w, title=f"Re-price {name}",
                          colour=ui.colour_input)
         self.win.drawstr(2, 2, 12, "Sale price: ", align=">")
-        self.win.addstr(2, 14, tillconfig.currency)
+        self.win.addstr(2, 14, tillconfig.currency())
         self.salefield = ui.editfield(
-            2, 14 + len(tillconfig.currency), 6, validate=ui.validate_float,
+            2, 14 + len(tillconfig.currency()), 6, validate=ui.validate_float,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.salefield.set(st.saleprice)
-        self.win.drawstr(2, 21 + len(tillconfig.currency),
-                         w - 22 - len(tillconfig.currency),
+        self.win.drawstr(2, 21 + len(tillconfig.currency()),
+                         w - 22 - len(tillconfig.currency()),
                          f"per {st.unit.item_name}")
         self.win.addstr(4, 1, headerline.display(w - 2)[0])
         s = ui.scrollable(5, 1, w - 2, h - 6, dl=ll, show_cursor=False)
@@ -311,8 +311,8 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
             user.log(f"Changed sale price of {st.logref} from "
                      f"{tillconfig.fc(oldprice)} to {tillconfig.fc(st.saleprice)}")
             td.s.flush()
-            ui.infopopup(["Price of {} changed to {}{}.".format(
-                st.format(), tillconfig.currency, st.pricestr)],
+            ui.infopopup([f"Price of {st} changed to "
+                          f"{tillconfig.currency}{st.pricestr}."],
                          title="Price changed",
                          colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)

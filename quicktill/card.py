@@ -39,8 +39,8 @@ class _cardpopup(ui.dismisspopup):
                 "Cash/Enter if there is none.")
             y += 1
             self.win.drawstr(y, 2, 17, "Cashback amount: ", align=">")
-            self.win.addstr(y, 19, tillconfig.currency)
-            self.cbfield = ui.moneyfield(y, 19 + len(tillconfig.currency), 6)
+            self.win.addstr(y, 19, tillconfig.currency())
+            self.cbfield = ui.moneyfield(y, 19 + len(tillconfig.currency()), 6)
             fields.append(self.cbfield)
             y += 2
             self.total_label = ui.label(y, 2, 40)
