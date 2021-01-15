@@ -1,7 +1,9 @@
 from .models import Config
 from . import td
+from . import cmdline
 from .listen import listener
 import datetime
+import sys
 
 import logging
 log = logging.getLogger(__name__)
@@ -180,3 +182,44 @@ class IntervalConfigItem(ConfigItem):
         if v is None:
             return ""
         return f"{v.days} days, {v.seconds} seconds"
+
+class config_cmd(cmdline.command):
+    command = "config"
+    help = "view or modify till configuration"
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument(
+            "-s", "--set", help="set a configuration key; if value is not "
+            "provided on the command line, will read from stdin",
+            action="store_true")
+        parser.add_argument(
+            "key", nargs="?", help="configuration key to view or modify")
+        parser.add_argument(
+            "value", nargs="?", help="value for configuration key")
+
+    @staticmethod
+    def run(args):
+        if args.set and not args.key:
+            print("The --set option requires a key to be specified")
+            return 1
+
+        with td.orm_session():
+            if not args.key:
+                for ci in td.s.query(Config).order_by(Config.key).all():
+                    print(f"{ci.key}: {ci.display_name}: {ci.value}")
+                return
+            ci = td.s.query(Config).get(args.key)
+            if not ci:
+                print(f"Config key {args.key} does not exist")
+                return 1
+            if args.set or args.value:
+                ci.value = args.value or sys.stdin.read().strip()
+            print(f"Key: {ci.key}")
+            if args.key in ConfigItem._keys:
+                cf = ConfigItem._keys[args.key]
+                print(f"Name: {cf.display_name}")
+                print(f"Description: {cf.description}")
+                print(f"Type: {cf.type}")
+                print(f"Default value: {cf.to_db(cf.default)}")
+            print(f"{'New' if args.set or args.value else 'Current'} value: {ci.value}")
