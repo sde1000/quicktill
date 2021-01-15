@@ -5,7 +5,6 @@ log = logging.getLogger(__name__)
 from . import ui, td, keyboard, tillconfig, user
 from .models import Department, Unit, StockType, StockItem, Delivery, penny
 from .plugins import ClassPluginMount
-from .cmdline import command
 from decimal import Decimal
 import datetime
 

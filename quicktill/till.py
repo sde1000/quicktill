@@ -39,7 +39,6 @@ from . import extras
 from . import dbsetup
 from . import dbutils
 from . import foodcheck
-from . import stocktype
 # End of subcommand imports
 
 log = logging.getLogger(__name__)
