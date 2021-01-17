@@ -1,8 +1,14 @@
-import requests
-from oauthlib.oauth1 import SIGNATURE_RSA, SIGNATURE_TYPE_AUTH_HEADER, SIGNATURE_HMAC
-from requests_oauthlib import OAuth1
+# Add quicktill.xero to /etc/quicktill/default-imports to enable Xero
+# setup command-line options
+
+from requests_oauthlib import OAuth2Session
+from oauthlib.oauth2 import WebApplicationClient
 from xml.etree.ElementTree import Element, SubElement, tostring, fromstring
 import datetime
+import secrets
+import hashlib
+import base64
+import json
 import logging
 from . import session
 from . import payment
@@ -11,30 +17,71 @@ from . import td
 from . import user
 from . import delivery
 from . import keyboard
+from . import cmdline
+from . import config
+from . import secretstore
 from .models import Session, zero
 from .models import Delivery, Supplier
 log = logging.getLogger(__name__)
 
+# Zap the very unhelpful behaviour from oauthlib when Xero returns
+# more scopes than requested
+import os
+os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = "true"
+
 XERO_ENDPOINT_URL = "https://api.xero.com/api.xro/2.0/"
+XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize"
+XERO_CONNECT_URL = "https://identity.xero.com/connect/token"
+XERO_REVOKE_URL = "https://identity.xero.com/connect/revocation"
+XERO_CONNECTIONS_URL = "https://api.xero.com/connections"
+
+class PKCE(WebApplicationClient):
+    """Proof Key for Code Exchange by OAuth Public Clients - RFC7636
+    """
+    @staticmethod
+    def _b64encode_without_padding(b):
+        return base64.urlsafe_b64encode(b).split(b'=')[0]
+
+    def prepare_request_uri(self, *args, **kwargs):
+        self.code_verifier = self._b64encode_without_padding(
+            secrets.token_bytes(32))
+        code_challenge = self._b64encode_without_padding(
+            hashlib.sha256(self.code_verifier).digest())
+        return super().prepare_request_uri(
+            *args, code_challenge=code_challenge,
+            code_challenge_method="S256", **kwargs)
+
+    def prepare_request_body(self, *args, **kwargs):
+        return super().prepare_request_body(
+            *args, code_verifier=self.code_verifier, **kwargs)
 
 class XeroError(Exception):
     pass
+
+def xero_not_connected():
+    ui.infopopup(
+        ["The till is not connected to Xero. If it was previously connected, "
+         "the connection may have expired if it was not used for more "
+         "than sixty days.",
+         "",
+         'To connect to Xero, use "runtill xero-connect" at the command line.',
+         "",
+         "You will need to be able to copy-and-paste between the terminal "
+         "and a web browser to authenticate with Xero."],
+        title="Xero not available")
 
 class XeroSessionHooks(session.SessionHooks):
     def __init__(self, xero):
         self.xero = xero
 
     def preRecordSessionTakings(self, sessionid):
-        if not self.xero.oauth:
-            ui.infopopup(
-                ["This terminal does not have access to the accounting "
-                 "system.  Please record the session takings on another "
-                 "terminal."], title="Accounts not available")
+        if not self.xero.connection_ok():
+            xero_not_connected()
             return True
 
     def postRecordSessionTakings(self, sessionid):
         session = td.s.query(Session).get(sessionid)
-        if self.xero.start_date and self.xero.start_date > session.date:
+        if self.xero.start_date() and self.xero.start_date() > session.date:
             return
         # Commit at this point to ensure the totals are recorded in
         # the till database.
@@ -44,7 +91,7 @@ class XeroSessionHooks(session.SessionHooks):
             with ui.exception_guard("creating the Xero invoice",
                                     suppress_exception=False):
                 invid, negative_totals = self.xero._create_invoice_for_session(
-                    sessionid, approve=self.xero.auto_approve_invoice)
+                    sessionid, approve=self.xero.auto_approve_invoice())
         except XeroError:
             return
         # Record the Xero invoice ID
@@ -52,7 +99,7 @@ class XeroSessionHooks(session.SessionHooks):
         # We want to commit the invoice ID to the database even if adding
         # payments fails, so we can try again later
         td.s.commit()
-        if self.xero.auto_approve_invoice and not negative_totals:
+        if self.xero.auto_approve_invoice() and not negative_totals:
             try:
                 with ui.exception_guard("adding payments to the Xero invoice",
                                         suppress_exception=False):
@@ -67,33 +114,23 @@ class XeroDeliveryHooks(delivery.DeliveryHooks):
 
     def preConfirm(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
-        if self.xero.start_date and self.xero.start_date > d.date:
+        if self.xero.start_date() and self.xero.start_date() > d.date:
             return
         if not d.supplier.accinfo:
             return
-        if not self.xero.oauth:
-            ui.infopopup(
-                ["This terminal does not have access to Xero, the "
-                 "accounting system, so the delivery can't be confirmed "
-                 "from here.", "",
-                 "Please save the delivery here, and confirm it using "
-                 "a terminal that does have access to Xero."],
-                title="No access to accounts")
+        if not self.xero.connection_ok():
+            xero_not_connected()
             return True
 
     def confirmed(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
-        if self.xero.start_date and self.xero.start_date > d.date:
+        if self.xero.start_date() and self.xero.start_date() > d.date:
             ui.toast("Not sending this delivery to Xero - delivery is dated "
                      "before the Xero start date")
             return
         if not d.supplier.accinfo:
             ui.toast("Not sending this delivery to Xero - the supplier "
                      "is not linked to a Xero contact")
-            return
-        if not self.xero.oauth:
-            ui.toast("Not sending this delivery to Xero - this terminal "
-                     "does not have access to Xero.")
             return
         self.xero._send_delivery(deliveryid)
 
@@ -105,15 +142,18 @@ class XeroIntegration:
     calls the instance's app_menu() method to enable users to access
     the integration utilities menu.
     """
+    _integrations = []
 
     def __init__(self,
-                 # oauth parameters - if absent, integration will prevent
-                 # till users from performing any actions that would
-                 # require Xero callouts
+                 config_prefix="xero",
+                 # oauth1 parameters - obsolete
                  consumer_key=None, private_key=None,
+                 # oauth2 parameters
+                 client_id=None,
+                 redirect_uri="https://quicktill.assorted.org.uk/xero.html",
+                 tenant_id=None,
+                 secrets=None,
                  # Invoices will be created to the following contact ID:
-                 # (which may be a callable that takes a session and returns
-                 # the contact ID)
                  sales_contact_id=None,
                  # Invoices will be created with a reference using the
                  # following template:
@@ -140,50 +180,179 @@ class XeroIntegration:
                  auto_approve_invoice=True,
                  # Only start sending totals to Xero on or after this date
                  start_date=None):
+        self._integrations.append(self)
+
+        self.secrets = secrets
+
+        # Configuration items: now to be stored in the database
+        self.client_id = config.ConfigItem(
+            f"{config_prefix}:client_id", client_id,
+            display_name="Xero OAuth2 client ID",
+            description="Client ID of the Xero integration app; if you need one, "
+            "create a new 'Auth code with PKCE' app at "
+            "https://developer.xero.com/myapps — feel free to use "
+            "https://quicktill.assorted.org.uk/xero.html as the redirect URI.")
+        self.redirect_uri = config.ConfigItem(
+            f"{config_prefix}:redirect_uri", redirect_uri,
+            display_name="Xero OAuth2 redirect URI",
+            description="URI of a web page to receive the code generated by "
+            "Xero during OAuth2 PKCE authorisation. Any page that simply displays "
+            "the 'code' and 'state' parameters from the URL will work.")
+        self.tenant_id = config.ConfigItem(
+            f"{config_prefix}:tenant_id", tenant_id,
+            display_name="Xero tenant ID",
+            description="Tenant ID of the Xero organisation to use. A list of "
+            "available tenant IDs and their corresponding organisation names "
+            "will be printed after authorisation; copy the one you want to use "
+            "here. Tenant IDs are stable and will not change upon "
+            "reauthorisation.")
+        self.sales_contact_id = config.ConfigItem(
+            f"{config_prefix}:sales_contact_id", sales_contact_id,
+            display_name="Xero sales contact ID",
+            description="ID of the contact to use for the invoices generated for "
+            "each session")
+        self.tracking_category_name = config.ConfigItem(
+            f"{config_prefix}:tracking_category_name", tracking_category_name,
+            display_name="Xero tracking category name",
+            description="Name of a tracking category to use for all invoice "
+            "and bill lines")
+        self.tracking_category_value = config.ConfigItem(
+            f"{config_prefix}:tracking_category_value", tracking_category_value,
+            display_name="Xero tracking category value",
+            description="Value to use for tracking category for all invoice "
+            "and bill lines")
+        self.department_tracking_category_name = config.ConfigItem(
+            f"{config_prefix}:department_tracking_category_name",
+            department_tracking_category_name,
+            display_name="Xero deparment tracking category name",
+            description="Name of a tracking cagegory to use for invoice and "
+            "bill lines relating to departments.  The value will be read from "
+            "the department accinfo field; accinfo is expected to be "
+            "sales-account/purchases-account/tracking-value — "
+            "i.e. three fields separated by the '/' character.")
+        self.reference_template = config.ConfigItem(
+            f"{config_prefix}:reference_template", reference_template,
+            display_name="Xero invoice reference template",
+            description="Template for the reference that will be added to "
+            "each invoice generated. You can refer to aspects of the relevant "
+            "session using, for example, {session.id} or {session.date}.")
+        self.due_days = config.IntConfigItem(
+            f"{config_prefix}:due_days", due_days,
+            display_name="Xero invoice due days",
+            description="Invoices created for sessions will be listed as 'due' "
+            "this number of days after the session date.")
+        self.tillweb_base_url = config.ConfigItem(
+            f"{config_prefix}:tillweb_base_url", tillweb_base_url,
+            display_name="Xero tillweb base URL",
+            description="URL for the Main Menu page of the till web interface; "
+            "this will be used to create 'Go to Till integration' links to "
+            "sessions and deliveries from invoices and bills in Xero")
+        self.branding_theme_id = config.ConfigItem(
+            f"{config_prefix}:branding_theme_id", branding_theme_id,
+            display_name="Xero branding theme ID",
+            description="ID of the branding theme to use for invoices created "
+            "in Xero; leave blank for the default")
+        # Ignore shortcode; it's only used in the web interface
+        self.discrepancy_account = config.ConfigItem(
+            f"{config_prefix}:discrepancy_account", discrepancy_account,
+            display_name="Xero discrepancy account",
+            description="Account code to be used for discrepancies between "
+            "till total and actual total when creating invoices")
+        self.suspense_account = config.ConfigItem(
+            f"{config_prefix}:suspense_account", suspense_account,
+            display_name="Xero suspense account",
+            description="Account code to be used when a payment method has "
+            "a negative total for a session, since Xero does not support "
+            "negative payments on invoices. Once the invoice is approved, "
+            "you can create a 'Spend money' transaction from the bank account "
+            "for the payment method to the suspense account to balance.")
+        self.auto_approve_invoice = config.BooleanConfigItem(
+            f"{config_prefix}:auto_approve_invoice", auto_approve_invoice,
+            display_name="Xero auto approve invoice?",
+            description="Should the invoice generated for a session be "
+            "approved automatically, if possible? If it can be approved, "
+            "payments will also be added. If not, it will be left as a draft.")
+        self.start_date = config.DateConfigItem(
+            f"{config_prefix}:start_date", start_date,
+            display_name="Xero start date",
+            description="If set, sessions and deliveries will only be sent "
+            "to Xero if they are on or after this date.")
+
         XeroSessionHooks(self)
         XeroDeliveryHooks(self)
-        if consumer_key and private_key:
-            self.oauth = OAuth1(
-                consumer_key,
-                resource_owner_key=consumer_key,
-                rsa_key=private_key,
-                signature_method=SIGNATURE_RSA,
-                signature_type=SIGNATURE_TYPE_AUTH_HEADER)
-        else:
-            self.oauth = None
-        self.sales_contact = sales_contact_id
-        self.tracking_category_name = tracking_category_name
-        self.tracking_category_value = tracking_category_value
-        self.department_tracking_category_name = department_tracking_category_name
-        self.reference_template = reference_template
-        self.due_days = datetime.timedelta(days=due_days)
-        self.tillweb_base_url = tillweb_base_url
-        self.branding_theme_id = branding_theme_id
-        self.shortcode = shortcode
-        self.discrepancy_account = discrepancy_account
-        self.suspense_account = suspense_account
-        self.auto_approve_invoice = auto_approve_invoice
-        self.start_date = start_date
+
+        if consumer_key or private_key:
+            log.warning("Obsolete consumer_key and/or private_key present "
+                        "in configuration file")
+
+    def connection_ok(self):
+        try:
+            token = self.secrets.fetch('token')
+        except secretstore.SecretException:
+            return False
+        session = self.xero_session(omit_tenant=True)
+        r = session.get(XERO_CONNECTIONS_URL)
+        if r.status_code != 200:
+            return False
+        connections = r.json()
+        for tenant in connections:
+            if tenant['tenantId'] == self.tenant_id():
+                return True
+        return False
+
+    def xero_session(self, state=None, omit_tenant=False):
+        kwargs = {}
+        try:
+            token = self.secrets.fetch('token', lock_for_update=True)
+            kwargs['token'] = json.loads(token)
+        except secretstore.SecretException:
+            pass
+
+        def token_updater(token):
+            nonlocal self
+            self.secrets.store('token', json.dumps(token),
+                               create=True)
+
+        kwargs['token_updater'] = token_updater
+        kwargs['auto_refresh_kwargs'] = {
+            'client_id': self.client_id(),
+        }
+        kwargs['auto_refresh_url'] = XERO_CONNECT_URL
+        if state:
+            kwargs['state'] = state
+
+        session = OAuth2Session(
+            self.client_id(),
+            client=PKCE(self.client_id()),
+            redirect_uri=self.redirect_uri(),
+            scope=["offline_access", "accounting.transactions",
+                   "accounting.contacts", "accounting.settings"],
+            **kwargs)
+
+        if not omit_tenant:
+            session.headers = {
+                'xero-tenant-id': self.tenant_id(),
+                'accept': 'application/xml',
+            }
+
+        return session
 
     def _get_sales_contact(self, session):
-        if callable(self.sales_contact):
-            sales_contact_id = self.sales_contact(session)
-        else:
-            sales_contact_id = self.sales_contact
         contact = None
-        if sales_contact_id:
+        if self.sales_contact_id():
             contact = Element("Contact")
-            contact.append(_textelem("ContactID", sales_contact_id))
+            contact.append(_textelem("ContactID", self.sales_contact_id()))
         return contact
 
     def _get_tracking(self, department):
         tracking = []
-        if self.tracking_category_name and self.tracking_category_value:
-            tracking.append((self.tracking_category_name, self.tracking_category_value))
-        if department and self.department_tracking_category_name:
+        if self.tracking_category_name() and self.tracking_category_value():
+            tracking.append((self.tracking_category_name(),
+                             self.tracking_category_value()))
+        if department and self.department_tracking_category_name():
             v = self._tracking_for_department(department)
             if v:
-                tracking.append((self.department_tracking_category_name, v))
+                tracking.append((self.department_tracking_category_name(), v))
         if tracking:
             t = Element("Tracking")
             for name, option in tracking:
@@ -194,10 +363,8 @@ class XeroIntegration:
 
     @user.permission_required("xero-admin", "Xero integration admin")
     def app_menu(self):
-        if not self.oauth:
-            ui.infopopup(["This terminal does not have access to Xero.  "
-                          "Please use a different terminal."],
-                         title="Accounts not available")
+        if not self.connection_ok():
+            xero_not_connected()
             return
         ui.automenu([
             ("Link a supplier with a Xero contact",
@@ -208,10 +375,10 @@ class XeroIntegration:
              (self._unlink_supplier, True)),
             ("Send a delivery to Xero as a bill",
              choose_delivery,
-             (self._send_delivery, self.start_date, False)),
+             (self._send_delivery, self.start_date(), False)),
             ("Re-send a delivery to Xero as a bill",
              choose_delivery,
-             (self._send_delivery, self.start_date, True)),
+             (self._send_delivery, self.start_date(), True)),
             ("Test the connection to Xero",
              self.check_connection, ()),
             ("Xero debug menu",
@@ -257,26 +424,26 @@ class XeroIntegration:
     def _debug_send_invoice_and_payments(self, sessionid):
         log.info("Sending invoice and payments for %d", sessionid)
         iid, negative_totals = self._create_invoice_for_session(
-            sessionid, approve=self.auto_approve_invoice)
+            sessionid, approve=self.auto_approve_invoice())
         session = td.s.query(Session).get(sessionid)
         session.accinfo = iid
         td.s.commit()
-        if self.auto_approve_invoice and not negative_totals:
+        if self.auto_approve_invoice() and not negative_totals:
             self._add_payments_for_session(sessionid, iid)
         log.info("...new invoice ID is %s", iid)
-        ui.infopopup(["Invoice ID is {}".format(iid)])
+        ui.infopopup([f"Invoice ID is {iid}"])
 
     def _debug_send_invoice(self, sessionid):
         log.info("Sending invoice only for %d", sessionid)
         iid, negative_totals = self._create_invoice_for_session(
             sessionid, approve=True)
         log.info("...new invoice ID is %s", iid)
-        ui.infopopup(["Invoice ID is {}".format(iid)])
+        ui.infopopup([f"Invoice ID is {iid}"])
 
     def _debug_send_payments(self, sessionid):
         session = td.s.query(Session).get(sessionid)
         if session.accinfo:
-            ui.toast("Sending payments for session {}".format(sessionid))
+            ui.toast(f"Sending payments for session {sessionid}")
             self._add_payments_for_session(sessionid, session.accinfo)
         else:
             ui.toast("Session has no invoice - doing nothing")
@@ -285,7 +452,7 @@ class XeroIntegration:
         log.info("Sending bill for delivery %d", deliveryid)
         iid = self._create_bill_for_delivery(deliveryid)
         log.info("...new invoice ID is %s", iid)
-        ui.infopopup(["Invoice ID is {}".format(iid)])
+        ui.infopopup([f"Invoice ID is {iid}"])
 
     def _sales_account_for_department(self, department):
         codes = department.accinfo.split("/")
@@ -312,12 +479,11 @@ class XeroIntegration:
         """
         session = td.s.query(Session).get(sessionid)
         if not session:
-            raise XeroError("Session {} does not exist".format(sessionid))
+            raise XeroError(f"Session {sessionid} does not exist")
         if not session.endtime:
-            raise XeroError("Session {} is still open".format(sessionid))
+            raise XeroError(f"Session {sessionid} is still open")
         if not session.actual_totals:
-            raise XeroError("Session {} has no totals recorded".format(
-                sessionid))
+            raise XeroError(f"Session {sessionid} has no totals recorded")
 
         negative_totals = False
 
@@ -328,15 +494,15 @@ class XeroIntegration:
         inv.append(_textelem("LineAmountTypes", "Inclusive"))
         inv.append(_textelem("Date", session.date.isoformat()))
         inv.append(_textelem(
-            "DueDate", (session.date + self.due_days).isoformat()))
+            "DueDate", (session.date + datetime.timedelta(days=self.due_days())).isoformat()))
         if self.tillweb_base_url:
             inv.append(_textelem(
-                "Url", self.tillweb_base_url + "session/{}/".format(session.id)))
+                "Url", self.tillweb_base_url() + f"session/{session.id}/"))
         inv.append(_textelem(
-            "Reference", self.reference_template.format(session=session)))
-        if self.branding_theme_id:
+            "Reference", self.reference_template().format(session=session)))
+        if self.branding_theme_id():
             inv.append(_textelem(
-                "BrandingThemeID", self.branding_theme_id))
+                "BrandingThemeID", self.branding_theme_id()))
         litems = SubElement(inv, "LineItems")
         for dept, amount in session.dept_totals:
             li = SubElement(litems, "LineItem")
@@ -350,14 +516,14 @@ class XeroIntegration:
         # If there is a discrepancy between the till totals and the
         # actual totals, this must be recorded in a separate account
         if session.error != zero:
-            if not self.discrepancy_account:
+            if not self.discrepancy_account():
                 raise XeroError(
-                    "Session {} has a discrepancy between till total and "
-                    "actual total, but no account is configured to record "
-                    "this.".format(session.id))
+                    f"Session {session.id} has a discrepancy between till "
+                    "total and actual total, but no account is configured "
+                    "to record this.")
             li = SubElement(litems, "LineItem")
             li.append(_textelem("Description", "Till discrepancy"))
-            li.append(_textelem("AccountCode", self.discrepancy_account))
+            li.append(_textelem("AccountCode", self.discrepancy_account()))
             li.append(_textelem("LineAmount", str(session.error)))
             li.append(_textelem("TaxType", "NONE"))
             tracking = self._get_tracking(None)
@@ -367,7 +533,7 @@ class XeroIntegration:
         # against the suspense account
         for total in session.actual_totals:
             if total.amount < zero:
-                if not self.suspense_account:
+                if not self.suspense_account():
                     raise XeroError(
                         f"Session {session.id} has a negative till total, "
                         "but no suspense account is configured to "
@@ -376,7 +542,7 @@ class XeroIntegration:
                 li.append(_textelem(
                     "Description",
                     f"Negative {total.paytype.description} total"))
-                li.append(_textelem("AccountCode", self.suspense_account))
+                li.append(_textelem("AccountCode", self.suspense_account()))
                 li.append(_textelem("LineAmount", str(zero - total.amount)))
                 li.append(_textelem("TaxType", "NONE"))
                 # No tracking category
@@ -384,9 +550,8 @@ class XeroIntegration:
         if approve and not negative_totals:
             inv.append(_textelem("Status", "AUTHORISED"))
         xml = tostring(invoices)
-        r = requests.put(XERO_ENDPOINT_URL + "Invoices/",
-                         data={'xml': xml},
-                         auth=self.oauth)
+        r = self.xero_session().put(
+            XERO_ENDPOINT_URL + "Invoices/", data={'xml': xml})
         if r.status_code == 400:
             root = fromstring(r.text)
             messages = [e.text for e in root.findall(".//Message")]
@@ -417,12 +582,11 @@ class XeroIntegration:
         """
         session = td.s.query(Session).get(sessionid)
         if not session:
-            raise XeroError("Session {} does not exist".format(sessionid))
+            raise XeroError(f"Session {sessionid} does not exist")
         if not session.endtime:
-            raise XeroError("Session {} is still open".format(sessionid))
+            raise XeroError(f"Session {sessionid} is still open")
         if not session.actual_totals:
-            raise XeroError("Session {} has no totals recorded".format(
-                sessionid))
+            raise XeroError(f"Session {sessionid} has no totals recorded")
         
         payments = Element("Payments")
         for total in session.actual_totals:
@@ -438,28 +602,26 @@ class XeroIntegration:
             p.append(_textelem("Reference", ref))
 
         xml = tostring(payments)
-        r = requests.put(XERO_ENDPOINT_URL + "Payments/",
-                         data={'xml': xml},
-                         auth=self.oauth)
+        r = self.xero_session().put(
+            XERO_ENDPOINT_URL + "Payments/", data={'xml': xml})
         if r.status_code == 400:
             root = fromstring(r.text)
             messages = [e.text for e in root.findall(".//Message")]
             raise XeroError("Xero rejected payments: {}".format(
                 ", ".join(messages)))
         if r.status_code != 200:
-            raise XeroError("Received {} response".format(r.status_code))
+            raise XeroError(f"Received {r.status_code} response")
         root = fromstring(r.text)
         if root.tag != "Response":
-            raise XeroError("Response root tag '{}' was not 'Response'".format(
-                root.tag))
+            raise XeroError(f"Response root tag '{root.tag}' was not 'Response'")
 
     def _create_bill_for_delivery(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
         if not d:
-            raise XeroError("Delivery {} does not exist".format(deliveryid))
+            raise XeroError(f"Delivery {deliveryid} does not exist")
         if not d.supplier.accinfo:
-            raise XeroError("Supplier {} ({}) has no Xero contact info".format(
-                d.supplier.id, d.supplier.name))
+            raise XeroError(f"Supplier {d.supplier.name} is not linked to "
+                            "a Xero contact")
         
         invoices = Element("Invoices")
         inv = SubElement(invoices, "Invoice")
@@ -469,9 +631,9 @@ class XeroIntegration:
         inv.append(_textelem("LineAmountTypes", "Exclusive"))
         inv.append(_textelem("Date", d.date.isoformat()))
         inv.append(_textelem("InvoiceNumber", d.docnumber))
-        if self.tillweb_base_url:
+        if self.tillweb_base_url():
             inv.append(_textelem(
-                "Url", self.tillweb_base_url + "delivery/{}/".format(d.id)))
+                "Url", self.tillweb_base_url() + f"delivery/{d.id}/"))
         litems = SubElement(inv, "LineItems")
         previtem = None
         prevqty = None
@@ -505,9 +667,8 @@ class XeroIntegration:
             previtem = item
 
         xml = tostring(invoices)
-        r = requests.put(XERO_ENDPOINT_URL + "Invoices/",
-                         data={'xml': xml},
-                         auth=self.oauth)
+        r = self.xero_session().put(
+            XERO_ENDPOINT_URL + "Invoices/", data={'xml': xml})
         if r.status_code == 400:
             root = fromstring(r.text)
             messages = [e.text for e in root.findall(".//Message")]
@@ -545,9 +706,10 @@ class XeroIntegration:
     def _link_supplier_with_contact(self, supplierid):
         s = td.s.query(Supplier).get(supplierid)
         # Fetch possible contacts
-        w = "Name.ToLower().Contains(\"{}\")".format(s.name.lower())
-        r = requests.get(XERO_ENDPOINT_URL + "Contacts/", params={
-            "where": w, "order": "Name"}, auth=self.oauth)
+        w = f"Name.ToLower().Contains(\"{s.name.lower()}\")"
+        r = self.xero_session().get(
+            XERO_ENDPOINT_URL + "Contacts/", params={
+                "where": w, "order": "Name"})
         if r.status_code != 200:
             ui.infopopup(["Failed to retrieve contacts from Xero: "
                           "error code {}".format(r.status_code)],
@@ -601,18 +763,16 @@ class XeroIntegration:
     def _unlink_supplier(self, supplierid):
         s = td.s.query(Supplier).get(supplierid)
         s.accinfo = None
-        ui.infopopup(["{} unlinked from Xero".format(s.name)],
+        ui.infopopup([f"{s.name} unlinked from Xero"],
                      title="Unlink supplier from Xero contact",
                      colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
     def check_connection(self):
-        if not self.oauth:
-            ui.infopopup(
-                ["This terminal does not have access to the accounting "
-                 "system."], title="Xero not available")
+        if not self.connection_ok():
+            xero_not_connected()
             return True
-        r = requests.get(XERO_ENDPOINT_URL + "Organisation/", auth=self.oauth)
+        r = self.xero_session().get(XERO_ENDPOINT_URL + "Organisation/")
         if r.status_code != 200:
             ui.infopopup(["Failed to retrieve organisation details from Xero: "
                           "error code {}".format(r.status_code)],
@@ -692,7 +852,7 @@ def choose_supplier(cont, link_only):
     if link_only:
         q = q.filter(Supplier.accinfo != None)
     f = ui.tableformatter(' l L ')
-    lines = [(f(x.name, "Linked to {}".format(x.accinfo) if x.accinfo else ""),
+    lines = [(f(x.name, f"Linked to {x.accinfo}" if x.accinfo else ""),
               cont, (x.id,)) for x in q.all()]
     ui.menu(lines, title="Supplier List",
             blurb="Choose a supplier and press Cash/Enter.")
@@ -708,8 +868,59 @@ def choose_delivery(cont, start_date, allow_sent):
         q = q.filter(Delivery.accinfo == None)
     f = ui.tableformatter(' r L l L ')
     lines = [(f(x.id, x.supplier.name if x.supplier.accinfo
-                else "{} (not linked)".format(x.supplier.name),
+                else f"{x.supplier.name} (not linked)",
                 x.date, x.docnumber or ""),
               cont, (x.id,)) for x in q.all()]
     ui.menu(lines, title="Delivery List",
             blurb="Select a delivery and press Cash/Enter.")
+
+class connect(cmdline.command):
+    command = "xero-connect"
+    help = "connect to a Xero organisation"
+
+    @staticmethod
+    def run(args):
+        with td.orm_session():
+            connect.interactive()
+
+    @staticmethod
+    def interactive():
+        if len(XeroIntegration._integrations) != 1:
+            print("The Xero integration is not configured. Add it to the "
+                  "configuration file before trying again.")
+            return 1
+        i = XeroIntegration._integrations[0]
+        if not i.client_id():
+            print("The Xero integration client_id has not been set. Set it "
+                  f"using the {i.client_id.key} configuration key.")
+            return 1
+        if not i.redirect_uri():
+            print("The Xero integration redirect_uri has not been set. Set it "
+                  f"using the {i.redirect_uri.key} configuration key.")
+            return 1
+        if not i.secrets:
+            print("The Xero integration does not have a secret store configured.")
+            return 1
+        session = i.xero_session(omit_tenant=True)
+        auth_url, state = session.authorization_url(XERO_AUTHORIZE_URL)
+        print(f"Visit this page in your browser:\n{auth_url}\n")
+        auth_response = input("After authorising, paste the URL provided here: ")
+        print()
+        token = session.fetch_token(XERO_CONNECT_URL,
+                                    client_id=i.client_id(),
+                                    authorization_response=auth_response)
+        # Fetch the list of tenants
+        r = session.get(XERO_CONNECTIONS_URL)
+        if r.status_code != 200:
+            print("Failed to get the list of Xero tenants")
+            r.raise_for_status()
+            return 1
+        connections = r.json()
+        for tenant in connections:
+            print(f"{tenant['tenantId']} {tenant['tenantName']}")
+        print()
+        if i.tenant_id():
+            print(f"The currently configured tenant is {i.tenant_id}")
+        print(f"Set the appropriate tenant ID using the {i.tenant_id.key} "
+              "configuration key")
+        i.secrets.store('token', json.dumps(token), create=True)

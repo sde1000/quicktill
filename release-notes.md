@@ -1,6 +1,61 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v18.x to v19
+--------------------
+
+What's new:
+
+ * configuration stored in database
+
+ * secrets stored in database
+
+ * Xero integration updated to OAuth2 with PKCE
+
+There are database changes this release.  The changes are not
+backwards-compatible with v18, so install the new version before
+making the changes.
+
+To upgrade the database:
+
+ - run "runtill syncdb" to create the new config table
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE log
+	ADD COLUMN config_id character varying;
+
+ALTER TABLE log
+	ADD CONSTRAINT log_config_fkey FOREIGN KEY (config_id) REFERENCES public.config(key) ON DELETE SET NULL;
+
+COMMIT;
+```
+
+  - run "runtill checkdb" to check that no other database changes are
+    required.
+
+If you are using the Xero integration, you must add `quicktill.xero`
+to `/etc/quicktill/default-imports` to enable the xero-connect
+subcommand, and edit your config file to specify a secret store for
+Xero.  Run the command `runtill generate-secret-key` to generate a
+suitable key for this store.  For example:
+
+```
+xapi = quicktill.xero.XeroIntegration(
+    secrets=quicktill.secretstore.Secrets(
+        'xero-live', b'output-of-runtill-generate-secret-key I5DI='),
+    sales_contact_id=".....",
+    ...)
+```
+
+After doing this, you can run the command `runtill xero-connect` to
+connect the till to Xero. The first time you do this it will prompt
+you to set config keys using the `runtill config` command to specify
+your Xero integration client-id and tenant-id.
+
 Upgrade v17.x to v18
 --------------------
 
@@ -15,7 +70,7 @@ functions, but it's being rushed out for pub re-opening on July 4th.
 Expect a lengthy v18.x series fixing small and medium size bugs!
 
 There are database changes this release.  The changes are not
-backwards-compatible with v16, so install the new version before
+backwards-compatible with v17, so install the new version before
 making the changes.
 
 To upgrade the database:
