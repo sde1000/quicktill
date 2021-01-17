@@ -1,5 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, DateTime, Date
+from sqlalchemy import LargeBinary
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import ForeignKey, Numeric, CHAR, Boolean, Text, Interval
 from sqlalchemy.schema import Sequence, Index, MetaData, DDL
@@ -2390,6 +2391,23 @@ CREATE TRIGGER config_change
 DROP TRIGGER config_change ON config;
 DROP FUNCTION notify_config_change();
 """)
+
+class Secret(Base):
+    """A cryptographic secret or a password
+
+    Secrets are stored encrypted using Fernet (https://github.com/fernet/spec/)
+
+    The Fernet key is not stored in the database.  It will generally
+    be stored in the till configuration file, although the site may
+    make other arrangements.  This is not intended to be a security
+    feature; the intent is to prevent accidental use of live keys from
+    a database that has been copied elsewhere, for example for backup
+    or development.
+    """
+    __tablename__ = "secrets"
+    key_name = Column(String(), primary_key=True)
+    secret_name = Column(String(), primary_key=True)
+    token = Column(LargeBinary(), nullable=False)
 
 log_seq = Sequence('log_seq')
 

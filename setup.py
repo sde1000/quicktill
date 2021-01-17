@@ -32,5 +32,6 @@ setup(name='quicktill',
           "requests-oauthlib",
           "pycups",
           "python-dateutil",
+          "cryptography",
       ],
 )

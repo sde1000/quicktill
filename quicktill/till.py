@@ -40,6 +40,7 @@ from . import extras
 from . import dbsetup
 from . import dbutils
 from . import foodcheck
+from . import secretstore
 # End of subcommand imports
 
 log = logging.getLogger(__name__)
