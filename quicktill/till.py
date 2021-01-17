@@ -29,6 +29,7 @@ from . import pdrivers
 from . import cmdline
 from . import kbdrivers
 from . import keyboard
+from . import config
 from .listen import listener
 from .version import version
 from .models import Session, Business, zero
@@ -248,9 +249,10 @@ class runtill(cmdline.command):
             # We should also exit if the "update" notification is sent
             listener.listen_for("update", runtill.update_notified)
 
-        # Load config from database, update database with new config items
-        from . import config
+        # Load config from database, update database with new config items,
+        # initialise config change listener
         with td.orm_session():
+            config.ConfigItem.listen_for_changes()
             config.ConfigItem.preload()
 
         dbg_kbd = None

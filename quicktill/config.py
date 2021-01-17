@@ -67,15 +67,17 @@ class ConfigItem:
             log.debug("config changed: %s, no config found", configitem)
 
     @classmethod
+    def listen_for_changes(cls):
+        if not cls._listener:
+            cls._listener = listener.listen_for('config', cls._config_changed)
+
+    @classmethod
     def preload(cls):
         td.s.query(Config).all()
         for ci in cls._keys.values():
             ci._read()
 
     def _read(self):
-        if not self._listener:
-            self._listener = listener.listen_for('config', self._config_changed)
-
         d = td.s.query(Config).get(self.key)
         if d is None:
             # The config option doesn't exist in the database. Initialise it
@@ -116,7 +118,10 @@ class IntConfigItem(ConfigItem):
 
     @classmethod
     def from_db(cls, s):
-        return int(s)
+        try:
+            return int(s)
+        except:
+            return
 
     @classmethod
     def to_db(cls, v):
@@ -138,6 +143,21 @@ class BooleanConfigItem(ConfigItem):
     @classmethod
     def to_db(cls, v):
         return "Yes" if v else "No"
+
+class DateConfigItem(ConfigItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, type="date", **kwargs)
+
+    @classmethod
+    def from_db(cls, s):
+        try:
+            return datetime.date(*(int(x) for x in s.split('-')))
+        except:
+            return
+
+    @classmethod
+    def to_db(cls, v):
+        return str(v)
 
 class IntervalConfigItem(ConfigItem):
     _units = {
