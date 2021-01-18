@@ -1,4 +1,4 @@
-from .models import Config
+from .models import Config, penny
 from . import td
 from . import cmdline
 from .listen import listener
@@ -30,8 +30,8 @@ class ConfigItem:
         self.key = key
         self.default = default
         self.type = type
-        self.display_name = display_name
-        self.description = description
+        self.display_name = display_name or key
+        self.description = description or self.display_name
         self._value = None
         self._current = False
         self._keys[self.key] = self
@@ -202,6 +202,21 @@ class IntervalConfigItem(ConfigItem):
         if v is None:
             return ""
         return f"{v.days} days, {v.seconds} seconds"
+
+class MoneyConfigItem(ConfigItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, type="money", **kwargs)
+
+    @classmethod
+    def from_db(cls, s):
+        try:
+            return Decimal(s).quantize(penny)
+        except:
+            return
+
+    @classmethod
+    def to_db(cls, v):
+        return str(v)
 
 class config_cmd(cmdline.command):
     command = "config"
