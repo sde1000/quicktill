@@ -506,10 +506,10 @@ def main():
 
     config = g.configurations.get(args.configname)
     if config is None:
-        print(("Configuration \"%s\" does not exist.  "
-               "Available configurations:"%args.configname))
-        for i in list(g.configurations.keys()):
-            print("%s: %s"%(i,g.configurations[i]['description']))
+        print(f'Configuration "{args.configname}" does not exist.  ' \
+              'Available configurations:')
+        for k, v in g.configurations.items():
+            print(f"{k}: {v['description']}")
         sys.exit(1)
 
     if args.user:
@@ -527,17 +527,6 @@ def main():
     tillconfig.database = config.get('database')
     if args.database is not None:
         tillconfig.database = args.database
-    if 'menuurl' in config:
-        log.warning("obsolete 'menuurl' key present in configuration; "
-                    "create FoodOrderPlugin instance instead")
-        if 'kitchenprinter' in config:
-            kitchenprinters = [config['kitchenprinter']]
-        if 'kitchenprinters' in config:
-            kitchenprinters = config['kitchenprinters']
-        from . import foodorder
-        foodorder.FoodOrderPlugin(
-            config['menuurl'], kitchenprinters,
-            keyboard.K_FOODORDER, keyboard.K_FOODMESSAGE)
     # Setting of .default items from the config file to be removed in release 20
     if 'pubname' in config:
         tillconfig.pubname.default = config['pubname']
@@ -552,34 +541,17 @@ def main():
     tillconfig.keyboard_driver = kbdrivers.prehkeyboard # Default
     if 'keyboard_driver' in config:
         tillconfig.keyboard_driver = config['keyboard_driver']
-    if 'kbdriver' in config:
-        log.warning("Obsolete 'kbdriver' key present in configuration")
-        ui.keyboard_filter_stack.insert(0, config['kbdriver'])
     if 'keyboard' in config:
         tillconfig.keyboard = config['keyboard']
     if 'keyboard_right' in config:
         tillconfig.keyboard_right = config['keyboard_right']
-    if 'altkbdriver' in config:
-        log.warning("Obsolete 'altkbdriver' key present in configuration")
-    if 'pricepolicy' in config:
-        log.warning("Obsolete 'pricepolicy' key present in configuration")
     if 'format_currency' in config:
         tillconfig.fc = config['format_currency']
-    if 'priceguess' in config:
-        # Config files should subclass stocktype.PriceGuessHook
-        # instead of specifying this
-        log.warning("Obsolete 'priceguess' key present in configuration")
-    if 'deptkeycheck' in config:
-        log.warning("Obsolete 'deptkeycheck' key present in configuration")
     if 'checkdigit_print' in config:
         printer.checkdigit_print.default = config['checkdigit_print']
     if 'checkdigit_on_usestock' in config:
         from . import stock
         stock.checkdigit_on_usestock.default = config['checkdigit_on_usestock']
-    if 'usestock_hook' in config:
-        # Config files should subclass usestock.UseStockRegularHook
-        # instead of specifying this
-        log.warning("Obsolete 'usestock_hook' key present in configuration")
     if 'hotkeys' in config:
         tillconfig.hotkeys = config['hotkeys']
     if 'firstpage' in config:
