@@ -112,6 +112,10 @@ class ConfigItem:
     def __str__(self):
         return str(self())
 
+class MultiLineConfigItem(ConfigItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, type="multiline text", **kwargs)
+
 class IntConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="integer", **kwargs)

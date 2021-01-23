@@ -90,7 +90,7 @@ button.key2x1 {
 
 """
 
-custom_css = config.ConfigItem(
+custom_css = config.MultiLineConfigItem(
     'gtk:custom_css', None, display_name="Custom CSS",
     description="Custom CSS for till when running with gtk")
 

@@ -24,7 +24,7 @@ pubname = config.ConfigItem(
 pubnumber = config.ConfigItem(
     'core:telephone', "01234 567890", display_name="Telephone number",
     description="Telephone number to be printed on receipts")
-pubaddr = config.ConfigItem(
+pubaddr = config.MultiLineConfigItem(
     'core:address', "31337 Beer Street\nBurton\nZZ9 9AA",
     display_name="Site address",
     description="Site address to be printed on receipts")
