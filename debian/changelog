@@ -1,3 +1,35 @@
+quicktill (19.0) stable; urgency=low
+
+  * New release 19.0
+
+  * Update Debian packaging for release 19
+
+  * Show details of payments for part-paid transactions in tillweb
+
+  * Remove checks for some obsolete configuration keys
+
+  * Web interface for displaying and editing config
+
+  * Add an explicit MultiLineConfigItem
+
+  * Add a config item class for monetary amounts
+
+  * It's 2021 now!
+
+  * Update Xero integration to OAuth 2.0
+
+  * Add a secrets table to the database
+
+  * Add a 'date' type to config
+
+  * Simple command-line interface to set configuration values
+
+  * There is no longer a command defined in stocktype.py
+
+  * Config table
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 23 Jan 2021 18:12:44 +0000
+
 quicktill (18.7) stable; urgency=low
 
   * New release 18.7
