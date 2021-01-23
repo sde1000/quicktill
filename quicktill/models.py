@@ -2388,10 +2388,11 @@ class Config(Base, Logged):
         return [("Config", self.get_view_url("tillweb-config-index")),
                 (self.display_name, self.get_absolute_url())]
 
-    def value_summary(self):
+    def value_summary(self, max_lines=6):
         lines = self.value.splitlines()
-        if len(lines) > 3:
-            lines = lines[:2] + f"(plus {len(lines) - 3} more lines)"
+        if len(lines) > max_lines:
+            lines = lines[:max_lines] \
+                + [f"(plus {len(lines) - max_lines} more lines)"]
         return '\n'.join(lines)
 
 add_ddl(Config.__table__, """
