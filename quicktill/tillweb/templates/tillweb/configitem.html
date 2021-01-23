@@ -1,0 +1,54 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — config item "{{config.display_name}}"{% endblock %}
+
+{% block tillcontent %}
+
+<p>{{config.description}}</p>
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+    Update
+  </button>
+  <button class="btn btn-secondary mb-2" type="submit" name="submit_update_edit">
+    Update and continue editing
+  </button>
+</form>
+{% else %}
+<p>The current value is:</p>
+<pre>{{config.value}}</pre>
+{% endif %}
+
+{% if config.type == "text" %}
+<p>The configuration value is used as text by the till.</p>
+{% elif config.type == "multiline text" %}
+<p>The configuration value is used as text by the till. Multiple lines
+  of text are supported. Blank lines at the start and end of the value
+  may be significant.</p>
+{% elif config.type == "boolean" %}
+<p>The configuration value is used as a boolean by the till. Suitable
+  values include "Yes", "No, "True" and "False".</p>
+{% elif config.type == "interval" %}
+<p>The configuration value is used as a time interval by the
+  till. Examples of time intervals include:</p>
+<ul>
+  <li>30 seconds</li>
+  <li>2 minutes</li>
+  <li>3 hours, 30 minutes</li>
+  <li>2 days, 3 hours, 20 minutes</li>
+</ul>
+{% elif config.type == "date" %}
+<p>The configuration value is read as a date.  It must be in the
+  format "YYYY-MM-DD".</p>
+{% elif config.type == "integer" %}
+<p>The configuration value is an integer.</p>
+{% elif config.type == "money" %}
+<p>The configuration value is read as an amount of money, possibly
+  negative, but with the currency symbol not specified.</p>
+{% else %}
+<p>The configuration value is used as the following data type:
+  {{config.type}}</p>
+{% endif %}
+
+{% endblock %}

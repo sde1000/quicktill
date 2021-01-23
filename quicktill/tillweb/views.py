@@ -2397,6 +2397,52 @@ def logdetail(request, info, logid):
              'tillobject': l,
             })
 
+@tillweb_view
+def configindex(request, info):
+    c = td.s.query(Config).order_by(Config.key).all()
+    return ('configindex.html',
+            {'config': c,
+             'nav': [("Config", info.reverse("tillweb-config-index"))],
+            })
+
+class ConfigItemUpdateForm(forms.Form):
+    def __init__(self, datatype, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if datatype == "multiline text":
+            self.fields['value'].widget = forms.Textarea()
+
+    value = forms.CharField(required = False)
+
+@tillweb_view
+def configitem(request, info, key):
+    c = td.s.query(Config).get(key)
+    if not c:
+        raise Http404
+    may_edit = info.user_has_perm("edit-config")
+
+    form = None
+    if may_edit:
+        initial = { 'value': c.value }
+        if request.method == 'POST':
+            form = ConfigItemUpdateForm(c.type, request.POST, initial=initial)
+            if form.is_valid():
+                c.value = form.cleaned_data['value']
+                messages.success(request, f"{c.display_name} updated")
+                td.s.commit()
+                if 'submit_update' in request.POST:
+                    return HttpResponseRedirect(
+                        info.reverse("tillweb-config-index"))
+                else:
+                    return HttpResponseRedirect(c.get_absolute_url())
+        else:
+            form = ConfigItemUpdateForm(c.type, initial=initial)
+
+    return ('configitem.html',
+            {'config': c,
+             'tillobject': c,
+             'form': form,
+            })
+
 class WasteReportForm(DatePeriodForm):
     columns = forms.ChoiceField(label="Columns show", choices=[
         ("depts", "Departments"),

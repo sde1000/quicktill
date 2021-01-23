@@ -1,0 +1,27 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Config{% endblock %}
+
+{% block tillcontent %}
+
+<div class="table-responsive">
+<table class="table table-striped table-hover table-sm" id="config">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Value</th>
+      <th scope="col">Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ci in config %}
+    <tr>
+      <td><a href="{{ci.get_absolute_url}}">{{ci.display_name}}</a></td>
+      <td>{{ci.value_summary|linebreaksbr}}</td>
+      <td>{{ci.type}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

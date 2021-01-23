@@ -852,6 +852,10 @@ class listusers(cmdline.command):
             for u in users.all():
                 print(f"{u.id:>4}: {u.fullname} ({u.shortname})")
 
+# These permissions aren't used directly in the till but may be used
+# in other components like the web interface
+action_descriptions['edit-config'] = "Modify the till configuration"
+
 class default_groups:
     """Three basic group definitions.
 

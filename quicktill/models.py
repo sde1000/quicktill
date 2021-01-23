@@ -2376,6 +2376,24 @@ class Config(Base, Logged):
     display_name = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
 
+    tillweb_viewname = "tillweb-config-item"
+    tillweb_argname = "key"
+
+    @property
+    def id(self):
+        # Needed for get_absolute_url
+        return self.key
+
+    def tillweb_nav(self):
+        return [("Config", self.get_view_url("tillweb-config-index")),
+                (self.display_name, self.get_absolute_url())]
+
+    def value_summary(self):
+        lines = self.value.splitlines()
+        if len(lines) > 3:
+            lines = lines[:2] + f"(plus {len(lines) - 3} more lines)"
+        return '\n'.join(lines)
+
 add_ddl(Config.__table__, """
 CREATE OR REPLACE FUNCTION notify_config_change() RETURNS trigger AS $$
 DECLARE
@@ -2428,6 +2446,10 @@ class LogEntry(Base):
 
     tillweb_viewname = "tillweb-logentry"
     tillweb_argname = "logid"
+
+    def tillweb_nav(self):
+        return [("Logs", self.get_view_url("tillweb-logs")),
+                (str(self.id), self.get_absolute_url())]
 
     # These models subclass the Logged class; we need to generate columns
     # and foreign key constraints that link to their primary keys

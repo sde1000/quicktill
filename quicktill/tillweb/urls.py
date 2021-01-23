@@ -97,6 +97,9 @@ tillurls = [
     path('logs/', logsindex, name="tillweb-logs"),
     path('logs/<int:logid>', logdetail, name="tillweb-logentry"),
 
+    path('config/', configindex, name="tillweb-config-index"),
+    path('config/<key>/', configitem, name="tillweb-config-item"),
+
     path('reports/', reportindex, name="tillweb-reports"),
 ]
 
