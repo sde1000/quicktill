@@ -15,10 +15,10 @@
 <td class="money">{{money}}{{t.total}}</td>
 <td class="money">{% if t.discount_total %}{{money}}{{t.discount_total}}{% endif %}</td>
 <td>{% if t.notes %}{{t.notes}}{% endif %}</td>
-<td>{% if t.closed %}{% if t.total > 0 %}Paid:{% elif t.total < 0 %}Refunded:{% else %}Closed{% endif %}
+<td>{% if t.closed %}{% if t.total > 0 %}Paid:{% elif t.total < 0 %}Refunded:{% else %}Closed{% endif %}{% else %}{% if t.payments %}Part-paid: {% else %}Open{% endif %}{% endif %}
 {% for pt,amount in t.payments_summary %}
 {{pt}} ({{money}}{{amount}})
-{% endfor %}{% else %}Open{% endif %}</td>
+{% endfor %}</td>
 </tr>
 {% endfor %}
 </tbody>
