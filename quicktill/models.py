@@ -2395,6 +2395,10 @@ class Config(Base, Logged):
                 + [f"(plus {len(lines) - max_lines} more lines)"]
         return '\n'.join(lines)
 
+    @property
+    def logtext(self):
+        return self.display_name
+
 add_ddl(Config.__table__, """
 CREATE OR REPLACE FUNCTION notify_config_change() RETURNS trigger AS $$
 DECLARE

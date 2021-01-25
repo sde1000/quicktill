@@ -51,4 +51,9 @@
   {{config.type}}</p>
 {% endif %}
 
+{% if config.logs %}
+<h2>Log entries</h2>
+{% with logs=config.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
 {% endblock %}

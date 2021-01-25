@@ -2426,7 +2426,13 @@ def configitem(request, info, key):
         if request.method == 'POST':
             form = ConfigItemUpdateForm(c.type, request.POST, initial=initial)
             if form.is_valid():
+                oldvalue = c.value
                 c.value = form.cleaned_data['value']
+                if c.type == "multiline text":
+                    user.log(f"Changed config item '{c.logref}'")
+                else:
+                    user.log(f"Changed config item '{c.logref}' "
+                             f"from '{oldvalue}' to '{c.value}'")
                 messages.success(request, f"{c.display_name} updated")
                 td.s.commit()
                 if 'submit_update' in request.POST:
