@@ -3,6 +3,7 @@
 
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import WebApplicationClient
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from xml.etree.ElementTree import Element, SubElement, tostring, fromstring
 import datetime
 import secrets
@@ -291,7 +292,10 @@ class XeroIntegration:
         except secretstore.SecretException:
             return False
         session = self.xero_session(omit_tenant=True)
-        r = session.get(XERO_CONNECTIONS_URL)
+        try:
+            r = session.get(XERO_CONNECTIONS_URL)
+        except InvalidGrantError:
+            return False
         if r.status_code != 200:
             return False
         connections = r.json()
