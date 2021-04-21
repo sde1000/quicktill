@@ -1,3 +1,17 @@
+quicktill (19.1) stable; urgency=low
+
+  * New release 19.1
+
+  * Add register hooks for "no sale" and "cancel empty transaction"
+
+  * Deal with Xero token expiry
+
+  * Log changes to config settings from web
+
+  * Fix summary of multiline config items
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 21 Apr 2021 13:38:13 +0100
+
 quicktill (19.0) stable; urgency=low
 
   * New release 19.0
