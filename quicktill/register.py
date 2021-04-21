@@ -123,6 +123,7 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
          is no default action
      - linekey(kb, mod)
      - drinkin(trans, amount) - "drink in" function on open transaction
+     - nosale() - just before kicking out the cash drawer on closed transaction
      - cashkey(trans) - cash/enter on an open transaction
      - paymentkey(method, trans) - payment key on an open transaction
      - close_transaction(trans) - called just before closing a balanced transaction
@@ -131,6 +132,7 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - cancelkey(trans) - cancel key on an open or closed transaction
      - cancelmarked(trans) - cancel marked lines on an open or closed transaction
      - canceltrans(trans) - trans may be open or closed
+     - cancelempty(trans) - cash/enter on an empty transaction
      - cancelline(l)
      - markkey()
      - recalltranskey()
@@ -305,7 +307,7 @@ class bufferline(ui.lrline):
         return l
 
 class tline(ui.lrline):
-    """A transaction line
+    """A transaction line loaded to be displayed
 
     This corresponds to a transaction line in the database.
     """
@@ -1472,6 +1474,8 @@ class page(ui.basicpage):
             if not self.buf:
                 log.info("Register: cashkey: NO SALE")
                 if self.user.may('nosale'):
+                    if self.hook("nosale"):
+                        return
                     if printer.kickout():
                         ui.toast("No Sale has been recorded.")
                         # Finally!  We're not lying any more!
@@ -1491,6 +1495,8 @@ class page(ui.basicpage):
         if len(trans.lines) == 0 and len(trans.payments) == 0:
             # Special case: cash key on an empty transaction.
             # Just cancel the transaction silently.
+            if self.hook("cancelempty", trans):
+                return
             td.s.delete(trans)
             self.transid = None
             td.s.flush()
