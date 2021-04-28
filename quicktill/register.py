@@ -49,7 +49,6 @@ from decimal import Decimal
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import undefer
 import uuid
 
@@ -674,7 +673,7 @@ class page(ui.basicpage):
         """
         if self.transid:
             return td.s.query(Transaction)\
-                       .options(selectinload('meta'))\
+                       .options(joinedload('meta'))\
                        .get(self.transid)
 
     def gettrans(self):
@@ -749,15 +748,13 @@ class page(ui.basicpage):
         """
         log.debug("Register: loadtrans %s", transid)
         # Reload the transaction and its related objects
-        trans = td.s.query(Transaction)\
-                    .filter_by(id=transid)\
-                    .options(selectinload('payments'))\
-                    .options(selectinload('lines').joinedload('user'))\
-                    .options(selectinload('meta'))\
-                    .options(undefer('total'))\
-                    .options(undefer('payments_total'))\
-                    .options(undefer('age'))\
-                    .one()
+        trans = td.s.query(Transaction).\
+                filter_by(id=transid).\
+                options(subqueryload('payments')).\
+                options(joinedload('lines.user')).\
+                options(joinedload('meta')).\
+                options(undefer('total')).\
+                one()
         self.transid = trans.id
         if trans.user:
             # There is a unique constraint on User.trans_id - if
