@@ -115,6 +115,23 @@ $$;
 ALTER FUNCTION public.check_transaction_balances() OWNER TO steve;
 
 --
+-- Name: notify_config_change(); Type: FUNCTION; Schema: public; Owner: steve
+--
+
+CREATE FUNCTION public.notify_config_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('config', NEW.key::text);
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_config_change() OWNER TO steve;
+
+--
 -- Name: notify_group_grants_change(); Type: FUNCTION; Schema: public; Owner: steve
 --
 
@@ -213,6 +230,21 @@ CREATE TABLE public.businesses (
 
 
 ALTER TABLE public.businesses OWNER TO steve;
+
+--
+-- Name: config; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.config (
+    key character varying NOT NULL,
+    value text NOT NULL,
+    type character varying NOT NULL,
+    display_name text NOT NULL,
+    description text NOT NULL
+);
+
+
+ALTER TABLE public.config OWNER TO steve;
 
 --
 -- Name: deliveries; Type: TABLE; Schema: public; Owner: steve
@@ -375,7 +407,8 @@ CREATE TABLE public.log (
     stock_annotations_id integer,
     stockremove_id character varying(8),
     stockout_id integer,
-    stocktakes_id integer
+    stocktakes_id integer,
+    config_id character varying
 );
 
 
@@ -394,6 +427,19 @@ CREATE SEQUENCE public.log_seq
 
 
 ALTER TABLE public.log_seq OWNER TO steve;
+
+--
+-- Name: payment_meta; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.payment_meta (
+    paymentid integer NOT NULL,
+    key character varying NOT NULL,
+    value character varying NOT NULL
+);
+
+
+ALTER TABLE public.payment_meta OWNER TO steve;
 
 --
 -- Name: payments; Type: TABLE; Schema: public; Owner: steve
@@ -510,6 +556,19 @@ CREATE SEQUENCE public.refusals_log_seq
 
 
 ALTER TABLE public.refusals_log_seq OWNER TO steve;
+
+--
+-- Name: secrets; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.secrets (
+    key_name character varying NOT NULL,
+    secret_name character varying NOT NULL,
+    token bytea NOT NULL
+);
+
+
+ALTER TABLE public.secrets OWNER TO steve;
 
 --
 -- Name: sessions; Type: TABLE; Schema: public; Owner: steve
@@ -947,6 +1006,19 @@ CREATE TABLE public.transcodes (
 ALTER TABLE public.transcodes OWNER TO steve;
 
 --
+-- Name: transline_meta; Type: TABLE; Schema: public; Owner: steve
+--
+
+CREATE TABLE public.transline_meta (
+    translineid integer NOT NULL,
+    key character varying NOT NULL,
+    value character varying NOT NULL
+);
+
+
+ALTER TABLE public.transline_meta OWNER TO steve;
+
+--
 -- Name: translines; Type: TABLE; Schema: public; Owner: steve
 --
 
@@ -1109,6 +1181,25 @@ memo	Memo
 
 COPY public.businesses (business, name, abbrev, address, vatno, show_vat_breakdown) FROM stdin;
 1	Electromagnetic Field Ltd	EMF	Test Street\nTest City T99 1TT\n	188 1706 79	f
+\.
+
+
+--
+-- Data for Name: config; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.config (key, value, type, display_name, description) FROM stdin;
+core:sitename	EMFcamp 2018	text	Site name	Site name to be printed on receipts
+core:telephone		text	Telephone number	Telephone number to be printed on receipts
+core:address	Eastnor Castle Deer Park\nEastnor HR8 1RQ	multiline text	Site address	Site address to be printed on receipts
+core:currency	£	text	Currency symbol	Currency symbol used throughout the system
+core:checkdigit_print	Yes	boolean	Print check digits?	Should check digits be printed on stock labels?
+register:max_transline_modify_age	0 days, 60 seconds	interval	Transaction line modify-in-place age limit	For how long after it is created can a transaction line be modified?  This applies both to adding additional items and voiding the line.
+register:open_transaction_warn_after	2 days, 0 seconds	interval	Warn about open transactions after	When recalling an open transaction, warn the user if it is older than this.  If blank, never warn.
+register:open_transaction_lock_after		interval	Lock open transactions after	Prohibit adding lines to an open transaction when it is older than this.  If blank, never lock.
+register:open_transaction_lock_message		text	Locked transaction message	Display this message to the user when a transaction is locked.
+core:checkdigit_on_usestock	Yes	boolean	Require check digits?	Should check digits be enforced when putting stock on sale?
+gtk:custom_css	\nbutton:not(:active) {\n    transition: 250ms ease-in-out;\n}\n.linekey:active {\n    border-color: white;\n}\n\n.tshirt {\n    background-color: deepskyblue;\n    color: black;\n}\n\n.mate {\n    background-color: lighter(deepskyblue);\n    color: black;\n}\n\n.modifiers {\n  background-color: khaki;\n  color: black;\n}\n\n.modifiers label {\n  text-decoration-line: underline;\n}\n\n.spirits {\n  background-color: orange;\n  color: black;\n}\n\n.soft {\n  background-color: lightseagreen;\n  color: black;\n}\n\n.keg {\n/* Purple wanted */\n/* background-color: sandybrown; */\n  background-color: rgb(198, 63, 175);\n  color: white;\n}\n\n.keghalf {\n  background-color: lighter(rgb(198, 63, 175));\n  color: white;\n}\n\n.ale {\n/* Blue wanted */\n/* background-color: wheat; */\n  background-color: rgb(46, 23, 198);\n  color: white;\n}\n.alehalf {\n    background-color: lighter(rgb(46, 23, 198));\n/* rgb(66, 43, 198);*/\n  color: white;\n}\n\n.cider {\n  background-color: greenyellow;\n  color: black;\n}\n.ciderhalf {\n    background-color: lighter(greenyellow);\n  color: black;\n}\n\n.wine, .winemod {\n/* Brighter pink wanted */\n/* background-color: darksalmon; */\n  background-color: rgb(242, 43, 215);\n  color: black;\n}\n.winemod label {\n  text-decoration-line: underline;\n}\n\n.fridge {\n  background-color: powderblue;\n  color: black;\n}\n\n.snacks {\n/* White-ish wanted */\n/* background-color: coral; */\n  background-color: rgb(240, 242, 232);\n  color: black;\n}\n\n.linekey:active {\n  background-color: black;\n  color: white;\n}\n\n	multiline text	Custom CSS	Custom CSS for till when running with gtk
 \.
 
 
@@ -1543,7 +1634,15 @@ K_LINE6	Tshunk	mate
 -- Data for Name: log; Type: TABLE DATA; Schema: public; Owner: steve
 --
 
-COPY public.log (id, "time", sourceaddr, source, "user", description, businesses_id, vat_id, vatrates_id0, vatrates_id1, sessions_id, transactions_id, users_id, usertokens_id, groups_id, payments_id, departments_id, translines_id, stocklines_id, pricelookups_id, suppliers_id, deliveries_id, unittypes_id, stockunits_id, stocktypes_id, stock_id, stock_annotations_id, stockremove_id, stockout_id, stocktakes_id) FROM stdin;
+COPY public.log (id, "time", sourceaddr, source, "user", description, businesses_id, vat_id, vatrates_id0, vatrates_id1, sessions_id, transactions_id, users_id, usertokens_id, groups_id, payments_id, departments_id, translines_id, stocklines_id, pricelookups_id, suppliers_id, deliveries_id, unittypes_id, stockunits_id, stocktypes_id, stock_id, stock_annotations_id, stockremove_id, stockout_id, stocktakes_id, config_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: payment_meta; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.payment_meta (paymentid, key, value) FROM stdin;
 \.
 
 
@@ -10677,6 +10776,14 @@ COPY public.pricelookups (id, description, note, dept, price, altprice1, altpric
 --
 
 COPY public.refusals_log (id, "user", "time", terminal, details) FROM stdin;
+\.
+
+
+--
+-- Data for Name: secrets; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.secrets (key_name, secret_name, token) FROM stdin;
 \.
 
 
@@ -27110,6 +27217,14 @@ V	Void
 
 
 --
+-- Data for Name: transline_meta; Type: TABLE DATA; Schema: public; Owner: steve
+--
+
+COPY public.transline_meta (translineid, key, value) FROM stdin;
+\.
+
+
+--
 -- Data for Name: translines; Type: TABLE DATA; Schema: public; Owner: steve
 --
 
@@ -36556,6 +36671,14 @@ ALTER TABLE ONLY public.businesses
 
 
 --
+-- Name: config config_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.config
+    ADD CONSTRAINT config_pkey PRIMARY KEY (key);
+
+
+--
 -- Name: deliveries deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
 --
 
@@ -36620,6 +36743,14 @@ ALTER TABLE ONLY public.log
 
 
 --
+-- Name: payment_meta payment_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.payment_meta
+    ADD CONSTRAINT payment_meta_pkey PRIMARY KEY (paymentid, key);
+
+
+--
 -- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
 --
 
@@ -36665,6 +36796,14 @@ ALTER TABLE ONLY public.pricelookups
 
 ALTER TABLE ONLY public.refusals_log
     ADD CONSTRAINT refusals_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: secrets secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.secrets
+    ADD CONSTRAINT secrets_pkey PRIMARY KEY (key_name, secret_name);
 
 
 --
@@ -36836,6 +36975,14 @@ ALTER TABLE ONLY public.transcodes
 
 
 --
+-- Name: transline_meta transline_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.transline_meta
+    ADD CONSTRAINT transline_meta_pkey PRIMARY KEY (translineid, key);
+
+
+--
 -- Name: translines translines_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
 --
 
@@ -36992,6 +37139,13 @@ CREATE CONSTRAINT TRIGGER close_only_if_balanced AFTER INSERT OR UPDATE ON publi
 
 
 --
+-- Name: config config_change; Type: TRIGGER; Schema: public; Owner: steve
+--
+
+CREATE TRIGGER config_change AFTER UPDATE ON public.config FOR EACH ROW EXECUTE PROCEDURE public.notify_config_change();
+
+
+--
 -- Name: group_grants group_grants_changed; Type: TRIGGER; Schema: public; Owner: steve
 --
 
@@ -37110,6 +37264,14 @@ ALTER TABLE ONLY public.keyboard
 
 ALTER TABLE ONLY public.log
     ADD CONSTRAINT log_business_fkey FOREIGN KEY (businesses_id) REFERENCES public.businesses(business) ON DELETE SET NULL;
+
+
+--
+-- Name: log log_config_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.log
+    ADD CONSTRAINT log_config_fkey FOREIGN KEY (config_id) REFERENCES public.config(key) ON DELETE SET NULL;
 
 
 --
@@ -37294,6 +37456,14 @@ ALTER TABLE ONLY public.log
 
 ALTER TABLE ONLY public.log
     ADD CONSTRAINT log_vatrate_fkey FOREIGN KEY (vatrates_id0, vatrates_id1) REFERENCES public.vatrates(band, active) ON DELETE SET NULL;
+
+
+--
+-- Name: payment_meta payment_meta_paymentid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.payment_meta
+    ADD CONSTRAINT payment_meta_paymentid_fkey FOREIGN KEY (paymentid) REFERENCES public.payments(paymentid) ON DELETE CASCADE;
 
 
 --
@@ -37582,6 +37752,14 @@ ALTER TABLE ONLY public.transaction_meta
 
 ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_sessionid_fkey FOREIGN KEY (sessionid) REFERENCES public.sessions(sessionid);
+
+
+--
+-- Name: transline_meta transline_meta_translineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+--
+
+ALTER TABLE ONLY public.transline_meta
+    ADD CONSTRAINT transline_meta_translineid_fkey FOREIGN KEY (translineid) REFERENCES public.translines(translineid) ON DELETE CASCADE;
 
 
 --
