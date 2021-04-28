@@ -1,3 +1,19 @@
+quicktill (19.2) stable; urgency=low
+
+  * New release 19.2
+
+  * Update Haymakers example config from live installation
+
+  * Update EMF 2018 example data and config for v19.2
+
+  * Use selectinload() to load transaction lines, payments and metadata
+
+  * Add metadata tables for translines and payments
+
+  * Fix ssh command options in make-release
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 28 Apr 2021 20:52:21 +0100
+
 quicktill (19.1) stable; urgency=low
 
   * New release 19.1
