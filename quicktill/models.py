@@ -736,10 +736,47 @@ class Payment(Base, Logged):
                      doc="User who created this payment")
     transaction = relationship(
         Transaction,
-        backref=backref('payments', order_by=id,
-                        passive_deletes="all"))
+        backref=backref('payments', order_by=id, cascade="all, delete-orphan",
+                        passive_deletes=True))
     paytype = relationship(PayType)
     user = relationship(User)
+
+    meta = relationship("PaymentMeta",
+                        collection_class=attribute_mapped_collection('key'),
+                        back_populates="payment",
+                        passive_deletes=True,
+                        cascade="all,delete-orphan")
+
+    def set_meta(self, key, val):
+        val = str(val)
+        if key in self.meta:
+            o = self.meta[key]
+            o.value = val
+        else:
+            self.meta[key] = PaymentMeta(
+                key=key,
+                value=val)
+
+class PaymentMeta(Base):
+    """Metadata on a payment
+
+    Acts as a key/value store per payment.  Only one instance of a
+    key can exist per payment: the primary key for this table is
+    (paymentid,key).
+
+    If the transaction is deleted, all its metadata is deleted too.
+
+    Transaction metadata is expected to be used by register plugins.
+    """
+    __tablename__ = 'payment_meta'
+    payment_id = Column('paymentid', Integer,
+                        ForeignKey('payments.paymentid',
+                                   ondelete='CASCADE'),
+                        primary_key=True, nullable=False)
+    key = Column(String(), nullable=False, primary_key=True)
+    value = Column(String(), nullable=False)
+
+    payment = relationship(Payment, back_populates='meta')
 
 add_ddl(Payment.__table__, """
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
@@ -857,13 +894,19 @@ class Transline(Base, Logged):
 
     transaction = relationship(
         Transaction,
-        backref=backref('lines', order_by=id,
+        backref=backref('lines', order_by=id, cascade="all, delete-orphan",
                         passive_deletes=True))
     department = relationship(Department)
     user = relationship(User)
     voided_by = relationship(
         "Transline", remote_side=[id], uselist=False,
         backref=backref('voids', uselist=False, passive_deletes=True))
+
+    meta = relationship("TranslineMeta",
+                        collection_class=attribute_mapped_collection('key'),
+                        back_populates="transline",
+                        passive_deletes=True,
+                        cascade="all,delete-orphan")
 
     @hybrid_property
     def total(self):
@@ -925,6 +968,38 @@ class Transline(Base, Logged):
                 stockitem=stockout.stockitem, qty=-stockout.qty,
                 removecode=stockout.removecode))
         return v
+
+    def set_meta(self, key, val):
+        val = str(val)
+        if key in self.meta:
+            o = self.meta[key]
+            o.value = val
+        else:
+            self.meta[key] = TranslineMeta(
+                key=key,
+                value=val)
+
+class TranslineMeta(Base):
+    """Metadata on a transaction line
+
+    Acts as a key/value store per transaction line.  Only one instance
+    of a key can exist per transaction line: the primary key for this
+    table is (transline_id,key).
+
+    If the transaction line is deleted, all its metadata is deleted
+    too.
+
+    Transaction line metadata is expected to be used by register plugins.
+    """
+    __tablename__ = 'transline_meta'
+    transline_id = Column('translineid', Integer,
+                          ForeignKey('translines.translineid',
+                                     ondelete='CASCADE'),
+                          primary_key=True, nullable=False)
+    key = Column(String(), nullable=False, primary_key=True)
+    value = Column(String(), nullable=False)
+
+    transline = relationship(Transline, back_populates='meta')
 
 # This trigger permits null columns (text or user) to be set to
 # not-null in closed transactions but subsequently prevents

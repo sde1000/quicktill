@@ -1,6 +1,19 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v19.{0,1} to v19.2
+--------------------------
+
+What's new:
+
+ * metadata tables for transaction lines and payments
+
+These tables are only used by plugins; they are not used by the core
+register code. To upgrade the database:
+
+ - run "runtill syncdb" to create the new tables
+
+
 Upgrade v18.x to v19
 --------------------
 

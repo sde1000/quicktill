@@ -370,5 +370,80 @@ class ModelTest(unittest.TestCase):
         self.assertIsNotNone(pa)
         self.assertEqual(pa.groups[0].id, 'all-users')
 
+    def test_transaction_meta(self):
+        self.template_setup()
+        session = models.Session(datetime.date.today())
+        self.s.add(session)
+        self.s.flush()
+        trans = models.Transaction(session=session)
+        trans.set_meta('test', 'testval')
+        self.s.add(trans)
+        self.s.flush()
+        # TransactionMeta row should exist
+        tm = self.s.query(models.TransactionMeta).get((trans.id, 'test'))
+        self.assertIsNotNone(tm)
+        self.assertEqual(tm.value, 'testval')
+        # TransactionMeta should be accessible through the collection
+        self.assertIn('test', trans.meta)
+        self.assertEqual(trans.meta['test'].value, 'testval')
+        self.s.delete(trans)
+        self.s.flush()
+        # TransactionMeta row should not exist
+        tm = self.s.query(models.TransactionMeta).get((trans.id, 'test'))
+        self.assertIsNone(tm)
+
+    def test_transline_meta(self):
+        self.template_setup()
+        session = models.Session(datetime.date.today())
+        trans = models.Transaction(session=session)
+        transline = models.Transline(
+            transaction=trans, items=1,
+            amount=Decimal("10.00"), dept_id=1,
+            transcode='S', text="Test sale")
+        self.s.add_all([session, trans, transline])
+        transline.set_meta('test', 'testval')
+        self.s.flush()
+        tlid = transline.id
+        # TranslineMeta row should exist
+        tm = self.s.query(models.TranslineMeta).get((tlid, 'test'))
+        self.assertIsNotNone(tm)
+        self.assertEqual(tm.value, 'testval')
+        # TranslineMeta should be accessible through the collection
+        self.assertIn('test', transline.meta)
+        self.assertEqual(transline.meta['test'].value, 'testval')
+        self.s.delete(trans)
+        self.s.commit()
+        # Transline row should not exist
+        tl = self.s.query(models.Transline).get(tlid)
+        self.assertIsNone(tl)
+        # TranslineMeta row should not exist
+        tm = self.s.query(models.TranslineMeta).get((tlid, 'test'))
+        self.assertIsNone(tm)
+
+    def test_payment_meta(self):
+        self.template_setup()
+        cash = models.PayType(paytype='CASH', description='Cash')
+        session = models.Session(datetime.date.today())
+        trans = models.Transaction(session=session)
+        payment = models.Payment(
+            transaction=trans, amount=Decimal("10.00"),
+            paytype=cash, ref="Test")
+        self.s.add_all([cash, session, trans, payment])
+        self.s.flush()
+        payment.set_meta('test', 'testval')
+        pid = payment.id
+        # PaymentMeta row should exist
+        pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
+        self.assertIsNotNone(pm)
+        self.assertEqual(pm.value, 'testval')
+        # PaymentMeta should be accessible through the collection
+        self.assertIn('test', payment.meta)
+        self.assertEqual(payment.meta['test'].value, 'testval')
+        self.s.delete(trans)
+        self.s.commit()
+        # PaymentMeta row should not exist
+        pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
+        self.assertIsNone(pm)
+
 if __name__ == '__main__':
     unittest.main()
