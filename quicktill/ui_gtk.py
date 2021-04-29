@@ -584,7 +584,7 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
                           preferred_height=20 if keyboard else 24,
                           minimum_width=60)
     ui.beep = Gdk.beep
-    if keyboard:
+    if keyboard and tillconfig.keyboard:
         keyboard_gtk.init_css()
         kbgrid = keyboard_gtk.kbgrid(
             tillconfig.keyboard, _onscreen_keyboard_input)
