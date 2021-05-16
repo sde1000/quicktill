@@ -895,6 +895,7 @@ class default_groups:
         "auto-allocate",
         "manage-stockline-associations",
         "annotate",
+        "cancel-cash-payment",
     ])
 
     manager = set([

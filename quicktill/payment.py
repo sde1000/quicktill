@@ -28,9 +28,7 @@ class pline(ui.line):
     def __init__(self, payment, method=None):
         self.payment_id = payment.id
         self.amount = payment.amount
-        if method is None:
-            method = methods[payment.paytype_id]
-        self.method = method
+        self.method = method or methods[payment.paytype_id]
         super().__init__(colour=ui.colour_cashline if self.amount >= zero
                          else ui.colour_changeline)
         self.update()
@@ -60,10 +58,14 @@ class pline(ui.line):
     def resume(self, register):
         return self.method.resume_payment(register, self)
 
+    def cancel(self, register):
+        return self.method.cancel_payment(register, self)
+
 class PaymentMethod:
-    change_given = False
-    refund_supported = False
-    deferrable = False
+    change_given = False      # Overpayment is supported
+    refund_supported = False  # Negative payment is supported
+    cancel_supported = False  # Payment can be cancelled instead of refunded
+    deferrable = False        # Payment can stay with a deferred transaction
 
     def __init__(self, paytype, description):
         self.paytype = paytype
@@ -85,6 +87,10 @@ class PaymentMethod:
         # The default payment method doesn't support pending payments
         ui.infopopup([f"{self.description} payments can't be resumed."],
                      title="Pending payments not supported")
+
+    def cancel_payment(self, register, pline_instance):
+        ui.infopopup([f"{self.description} payments can't be cancelled."],
+                     title="Cancelling payment not supported")
 
     def get_paytype(self):
         pt = PayType(paytype=self.paytype, description=self.description)

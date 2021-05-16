@@ -134,6 +134,7 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - canceltrans(trans) - trans may be open or closed
      - cancelempty(trans) - cash/enter on an empty transaction
      - cancelline(l)
+     - cancelpayment(p)
      - markkey()
      - recalltranskey()
      - defertrans(trans) - trans is open
@@ -1877,9 +1878,20 @@ class page(ui.basicpage):
                           "it first."],
                          title="Line already voided")
         else:
-            log.info("Register: cancelline: can't cancel payments")
-            ui.infopopup(["You can't cancel payments.  Cancel the whole "
-                          "transaction instead."],title="Cancel")
+            # It must be a pline. The transaction is definitely still
+            # open at this point. Cancel the payment if the payment
+            # type supports it.  (A permission check may be carried
+            # out by the cancel_payment() method of the payment
+            # method; if it fails, we assume an error box will have
+            # been popped up.)
+            log.info("Register: cancelline: cancel payment")
+            if l.method.cancel_supported:
+                l.method.cancel_payment(self, l)
+                self.cursor_off()
+            else:
+                ui.infopopup(["You can't cancel this type of payment.  "
+                              "Cancel the whole transaction instead."],
+                             title="Cancel")
 
     def cancelmarked(self):
         """Cancel marked lines from a transaction.
@@ -2049,6 +2061,27 @@ class page(ui.basicpage):
         for l in ll:
             l.update()
         td.s.flush()
+
+    def cancelpayment(self, p):
+        if not self.entry():
+            return
+        if self.hook("cancelpayment", p):
+            return
+        trans = self._gettrans()
+        payment = td.s.query(Payment).get(p.payment_id)
+        assert payment.transaction == trans
+        td.s.delete(payment)
+        td.s.flush()
+        td.s.expire(trans, ['total'])
+        del self.dl[self.dl.index(p)]
+        if len(self.dl) == 0:
+            # The last line was deleted, so also delete the
+            # transaction.
+            self.canceltrans()
+            return
+        self.cursor_off()
+        self.update_balance()
+        self._redraw()
 
     def markkey(self):
         """The Mark key was pressed.
