@@ -66,6 +66,7 @@ class PaymentMethod:
     refund_supported = False  # Negative payment is supported
     cancel_supported = False  # Payment can be cancelled instead of refunded
     deferrable = False        # Payment can stay with a deferred transaction
+    mergeable = False         # Payment can stay with a merged transaction
 
     def __init__(self, paytype, description):
         self.paytype = paytype

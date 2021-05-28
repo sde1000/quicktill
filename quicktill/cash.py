@@ -9,6 +9,7 @@ class CashPayment(payment.PaymentMethod):
     change_given = True
     refund_supported = True
     cancel_supported = True
+    mergeable = True
 
     def __init__(self, paytype, description, change_description, drawers=1,
                  countup=["50", "20", "10", "5", "2", "1",

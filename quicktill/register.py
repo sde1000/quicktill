@@ -82,6 +82,15 @@ open_transaction_lock_message = config.ConfigItem(
     display_name="Locked transaction message",
     description="Display this message to the user when a transaction is locked.")
 
+# Allow transactions with payments to be merged?
+allow_mergetrans_with_payments = config.BooleanConfigItem(
+    'register:allow_mergetrans_with_payments', False,
+    display_name="Allow merging transactions with payments",
+    description="Allow transactions that have payments to be merged into "
+    "other transactions? Only payment types that are explicitly marked "
+    "'mergeable' will be permitted; the presence of payments of other "
+    "types will still prevent merging.")
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -2429,13 +2438,21 @@ class page(ui.basicpage):
         if not sc:
             return
         othertrans = td.s.query(Transaction).get(othertransid)
-        if len(trans.payments) > 0:
+        if len(trans.payments) > 0 and not allow_mergetrans_with_payments():
             ui.infopopup(
                 ["Some payments have already been entered against "
-                 "transaction {}, so it can't be merged with another "
-                 "transaction.".format(trans.id)],
+                 f"transaction {trans.id}, so it can't be merged with "
+                 "another transaction."],
                 title="Error")
             return
+        for p in trans.payments:
+            pm = payment.methods[p.paytype_id]
+            if not pm.mergeable:
+                ui.infopopup(
+                    [f"Transaction {trans.id} has one or more payments that "
+                     "can't be merged with another transaction."],
+                    title="Error")
+                return
         if othertrans.closed:
             ui.infopopup(
                 [f"Transaction {othertrans.id} has been closed, so we can't "
@@ -2467,6 +2484,8 @@ class page(ui.basicpage):
                                self.user.fullname)
         for line in list(trans.lines):
             line.transaction = othertrans
+        for p in list(trans.payments):
+            p.transaction = othertrans
         td.s.delete(trans)
         td.s.flush()
         td.s.expire(othertrans)
