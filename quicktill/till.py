@@ -30,7 +30,7 @@ from . import cmdline
 from . import kbdrivers
 from . import keyboard
 from . import config
-from .listen import listener
+from . import listen
 from .version import version
 from .models import Session, Business, zero
 import subprocess
@@ -235,6 +235,9 @@ class runtill(cmdline.command):
             from . import event
             tillconfig.mainloop = event.SelectorsMainLoop()
 
+        # Initialise database notifications listener
+        listen.listener = listen.db_listener(tillconfig.mainloop, td.engine)
+
         if tillconfig.usertoken_listen and not args.nolisten:
             user.tokenlistener(tillconfig.usertoken_listen)
         if tillconfig.usertoken_listen_v6 and not args.nolisten:
@@ -248,12 +251,12 @@ class runtill(cmdline.command):
         tillconfig.start_time = time.time()
         if args.exit_when_idle is not None:
             # We should also exit if the "update" notification is sent
-            listener.listen_for("update", runtill.update_notified)
+            listen.listener.listen_for("update", runtill.update_notified)
 
         # Load config from database, update database with new config items,
         # initialise config change listener
         with td.orm_session():
-            config.ConfigItem.listen_for_changes()
+            config.ConfigItem.listen_for_changes(listen.listener)
             config.ConfigItem.preload()
 
         dbg_kbd = None

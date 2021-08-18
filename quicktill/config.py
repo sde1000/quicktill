@@ -1,7 +1,6 @@
 from .models import Config, penny
 from . import td
 from . import cmdline
-from .listen import listener
 import datetime
 import sys
 
@@ -67,7 +66,7 @@ class ConfigItem:
             log.debug("config changed: %s, no config found", configitem)
 
     @classmethod
-    def listen_for_changes(cls):
+    def listen_for_changes(cls, listener):
         if not cls._listener:
             cls._listener = listener.listen_for('config', cls._config_changed)
 

@@ -1,13 +1,11 @@
 import psycopg2
-from . import td
-from . import tillconfig
 from sqlalchemy import text
 import sqlalchemy.exc
 
 import logging
 log = logging.getLogger(__name__)
 
-class _db_listener:
+class db_listener:
     """Listen for notifictions delivered via the database
 
     Manages a list of channels and functions to be called when
@@ -15,8 +13,10 @@ class _db_listener:
     disconnection from the database.  If unable to reconnect
     immediately, tries again later.
     """
-    def __init__(self):
+    def __init__(self, mainloop, engine):
         self.connection = None
+        self._mainloop = mainloop
+        self._engine = engine
         self._fd_handle = None
         self._db_listening = set() # set up in the database
         self._listeners = {} # key is wrapper, value is channel
@@ -45,16 +45,16 @@ class _db_listener:
         if wanted and not self.connection:
             log.debug("connecting to database")
             try:
-                self.connection = td.engine.connect()
+                self.connection = self._engine.connect()
             except sqlalchemy.exc.OperationalError:
                 # Could not connect - database unreachable
                 log.debug("could not connect")
-                tillconfig.mainloop.add_timeout(
+                self._mainloop.add_timeout(
                     5, self.update_listening_channels,
                     "database listener connection retry")
                 return
             self._db_listening = set()
-            self._fd_handle = tillconfig.mainloop.add_fd(
+            self._fd_handle = self._mainloop.add_fd(
                 self.connection.connection.fileno(), self._data_available, None,
                 "database notification listener")
 
@@ -89,8 +89,8 @@ class _db_listener:
             self._fd_handle.remove()
             self._fd_handle = None
             self.connection = None
-            tillconfig.mainloop.add_timeout(5, self.update_listening_channels,
-                                            "database listener reopen closed")
+            self._mainloop.add_timeout(5, self.update_listening_channels,
+                                       "database listener reopen closed")
             return
         while self.connection.connection.notifies:
             notify = self.connection.connection.notifies.pop()
@@ -98,4 +98,7 @@ class _db_listener:
                 if channel == notify.channel:
                     listener._func(notify.payload)
 
-listener = _db_listener()
+# listener is set to an instance of db_listener during quicktill
+# initialisation but this ought to go somewhere else like
+# tillconfig...
+listener = None
