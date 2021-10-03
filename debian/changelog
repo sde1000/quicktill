@@ -1,3 +1,13 @@
+quicktill (19.6) stable; urgency=low
+
+  * New release 19.6
+
+  * Fix xero session invoice where tillweb URL is not set
+
+  * Remove imports from listen module
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 03 Oct 2021 17:50:35 +0100
+
 quicktill (19.5) stable; urgency=low
 
   * New release 19.5
