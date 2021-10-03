@@ -499,7 +499,7 @@ class XeroIntegration:
         inv.append(_textelem("Date", session.date.isoformat()))
         inv.append(_textelem(
             "DueDate", (session.date + datetime.timedelta(days=self.due_days())).isoformat()))
-        if self.tillweb_base_url:
+        if self.tillweb_base_url():
             inv.append(_textelem(
                 "Url", self.tillweb_base_url() + f"session/{session.id}/"))
         inv.append(_textelem(
