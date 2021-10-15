@@ -463,7 +463,7 @@ def main():
     # import can be directed appropriately.
     rootlog = logging.getLogger()
     if args.logconfig:
-        logconfig = yaml.load(args.logconfig)
+        logconfig = yaml.safe_load(args.logconfig)
         args.logconfig.close()
         logging.config.dictConfig(logconfig)
     else:

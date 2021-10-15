@@ -138,7 +138,7 @@ from . import cmdline
 from . import tillconfig
 
 def setup(f):
-    t = yaml.load(f)
+    t = yaml.safe_load(f)
 
     for m in t:
         if 'model' not in m:
