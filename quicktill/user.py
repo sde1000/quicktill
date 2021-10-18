@@ -618,6 +618,10 @@ class edituser(permission_checked, ui.basicpopup):
         u.webuser = wn if len(wn) > 0 else None
         u.enabled = self.actfield.read()
         self.dismiss()
+        # Update current_user().dbuser to ensure it is in the database
+        # session; it may be a detached instance in some circumstances
+        cu = ui.current_user()
+        cu.dbuser = td.s.query(User).get(cu.userid)
         log(f"Updated details for user {u.logref}")
 
 def display_info(userid=None):
