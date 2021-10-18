@@ -16,6 +16,7 @@ indicate restricted functionality.
 from . import ui, td, keyboard, tillconfig, cmdline
 from .models import User, UserToken, Permission, Group, LogEntry
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import IntegrityError
 import types
 import socket
 import logging
@@ -820,6 +821,7 @@ class adduser_cmd(cmdline.command):
 
     @staticmethod
     def add_arguments(parser):
+        parser.add_argument("--webuser", help="Web username for new user")
         parser.add_argument("fullname", help="Full name of user")
         parser.add_argument("shortname", help="Short name of user")
         parser.add_argument("usertoken", help="User ID token")
@@ -829,10 +831,24 @@ class adduser_cmd(cmdline.command):
         with td.orm_session():
             u = User(fullname=args.fullname, shortname=args.shortname,
                      enabled=True, superuser=True)
+            if args.webuser:
+                u.webuser = args.webuser
+            td.s.add(u)
+            try:
+                td.s.flush()
+            except IntegrityError:
+                print(f"A user with web username '{u.webuser}' already exists.")
+                td.s.rollback()
+                return 1
             t = UserToken(
                 token=args.usertoken, user=u, description=args.fullname)
-            td.s.add(u)
             td.s.add(t)
+            try:
+                td.s.flush()
+            except IntegrityError:
+                print(f"User token {args.usertoken} already exists.")
+                td.s.rollback()
+                return 1
             print("User added.")
 
 class listusers(cmdline.command):
