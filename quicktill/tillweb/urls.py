@@ -83,6 +83,7 @@ tillurls = [
          name="tillweb-department"),
     path('department/<int:departmentid>/spreadsheet.ods', department,
          {'as_spreadsheet': True}, name="tillweb-department-sheet"),
+    path('new/department/', create_department, name="tillweb-create-department"),
 
     path('stockcheck/', stockcheck, name="tillweb-stockcheck"),
 

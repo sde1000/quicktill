@@ -875,6 +875,7 @@ class listusers(cmdline.command):
 # These permissions aren't used directly in the till but may be used
 # in other components like the web interface
 action_descriptions['edit-config'] = "Modify the till configuration"
+action_descriptions['edit-department'] = "Create or alter departments"
 
 class default_groups:
     """Three basic group definitions.

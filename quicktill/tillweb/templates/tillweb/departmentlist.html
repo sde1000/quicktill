@@ -9,6 +9,7 @@
     <tr>
       <th>Number</th>
       <th>Description</th>
+      <th>Band</th>
       <th>Min price</th>
       <th>Max price</th>
       <th>Notes</th>
@@ -19,6 +20,7 @@
 <tr>
 <td><a href="{{d.get_absolute_url}}">{{d.id}}</a></td>
 <td><a href="{{d.get_absolute_url}}">{{d.description}}</a></td>
+<td>{{d.vatband}}</td>
 <td>{% if d.minprice %}{{money}}{{d.minprice}}{% endif %}</td>
 <td>{% if d.maxprice %}{{money}}{{d.maxprice}}{% endif %}</td>
 <td>{% if d.notes %}{{d.notes}}{% endif %}</td>
@@ -26,6 +28,10 @@
 {% endfor %}
   </tbody>
 </table>
+
+{% if may_create_department %}
+<a href="{% url "tillweb-create-department" pubname=pubname %}" class="btn btn-secondary">Add new department</a>
+{% endif %}
 
 <script type="text/javascript">
 $(document).ready(function(){

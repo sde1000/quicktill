@@ -8,6 +8,7 @@ from django.template import RequestContext, Context
 from django.template.loader import get_template, render_to_string
 from django.conf import settings
 from django import forms
+from django.core.exceptions import ValidationError
 import django.urls
 from .models import *
 import sqlalchemy
@@ -238,6 +239,8 @@ def tillweb_view(view):
                                 len(queries))
 
             td.s = None
+            td.request = None
+            td.info = None
             session.close()
     if tillweb_login_required or not single_site:
         new_view = login_required(new_view)
@@ -1333,7 +1336,7 @@ def stocksearch(request, info):
 
 class StockAnnotateForm(forms.Form):
     annotation_type = StringIDChoiceField(
-        AnnotationType,
+        AnnotationType, 'id',
         query_filter=lambda x:x.order_by(AnnotationType.description)\
         .filter(~(AnnotationType.id.in_(["start", "stop"]))),
         empty_label="Choose a type of annotation"
@@ -1342,7 +1345,7 @@ class StockAnnotateForm(forms.Form):
 
 class StockWasteForm(forms.Form):
     waste_type = StringIDChoiceField(
-        RemoveCode,
+        RemoveCode, 'id',
         query_filter=lambda x:x.order_by(RemoveCode.reason)\
         .filter(RemoveCode.id != 'sold'),
         empty_label="Choose the type of waste to record"
@@ -2042,7 +2045,92 @@ def departmentlist(request, info):
     return ('departmentlist.html', {
         'nav': [("Departments", info.reverse("tillweb-departments"))],
         'depts': depts,
+        'may_create_department': info.user_has_perm("edit-department"),
     })
+
+class NewDepartmentForm(forms.Form):
+    number = forms.IntegerField(
+        min_value=1, help_text="Must be unique")
+    description = forms.CharField(
+        max_length=20, help_text="Used in web interface, printed on "\
+        "price lists and session total lists")
+    vatband = StringIDChoiceField(
+        VatBand, 'band',
+        label="VAT band", empty_label="Choose a VAT band",
+        help_text="VAT rate and business")
+    notes = forms.CharField(
+        widget=forms.Textarea(), required=False,
+        help_text="Printed on price lists")
+    min_price = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places,
+        help_text="Minimum price per item when price is entered manually")
+    max_price = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places,
+        help_text="Maximum price per item when price is entered manually")
+    accinfo = forms.CharField(
+        label="Accounting details", required=False,
+        help_text="Configuration for accounting system integration")
+
+    def clean_number(self):
+        n = self.cleaned_data['number']
+        d = td.s.query(Department).get(n)
+        if d:
+            raise ValidationError(f"Department {n} already exists")
+        return n
+
+@tillweb_view
+def create_department(request, info):
+    if not info.user_has_perm("edit-department"):
+        return HttpResponseForbidden(
+            "You don't have permission to create new departments")
+
+    if request.method == 'POST':
+        form = NewDepartmentForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            d = Department(id=cd['number'], description=cd['description'],
+                           vat=cd['vatband'],
+                           notes=cd['notes'] or None,
+                           minprice=cd['min_price'],
+                           maxprice=cd['max_price'],
+                           accinfo=cd['accinfo'] or None)
+            td.s.add(d)
+            td.s.commit()
+            messages.info(request, f"Department {cd['number']} created")
+            return HttpResponseRedirect(info.reverse("tillweb-departments"))
+    else:
+        form = NewDepartmentForm()
+
+    return ('new-department.html', {
+        'nav': [("Departments", info.reverse("tillweb-departments")),
+                ("New", info.reverse("tillweb-create-department"))],
+        'form': form,
+    })
+
+class EditDepartmentForm(forms.Form):
+    description = forms.CharField(
+        max_length=20, help_text="Used in web interface, printed on "\
+        "price lists and session total lists")
+    vatband = StringIDChoiceField(
+        VatBand, 'band',
+        label="VAT band", empty_label="Choose a VAT band",
+        help_text="VAT rate and business; see note below")
+    notes = forms.CharField(
+        widget=forms.Textarea(), required=False,
+        help_text="Printed on price lists")
+    min_price = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places,
+        help_text="Minimum price per item when price is entered manually")
+    max_price = forms.DecimalField(
+        required=False, min_value=zero,
+        max_digits=money_max_digits, decimal_places=money_decimal_places,
+        help_text="Maximum price per item when price is entered manually")
+    accinfo = forms.CharField(
+        label="Accounting details", required=False,
+        help_text="Configuration for accounting system integration")
 
 @tillweb_view
 def department(request, info, departmentid, as_spreadsheet=False):
@@ -2050,6 +2138,39 @@ def department(request, info, departmentid, as_spreadsheet=False):
             .get(departmentid)
     if d is None:
         raise Http404
+
+    may_edit = info.user_has_perm("edit-department")
+    form = None
+
+    if may_edit:
+        initial = {
+            'description': d.description,
+            'vatband': d.vat,
+            'notes': d.notes,
+            'min_price': d.minprice,
+            'max_price': d.maxprice,
+            'accinfo': d.accinfo,
+        }
+        if request.method == 'POST' and 'submit_update' in request.POST:
+            form = EditDepartmentForm(request.POST, initial=initial)
+            if form.is_valid():
+                if form.has_changed():
+                    cd = form.cleaned_data
+                    d.description = cd['description']
+                    d.vat = cd['vatband']
+                    d.notes = cd['notes']
+                    d.minprice = cd['min_price']
+                    d.maxprice = cd['max_price']
+                    d.accinfo = cd['accinfo']
+                    td.s.commit()
+                    messages.info(request, f"Department details updated")
+                return HttpResponseRedirect(d.get_absolute_url())
+        else:
+            form = EditDepartmentForm(initial=initial)
+
+        # Can we delete this department? There must be no translines,
+        # no PLUs, no stocklines, no stocktypes referencing it. Let's
+        # consider adding this feature in the future.
 
     include_finished = request.GET.get("show_finished", "off") == "on"
     items = td.s.query(StockItem)\
@@ -2075,7 +2196,10 @@ def department(request, info, departmentid, as_spreadsheet=False):
     return ('department.html',
             {'tillobject': d,
              'department': d, 'pager': pager,
-             'include_finished': include_finished})
+             'include_finished': include_finished,
+             'may_edit': may_edit,
+             'form': form,
+            })
 
 class StockCheckForm(forms.Form):
     short = forms.TextInput(attrs={'size': 3, 'maxlength': 3})
@@ -2147,7 +2271,7 @@ class EditUserForm(forms.Form):
     web_username = forms.CharField(required=False)
     enabled = forms.BooleanField(required=False)
     groups = StringIDMultipleChoiceField(
-        Group,
+        Group, 'id',
         query_filter=lambda q:q.order_by(Group.id),
         required=False)
 
@@ -2238,7 +2362,7 @@ class EditGroupForm(forms.Form):
     name = forms.CharField()
     description = forms.CharField()
     permissions = StringIDMultipleChoiceField(
-        Permission,
+        Permission, 'id',
         query_filter=lambda q:q.order_by(Permission.id),
         required=False)
 

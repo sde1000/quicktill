@@ -4,7 +4,7 @@
 
 {% block tillcontent %}
 
-<table class="kvtable">
+<table class="kvtable mb-2">
   <tr><th scope="row">Number:</th><td>{{department.id}}</td></tr>
   <tr><th scope="row">Description:</th><td>{{department.description}}</td></tr>
   <tr>
@@ -32,6 +32,26 @@
   <tr><th scope="row">{{desc}}:</th><td>{{data}}</td></tr>
   {% endfor %}
 </table>
+
+{% if may_edit %}
+<div class="dropdown mb-2">
+  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Change details</button>
+  <div class="dropdown-menu" style="width: 700px;">
+    <form class="px-4 py-3" id="changeForm" action="" method="post">{% csrf_token %}
+      {% include "form-horizontal.html" %}
+      <p><strong>N.B.</strong> If you change the VAT band of this
+	department, the new band will apply to <strong>all sales in
+	the past</strong> as well as future sales. Please ensure the
+	new band is compatible with the previous band up to the date
+	of the change.</p>
+      <button class="btn btn-primary" type="submit" name="submit_update">
+	Update department details
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 
 {% if pager.items %}
 <a class="btn btn-secondary float-right" href="{% url "tillweb-department-sheet" pubname=pubname departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a>

@@ -182,9 +182,17 @@ class SQLAModelMultipleChoiceField(SQLAModelChoiceField):
 class _StringIDMixin:
     """SQL Alchemy model field with string primary key
     """
+    def __init__(self, model, key, **kwargs):
+        super().__init__(model, **kwargs)
+        self.key = key
+
+    def model_to_value(self, model):
+        """Return a string that is unique to the model"""
+        return str(getattr(model, self.key))
+
     def values_to_filter(self, query, values):
         try:
-            return query.filter(self.model.id.in_(values))
+            return query.filter(getattr(self.model, self.key).in_(values))
         except:
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')

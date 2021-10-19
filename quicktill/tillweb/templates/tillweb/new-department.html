@@ -1,0 +1,23 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — create department{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post" class="mb-2">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Create department
+  </button>
+</form>
+
+<p>The VAT band determines which VAT rate applies to sales in this
+  department, and also which business receives the funds for these
+  sales.</p>
+
+<p>Accounting details depend on which accounting system integration is
+  in use. For example, when using the Xero integration the details are
+  expected to be of the form
+  "sales-account-code/purchases-account-code[/optional-tracking-value]".</p>
+
+{% endblock %}
