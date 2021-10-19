@@ -15,7 +15,7 @@
 
 {% if form %}
 <form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
+  {% include "form.html" %}
   {% if stocktake.scope %}
   <button class="btn btn-primary mb-2" type="submit" name="submit_start">
     Start stock take

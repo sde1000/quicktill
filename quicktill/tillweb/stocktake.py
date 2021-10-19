@@ -22,17 +22,12 @@ from .views import td
 from .views import stocktype_widget_label
 from .views import user
 
+class StockTakeSetupForm(forms.Form):
+    description = forms.CharField()
+
 @tillweb_view
 def stocktakelist(request, info):
     may_start = info.user_has_perm("stocktake")
-
-    if may_start and request.method == 'POST':
-        if 'submit_new' in request.POST:
-            st = StockTake(description=f'{info.user} {datetime.datetime.now():%Y-%m-%d %H:%M}',
-                           create_user=info.user)
-            td.s.add(st)
-            td.s.commit()
-            return HttpResponseRedirect(st.get_absolute_url())
 
     pending = td.s.query(StockTake)\
                   .filter(StockTake.start_time == None)\
@@ -63,6 +58,29 @@ def stocktakelist(request, info):
     })
 
 @tillweb_view
+def create_stocktake(request, info):
+    if not info.user_has_perm("stocktake"):
+        return HttpResponseForbidden("You don't have permission to start a stock take")
+
+    if request.method == "POST":
+        form = StockTakeSetupForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            st = StockTake(description=cd['description'], create_user=info.user)
+            td.s.add(st)
+            td.s.commit()
+            messages.success(request, "Stock take created.")
+            return HttpResponseRedirect(st.get_absolute_url())
+    else:
+        form = StockTakeSetupForm()
+
+    return ('new-stocktake.html', {
+        'nav': [("Stock takes", info.reverse("tillweb-stocktakes")),
+                ("New", info.reverse("tillweb-create-stocktake"))],
+        'form': form,
+    })
+
+@tillweb_view
 def stocktake(request, info, stocktake_id):
     stocktake = td.s.query(StockTake).get(stocktake_id)
     if not stocktake:
@@ -87,9 +105,6 @@ def stocktake(request, info, stocktake_id):
         'stocktake': stocktake,
         'stocktypes': stocktypes,
     })
-
-class StockTakeSetupForm(forms.Form):
-    description = forms.CharField()
 
 def stocktake_pending(request, info, st):
     may_edit = info.user_has_perm('stocktake')

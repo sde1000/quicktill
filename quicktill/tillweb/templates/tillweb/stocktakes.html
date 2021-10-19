@@ -70,11 +70,7 @@
 {% endif %}
 
 {% if may_start %}
-<form action="" method="post">{% csrf_token %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_new">
-    Start new stock take
-  </button>
-</form>
+<a href="{% url 'tillweb-create-stocktake' pubname=pubname %}" class="btn btn-primary mb-2">Start new stock take</a>
 {% endif %}
 
 {% if completed %}

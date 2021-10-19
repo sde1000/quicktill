@@ -44,6 +44,7 @@ tillurls = [
 
     path('stocktake/', stocktakelist, name="tillweb-stocktakes"),
     path('stocktake/<int:stocktake_id>/', stocktake, name="tillweb-stocktake"),
+    path('new/stocktake/', create_stocktake, name="tillweb-create-stocktake"),
 
     path('stocktype/', stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', stocktype, name="tillweb-stocktype"),

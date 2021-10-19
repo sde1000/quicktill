@@ -1,0 +1,14 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — create stocktake{% endblock %}
+
+{% block tillcontent %}
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_create">
+    Start stock take
+  </button>
+</form>
+
+{% endblock %}
