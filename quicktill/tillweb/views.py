@@ -2097,8 +2097,10 @@ def create_department(request, info):
                            maxprice=cd['max_price'],
                            accinfo=cd['accinfo'] or None)
             td.s.add(d)
+            td.s.flush()
+            user.log(f"Created department {d.logref}")
             td.s.commit()
-            messages.info(request, f"Department {cd['number']} created")
+            messages.success(request, f"Department {cd['number']} created")
             return HttpResponseRedirect(info.reverse("tillweb-departments"))
     else:
         form = NewDepartmentForm()
@@ -2162,8 +2164,9 @@ def department(request, info, departmentid, as_spreadsheet=False):
                     d.minprice = cd['min_price']
                     d.maxprice = cd['max_price']
                     d.accinfo = cd['accinfo']
+                    user.log(f"Updated department {d.logref}")
                     td.s.commit()
-                    messages.info(request, f"Department details updated")
+                    messages.success(request, f"Department details updated")
                 return HttpResponseRedirect(d.get_absolute_url())
         else:
             form = EditDepartmentForm(initial=initial)

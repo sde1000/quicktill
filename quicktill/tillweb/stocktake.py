@@ -68,6 +68,8 @@ def create_stocktake(request, info):
             cd = form.cleaned_data
             st = StockTake(description=cd['description'], create_user=info.user)
             td.s.add(st)
+            td.s.flush()
+            user.log(f"Created stock take {st.logref}")
             td.s.commit()
             messages.success(request, "Stock take created.")
             return HttpResponseRedirect(st.get_absolute_url())

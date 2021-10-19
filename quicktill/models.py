@@ -815,7 +815,7 @@ class Department(Base, Logged):
 
     @property
     def logtext(self):
-        return self.description
+        return f"{self.id} ('{self.description}')"
 
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
@@ -1656,6 +1656,10 @@ class StockTake(Base, Logged):
     def tillweb_nav(self):
         return [("Stock takes", self.get_view_url("tillweb-stocktakes")),
                 (str(self), self.get_absolute_url())]
+
+    @property
+    def logtext(self):
+        return f"{self.id} ('{self.description}')"
 
     def take_snapshot(self):
         if self.start_time:
