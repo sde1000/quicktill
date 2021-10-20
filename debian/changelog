@@ -1,3 +1,23 @@
+quicktill (19.7) stable; urgency=low
+
+  * New release 19.7
+
+  * Add a subcommand to show received user tokens
+
+  * Add some more logging
+
+  * New page for starting a stock take
+
+  * Creation and editing of departments in tillweb
+
+  * Allow web username to be set by adduser command
+
+  * Fix logging of changes to current user
+
+  * Use yaml.safe_load() instead of yaml.load()
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 20 Oct 2021 17:35:06 +0100
+
 quicktill (19.6) stable; urgency=low
 
   * New release 19.6
