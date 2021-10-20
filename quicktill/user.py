@@ -872,6 +872,43 @@ class listusers(cmdline.command):
             for u in users.all():
                 print(f"{u.id:>4}: {u.fullname} ({u.shortname})")
 
+
+class show_usertoken(cmdline.command):
+    """Display user token
+    """
+    description = """
+    Listen for user tokens; output the first received token and then
+    exit. Will fail to start if the till is already running and
+    listening for user tokens.
+
+    Useful during initial till setup to find out the user token to use
+    with the 'adduser' command for the first till user.
+    """
+    database_required = False
+    command = "show-usertoken"
+    help = "output first received user token"
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument(
+            "-p", "--port", type=int, default=8455, help="port to listen on")
+
+    @staticmethod
+    def run(args):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.bind(('127.0.0.1', args.port))
+        except OSError:
+            print(f"Unable to bind to port {args.port}; is the till already "
+                  "running?")
+            return 1
+        try:
+            print(s.recv(1024).strip().decode("utf-8"))
+        except KeyboardInterrupt:
+            pass
+        finally:
+            s.close()
+
 # These permissions aren't used directly in the till but may be used
 # in other components like the web interface
 action_descriptions['edit-config'] = "Modify the till configuration"
