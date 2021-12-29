@@ -31,6 +31,7 @@ from . import kbdrivers
 from . import keyboard
 from . import config
 from . import listen
+from . import barcode
 from .version import version
 from .models import Session, Business, zero
 import subprocess
@@ -159,7 +160,7 @@ class runtill(cmdline.command):
             "and testing")
         debugp.add_argument(
             "--nolisten", action="store_true", dest="nolisten",
-            help="Disable listening socket for user tokens")
+            help="Disable listening sockets for user tokens and barcodes")
         debugp.add_argument(
             "--glib-mainloop", action="store_true", dest="glibmainloop",
             help="Use GLib mainloop")
@@ -243,6 +244,11 @@ class runtill(cmdline.command):
         if tillconfig.usertoken_listen_v6 and not args.nolisten:
             user.tokenlistener(tillconfig.usertoken_listen_v6,
                                addressfamily=socket.AF_INET6)
+        if tillconfig.barcode_listen and not args.nolisten:
+            barcode.barcodelistener(tillconfig.barcode_listen)
+        if tillconfig.barcode_listen_v6 and not args.nolisten:
+            barcode.barcodelistener(tillconfig.barcode_listen_v6,
+                                    addressfamily=socket.AF_INET6)
         if args.exitoptions:
             tillconfig.exitoptions = args.exitoptions
         tillconfig.idle_exit_code = args.exit_when_idle
@@ -561,6 +567,10 @@ def main():
         tillconfig.firstpage = config['firstpage']
     else:
         tillconfig.firstpage = intropage
+    if 'barcode_listen' in config:
+        tillconfig.barcode_listen = config['barcode_listen']
+    if 'barcode_listen_v6' in config:
+        tillconfig.barcode_listen_v6 = config['barcode_listen_v6']
     if 'usertoken_handler' in config:
         tillconfig.usertoken_handler = config['usertoken_handler']
     if 'usertoken_listen' in config:

@@ -1337,17 +1337,6 @@ class StockLine(Base, Logged):
                 sm.append((i, move, newdisplayqty, instock_after_move))
         return sm
 
-    def continuous_stockonsale(self):
-        return object_session(self)\
-            .query(StockItem)\
-            .filter(StockItem.checked == True)\
-            .filter(StockItem.stocktype == self.stocktype)\
-            .filter(StockItem.finished == None)\
-            .filter(StockItem.stockline == None)\
-            .options(undefer('remaining'))\
-            .order_by(StockItem.id)\
-            .all()
-
     def calculate_sale(self, qty):
         """Work out a plan to remove a quantity of stock from the stock line.
 
@@ -1388,27 +1377,7 @@ class StockLine(Base, Logged):
             return (sell, unallocated, (leftondisplay,
                                         totalinstock - leftondisplay))
         elif self.linetype == "continuous":
-            stock = self.continuous_stockonsale()
-            if len(stock) == 0:
-                # There's no unfinished stock of the appropriate type
-                # at all - we can't do anything.
-                return ([], qty, Decimal("0.0"))
-            unallocated = qty
-            sell = []
-            remaining = Decimal("0.0")
-            for item in stock:
-                sellqty = min(unallocated, max(item.remaining, Decimal("0.0")))
-                unallocated = unallocated - sellqty
-                remaining += item.remaining - sellqty
-                if sellqty > Decimal("0.0"):
-                    sell.append((item, sellqty))
-            # If there wasn't enough, sell some more of the last item
-            # anyway putting it into negative "remaining"
-            if unallocated > Decimal("0.0"):
-                sell.append((item, unallocated))
-                remaining -= unallocated
-                unallocated = Decimal("0.0")
-            return (sell, unallocated, remaining)
+            return self.stocktype.calculate_sale(qty)
 
     def other_lines_same_stocktype(self):
         """Return other stocklines with the same linetype and stocktype."""
@@ -1889,6 +1858,53 @@ class StockType(Base, Logged):
         else:
             s = s.rjust(minwidth, fill)
         return s
+
+    def calculate_sale(self, qty):
+        """Work out a plan to remove a quantity of stock from the stock type.
+
+        They may be sold, wasted, etc. - this is not just for
+        calculating a sale!
+
+        Returns (list of (stockitem, qty) pairs, the number of items
+        that could not be allocated, remaining stock).
+
+        Stock that is connected to a stock line (excluding
+        "continuous" stock lines) isn't available for sale through
+        this method.
+        """
+        # Reject negative quantities
+        if qty < Decimal("0.0"):
+            return ([], qty, None)
+        stock = object_session(self)\
+            .query(StockItem)\
+            .filter(StockItem.checked == True)\
+            .filter(StockItem.stocktype == self)\
+            .filter(StockItem.finished == None)\
+            .filter(StockItem.stockline == None)\
+            .options(undefer('remaining'))\
+            .order_by(StockItem.id)\
+            .all()
+        if len(stock) == 0:
+            # There's no unfinished stock of this type at all that
+            # isn't connected to a stock line - we can't do anything.
+            return ([], qty, Decimal("0.0"))
+        unallocated = qty
+        sell = []
+        remaining = Decimal("0.0")
+        for item in stock:
+            sellqty = min(unallocated, max(item.remaining, Decimal("0.0")))
+            unallocated = unallocated - sellqty
+            remaining += item.remaining - sellqty
+            if sellqty > Decimal("0.0"):
+                sell.append((item, sellqty))
+        # If there wasn't enough, sell some more of the last item
+        # anyway putting it into negative "remaining"
+        if unallocated > Decimal("0.0"):
+            sell.append((item, unallocated))
+            remaining -= unallocated
+            unallocated = Decimal("0.0")
+        return (sell, unallocated, remaining)
+
 
 class FinishCode(Base):
     __tablename__ = 'stockfinish'
@@ -2444,6 +2460,43 @@ CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
 """, """
 DROP RULE log_stocktype ON stock
 """)
+
+class Barcode(Base):
+    """Barcodes
+
+    A scanned barcode can refer to a stock line, price lookup or stock
+    type (where it behaves as if that stock type is connected to a
+    continuous stock line), with optional modifier.  It can also refer
+    to a modifier.  It is similar in principle to a keyboard binding,
+    but for a keyboard with a very large number of keys.
+    """
+    __tablename__ = 'barcodes'
+    barcode = Column(String(), primary_key=True)
+    stocklineid = Column(Integer, ForeignKey(
+            'stocklines.stocklineid', ondelete='CASCADE'))
+    pluid = Column(Integer, ForeignKey(
+        'pricelookups.id', ondelete='CASCADE'))
+    stocktype_id = Column(
+        'stocktype', Integer, ForeignKey(
+            'stocktypes.stocktype', ondelete='CASCADE'))
+    modifier = Column(String())
+    stockline = relationship(
+        StockLine, backref=backref('barcodes', cascade='all',
+                                   passive_deletes=True))
+    plu = relationship(
+        PriceLookup, backref=backref('barcodes', cascade='all',
+                                     passive_deletes=True))
+    stocktype = relationship(
+        StockType, backref=backref('barcodes', cascade='all',
+                                   passive_deletes=True))
+    __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(stocklineid, pluid, stocktype, modifier) != 0",
+            name="be_useful_constraint"),
+        CheckConstraint(
+            "num_nonnulls(stocklineid, pluid, stocktype) <= 1",
+            name="be_unambiguous_constraint"),
+    )
 
 class Config(Base, Logged):
     """Till configuration

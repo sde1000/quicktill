@@ -37,12 +37,14 @@ from . import payment
 from . import user
 from . import plugins
 from . import config
+from . import barcode
 import logging
 import datetime
 log = logging.getLogger(__name__)
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
 from .models import Payment, zero, User, Department, desc, RemoveCode
 from .models import StockType
+from .models import Barcode
 from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
@@ -131,6 +133,7 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - recalltrans_loaded(trans); transaction loaded using Recall Trans; there
          is no default action
      - linekey(kb, mod)
+     - barcode(b, mod)
      - drinkin(trans, amount) - "drink in" function on open transaction
      - nosale() - just before kicking out the cash drawer on closed transaction
      - cashkey(trans) - cash/enter on an open transaction
@@ -595,9 +598,11 @@ class ProposedSale:
         self.qty = qty
         self._stocktype = stocktype
         self._whole_items = whole_items
+
     @property
     def stocktype(self):
         return self._stocktype
+
     def validate(self):
         if not self.description:
             raise InvalidSale("No description")
@@ -898,9 +903,48 @@ class page(ui.basicpage):
 
         # Keyboard bindings can refer to a stockline, PLU or modifier
         if kb.stockline:
-            self._sell_stockline(kb, mod)
+            self._sell_stockline(kb.stockline, mod)
         elif kb.plu:
-            self._sell_plu(kb, mod)
+            self._sell_plu(kb.plu, mod)
+        else:
+            self.mod = mod
+            self.cursor_off()
+            self._redraw()
+
+    def barcode(self, scan):
+        """A barcode has been scanned
+        """
+        b = td.s.query(Barcode).get(scan.code)
+        if not b:
+            ui.toast(f"Unrecognised barcode \"{scan.code}\"")
+            scan.feedback(False)
+            return
+
+        scan.feedback(True)
+
+        # Look up the modifier from the barcode; it's an error if it's unknown
+        mod = None
+        if b.modifier:
+            if b.modifier not in modifiers.all:
+                log.error("Missing modifier '%s'", b.modifier)
+                ui.infopopup(
+                    [f"The modifer '{b.modifier}' needed by barcode "
+                     f"\"{b}\" can't be found.  "
+                     "This is a till configuration error."],
+                    title="Missing modifier")
+                return
+            mod = modifiers.all[b.modifier]
+
+        if self.hook("barcode", b, mod):
+            return
+
+        # Barcodes can refer to a stockline, PLU, stock type or modifier
+        if b.stockline:
+            self._sell_stockline(b.stockline, mod)
+        elif b.plu:
+            self._sell_plu(b.plu, mod)
+        elif b.stocktype:
+            self._sell_stocktype(b.stocktype, mod)
         else:
             self.mod = mod
             self.cursor_off()
@@ -960,9 +1004,7 @@ class page(ui.basicpage):
         return explicitprice
 
     @user.permission_required('sell-plu', 'Sell items using a price lookup')
-    def _sell_plu(self, kb, mod):
-        plu = kb.plu
-
+    def _sell_plu(self, plu, mod):
         items = self.qty or 1
         mod = self.mod or mod # self.mod is an override of the default
         buf = self.buf
@@ -1083,9 +1125,181 @@ class page(ui.basicpage):
         self.prompt = self.defaultprompt
         self._redraw()
 
+    @user.permission_required('sell-stocktype', 'Sell a type of stock')
+    def _sell_stocktype(self, stocktype, mod):
+        st = stocktype
+        mod = self.mod or mod  # self.mod is an override of the default
+        items = self.qty or 1
+
+        # Cache the bufferline contents, clear it and redraw - this
+        # saves us having to do so explicitly when we bail with an
+        # error
+        buf = self.buf
+        self.clearbuffer()
+        self._redraw()
+
+        sale = ProposedSale(
+            stocktype=st,
+            qty=st.unit.units_per_item,
+            description=f"{st} {st.unit.item_name}",
+            price=st.saleprice,
+            whole_items=False)
+
+        sale.validate()
+
+        # Pass the proposed sale to the modifier to let it change it
+        # or reject it
+        if mod:
+            try:
+                with ui.exception_guard(
+                        f"running the '{mod.name}' modifier",
+                        suppress_exception=False):
+                    try:
+                        mod.mod_stocktype(st, sale)
+                        sale.validate()
+                    except modifiers.Incompatible as i:
+                        msg = f"The '{mod.name}' modifier can't be used with " \
+                              f"the '{st}' stock type."
+                        ui.infopopup([i.msg if i.msg else msg],
+                                     title="Incompatible modifier",
+                                     colour=ui.colour_error)
+                        return
+                    except InvalidSale as i:
+                        ui.infopopup(
+                            [f"The '{mod.name}' modifier left the Proposed "
+                             f"Sale object in an invalid state.  This is an "
+                             f"error in the till configuration.  The invalid "
+                             f"state is: {i.msg}"],
+                            title="Till configuration error")
+                        return
+            except Exception as e:
+                # ui.exception_guard() will already have popped up the error.
+                return
+
+        explicitprice = None
+        if buf:
+            explicitprice = self._read_explicitprice(
+                buf, sale.stocktype.department)
+            if not explicitprice:
+                return # Error popup already in place
+
+        if not explicitprice:
+            if sale.price is None:
+                no_saleprice_popup(self.user, sale.stocktype)
+                return
+
+        if explicitprice:
+            sale.price = explicitprice
+
+        total_qty = items * sale.qty
+        sell, unallocated, remaining = st.calculate_sale(total_qty)
+
+        if unallocated > 0 or len(sell) == 0:
+            log.info("_sell_stocktype: no stock present for %s", st.format())
+            ui.infopopup(
+                [f"No {st} is available to sell.", "",
+                 "Hint: stock already attached to a stock line can only "
+                 "be sold through that stock line."],
+                title=f"{st} is not in stock")
+            return
+
+        # NB get_open_trans() may call _clear() and will zap self.repeat when
+        # it creates a new transaction!
+        may_repeat = self.repeat and hasattr(self.repeat, 'stocktype_id') \
+                     and self.repeat.stocktype_id == st.id \
+                     and self.repeat.mod == mod
+
+        trans = self.get_open_trans()
+        if trans is None:
+            return  # Will already be displaying an error.
+
+        # If the transaction is locked, we can't continue
+        if self.transaction_locked:
+            self.transaction_lock_popup()
+            return
+
+        # Consider adding on to the previous transaction line if the
+        # same stocktype key/barcode has been pressed again.
+        repeated = False
+        if may_repeat and len(self.dl) > 0 \
+           and self.dl[-1].age() < max_transline_modify_age() \
+           and len(sell) == 1:
+            otl = td.s.query(Transline).get(self.dl[-1].transline)
+            # If the stockref has more than one item, we don't repeat
+            # because we are probably at the changeover between two
+            # stockitems
+            if otl.stockref \
+               and otl.stockref[0].stockitem == sell[0][0] \
+               and len(otl.stockref) == 1:
+                # It's the same stockitem.  Add one item and one qty.
+                so = otl.stockref[0]
+                orig_stockqty = so.qty / otl.items
+                if orig_stockqty == sell[0][1] \
+                   and (so.qty + orig_stockqty) < max_quantity:
+                    so.qty += orig_stockqty
+                    otl.items += 1
+                    td.s.flush()
+                    td.s.expire(so.stockitem, ['used', 'sold', 'remaining'])
+                    log.info("linekey: updated transline %d and stockout %d",
+                             otl.id, otl.stockref[0].id)
+                    self.dl[-1].update()
+                    repeated = True
+
+        if not repeated:
+            # Check that the number of items to be sold fits within the
+            # qty field of StockOut
+            for stockitem, items_to_sell in sell:
+                if items_to_sell > max_quantity:
+                    ui.infopopup(
+                        ["You can't sell {} {}s of {} in one go.".format(
+                            items_to_sell, stockitem.stocktype.unit.name,
+                            stockitem.stocktype.format())],
+                                 title="Error")
+                    return
+            tl = Transline(
+                transaction=trans, items=items,
+                amount=sale.price,
+                department=sale.stocktype.department,
+                transcode='S', text=sale.description,
+                user=self.user.dbuser)
+            td.s.add(tl)
+            for stockitem, items_to_sell in sell:
+                so = StockOut(
+                    transline=tl, stockitem=stockitem,
+                    qty=items_to_sell, removecode_id='sold')
+                td.s.add(so)
+                td.s.expire(
+                    stockitem,
+                    ['used', 'sold', 'remaining', 'firstsale', 'lastsale'])
+            self._apply_discount(tl)
+            td.s.flush()
+            if explicitprice:
+                logmsg = f"Price override to {tillconfig.fc(sale.price)} " \
+                    f"for transaction line {tl.logref} stock item "
+                for stockitem, items_to_sell in sell:
+                    user.log(logmsg + stockitem.logref)
+            td.s.refresh(tl, ['time']) # load time from database
+            self.dl.append(tline(tl.id))
+
+        self.repeat = repeatinfo(stocktype_id=st.id, mod=mod)
+
+        self.prompt = f"{st}: {st.unit.format_qty(remaining)} remaining"
+        if remaining < Decimal("0.0"):
+            ui.infopopup([
+                f"There appears to be {remaining} {st.unit.name}s of {st} "
+                f"left!  Record a delivery or perform a stock take "
+                f"to fix this."],
+                title="Warning", dismiss=keyboard.K_USESTOCK)
+
+        # Adding and altering translines changes the total
+        td.s.expire(trans, ['total'])
+        self._clear_marks()
+        self.update_balance()
+        self.cursor_off()
+        self._redraw()
+
     @user.permission_required('sell-stock', 'Sell stock from a stockline')
-    def _sell_stockline(self, kb, mod):
-        stockline = kb.stockline
+    def _sell_stockline(self, stockline, mod):
         mod = self.mod or mod # self.mod is an override of the default
         items = self.qty or 1
 
@@ -2753,6 +2967,8 @@ class page(ui.basicpage):
         for i in RegisterPlugin.instances:
             if i.keypress(self, k):
                 return
+        if isinstance(k, barcode.barcode):
+            return self.barcode(k)
         if hasattr(k, 'line'):
             linekeys.linemenu(
                 k, self.linekey, allow_stocklines=True,

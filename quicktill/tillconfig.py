@@ -48,6 +48,9 @@ database = None
 
 firstpage = None
 
+barcode_listen = None
+barcode_listen_v6 = None
+
 # Called by ui code whenever a usertoken is processed by the default
 # page's hotkey handler
 def usertoken_handler(t):

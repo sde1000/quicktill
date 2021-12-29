@@ -1,6 +1,17 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v19.x to v20
+--------------------
+
+What's new:
+
+ * Barcode support
+
+To upgrade the database:
+
+ - run "runtill syncdb" to create the new barcode table
+
 Upgrade v19.{0,1} to v19.2
 --------------------------
 

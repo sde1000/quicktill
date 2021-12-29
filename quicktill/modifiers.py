@@ -19,15 +19,23 @@ class BaseModifier:
         global all
         self.name = name
         all[name] = self
-    def mod_stockline(self, stockline, transline):
-        raise Incompatible("The '{}' modifier can't be used with stocklines."
-                           .format(self.name))
-    def mod_plu(self, plu, transline):
-        raise Incompatible("The '{}' modifier can't be used with price lookups."
-                           .format(self.name))
+
+    def mod_stockline(self, stockline, sale):
+        raise Incompatible(f"The '{self.name}' modifier can't be used with "
+                           "stocklines.")
+
+    def mod_plu(self, plu, sale):
+        raise Incompatible(f"The '{self.name}' modifier can't be used with "
+                           "price lookups.")
+
+    def mod_stocktype(self, stocktype, sale):
+        raise Incompatible(f"The '{self.name}' modifier can't be used with "
+                           "stock types.")
+
     @property
     def description(self):
         return inspect.cleandoc(self.__doc__)
+
 
 class BadModifier(BaseModifier):
     """This modifier exists in the database, but is not defined in the
@@ -40,6 +48,7 @@ class BadModifier(BaseModifier):
     """
     pass
 
+
 class RegisterSimpleModifier(type):
     """Metaclass that automatically instantiates modifiers using their
     class name.
@@ -48,6 +57,7 @@ class RegisterSimpleModifier(type):
         if name != "SimpleModifier":
             cls(name=name)
 
+
 class SimpleModifier(BaseModifier, metaclass=RegisterSimpleModifier):
     """Modifiers created as a subclass of this register themselves
     automatically using the class name.  They shouldn't have their own
@@ -55,6 +65,7 @@ class SimpleModifier(BaseModifier, metaclass=RegisterSimpleModifier):
     self.name.
     """
     pass
+
 
 class modify(user.permission_checked, ui.listpopup):
     permission_required = ('alter-modifier',
@@ -104,9 +115,11 @@ class modify(user.permission_checked, ui.listpopup):
         td.s.delete(line.userdata)
         td.s.flush()
 
+
 def defined_modifiers():
     """Return a list of all modifiers."""
     return sorted(all.keys())
+
 
 class modifiermenu(ui.menu):
     def __init__(self):

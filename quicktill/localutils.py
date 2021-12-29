@@ -445,6 +445,8 @@ def activate_register_with_usertoken(register_hotkeys, timeout=300):
             t, register_hotkeys, autolock=K_LOCK, timeout=timeout),
         'usertoken_listen': ('127.0.0.1', 8455),
         'usertoken_listen_v6': ('::1', 8455),
+        'barcode_listen': ('127.0.0.1', 8456),
+        'barcode_listen_v6': ('::1', 8456),
     }
 
 def activate_stockterminal_with_usertoken(

@@ -922,6 +922,7 @@ class default_groups:
     """
     basic_user = set([
         "sell-stock",
+        "sell-stocktype",
         "sell-plu",
         "sell-dept",
         "take-payment",
