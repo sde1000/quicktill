@@ -464,19 +464,26 @@ class listpopup(dismisspopup):
     def __init__(self, linelist, default=0, header=None, title=None,
                  show_cursor=True, dismiss=keyboard.K_CLEAR,
                  cleartext=None, colour=colour_input, w=None, keymap={}):
+        mh, mw = rootwin.size()
         dl = [x if isinstance(x, emptyline) else line(x, colour=colour)
               for x in linelist]
         hl = [x if isinstance(x, emptyline) else marginline(
             lrline(x, colour=colour), margin=1)
               for x in header] if header else []
         if w is None:
-            w = max((x.idealwidth() for x in dl)) + 2 if len(dl) > 0 else 0
-            w = max(25, w)
+            w = max((x.idealwidth() for x in dl), default=0)
+        # If the header is ideally wider than the list of items, pick
+        # the average of the sizes so we don't end up with a
+        # ludicrously wide window for the sake of a couple of lines
+        hw = min(mw, max((x.idealwidth() for x in hl), default=0))
+        if hw > w:
+            w = ((w + hw) // 2) + 1
+        w += 2
+        w = max(25, w)
         if title is not None:
             w = max(len(title) + 3, w)
         # We know that the created window will not be wider than the
         # width of the screen.
-        mh, mw = rootwin.size()
         w = min(w, mw)
         h = sum(len(x.display(w - 2)) for x in hl + dl) + 2
         super().__init__(h, w, title=title, colour=colour, keymap=keymap,
