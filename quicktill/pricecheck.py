@@ -8,7 +8,7 @@ from . import linekeys
 from . import user
 from . import modifiers
 from . import tillconfig
-from .models import Barcode, StockItem
+from .models import StockItem
 from sqlalchemy.orm import undefer
 
 class pricecheck_keypress:
@@ -29,9 +29,8 @@ class pricecheck_keypress:
                       "Press another line key or scan a barcode.")
         elif hasattr(k, "code"):  # barcode.barcode object
             self.dismiss()
-            b = td.s.query(Barcode).get(k.code)
-            if b:
-                pricecheck_window(b)
+            if k.binding:
+                pricecheck_window(k.binding)
             else:
                 popup(prompt=f"Barcode '{k.code}' is not recognised.  Scan "
                       "another barcode.")

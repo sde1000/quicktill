@@ -19,12 +19,14 @@ import socket
 from . import tillconfig
 from . import ui
 from . import td
+from .models import Barcode
 
 log = logging.getLogger(__name__)
 
 class barcode:
     def __init__(self, code):
         self.code = code
+        self.binding = td.s.query(Barcode).get(code)
 
     def feedback(self, valid: bool) -> None:
         """Feedback to scanner user

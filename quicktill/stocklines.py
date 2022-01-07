@@ -1,7 +1,7 @@
 import logging
 from . import keyboard, ui, td, tillconfig, printer, user, linekeys, modifiers
 from . import stocktype
-from .models import Department, StockLine, KeyboardBinding, Barcode
+from .models import Department, StockLine, KeyboardBinding
 from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
 from sqlalchemy.exc import IntegrityError
@@ -612,9 +612,8 @@ class selectline(ui.listpopup):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.line_selected)
         elif hasattr(k, 'code'):
-            b = td.s.query(Barcode).get(k.code)
-            if b and b.stockline:
-                self.line_selected(b)
+            if k.binding and k.binding.stockline:
+                self.line_selected(k.binding)
             else:
                 ui.beep()
         elif k == keyboard.K_CASH and len(self.sl) > 0:

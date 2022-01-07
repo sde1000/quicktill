@@ -37,14 +37,12 @@ from . import payment
 from . import user
 from . import plugins
 from . import config
-from . import barcode
 import logging
 import datetime
 log = logging.getLogger(__name__)
 from .models import Transline, Transaction, Session, StockOut, Transline, penny
 from .models import Payment, zero, User, Department, desc, RemoveCode
 from .models import StockType
-from .models import Barcode
 from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
@@ -133,7 +131,8 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - recalltrans_loaded(trans); transaction loaded using Recall Trans; there
          is no default action
      - linekey(kb, mod)
-     - barcode(b, mod)
+     - barcode(b, mod) - recognised barcode
+     - unknown_barcode(scan)
      - drinkin(trans, amount) - "drink in" function on open transaction
      - nosale() - just before kicking out the cash drawer on closed transaction
      - cashkey(trans) - cash/enter on an open transaction
@@ -914,13 +913,16 @@ class page(ui.basicpage):
     def barcode(self, scan):
         """A barcode has been scanned
         """
-        b = td.s.query(Barcode).get(scan.code)
-        if not b:
+        if not scan.binding:
+            if self.hook("unknown_barcode", scan):
+                return
             ui.toast(f"Unrecognised barcode \"{scan.code}\"")
             scan.feedback(False)
             return
 
         scan.feedback(True)
+
+        b = scan.binding
 
         # Look up the modifier from the barcode; it's an error if it's unknown
         mod = None
@@ -2967,7 +2969,7 @@ class page(ui.basicpage):
         for i in RegisterPlugin.instances:
             if i.keypress(self, k):
                 return
-        if isinstance(k, barcode.barcode):
+        if hasattr(k, 'code'):
             return self.barcode(k)
         if hasattr(k, 'line'):
             linekeys.linemenu(
