@@ -384,10 +384,8 @@ class new_stockitem(ui.basicpopup):
         self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
         self.win.addstr(7, 24, tillconfig.currency())
         self.win.drawstr(8, 2, 22, "Best before: ", align=">")
-        self.typefield = ui.modelpopupfield(
-            2, 24, 52, StockType, stocktype.choose_stocktype,
-            lambda si: si.format(),
-            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
+        self.typefield = stocktype.stocktypefield(
+            2, 24, 52, keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.typefield.sethook = self.typefield_changed
         self.unitfield = ui.modellistfield(
             3, 24, 30, StockUnit, self._null_list, lambda x: x.name)
@@ -506,10 +504,8 @@ class edit_stockitem(ui.basicpopup):
         self.win.drawstr(7, 2, 22, "Sale price (inc VAT): ", align=">")
         self.win.addstr(7, 24, tillconfig.currency())
         self.win.drawstr(8, 2, 22, "Best before: ", align=">")
-        self.typefield = ui.modelpopupfield(
-            2, 24, 52, StockType, stocktype.choose_stocktype,
-            lambda si: si.format(),
-            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
+        self.typefield = stocktype.stocktypefield(
+            2, 24, 52, keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.typefield.sethook = self.typefield_changed
         self.unitfield = ui.modellistfield(
             3, 24, 52, StockUnit, self._null_list, lambda x: x.name)

@@ -316,6 +316,21 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
                          colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)
 
+class stocktypefield(ui.modelpopupfield):
+    def __init__(self, y, x, w, f=None, keymap={}, readonly=False):
+        super().__init__(y, x, w, StockType, choose_stocktype,
+                         format, f=f, keymap=keymap, readonly=readonly)
+
+    def keypress(self, k):
+        if hasattr(k, 'code'):
+            if k.binding and k.binding.stocktype:
+                self.setf(k.binding.stocktype)
+            else:
+                k.feedback(False)
+                ui.beep()
+        else:
+            super().keypress(k)
+
 class PriceGuessHook(metaclass=ClassPluginMount):
     """Subclass this to add a price guessing routine.
     """

@@ -307,14 +307,12 @@ class change_continuous_stockline(ui.dismisspopup):
             return
         self._stocklineid = stocklineid
         super().__init__(
-            9, 75, title="Change stock on sale on {}".format(stockline.name),
+            9, 75, title=f"Change stock on sale on {stockline.name}",
             colour=ui.colour_input)
         self.win.drawstr(2, 2, 72, f"Current stock type: {stockline.stocktype}")
         self.win.drawstr(4, 2, 16, "New stock type: ", align=">")
-        self.stocktypefield = ui.modelpopupfield(
-            4, 18, 54, StockType, stocktype.choose_stocktype,
-            lambda si: si.format(),
-            keymap={keyboard.K_CLEAR: (self.dismiss, ())})
+        self.stocktypefield = stocktype.stocktypefield(
+            4, 18, 54, keymap={keyboard.K_CLEAR: (self.dismiss, ())})
         confirmfield = ui.buttonfield(
             6, 28, 21, "Change stock type",
             keymap={keyboard.K_CASH: (self.confirm, None)})
@@ -331,10 +329,11 @@ class change_continuous_stockline(ui.dismisspopup):
         stockline = td.s.query(StockLine).get(self._stocklineid)
         stockline.stocktype = new_stocktype
         self.dismiss()
-        ui.infopopup(["{} is now on sale on the {} stock line.".format(
-            new_stocktype.format(), stockline.name)],
-                     title="Stock type changed", colour=ui.colour_info,
-                     dismiss=keyboard.K_CASH)
+        ui.infopopup(
+            [f"{new_stocktype} is now on sale on the {stockline.name} "
+             "stock line."],
+            title="Stock type changed", colour=ui.colour_info,
+            dismiss=keyboard.K_CASH)
 
 def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     """Automatically allocate stock to display stock lines.
