@@ -2225,8 +2225,10 @@ StockItem.lastsale = column_property(
 # Similarly, this is added to the StockType class here because it
 # refers to Stock
 
-# XXX should this be renamed to StockType.remaining?  It appears to be
-# doing that job.  Let's add an alias.
+# This is used as "remaining" for continuous stock lines and stock
+# types. It excludes stock items attached to regular or display stock
+# lines, because that stock isn't directly sellable through the
+# continuous stock line or the stock type.
 StockType.instock = column_property(
     select([func.coalesce(func.sum(
                     StockItem.size -
@@ -2236,6 +2238,7 @@ StockType.instock = column_property(
                     ), text("0.0"))],
            and_(StockItem.stocktype_id == StockType.id,
                 StockItem.finished == None,
+                StockItem.stocklineid == None,
                 StockItem.checked == True)).\
         correlate(StockType.__table__).\
         label('instock'),
