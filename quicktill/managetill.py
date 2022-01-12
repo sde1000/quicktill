@@ -5,6 +5,7 @@ import sys
 import os
 from . import ui, keyboard, td, printer, session, user
 from . import tillconfig, linekeys, stocklines, plu, modifiers
+from . import barcode
 from .version import version
 import subprocess
 
@@ -80,17 +81,21 @@ class slmenu(ui.keymenu):
               "Select the stock line to remove from display", ["display"])),
             ("7", "Edit key labels", linekeys.edit_keycaps, None),
             ("8", "Move keys", linekeys.move_keys, None),
+            ("9", "Barcodes", barcode.enter_barcode, (barcode.edit_barcode,)),
         ]
         super().__init__(
             menu, title="Stock line and PLU options",
-            blurb="You can press a line key here to go directly to "
-            "editing stock lines, price lookups and modifiers that are "
-            "already bound to it.")
+            blurb="You can press a line key or scan a barcode here to go "
+            "directly to editing stock lines, price lookups and modifiers "
+            "that are already bound to it.")
 
     def keypress(self, k):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.line_selected, allow_stocklines=True,
                               allow_plus=True, allow_mods=True)
+        elif hasattr(k, 'code'):
+            self.dismiss()
+            barcode.edit_barcode(k)
         else:
             super().keypress(k)
 
