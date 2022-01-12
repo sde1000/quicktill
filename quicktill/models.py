@@ -2361,6 +2361,14 @@ class KeyboardBinding(Base):
                              backref=backref('keyboard_bindings', cascade='all'))
     plu = relationship(PriceLookup,
                        backref=backref('keyboard_bindings', cascade='all'))
+
+    @property
+    def stocktype(self):
+        # KeyboardBinding may support binding to stocktype in the
+        # future; for now, ensure the attribute exists for
+        # compatibility with barcode bindings
+        return None
+
     # At least one of stocklineid, pluid and modifier must be non-NULL
     # At most one of stocklineid and pluid can be non-NULL
     __table_args__ = (
