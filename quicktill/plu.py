@@ -14,10 +14,11 @@ class create(user.permission_checked, ui.dismisspopup):
     """
     permission_required = ('create-plu', 'Create a new price lookup')
 
-    def __init__(self):
+    def __init__(self, func):
         super().__init__(12, 57, title="Create PLU",
                          colour=ui.colour_input,
                          dismiss=keyboard.K_CLEAR)
+        self.func = func
         self.win.drawstr(2, 2, 13, "Description: ", align=">")
         self.win.drawstr(3, 2, 13, "Note: ", align=">")
         self.win.drawstr(4, 2, 13, "Department: ", align=">")
@@ -54,7 +55,10 @@ class create(user.permission_checked, ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        modify(p, focus_on_price=True)
+        if self.func == modify:
+            self.func(p, focus_on_price=True)
+        else:
+            self.func(p)
 
 class modify(user.permission_checked, ui.dismisspopup):
     permission_required = ('alter-plu', 'Modify or delete an existing price lookup')
@@ -220,17 +224,36 @@ class listunbound(user.permission_checked, ui.listpopup):
         else:
             super().keypress(k)
 
-class plumenu(ui.listpopup):
-    def __init__(self):
+class selectplu(ui.listpopup):
+    """Pop-up menu of price lookups
+
+    A pop-up menu of price lookups, sorted by name.
+    Price lookups with key bindings can be selected through that binding.
+
+    Optional arguments:
+      blurb - text for the top of the window
+      create_new - allow a new price lookup to be created
+      select_none - a string for a menu item which will result in a call
+        to func(None)
+    """
+    def __init__(self, func, title="Price Lookups", blurb=None,
+                 keymap={}, create_new=False, select_none=None):
+        self.func = func
         plus = td.s.query(PriceLookup)\
                    .order_by(PriceLookup.dept_id)\
                    .order_by(PriceLookup.description)\
                    .all()
         f = ui.tableformatter(' l l r l ')
-        self.ml = [ui.line(" New PLU")] + \
-            [f(x.description, x.note, tillconfig.fc(x.price), x.department,
-               userdata=x) for x in plus]
+        self.ml = [ f(x.description, x.note, tillconfig.fc(x.price),
+                      x.department, userdata=x) for x in plus ]
+        self.create_new = create_new
+        if create_new:
+            self.ml.insert(0, ui.line(" New price lookup"))
+        elif select_none:
+            self.ml.insert(0, ui.line(f" {select_none}"))
         hl = [f("Description", "Note", "Price", "Department")]
+        if blurb:
+            hl = [ ui.lrline(blurb), ui.emptyline() ] + hl
         super().__init__(self.ml, title="Price Lookups", header=hl)
 
     def keypress(self,k):
@@ -238,17 +261,33 @@ class plumenu(ui.listpopup):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.plu_selected, allow_stocklines=False,
                               allow_plus=True)
+        elif hasattr(k, 'code'):
+            if k.binding and k.binding.plu:
+                self.plu_selected(k.binding)
+            else:
+                ui.beep()
         elif k == keyboard.K_CASH and len(self.ml) > 0:
             self.dismiss()
             line = self.ml[self.s.cursor]
             if line.userdata:
-                modify(line.userdata)
+                self.func(line.userdata)
             else:
-                create()
+                if self.create_new:
+                    create(self.func)
+                else:
+                    self.func(None)
         else:
             super().keypress(k)
 
     def plu_selected(self, kb):
         self.dismiss()
         td.s.add(kb)
-        modify(kb.plu)
+        self.func(kb.plu)
+
+def plumenu():
+    """Menu allowing price lookups to be created, modified and deleted
+    """
+    selectplu(
+        modify, blurb="Choose a price lookup to modify from the list below, "
+        "or press a line key that is already bound to the "
+        "price lookup.", create_new=True)
