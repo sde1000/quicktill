@@ -67,10 +67,7 @@ class SimpleModifier(BaseModifier, metaclass=RegisterSimpleModifier):
     pass
 
 
-class modify(user.permission_checked, ui.listpopup):
-    permission_required = ('alter-modifier',
-                           'Alter the key bindings for a modifier')
-
+class modify(ui.listpopup):
     def __init__(self, name):
         # If the modifier does not exist, create it so that its
         # keyboard bindings can be deleted.
@@ -121,23 +118,37 @@ def defined_modifiers():
     return sorted(all.keys())
 
 
-class modifiermenu(ui.menu):
-    def __init__(self):
-        super().__init__(
-            [(x, modify, (x,)) for x in defined_modifiers()],
-            blurb="Choose a modifier to alter from the list below, "
-            "or press a line key that is already bound to the "
-            "modifier.",
-            title="Modifiers")
+class selectmodifier(ui.menu):
+    def __init__(self, func, blurb=None, allow_none=False):
+        self.func = func
+        if not blurb:
+            blurb = "Choose a modifier from the list below."
+        ml = [ (x, func, (x,)) for x in defined_modifiers() ]
+        if allow_none:
+            ml.insert(0, ("No modifier", func, (None,)))
+        super().__init__(ml, blurb=blurb, title="Modifiers")
 
     def keypress(self, k):
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.mod_selected, allow_stocklines=False,
                               allow_plus=False, allow_mods=True)
+        elif hasattr(k, 'code'):
+            if code.binding and code.binding.modifier \
+               and not code.binding.stockline and not code.binding.plu \
+               and not code.binding.stocktype:
+                self.mod_selected(code.binding.modifier)
         else:
             super().keypress(k)
 
     def mod_selected(self, kb):
         self.dismiss()
         td.s.add(kb)
-        modify(kb.modifier)
+        self.func(kb.modifier)
+
+
+@user.permission_required('alter-modifier',
+                          'Alter the key bindings for a modifier')
+def modifiermenu():
+    selectmodifier(
+        modify, blurb="Choose a modifier to alter from the list below, "
+        "or press a line key that is already bound to the modifier.")
