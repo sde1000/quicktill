@@ -145,6 +145,8 @@ class record_item_waste(ui.dismisspopup):
         # the amount wasted
         if item.stockline and item.stockline.linetype == "display":
             item.displayqty = item.displayqty_or_zero + amount
+        user.log(f"Recorded {amount} {item.stocktype.unit.name}s "
+                 f"{waste} against stock item {item.logref}.")
         td.s.flush()
         self.dismiss()
         ui.infopopup(
@@ -228,6 +230,8 @@ class record_line_waste(ui.dismisspopup):
                 return
         for item, qty in sell:
             td.s.add(StockOut(stockitem=item, removecode=waste, qty=qty))
+        user.log(f"Recorded {amount} {stockline.sale_stocktype.unit.name}s "
+                 f"{waste} against stock line {stockline.logref}.")
         td.s.flush()
         self.dismiss()
         ui.infopopup(["Recorded {} {}s against stock line {}.".format(
@@ -298,9 +302,11 @@ class record_stocktype_waste(ui.dismisspopup):
                 return
         for item, qty in sell:
             td.s.add(StockOut(stockitem=item, removecode=waste, qty=qty))
+        user.log(f"Recorded {amount} {stocktype.unit.name}s {waste} against "
+                 f"{stocktype.logref}.")
         td.s.flush()
         self.dismiss()
         ui.infopopup(
-            [f"Recorded {amount } {stocktype.unit.name}s against {stocktype}."],
+            [f"Recorded {amount} {stocktype.unit.name}s against {stocktype}."],
             title="Waste Recorded", dismiss=keyboard.K_CASH,
             colour=ui.colour_info)
