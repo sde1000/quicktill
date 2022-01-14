@@ -21,7 +21,7 @@
 <div class="row">
 {% if alter_form %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Fix mistakes</button>
+  <button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Fix mistakes</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
       {% include "form-horizontal.html" with form=alter_form %}
@@ -39,7 +39,7 @@
 
 {% if reprice_form %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Re-price stock</button>
+  <button class="btn btn-secondary dropdown-toggle mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Re-price stock</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" action="" method="post">{% csrf_token %}
       {% include "form.html" with form=reprice_form %}

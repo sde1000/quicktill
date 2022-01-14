@@ -199,6 +199,8 @@ def tillweb_view(view):
             td.info = info
             td.s = session
             result = view(request, info, *args, **kwargs)
+            if settings.DEBUG:
+                queries_before_render = len(queries)
             if isinstance(result, HttpResponse):
                 return result
             t, d = result
@@ -235,8 +237,11 @@ def tillweb_view(view):
                     session.get_bind(), "before_cursor_execute",
                     querylog_callback)
                 if len(queries) > 3:
-                    log.warning("Excessive number of queries in view (%d)",
-                                len(queries))
+                    log.warning(
+                        "Excessive queries in view (%d pre render, %d "
+                        "during render)",
+                        queries_before_render,
+                        len(queries) - queries_before_render)
 
             td.s = None
             td.request = None
@@ -1401,6 +1406,7 @@ def stock(request, info, stockid):
                      .joinedload('removecode'),
                      subqueryload('snapshots').undefer('newqty'),
                      subqueryload('snapshots').joinedload('stocktake'),
+                     subqueryload('logs').joinedload('user'),
                      undefer_group('qtys'))\
             .get(stockid)
     if not s:
@@ -1436,6 +1442,8 @@ def stock(request, info, stockid):
                 td.s.add(StockOut(
                     stockitem=s, removecode=cd['waste_type'],
                     qty=cd['amount']))
+                user.log(f"Recorded {cd['amount']} {s.stocktype.unit.name}s "
+                         f"{cd['waste_type']} against stock item {s.logref}.")
                 td.s.commit()
                 messages.success(request, "Waste recorded")
                 return HttpResponseRedirect(s.get_absolute_url())

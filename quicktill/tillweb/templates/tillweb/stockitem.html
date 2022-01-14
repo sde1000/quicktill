@@ -54,7 +54,7 @@
 <div class="row">
 {% if aform %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add annotation</button>
+  <button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add annotation</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
       {% include "form.html" with form=aform %}
@@ -68,7 +68,7 @@
 
 {% if wform %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Record waste</button>
+  <button class="btn btn-secondary dropdown-toggle mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Record waste</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" action="" method="post">{% csrf_token %}
       {% include "form.html" with form=wform %}
@@ -136,6 +136,13 @@ $(document).ready(function(){
   <li><a href="{{ss.stocktake.get_absolute_url}}">{{ss.stocktake.commit_time}}</a>: {{ss.qty}} ⇨ {{ss.newqty}}{% if ss.finishcode %} (finished: {{ss.finishcode}}){% endif %}</li>
   {% endif %}{% endfor %}
 </ul>
+{% endif %}
+
+{% if stock.logs %}
+<h2>Log entries</h2>
+{% with logs=stock.logs %}
+{% include "tillweb/loglist.html" %}
+{% endwith %}
 {% endif %}
 
 {% if stock.stocktype.stockline_log %}
