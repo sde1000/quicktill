@@ -1,11 +1,12 @@
 """Record waste against a stock item or stock line."""
 
 from . import ui, td, keyboard, stock, stocklines, user
+from . import linekeys
 from .models import StockItem, StockType, RemoveCode, StockOut, StockLine
 from .models import max_quantity
 from decimal import Decimal
 
-# There are two types of thing against which waste can be recorded:
+# There are three types of thing against which waste can be recorded:
 # 
 # 1. A stock item
 # 
@@ -14,29 +15,60 @@ from decimal import Decimal
 # waste against the stock item on it (if there is one), as in (1).  If
 # it's display or continuous, we record waste against the stock on
 # display.
+#
+# 3. A stock type
 
-@user.permission_required('record-waste', "Record waste")
-def popup():
+def _stockline_menu():
     stocklines.selectline(
         stockline_chosen, blurb="Choose a stock line to record waste against "
-        "from the list below, or press a line key.",
-        select_none="Choose a stock item instead")
+        "from the list below.")
+
+
+class popup(user.permission_checked, ui.keymenu):
+    permission_required = ('record-waste', "Record waste")
+
+    def __init__(self):
+        super().__init__(
+            [("1", "Pick a stock item", record_item_waste, ()),
+             ("2", "Select a stock line from a list", _stockline_menu, ()),
+            ],
+            blurb=["", "Press a line key, scan a barcode, or choose:"],
+            title="Record Waste")
+
+    def line_selected(self, kb):
+        self.dismiss()
+        td.s.add(kb)
+        stockline_chosen(kb.stockline)
+
+    def keypress(self, k):
+        if hasattr(k, 'line'):
+            linekeys.linemenu(k, self.line_selected)
+        elif hasattr(k, 'code'):
+            if k.binding and k.binding.stockline:
+                self.dismiss()
+                stockline_chosen(k.binding.stockline)
+            elif k.binding and k.binding.stocktype:
+                self.dismiss()
+                record_stocktype_waste(k.binding.stocktype)
+            else:
+                ui.beep()
+        else:
+            super().keypress(k)
+
 
 def stockline_chosen(stockline):
-    if stockline is None:
-        record_item_waste()
-    else:
-        td.s.add(stockline)
-        if stockline.linetype == "display" \
-           or stockline.linetype == "continuous":
-            record_line_waste(stockline)
-        elif stockline.linetype == "regular":
-            if len(stockline.stockonsale) > 0:
-                record_item_waste(stockline.stockonsale[0])
-            else:
-                ui.infopopup(
-                    [f"There is nothing on sale on {stockline.name}."],
-                    title="Error")
+    td.s.add(stockline)
+    if stockline.linetype == "display" \
+       or stockline.linetype == "continuous":
+        record_line_waste(stockline)
+    elif stockline.linetype == "regular":
+        if len(stockline.stockonsale) > 0:
+            record_item_waste(stockline.stockonsale[0])
+        else:
+            ui.infopopup(
+                [f"There is nothing on sale on {stockline.name}."],
+                title="Error")
+
 
 class record_item_waste(ui.dismisspopup):
     """Record waste against a single stock item.
@@ -103,7 +135,7 @@ class record_item_waste(ui.dismisspopup):
             return
         if abs(amount) > max_quantity:
             ui.infopopup(
-                ["The amount can't be more than {}.".format(max_quantity)],
+                [f"The amount can't be more than {max_quantity}."],
                 title='Error')
             self.amountfield.set("")
             return
@@ -115,11 +147,12 @@ class record_item_waste(ui.dismisspopup):
             item.displayqty = item.displayqty_or_zero + amount
         td.s.flush()
         self.dismiss()
-        ui.infopopup(["Recorded {:0.1f} {}s against stock item {} ({})."
-                      .format(amount, item.stocktype.unit.name, item.id,
-                              item.stocktype.format())],
-                     title="Waste Recorded",dismiss=keyboard.K_CASH,
-                     colour=ui.colour_info)
+        ui.infopopup(
+            [f"Recorded {amount:0.1f} {item.stocktype.unit.name}s "
+             f"against stock item {item.id} ({item.stocktype})."],
+            title="Waste Recorded", dismiss=keyboard.K_CASH,
+            colour=ui.colour_info)
+
 
 class record_line_waste(ui.dismisspopup):
     """Record waste against a stock line.
@@ -199,5 +232,75 @@ class record_line_waste(ui.dismisspopup):
         self.dismiss()
         ui.infopopup(["Recorded {} {}s against stock line {}.".format(
             amount, stockline.sale_stocktype.unit.name, stockline.name)],
-                     title="Waste Recorded",dismiss=keyboard.K_CASH,
+                     title="Waste Recorded", dismiss=keyboard.K_CASH,
                      colour=ui.colour_info)
+
+
+class record_stocktype_waste(ui.dismisspopup):
+    """Record waste against a stock type.
+    """
+    def __init__(self, stocktype):
+        self.stocktypeid = stocktype.id
+        super().__init__(9, 70, title="Record Waste", colour=ui.colour_input)
+        self.win.drawstr(2, 2, 19, "Stock type: ", align=">")
+        self.win.drawstr(2, 21, 47, format(stocktype))
+        self.win.drawstr(3, 2, 19, "Amount in stock: ", align=">")
+        self.win.drawstr(3, 21, 47, stocktype.remaining_str)
+        self.win.drawstr(5, 2, 19, "Waste description: ", align=">")
+        self.win.drawstr(6, 2, 19, "Amount wasted: ", align=">")
+        self.win.drawstr(6, 22 + len(str(max_quantity)),
+                         68 - 22 - len(str(max_quantity)),
+                         f"{stocktype.unit.name}s")
+        self.wastedescfield = ui.modellistfield(
+            5, 21, 30, RemoveCode,
+            lambda q: q.filter(RemoveCode.id != 'sold').order_by(RemoveCode.id),
+            lambda rc: rc.reason, keymap={
+                keyboard.K_CLEAR: (self.dismiss, None),})
+        self.amountfield = ui.editfield(
+            6, 21, len(str(max_quantity)), validate=ui.validate_positive_float,
+            keymap={keyboard.K_CASH: (self.finish, None)})
+        ui.map_fieldlist([self.wastedescfield, self.amountfield])
+        self.wastedescfield.focus()
+
+    def finish(self):
+        stocktype = td.s.query(StockType).get(self.stocktypeid)
+        waste = self.wastedescfield.read()
+        if not waste:
+            ui.infopopup(["You must enter a waste description!"], title="Error")
+            return
+        if self.amountfield.f == "":
+            ui.infopopup(["You must enter an amount!"], title="Error")
+            return
+        try:
+            amount = Decimal(self.amountfield.f)
+        except:
+            amount = Decimal(0)
+        if amount == Decimal(0):
+            ui.infopopup(["You must enter an amount other than zero!"],
+                         title='Error')
+            self.amountfield.set("")
+            return
+        sell, unallocated, remaining = stocktype.calculate_sale(amount)
+        if unallocated > 0:
+            ui.infopopup(
+                [f"There is less than {amount} {stocktype.unit.name}s "
+                 "in stock."], title="Error")
+            self.amountfield.set("")
+            return
+        if not sell:
+            ui.infopopup(["Couldn't record this amount."], title="Error")
+            self.amountfield.set("")
+            return
+        for item, qty in sell:
+            if abs(qty) > max_quantity:
+                ui.infopopup(["The amount is too large."], title="Error")
+                self.amountfield.set("")
+                return
+        for item, qty in sell:
+            td.s.add(StockOut(stockitem=item, removecode=waste, qty=qty))
+        td.s.flush()
+        self.dismiss()
+        ui.infopopup(
+            [f"Recorded {amount } {stocktype.unit.name}s against {stocktype}."],
+            title="Waste Recorded", dismiss=keyboard.K_CASH,
+            colour=ui.colour_info)

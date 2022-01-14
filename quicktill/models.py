@@ -1818,6 +1818,11 @@ class StockType(Base, Logged):
         return ""
 
     @property
+    def remaining_str(self):
+        """Amount of unsold stock, including unit"""
+        return self.unit.format_qty(self.remaining)
+
+    @property
     def descriptions(self):
         """List of possible descriptions
 
