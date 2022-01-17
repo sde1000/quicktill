@@ -2258,7 +2258,9 @@ def stockcheck(request, info):
     else:
         form = StockCheckForm()
     return ('stockcheck.html', {
-        'nav': [("Buying list", info.reverse("tillweb-stockcheck"))],
+        'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Buying list", info.reverse("tillweb-stockcheck"))],
         'form': form,
         'buylist': buylist,
     })
@@ -2584,20 +2586,20 @@ def configitem(request, info, key):
              'form': form,
             })
 
+@tillweb_view
+def reportindex(request, info):
+    return ('reports.html',
+            {'nav': [("Reports", info.reverse("tillweb-reports"))],
+            })
+
 class WasteReportForm(DatePeriodForm):
     columns = forms.ChoiceField(label="Columns show", choices=[
         ("depts", "Departments"),
         ("waste", "Waste type"),
     ])
 
-class StockSoldReportForm(DatePeriodForm):
-    dates = forms.ChoiceField(label="Based on", choices=[
-        ("transaction", "Transaction Date"),
-        ("stockusage", "Date entered"),
-    ])
-
 @tillweb_view
-def reportindex(request, info):
+def waste_report(request, info):
     if request.method == 'POST' and "submit_waste" in request.POST:
         wasteform = WasteReportForm(request.POST, prefix="waste")
         if wasteform.is_valid():
@@ -2610,6 +2612,23 @@ def reportindex(request, info):
     else:
         wasteform = WasteReportForm(prefix="waste")
 
+    return (
+        'wasted-stock-report.html',
+        {'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Wasted stock", info.reverse("tillweb-report-wasted-stock")),
+        ],
+         'wasteform': wasteform,
+        })
+
+class StockSoldReportForm(DatePeriodForm):
+    dates = forms.ChoiceField(label="Based on", choices=[
+        ("transaction", "Transaction Date"),
+        ("stockusage", "Date entered"),
+    ])
+
+@tillweb_view
+def stock_sold_report(request, info):
     if request.method == 'POST' and "submit_stocksold" in request.POST:
         stocksoldform = StockSoldReportForm(request.POST, prefix="stocksold")
         if stocksoldform.is_valid():
@@ -2622,8 +2641,11 @@ def reportindex(request, info):
     else:
         stocksoldform = StockSoldReportForm(prefix="stocksold")
 
-    return ('reports.html',
-            {'nav': [("Reports", info.reverse("tillweb-reports"))],
-             'wasteform': wasteform,
-             'stocksoldform': stocksoldform,
-            })
+    return (
+        'stock-sold-report.html',
+        {'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Stock sold", info.reverse("tillweb-report-stock-sold")),
+        ],
+         'stocksoldform': stocksoldform,
+        })

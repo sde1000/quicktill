@@ -1,0 +1,29 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Wasted stock report{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Wasted stock</h2>
+
+<p>This report shows stock explicitly recorded as used, either as
+  waste or by being sold, per department and per day.  It also shows
+  stock implicitly wasted by being marked as "finished" as
+  "Unaccounted"; this quantity is shown using the date the stock was
+  marked as "finished".</p>
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" with form=wasteform %}
+  <button class="btn btn-secondary" type="submit" name="submit_waste">Download</button>
+</form>
+
+<script type="text/javascript">
+var dtpicker_options = {firstDay: 1,
+  dateFormat: 'yy-mm-dd'};
+$(document).ready(function(){
+ $("#id_waste-startdate").datepicker(dtpicker_options);
+ $("#id_waste-enddate").datepicker(dtpicker_options);
+});
+</script>
+
+{% endblock %}

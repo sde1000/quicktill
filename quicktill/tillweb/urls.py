@@ -86,8 +86,6 @@ tillurls = [
          {'as_spreadsheet': True}, name="tillweb-department-sheet"),
     path('new/department/', create_department, name="tillweb-create-department"),
 
-    path('stockcheck/', stockcheck, name="tillweb-stockcheck"),
-
     path('user/', userlist, name="tillweb-till-users"),
     path('user/<int:userid>/', userdetail, name="tillweb-till-user"),
 
@@ -103,6 +101,12 @@ tillurls = [
     path('config/<key>/', configitem, name="tillweb-config-item"),
 
     path('reports/', reportindex, name="tillweb-reports"),
+    path('reports/wasted-stock/', waste_report,
+         name="tillweb-report-wasted-stock"),
+    path('reports/stock-sold/', stock_sold_report,
+         name="tillweb-report-stock-sold"),
+    path('reports/stockcheck/', stockcheck, name="tillweb-stockcheck"),
+
 ]
 
 urls = [

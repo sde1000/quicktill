@@ -1,0 +1,37 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock sold{% endblock %}
+
+{% block tillcontent %}
+
+<h2 class="mt-3">Sold stock by type</h2>
+
+<p>This report shows amounts of stock recorded as sold.  Voids are
+  treated as negative sales.</p>
+<p>There are two dates associated with sales, and you can choose
+  either one when choosing sales for this report:</p>
+<ol>
+  <li>Transaction Date: the date of the transaction in which the stock
+    is sold.  This can change if a transaction is deferred from one
+    session to the next.  Transactions that are currently deferred
+    (i.e. not attached to a session) are not counted.</li>
+  <li>Date entered: the date on which the sale is entered into a
+    transaction.  This will not change even when the transaction is
+    deferred.</li>
+</ol>
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" with form=stocksoldform %}
+  <button class="btn btn-secondary" type="submit" name="submit_stocksold">Download</button>
+</form>
+
+<script type="text/javascript">
+var dtpicker_options = {firstDay: 1,
+  dateFormat: 'yy-mm-dd'};
+$(document).ready(function(){
+ $("#id_stocksold-startdate").datepicker(dtpicker_options);
+ $("#id_stocksold-enddate").datepicker(dtpicker_options);
+});
+</script>
+
+{% endblock %}
