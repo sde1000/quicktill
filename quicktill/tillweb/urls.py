@@ -75,6 +75,9 @@ tillurls = [
     path('plu/<int:pluid>/', plu, name="tillweb-plu"),
     path('new/plu/', create_plu, name="tillweb-create-plu"),
 
+    path('barcode/', barcodelist, name="tillweb-barcodes"),
+    path('barcode/<barcode>/', barcode, name="tillweb-barcode"),
+
     path('location/', locationlist, name="tillweb-locations"),
     re_path(r'^location/(?P<location>[\w\- ]+)/$', location,
             name="tillweb-location"),

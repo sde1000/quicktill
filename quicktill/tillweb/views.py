@@ -2045,6 +2045,57 @@ def create_plu(request, info):
         'form': form,
     })
 
+
+class BarcodeSearchForm(forms.Form):
+    barcode = forms.CharField()
+
+@tillweb_view
+def barcodelist(request, info):
+    if request.method == 'POST':
+        form = BarcodeSearchForm(request.POST)
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            barcode = td.s.query(Barcode).get(cd['barcode'])
+            if barcode:
+                return HttpResponseRedirect(barcode.get_absolute_url())
+            messages.error(request, f"Barcode {cd['barcode']} is not known")
+            return HttpResponseRedirect(info.reverse("tillweb-barcodes"))
+    else:
+        form = BarcodeSearchForm()
+
+    barcodes = td.s.query(Barcode)\
+                   .options(joinedload('stocktype'),
+                            joinedload('stockline'),
+                            joinedload('plu'))\
+                   .order_by(Barcode.id)
+
+    pager = Pager(request, barcodes)
+
+    return (
+        'barcodes.html',
+        {'nav': [
+            ("Barcodes", info.reverse("tillweb-barcodes")),
+        ],
+         'form': form,
+         'recent': pager.items,
+         'pager': pager,
+         'nextlink': pager.nextlink(),
+         'prevlink': pager.prevlink(),
+        })
+
+
+@tillweb_view
+def barcode(request, info, barcode):
+    b = td.s.query(Barcode).get(barcode)
+
+    return ('barcode.html',
+            {
+                'barcode': b,
+                'tillobject': b,
+            })
+
+
 @tillweb_view
 def departmentlist(request, info):
     depts = td.s.query(Department)\

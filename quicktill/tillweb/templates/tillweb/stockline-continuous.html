@@ -43,31 +43,10 @@
 
 <p>(The total amount remaining in these items is
 {{stockline.remaining_str}}.)</p>
-{% with stocklist=stockline.continuous_stockonsale exclude_column="stockline" %}
+{% with stocklist=stockline.stocktype.stockonsale exclude_column="stockline" %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
 
-{% if stockline.stocktype_log %}
-<h2>Stock types</h2>
-
-<p>These types of stock have been on sale on this line:</p>
-
-<ul>
-{% for stl in stockline.stocktype_log %}
-<li><a href="{{stl.stocktype.get_absolute_url}}">{{stl.stocktype}}</a></li>
-{% endfor %}
-</ul>
-{% endif %}
-
-{% if stockline.keyboard_bindings %}
-<h2>Keyboard bindings</h2>
-<table>
-<tr><th>Keycode</th><th>Menu key</th><th>Default modifier</th></tr>
-{% for kb in stockline.keyboard_bindings %}
-<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
-<td>{{kb.menukey}}</td><td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td></tr>
-{% endfor %}
-</table>
-{% endif %}
+{% include "tillweb/bindings.html" %}
 
 {% endblock %}

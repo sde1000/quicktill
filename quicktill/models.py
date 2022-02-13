@@ -11,7 +11,7 @@ from sqlalchemy.sql.expression import text, alias, case, literal
 from sqlalchemy.orm import relationship, backref, object_session
 from sqlalchemy.orm import joinedload, subqueryload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
-from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer, undefer_group
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select, func, desc, and_, or_
@@ -1864,6 +1864,21 @@ class StockType(Base, Logged):
             s = s.rjust(minwidth, fill)
         return s
 
+    # Similar to StockLine.stockonsale, except for continuous stock
+    # lines or direct sale through StockType
+    def stockonsale(self):
+        return object_session(self)\
+            .query(StockItem)\
+            .filter(StockItem.checked == True)\
+            .filter(StockItem.stocktype == self)\
+            .filter(StockItem.finished == None)\
+            .filter(StockItem.stockline == None)\
+            .options(undefer_group('qtys'),
+                     joinedload('delivery'),
+                     joinedload('finishcode'))\
+            .order_by(StockItem.id)\
+            .all()
+
     def calculate_sale(self, qty):
         """Work out a plan to remove a quantity of stock from the stock type.
 
@@ -1880,15 +1895,7 @@ class StockType(Base, Logged):
         # Reject negative quantities
         if qty < Decimal("0.0"):
             return ([], qty, None)
-        stock = object_session(self)\
-            .query(StockItem)\
-            .filter(StockItem.checked == True)\
-            .filter(StockItem.stocktype == self)\
-            .filter(StockItem.finished == None)\
-            .filter(StockItem.stockline == None)\
-            .options(undefer('remaining'))\
-            .order_by(StockItem.id)\
-            .all()
+        stock = self.stockonsale()
         if len(stock) == 0:
             # There's no unfinished stock of this type at all that
             # isn't connected to a stock line - we can't do anything.
@@ -2487,7 +2494,7 @@ class Barcode(Base):
     but for a keyboard with a very large number of keys.
     """
     __tablename__ = 'barcodes'
-    barcode = Column(String(), primary_key=True)
+    id = Column('barcode', String(), primary_key=True)
     stocklineid = Column(Integer, ForeignKey(
             'stocklines.stocklineid', ondelete='CASCADE'))
     pluid = Column(Integer, ForeignKey(
@@ -2513,6 +2520,44 @@ class Barcode(Base):
             "num_nonnulls(stocklineid, pluid, stocktype) <= 1",
             name="be_unambiguous_constraint"),
     )
+
+    tillweb_viewname = "tillweb-barcode"
+    tillweb_argname = "barcode"
+
+    def tillweb_nav(self):
+        return [("Barcodes", self.get_view_url("tillweb-barcodes")),
+                (f"{self.id}", self.get_absolute_url())]
+
+    # XXX these properties could be in a mixin class shared with
+    # KeyboardBinding?  Arguably the stockline, plu and modifier
+    # columns could be too
+    @property
+    def name(self):
+        """Look up the name of this barcode binding
+        """
+        if self.stockline:
+            return self.stockline.name
+        if self.plu:
+            return self.plu.description
+        if self.stocktype:
+            return format(self.stocktype)
+        return self.modifier
+
+    @property
+    def binding_type(self):
+        if self.stockline:
+            return "Stock line"
+        elif self.plu:
+            return "Price lookup"
+        elif self.stocktype:
+            return "Stock type"
+        else:
+            return "Modifier"
+
+    @property
+    def target(self):
+        return self.stockline or self.plu or self.stocktype
+
 
 class Config(Base, Logged):
     """Till configuration

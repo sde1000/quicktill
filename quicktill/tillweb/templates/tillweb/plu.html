@@ -14,7 +14,8 @@
     Delete
   </button>
 </form>
-<p>Note: clicking Delete will remove this price lookup and its keyboard bindings immediately.</p>
+<p>Note: clicking Delete will remove this price lookup, its keyboard
+  bindings and barcodes immediately.</p>
 {% else %}
 <table class="kvtable">
 <tr><th>Description</th><td>{{plu.description}}</td></tr>
@@ -27,24 +28,6 @@
 </table>
 {% endif %}
 
-{% if plu.keyboard_bindings %}
-<h2 class="mt-2">Keyboard bindings</h2>
-{% if form %}
-<p>Note: keyboard bindings must be created and modified on the till</p>
-{% endif %}
-<table class="table table-striped table-hover w-auto">
-  <thead class="thead-light">
-    <tr>
-      <th>Keycode</th>
-      <th>Menu key</th>
-      <th>Default modifier</th>
-    </tr>
-  </thead>
-{% for kb in plu.keyboard_bindings %}
-<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
-<td>{{kb.menukey}}</td><td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td></tr>
-{% endfor %}
-</table>
-{% endif %}
+{% include "tillweb/bindings.html" %}
 
 {% endblock %}

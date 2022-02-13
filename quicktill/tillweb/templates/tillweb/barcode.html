@@ -1,0 +1,39 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — barcode "{{barcode.id}}"{% endblock %}
+
+{% block tillcontent %}
+
+<p>{{config.description}}</p>
+{% if form %}
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+    Update
+  </button>
+  <button class="btn btn-secondary mb-2" type="submit" name="submit_update_edit">
+    Update and continue editing
+  </button>
+</form>
+{% else %}
+<table class="kvtable">
+  <tbody>
+    <tr><th>Barcode</th><td>{{barcode.id}}</td></tr>
+    <tr><th>Binding type</th><td>{{barcode.binding_type}}</td></tr>
+    <tr><th>Target</th>
+      <td>
+	{% if barcode.target %}
+	<a href="{{barcode.target.get_absolute_url}}">{{barcode.target}}</a>
+	{% endif %}
+    </td></tr>
+    <tr><th>Modifier</th><td>{{barcode.modifier}}</td></tr>
+  </tbody>
+</table>
+{% endif %}
+
+{% if barcode.logs %}
+<h2>Log entries</h2>
+{% with logs=barcode.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
+{% endblock %}

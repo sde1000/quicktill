@@ -1,0 +1,15 @@
+<h2>Barcodes</h2>
+
+<table class="table table-sm table-striped mb-2">
+  <thead>
+    <tr><th>Barcode</th><th>Default modifier</th></tr>
+  </thead>
+  <tbody>
+  {% for b in barcodes %}
+  <tr>
+    <td><a href="{{b.get_absolute_url}}">{{b}}</a></td>
+    <td>{{b.modifier}}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,8 @@
+
+{% if tillobject.keyboard_bindings %}
+{% include "tillweb/keyboard_bindings.html" with bindings=tillobject.keyboard_bindings %}
+{% endif %}
+
+{% if tillobject.barcodes %}
+{% include "tillweb/barcodelist.html" with barcodes=tillobject.barcodes %}
+{% endif %}

@@ -48,15 +48,6 @@
 {% endwith %}
 {% endif %}
 
-{% if stockline.keyboard_bindings %}
-<h2>Keyboard bindings</h2>
-<table>
-<tr><th>Keycode</th><th>Menu key</th><th>Default modifier</th></tr>
-{% for kb in stockline.keyboard_bindings %}
-<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
-<td>{{kb.menukey}}</td><td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td></tr>
-{% endfor %}
-</table>
-{% endif %}
+{% include "tillweb/bindings.html" %}
 
 {% endblock %}

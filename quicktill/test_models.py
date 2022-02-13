@@ -196,20 +196,20 @@ class ModelTest(unittest.TestCase):
 
     def test_barcode_useful_constraint(self):
         stockline, plu = self.template_stockline_and_plu_setup()
-        self.s.add(models.Barcode(barcode='123456'))
+        self.s.add(models.Barcode(id='123456'))
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
     def test_barcode_unambiguous_constraint(self):
         stockline, plu = self.template_stockline_and_plu_setup()
-        self.s.add(models.Barcode(barcode='12121', stockline=stockline,
+        self.s.add(models.Barcode(id='12121', stockline=stockline,
                                   plu=plu))
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
     def test_barcode_stockline_cascade(self):
         stockline, plu = self.template_stockline_and_plu_setup()
-        barcode = models.Barcode(barcode='123456', stockline=stockline)
+        barcode = models.Barcode(id='123456', stockline=stockline)
         self.s.add(barcode)
         self.s.commit()
         self.assertEqual(stockline.barcodes, [barcode])
@@ -218,7 +218,7 @@ class ModelTest(unittest.TestCase):
 
     def test_barcode_plu_cascade(self):
         stockline, plu = self.template_stockline_and_plu_setup()
-        barcode = models.Barcode(barcode='123456', plu=plu)
+        barcode = models.Barcode(id='123456', plu=plu)
         self.s.add(barcode)
         self.s.commit()
         self.assertEqual(plu.barcodes, [barcode])
@@ -227,7 +227,7 @@ class ModelTest(unittest.TestCase):
 
     def test_barcode_delete(self):
         stockline, plu = self.template_stockline_and_plu_setup()
-        barcode = models.Barcode(barcode='123456', plu=plu)
+        barcode = models.Barcode(id='123456', plu=plu)
         self.s.add(barcode)
         self.s.commit()
         self.s.delete(barcode)

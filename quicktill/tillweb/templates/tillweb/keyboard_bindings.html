@@ -1,0 +1,21 @@
+{% if bindings %}
+<h2>Keyboard bindings</h2>
+<table class="table table-striped table-hover w-auto mb-2">
+  <thead class="thead-light">
+    <tr>
+      <th>Keycode</th>
+      <th>Menu key</th>
+      <th>Default modifier</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for kb in bindings %}
+    <tr>
+      <td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
+      <td>{{kb.menukey}}</td>
+      <td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

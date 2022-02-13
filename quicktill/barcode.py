@@ -148,7 +148,7 @@ class edit_barcode(_new_barcode_mixin, ui.keymenu):
     @staticmethod
     def _clear_binding(code):
         b = barcode(code)
-        binding = b.binding or Barcode(barcode=code)
+        binding = b.binding or Barcode(id=code)
         binding.plu = None
         binding.stocktype = None
         binding.stockline = None
