@@ -8,9 +8,12 @@ What's new:
 
  * Barcode support
 
+ * Reorganised side menu in web interface
+
 To upgrade the database:
 
- - run "runtill syncdb" to create the new barcode table
+ - run "runtill syncdb" to create the new barcodes table
+
 
 Upgrade v19.{0,1} to v19.2
 --------------------------
