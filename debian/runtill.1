@@ -74,7 +74,7 @@ Use the null printer instead of the configured printer.
 .TP
 .B start [ \-\-nolisten ]
 Run the till interactively.  Use \-n or \-\-nolisten to disable the
-listening socket for user tokens.
+listening sockets for user tokens and barcodes.
 .TP
 .B dbshell
 Starts an interactive python session with the database initialised, an
@@ -113,6 +113,14 @@ Override this with the \-\-days option.
 .B twitter-auth [ \-\-consumer-key KEY ] [ \-\-consumer-secret SECRET ]
 Generate tokens for Twitter login; produces a fragment of code to
 be copied into the configuration file.
+.TP
+.B config [ \-\-set ] [ key ] [ value ]
+View or modify configuration keys.
+.TP
+.B show-usertoken [ \-\-port PORT ]
+Listen for user tokens; output the first received token and then
+exit. Helpful during initial setup to view a token to use with
+the 'adduser' command.
 
 .SH AUTHOR
 .B quicktill
