@@ -469,6 +469,8 @@ def activate_stockterminal_with_usertoken(
             max_unattended_updates=max_unattended_updates),
         'usertoken_listen': ('127.0.0.1', 8455),
         'usertoken_listen_v6': ('::1', 8455),
+        'barcode_listen': ('127.0.0.1', 8456),
+        'barcode_listen_v6': ('::1', 8456),
     }
 
 class ServiceCharge(register.RegisterPlugin):
