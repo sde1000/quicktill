@@ -4,7 +4,7 @@ quicktill — cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004–2021 Stephen Early <steve@assorted.org.uk>
+quicktill is Copyright (C) 2004–2022 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -23,6 +23,9 @@ Features
 --------
 
  * Any number of departments, products, price lookups, users, etc.
+
+ * Products sold can be entered through keys on a keyboard, on-screen
+   buttons, or barcode scans
 
  * Works on multiple terminals at once; transactions follow users
    between terminals
@@ -52,7 +55,7 @@ Quick start
 The till software includes an anonymised copy of the database from
 [EMFcamp 2018](https://www.emfcamp.org/) which can be used for
 testing.  This guide assumes you have a fresh installation of Ubuntu
-18.04 Desktop.  (You will need a graphical user interface for the
+20.04 Desktop.  (You will need a graphical user interface for the
 on-screen keyboard, and the Desktop version has the "universe"
 component enabled by default.)
 
@@ -167,12 +170,13 @@ have a different type of keyboard, or it is set up differently, it's
 fairly easy to write a new keyboard driver: see
 `quicktill/kbdrivers.py`
 
-The software works best with some way of identifying users.  By
-default, there are three buttons at the top-left of the keyboard that
-can be used to log users in.  If you have a keyboard with a magstripe
-reader, you can use magstripe cards to enable users to log in.  At my
-sites we use ACR122U NFC readers along with [some simple driver
-software](https://github.com/sde1000/quicktill-nfc-bridge).
+The software needs some way of identifying users.  By default, there
+are three buttons at the top-left of the keyboard that can be used to
+log users in.  If you have a keyboard with a magstripe reader, you can
+use magstripe cards to enable users to log in.  At my sites we use
+ACR122U NFC readers along with [some simple driver
+software](https://github.com/sde1000/quicktill-nfc-bridge) (which
+should be able to support any CCID compatible NFC reader).
 
 Receipt printers are supported (and required, if you want to use a
 cash drawer).  The software has generic support for all ESC/POS
@@ -181,6 +185,13 @@ TM-U220 (dot-matrix), and Aures ODP 333.  Label printers are supported
 for stock label printing.  I use the DYMO LabelWriter-450 (cheap,
 works well) but anything with [CUPS](https://www.cups.org/) support
 will work.
+
+Barcode scanners can be used to identify products as they are sold.
+You need [some simple driver
+software](https://github.com/sde1000/quicktill-serial-barcode-bridge)
+to drive USB serial barcode scanners.  Other types of scanner, for
+example Bluetooth cordless, are not yet supported but should be simple
+to add if required.
 
 Setup
 -----
