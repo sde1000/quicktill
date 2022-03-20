@@ -82,10 +82,19 @@ def is_england_banking_day(d):
     first_monday_of_may = start_of_may + relativedelta(weekday=MO)
     if d == first_monday_of_may:
         return False
-    # The Spring bank holiday is the last Monday of May
-    last_monday_of_may = start_of_may + relativedelta(day=31, weekday=MO(-1))
-    if d == last_monday_of_may:
-        return False
+    # The Spring bank holiday is the last Monday of May, except in
+    # 2022 when there are special arrangements for the Queen's
+    # Platinum Jubilee
+    if d.year == 2022:
+        if d == datetime.date(2022, 6, 2):
+            return False  # Moved Spring bank holiday
+        if d == datetime.date(2022, 6, 3):
+            return False  # Platinum Jubilee bank holiday
+    else:
+        last_monday_of_may = start_of_may \
+            + relativedelta(day=31, weekday=MO(-1))
+        if d == last_monday_of_may:
+            return False
 
     # The Summer bank holiday is the last Monday of August in England,
     # Wales and Northern Ireland (and the first Monday of August in
