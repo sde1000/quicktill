@@ -17,21 +17,21 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
 --
 
 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --
--- Name: check_max_one_session_open(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: check_max_one_session_open(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_max_one_session_open() RETURNS trigger
@@ -46,10 +46,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.check_max_one_session_open() OWNER TO steve;
-
 --
--- Name: check_modify_closed_trans_line(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: check_modify_closed_trans_line(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_modify_closed_trans_line() RETURNS trigger
@@ -73,10 +71,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.check_modify_closed_trans_line() OWNER TO steve;
-
 --
--- Name: check_modify_closed_trans_payment(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: check_modify_closed_trans_payment(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_modify_closed_trans_payment() RETURNS trigger
@@ -91,10 +87,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.check_modify_closed_trans_payment() OWNER TO steve;
-
 --
--- Name: check_transaction_balances(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: check_transaction_balances(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_transaction_balances() RETURNS trigger
@@ -112,10 +106,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.check_transaction_balances() OWNER TO steve;
-
 --
--- Name: notify_config_change(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: notify_config_change(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_config_change() RETURNS trigger
@@ -129,10 +121,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.notify_config_change() OWNER TO steve;
-
 --
--- Name: notify_group_grants_change(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: notify_group_grants_change(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_group_grants_change() RETURNS trigger
@@ -146,10 +136,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.notify_group_grants_change() OWNER TO steve;
-
 --
--- Name: notify_group_membership_change(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: notify_group_membership_change(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_group_membership_change() RETURNS trigger
@@ -163,10 +151,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.notify_group_membership_change() OWNER TO steve;
-
 --
--- Name: notify_keycap_change(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: notify_keycap_change(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_keycap_change() RETURNS trigger
@@ -180,10 +166,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.notify_keycap_change() OWNER TO steve;
-
 --
--- Name: notify_log_entry(); Type: FUNCTION; Schema: public; Owner: steve
+-- Name: notify_log_entry(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_log_entry() RETURNS trigger
@@ -197,14 +181,12 @@ END;
 $$;
 
 
-ALTER FUNCTION public.notify_log_entry() OWNER TO steve;
-
 SET default_tablespace = '';
 
 SET default_with_oids = false;
 
 --
--- Name: annotation_types; Type: TABLE; Schema: public; Owner: steve
+-- Name: annotation_types; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.annotation_types (
@@ -213,10 +195,23 @@ CREATE TABLE public.annotation_types (
 );
 
 
-ALTER TABLE public.annotation_types OWNER TO steve;
+--
+-- Name: barcodes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.barcodes (
+    barcode character varying NOT NULL,
+    stocklineid integer,
+    pluid integer,
+    stocktype integer,
+    modifier character varying,
+    CONSTRAINT be_unambiguous_constraint CHECK ((num_nonnulls(stocklineid, pluid, stocktype) <= 1)),
+    CONSTRAINT be_useful_constraint CHECK ((num_nonnulls(stocklineid, pluid, stocktype, modifier) <> 0))
+);
+
 
 --
--- Name: businesses; Type: TABLE; Schema: public; Owner: steve
+-- Name: businesses; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.businesses (
@@ -229,10 +224,8 @@ CREATE TABLE public.businesses (
 );
 
 
-ALTER TABLE public.businesses OWNER TO steve;
-
 --
--- Name: config; Type: TABLE; Schema: public; Owner: steve
+-- Name: config; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.config (
@@ -244,10 +237,8 @@ CREATE TABLE public.config (
 );
 
 
-ALTER TABLE public.config OWNER TO steve;
-
 --
--- Name: deliveries; Type: TABLE; Schema: public; Owner: steve
+-- Name: deliveries; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.deliveries (
@@ -260,10 +251,8 @@ CREATE TABLE public.deliveries (
 );
 
 
-ALTER TABLE public.deliveries OWNER TO steve;
-
 --
--- Name: deliveries_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: deliveries_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.deliveries_seq
@@ -274,10 +263,8 @@ CREATE SEQUENCE public.deliveries_seq
     CACHE 1;
 
 
-ALTER TABLE public.deliveries_seq OWNER TO steve;
-
 --
--- Name: departments; Type: TABLE; Schema: public; Owner: steve
+-- Name: departments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.departments (
@@ -291,10 +278,8 @@ CREATE TABLE public.departments (
 );
 
 
-ALTER TABLE public.departments OWNER TO steve;
-
 --
--- Name: foodorder_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: foodorder_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.foodorder_seq
@@ -305,10 +290,8 @@ CREATE SEQUENCE public.foodorder_seq
     CACHE 1;
 
 
-ALTER TABLE public.foodorder_seq OWNER TO steve;
-
 --
--- Name: group_grants; Type: TABLE; Schema: public; Owner: steve
+-- Name: group_grants; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.group_grants (
@@ -317,10 +300,8 @@ CREATE TABLE public.group_grants (
 );
 
 
-ALTER TABLE public.group_grants OWNER TO steve;
-
 --
--- Name: group_membership; Type: TABLE; Schema: public; Owner: steve
+-- Name: group_membership; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.group_membership (
@@ -329,10 +310,8 @@ CREATE TABLE public.group_membership (
 );
 
 
-ALTER TABLE public.group_membership OWNER TO steve;
-
 --
--- Name: groups; Type: TABLE; Schema: public; Owner: steve
+-- Name: groups; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.groups (
@@ -341,10 +320,8 @@ CREATE TABLE public.groups (
 );
 
 
-ALTER TABLE public.groups OWNER TO steve;
-
 --
--- Name: keyboard; Type: TABLE; Schema: public; Owner: steve
+-- Name: keyboard; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.keyboard (
@@ -358,10 +335,8 @@ CREATE TABLE public.keyboard (
 );
 
 
-ALTER TABLE public.keyboard OWNER TO steve;
-
 --
--- Name: keycaps; Type: TABLE; Schema: public; Owner: steve
+-- Name: keycaps; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.keycaps (
@@ -371,10 +346,8 @@ CREATE TABLE public.keycaps (
 );
 
 
-ALTER TABLE public.keycaps OWNER TO steve;
-
 --
--- Name: log; Type: TABLE; Schema: public; Owner: steve
+-- Name: log; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.log (
@@ -412,10 +385,8 @@ CREATE TABLE public.log (
 );
 
 
-ALTER TABLE public.log OWNER TO steve;
-
 --
--- Name: log_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: log_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.log_seq
@@ -426,10 +397,8 @@ CREATE SEQUENCE public.log_seq
     CACHE 1;
 
 
-ALTER TABLE public.log_seq OWNER TO steve;
-
 --
--- Name: payment_meta; Type: TABLE; Schema: public; Owner: steve
+-- Name: payment_meta; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.payment_meta (
@@ -439,10 +408,8 @@ CREATE TABLE public.payment_meta (
 );
 
 
-ALTER TABLE public.payment_meta OWNER TO steve;
-
 --
--- Name: payments; Type: TABLE; Schema: public; Owner: steve
+-- Name: payments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.payments (
@@ -456,10 +423,8 @@ CREATE TABLE public.payments (
 );
 
 
-ALTER TABLE public.payments OWNER TO steve;
-
 --
--- Name: payments_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: payments_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.payments_seq
@@ -470,10 +435,8 @@ CREATE SEQUENCE public.payments_seq
     CACHE 1;
 
 
-ALTER TABLE public.payments_seq OWNER TO steve;
-
 --
--- Name: paytypes; Type: TABLE; Schema: public; Owner: steve
+-- Name: paytypes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.paytypes (
@@ -482,10 +445,8 @@ CREATE TABLE public.paytypes (
 );
 
 
-ALTER TABLE public.paytypes OWNER TO steve;
-
 --
--- Name: permissions; Type: TABLE; Schema: public; Owner: steve
+-- Name: permissions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.permissions (
@@ -494,10 +455,8 @@ CREATE TABLE public.permissions (
 );
 
 
-ALTER TABLE public.permissions OWNER TO steve;
-
 --
--- Name: plu_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: plu_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.plu_seq
@@ -508,10 +467,8 @@ CREATE SEQUENCE public.plu_seq
     CACHE 1;
 
 
-ALTER TABLE public.plu_seq OWNER TO steve;
-
 --
--- Name: pricelookups; Type: TABLE; Schema: public; Owner: steve
+-- Name: pricelookups; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.pricelookups (
@@ -526,10 +483,8 @@ CREATE TABLE public.pricelookups (
 );
 
 
-ALTER TABLE public.pricelookups OWNER TO steve;
-
 --
--- Name: refusals_log; Type: TABLE; Schema: public; Owner: steve
+-- Name: refusals_log; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.refusals_log (
@@ -541,10 +496,8 @@ CREATE TABLE public.refusals_log (
 );
 
 
-ALTER TABLE public.refusals_log OWNER TO steve;
-
 --
--- Name: refusals_log_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: refusals_log_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.refusals_log_seq
@@ -555,10 +508,8 @@ CREATE SEQUENCE public.refusals_log_seq
     CACHE 1;
 
 
-ALTER TABLE public.refusals_log_seq OWNER TO steve;
-
 --
--- Name: secrets; Type: TABLE; Schema: public; Owner: steve
+-- Name: secrets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.secrets (
@@ -568,10 +519,8 @@ CREATE TABLE public.secrets (
 );
 
 
-ALTER TABLE public.secrets OWNER TO steve;
-
 --
--- Name: sessions; Type: TABLE; Schema: public; Owner: steve
+-- Name: sessions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.sessions (
@@ -583,10 +532,8 @@ CREATE TABLE public.sessions (
 );
 
 
-ALTER TABLE public.sessions OWNER TO steve;
-
 --
--- Name: sessions_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: sessions_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.sessions_seq
@@ -597,10 +544,8 @@ CREATE SEQUENCE public.sessions_seq
     CACHE 1;
 
 
-ALTER TABLE public.sessions_seq OWNER TO steve;
-
 --
--- Name: sessiontotals; Type: TABLE; Schema: public; Owner: steve
+-- Name: sessiontotals; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.sessiontotals (
@@ -610,10 +555,8 @@ CREATE TABLE public.sessiontotals (
 );
 
 
-ALTER TABLE public.sessiontotals OWNER TO steve;
-
 --
--- Name: stock; Type: TABLE; Schema: public; Owner: steve
+-- Name: stock; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stock (
@@ -638,10 +581,8 @@ CREATE TABLE public.stock (
 );
 
 
-ALTER TABLE public.stock OWNER TO steve;
-
 --
--- Name: stock_annotation_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stock_annotation_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stock_annotation_seq
@@ -652,10 +593,8 @@ CREATE SEQUENCE public.stock_annotation_seq
     CACHE 1;
 
 
-ALTER TABLE public.stock_annotation_seq OWNER TO steve;
-
 --
--- Name: stock_annotations; Type: TABLE; Schema: public; Owner: steve
+-- Name: stock_annotations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stock_annotations (
@@ -668,10 +607,8 @@ CREATE TABLE public.stock_annotations (
 );
 
 
-ALTER TABLE public.stock_annotations OWNER TO steve;
-
 --
--- Name: stock_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stock_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stock_seq
@@ -682,10 +619,8 @@ CREATE SEQUENCE public.stock_seq
     CACHE 1;
 
 
-ALTER TABLE public.stock_seq OWNER TO steve;
-
 --
--- Name: stockfinish; Type: TABLE; Schema: public; Owner: steve
+-- Name: stockfinish; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stockfinish (
@@ -694,10 +629,8 @@ CREATE TABLE public.stockfinish (
 );
 
 
-ALTER TABLE public.stockfinish OWNER TO steve;
-
 --
--- Name: stockline_stocktype_log; Type: TABLE; Schema: public; Owner: steve
+-- Name: stockline_stocktype_log; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stockline_stocktype_log (
@@ -706,10 +639,8 @@ CREATE TABLE public.stockline_stocktype_log (
 );
 
 
-ALTER TABLE public.stockline_stocktype_log OWNER TO steve;
-
 --
--- Name: stocklines; Type: TABLE; Schema: public; Owner: steve
+-- Name: stocklines; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stocklines (
@@ -730,10 +661,8 @@ CREATE TABLE public.stocklines (
 );
 
 
-ALTER TABLE public.stocklines OWNER TO steve;
-
 --
--- Name: stocklines_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stocklines_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stocklines_seq
@@ -744,10 +673,8 @@ CREATE SEQUENCE public.stocklines_seq
     CACHE 1;
 
 
-ALTER TABLE public.stocklines_seq OWNER TO steve;
-
 --
--- Name: stockout; Type: TABLE; Schema: public; Owner: steve
+-- Name: stockout; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stockout (
@@ -762,10 +689,8 @@ CREATE TABLE public.stockout (
 );
 
 
-ALTER TABLE public.stockout OWNER TO steve;
-
 --
--- Name: stockout_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stockout_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stockout_seq
@@ -776,10 +701,8 @@ CREATE SEQUENCE public.stockout_seq
     CACHE 1;
 
 
-ALTER TABLE public.stockout_seq OWNER TO steve;
-
 --
--- Name: stockremove; Type: TABLE; Schema: public; Owner: steve
+-- Name: stockremove; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stockremove (
@@ -788,10 +711,8 @@ CREATE TABLE public.stockremove (
 );
 
 
-ALTER TABLE public.stockremove OWNER TO steve;
-
 --
--- Name: stocktake_adjustments; Type: TABLE; Schema: public; Owner: steve
+-- Name: stocktake_adjustments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stocktake_adjustments (
@@ -803,10 +724,8 @@ CREATE TABLE public.stocktake_adjustments (
 );
 
 
-ALTER TABLE public.stocktake_adjustments OWNER TO steve;
-
 --
--- Name: stocktake_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stocktake_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stocktake_seq
@@ -817,10 +736,8 @@ CREATE SEQUENCE public.stocktake_seq
     CACHE 1;
 
 
-ALTER TABLE public.stocktake_seq OWNER TO steve;
-
 --
--- Name: stocktake_snapshots; Type: TABLE; Schema: public; Owner: steve
+-- Name: stocktake_snapshots; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stocktake_snapshots (
@@ -834,10 +751,8 @@ CREATE TABLE public.stocktake_snapshots (
 );
 
 
-ALTER TABLE public.stocktake_snapshots OWNER TO steve;
-
 --
--- Name: stocktakes; Type: TABLE; Schema: public; Owner: steve
+-- Name: stocktakes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stocktakes (
@@ -855,10 +770,8 @@ CREATE TABLE public.stocktakes (
 );
 
 
-ALTER TABLE public.stocktakes OWNER TO steve;
-
 --
--- Name: stocktypes; Type: TABLE; Schema: public; Owner: steve
+-- Name: stocktypes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stocktypes (
@@ -875,10 +788,8 @@ CREATE TABLE public.stocktypes (
 );
 
 
-ALTER TABLE public.stocktypes OWNER TO steve;
-
 --
--- Name: stocktypes_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stocktypes_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stocktypes_seq
@@ -889,10 +800,8 @@ CREATE SEQUENCE public.stocktypes_seq
     CACHE 1;
 
 
-ALTER TABLE public.stocktypes_seq OWNER TO steve;
-
 --
--- Name: stockunits; Type: TABLE; Schema: public; Owner: steve
+-- Name: stockunits; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.stockunits (
@@ -904,10 +813,8 @@ CREATE TABLE public.stockunits (
 );
 
 
-ALTER TABLE public.stockunits OWNER TO steve;
-
 --
--- Name: stockunits_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: stockunits_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.stockunits_seq
@@ -918,10 +825,8 @@ CREATE SEQUENCE public.stockunits_seq
     CACHE 1;
 
 
-ALTER TABLE public.stockunits_seq OWNER TO steve;
-
 --
--- Name: suppliers; Type: TABLE; Schema: public; Owner: steve
+-- Name: suppliers; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.suppliers (
@@ -934,10 +839,8 @@ CREATE TABLE public.suppliers (
 );
 
 
-ALTER TABLE public.suppliers OWNER TO steve;
-
 --
--- Name: suppliers_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: suppliers_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.suppliers_seq
@@ -948,10 +851,8 @@ CREATE SEQUENCE public.suppliers_seq
     CACHE 1;
 
 
-ALTER TABLE public.suppliers_seq OWNER TO steve;
-
 --
--- Name: transaction_meta; Type: TABLE; Schema: public; Owner: steve
+-- Name: transaction_meta; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.transaction_meta (
@@ -961,10 +862,8 @@ CREATE TABLE public.transaction_meta (
 );
 
 
-ALTER TABLE public.transaction_meta OWNER TO steve;
-
 --
--- Name: transactions; Type: TABLE; Schema: public; Owner: steve
+-- Name: transactions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.transactions (
@@ -977,10 +876,8 @@ CREATE TABLE public.transactions (
 );
 
 
-ALTER TABLE public.transactions OWNER TO steve;
-
 --
--- Name: transactions_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: transactions_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.transactions_seq
@@ -991,10 +888,8 @@ CREATE SEQUENCE public.transactions_seq
     CACHE 1;
 
 
-ALTER TABLE public.transactions_seq OWNER TO steve;
-
 --
--- Name: transcodes; Type: TABLE; Schema: public; Owner: steve
+-- Name: transcodes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.transcodes (
@@ -1003,10 +898,8 @@ CREATE TABLE public.transcodes (
 );
 
 
-ALTER TABLE public.transcodes OWNER TO steve;
-
 --
--- Name: transline_meta; Type: TABLE; Schema: public; Owner: steve
+-- Name: transline_meta; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.transline_meta (
@@ -1016,10 +909,8 @@ CREATE TABLE public.transline_meta (
 );
 
 
-ALTER TABLE public.transline_meta OWNER TO steve;
-
 --
--- Name: translines; Type: TABLE; Schema: public; Owner: steve
+-- Name: translines; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.translines (
@@ -1041,10 +932,8 @@ CREATE TABLE public.translines (
 );
 
 
-ALTER TABLE public.translines OWNER TO steve;
-
 --
--- Name: translines_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: translines_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.translines_seq
@@ -1055,10 +944,8 @@ CREATE SEQUENCE public.translines_seq
     CACHE 1;
 
 
-ALTER TABLE public.translines_seq OWNER TO steve;
-
 --
--- Name: units_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: units_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.units_seq
@@ -1069,10 +956,8 @@ CREATE SEQUENCE public.units_seq
     CACHE 1;
 
 
-ALTER TABLE public.units_seq OWNER TO steve;
-
 --
--- Name: unittypes; Type: TABLE; Schema: public; Owner: steve
+-- Name: unittypes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.unittypes (
@@ -1085,10 +970,8 @@ CREATE TABLE public.unittypes (
 );
 
 
-ALTER TABLE public.unittypes OWNER TO steve;
-
 --
--- Name: user_seq; Type: SEQUENCE; Schema: public; Owner: steve
+-- Name: user_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.user_seq
@@ -1099,10 +982,8 @@ CREATE SEQUENCE public.user_seq
     CACHE 1;
 
 
-ALTER TABLE public.user_seq OWNER TO steve;
-
 --
--- Name: users; Type: TABLE; Schema: public; Owner: steve
+-- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.users (
@@ -1118,10 +999,8 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO steve;
-
 --
--- Name: usertokens; Type: TABLE; Schema: public; Owner: steve
+-- Name: usertokens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.usertokens (
@@ -1133,10 +1012,8 @@ CREATE TABLE public.usertokens (
 );
 
 
-ALTER TABLE public.usertokens OWNER TO steve;
-
 --
--- Name: vat; Type: TABLE; Schema: public; Owner: steve
+-- Name: vat; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vat (
@@ -1146,10 +1023,8 @@ CREATE TABLE public.vat (
 );
 
 
-ALTER TABLE public.vat OWNER TO steve;
-
 --
--- Name: vatrates; Type: TABLE; Schema: public; Owner: steve
+-- Name: vatrates; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vatrates (
@@ -1160,10 +1035,8 @@ CREATE TABLE public.vatrates (
 );
 
 
-ALTER TABLE public.vatrates OWNER TO steve;
-
 --
--- Data for Name: annotation_types; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: annotation_types; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.annotation_types (atype, description) FROM stdin;
@@ -1176,7 +1049,15 @@ memo	Memo
 
 
 --
--- Data for Name: businesses; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: barcodes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.barcodes (barcode, stocklineid, pluid, stocktype, modifier) FROM stdin;
+\.
+
+
+--
+-- Data for Name: businesses; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.businesses (business, name, abbrev, address, vatno, show_vat_breakdown) FROM stdin;
@@ -1185,7 +1066,7 @@ COPY public.businesses (business, name, abbrev, address, vatno, show_vat_breakdo
 
 
 --
--- Data for Name: config; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: config; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.config (key, value, type, display_name, description) FROM stdin;
@@ -1204,7 +1085,7 @@ gtk:custom_css	\nbutton:not(:active) {\n    transition: 250ms ease-in-out;\n}\n.
 
 
 --
--- Data for Name: deliveries; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: deliveries; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.deliveries (deliveryid, supplierid, docnumber, date, checked, accinfo) FROM stdin;
@@ -1224,7 +1105,7 @@ COPY public.deliveries (deliveryid, supplierid, docnumber, date, checked, accinf
 
 
 --
--- Data for Name: departments; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: departments; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.departments (dept, description, vatband, notes, minprice, maxprice, accinfo) FROM stdin;
@@ -1246,7 +1127,7 @@ COPY public.departments (dept, description, vatband, notes, minprice, maxprice, 
 
 
 --
--- Data for Name: group_grants; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: group_grants; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.group_grants ("user", "group") FROM stdin;
@@ -1303,7 +1184,7 @@ COPY public.group_grants ("user", "group") FROM stdin;
 
 
 --
--- Data for Name: group_membership; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: group_membership; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.group_membership ("group", permission) FROM stdin;
@@ -1410,7 +1291,7 @@ manager	create-plu
 
 
 --
--- Data for Name: groups; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: groups; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.groups (id, description) FROM stdin;
@@ -1421,7 +1302,7 @@ manager	Bar managers
 
 
 --
--- Data for Name: keyboard; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: keyboard; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.keyboard (keycode, menukey, stocklineid, pluid, modifier) FROM stdin;
@@ -1537,7 +1418,7 @@ K_LINE109	1	\N	\N	Half
 
 
 --
--- Data for Name: keycaps; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: keycaps; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.keycaps (keycode, keycap, css_class) FROM stdin;
@@ -1631,7 +1512,7 @@ K_LINE6	Tshunk	mate
 
 
 --
--- Data for Name: log; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.log (id, "time", sourceaddr, source, "user", description, businesses_id, vat_id, vatrates_id0, vatrates_id1, sessions_id, transactions_id, users_id, usertokens_id, groups_id, payments_id, departments_id, translines_id, stocklines_id, pricelookups_id, suppliers_id, deliveries_id, unittypes_id, stockunits_id, stocktypes_id, stock_id, stock_annotations_id, stockremove_id, stockout_id, stocktakes_id, config_id) FROM stdin;
@@ -1639,7 +1520,7 @@ COPY public.log (id, "time", sourceaddr, source, "user", description, businesses
 
 
 --
--- Data for Name: payment_meta; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: payment_meta; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.payment_meta (paymentid, key, value) FROM stdin;
@@ -1647,7 +1528,7 @@ COPY public.payment_meta (paymentid, key, value) FROM stdin;
 
 
 --
--- Data for Name: payments; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: payments; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.payments (paymentid, transid, amount, paytype, ref, "time", "user") FROM stdin;
@@ -10683,7 +10564,7 @@ COPY public.payments (paymentid, transid, amount, paytype, ref, "time", "user") 
 
 
 --
--- Data for Name: paytypes; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: paytypes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.paytypes (paytype, description) FROM stdin;
@@ -10693,7 +10574,7 @@ CARD	Card
 
 
 --
--- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.permissions (id, description) FROM stdin;
@@ -10763,7 +10644,7 @@ apply-discount	Apply a discount to a transaction
 
 
 --
--- Data for Name: pricelookups; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: pricelookups; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.pricelookups (id, description, note, dept, price, altprice1, altprice2, altprice3) FROM stdin;
@@ -10772,7 +10653,7 @@ COPY public.pricelookups (id, description, note, dept, price, altprice1, altpric
 
 
 --
--- Data for Name: refusals_log; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: refusals_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.refusals_log (id, "user", "time", terminal, details) FROM stdin;
@@ -10780,7 +10661,7 @@ COPY public.refusals_log (id, "user", "time", terminal, details) FROM stdin;
 
 
 --
--- Data for Name: secrets; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: secrets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.secrets (key_name, secret_name, token) FROM stdin;
@@ -10788,7 +10669,7 @@ COPY public.secrets (key_name, secret_name, token) FROM stdin;
 
 
 --
--- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.sessions (sessionid, starttime, endtime, sessiondate, accinfo) FROM stdin;
@@ -10799,7 +10680,7 @@ COPY public.sessions (sessionid, starttime, endtime, sessiondate, accinfo) FROM 
 
 
 --
--- Data for Name: sessiontotals; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: sessiontotals; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.sessiontotals (sessionid, paytype, amount) FROM stdin;
@@ -10807,7 +10688,7 @@ COPY public.sessiontotals (sessionid, paytype, amount) FROM stdin;
 
 
 --
--- Data for Name: stock; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stock; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stock (stockid, deliveryid, stocktype, costprice, onsale, finished, finishcode, bestbefore, stocklineid, displayqty, description, size, stocktake_id) FROM stdin;
@@ -11148,7 +11029,7 @@ COPY public.stock (stockid, deliveryid, stocktype, costprice, onsale, finished, 
 
 
 --
--- Data for Name: stock_annotations; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stock_annotations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stock_annotations (id, stockid, atype, "time", text, "user") FROM stdin;
@@ -11618,7 +11499,7 @@ COPY public.stock_annotations (id, stockid, atype, "time", text, "user") FROM st
 
 
 --
--- Data for Name: stockfinish; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stockfinish; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stockfinish (finishcode, description) FROM stdin;
@@ -11630,7 +11511,7 @@ ood	Out of date
 
 
 --
--- Data for Name: stockline_stocktype_log; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stockline_stocktype_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stockline_stocktype_log (stocklineid, stocktype) FROM stdin;
@@ -11690,7 +11571,7 @@ COPY public.stockline_stocktype_log (stocklineid, stocktype) FROM stdin;
 
 
 --
--- Data for Name: stocklines; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stocklines; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stocklines (stocklineid, name, location, linetype, capacity, dept, pullthru, stocktype) FROM stdin;
@@ -11750,7 +11631,7 @@ COPY public.stocklines (stocklineid, name, location, linetype, capacity, dept, p
 
 
 --
--- Data for Name: stockout; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stockout; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stockout (stockoutid, stockid, qty, removecode, translineid, "time", stocktake_id) FROM stdin;
@@ -20777,7 +20658,7 @@ COPY public.stockout (stockoutid, stockid, qty, removecode, translineid, "time",
 
 
 --
--- Data for Name: stockremove; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stockremove; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stockremove (removecode, reason) FROM stdin;
@@ -20795,7 +20676,7 @@ driptray	Drip tray
 
 
 --
--- Data for Name: stocktake_adjustments; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stocktake_adjustments; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stocktake_adjustments (stocktake_id, stock_id, removecode_id, qty) FROM stdin;
@@ -20803,7 +20684,7 @@ COPY public.stocktake_adjustments (stocktake_id, stock_id, removecode_id, qty) F
 
 
 --
--- Data for Name: stocktake_snapshots; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stocktake_snapshots; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stocktake_snapshots (stocktake_id, stock_id, qty, displayqty, newdisplayqty, checked, finishcode) FROM stdin;
@@ -20811,7 +20692,7 @@ COPY public.stocktake_snapshots (stocktake_id, stock_id, qty, displayqty, newdis
 
 
 --
--- Data for Name: stocktakes; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stocktakes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stocktakes (id, description, create_time, create_user_id, start_time, commit_time, commit_user_id) FROM stdin;
@@ -20819,7 +20700,7 @@ COPY public.stocktakes (id, description, create_time, create_user_id, start_time
 
 
 --
--- Data for Name: stocktypes; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stocktypes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stocktypes (stocktype, dept, manufacturer, name, abv, saleprice, pricechanged, unit_id, stocktake_id, stocktake_by_items) FROM stdin;
@@ -20907,7 +20788,7 @@ COPY public.stocktypes (stocktype, dept, manufacturer, name, abv, saleprice, pri
 
 
 --
--- Data for Name: stockunits; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: stockunits; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.stockunits (name, size, unit_id, merge, id) FROM stdin;
@@ -20961,7 +20842,7 @@ Barrel	288.0	1	f	8
 
 
 --
--- Data for Name: suppliers; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: suppliers; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.suppliers (supplierid, name, tel, email, web, accinfo) FROM stdin;
@@ -20981,7 +20862,7 @@ COPY public.suppliers (supplierid, name, tel, email, web, accinfo) FROM stdin;
 
 
 --
--- Data for Name: transaction_meta; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: transaction_meta; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.transaction_meta (transid, key, value) FROM stdin;
@@ -20989,7 +20870,7 @@ COPY public.transaction_meta (transid, key, value) FROM stdin;
 
 
 --
--- Data for Name: transactions; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: transactions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.transactions (transid, sessionid, notes, closed, discount_policy) FROM stdin;
@@ -27207,7 +27088,7 @@ COPY public.transactions (transid, sessionid, notes, closed, discount_policy) FR
 
 
 --
--- Data for Name: transcodes; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: transcodes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.transcodes (transcode, description) FROM stdin;
@@ -27217,7 +27098,7 @@ V	Void
 
 
 --
--- Data for Name: transline_meta; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: transline_meta; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.transline_meta (translineid, key, value) FROM stdin;
@@ -27225,7 +27106,7 @@ COPY public.transline_meta (translineid, key, value) FROM stdin;
 
 
 --
--- Data for Name: translines; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: translines; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.translines (translineid, transid, items, amount, dept, "user", voided_by, transcode, "time", text, discount, discount_name) FROM stdin;
@@ -36393,7 +36274,7 @@ COPY public.translines (translineid, transid, items, amount, dept, "user", voide
 
 
 --
--- Data for Name: unittypes; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: unittypes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.unittypes (name, id, description, item_name, item_name_plural, units_per_item) FROM stdin;
@@ -36409,7 +36290,7 @@ ml	9	Soft drink (cartons)	pint	pints	568.0
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid, register, message) FROM stdin;
@@ -36468,7 +36349,7 @@ COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid
 
 
 --
--- Data for Name: usertokens; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: usertokens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.usertokens (token, authdata, description, "user", last_seen) FROM stdin;
@@ -36502,7 +36383,7 @@ builtin:alice	\N	Alice	1	2019-07-22 19:11:27.218089
 
 
 --
--- Data for Name: vat; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: vat; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vat (band, rate, business) FROM stdin;
@@ -36511,7 +36392,7 @@ A	17.50	1
 
 
 --
--- Data for Name: vatrates; Type: TABLE DATA; Schema: public; Owner: steve
+-- Data for Name: vatrates; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vatrates (band, active, rate, business) FROM stdin;
@@ -36522,140 +36403,140 @@ A	2011-01-04	20.00	1
 
 
 --
--- Name: deliveries_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: deliveries_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.deliveries_seq', 12, true);
 
 
 --
--- Name: foodorder_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: foodorder_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.foodorder_seq', 1, false);
 
 
 --
--- Name: log_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: log_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.log_seq', 1, false);
 
 
 --
--- Name: payments_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: payments_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.payments_seq', 9030, true);
 
 
 --
--- Name: plu_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: plu_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.plu_seq', 2, true);
 
 
 --
--- Name: refusals_log_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: refusals_log_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.refusals_log_seq', 7, true);
 
 
 --
--- Name: sessions_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: sessions_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.sessions_seq', 5, true);
 
 
 --
--- Name: stock_annotation_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stock_annotation_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stock_annotation_seq', 462, true);
 
 
 --
--- Name: stock_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stock_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stock_seq', 333, true);
 
 
 --
--- Name: stocklines_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stocklines_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stocklines_seq', 152, true);
 
 
 --
--- Name: stockout_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stockout_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stockout_seq', 9446, true);
 
 
 --
--- Name: stocktake_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stocktake_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stocktake_seq', 1, false);
 
 
 --
--- Name: stocktypes_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stocktypes_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stocktypes_seq', 80, true);
 
 
 --
--- Name: stockunits_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: stockunits_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.stockunits_seq', 49, true);
 
 
 --
--- Name: suppliers_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: suppliers_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.suppliers_seq', 12, true);
 
 
 --
--- Name: transactions_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: transactions_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.transactions_seq', 6450, true);
 
 
 --
--- Name: translines_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: translines_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.translines_seq', 9582, true);
 
 
 --
--- Name: units_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: units_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.units_seq', 9, true);
 
 
 --
--- Name: user_seq; Type: SEQUENCE SET; Schema: public; Owner: steve
+-- Name: user_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.user_seq', 51, true);
 
 
 --
--- Name: annotation_types annotation_types_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: annotation_types annotation_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.annotation_types
@@ -36663,7 +36544,15 @@ ALTER TABLE ONLY public.annotation_types
 
 
 --
--- Name: businesses businesses_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: barcodes barcodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.barcodes
+    ADD CONSTRAINT barcodes_pkey PRIMARY KEY (barcode);
+
+
+--
+-- Name: businesses businesses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.businesses
@@ -36671,7 +36560,7 @@ ALTER TABLE ONLY public.businesses
 
 
 --
--- Name: config config_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: config config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.config
@@ -36679,7 +36568,7 @@ ALTER TABLE ONLY public.config
 
 
 --
--- Name: deliveries deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: deliveries deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.deliveries
@@ -36687,7 +36576,7 @@ ALTER TABLE ONLY public.deliveries
 
 
 --
--- Name: departments departments_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: departments departments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.departments
@@ -36695,7 +36584,7 @@ ALTER TABLE ONLY public.departments
 
 
 --
--- Name: group_grants group_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_grants group_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_grants
@@ -36703,7 +36592,7 @@ ALTER TABLE ONLY public.group_grants
 
 
 --
--- Name: group_membership group_membership_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_membership group_membership_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_membership
@@ -36711,7 +36600,7 @@ ALTER TABLE ONLY public.group_membership
 
 
 --
--- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.groups
@@ -36719,7 +36608,7 @@ ALTER TABLE ONLY public.groups
 
 
 --
--- Name: keyboard keyboard_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: keyboard keyboard_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.keyboard
@@ -36727,7 +36616,7 @@ ALTER TABLE ONLY public.keyboard
 
 
 --
--- Name: keycaps keycaps_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: keycaps keycaps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.keycaps
@@ -36735,7 +36624,7 @@ ALTER TABLE ONLY public.keycaps
 
 
 --
--- Name: log log_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -36743,7 +36632,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: payment_meta payment_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: payment_meta payment_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payment_meta
@@ -36751,7 +36640,7 @@ ALTER TABLE ONLY public.payment_meta
 
 
 --
--- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments
@@ -36759,7 +36648,7 @@ ALTER TABLE ONLY public.payments
 
 
 --
--- Name: paytypes paytypes_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: paytypes paytypes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.paytypes
@@ -36767,7 +36656,7 @@ ALTER TABLE ONLY public.paytypes
 
 
 --
--- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.permissions
@@ -36775,7 +36664,7 @@ ALTER TABLE ONLY public.permissions
 
 
 --
--- Name: pricelookups pricelookups_description_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: pricelookups pricelookups_description_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.pricelookups
@@ -36783,7 +36672,7 @@ ALTER TABLE ONLY public.pricelookups
 
 
 --
--- Name: pricelookups pricelookups_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: pricelookups pricelookups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.pricelookups
@@ -36791,7 +36680,7 @@ ALTER TABLE ONLY public.pricelookups
 
 
 --
--- Name: refusals_log refusals_log_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: refusals_log refusals_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.refusals_log
@@ -36799,7 +36688,7 @@ ALTER TABLE ONLY public.refusals_log
 
 
 --
--- Name: secrets secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: secrets secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.secrets
@@ -36807,7 +36696,7 @@ ALTER TABLE ONLY public.secrets
 
 
 --
--- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions
@@ -36815,7 +36704,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: sessiontotals sessiontotals_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: sessiontotals sessiontotals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessiontotals
@@ -36823,7 +36712,7 @@ ALTER TABLE ONLY public.sessiontotals
 
 
 --
--- Name: stock_annotations stock_annotations_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock_annotations stock_annotations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock_annotations
@@ -36831,7 +36720,7 @@ ALTER TABLE ONLY public.stock_annotations
 
 
 --
--- Name: stock stock_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -36839,7 +36728,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stockfinish stockfinish_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockfinish stockfinish_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockfinish
@@ -36847,7 +36736,7 @@ ALTER TABLE ONLY public.stockfinish
 
 
 --
--- Name: stockline_stocktype_log stockline_stocktype_log_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockline_stocktype_log stockline_stocktype_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockline_stocktype_log
@@ -36855,7 +36744,7 @@ ALTER TABLE ONLY public.stockline_stocktype_log
 
 
 --
--- Name: stocklines stocklines_name_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocklines stocklines_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocklines
@@ -36863,7 +36752,7 @@ ALTER TABLE ONLY public.stocklines
 
 
 --
--- Name: stocklines stocklines_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocklines stocklines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocklines
@@ -36871,7 +36760,7 @@ ALTER TABLE ONLY public.stocklines
 
 
 --
--- Name: stockout stockout_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockout stockout_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockout
@@ -36879,7 +36768,7 @@ ALTER TABLE ONLY public.stockout
 
 
 --
--- Name: stockremove stockremove_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockremove stockremove_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockremove
@@ -36887,7 +36776,7 @@ ALTER TABLE ONLY public.stockremove
 
 
 --
--- Name: stocktake_adjustments stocktake_adjustments_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_adjustments stocktake_adjustments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_adjustments
@@ -36895,7 +36784,7 @@ ALTER TABLE ONLY public.stocktake_adjustments
 
 
 --
--- Name: stocktake_snapshots stocktake_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_snapshots stocktake_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_snapshots
@@ -36903,7 +36792,7 @@ ALTER TABLE ONLY public.stocktake_snapshots
 
 
 --
--- Name: stocktakes stocktakes_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktakes stocktakes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktakes
@@ -36911,7 +36800,7 @@ ALTER TABLE ONLY public.stocktakes
 
 
 --
--- Name: stocktypes stocktypes_ambiguity_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktypes stocktypes_ambiguity_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktypes
@@ -36919,7 +36808,7 @@ ALTER TABLE ONLY public.stocktypes
 
 
 --
--- Name: stocktypes stocktypes_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktypes stocktypes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktypes
@@ -36927,7 +36816,7 @@ ALTER TABLE ONLY public.stocktypes
 
 
 --
--- Name: stockunits stockunits_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockunits stockunits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockunits
@@ -36935,7 +36824,7 @@ ALTER TABLE ONLY public.stockunits
 
 
 --
--- Name: suppliers suppliers_name_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: suppliers suppliers_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.suppliers
@@ -36943,7 +36832,7 @@ ALTER TABLE ONLY public.suppliers
 
 
 --
--- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.suppliers
@@ -36951,7 +36840,7 @@ ALTER TABLE ONLY public.suppliers
 
 
 --
--- Name: transaction_meta transaction_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: transaction_meta transaction_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transaction_meta
@@ -36959,7 +36848,7 @@ ALTER TABLE ONLY public.transaction_meta
 
 
 --
--- Name: transactions transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: transactions transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transactions
@@ -36967,7 +36856,7 @@ ALTER TABLE ONLY public.transactions
 
 
 --
--- Name: transcodes transcodes_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: transcodes transcodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transcodes
@@ -36975,7 +36864,7 @@ ALTER TABLE ONLY public.transcodes
 
 
 --
--- Name: transline_meta transline_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: transline_meta transline_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transline_meta
@@ -36983,7 +36872,7 @@ ALTER TABLE ONLY public.transline_meta
 
 
 --
--- Name: translines translines_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -36991,7 +36880,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: translines translines_voided_by_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_voided_by_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -36999,7 +36888,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: unittypes unittypes_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: unittypes unittypes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.unittypes
@@ -37007,7 +36896,7 @@ ALTER TABLE ONLY public.unittypes
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -37015,7 +36904,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_transid_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: users users_transid_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -37023,7 +36912,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_webuser_key; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: users users_webuser_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -37031,7 +36920,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: usertokens usertokens_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: usertokens usertokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.usertokens
@@ -37039,7 +36928,7 @@ ALTER TABLE ONLY public.usertokens
 
 
 --
--- Name: vat vat_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: vat vat_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vat
@@ -37047,7 +36936,7 @@ ALTER TABLE ONLY public.vat
 
 
 --
--- Name: vatrates vatrates_pkey; Type: CONSTRAINT; Schema: public; Owner: steve
+-- Name: vatrates vatrates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vatrates
@@ -37055,63 +36944,63 @@ ALTER TABLE ONLY public.vatrates
 
 
 --
--- Name: payments_transid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: payments_transid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX payments_transid_key ON public.payments USING btree (transid);
 
 
 --
--- Name: stock_annotations_stockid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: stock_annotations_stockid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX stock_annotations_stockid_key ON public.stock_annotations USING btree (stockid);
 
 
 --
--- Name: stockout_date_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: stockout_date_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX stockout_date_key ON public.stockout USING btree ((("time")::date));
 
 
 --
--- Name: stockout_stockid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: stockout_stockid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX stockout_stockid_key ON public.stockout USING btree (stockid);
 
 
 --
--- Name: stockout_translineid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: stockout_translineid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX stockout_translineid_key ON public.stockout USING btree (translineid);
 
 
 --
--- Name: transactions_sessionid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: transactions_sessionid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX transactions_sessionid_key ON public.transactions USING btree (sessionid);
 
 
 --
--- Name: translines_time_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: translines_time_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX translines_time_key ON public.translines USING btree ("time");
 
 
 --
--- Name: translines_transid_key; Type: INDEX; Schema: public; Owner: steve
+-- Name: translines_transid_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX translines_transid_key ON public.translines USING btree (transid);
 
 
 --
--- Name: stockline_stocktype_log ignore_duplicate_stockline_types; Type: RULE; Schema: public; Owner: steve
+-- Name: stockline_stocktype_log ignore_duplicate_stockline_types; Type: RULE; Schema: public; Owner: -
 --
 
 CREATE RULE ignore_duplicate_stockline_types AS
@@ -37122,7 +37011,7 @@ CREATE RULE ignore_duplicate_stockline_types AS
 
 
 --
--- Name: stock log_stocktype; Type: RULE; Schema: public; Owner: steve
+-- Name: stock log_stocktype; Type: RULE; Schema: public; Owner: -
 --
 
 CREATE RULE log_stocktype AS
@@ -37132,70 +37021,94 @@ CREATE RULE log_stocktype AS
 
 
 --
--- Name: transactions close_only_if_balanced; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: transactions close_only_if_balanced; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE CONSTRAINT TRIGGER close_only_if_balanced AFTER INSERT OR UPDATE ON public.transactions NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE PROCEDURE public.check_transaction_balances();
 
 
 --
--- Name: config config_change; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: config config_change; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER config_change AFTER UPDATE ON public.config FOR EACH ROW EXECUTE PROCEDURE public.notify_config_change();
 
 
 --
--- Name: group_grants group_grants_changed; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: group_grants group_grants_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER group_grants_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_grants FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_grants_change();
 
 
 --
--- Name: group_membership group_membership_changed; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: group_membership group_membership_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER group_membership_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_membership FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_membership_change();
 
 
 --
--- Name: keycaps keycap_changed; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: keycaps keycap_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER keycap_changed AFTER INSERT OR UPDATE ON public.keycaps FOR EACH ROW EXECUTE PROCEDURE public.notify_keycap_change();
 
 
 --
--- Name: log log_entry; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: log log_entry; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER log_entry AFTER INSERT OR UPDATE ON public.log FOR EACH ROW EXECUTE PROCEDURE public.notify_log_entry();
 
 
 --
--- Name: sessions max_one_session_open; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: sessions max_one_session_open; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE CONSTRAINT TRIGGER max_one_session_open AFTER INSERT OR UPDATE ON public.sessions NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE PROCEDURE public.check_max_one_session_open();
 
 
 --
--- Name: payments no_modify_closed; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: payments no_modify_closed; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE CONSTRAINT TRIGGER no_modify_closed AFTER INSERT OR UPDATE ON public.payments NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE PROCEDURE public.check_modify_closed_trans_payment();
 
 
 --
--- Name: translines no_modify_closed; Type: TRIGGER; Schema: public; Owner: steve
+-- Name: translines no_modify_closed; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE CONSTRAINT TRIGGER no_modify_closed AFTER INSERT OR UPDATE ON public.translines NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE PROCEDURE public.check_modify_closed_trans_line();
 
 
 --
--- Name: deliveries deliveries_supplierid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: barcodes barcodes_pluid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.barcodes
+    ADD CONSTRAINT barcodes_pluid_fkey FOREIGN KEY (pluid) REFERENCES public.pricelookups(id) ON DELETE CASCADE;
+
+
+--
+-- Name: barcodes barcodes_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.barcodes
+    ADD CONSTRAINT barcodes_stocklineid_fkey FOREIGN KEY (stocklineid) REFERENCES public.stocklines(stocklineid) ON DELETE CASCADE;
+
+
+--
+-- Name: barcodes barcodes_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.barcodes
+    ADD CONSTRAINT barcodes_stocktype_fkey FOREIGN KEY (stocktype) REFERENCES public.stocktypes(stocktype) ON DELETE CASCADE;
+
+
+--
+-- Name: deliveries deliveries_supplierid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.deliveries
@@ -37203,7 +37116,7 @@ ALTER TABLE ONLY public.deliveries
 
 
 --
--- Name: departments departments_vatband_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: departments departments_vatband_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.departments
@@ -37211,7 +37124,7 @@ ALTER TABLE ONLY public.departments
 
 
 --
--- Name: group_grants group_grants_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_grants group_grants_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_grants
@@ -37219,7 +37132,7 @@ ALTER TABLE ONLY public.group_grants
 
 
 --
--- Name: group_grants group_grants_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_grants group_grants_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_grants
@@ -37227,7 +37140,7 @@ ALTER TABLE ONLY public.group_grants
 
 
 --
--- Name: group_membership group_membership_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_membership group_membership_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_membership
@@ -37235,7 +37148,7 @@ ALTER TABLE ONLY public.group_membership
 
 
 --
--- Name: group_membership group_membership_permission_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: group_membership group_membership_permission_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.group_membership
@@ -37243,7 +37156,7 @@ ALTER TABLE ONLY public.group_membership
 
 
 --
--- Name: keyboard keyboard_pluid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: keyboard keyboard_pluid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.keyboard
@@ -37251,7 +37164,7 @@ ALTER TABLE ONLY public.keyboard
 
 
 --
--- Name: keyboard keyboard_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: keyboard keyboard_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.keyboard
@@ -37259,7 +37172,7 @@ ALTER TABLE ONLY public.keyboard
 
 
 --
--- Name: log log_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37267,7 +37180,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_config_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_config_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37275,7 +37188,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_delivery_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_delivery_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37283,7 +37196,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_department_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_department_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37291,7 +37204,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37299,7 +37212,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_loguser_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_loguser_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37307,7 +37220,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_payment_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_payment_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37315,7 +37228,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_pricelookup_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_pricelookup_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37323,7 +37236,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_removecode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_removecode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37331,7 +37244,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_session_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_session_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37339,7 +37252,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stockannotation_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stockannotation_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37347,7 +37260,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stockitem_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stockitem_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37355,7 +37268,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stockline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stockline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37363,7 +37276,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stockout_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stockout_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37371,7 +37284,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stocktake_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stocktake_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37379,7 +37292,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37387,7 +37300,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_stockunit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_stockunit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37395,7 +37308,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_supplier_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_supplier_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37403,7 +37316,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_transaction_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_transaction_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37411,7 +37324,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_transline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_transline_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37419,7 +37332,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_unit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_unit_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37427,7 +37340,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37435,7 +37348,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_usertoken_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_usertoken_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37443,7 +37356,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_vatband_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_vatband_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37451,7 +37364,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: log log_vatrate_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: log log_vatrate_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.log
@@ -37459,7 +37372,7 @@ ALTER TABLE ONLY public.log
 
 
 --
--- Name: payment_meta payment_meta_paymentid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: payment_meta payment_meta_paymentid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payment_meta
@@ -37467,7 +37380,7 @@ ALTER TABLE ONLY public.payment_meta
 
 
 --
--- Name: payments payments_paytype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: payments payments_paytype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments
@@ -37475,7 +37388,7 @@ ALTER TABLE ONLY public.payments
 
 
 --
--- Name: payments payments_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: payments payments_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments
@@ -37483,7 +37396,7 @@ ALTER TABLE ONLY public.payments
 
 
 --
--- Name: payments payments_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: payments payments_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments
@@ -37491,7 +37404,7 @@ ALTER TABLE ONLY public.payments
 
 
 --
--- Name: pricelookups pricelookups_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: pricelookups pricelookups_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.pricelookups
@@ -37499,7 +37412,7 @@ ALTER TABLE ONLY public.pricelookups
 
 
 --
--- Name: refusals_log refusals_log_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: refusals_log refusals_log_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.refusals_log
@@ -37507,7 +37420,7 @@ ALTER TABLE ONLY public.refusals_log
 
 
 --
--- Name: sessiontotals sessiontotals_paytype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: sessiontotals sessiontotals_paytype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessiontotals
@@ -37515,7 +37428,7 @@ ALTER TABLE ONLY public.sessiontotals
 
 
 --
--- Name: sessiontotals sessiontotals_sessionid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: sessiontotals sessiontotals_sessionid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessiontotals
@@ -37523,7 +37436,7 @@ ALTER TABLE ONLY public.sessiontotals
 
 
 --
--- Name: stock_annotations stock_annotations_atype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock_annotations stock_annotations_atype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock_annotations
@@ -37531,7 +37444,7 @@ ALTER TABLE ONLY public.stock_annotations
 
 
 --
--- Name: stock_annotations stock_annotations_stockid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock_annotations stock_annotations_stockid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock_annotations
@@ -37539,7 +37452,7 @@ ALTER TABLE ONLY public.stock_annotations
 
 
 --
--- Name: stock_annotations stock_annotations_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock_annotations stock_annotations_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock_annotations
@@ -37547,7 +37460,7 @@ ALTER TABLE ONLY public.stock_annotations
 
 
 --
--- Name: stock stock_deliveryid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_deliveryid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -37555,7 +37468,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stock stock_finishcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_finishcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -37563,7 +37476,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stock stock_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -37571,7 +37484,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stock stock_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -37579,7 +37492,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stock stock_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stock stock_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stock
@@ -37587,7 +37500,7 @@ ALTER TABLE ONLY public.stock
 
 
 --
--- Name: stockline_stocktype_log stockline_stocktype_log_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockline_stocktype_log stockline_stocktype_log_stocklineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockline_stocktype_log
@@ -37595,7 +37508,7 @@ ALTER TABLE ONLY public.stockline_stocktype_log
 
 
 --
--- Name: stockline_stocktype_log stockline_stocktype_log_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockline_stocktype_log stockline_stocktype_log_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockline_stocktype_log
@@ -37603,7 +37516,7 @@ ALTER TABLE ONLY public.stockline_stocktype_log
 
 
 --
--- Name: stocklines stocklines_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocklines stocklines_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocklines
@@ -37611,7 +37524,7 @@ ALTER TABLE ONLY public.stocklines
 
 
 --
--- Name: stocklines stocklines_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocklines stocklines_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocklines
@@ -37619,7 +37532,7 @@ ALTER TABLE ONLY public.stocklines
 
 
 --
--- Name: stockout stockout_removecode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockout stockout_removecode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockout
@@ -37627,7 +37540,7 @@ ALTER TABLE ONLY public.stockout
 
 
 --
--- Name: stockout stockout_stockid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockout stockout_stockid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockout
@@ -37635,7 +37548,7 @@ ALTER TABLE ONLY public.stockout
 
 
 --
--- Name: stockout stockout_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockout stockout_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockout
@@ -37643,7 +37556,7 @@ ALTER TABLE ONLY public.stockout
 
 
 --
--- Name: stockout stockout_translineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockout stockout_translineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockout
@@ -37651,7 +37564,7 @@ ALTER TABLE ONLY public.stockout
 
 
 --
--- Name: stocktake_adjustments stocktake_adjustments_removecode_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_adjustments stocktake_adjustments_removecode_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_adjustments
@@ -37659,7 +37572,7 @@ ALTER TABLE ONLY public.stocktake_adjustments
 
 
 --
--- Name: stocktake_adjustments stocktake_adjustments_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_adjustments stocktake_adjustments_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_adjustments
@@ -37667,7 +37580,7 @@ ALTER TABLE ONLY public.stocktake_adjustments
 
 
 --
--- Name: stocktake_snapshots stocktake_snapshots_finishcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_snapshots stocktake_snapshots_finishcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_snapshots
@@ -37675,7 +37588,7 @@ ALTER TABLE ONLY public.stocktake_snapshots
 
 
 --
--- Name: stocktake_snapshots stocktake_snapshots_stock_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_snapshots stocktake_snapshots_stock_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_snapshots
@@ -37683,7 +37596,7 @@ ALTER TABLE ONLY public.stocktake_snapshots
 
 
 --
--- Name: stocktake_snapshots stocktake_snapshots_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktake_snapshots stocktake_snapshots_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_snapshots
@@ -37691,7 +37604,7 @@ ALTER TABLE ONLY public.stocktake_snapshots
 
 
 --
--- Name: stocktakes stocktakes_commit_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktakes stocktakes_commit_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktakes
@@ -37699,7 +37612,7 @@ ALTER TABLE ONLY public.stocktakes
 
 
 --
--- Name: stocktakes stocktakes_create_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktakes stocktakes_create_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktakes
@@ -37707,7 +37620,7 @@ ALTER TABLE ONLY public.stocktakes
 
 
 --
--- Name: stocktypes stocktypes_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktypes stocktypes_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktypes
@@ -37715,7 +37628,7 @@ ALTER TABLE ONLY public.stocktypes
 
 
 --
--- Name: stocktypes stocktypes_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktypes stocktypes_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktypes
@@ -37723,7 +37636,7 @@ ALTER TABLE ONLY public.stocktypes
 
 
 --
--- Name: stocktypes stocktypes_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stocktypes stocktypes_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktypes
@@ -37731,7 +37644,7 @@ ALTER TABLE ONLY public.stocktypes
 
 
 --
--- Name: stockunits stockunits_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: stockunits stockunits_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stockunits
@@ -37739,7 +37652,7 @@ ALTER TABLE ONLY public.stockunits
 
 
 --
--- Name: transaction_meta transaction_meta_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: transaction_meta transaction_meta_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transaction_meta
@@ -37747,7 +37660,7 @@ ALTER TABLE ONLY public.transaction_meta
 
 
 --
--- Name: transactions transactions_sessionid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: transactions transactions_sessionid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transactions
@@ -37755,7 +37668,7 @@ ALTER TABLE ONLY public.transactions
 
 
 --
--- Name: transline_meta transline_meta_translineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: transline_meta transline_meta_translineid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.transline_meta
@@ -37763,7 +37676,7 @@ ALTER TABLE ONLY public.transline_meta
 
 
 --
--- Name: translines translines_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_dept_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -37771,7 +37684,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: translines translines_transcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_transcode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -37779,7 +37692,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: translines translines_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -37787,7 +37700,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: translines translines_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -37795,7 +37708,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: translines translines_voided_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: translines translines_voided_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.translines
@@ -37803,7 +37716,7 @@ ALTER TABLE ONLY public.translines
 
 
 --
--- Name: users users_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: users users_transid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -37811,7 +37724,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: usertokens usertokens_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: usertokens usertokens_user_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.usertokens
@@ -37819,7 +37732,7 @@ ALTER TABLE ONLY public.usertokens
 
 
 --
--- Name: vat vat_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: vat vat_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vat
@@ -37827,7 +37740,7 @@ ALTER TABLE ONLY public.vat
 
 
 --
--- Name: vatrates vatrates_band_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: vatrates vatrates_band_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vatrates
@@ -37835,7 +37748,7 @@ ALTER TABLE ONLY public.vatrates
 
 
 --
--- Name: vatrates vatrates_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: steve
+-- Name: vatrates vatrates_business_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vatrates
