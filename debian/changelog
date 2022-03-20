@@ -1,3 +1,47 @@
+quicktill (20.0) stable; urgency=low
+
+  * New release 20.0
+
+  * Update 2018 emfcamp data for current database schema
+
+  * Prepare for release 20
+
+  * Update manpage
+
+  * Read-only web interface for barcodes
+
+  * Reorganise sidebar menu in tillweb
+
+  * Log waste recorded via web interface
+
+  * Log details of recorded waste
+
+  * Support barcodes and stock types in Record Waste
+
+  * Editing of barcode bindings
+
+  * Split modifiers.selectmodifier() from modifiers.modifiermenu()
+
+  * Add plu.selectplu() popup
+
+  * Add placeholder 'stocktype' attribute to KeyboardBinding
+
+  * Change StockType.remaining to exclude stock on stocklines
+
+  * Add stocktype.stocktypefield
+
+  * Look up barcode details when processing scan
+
+  * Support barcodes in stocklines menu
+
+  * Add barcode support to Price Check
+
+  * Initial barcode scanner support
+
+  * Better heuristic for ui.listpopup width
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 20 Mar 2022 10:25:57 +0000
+
 quicktill (19.7) stable; urgency=low
 
   * New release 19.7
