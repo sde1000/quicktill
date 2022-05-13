@@ -24,6 +24,7 @@ from . import stocklines
 from . import plu
 from . import stocktype
 from . import modifiers
+from . import user
 from .models import Barcode
 
 log = logging.getLogger(__name__)
@@ -110,7 +111,9 @@ class _barcode_change_confirmed(_new_barcode_mixin, ui.infopopup):
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
 
-class edit_barcode(_new_barcode_mixin, ui.keymenu):
+class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
+    permission_required = ('edit-barcode', "Change barcode assignment")
+
     def __init__(self, b):
         binding = b.binding
         if binding:

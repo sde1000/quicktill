@@ -990,6 +990,7 @@ class default_groups:
         "alter-plu",
         "list-unbound-plus",
         "alter-modifier",
+        "edit-barcode",
         "return-finished-item",
         "recall-any-trans",
         "apply-discount",
