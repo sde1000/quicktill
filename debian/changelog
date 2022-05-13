@@ -1,3 +1,17 @@
+quicktill (20.1) stable; urgency=low
+
+  * New release 20.1
+
+  * Add a permission for editing barcode assignments
+
+  * Update README and year
+
+  * Enable barcode scanner on stock terminals
+
+  * Special case bank holidays for 2022
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 13 May 2022 21:34:52 +0100
+
 quicktill (20.0) stable; urgency=low
 
   * New release 20.0
