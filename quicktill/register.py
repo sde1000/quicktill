@@ -91,6 +91,12 @@ allow_mergetrans_with_payments = config.BooleanConfigItem(
     "'mergeable' will be permitted; the presence of payments of other "
     "types will still prevent merging.")
 
+# Automatically lock after No Sale?
+lock_after_nosale = config.BooleanConfigItem(
+    'register:lock_after_nosale', False,
+    display_name="Lock after No Sale",
+    description="Lock the register after performing a No Sale operation?")
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -1706,6 +1712,9 @@ class page(ui.basicpage):
                         ui.toast("No Sale has been recorded.")
                         # Finally!  We're not lying any more!
                         user.log("No Sale")
+                        if lock_after_nosale():
+                            self.locked = True
+                            self._redraw()
                 else:
                     ui.infopopup(["You don't have permission to use "
                                   "the No Sale function."], title="No Sale")
