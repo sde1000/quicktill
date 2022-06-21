@@ -240,6 +240,7 @@ class Session(Base, Logged):
     
     incomplete_transactions = relationship(
         "Transaction",
+        viewonly=True,
         primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
 
     @property
