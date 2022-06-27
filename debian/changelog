@@ -1,3 +1,15 @@
+quicktill (20.2) stable; urgency=low
+
+  * New release 20.2
+
+  * Remove User references from log while anonymising database
+
+  * Add viewonly=True to Session.incomplete_transactions
+
+  * Add an option to lock the register after each No Sale
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 27 Jun 2022 22:02:05 +0100
+
 quicktill (20.1) stable; urgency=low
 
   * New release 20.1
