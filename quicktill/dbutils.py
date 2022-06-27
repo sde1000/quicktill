@@ -8,6 +8,7 @@ from . import models
 from . import tillconfig
 import random
 
+
 class dbshell(cmdline.command):
     """
     Provide an interactive python prompt with the 'td' module and
@@ -26,6 +27,7 @@ class dbshell(cmdline.command):
         with td.orm_session():
             console.interact()
 
+
 class syncdb(cmdline.command):
     """
     Create database tables and indexes that have not already been
@@ -43,6 +45,7 @@ class syncdb(cmdline.command):
     @staticmethod
     def run(args):
         td.create_tables()
+
 
 class flushdb(cmdline.command):
     """
@@ -77,6 +80,7 @@ class flushdb(cmdline.command):
                 return 1
         td.remove_tables()
         print("Finished.")
+
 
 class anonymise(cmdline.command):
     """Remove Personally Identifiable Information from the database.  This
@@ -159,10 +163,9 @@ class anonymise(cmdline.command):
         with td.orm_session():
             sessions = td.s.query(models.Session).count()
         if sessions > 0:
-            print("There is some data ({} sessions) in the database.  "
+            print(f"There is some data ({sessions} sessions) in the database.  "
                   "Are you sure you want to remove all the PII?  "
-                  "This operation cannot be undone.".format(
-                      sessions))
+                  "This operation cannot be undone.")
             ok = input("Sure? (y/n) ")
             if ok != 'y':
                 return 1
@@ -171,14 +174,20 @@ class anonymise(cmdline.command):
             for u in users:
                 firstname = random.choice(anonymise.firstnames)
                 lastname = random.choice(anonymise.surnames)
-                u.fullname = "{} {}".format(firstname, lastname)
+                u.fullname = f"{firstname} {lastname}"
                 u.shortname = firstname
                 u.message = None
             transactions = td.s.query(models.Transaction).all()
             for t in transactions:
                 t.notes = ""
             td.s.query(models.RefusalsLog).delete()
+            # Log entries that reference a User may contain their real
+            # name. Delete them.
+            td.s.query(models.LogEntry)\
+                .filter(models.LogEntry.user != None)\
+                .delete()
         print("Finished.")
+
 
 class checkdb(cmdline.command):
     """
