@@ -6,6 +6,7 @@ Till configurations can define as many new keycodes as they need.
 
 """
 
+
 class keycode:
     """A keyboard input from the user
     """
@@ -33,14 +34,17 @@ class keycode:
         return '%s("%s","%s")' % (self.__class__.__name__,
                                   self.name, self.keycap)
 
+
 class paymentkey(keycode):
     def __init__(self, name, keycap, method):
         self.paymentmethod = method
+
 
 class notekey(paymentkey):
     def __init__(self, name, keycap, method, notevalue):
         paymentkey.__init__(self, name, keycap, method)
         self.notevalue = notevalue
+
 
 class linekey(keycode):
     def __new__(cls, line):
@@ -80,6 +84,7 @@ class linekey(keycode):
 
     def __repr__(self):
         return "linekey(%d)" % self._line
+
 
 # The only keycodes that need to be defined here are those referred to
 # explicitly in the till code.  All other keycodes are defined in the
@@ -128,6 +133,7 @@ cursorkeys = [
     keycode("K_PAGEUP", "Page Up"),
     keycode("K_PAGEDOWN", "Page Down"),
 ]
+
 
 class Key:
     """A key on the till's keyboard

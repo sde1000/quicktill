@@ -12,36 +12,51 @@ from sqlalchemy.sql.expression import func
 from sqlalchemy.sql import select
 import threading
 from . import models
-from .models import *
+from .models import (
+    StockType,
+    StockOut,
+    foodorder_seq,
+)
 
 import logging
 log = logging.getLogger(__name__)
 
 engine = None
 
+
 class NoDatabase(Exception):
     """Attempt to use database before it's initialised
     """
     pass
+
+
 class fake_session:
     def query(self, *args, **kwargs):
         raise NoDatabase()
+
     def commit(self):
         pass
+
     def rollback(self):
         pass
+
     def close(self):
         pass
+
     def remove(self):
         pass
+
 
 # ORM session; although this is a scoped_session it should only be
 # accessed within a "with orm_session()" block
 s = fake_session()
 _s_guard = threading.local()
 
+
 class SessionLifecycleError(Exception):
     pass
+
+
 class orm_session:
     @staticmethod
     def __enter__():
@@ -79,48 +94,55 @@ class orm_session:
         log.debug("End session")
         l["session_started"] = False
 
-### Functions related to the stocktypes table
+
+# Functions related to the stocktypes table
 
 def stocktype_completemanufacturer(m):
     result = s.execute(
-        select([StockType.manufacturer]).\
-        where(StockType.manufacturer.ilike(m + '%')).\
-        group_by(StockType.manufacturer).\
-        order_by(func.length(StockType.manufacturer), StockType.manufacturer)
+        select([StockType.manufacturer])
+        .where(StockType.manufacturer.ilike(m + '%'))
+        .group_by(StockType.manufacturer)
+        .order_by(func.length(StockType.manufacturer), StockType.manufacturer)
     )
     return [x[0] for x in result]
+
 
 def stocktype_completename(m, n):
     result = s.execute(
-        select([StockType.name]).\
-        where(StockType.manufacturer == m).\
-        where(StockType.name.ilike(n + '%')).\
-        group_by(StockType.name).\
-        order_by(func.length(StockType.name), StockType.name)
+        select([StockType.name])
+        .where(StockType.manufacturer == m)
+        .where(StockType.name.ilike(n + '%'))
+        .group_by(StockType.name)
+        .order_by(func.length(StockType.name), StockType.name)
     )
     return [x[0] for x in result]
 
-### Functions related to the stock,stockout tables
+
+# Functions related to the stock,stockout tables
 
 def stock_checkpullthru(stockid, maxtime):
     """Did this stock item require pulling through?"""
     return s.execute(
-        select([func.now() - func.max(StockOut.time) > maxtime]).\
-            where(StockOut.stockid == stockid).\
-            where(StockOut.removecode_id.in_(['sold', 'pullthru']))
-        ).scalar()
+        select([func.now() - func.max(StockOut.time) > maxtime])
+        .where(StockOut.stockid == stockid)
+        .where(StockOut.removecode_id.in_(['sold', 'pullthru']))
+    ).scalar()
+
 
 def foodorder_reset():
     # XXX SQLAlchemy 2.0 will require engine to be passed explicitly
     foodorder_seq.drop()
     foodorder_seq.create()
 
+
 def foodorder_ticket():
     return s.execute(select([foodorder_seq.next_value()])).scalar()
+
 
 def db_version():
     # XXX needs update for SQLAlchemy 2.0
     return s.execute("select version()").scalar()
+
 
 # This is "pessimistic disconnect handling" as described in the
 # sqlalchemy documentation.  A "ping" select is issued on every
@@ -132,9 +154,10 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("SELECT 1")
-    except:
+    except Exception:
         raise exc.DisconnectionError()
     cursor.close()
+
 
 def libpq_to_sqlalchemy(database):
     """Create a sqlalchemy engine URL from a libpq connection string
@@ -153,6 +176,7 @@ def libpq_to_sqlalchemy(database):
     estring += "/{}".format(csdict['dbname'])
     return estring
 
+
 def parse_database_name(database):
     if database[0] == ":":
         database = "dbname={}".format(database[1:])
@@ -161,6 +185,7 @@ def parse_database_name(database):
             database = "dbname={}".format(database)
         database = libpq_to_sqlalchemy(database)
     return database
+
 
 def init(database):
     """Initialise the database subsystem.
@@ -175,9 +200,10 @@ def init(database):
     engine = create_engine(database)
     # XXX no longer supported in SQLAlchemy 2.0; pass engine to
     # create_all() etc. instead
-    models.metadata.bind = engine # for DDL, eg. to recreate foodorder_seq
+    models.metadata.bind = engine  # for DDL, eg. to recreate foodorder_seq
     session_factory = sessionmaker(bind=engine)
     s = scoped_session(session_factory)
+
 
 def create_tables():
     """Add any database tables that are missing.
@@ -185,6 +211,7 @@ def create_tables():
     NB does not update tables that don't match our model!
     """
     models.metadata.create_all()
+
 
 def remove_tables():
     """Removes all our database tables.

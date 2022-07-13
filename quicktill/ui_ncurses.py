@@ -7,7 +7,9 @@ import locale
 import textwrap
 import time
 import math
-import curses, curses.ascii, curses.panel
+import curses
+import curses.ascii
+import curses.panel
 from . import ui
 from . import keyboard
 from . import tillconfig
@@ -36,11 +38,13 @@ _colourpair_cache = {}
 # color_pair isn't exposed by the python module
 _curses_pair = iter(range(1, 256))
 
+
 def _init_colourpairs():
     # If we create curses colorpairs for all the pre-defined colour
     # pairs at startup, we may avoid unnecessary screen redraws later
     for cp in ui.colourpair.all_colourpairs:
         _curses_attr(cp)
+
 
 def _curses_attr(colour):
     if hasattr(colour, '_curses_attr'):
@@ -61,6 +65,7 @@ def _curses_attr(colour):
         _colourpair_cache[(foreground, background)] = number
     colour._curses_attr = curses.color_pair(number)
     return colour._curses_attr
+
 
 class curses_root:
     """Root window with single-line header
@@ -92,6 +97,7 @@ class curses_root:
         m = self.left
         s = self.middle
         t = time.strftime("%a %d %b %Y %H:%M:%S %Z")
+
         def cat(m, s, t):
             w = len(m) + len(s) + len(t)
             pad1 = (mx - w) // 2
@@ -99,6 +105,7 @@ class curses_root:
             if w + pad1 + pad2 != mx:
                 pad1 = pad1 + 1
             return ''.join([m, ' ' * pad1, s, ' ' * pad2, t])
+
         x = cat(m, s, t)
         while len(x) > mx:
             if len(s) > 0:
@@ -184,6 +191,7 @@ class curses_root:
         for p in to_raise:
             p.top()
 
+
 class window_stack:
     def __init__(self, stack):
         self._stack = stack
@@ -193,10 +201,11 @@ class window_stack:
             i._pan.show()
         ui.rootwin._check_on_top()
 
+
 class curses_window:
     """A window to draw text in
     """
-    def __init__(self, win, pan=None, colour = ui.colour_default,
+    def __init__(self, win, pan=None, colour=ui.colour_default,
                  always_on_top=False):
         self._win = win
         self._pan = pan
@@ -279,13 +288,13 @@ class curses_window:
         chop = min(0, width - len(s))
         if align == "<":
             if chop:
-                s = s[: -chop]
+                s = s[:-chop]
             self.addstr(y, x, s, colour=colour)
         elif align == "^":
             if chop:
                 lchop = chop // 2
                 rchop = chop - lchop
-                s = s[lchop : -rchop]
+                s = s[lchop:-rchop]
             self.addstr(y, x, s.center(width), colour=colour)
         else:
             if chop:
@@ -325,9 +334,11 @@ class curses_window:
         # based on that
         pass
 
+
 def _doupdate():
     curses.panel.update_panels()
     curses.doupdate()
+
 
 # curses codes and their till keycode equivalents
 kbcodes = {
@@ -344,17 +355,18 @@ kbcodes = {
     curses.KEY_END: keyboard.K_END,
     curses.KEY_EOL: keyboard.K_EOL,
     curses.ascii.TAB: keyboard.K_TAB,
-    1: keyboard.K_HOME, # Ctrl-A
-    4: keyboard.K_DEL, # Ctrl-D
-    5: keyboard.K_END, # Ctrl-E
+    1: keyboard.K_HOME,  # Ctrl-A
+    4: keyboard.K_DEL,  # Ctrl-D
+    5: keyboard.K_END,  # Ctrl-E
     10: keyboard.K_CASH,
-    11: keyboard.K_EOL, # Ctrl-K
-    15: keyboard.K_QUANTITY, # Ctrl-O
-    16: keyboard.K_PRINT, # Ctrl-P
-    20: keyboard.K_MANAGETRANS, # Ctrl-T
-    24: keyboard.K_CLEAR, # Ctrl-X
-    25: keyboard.K_CANCEL, # Ctrl-Y
+    11: keyboard.K_EOL,  # Ctrl-K
+    15: keyboard.K_QUANTITY,  # Ctrl-O
+    16: keyboard.K_PRINT,  # Ctrl-P
+    20: keyboard.K_MANAGETRANS,  # Ctrl-T
+    24: keyboard.K_CLEAR,  # Ctrl-X
+    25: keyboard.K_CANCEL,  # Ctrl-Y
 }
+
 
 def _curses_keyboard_input():
     """Called by the mainloop whenever data is available on sys.stdin
@@ -375,12 +387,14 @@ def _curses_keyboard_input():
     elif curses.ascii.isprint(i):
         ui.handle_raw_keyboard_input(chr(i))
 
+
 def _linux_unblank_screen():
     """Unblank the screen when running on Linux console
     """
     TIOCL_UNBLANKSCREEN = 4
     buf = array.array('b', [TIOCL_UNBLANKSCREEN])
     fcntl.ioctl(sys.stdin, termios.TIOCLINUX, buf)
+
 
 def _init(w):
     """ncurses has been initialised, and calls us with the root window.
@@ -404,6 +418,7 @@ def _init(w):
         ui.basicpage._ensure_page_exists()
         _doupdate()
         tillconfig.mainloop.iterate()
+
 
 def run():
     """Start running with the ncurses display system

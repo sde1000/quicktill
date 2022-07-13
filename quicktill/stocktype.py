@@ -1,12 +1,13 @@
 """Create and modify stocktypes."""
 
 import logging
-log = logging.getLogger(__name__)
 from . import ui, td, keyboard, tillconfig, user
 from .models import Department, Unit, StockType, StockItem, Delivery, penny
 from .plugins import ClassPluginMount
 from decimal import Decimal
 import datetime
+log = logging.getLogger(__name__)
+
 
 class TempStockUnit:
     """StockUnit-compatible class that is not persisted to the database
@@ -17,6 +18,7 @@ class TempStockUnit:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+
 
 class choose_stocktype(ui.dismisspopup):
     """Select/modify a stock type.  Has two modes:
@@ -112,7 +114,7 @@ class choose_stocktype(ui.dismisspopup):
     def get_abv(self):
         try:
             return float(self.abvfield.f)
-        except:
+        except Exception:
             return None
 
     def update_model(self, model):
@@ -190,7 +192,7 @@ class choose_stocktype(ui.dismisspopup):
         st = StockType()
         self.update_model(st)
         td.s.add(st)
-        td.s.flush() # ensures the model has an identity
+        td.s.flush()  # ensures the model has an identity
         user.log(f"Created stock type {st.logref}")
         self.func(st)
 
@@ -213,15 +215,17 @@ class choose_stocktype(ui.dismisspopup):
         # Confirmation box time...
         if st is None:
             if self.allownew:
-                ui.infopopup(["There's no existing stock type that matches the "
-                              "details you've entered.  Press Cash/Enter to "
-                              "create a new stock type, or Clear to go back."],
-                             title="New Stock Type?", keymap={
+                ui.infopopup(
+                    ["There's no existing stock type that matches the "
+                     "details you've entered.  Press Cash/Enter to "
+                     "create a new stock type, or Clear to go back."],
+                    title="New Stock Type?", keymap={
                         keyboard.K_CASH: (self.finish_save, None, True)})
             else:
-                ui.infopopup(["There is no stock type that matches the "
-                              "details you have entered."],
-                              title="No Match")
+                ui.infopopup(
+                    ["There is no stock type that matches the "
+                     "details you have entered."],
+                    title="No Match")
                 return
         else:
             self.dismiss()
@@ -236,6 +240,7 @@ class choose_stocktype(ui.dismisspopup):
             st = td.s.query(StockType).get(self.st)
             self.update_model(st)
             user.log(f"Updated stock type {st.logref}")
+
 
 class reprice_stocktype(user.permission_checked, ui.dismisspopup):
     """Allow the sale price to be changed on a particular StockType.
@@ -253,10 +258,10 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
         self.st_id = st.id
         name = st.format()
         sl = td.s.query(StockItem)\
-                 .filter(StockItem.stocktype==st)\
+                 .filter(StockItem.stocktype == st)\
                  .join(Delivery)\
-                 .filter(Delivery.checked==True)\
-                 .filter(StockItem.finished==None)\
+                 .filter(Delivery.checked == True)\
+                 .filter(StockItem.finished == None)\
                  .order_by(StockItem.id)\
                  .all()
 
@@ -307,14 +312,16 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
         st.saleprice = Decimal(self.salefield.f).quantize(penny)
         if st.saleprice != oldprice:
             st.pricechanged = datetime.datetime.now()
-            user.log(f"Changed sale price of {st.logref} from "
-                     f"{tillconfig.fc(oldprice)} to {tillconfig.fc(st.saleprice)}")
+            user.log(
+                f"Changed sale price of {st.logref} from "
+                f"{tillconfig.fc(oldprice)} to {tillconfig.fc(st.saleprice)}")
             td.s.flush()
             ui.infopopup([f"Price of {st} changed to "
                           f"{tillconfig.currency}{st.pricestr}."],
                          title="Price changed",
                          colour=ui.colour_info,
                          dismiss=keyboard.K_CASH)
+
 
 class stocktypefield(ui.modelpopupfield):
     def __init__(self, y, x, w, f=None, keymap={}, readonly=False):
@@ -330,6 +337,7 @@ class stocktypefield(ui.modelpopupfield):
                 ui.beep()
         else:
             super().keypress(k)
+
 
 class PriceGuessHook(metaclass=ClassPluginMount):
     """Subclass this to add a price guessing routine.

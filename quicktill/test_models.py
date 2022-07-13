@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 TEST_DATABASE_NAME = "quicktill-test"
 
+
 class ModelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -77,7 +78,7 @@ class ModelTest(unittest.TestCase):
                                 amount=Decimal(2)),
             models.SessionTotal(session=session, paytype=card,
                                 amount=Decimal(1)),
-            ])
+        ])
         self.s.commit()
         self.assertEqual(session.actual_total, Decimal(3))
 
@@ -181,7 +182,7 @@ class ModelTest(unittest.TestCase):
             self.s.commit()
 
     def test_keyboard_binding_unambigous_constraint(self):
-        stockline, plu=self.template_stockline_and_plu_setup()
+        stockline, plu = self.template_stockline_and_plu_setup()
         self.s.add(models.KeyboardBinding(
             keycode='FOO', menukey='BAR',
             stockline=stockline, plu=plu))
@@ -299,13 +300,13 @@ class ModelTest(unittest.TestCase):
         self.s.commit()
         # Add three firkins to the delivery.  If this fails, has
         # autoflush somehow been turned on?
-        items = delivery.add_items(beer, firkin, 3, Decimal("157.00"))
+        delivery.add_items(beer, firkin, 3, Decimal("157.00"))
         self.s.flush()
         # Test adding a merged item
         merge_stockunit = models.StockUnit(name="Test", unit=pint, size=10,
                                            merge=True)
         self.s.add(merge_stockunit)
-        items = delivery.add_items(beer, merge_stockunit, 2, Decimal("201.00"))
+        delivery.add_items(beer, merge_stockunit, 2, Decimal("201.00"))
         self.s.commit()
 
     def test_stockitem_remaining(self):
@@ -485,6 +486,7 @@ class ModelTest(unittest.TestCase):
         # PaymentMeta row should not exist
         pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
         self.assertIsNone(pm)
+
 
 if __name__ == '__main__':
     unittest.main()

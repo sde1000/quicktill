@@ -3,7 +3,6 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 import sys
 from . import listen
-from . import tillconfig
 from . import config
 
 application_css = """
@@ -94,6 +93,7 @@ custom_css = config.MultiLineConfigItem(
     'gtk:custom_css', None, display_name="Custom CSS",
     description="Custom CSS for till when running with gtk")
 
+
 class kbutton(Gtk.Button):
     """A button on an on-screen keyboard
     """
@@ -131,6 +131,7 @@ class kbutton(Gtk.Button):
         # Return minimum width and natural width
         return 20, 20
 
+
 class kbgrid(Gtk.Grid):
     """A Gtk widget representing an on-screen keyboard
     """
@@ -138,7 +139,7 @@ class kbgrid(Gtk.Grid):
         super().__init__()
         self.set_column_homogeneous(True)
         self.set_row_homogeneous(True)
-        self._buttons = {} # keycode -> button
+        self._buttons = {}  # keycode -> button
         for loc, key in kb.items():
             row, col = loc
             button = kbutton(key, input_handler)
@@ -152,6 +153,7 @@ class kbgrid(Gtk.Grid):
             self._buttons[keycap].update_text()
             self._buttons[keycap].update_class()
 
+
 class kbwindow(Gtk.Window):
     """A window with an on-screen keyboard
     """
@@ -160,6 +162,7 @@ class kbwindow(Gtk.Window):
         self.add(kbgrid(kb, input_handler))
         self.set_default_size(1200, 200)
         self.show_all()
+
 
 def _add_css(css, priority):
     style_provider = Gtk.CssProvider()
@@ -170,11 +173,13 @@ def _add_css(css, priority):
         style_provider,
         priority)
 
+
 def init_css():
     _add_css(application_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     # XXX can we change this css if the config item is changed?
     if custom_css():
         _add_css(custom_css(), Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
 
 def run_standalone(window):
     init_css()

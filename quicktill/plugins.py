@@ -7,6 +7,7 @@ class ClassPluginMount(type):
         else:
             cls.plugins.append(cls)
 
+
 class InstancePluginMount(type):
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, 'instances'):

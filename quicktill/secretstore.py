@@ -4,13 +4,16 @@ from .models import Secret
 from . import td
 from . import cmdline
 
+
 class SecretException(Exception):
     pass
+
 
 class SecretDoesNotExist(SecretException):
     """The requested secret does not exist in the database
     """
     pass
+
 
 class SecretNotAvailable(SecretException):
     """The requested secret exists, but is not usable
@@ -19,6 +22,7 @@ class SecretNotAvailable(SecretException):
     than the provided maximum age.
     """
     pass
+
 
 class Secrets:
     """A group of secrets stored in the database
@@ -32,7 +36,7 @@ class Secrets:
         self._key_name = key_name
         try:
             self._fernet = Fernet(key)
-        except:
+        except Exception:
             self._fernet = None
         self._key_names[key_name] = self
 
@@ -70,6 +74,7 @@ class Secrets:
             td.s.add(s)
         s.token = self._fernet.encrypt(value.encode('utf-8'))
 
+
 class genkey(cmdline.command):
     database_required = False
     command = "generate-secret-key"
@@ -79,6 +84,7 @@ class genkey(cmdline.command):
     @staticmethod
     def run(args):
         print(Fernet.generate_key())
+
 
 class passwd(cmdline.command):
     help = "store or update a password in the database"
@@ -106,7 +112,7 @@ class passwd(cmdline.command):
         if not args.password:
             pwcheck = getpass.getpass("New password again: ")
             if password != pwcheck:
-                print(f"Passwords didn't match.")
+                print("Passwords didn't match.")
                 return 1
         with td.orm_session():
             keystore.store(args.secret_name, password, create=True)

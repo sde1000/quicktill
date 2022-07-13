@@ -1,13 +1,11 @@
-from django.forms import Form
 from django.forms.fields import Field
 from django.forms.widgets import Widget
 from django.forms.widgets import Select, SelectMultiple, MultipleHiddenInput
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext, gettext_lazy as _
-from sqlalchemy import inspect
+from django.utils.translation import gettext_lazy as _
 from .db import td
-import copy
 import json
+
 
 class _model_choice_iterator:
     def __init__(self, field):
@@ -29,6 +27,7 @@ class _model_choice_iterator:
         mq = self.field.query_filter(mq)
         yield from ((self.field.model_to_value(x), self.field.label_function(x))
                     for x in mq.all())
+
 
 # Fields
 
@@ -59,7 +58,7 @@ class SQLAModelChoiceField(Field):
                  help_text='', label_function=str, query_filter=lambda x: x,
                  **kwargs):
         self.empty_label = empty_label if empty_label \
-                           else f"Choose a {model.__name__}"
+            else f"Choose a {model.__name__}"
         super().__init__(
             required=required, widget=widget, label=label,
             initial=initial, help_text=help_text, **kwargs)
@@ -85,7 +84,7 @@ class SQLAModelChoiceField(Field):
         """
         try:
             return query.filter(self.model.id.in_(int(x) for x in values))
-        except:
+        except Exception:
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')
 
@@ -105,7 +104,8 @@ class SQLAModelChoiceField(Field):
         if hasattr(result.widget, 'empty_label'):
             result.widget.empty_label = self.empty_label
         if hasattr(result.widget, 'value_to_label'):
-            result.widget.label_function = lambda x:self.label_function(self.to_python(x))
+            result.widget.label_function = \
+                lambda x: self.label_function(self.to_python(x))
 
         # Opinion: django's use of special-case __deepcopy__ all over
         # the forms, fields and widgets implementations is a complete
@@ -130,7 +130,7 @@ class SQLAModelChoiceField(Field):
             if len(r) != 1:
                 return None
             return r[0]
-        except:
+        except Exception:
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')
 
@@ -140,15 +140,16 @@ class SQLAModelChoiceField(Field):
             raise ValidationError(self.error_messages['required'],
                                   code='required')
 
+
 class SQLAModelMultipleChoiceField(SQLAModelChoiceField):
     hidden_widget = MultipleHiddenInput
     widget = SelectMultiple
     _multiple_choices = True
 
     def prepare_value(self, value):
-        if (hasattr(value, '__iter__') and
-            not isinstance(value, str) and
-            not hasattr(value, '_meta')):
+        if (hasattr(value, '__iter__')
+            and not isinstance(value, str)
+            and not hasattr(value, '_meta')):  # noqa: E129
             prepare_value = super().prepare_value
             return [prepare_value(v) for v in value]
         return super().prepare_value(value)
@@ -179,6 +180,7 @@ class SQLAModelMultipleChoiceField(SQLAModelChoiceField):
         data_set = set(data)
         return data_set != initial_set
 
+
 class _StringIDMixin:
     """SQL Alchemy model field with string primary key
     """
@@ -193,19 +195,22 @@ class _StringIDMixin:
     def values_to_filter(self, query, values):
         try:
             return query.filter(getattr(self.model, self.key).in_(values))
-        except:
+        except Exception:
             raise ValidationError(self.error_messages['invalid_choice'],
                                   code='invalid_choice')
+
 
 class StringIDChoiceField(_StringIDMixin, SQLAModelChoiceField):
     """SQL Alchemy model choice field with string primary key
     """
     pass
 
+
 class StringIDMultipleChoiceField(_StringIDMixin, SQLAModelMultipleChoiceField):
     """SQL Alchemy model multiple choice field with string primary key
     """
     pass
+
 
 # Widgets
 
@@ -231,7 +236,8 @@ class _select2_mixin:
 
     def render(self, name, value, attrs=None, renderer=None):
         final_attrs = self.build_attrs(self.attrs, attrs)
-        output = super().render(name, value, attrs=final_attrs, renderer=renderer)
+        output = super().render(
+            name, value, attrs=final_attrs, renderer=renderer)
         output += f'''
 <script type="text/javascript">
   $(document).ready(function(){{
@@ -240,11 +246,14 @@ class _select2_mixin:
 </script>'''
         return output
 
+
 class Select2(_select2_mixin, Select):
     pass
 
+
 class Select2Multiple(_select2_mixin, SelectMultiple):
     pass
+
 
 # Implement a new widget to enable select2 where options are fetched using ajax
 
@@ -258,7 +267,7 @@ class Select2Ajax(Widget):
         self.ajax = ajax
         self.min_input_length = min_input_length
         self.empty_label = empty_label
-        self.value_to_label = str # will be set when copied by field
+        self.value_to_label = str  # will be set when copied by field
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -284,6 +293,7 @@ class Select2Ajax(Widget):
         if not isinstance(value, (tuple, list)):
             value = [value]
         return [str(v) if v is not None else '' for v in value]
+
 
 class Select2MultipleAjax(Select2Ajax):
     allow_multiple_selected = True

@@ -6,6 +6,7 @@ import gc
 import logging
 log = logging.getLogger(__name__)
 
+
 class LockScreenPlugin(metaclass=plugins.InstancePluginMount):
     def add_note(self):
         """Return a string to be displayed on the lock page.
@@ -24,6 +25,7 @@ class LockScreenPlugin(metaclass=plugins.InstancePluginMount):
         """
         pass
 
+
 class CheckPrinter(LockScreenPlugin):
     def __init__(self, description, printer):
         self._description = description
@@ -34,6 +36,7 @@ class CheckPrinter(LockScreenPlugin):
         if problem:
             log.info("%s problem: %s", self._description, problem)
             return "{} problem: {}".format(self._description, problem)
+
 
 class lockpage(ui.basicpage):
     def __init__(self):

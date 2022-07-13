@@ -1,5 +1,5 @@
 import logging
-from . import keyboard, ui, td, tillconfig, printer, user, linekeys, modifiers
+from . import keyboard, ui, td, printer, user, linekeys, modifiers
 from . import stocktype
 from .models import Department, StockLine, KeyboardBinding
 from .models import StockType, StockLineTypeLog
@@ -7,6 +7,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 log = logging.getLogger(__name__)
+
 
 def restock_list(stockline_list):
     # Print out list of things to fetch and put on display
@@ -24,21 +25,23 @@ def restock_list(stockline_list):
         return
     printer.print_restock_list(sl)
     user.log("Printed restock list")
-    ui.infopopup([
-            "The list of stock to be put on display has been printed.","",
-            "Please choose one of the following options:","",
-            "1. I have finished moving the stock on the printed list.",
-            "2. I have not moved any stock and I have thrown the list away."],
-                 title="Confirm stock movement",
-                 keymap={"1": (finish_restock, (sl,), True),
-                         "2": (abandon_restock, (sl,), True)},
-                 colour=ui.colour_confirm,dismiss=None)\
+    ui.infopopup(
+        ["The list of stock to be put on display has been printed.", "",
+         "Please choose one of the following options:", "",
+         "1. I have finished moving the stock on the printed list.",
+         "2. I have not moved any stock and I have thrown the list away."],
+        title="Confirm stock movement",
+        keymap={"1": (finish_restock, (sl,), True),
+                "2": (abandon_restock, (sl,), True)},
+        colour=ui.colour_confirm, dismiss=None)\
       .unsaved_data = "confirm stock movements"
+
 
 def abandon_restock(sl):
     user.log("Abandoned restock")
     ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
                  title="Stock movement abandoned")
+
 
 def finish_restock(rsl):
     for stockline, stockmovement in rsl:
@@ -52,8 +55,10 @@ def finish_restock(rsl):
                   "in the list."], title="Stock movement confirmed",
                  colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
+
 def restock_item(stockline):
     return restock_list([stockline])
+
 
 @user.permission_required('restock', "Re-stock items on display stocklines")
 def restock_location():
@@ -64,13 +69,15 @@ def restock_location():
     selectlocation(restock_list, title="Re-stock location",
                    linetypes=["display"])
 
-@user.permission_required('restock',"Re-stock items on display stocklines")
+
+@user.permission_required('restock', "Re-stock items on display stocklines")
 def restock_all():
     """Invoke restock_list for all stocklines, sorted by location.
     """
     restock_list(td.s.query(StockLine)
                  .filter(StockLine.linetype == "display")
                  .all())
+
 
 class stockline_associations(user.permission_checked, ui.listpopup):
     """
@@ -80,6 +87,7 @@ class stockline_associations(user.permission_checked, ui.listpopup):
     """
     permission_required = ('manage-stockline-associations',
                            "View and delete stocktype <-> stockline links")
+
     def __init__(self, stocklines=None,
                  blurb="To create a new association, use the 'Use Stock' "
                  "button to assign stock to a line."):
@@ -116,6 +124,7 @@ class stockline_associations(user.permission_checked, ui.listpopup):
         else:
             super().keypress(k)
 
+
 @user.permission_required('return-stock',
                           "Return items on display stocklines to stock")
 def return_stock(stockline):
@@ -127,16 +136,17 @@ def return_stock(stockline):
         return
     restock = [(stockline, rsl)]
     printer.print_restock_list(restock)
-    ui.infopopup([
-        "The list of stock to be taken off display has been printed.",
-        "", "Press Cash/Enter to "
-        "confirm that you've removed all the items on the list and "
-        "allow the till to update its records.  Pressing Clear "
-        "at this point will completely cancel the operation."],
-                 title="Confirm stock movement",
-                 keymap={keyboard.K_CASH: (finish_restock, (restock,), True)},
-                 colour=ui.colour_confirm)\
-        .unsaved_data = "confirm removal of stock from sale"
+    ui.infopopup(
+        ["The list of stock to be taken off display has been printed.",
+         "", "Press Cash/Enter to "
+         "confirm that you've removed all the items on the list and "
+         "allow the till to update its records.  Pressing Clear "
+         "at this point will completely cancel the operation."],
+        title="Confirm stock movement",
+        keymap={keyboard.K_CASH: (finish_restock, (restock,), True)},
+        colour=ui.colour_confirm)\
+      .unsaved_data = "confirm removal of stock from sale"
+
 
 def completelocation(m):
     """
@@ -144,10 +154,10 @@ def completelocation(m):
 
     """
     result = td.s.execute(
-        select([StockLine.location]).\
-            where(StockLine.location.ilike(m+'%'))
-        )
+        select([StockLine.location]).where(StockLine.location.ilike(m + '%'))
+    )
     return [x[0] for x in result]
+
 
 def validate_location(s, c):
     t = s[:c + 1]
@@ -161,6 +171,7 @@ def validate_location(s, c):
     if len(completelocation(t[:-1])) > 0:
         return t
     return s
+
 
 @user.permission_required('create-stockline', "Create a new stock line")
 def create(func):
@@ -193,9 +204,10 @@ def create(func):
             "is filled from more than one bottle it won't be obvious "
             "whether the two bottles were originally in the same case."),
             _create_stockline_popup, ('continuous', func)),
-        ]
+    ]
     ui.keymenu(menu, blurb="Choose the type of stockline to create:",
                title="Create Stock Line", blank_line_between_items=True)
+
 
 class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
     """Create a new stockline."""
@@ -275,6 +287,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
         if sl.linetype == "display":
             from . import usestock
             usestock.add_display_line_stock(sl)
+
 
 class modify(user.permission_checked, ui.dismisspopup):
     """Modify a stockline.
@@ -358,7 +371,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                 "currently on sale on this line and add all unallocated "
                 "stock items of the new stock type.")
         y += 1
-        self.fields.append(ui.buttonfield(y, 2, 8,"Save", keymap={
+        self.fields.append(ui.buttonfield(y, 2, 8, "Save", keymap={
             keyboard.K_CASH: (self.save, None)}))
         self.fields.append(ui.buttonfield(y, 12, 10, "Delete", keymap={
             keyboard.K_CASH: (self.delete, None)}))
@@ -406,8 +419,9 @@ class modify(user.permission_checked, ui.dismisspopup):
 
     def save(self):
         if self.namefield.f == '' or self.locfield.f == '':
-            ui.infopopup(["You may not make the name or location fields blank."],
-                         title="Error")
+            ui.infopopup(
+                ["You may not make the name or location fields blank."],
+                title="Error")
             return
         td.s.add(self.stockline)
         if self.stockline.linetype == "display":
@@ -428,7 +442,7 @@ class modify(user.permission_checked, ui.dismisspopup):
 
         if self.stockline.linetype == "regular":
             self.stockline.pullthru = Decimal(self.pullthrufield.f) \
-                                      if self.pullthrufield.f != '' else None
+                if self.pullthrufield.f != '' else None
         additional = []
         if self.stockline.linetype == "display":
             newcap = int(self.capacityfield.f)
@@ -466,7 +480,7 @@ class modify(user.permission_checked, ui.dismisspopup):
             self.stockline.department = self.deptfield.read()
         try:
             td.s.flush()
-        except:
+        except Exception:
             ui.infopopup(["Could not update stock line '{}'.".format(
                 self.stockline.name)], title="Error")
             return
@@ -486,12 +500,15 @@ class modify(user.permission_checked, ui.dismisspopup):
             # displayqty_null_if_no_stockline constraint
             for si in self.stockline.stockonsale:
                 si.displayqty = None
-            message = ["The stock line has been deleted.  Note that it still "
-                       "had stock attached to it; this stock is now available "
-                       "to be attached to another stock line.  The stock items "
-                       "affected are shown below.",""]
+            message = [
+                "The stock line has been deleted.  Note that it still "
+                "had stock attached to it; this stock is now available "
+                "to be attached to another stock line.  The stock items "
+                "affected are shown below.",
+                ""
+            ]
             message = message + [
-                "  {} {}".format(x.id, x.stocktype.format())
+                f"  {x.id} {x.stocktype}"
                 for x in self.stockline.stockonsale]
         else:
             message = ["The stock line has been deleted."]
@@ -526,19 +543,22 @@ class modify(user.permission_checked, ui.dismisspopup):
         kbl = linekeys.keyboard_bindings_table(
             self.stockline.keyboard_bindings, f)
         self.win.addstr(self.bindings_header_y, 1, " " * 75)
-        self.win.addstr(self.bindings_header_y, 1, f(
-            "Line key", "Menu key", "Default modifier").
-                        display(75)[0])
+        self.win.addstr(
+            self.bindings_header_y, 1, f(
+                "Line key", "Menu key", "Default modifier").
+            display(75)[0])
         self.kbs.set(kbl)
+
 
 class listunbound(user.permission_checked, ui.listpopup):
     """Pop up a list of stock lines with no key bindings on any keyboard."""
     permission_required = ('list-unbound-stocklines',
                            "List stock lines with no keyboard bindings")
+
     def __init__(self):
         l = td.s.query(StockLine)\
                 .outerjoin(KeyboardBinding)\
-                .filter(KeyboardBinding.stocklineid==None)\
+                .filter(KeyboardBinding.stocklineid == None)\
                 .all()
         if not l:
             ui.infopopup(
@@ -563,6 +583,7 @@ class listunbound(user.permission_checked, ui.listpopup):
             modify(self.ll[self.s.cursor].userdata)
         else:
             super().keypress(k)
+
 
 class selectline(ui.listpopup):
     """Pop-up menu of stocklines
@@ -596,7 +617,7 @@ class selectline(ui.listpopup):
         if create_new:
             self.sl = [ui.line(" New stockline")] + self.sl
         elif select_none:
-            self.sl = [ui.line(" %s"%select_none)] + self.sl
+            self.sl = [ui.line(" %s" % select_none)] + self.sl
         hl = [f("Name", "Location", "Department", "Type")]
         if blurb:
             hl = [ui.lrline(blurb), ui.emptyline()] + hl
@@ -608,7 +629,7 @@ class selectline(ui.listpopup):
         self.func(kb.stockline)
 
     def keypress(self, k):
-        log.debug("selectline keypress %s",k)
+        log.debug("selectline keypress %s", k)
         if hasattr(k, 'line'):
             linekeys.linemenu(k, self.line_selected)
         elif hasattr(k, 'code'):
@@ -629,6 +650,7 @@ class selectline(ui.listpopup):
         else:
             super().keypress(k)
 
+
 def stocklinemenu():
     """Menu allowing stocklines to be created, modified and deleted.
     """
@@ -636,6 +658,7 @@ def stocklinemenu():
         modify, blurb="Choose a stock line to modify from the list below, "
         "or press a line key that is already bound to the "
         "stock line.", create_new=True)
+
 
 def selectlocation(func, title="Stock Locations", blurb="Choose a location",
                    linetypes=None):
@@ -656,6 +679,7 @@ def selectlocation(func, title="Stock Locations", blurb="Choose a location",
             l[sl.location] = [sl]
     ml = [(x, func, (l[x],)) for x in list(l.keys())]
     ui.menu(ml, title=title, blurb=blurb)
+
 
 def sanity_check_stock_on_sale(stockline):
     """Remove any stock on sale of an inappropriate type."""

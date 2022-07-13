@@ -3,23 +3,24 @@
 from . import ui, td, keyboard, printer, user, usestock
 from . import stock, delivery, department, stocklines, stocktype
 from . import tillconfig
-from .models import Department, FinishCode, StockLine, StockType, StockAnnotation
-from .models import StockItem, Delivery, StockOut, func, desc
-from .models import Supplier
+from .models import Department, FinishCode, StockLine
+from .models import StockType, StockAnnotation
+from .models import StockItem, Delivery, StockOut
 from sqlalchemy.orm import lazyload, joinedload, undefer, contains_eager
-from sqlalchemy.sql import not_
+from sqlalchemy.sql import func
 from decimal import Decimal
 import datetime
 
 import logging
 log = logging.getLogger(__name__)
 
+
 def finish_reason(item, reason):
     stockitem = td.s.merge(item)
     td.s.add(StockAnnotation(
-            stockitem=stockitem, atype="stop",
-            text="no stock line (Finish Stock: {})".format(reason),
-            user=user.current_dbuser()))
+        stockitem=stockitem, atype="stop",
+        text=f"no stock line (Finish Stock: {reason})",
+        user=user.current_dbuser()))
     stockitem.finished = datetime.datetime.now()
     stockitem.finishcode_id = reason
     stockitem.displayqty = None
@@ -30,11 +31,13 @@ def finish_reason(item, reason):
                  dismiss=keyboard.K_CASH,
                  title="Stock Finished", colour=ui.colour_info)
 
+
 def finish_item(item):
     sfl = td.s.query(FinishCode).all()
     fl = [(x.description, finish_reason, (item, x.id)) for x in sfl]
     ui.menu(fl, blurb="Please indicate why you are finishing stock "
             f"number {item.id}:", title="Finish Stock", w=60)
+
 
 @user.permission_required('finish-unconnected-stock',
                           'Finish stock not currently on sale')
@@ -45,6 +48,7 @@ def finishstock(dept=None):
                       filter=stock.stockfilter(allow_on_sale=False),
                       check_checkdigits=False)
 
+
 @user.permission_required('print-stocklist',
                           'Print a list of stock')
 def print_stocklist_menu(sinfo, title):
@@ -53,6 +57,7 @@ def print_stocklist_menu(sinfo, title):
              printer.stocklabel_print, (x, sinfo))
             for x in printer.labelprinters]
     ui.automenu(menu, title="Stock print options", colour=ui.colour_confirm)
+
 
 def stockdetail(sinfo):
     # We are passed a list of StockItem objects
@@ -65,9 +70,10 @@ def stockdetail(sinfo):
     ui.menu(sl, title="Stock Detail", blurb="Select a stock item and press "
             "Cash/Enter for more information.",
             dismiss_on_select=False, keymap={
-            keyboard.K_PRINT: (
-                print_stocklist_menu, (sinfo, "Stock Check"), False)},
+                keyboard.K_PRINT: (
+                    print_stocklist_menu, (sinfo, "Stock Check"), False)},
             colour=ui.colour_confirm)
+
 
 @user.permission_required('stock-check', 'List unfinished stock items')
 def stockcheck(dept=None):
@@ -95,8 +101,7 @@ def stockcheck(dept=None):
     # We might want to sort the list at this point... sorting by ascending
     # amount remaining will put the things that are closest to running out
     # near the start - handy!
-    remfunc = lambda a: sum(x.remaining for x in a)
-    st.sort(key=remfunc)
+    st.sort(key=lambda a: sum(x.remaining for x in a))
     # We want to show name, remaining, items in each line
     # and when a line is selected we want to pop up the list of individual
     # items.
@@ -114,7 +119,9 @@ def stockcheck(dept=None):
     ui.menu(sl, title=title, blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
             dismiss_on_select=False, keymap={
-            keyboard.K_PRINT: (print_stocklist_menu, (sinfo, title), False)})
+                keyboard.K_PRINT:
+                (print_stocklist_menu, (sinfo, title), False)})
+
 
 @user.permission_required('stock-history', 'List finished stock')
 def stockhistory(dept=None):
@@ -136,6 +143,7 @@ def stockhistory(dept=None):
     ui.menu(sl, title=title, blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
             "when the stock was finished is shown.", dismiss_on_select=False)
+
 
 class stocklevelcheck(user.permission_checked, ui.dismisspopup):
     permission_required = ('stock-level-check', 'Check stock levels')
@@ -202,6 +210,7 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
                      colour=ui.colour_info, show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
+
 def stock_purge_internal(source):
     """Clear finished stock
 
@@ -226,26 +235,26 @@ def stock_purge_internal(source):
     # filter on linetype.
     log.debug("Finding display stockline items to purge...")
     finished = td.s.query(StockItem)\
-               .join(StockItem.stockline)\
-               .options(contains_eager(StockItem.stockline))\
-               .options(joinedload('stocktype'))\
-               .filter(StockItem.finished == None)\
-               .filter(StockLine.linetype == "display")\
-               .filter(StockItem.remaining == Decimal("0.0"))\
-               .all()
+                   .join(StockItem.stockline)\
+                   .options(contains_eager(StockItem.stockline))\
+                   .options(joinedload('stocktype'))\
+                   .filter(StockItem.finished == None)\
+                   .filter(StockLine.linetype == "display")\
+                   .filter(StockItem.remaining == Decimal("0.0"))\
+                   .all()
 
-    # Find more stock that is ready for purging: remaining <= 0.0 if mentioned by
-    # a continuous stockline
+    # Find more stock that is ready for purging: remaining <= 0.0 if
+    # mentioned by a continuous stockline
     log.debug("Finding continuous stockline items to purge...")
     cfinished = td.s.query(StockItem)\
-                .join(StockLine,
-                      StockItem.stocktype_id == StockLine.stocktype_id)\
-                .options(joinedload('stocktype'))\
-                .options(contains_eager('stocktype.stocklines'))\
-                .filter(StockItem.finished == None)\
-                .filter(StockLine.linetype == "continuous")\
-                .filter(StockItem.remaining <= Decimal("0.0"))\
-                .all()
+                    .join(StockLine,
+                          StockItem.stocktype_id == StockLine.stocktype_id)\
+                    .options(joinedload('stocktype'))\
+                    .options(contains_eager('stocktype.stocklines'))\
+                    .filter(StockItem.finished == None)\
+                    .filter(StockLine.linetype == "continuous")\
+                    .filter(StockItem.remaining <= Decimal("0.0"))\
+                    .all()
 
     finished = finished + cfinished
 
@@ -268,11 +277,12 @@ def stock_purge_internal(source):
                     text="{} (continuous stockline, {})".format(
                         sl.name, source)))
         item.finished = datetime.datetime.now()
-        item.finishcode_id = 'empty' # guaranteed to exist
+        item.finishcode_id = 'empty'  # guaranteed to exist
         item.displayqty = None
         item.stockline = None
     td.s.flush()
     return finished
+
 
 @user.permission_required(
     'purge-finished-stock',
@@ -281,8 +291,8 @@ def purge_finished_stock():
     purged = stock_purge_internal(source="explicit purge")
     if purged:
         ui.infopopup(
-            ["The following stock items were marked as finished:", ""] +
-            ["{} {}".format(p.id, p.stocktype.format()) for p in purged],
+            ["The following stock items were marked as finished:", ""]
+            + ["{} {}".format(p.id, p.stocktype.format()) for p in purged],
             title="Stock Purged", colour=ui.colour_confirm,
             dismiss=keyboard.K_CASH)
     else:
@@ -291,13 +301,15 @@ def purge_finished_stock():
             title="No Stock Purged", colour=ui.colour_confirm,
             dismiss=keyboard.K_CASH)
 
+
 @user.permission_required(
     'alter-stocktype',
     'Alter an existing stock type to make minor corrections')
 def correct_stocktype():
     stocktype.choose_stocktype(
-        lambda x: stocktype.choose_stocktype(lambda:None, default=x, mode=2),
+        lambda x: stocktype.choose_stocktype(lambda: None, default=x, mode=2),
         allownew=False)
+
 
 @user.permission_required(
     'reprint-stocklabel', 'Re-print a single stock label')
@@ -311,15 +323,17 @@ def reprint_stocklabel():
                       filter=stock.stockfilter(),
                       check_checkdigits=False)
 
+
 def reprint_stocklabel_choose_printer(item):
     td.s.add(StockAnnotation(
         stockitem=item, atype="memo", user=user.current_dbuser(),
         text="Re-printed stock label"))
-    menu=[("Print label on {}".format(str(x)),
-           printer.stocklabel_print, (x, [item]))
-          for x in printer.labelprinters]
+    menu = [("Print label on {}".format(str(x)),
+             printer.stocklabel_print, (x, [item]))
+            for x in printer.labelprinters]
     ui.automenu(menu, title="Choose where to print label",
                 colour=ui.colour_confirm)
+
 
 @user.permission_required(
     'add-best-before', 'Add a best-before date to a stock item')
@@ -329,13 +343,15 @@ def add_bestbefore():
                       filter=stock.stockfilter(allow_has_bestbefore=False),
                       check_checkdigits=False)
 
+
 class add_bestbefore_dialog(ui.dismisspopup):
     def __init__(self, stockitem):
         self.stockid = stockitem.id
         super().__init__(7, 60, title="Set best-before date",
                          colour=ui.colour_input)
-        self.win.drawstr(2, 2, 56,
-                         f"Stock item {stockitem.id}: {stockitem.stocktype:.40}")
+        self.win.drawstr(
+            2, 2, 56,
+            f"Stock item {stockitem.id}: {stockitem.stocktype:.40}")
         self.win.drawstr(4, 2, 13, "Best before: ", align=">")
         self.bbfield = ui.datefield(4, 15, keymap={
             keyboard.K_CASH: (self.finish, None)})
@@ -360,6 +376,7 @@ class add_bestbefore_dialog(ui.dismisspopup):
         else:
             ui.infopopup(["You must enter a date!"], title="Error")
 
+
 @user.permission_required(
     'return-finished-item', 'Return a finished item to stock')
 def return_finished_item():
@@ -368,6 +385,7 @@ def return_finished_item():
                       filter=stock.stockfilter(require_finished=True,
                                                sort_descending_stockid=True),
                       check_checkdigits=True)
+
 
 def finish_return_finished_item(item):
     td.s.add(StockAnnotation(
@@ -379,8 +397,9 @@ def finish_return_finished_item(item):
     ui.infopopup(
         ["Stock item {} ({}) has been returned to stock.".format(
             item.id, item.stocktype.format())],
-        title="Item returned",colour=ui.colour_info,
+        title="Item returned", colour=ui.colour_info,
         dismiss=keyboard.K_CASH)
+
 
 def maintenance():
     "Pop up the stock maintenance menu."
@@ -397,13 +416,15 @@ def maintenance():
         ("8", "Purge finished stock from stock lines",
          purge_finished_stock, None),
         ("9", "Return a finished item to stock", return_finished_item, None),
-        ]
+    ]
     ui.keymenu(menu, title="Stock Maintenance options")
+
 
 @user.permission_required("print-price-list", "Print a price list")
 def print_pricelist():
     department.menu(_print_pricelist_options, "Print Price List",
                     allowall=True)
+
 
 def _print_pricelist_options(dept_id):
     ui.automenu([
@@ -411,7 +432,8 @@ def _print_pricelist_options(dept_id):
          (dept_id, True)),
         ("Only include stock currently on sale", _finish_print_pricelist,
          (dept_id, False)),
-        ], title="Print Price List options")
+    ], title="Print Price List options")
+
 
 def _finish_print_pricelist(dept_id, include_all):
     # We want all items currently in stock, restricted by department if
@@ -447,6 +469,7 @@ def _finish_print_pricelist(dept_id, include_all):
         d.printline()
         d.printline("\tEnd of list")
 
+
 @user.permission_required('stocktake', 'Perform stock-takes')
 def stocktakes():
     """View stock-takes
@@ -454,6 +477,7 @@ def stocktakes():
     This is a placeholder to ensure the permission is created.
     """
     pass
+
 
 def popup():
     "Pop up the stock management menu."
@@ -472,5 +496,5 @@ def popup():
         ("8", "Annotate a stock item", stock.annotate, None),
         ("9", "Check stock levels", stocklevelcheck, None),
         ("0", "Print price list", print_pricelist, None),
-        ]
+    ]
     ui.keymenu(menu, title="Stock Management options")

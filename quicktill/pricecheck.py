@@ -11,6 +11,7 @@ from . import tillconfig
 from .models import StockItem
 from sqlalchemy.orm import undefer
 
+
 class pricecheck_keypress:
     """Process line key presses.
 
@@ -37,12 +38,15 @@ class pricecheck_keypress:
         else:
             super().keypress(k)
 
+
 class popup(user.permission_checked, pricecheck_keypress, ui.infopopup):
     permission_required = ("price-check",
                            "Check prices without selling anything")
+
     def __init__(self, prompt="Press a line key or scan a barcode."):
         super().__init__([prompt], title="Price Check",
                          dismiss=keyboard.K_CLEAR, colour=ui.colour_info)
+
 
 class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
     """Display stockline -> display menu of items on sale on that line."""
@@ -52,12 +56,13 @@ class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
         f = ui.tableformatter(' r r+l ')
         sl = [(f(x.id, x.ondisplay, x.instock),
                pricecheck_stockitem, (x.id,)) for x in sos]
-        blurb = [f"This line sells {st} at {tillconfig.currency}{st.pricestr}.",
-                 "",
-                 f"There are {stockline.ondisplay} {st.unit.name}s on display "
-                 f"and {stockline.instock} in stock.",
-                 "", "Choose a stock item for more information, "
-                 "press another line key, or scan a barcode.",
+        blurb = [
+            f"This line sells {st} at {tillconfig.currency}{st.pricestr}.",
+            "",
+            f"There are {stockline.ondisplay} {st.unit.name}s on display "
+            f"and {stockline.instock} in stock.",
+            "", "Choose a stock item for more information, "
+            "press another line key, or scan a barcode.",
         ]
         super().__init__(
             sl, title=f"{stockline.name} ({stockline.location}) - "
@@ -66,11 +71,11 @@ class pricecheck_display_stockline(pricecheck_keypress, ui.menu):
             colour=ui.colour_info,
             dismiss_on_select=True)
 
+
 class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
     """Continuous stockline -> display menu of all items of appropriate type."""
     def __init__(self, stockline):
         st = stockline.stocktype
-        unit = st.unit
         sos = td.s.query(StockItem)\
                   .filter(StockItem.checked == True)\
                   .filter(StockItem.stocktype == st)\
@@ -116,11 +121,11 @@ class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
             colour=ui.colour_info,
             dismiss_on_select=True)
 
+
 class pricecheck_stocktype(pricecheck_keypress, ui.menu):
     """Stock type -> display menu of all items of this type."""
     def __init__(self, stocktype):
         st = stocktype
-        unit = st.unit
         sos = td.s.query(StockItem)\
                   .filter(StockItem.checked == True)\
                   .filter(StockItem.stocktype == st)\
@@ -164,6 +169,7 @@ class pricecheck_stocktype(pricecheck_keypress, ui.menu):
             sl, title=f"{st}", blurb=blurb,
             colour=ui.colour_info, dismiss_on_select=True)
 
+
 class pricecheck_stockitem(pricecheck_keypress, ui.listpopup):
     """A particular stock item on a line."""
     def __init__(self, stockitem_id):
@@ -175,22 +181,24 @@ class pricecheck_stockitem(pricecheck_keypress, ui.listpopup):
             show_cursor=False,
             colour=ui.colour_info)
 
+
 class pricecheck_plu(pricecheck_keypress, ui.listpopup):
     """A price lookup."""
     def __init__(self, plu):
-        l = [f"",
+        l = ["",
              f" Description: {plu.description} ",
              f"        Note: {plu.note or ''} ",
              f"       Price: {tillconfig.fc(plu.price)} ",
-             f"",
+             "",
              f" Alternative price 1: {tillconfig.fc(plu.altprice1)} ",
              f" Alternative price 2: {tillconfig.fc(plu.altprice2)} ",
              f" Alternative price 3: {tillconfig.fc(plu.altprice3)} ",
-             f""]
+             ""]
         super().__init__(
             l, title="Price Lookup",
             dismiss=keyboard.K_CLEAR, show_cursor=False,
             colour=ui.colour_info)
+
 
 class pricecheck_modifier(pricecheck_keypress, ui.infopopup):
     """A modifier key."""
@@ -204,6 +212,7 @@ class pricecheck_modifier(pricecheck_keypress, ui.infopopup):
             l, title=modifier,
             dismiss=keyboard.K_CLEAR,
             colour=ui.colour_info)
+
 
 def pricecheck_window(kb):
     """Display a popup for information about a keyboard binding or barcode.

@@ -1,7 +1,7 @@
 from . import ui, stock, td, keyboard, printer, tillconfig, stocktype
 from . import user, usestock
 from decimal import Decimal
-from .models import Delivery, Supplier, StockUnit, StockItem, StockType
+from .models import Delivery, Supplier, StockUnit, StockItem
 from .models import penny
 from .plugins import InstancePluginMount
 import datetime
@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 
 import logging
 log = logging.getLogger(__name__)
+
 
 @user.permission_required('deliveries', "List deliveries")
 def deliverymenu():
@@ -28,6 +29,7 @@ def deliverymenu():
     ui.menu(lines, title="Delivery List",
             blurb="Select a delivery and press Cash/Enter.")
 
+
 class deliveryline(ui.line):
     def __init__(self, stockitem):
         ui.line.__init__(self)
@@ -39,14 +41,15 @@ class deliveryline(ui.line):
         td.s.add(s)
         try:
             coststr = format(s.costprice, ">-6.2f")
-        except:
+        except Exception:
             coststr = "??????"
         try:
             salestr = format(s.stocktype.saleprice, ">-5.2f")
-        except:
+        except Exception:
             salestr = "?????"
         self.text = f"{s.id:>7} {s.stocktype:<37.37} {s.description[:8]:<8} " \
             f"{coststr} {salestr} {ui.formatdate(s.bestbefore):<10}"
+
 
 class delivery(ui.basicpopup):
     """Delivery popup
@@ -188,7 +191,8 @@ class delivery(ui.basicpopup):
         if self.dn:
             return
         if self.supfield.f is None:
-            ui.infopopup(["Select a supplier before continuing!"], title="Error")
+            ui.infopopup(["Select a supplier before continuing!"],
+                         title="Error")
             return
         date = self.datefield.read()
         if date is None:
@@ -233,7 +237,7 @@ class delivery(ui.basicpopup):
                  "number %d.  Note that once it's deleted you can't "
                  "create a new stock item with the same number; new "
                  "stock items always get fresh numbers." % (
-                        self.dl[self.s.cursor].stockitem.id)],
+                     self.dl[self.s.cursor].stockitem.id)],
                 title="Confirm Delete",
                 keymap={keyboard.K_CASH: (self.reallydeleteline, None, True)})
 
@@ -304,7 +308,7 @@ class delivery(ui.basicpopup):
         # If there is not yet an underlying Delivery object, create one
         self.make_delivery_model()
         if self.dn is None:
-            return # with errors already popped up
+            return  # with errors already popped up
         # If it's the "lastline" then we create a new stock item
         if self.s.cursor_on_lastline():
             new_stockitem(self.newline, self.dn)
@@ -346,17 +350,19 @@ class delivery(ui.basicpopup):
         self.dismiss()
 
     def confirmdelete(self):
-        ui.infopopup(["Do you want to delete the entire delivery and all "
-                      "the stock items that have been entered for it?  "
-                      "Press Cancel to delete or Clear to go back."],
-                     title="Confirm Delete",
-                     keymap={keyboard.K_CANCEL: (self.reallydelete, None, True)})
+        ui.infopopup(
+            ["Do you want to delete the entire delivery and all "
+             "the stock items that have been entered for it?  "
+             "Press Cancel to delete or Clear to go back."],
+            title="Confirm Delete",
+            keymap={keyboard.K_CANCEL: (self.reallydelete, None, True)})
 
     def keypress(self, k):
         if k == keyboard.K_PRINT:
             self.printout()
         elif k == keyboard.K_CLEAR:
             self.dismiss()
+
 
 class new_stockitem(ui.basicpopup):
     """Create a number of stockitems."""
@@ -403,7 +409,8 @@ class new_stockitem(ui.basicpopup):
         self.saleunits = ui.label(7, 31 + len(tillconfig.currency()),
                                   77 - 31 - len(tillconfig.currency()))
         self.bestbeforefield = ui.datefield(8, 24)
-        self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
+        self.acceptbutton = ui.buttonfield(
+            10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})
         fieldlist = [self.typefield, self.unitfield, self.qtyfield,
                      self.costfield, self.salefield, self.bestbeforefield,
@@ -418,6 +425,7 @@ class new_stockitem(ui.basicpopup):
             self.saleunits.set("")
             return
         unit_id = stocktype.unit.id
+
         def unit_list(query):
             return query.filter(StockUnit.unit_id == unit_id)\
                         .order_by(StockUnit.size)
@@ -481,6 +489,7 @@ class new_stockitem(ui.basicpopup):
         for item in items:
             self.func(item)
 
+
 class edit_stockitem(ui.basicpopup):
     """Edit a single stockitem."""
 
@@ -520,7 +529,8 @@ class edit_stockitem(ui.basicpopup):
         self.saleunits = ui.label(7, 31 + len(tillconfig.currency()),
                                   77 - 31 - len(tillconfig.currency()))
         self.bestbeforefield = ui.datefield(8, 24)
-        self.acceptbutton = ui.buttonfield(10, 28, 21, "Accept values", keymap={
+        self.acceptbutton = ui.buttonfield(
+            10, 28, 21, "Accept values", keymap={
                 keyboard.K_CASH: (self.accept, None)})
         fieldlist = [self.typefield, self.unitfield, self.costfield,
                      self.salefield, self.bestbeforefield, self.acceptbutton]
@@ -548,9 +558,11 @@ class edit_stockitem(ui.basicpopup):
             self.saleunits.set("")
             return
         unit_id = stocktype.unit.id
+
         def unit_list(query):
             return query.filter(StockUnit.unit_id == unit_id)\
                         .order_by(StockUnit.size)
+
         self.unitfield.change_query(unit_list)
         self.update_suggested_price()
         self.saleunits.set(f"per {stocktype.unit.item_name}")
@@ -559,7 +571,8 @@ class edit_stockitem(ui.basicpopup):
     def unitfield_changed(self):
         su = self.unitfield.read()
         if su:
-            self.description.set(f"{su.name} ({su.size} {su.unit.name}) - updated")
+            self.description.set(
+                f"{su.name} ({su.size} {su.unit.name}) - updated")
         else:
             td.s.add(self.item)
             self.description.set(
@@ -632,13 +645,16 @@ class edit_stockitem(ui.basicpopup):
         td.s.flush()
         self.func(self.item)
 
+
 def createsupplier(field, name):
     # Called by the select supplier field if it decides we need to create
     # a new supplier record.
     editsupplier(lambda supplier: field.set(supplier), defaultname=name)
 
+
 class editsupplier(user.permission_checked, ui.basicpopup):
     permission_required = ('edit-supplier', "Create or edit supplier details")
+
     def __init__(self, func, supplier=None, defaultname=None):
         if supplier:
             td.s.add(supplier)
@@ -647,8 +663,9 @@ class editsupplier(user.permission_checked, ui.basicpopup):
         super().__init__(
             13, 70, title="Supplier Details",
             colour=ui.colour_input, cleartext="Press Clear to go back")
-        self.win.wrapstr(2, 2, 66, "Please enter the supplier's details. You may "
-                         "leave the fields other than Name blank if you wish.")
+        self.win.wrapstr(
+            2, 2, 66, "Please enter the supplier's details. You may "
+            "leave the fields other than Name blank if you wish.")
         self.win.drawstr(5, 2, 11, "Name: ", align=">")
         self.win.drawstr(6, 2, 11, "Telephone: ", align=">")
         self.win.drawstr(7, 2, 11, "Email: ", align=">")
@@ -665,8 +682,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
             8, 13, 55, flen=120, f=supplier.web if supplier else "")
         self.buttonfield = ui.buttonfield(
             10, 28, 10, "Modify" if supplier else "Create",
-            keymap={
-                keyboard.K_CASH:(self.confirmed, None)})
+            keymap={keyboard.K_CASH: (self.confirmed, None)})
 
         ui.map_fieldlist([self.namefield, self.telfield, self.emailfield,
                           self.webfield, self.buttonfield])
@@ -693,6 +709,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
         self.dismiss()
         self.func(supplier)
 
+
 @user.permission_required('edit-supplier')
 def updatesupplier():
     log.info("Update supplier")
@@ -700,6 +717,7 @@ def updatesupplier():
     m = [(x.name, editsupplier, (lambda a:None, x)) for x in sl]
     ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
             title="Edit Supplier")
+
 
 @user.permission_required('edit-unit', 'Add or edit a unit')
 def edit_unit():
@@ -709,6 +727,7 @@ def edit_unit():
     """
     pass
 
+
 @user.permission_required('edit-stockunit', 'Add or edit a stock unit')
 def edit_stockunit():
     """Add or edit a stockunit
@@ -716,6 +735,7 @@ def edit_stockunit():
     This is a placeholder to ensure the permission is created.
     """
     pass
+
 
 class DeliveryHooks(metaclass=InstancePluginMount):
     """Hooks for deliveries
@@ -730,6 +750,7 @@ class DeliveryHooks(metaclass=InstancePluginMount):
         may pop up your own information box in this case.
         """
         pass
+
     def confirmed(self, deliveryid):
         """Called when a delivery has been confirmed."""
         pass

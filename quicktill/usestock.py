@@ -1,16 +1,15 @@
 """Deals with connecting stock items to stock lines."""
 
-from . import ui, td, keyboard, stock, stocklines, tillconfig, user, linekeys
+from . import ui, td, keyboard, stock, stocklines, user, linekeys
 from . import stocktype
 from .plugins import InstancePluginMount
-from .models import StockLine, FinishCode, StockItem, Department, Delivery
-from .models import StockType, StockAnnotation, StockLineTypeLog
-from sqlalchemy.orm import contains_eager, undefer
-from sqlalchemy.sql import select
+from .models import StockLine, FinishCode, StockItem, Delivery
+from .models import StockAnnotation
 import datetime
 
 import logging
 log = logging.getLogger(__name__)
+
 
 # The "Use Stock" popup has several different functions:
 
@@ -24,6 +23,7 @@ log = logging.getLogger(__name__)
 
 class popup(user.permission_checked, ui.keymenu):
     permission_required = ("use-stock", "Allocate stock to lines")
+
     def __init__(self):
         log.info("Use Stock popup")
         super().__init__(
@@ -47,6 +47,7 @@ class popup(user.permission_checked, ui.keymenu):
             linekeys.linemenu(k, self.line_chosen)
         else:
             super().keypress(k)
+
 
 def line_chosen(line):
     td.s.add(line)
@@ -100,17 +101,18 @@ def line_chosen(line):
         # same for all stock items
         f = ui.tableformatter(' r l r+l ')
         sl = [(f(x.id, x.stocktype.format(), x.ondisplay, x.instock),
-             select_display_line_stockitem, (line, x)) for x in sl]
+               select_display_line_stockitem, (line, x)) for x in sl]
         blurb = ["Press 1 to re-stock this stock line now.", "",
                  "Press 2 to add new stock items to this line.", "",
                  "Alternatively, select a stock item from the list to "
                  "remove it from this line."]
-        ui.menu(sl, title="{} ({}) - display capacity {}".format(
-            line.name, line.location, line.capacity),
-                blurb=blurb,
-                keymap={
-                    "1": (stocklines.restock_item, (line,), True),
-                    "2": (add_display_line_stock, (line, ), True)})
+        ui.menu(
+            sl, title="{} ({}) - display capacity {}".format(
+                line.name, line.location, line.capacity),
+            blurb=blurb,
+            keymap={
+                "1": (stocklines.restock_item, (line,), True),
+                "2": (add_display_line_stock, (line, ), True)})
     elif line.linetype == "continuous":
         change_continuous_stockline(line.id)
     else:
@@ -125,21 +127,22 @@ def finish_disconnect(line, sn):
                              text="{} (Use Stock disconnect)".format(line.name),
                              user=user.current_dbuser()))
     item.displayqty = None
-    item.stockline=None
+    item.stockline = None
     td.s.flush()
     pick_new_stock(line, "Stock item {} disconnected from {}.  Now select "
                    "a new stock item to put on sale, or press Clear to "
-                   "leave the line unused.".format(sn,line.name))
+                   "leave the line unused.".format(sn, line.name))
+
 
 def finish_reason(line, sn, reason):
     td.s.add(line)
     stockitem = td.s.query(StockItem).get(sn)
     td.s.add(StockAnnotation(
-            stockitem=stockitem, atype="stop",
-            text="{} (Use Stock reason {})".format(line.name, reason),
-            user=user.current_dbuser()))
+        stockitem=stockitem, atype="stop",
+        text="{} (Use Stock reason {})".format(line.name, reason),
+        user=user.current_dbuser()))
     stockitem.finished = datetime.datetime.now()
-    stockitem.finishcode_id=reason
+    stockitem.finishcode_id = reason
     stockitem.displayqty = None
     stockitem.stockline = None
     td.s.flush()
@@ -147,6 +150,7 @@ def finish_reason(line, sn, reason):
     pick_new_stock(line, f"Stock item {sn} is finished.  Now select "
                    f"a new stock item to put on sale on {line.name}, or press "
                    "Clear to leave the line unused.")
+
 
 def pick_new_stock(line, blurb=""):
     """Pick new stock for a regular stockline.
@@ -171,7 +175,8 @@ def pick_new_stock(line, blurb=""):
         sort_descending_stockid=False)
     stock.stockpicker(lambda x: put_on_sale(line, x),
                       title=f"Select Stock Item for {line.name}",
-                      filter=sf, check_checkdigits=line.linetype=="regular")
+                      filter=sf, check_checkdigits=line.linetype == "regular")
+
 
 def put_on_sale(line, si):
     # This is used for regular and display stocklines.
@@ -196,6 +201,7 @@ def put_on_sale(line, si):
         for i in UseStockHook.instances:
             with ui.exception_guard("running the regular_usestock hook"):
                 i.regular_usestock(si, line)
+
 
 def add_display_line_stock(line):
     """Add stock to a display stock line.
@@ -260,6 +266,7 @@ def add_display_line_stock(line):
                 colour=ui.colour_confirm,
                 dismiss=keyboard.K_CASH)
 
+
 def select_display_line_stockitem(line, item):
     """Options for an item on a display stockline.
 
@@ -275,6 +282,7 @@ def select_display_line_stockitem(line, item):
                  colour=ui.colour_input,
                  keymap={keyboard.K_CASH: (remove_display_line_stockitem,
                                            (line, item), True)})
+
 
 def remove_display_line_stockitem(line, item):
     """Remove a stock item from a display stockline.
@@ -293,10 +301,12 @@ def remove_display_line_stockitem(line, item):
     item.displayqty = None
     item.stockline = None
     td.s.flush()
-    ui.infopopup(["Stock item {} ({}) has been removed from line {}.{}".format(
-        item.id, item.stocktype.format(), line.name, displaynote)],
-                 title="Stock removed from line",
-                 colour=ui.colour_info, dismiss=keyboard.K_CASH)
+    ui.infopopup(
+        ["Stock item {} ({}) has been removed from line {}.{}".format(
+            item.id, item.stocktype.format(), line.name, displaynote)],
+        title="Stock removed from line",
+        colour=ui.colour_info, dismiss=keyboard.K_CASH)
+
 
 class change_continuous_stockline(ui.dismisspopup):
     def __init__(self, stocklineid):
@@ -335,6 +345,7 @@ class change_continuous_stockline(ui.dismisspopup):
             title="Stock type changed", colour=ui.colour_info,
             dismiss=keyboard.K_CASH)
 
+
 def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     """Automatically allocate stock to display stock lines.
 
@@ -347,15 +358,15 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     q = td.s.query(StockItem)\
             .join(Delivery)\
             .filter(StockItem.finished == None)\
-            .filter(Delivery.checked==True)\
+            .filter(Delivery.checked == True)\
             .filter(StockItem.stockline == None)
     if deliveryid:
         q = q.filter(Delivery.id == deliveryid)
     stock = q.all()
     # Find candidate stock lines
     stocklines = td.s.query(StockLine)\
-                 .filter(StockLine.linetype == "display")\
-                 .all()
+                     .filter(StockLine.linetype == "display")\
+                     .all()
     # Build dictionary of stocktypes
     st = {}
     for sl in stocklines:
@@ -385,23 +396,25 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
     if done or manual:
         if done:
             msg = msg \
-                  + ["The following stock items have been allocated to "
-                     "display lines:", ""]
-            msg = msg + ["{} {} -> {}".format(
-                item.id, item.stocktype.format(), item.stockline.name)
-                         for item in done]
+                + ["The following stock items have been allocated to "
+                   "display lines:", ""]
+            msg = msg + [
+                "{} {} -> {}".format(
+                    item.id, item.stocktype.format(), item.stockline.name)
+                for item in done]
         if done and manual:
             msg = msg + [""]
         if manual:
             msg = msg \
-                  + ["The following stock items can be allocated to "
-                     "display lines, but you must choose which lines "
-                     "they go on manually because there is more than "
-                     "one possible choice:", ""]
-            msg = msg + ["{} {} -> {}".format(
-                item.id, item.stocktype.format(),
-                " or ".join(line.name for line in st[item.stocktype]))
-                         for item in manual]
+                + ["The following stock items can be allocated to "
+                   "display lines, but you must choose which lines "
+                   "they go on manually because there is more than "
+                   "one possible choice:", ""]
+            msg = msg + [
+                "{} {} -> {}".format(
+                    item.id, item.stocktype.format(),
+                    " or ".join(line.name for line in st[item.stocktype]))
+                for item in manual]
         ui.infopopup(msg, title="Auto-allocate confirmation",
                      colour=ui.colour_confirm, dismiss=keyboard.K_CASH)
     else:
@@ -415,6 +428,7 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
 auto_allocate = user.permission_required(
     'auto-allocate', 'Automatically allocate stock to lines')(
         auto_allocate_internal)
+
 
 class UseStockHook(metaclass=InstancePluginMount):
     """Subclass this to be notified of stock being put on sale

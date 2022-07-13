@@ -2,8 +2,10 @@ from . import ui, tillconfig, td
 from .models import PayType, Payment, zero
 import datetime
 
+
 class DuplicatePayType(Exception):
     pass
+
 
 class PaymentMethodRegistry(dict):
     def __getitem__(self, key):
@@ -17,7 +19,9 @@ class PaymentMethodRegistry(dict):
             raise DuplicatePayType()
         dict.__setitem__(self, key, val)
 
+
 methods = PaymentMethodRegistry()
+
 
 class pline(ui.line):
     """Payment line
@@ -60,6 +64,7 @@ class pline(ui.line):
 
     def cancel(self, register):
         return self.method.cancel_payment(register, self)
+
 
 class PaymentMethod:
     change_given = False      # Overpayment is supported

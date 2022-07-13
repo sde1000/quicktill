@@ -12,6 +12,7 @@ import subprocess
 import logging
 log = logging.getLogger(__name__)
 
+
 class receiptprint(user.permission_checked, ui.dismisspopup):
     permission_required = ('print-receipt-by-number',
                            'Print any receipt given the transaction number')
@@ -29,15 +30,16 @@ class receiptprint(user.permission_checked, ui.dismisspopup):
     def enter(self):
         try:
             rn = int(self.rnfield.f)
-        except:
+        except Exception:
             rn = None
         if rn is None:
             return
         self.dismiss()
-        log.info("Manage Till: printing transaction %d",rn)
+        log.info("Manage Till: printing transaction %d", rn)
         ui.toast("The receipt is being printed.")
         with ui.exception_guard("printing the receipt", title="Printer error"):
             printer.print_receipt(rn)
+
 
 @user.permission_required('version', 'See version information')
 def versioninfo():
@@ -57,12 +59,14 @@ def versioninfo():
         colour=ui.colour_info,
         dismiss=keyboard.K_CASH)
 
+
 @user.permission_required('exit', "Exit the till software")
 def restartmenu():
     log.info("Restart menu")
     menu = [(x[1], tillconfig.mainloop.shutdown, (x[0],))
             for x in tillconfig.exitoptions]
     ui.automenu(menu, title="Exit / restart options")
+
 
 class slmenu(ui.keymenu):
     def __init__(self):
@@ -109,6 +113,7 @@ class slmenu(ui.keymenu):
         else:
             modifiers.modify(kb.modifier)
 
+
 @user.permission_required('netinfo', 'See network information')
 def netinfo():
     log.info("Net info popup")
@@ -117,9 +122,11 @@ def netinfo():
     ui.infopopup(["IPv4:"] + v4.split('\n') + ["IPv6:"] + v6.split('\n'),
                  title="Network information", colour=ui.colour_info)
 
+
 @user.permission_required('fullscreen', 'Enter / leave fullscreen mode')
 def fullscreen(setting):
     ui.rootwin.set_fullscreen(setting)
+
 
 def sys_menu():
     log.info("System menu")
@@ -134,8 +141,10 @@ def sys_menu():
         ]
     ui.keymenu(menu, title="System information and settings")
 
+
 def debug_menu():
     log.info("Debug menu")
+
     def raise_test_exception():
         raise Exception("Test exception")
 
@@ -159,14 +168,14 @@ def debug_menu():
     def send_usertoken():
         from .models import UserToken
         tl = td.s.query(UserToken)\
-             .order_by(UserToken.user_id, UserToken.description)\
-             .all()
+                 .order_by(UserToken.user_id, UserToken.description)\
+                 .all()
         f = ui.tableformatter(' l L l ')
         lines = [(f(x.user.fullname if x.user else "None",
                     x.description, x.last_seen or ""),
                   ui.handle_keyboard_input, (user.token(x.token),)) for x in tl]
         ui.menu(lines, title="User tokens",
-            blurb="Choose a user token and press Cash/Enter.")
+                blurb="Choose a user token and press Cash/Enter.")
 
     menu = [
         ("1", "Raise uncaught exception", raise_test_exception, None),
@@ -176,6 +185,7 @@ def debug_menu():
         ("5", "Fake a usertoken", send_usertoken, None),
     ]
     ui.keymenu(menu, title="Debug")
+
 
 def popup():
     log.info("Till management menu")
@@ -195,7 +205,7 @@ def popup():
         ("7", "Users", user.usersmenu, None),
         exit,
         ("9", "System information and settings", sys_menu, None),
-        ]
+    ]
     if tillconfig.debug:
         menu.append(("0", "Debug options", debug_menu, None))
 

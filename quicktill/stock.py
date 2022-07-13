@@ -3,11 +3,9 @@
 """
 
 import logging
-from decimal import Decimal
-from . import ui, td, keyboard, tillconfig, linekeys, department, user
+from . import ui, td, keyboard, tillconfig, linekeys, user
 from .models import Department, StockType, StockItem, StockAnnotation
-from .models import AnnotationType, Delivery, desc, StockLineTypeLog
-from .models import StockTake
+from .models import AnnotationType, desc, StockLineTypeLog
 from . import config
 from sqlalchemy.orm import joinedload, undefer
 log = logging.getLogger(__name__)
@@ -16,6 +14,7 @@ log = logging.getLogger(__name__)
 checkdigit_on_usestock = config.BooleanConfigItem(
     'core:checkdigit_on_usestock', False, display_name="Require check digits?",
     description="Should check digits be enforced when putting stock on sale?")
+
 
 def stockinfo_linelist(sn):
     s = td.s.query(StockItem).get(sn)
@@ -49,12 +48,14 @@ def stockinfo_linelist(sn):
             a.time, a.type.description, a.text)))
     return l
 
+
 def stockinfo_popup(sn):
     ui.listpopup(stockinfo_linelist(sn),
                  title="Stock Item {}".format(sn),
                  dismiss=keyboard.K_CASH,
                  show_cursor=False,
                  colour=ui.colour_info)
+
 
 class annotate(user.permission_checked, ui.dismisspopup):
     """This class permits annotations to be made to stock items.
@@ -63,7 +64,7 @@ class annotate(user.permission_checked, ui.dismisspopup):
 
     @staticmethod
     def _annotation_type_query(q):
-        return q.filter(~AnnotationType.id.in_(['start','stop']))\
+        return q.filter(~AnnotationType.id.in_(['start', 'stop']))\
                 .order_by(AnnotationType.id)
 
     def __init__(self):
@@ -83,10 +84,10 @@ class annotate(user.permission_checked, ui.dismisspopup):
             d=lambda x: x.description)
         self.win.drawstr(5, 2, 19, "Annotation: ", align=">")
         self.annfield = ui.editfield(6, 2, 60, flen=120, keymap={
-                keyboard.K_CASH: (self.finish, None)})
+            keyboard.K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.stockfield, self.anntypefield, self.annfield])
         self.stockfield.focus()
-        ui.handle_keyboard_input(keyboard.K_CASH) # Pop up picker
+        ui.handle_keyboard_input(keyboard.K_CASH)  # Pop up picker
 
     def finish(self):
         item = self.stockfield.read()
@@ -95,22 +96,25 @@ class annotate(user.permission_checked, ui.dismisspopup):
             return
         anntype = self.anntypefield.read()
         if anntype is None:
-            ui.infopopup(["You must choose an annotation type!"], title="Error")
+            ui.infopopup(["You must choose an annotation type!"],
+                         title="Error")
             return
         if not self.annfield.f:
             ui.infopopup(["You can't add a blank annotation!"], title="Error")
             return
         annotation = self.annfield.f or ""
         cu = ui.current_user()
-        user = cu.dbuser if cu and hasattr(cu,"dbuser") else None
+        user = cu.dbuser if cu and hasattr(cu, "dbuser") else None
         td.s.add(StockAnnotation(stockitem=item, type=anntype, text=annotation,
                                  user=user))
         td.s.flush()
         self.dismiss()
-        ui.infopopup(["Recorded annotation against stock item %d (%s)."%(
-                    item.id, item.stocktype.format())],
-                     title="Annotation Recorded", dismiss=keyboard.K_CASH,
-                     colour=ui.colour_info)
+        ui.infopopup(
+            ["Recorded annotation against stock item %d (%s)." % (
+                item.id, item.stocktype.format())],
+            title="Annotation Recorded", dismiss=keyboard.K_CASH,
+            colour=ui.colour_info)
+
 
 class stockfilter:
     """Filter and sort available stock items.
@@ -136,8 +140,7 @@ class stockfilter:
         self.allow_has_bestbefore = allow_has_bestbefore
         self.allow_in_stocktake = allow_in_stocktake
         self.stockline_affinity_id = stockline_affinity.id \
-                                     if stockline_affinity \
-                                        else None
+            if stockline_affinity else None
         self.sort_descending_stockid = sort_descending_stockid
         self.require_finished = require_finished
         if self.require_finished:
@@ -220,6 +223,7 @@ class stockfilter:
         if item.stocktype.stocktake and not self.allow_in_stocktake:
             return f"in scope for stock-take {item.stocktype.stocktake}"
 
+
 class stockpicker(ui.dismisspopup):
     """Popup to choose a stock item.
 
@@ -293,7 +297,7 @@ class stockpicker(ui.dismisspopup):
             # Only advance if there's a valid stock item there
             stockid = int(self.numfield.f)
             item = self.filter.query_items()\
-                              .filter(StockItem.id==stockid).first()
+                              .filter(StockItem.id == stockid).first()
             if item:
                 if self.check:
                     self.checkfield.focus()
@@ -307,7 +311,7 @@ class stockpicker(ui.dismisspopup):
                 depts = td.s.query(Department).order_by(Department.id).all()
                 f = ui.tableformatter(' r l ')
                 lines = [(f(d.id, d.description),
-                        self.popup_menu, (d.id,)) for d in depts]
+                          self.popup_menu, (d.id,)) for d in depts]
                 ui.menu(lines, blurb="Choose the department the stock item "
                         "belongs to and press Cash/Enter:")
 
@@ -316,10 +320,9 @@ class stockpicker(ui.dismisspopup):
                            .options(joinedload('stocktype'))\
                            .options(undefer('remaining'))[:100]
         f = ui.tableformatter(' r l c ')
-        sl = [ (f(s.id, s.stocktype.format(), "{} {}s".format(
-            s.remaining, s.stocktype.unit.name)),
-                self.item_chosen, (s.id,))
-               for s in items]
+        sl = [(f(s.id, s.stocktype.format(),
+                 "{} {}s".format(s.remaining, s.stocktype.unit.name)),
+               self.item_chosen, (s.id,)) for s in items]
         ui.menu(sl, title=self.title)
 
     def item_chosen(self, stockid):
@@ -359,6 +362,7 @@ class stockpicker(ui.dismisspopup):
         else:
             super().keypress(k)
 
+
 class stockfield(ui.modelpopupfield):
     """Field that allows a stock item to be chosen.
 
@@ -371,8 +375,8 @@ class stockfield(ui.modelpopupfield):
                  filter=stockfilter(), check_checkdigits=True,
                  title="Choose stock item"):
         ui.modelpopupfield.__init__(
-            self, y, x, w, StockItem, popupfunc=stockpicker, # Pass on args?
-            valuefunc=lambda x: f"{x.id}: {x.stocktype:.{w - 2 - len(str(x.id))}}",
+            self, y, x, w, StockItem, popupfunc=stockpicker,  # Pass on args?
+            valuefunc=lambda x: f"{x.id}: {x.stocktype:.{w - 2 - len(str(x.id))}}",  # noqa: E501
             f=f, readonly=readonly, keymap=keymap)
         self.filter = filter
         self.check_checkdigits = check_checkdigits

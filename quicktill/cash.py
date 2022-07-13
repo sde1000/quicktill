@@ -2,8 +2,9 @@ from . import payment, td, printer, ui
 from . import tillconfig
 from . import keyboard
 from . import user
-from .models import Payment, PayType, Transaction, zero
+from .models import Payment, Transaction, zero
 from decimal import Decimal
+
 
 class CashPayment(payment.PaymentMethod):
     change_given = True
@@ -81,8 +82,9 @@ class CashPayment(payment.PaymentMethod):
             title = "Cancel refund"
             message = [f"Press Cash/Enter to cancel this {p.ref} "
                        f"payment of {tillconfig.fc(zero-p.amount)}.", "",
-                       "If you have already removed the payment from the drawer, "
-                       "you should put it back when the drawer opens."]
+                       "If you have already removed the payment from "
+                       "the drawer, you should put it back when the "
+                       "drawer opens."]
         ui.infopopup(message, title=title, keymap={
             keyboard.K_CASH: (register.cancelpayment,
                               (pline_instance, ), True)})
@@ -94,7 +96,7 @@ class CashPayment(payment.PaymentMethod):
     def total(self, session, fields):
         try:
             return sum(Decimal(x) if len(x) > 0 else zero for x in fields)
-        except:
+        except Exception:
             return "One or more of the total fields has something " \
                 "other than a number in it."
 

@@ -1,9 +1,10 @@
 import logging
-log = logging.getLogger(__name__)
 from . import payment, ui, td, tillconfig, keyboard, printer
 from .models import Session, Payment, Transaction, zero, penny
 from decimal import Decimal
 import datetime
+
+log = logging.getLogger(__name__)
 
 
 class _cardpopup(ui.dismisspopup):
@@ -69,7 +70,7 @@ class _cardpopup(ui.dismisspopup):
     def update_total_amount(self):
         try:
             cba = Decimal(self.cbfield.f).quantize(penny)
-        except:
+        except Exception:
             cba = zero
         if cba > self.max_cashback:
             self.total_label.set(
@@ -82,7 +83,7 @@ class _cardpopup(ui.dismisspopup):
     def enter(self):
         try:
             cba = Decimal(self.cbfield.f).quantize(penny)
-        except:
+        except Exception:
             cba = zero
         if cba > self.max_cashback:
             self.cbfield.set("")
@@ -199,19 +200,19 @@ class CardPayment(payment.PaymentMethod):
                 date = date - datetime.timedelta(days=1)
             if date != session.date:
                 ui.infopopup(
-                    ["The card machines 'roll over' from one day to the next at "
-                     "around {}, so a card transaction performed now would be "
-                     "recorded against the card totals for {}.".format(
-                         self._rollover_guard_time, date),
+                    [f"The card machines 'roll over' from one day to the next "
+                     f"at around {self._rollover_guard_time}, so a card "
+                     f"transaction performed now would be recorded against "
+                     f"the card totals for {date}.",
                      "",
-                     "The current session is for {}.".format(session.date),
+                     f"The current session is for {session.date}.",
                      "",
-                     "Please don't perform a card transaction now.  If you have "
-                     "already done one, you must call your manager and let them "
-                     "know that the card totals for {} and {} will be "
-                     "incorrect.  Set aside the card merchant receipt so that "
-                     "it can be entered into the till later.".format(
-                         date, session.date)],
+                     f"Please don't perform a card transaction now.  If you "
+                     f"have already done one, you must call your manager "
+                     f"and let them know that the card totals for {date} "
+                     f"and {session.date} will be incorrect.  Set aside the "
+                     f"card merchant receipt so that it can be entered into "
+                     f"the till later."],
                     title="Card transactions not allowed")
                 return
         if amount < zero:
@@ -228,7 +229,7 @@ class CardPayment(payment.PaymentMethod):
                     ["You can't take an overpayment on cards.  If the card "
                      "being used allows cashback, the card terminal "
                      "will prompt you and you can give up to %s back." % (
-                            tillconfig.fc(self._max_cashback))],
+                         tillconfig.fc(self._max_cashback))],
                     title="Overpayment not accepted")
             else:
                 ui.infopopup(
@@ -255,7 +256,7 @@ class CardPayment(payment.PaymentMethod):
         r = [payment.pline(p, method=self)]
         if cashback > zero:
             r.append(self._cashback_method.add_change(
-                    trans, "%s cashback" % self.description, zero - cashback))
+                trans, "%s cashback" % self.description, zero - cashback))
         if cashback > zero or self._kickout:
             printer.kickout()
         td.s.flush()
@@ -268,7 +269,7 @@ class CardPayment(payment.PaymentMethod):
     def total(self, session, fields):
         try:
             return sum(Decimal(x) if len(x) > 0 else zero for x in fields)
-        except:
+        except Exception:
             return "One or more of the total fields has something " \
                 "other than a number in it."
 

@@ -1,16 +1,13 @@
 from . import ui, keyboard, tillconfig, user, cmdline
-from . import department
-from . import printer
 import twython
-import time, datetime
+import time
+import datetime
 from requests_oauthlib import OAuth1Session
 from . import td
 from .models import RefusalsLog
-from .models import StockType
-from .models import StockItem
-from .models import lazyload
 
-### Reminders at particular times of day
+
+# Reminders at particular times of day
 class reminderpopup:
     def __init__(self, alarmtime, title, text, colour=ui.colour_info,
                  dismiss=keyboard.K_CANCEL):
@@ -46,6 +43,7 @@ class reminderpopup:
         ui.alarmpopup(title=self.title, text=self.text,
                       colour=self.colour, dismiss=self.dismisskey)
         self.setalarm()
+
 
 class twitter_auth(cmdline.command):
     """Generate tokens for Twitter login.
@@ -99,14 +97,13 @@ class twitter_auth(cmdline.command):
 
         print("Paste the following to enable Twitter access as @{}:".format(
             user['screen_name']))
-        print("""
+        print(f"""
         tapi = quicktill.extras.twitter_api(
-            token='{}',
-            token_secret='{}',
-            consumer_key='{}',
-            consumer_secret='{}')""".format(
-                resource_owner_key, resource_owner_secret,
-                args.consumer_key, args.consumer_secret))
+            token='{resource_owner_key}',
+            token_secret='{resource_owner_secret}',
+            consumer_key='{args.consumer_key}',
+            consumer_secret='{args.consumer_secret}')""")
+
 
 def twitter_api(token, token_secret, consumer_key, consumer_secret):
     return twython.Twython(
@@ -115,11 +112,12 @@ def twitter_api(token, token_secret, consumer_key, consumer_secret):
         oauth_token=token,
         oauth_token_secret=token_secret)
 
+
 class twitter_post(ui.dismisspopup):
     def __init__(self, tapi, default_text="", fail_silently=False):
         try:
             user = tapi.verify_credentials()
-        except:
+        except Exception:
             if not fail_silently:
                 ui.infopopup(["Unable to connect to Twitter"],
                              title="Error")
@@ -140,15 +138,17 @@ class twitter_post(ui.dismisspopup):
         ttext = self.tfield.f
         if len(ttext) < 20:
             ui.infopopup(title="Twitter Problem", text=[
-                    "That's too short!  Try typing some more."])
+                "That's too short!  Try typing some more."])
             return
         try:
             self.tapi.update_status(status=ttext)
             self.dismiss()
-            ui.infopopup(title="Tweeted", text=["Your update has been posted."],
-                         dismiss=keyboard.K_CASH, colour=ui.colour_confirm)
-        except:
+            ui.infopopup(
+                title="Tweeted", text=["Your update has been posted."],
+                dismiss=keyboard.K_CASH, colour=ui.colour_confirm)
+        except Exception:
             ui.popup_exception("Error posting tweet")
+
 
 class Tweet(ui.lrline):
     def __init__(self, status):
@@ -156,6 +156,7 @@ class Tweet(ui.lrline):
         super().__init__(
             ltext=status["text"],
             rtext=f'(@{status["user"]["screen_name"]} {status["created_at"]})')
+
 
 class twitter_client(user.permission_checked, ui.dismisspopup):
     permission_required = ("twitter", "Use the Twitter client")
@@ -168,7 +169,7 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
         self.tapi = tapi
         try:
             user = tapi.verify_credentials()
-        except:
+        except Exception:
             ui.infopopup(["Unable to connect to Twitter"],
                          title="Error")
             return
@@ -186,7 +187,7 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
                 keyboard.K_CLEAR: (self.dismiss, None),
                 keyboard.K_CASH: (self.enter, None, False)})
         self.tweets = ui.scrollable(4, 2, w - 4, h - 6, self.tl, keymap={
-                keyboard.K_CASH: (self.reply, None, False)})
+            keyboard.K_CASH: (self.reply, None, False)})
         self.rbutton = ui.buttonfield(
             h - 2, 2, 18, "Refresh", keymap={
                 keyboard.K_CASH: (self.refresh, None)})
@@ -220,6 +221,7 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
         self.tweets.set(self.tl)
         self.tfield.focus()
 
+
 def refusals():
     reasons = [
         "ID requested but no ID provided",
@@ -231,13 +233,14 @@ def refusals():
     ui.automenu([(x, _finish_refusal, (x,)) for x in reasons],
                 title="Reason for refusing sale")
 
+
 class _finish_refusal(ui.dismisspopup):
     def __init__(self, reason):
         self.reason = reason
         super().__init__(10, 76, title="Refusals log entry",
                          colour=ui.colour_input)
         self.win.drawstr(2, 2, 72, "Please add any additional details below "
-                        "and press Enter.")
+                         "and press Enter.")
         self.win.drawstr(4, 2, 72, f"Reason: {reason}")
         self.text = ui.editfield(
             6, 2, 72, keymap={

@@ -29,6 +29,7 @@ from .models import Barcode
 
 log = logging.getLogger(__name__)
 
+
 class barcode:
     def __init__(self, code):
         self.code = code
@@ -49,6 +50,7 @@ class barcode:
 
     def __str__(self):
         return f"barcode('{self.code}')"
+
 
 class barcodelistener:
     def __init__(self, address, addressfamily=socket.AF_INET):
@@ -139,9 +141,11 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
             ("3", "Assign to a stock type", self.stocktype, (b.code,)),
             ("4", "Assign to a modifier", self.modifier, (b.code,)),
         ]
-        if binding and (binding.stockline or binding.plu or binding.stocktype):
+        if binding \
+           and (binding.stockline or binding.plu or binding.stocktype):
             menu.append(
-                ("5", "Change the default modifier", self.defmodifier, (b.code,)))
+                ("5", "Change the default modifier",
+                 self.defmodifier, (b.code,)))
         if binding:
             menu.append(
                 ("6", "Forget this barcode", self.remove, (b.code,)))

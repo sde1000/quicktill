@@ -1,8 +1,9 @@
 """Starting, ending, and recording totals for sessions."""
 
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
-from .models import Session, SessionTotal, PayType, Transaction, penny, zero
-from .td import undefer, func, desc, select
+from .models import Session, SessionTotal, Transaction, zero
+from sqlalchemy.orm import undefer
+from sqlalchemy.sql import select, func, desc
 from .plugins import InstancePluginMount
 from decimal import Decimal
 import datetime
@@ -10,6 +11,7 @@ import itertools
 
 import logging
 log = logging.getLogger(__name__)
+
 
 def trans_restore():
     """Restore deferred transactions
@@ -28,6 +30,7 @@ def trans_restore():
     td.s.flush()
     return deferred
 
+
 class ssdialog(ui.dismisspopup):
     """Session start dialog box."""
     def __init__(self):
@@ -36,7 +39,7 @@ class ssdialog(ui.dismisspopup):
                          dismiss=keyboard.K_CLEAR)
         self.win.drawstr(
             2, 2, 59, "Please check the session date, and correct it "
-                         "if necessary.")
+            "if necessary.")
         self.win.drawstr(
             4, 2, 59, "Press Cash/Enter to continue and start the session.")
         self.win.drawstr(6, 2, 14, "Session date: ", align=">")
@@ -75,6 +78,7 @@ class ssdialog(ui.dismisspopup):
                      title="Session started", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
+
 @user.permission_required("start-session", "Start a session")
 def start():
     """Start a session if there is not already one in progress.
@@ -88,6 +92,7 @@ def start():
             title="Error")
     else:
         ssdialog()
+
 
 def checkendsession():
     sc = Session.current(td.s)
@@ -105,6 +110,7 @@ def checkendsession():
             title="Error")
         return
     return sc
+
 
 def confirmendsession():
     r = checkendsession()
@@ -132,6 +138,7 @@ def confirmendsession():
     printer.kickout()
     managestock.stock_purge_internal(source="session end")
 
+
 @user.permission_required("end-session", "End a session")
 def end():
     """End the current session if there is one.
@@ -144,6 +151,7 @@ def end():
                       f"session number {r.id}."], title="Session End",
                      keymap=km, colour=ui.colour_confirm)
 
+
 def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
                 maxlen=None):
     """Return a list of sessions suitable for a menu.
@@ -153,18 +161,20 @@ def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
             .options(undefer('total'))
     if paidonly:
         q = q.filter(select([func.count(SessionTotal.sessionid)],
-                            whereclause=SessionTotal.sessionid == Session.id)\
+                            whereclause=SessionTotal.sessionid == Session.id)
                      .correlate(Session.__table__).as_scalar() != 0)
     if unpaidonly:
         q = q.filter(select([func.count(SessionTotal.sessionid)],
-                            whereclause=SessionTotal.sessionid == Session.id)\
+                            whereclause=SessionTotal.sessionid == Session.id)
                      .correlate(Session.__table__).as_scalar() == 0)
     if closedonly:
         q = q.filter(Session.endtime != None)
     if maxlen:
         q = q[:maxlen]
     f = ui.tableformatter(' r  l  r ')
-    return [(f(x.id, x.date, tillconfig.fc(x.total)), cont, (x.id,)) for x in q]
+    return [(f(x.id, x.date, tillconfig.fc(x.total)), cont, (x.id,))
+            for x in q]
+
 
 class _PMWrapper:
     """Payment method wrapper for record session takings popup.
@@ -173,9 +183,11 @@ class _PMWrapper:
     """
     def __init__(self, pm, till_total, popup):
         self.pm = pm
-        self.lines = 1 if len(pm.total_fields) <= 1 else len(pm.total_fields) + 1
+        self.lines = 1 if len(pm.total_fields) <= 1 \
+            else len(pm.total_fields) + 1
         self.till_total = till_total
-        self.actual_total = pm.total(popup.session, [""] * len(pm.total_fields))
+        self.actual_total = pm.total(
+            popup.session, [""] * len(pm.total_fields))
         self.fields = []
         self.popup = popup
 
@@ -191,10 +203,11 @@ class _PMWrapper:
 
     def update_total(self):
         # One of the fields has been changed; redraw the total
-        self.actual_total = self.pm.total(self.popup.session,
-                                          [f.f for f in self.fields])
+        self.actual_total = self.pm.total(
+            self.popup.session, [f.f for f in self.fields])
         self.display_total()
         self.popup.update_total()
+
 
 class record(ui.dismisspopup):
     """Record the takings for a session.
@@ -232,7 +245,8 @@ class record(ui.dismisspopup):
         # top (3) and a total and button at the bottom (4) and the
         # bottom border (2).
         h = h + 11
-        super().__init__(h, 60, title=f"Session {s.id}", colour=ui.colour_input)
+        super().__init__(h, 60, title=f"Session {s.id}",
+                         colour=ui.colour_input)
         self.win.drawstr(
             2, 2, 56, f"Please enter the actual takings for session {s.id}.")
         self.win.drawstr(4, self.ttx, self.ffw, "Till total:", align=">")
@@ -241,8 +255,9 @@ class record(ui.dismisspopup):
         self.fl = []
         for pm in self.pms:
             pm.set_y(y)
-            self.win.drawstr(y, self.ttx, self.ffw, tillconfig.fc(pm.till_total),
-                             align=">")
+            self.win.drawstr(
+                y, self.ttx, self.ffw, tillconfig.fc(pm.till_total),
+                align=">")
             pm.display_total()
             self.win.drawstr(y, 2, 18, f"{pm.pm.description}:")
             if len(pm.pm.total_fields) == 0:
@@ -302,12 +317,14 @@ class record(ui.dismisspopup):
                 difference = -difference
                 description = "Total (UP by {})"
             colour = ui.colour_error if difference > Decimal(20) \
-                     else ui.colour_input
-            self.total_label.set(description.format(tillconfig.fc(difference)),
-                                 colour=colour)
-            self.total_amount.set(tillconfig.fc(total),
-                                  colour=ui.colour_confirm)
-        except:
+                else ui.colour_input
+            self.total_label.set(
+                description.format(tillconfig.fc(difference)),
+                colour=colour)
+            self.total_amount.set(
+                tillconfig.fc(total),
+                colour=ui.colour_confirm)
+        except Exception:
             self.total_label.set("Can't calculate total",
                                  colour=ui.colour_error)
             self.total_amount.set("Error", colour=ui.colour_error)
@@ -368,6 +385,7 @@ class record(ui.dismisspopup):
                                 title="Printer error"):
             printer.print_sessiontotals(self.session)
 
+
 @user.permission_required('record-takings', "Record takings for a session")
 def recordtakings():
     m = sessionlist(record, unpaidonly=True, closedonly=True)
@@ -382,6 +400,7 @@ def recordtakings():
         ui.menu(m, title="Record Takings",
                 blurb="Select the session that you "
                 "want to record the takings for, and press Cash/Enter.")
+
 
 def totalpopup(sessionid):
     """Display popup session totals given a Session ID.
@@ -447,7 +466,9 @@ def totalpopup(sessionid):
                  colour=ui.colour_info, keymap=keymap,
                  dismiss=keyboard.K_CASH, show_cursor=False)
 
-@user.permission_required("session-summary", "Display a summary for any session")
+
+@user.permission_required(
+    "session-summary", "Display a summary for any session")
 def summary(maxlen=100):
     log.info("Session summary popup")
     m = sessionlist(totalpopup, maxlen=maxlen)
@@ -457,6 +478,7 @@ def summary(maxlen=100):
             "press Cash/Enter to view the summary.",
             dismiss_on_select=False)
 
+
 @user.permission_required('current-session-summary', "Display a takings "
                           "summary for the current session")
 def currentsummary():
@@ -465,8 +487,8 @@ def currentsummary():
         msg = ["There is no session in progress.", ""]
         # Show details of deferred transactions instead.
         deferred_total = td.s.query(func.sum(Transaction.total))\
-                   .filter(Transaction.session == None)\
-                   .scalar()
+                             .filter(Transaction.session == None)\
+                             .scalar()
         if deferred_total:
             msg.append("There are deferred transactions totalling {}.".format(
                 tillconfig.fc(deferred_total)))
@@ -517,8 +539,9 @@ def currentsummary():
                  colour=ui.colour_info,
                  dismiss=keyboard.K_CASH, show_cursor=False)
 
+
 @user.permission_required(
-    'restore-deferred','Restore deferred transactions to the current session')
+    'restore-deferred', 'Restore deferred transactions to the current session')
 def restore_deferred():
     log.info("Restore deferred transactions")
     user.log("Restored deferred transactions")
@@ -534,6 +557,7 @@ def restore_deferred():
         ui.infopopup(["There were no deferred transactions to be restored."],
                      title="No transactions restored", colour=ui.colour_confirm,
                      dismiss=keyboard.K_CASH)
+
 
 class SessionHooks(metaclass=InstancePluginMount):
     """Hooks for sessions
@@ -586,6 +610,7 @@ class SessionHooks(metaclass=InstancePluginMount):
         external services.
         """
         pass
+
 
 def menu():
     """Session management menu."""

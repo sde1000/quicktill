@@ -5,6 +5,7 @@ import sqlalchemy.exc
 import logging
 log = logging.getLogger(__name__)
 
+
 class db_listener:
     """Listen for notifictions delivered via the database
 
@@ -18,8 +19,8 @@ class db_listener:
         self._mainloop = mainloop
         self._engine = engine
         self._fd_handle = None
-        self._db_listening = set() # set up in the database
-        self._listeners = {} # key is wrapper, value is channel
+        self._db_listening = set()  # set up in the database
+        self._listeners = {}  # key is wrapper, value is channel
 
     class _listener:
         def __init__(self, db_listener, func, channel):
@@ -97,6 +98,7 @@ class db_listener:
             for listener, channel in self._listeners.items():
                 if channel == notify.channel:
                     listener._func(notify.payload)
+
 
 # listener is set to an instance of db_listener during quicktill
 # initialisation but this ought to go somewhere else like

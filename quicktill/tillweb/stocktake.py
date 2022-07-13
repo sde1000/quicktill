@@ -1,15 +1,13 @@
 from decimal import Decimal
-import datetime
 from django.http import Http404
 from django.http import HttpResponseRedirect
+from django.http import HttpResponseForbidden
 from django import forms
 from django.contrib import messages
 from sqlalchemy import inspect
 from sqlalchemy.sql import desc
-from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
-from quicktill.models import StockType
 from quicktill.models import StockTake
 from quicktill.models import StockItem
 from quicktill.models import StockTakeSnapshot
@@ -19,11 +17,12 @@ from quicktill.models import RemoveCode
 
 from .views import tillweb_view
 from .views import td
-from .views import stocktype_widget_label
 from .views import user
+
 
 class StockTakeSetupForm(forms.Form):
     description = forms.CharField()
+
 
 @tillweb_view
 def stocktakelist(request, info):
@@ -57,16 +56,19 @@ def stocktakelist(request, info):
         'nav': [("Stock takes", info.reverse("tillweb-stocktakes"))],
     })
 
+
 @tillweb_view
 def create_stocktake(request, info):
     if not info.user_has_perm("stocktake"):
-        return HttpResponseForbidden("You don't have permission to start a stock take")
+        return HttpResponseForbidden(
+            "You don't have permission to start a stock take")
 
     if request.method == "POST":
         form = StockTakeSetupForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            st = StockTake(description=cd['description'], create_user=info.user)
+            st = StockTake(description=cd['description'],
+                           create_user=info.user)
             td.s.add(st)
             td.s.flush()
             user.log(f"Created stock take {st.logref}")
@@ -81,6 +83,7 @@ def create_stocktake(request, info):
                 ("New", info.reverse("tillweb-create-stocktake"))],
         'form': form,
     })
+
 
 @tillweb_view
 def stocktake(request, info, stocktake_id):
@@ -107,6 +110,7 @@ def stocktake(request, info, stocktake_id):
         'stocktake': stocktake,
         'stocktypes': stocktypes,
     })
+
 
 def stocktake_pending(request, info, st):
     may_edit = info.user_has_perm('stocktake')
@@ -147,6 +151,7 @@ def stocktake_pending(request, info, st):
         'form': form,
     })
 
+
 def _snapshots_to_stocktypes(snapshots):
     stocktypes = []
     for s in snapshots:
@@ -177,13 +182,15 @@ def _snapshots_to_stocktypes(snapshots):
             st.unit.format_qty(st.snapshot_newqty)
 
     # Sort the stocktypes by department, manufacturer and name
-    stocktypes.sort(key=lambda x:(x.dept_id, x.manufacturer, x.name))
+    stocktypes.sort(key=lambda x: (x.dept_id, x.manufacturer, x.name))
 
     return stocktypes
+
 
 class StockTakeInProgressForm(forms.Form):
     stockid = forms.IntegerField(
         label="Stock ID to add to stock take", min_value=1, required=False)
+
 
 def stocktake_in_progress(request, info, stocktake):
     may_edit = info.user_has_perm('stocktake')
@@ -238,21 +245,25 @@ def stocktake_in_progress(request, info, stocktake):
                             qty=si.remaining,
                             finishcode=si.finishcode))
                         messages.success(
-                            request, f"Stock item {new_stockid} [{si.stocktype}] "
-                                         "added to stock take.")
+                            request,
+                            f"Stock item {new_stockid} [{si.stocktype}] "
+                            "added to stock take.")
                     else:
                         messages.error(
-                            request, f"Stock item {new_stockid} [{si.stocktype}] is "
-                                       "not in scope for this stock take.")
+                            request,
+                            f"Stock item {new_stockid} [{si.stocktype}] is "
+                            "not in scope for this stock take.")
                 else:
-                    messages.error(request, f"Stock item {new_stockid} does "
-                                   "not exist")
+                    messages.error(
+                        request,
+                        f"Stock item {new_stockid} does not exist")
         for stocktype in stocktypes:
             st_checkbox = f'st{stocktype.id}-checked' in request.POST
             st_checkbox_changed = st_checkbox != stocktype.snapshot_checked
             st_finishcode = lookup_code(
                 finishcode_dict, f'st{stocktype.id}-finishcode')
-            st_finishcode_changed = st_finishcode != stocktype.snapshot_finishcode
+            st_finishcode_changed = (
+                st_finishcode != stocktype.snapshot_finishcode)
             st_adjusting = False
             try:
                 st_adjustqty = Decimal(request.POST.get(
@@ -261,7 +272,7 @@ def stocktake_in_progress(request, info, stocktake):
                 st_adjustqty = st_adjustqty * stocktype.unit.units_per_item
                 # Convert from relative adjustment to absolute
                 st_adjustqty = stocktype.snapshot_newqty - st_adjustqty
-            except:
+            except Exception:
                 st_adjustqty = None
             st_adjustreason = lookup_code(
                 removecode_dict, f'st{stocktype.id}-adjustreason')
@@ -277,7 +288,7 @@ def stocktake_in_progress(request, info, stocktake):
                     ss_adjustqty = ss_adjustqty * stocktype.unit.units_per_item
                     # Convert from relative adjustment to absolute
                     ss_adjustqty = ss.newqty - ss_adjustqty
-                except:
+                except Exception:
                     ss_adjustqty = None
                 ss_adjustreason = lookup_code(
                     removecode_dict, f'ss{ss.stock_id}-adjustreason')
@@ -301,14 +312,14 @@ def stocktake_in_progress(request, info, stocktake):
                     # that don't end up being adjusted
                     st_adjusting = True
                     with td.s.no_autoflush:
-                        adjustment = \
-                            td.s.query(StockTakeAdjustment)\
-                                .get((stocktake.id, ss.stock_id,
-                                      st_adjustreason.id)) \
-                                or \
-                                StockTakeAdjustment(
-                                    snapshot=ss, removecode=st_adjustreason,
-                                    qty=Decimal(0))
+                        adjustment = (
+                            td.s.query(StockTakeAdjustment)
+                            .get((stocktake.id, ss.stock_id,
+                                  st_adjustreason.id))
+                            or StockTakeAdjustment(
+                                snapshot=ss, removecode=st_adjustreason,
+                                qty=Decimal(0))
+                        )
                     adjust_by = st_adjustqty
                     if ss.newqty - adjust_by < 0:
                         adjust_by = ss.newqty
@@ -335,14 +346,14 @@ def stocktake_in_progress(request, info, stocktake):
                 if ss_adjustqty and ss_adjustreason:
                     ss.checked = True
                     with td.s.no_autoflush:
-                        adjustment = \
-                            td.s.query(StockTakeAdjustment)\
-                                .get((stocktake.id, ss.stock_id,
-                                      ss_adjustreason.id)) \
-                                or \
-                                StockTakeAdjustment(
-                                    snapshot=ss, removecode=ss_adjustreason,
-                                    qty=Decimal(0))
+                        adjustment = (
+                            td.s.query(StockTakeAdjustment)
+                            .get((stocktake.id, ss.stock_id,
+                                  ss_adjustreason.id))
+                            or StockTakeAdjustment(
+                                snapshot=ss, removecode=ss_adjustreason,
+                                qty=Decimal(0))
+                        )
                     adjustment.qty = adjustment.qty + ss_adjustqty
                     if adjustment.qty == Decimal(0):
                         i = inspect(adjustment)
@@ -404,4 +415,3 @@ def stocktake_in_progress(request, info, stocktake):
         'default_adjustreason': default_adjustreason,
         'form': form,
     })
-

@@ -5,7 +5,6 @@ most of the entries here.
 
 """
 
-import datetime
 from .models import penny
 from . import config
 
@@ -38,11 +37,13 @@ hotkeys = {}
 all_payment_methods = []
 payment_methods = []
 
+
 def fc(a):
     """Format currency, using the configured currency symbol."""
     if a is None:
         return "None"
     return f"{currency}{a.quantize(penny)}"
+
 
 database = None
 
@@ -51,10 +52,13 @@ firstpage = None
 barcode_listen = None
 barcode_listen_v6 = None
 
+
 # Called by ui code whenever a usertoken is processed by the default
 # page's hotkey handler
 def usertoken_handler(t):
     pass
+
+
 usertoken_listen = None
 usertoken_listen_v6 = None
 

@@ -1,17 +1,20 @@
 from . import ui, td, user, linekeys, keyboard
 from .models import KeyboardBinding
-from decimal import Decimal
-import inspect, itertools
+import inspect
+import itertools
 import logging
 log = logging.getLogger(__name__)
+
 
 class Incompatible(Exception):
     def __init__(self, msg=None):
         self.msg = msg
 
+
 # Dictionary of all registered modifiers, allowing modifier instances
 # to be looked up using the modifier name
 all = {}
+
 
 class BaseModifier:
     """The base modifier.  Not compatible with anything."""
@@ -77,9 +80,9 @@ class modify(ui.listpopup):
         mod = all[name]
         self.name = name
         bindings = td.s.query(KeyboardBinding)\
-                       .filter(KeyboardBinding.stockline==None)\
-                       .filter(KeyboardBinding.plu==None)\
-                       .filter(KeyboardBinding.modifier==name)\
+                       .filter(KeyboardBinding.stockline == None)\
+                       .filter(KeyboardBinding.plu == None)\
+                       .filter(KeyboardBinding.modifier == name)\
                        .all()
         f = ui.tableformatter(' l   c ')
         kbl = linekeys.keyboard_bindings_table(bindings, f)
@@ -87,10 +90,10 @@ class modify(ui.listpopup):
               for x in mod.description.split('\n\n')]
         hl = list(itertools.chain.from_iterable(hl))
         hl = hl \
-             + [ui.line("To add a binding, press a line key."),
-                ui.line("To delete a binding, highlight it and press Cancel."),
-                ui.emptyline(),
-                f("Line key", "Menu key")]
+            + [ui.line("To add a binding, press a line key."),
+               ui.line("To delete a binding, highlight it and press Cancel."),
+               ui.emptyline(),
+               f("Line key", "Menu key")]
         super().__init__(kbl, header=hl, title=f"{name} modifier", w=58)
 
     def keypress(self, k):
@@ -123,7 +126,7 @@ class selectmodifier(ui.menu):
         self.func = func
         if not blurb:
             blurb = "Choose a modifier from the list below."
-        ml = [ (x, func, (x,)) for x in defined_modifiers() ]
+        ml = [(x, func, (x,)) for x in defined_modifiers()]
         if allow_none:
             ml.insert(0, ("No modifier", func, (None,)))
         super().__init__(ml, blurb=blurb, title="Modifiers")
@@ -133,6 +136,7 @@ class selectmodifier(ui.menu):
             linekeys.linemenu(k, self.mod_selected, allow_stocklines=False,
                               allow_plus=False, allow_mods=True)
         elif hasattr(k, 'code'):
+            code = k.code
             if code.binding and code.binding.modifier \
                and not code.binding.stockline and not code.binding.plu \
                and not code.binding.stocktype:

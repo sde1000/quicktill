@@ -4,41 +4,78 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render
-from django.template import RequestContext, Context
-from django.template.loader import get_template, render_to_string
+from django.template.loader import render_to_string
 from django.conf import settings
 from django import forms
 from django.core.exceptions import ValidationError
 import django.urls
-from .models import *
+from .models import Till, Access
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import defaultload
-from sqlalchemy.orm import undefer, defer, undefer_group
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql import desc
+from sqlalchemy.orm import undefer, undefer_group
+from sqlalchemy.sql import select, desc
 from sqlalchemy.sql.expression import tuple_, func, null
 from sqlalchemy import distinct
-from quicktill.models import *
+from quicktill.models import (
+    StockType,
+    LogEntry,
+    User,
+    Business,
+    Transline,
+    VatBand,
+    Department,
+    Session,
+    StockLine,
+    StockAnnotation,
+    StockItem,
+    Transaction,
+    Delivery,
+    Supplier,
+    StockUnit,
+    StockTake,
+    Unit,
+    AnnotationType,
+    RemoveCode,
+    StockOut,
+    PriceLookup,
+    Barcode,
+    Group,
+    Permission,
+    Config,
+    Payment,
+    money_max_digits,
+    money_decimal_places,
+    qty_max_digits,
+    qty_decimal_places,
+    min_quantity,
+    zero,
+)
 from quicktill.version import version
 from . import spreadsheets
 import io
+import datetime
+from decimal import Decimal
 import logging
 from .db import td
 from .forms import SQLAModelChoiceField
-from .forms import SQLAModelMultipleChoiceField
 from .forms import StringIDMultipleChoiceField
 from .forms import StringIDChoiceField
 from .forms import Select2, Select2Ajax
+import matplotlib
+matplotlib.use("SVG")
+import matplotlib.pyplot as plt
+
 
 log = logging.getLogger(__name__)
 
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
 dtf = "Y-m-d H:i"
+
 
 # Custom DateInput widget: use ISO 8601 dates only
 class DateInput(forms.DateInput):
@@ -47,9 +84,10 @@ class DateInput(forms.DateInput):
         attrs['autocomplete'] = 'off'
 
         # Uncomment the next line to enable native datepickers
-        #attrs['type'] = 'date'
+        # attrs['type'] = 'date'
 
         super().__init__(*args, **kwargs, format='%Y-%m-%d')
+
 
 # Several forms require the user to input an optional date period first
 class DatePeriodForm(forms.Form):
@@ -65,9 +103,11 @@ class DatePeriodForm(forms.Form):
             self.add_error('startdate', 'Start date cannot be after end date')
         return cd
 
+
 # Format a StockType model as a string for Select widgets
 def stocktype_widget_label(x):
     return f"{x.format()} ({x.department}, sold in {x.unit.item_name_plural})"
+
 
 # This view is only used when the tillweb is integrated into another
 # django-based website.
@@ -76,6 +116,7 @@ def publist(request):
     access = Access.objects.filter(user=request.user).order_by('till__name')
     return render(request, 'tillweb/publist.html',
                   {'access': access})
+
 
 # The remainder of the view functions in this file follow a similar
 # pattern.  They are kept separate rather than implemented as a
@@ -128,6 +169,7 @@ class viewutils:
             self._permissions_cache = set(p.id for p in self.user.permissions)
         return action in self._permissions_cache
 
+
 class user:
     @staticmethod
     def log(message):
@@ -142,9 +184,11 @@ class user:
         l.update_refs(td.s)
         td.s.add(l)
 
+
 def tillweb_view(view):
     single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
     tillweb_login_required = getattr(settings, 'TILLWEB_LOGIN_REQUIRED', True)
+
     def new_view(request, pubname="", *args, **kwargs):
         if single_site:
             till = None
@@ -176,14 +220,16 @@ def tillweb_view(view):
         if request.user.is_authenticated:
             tilluser = session.query(User)\
                               .options(joinedload('permissions'))\
-                              .filter(User.webuser==request.user.username)\
+                              .filter(User.webuser == request.user.username)\
                               .one_or_none()
 
         try:
             if settings.DEBUG:
                 queries = []
+
                 def querylog_callback(_conn, _cur, query, params, *_):
                     queries.append(query)
+
                 sqlalchemy.event.listen(
                     session.get_bind(), "before_cursor_execute",
                     querylog_callback)
@@ -191,8 +237,8 @@ def tillweb_view(view):
             info = viewutils(
                 access=access,
                 user=tilluser,
-                tillname=tillname, # Formatted for people
-                pubname=pubname, # Used in url
+                tillname=tillname,  # Formatted for people
+                pubname=pubname,  # Used in url
                 money=money,
             )
             td.request = request
@@ -207,7 +253,7 @@ def tillweb_view(view):
             # till is the name of the till
             # access is 'R','M','F'
             defaults = {
-                'single_site': single_site, # Used for breadcrumbs
+                'single_site': single_site,  # Used for breadcrumbs
                 'till': tillname,
                 'access': access,
                 'tilluser': tilluser,
@@ -247,9 +293,11 @@ def tillweb_view(view):
             td.request = None
             td.info = None
             session.close()
+
     if tillweb_login_required or not single_site:
         new_view = login_required(new_view)
     return new_view
+
 
 # undefer_group on a related entity is broken until sqlalchemy 1.1.14
 def undefer_qtys(entity):
@@ -261,23 +309,24 @@ def undefer_qtys(entity):
             .undefer("remaining")
     return defaultload(entity).undefer_group("qtys")
 
+
 def business_totals(firstday, lastday):
     # This query is wrong in that it ignores the 'business' field in
     # VatRate objects.  Fixes that don't involve a database round-trip
     # per session are welcome!
-    return td.s.query(
-        Business,
-        func.sum(Transline.items * Transline.amount))\
-                  .join(VatBand)\
-                  .join(Department)\
-                  .join(Transline)\
-                  .join(Transaction)\
-                  .join(Session)\
-                  .filter(Session.date <= lastday)\
-                  .filter(Session.date >= firstday)\
-                  .order_by(Business.id)\
-                  .group_by(Business)\
-                  .all()
+    return td.s.query(Business,
+                      func.sum(Transline.items * Transline.amount))\
+               .join(VatBand)\
+               .join(Department)\
+               .join(Transline)\
+               .join(Transaction)\
+               .join(Session)\
+               .filter(Session.date <= lastday)\
+               .filter(Session.date >= firstday)\
+               .order_by(Business.id)\
+               .group_by(Business)\
+               .all()
+
 
 class _pager_page:
     def __init__(self, pager, page):
@@ -290,6 +339,7 @@ class _pager_page:
 
     def pagelink(self):
         return self._pager.pagelink(self._page)
+
 
 class Pager:
     """Manage paginated data
@@ -312,13 +362,13 @@ class Pager:
         if 'page' in request.GET:
             try:
                 self.page = int(request.GET['page'])
-            except:
+            except Exception:
                 pass
         self.items_per_page = items_per_page
         if 'pagesize' in request.GET:
             try:
                 self.items_per_page = max(1, int(request.GET['pagesize']))
-            except:
+            except Exception:
                 if request.GET['pagesize'] == "All":
                     self.items_per_page = None
 
@@ -387,8 +437,8 @@ class Pager:
 
     def pagesize_hidden_inputs(self):
         return [(x, self._request.GET[x])
-                 for x in self._preserve_query_parameters
-                 if x in self._request.GET]
+                for x in self._preserve_query_parameters
+                if x in self._request.GET]
 
     def nextlink(self):
         return self.pagelink(self.page + 1) if self.has_next() else None
@@ -405,6 +455,7 @@ class Pager:
     def as_html(self):
         return render_to_string("tillweb/pager.html", context={
             'pager': self})
+
 
 @tillweb_view
 def pubroot(request, info):
@@ -427,7 +478,7 @@ def pubroot(request, info):
              ("The week before last", weekbefore_start, weekbefore_end,
               business_totals(weekbefore_start, weekbefore_end))]
 
-    #currentsession = Session.current(session)
+    # currentsession = Session.current(session)
     currentsession = td.s.query(Session)\
                          .filter_by(endtime=None)\
                          .options(undefer('total'),
@@ -436,7 +487,7 @@ def pubroot(request, info):
 
     barsummary = td.s.query(StockLine)\
                      .filter(StockLine.location == "Bar")\
-                     .order_by(StockLine.dept_id,StockLine.name)\
+                     .order_by(StockLine.dept_id, StockLine.name)\
                      .options(joinedload('stockonsale')
                               .joinedload('stocktype')
                               .joinedload('unit'))\
@@ -446,11 +497,12 @@ def pubroot(request, info):
     stillage = td.s.query(StockAnnotation)\
                    .join(StockItem)\
                    .outerjoin(StockLine)\
-                   .filter(tuple_(StockAnnotation.text, StockAnnotation.time).in_(
-                       select([StockAnnotation.text,
-                               func.max(StockAnnotation.time)],
-                              StockAnnotation.atype == 'location')\
-                       .group_by(StockAnnotation.text)))\
+                   .filter(
+                       tuple_(StockAnnotation.text, StockAnnotation.time).in_(
+                           select([StockAnnotation.text,
+                                   func.max(StockAnnotation.time)],
+                                  StockAnnotation.atype == 'location')
+                           .group_by(StockAnnotation.text)))\
                    .filter(StockItem.finished == None)\
                    .order_by(StockLine.name != null(), StockAnnotation.time)\
                    .options(joinedload('stockitem')
@@ -472,7 +524,8 @@ def pubroot(request, info):
              'stillage': stillage,
              'weeks': weeks,
              'deferred': deferred,
-            })
+             })
+
 
 @tillweb_view
 def locationlist(request, info):
@@ -480,6 +533,7 @@ def locationlist(request, info):
         'nav': [("Locations", info.reverse('tillweb-locations'))],
         'locations': StockLine.locations(td.s),
     })
+
 
 @tillweb_view
 def location(request, info, location):
@@ -498,15 +552,18 @@ def location(request, info, location):
         'lines': lines,
     })
 
+
 class SessionFinderForm(forms.Form):
     session = forms.IntegerField(label="Session ID")
+
 
 class SessionSheetForm(DatePeriodForm):
     rows = forms.ChoiceField(label="Rows show", choices=[
         ("Sessions", "Sessions"),
         ("Days", "Days"),
         ("Weeks", "Weeks"),
-        ])
+    ])
+
 
 @tillweb_view
 def sessionfinder(request, info):
@@ -547,7 +604,9 @@ def sessionfinder(request, info):
              'nextlink': pager.nextlink(),
              'prevlink': pager.prevlink(),
              'form': form,
-             'rangeform': rangeform})
+             'rangeform': rangeform,
+             })
+
 
 @tillweb_view
 def session(request, info, sessionid):
@@ -567,7 +626,8 @@ def session(request, info, sessionid):
              'session': s,
              'nextlink': nextlink,
              'prevlink': prevlink,
-            })
+             })
+
 
 @tillweb_view
 def session_spreadsheet(request, info, sessionid):
@@ -579,6 +639,7 @@ def session_spreadsheet(request, info, sessionid):
         raise Http404
     return spreadsheets.session(s, info.tillname)
 
+
 @tillweb_view
 def session_takings_by_dept(request, info, sessionid):
     s = td.s.query(Session).get(sessionid)
@@ -586,6 +647,7 @@ def session_takings_by_dept(request, info, sessionid):
         raise Http404
 
     return ('session-takings-by-dept.ajax', {'session': s})
+
 
 @tillweb_view
 def session_takings_by_user(request, info, sessionid):
@@ -595,6 +657,7 @@ def session_takings_by_user(request, info, sessionid):
 
     return ('session-takings-by-user.ajax', {'session': s})
 
+
 @tillweb_view
 def session_discounts(request, info, sessionid):
     s = td.s.query(Session).get(sessionid)
@@ -603,10 +666,10 @@ def session_discounts(request, info, sessionid):
 
     departments = td.s.query(Department).order_by(Department.id).all()
 
-    discounts = td.s.query(
-        Department,
-        Transline.discount_name,
-        func.sum(Transline.items * Transline.discount).label("discount"))\
+    discounts = td.s.query(Department,
+                           Transline.discount_name,
+                           func.sum(Transline.items * Transline.discount)
+                           .label("discount"))\
                     .select_from(Transaction)\
                     .join(Transline, Department)\
                     .filter(Transaction.sessionid == sessionid)\
@@ -617,9 +680,10 @@ def session_discounts(request, info, sessionid):
     # discounts table: rows are departments, columns are discount names
     discount_totals = {}
     for d in discounts:
-        discount_totals[d.discount_name] = discount_totals.get(d.discount_name, zero) + d.discount
+        discount_totals[d.discount_name] = discount_totals.get(
+            d.discount_name, zero) + d.discount
     discount_names = sorted(discount_totals.keys())
-    discount_totals = [ discount_totals[x] for x in discount_names ]
+    discount_totals = [discount_totals[x] for x in discount_names]
     discount_totals.append(sum(discount_totals))
 
     for d in discounts:
@@ -634,7 +698,8 @@ def session_discounts(request, info, sessionid):
              'departments': departments,
              'discount_names': discount_names,
              'discount_totals': discount_totals,
-            })
+             })
+
 
 @tillweb_view
 def session_stock_sold(request, info, sessionid):
@@ -643,6 +708,7 @@ def session_stock_sold(request, info, sessionid):
         raise Http404
 
     return ('session-stock-sold.ajax', {'session': s})
+
 
 @tillweb_view
 def session_transactions(request, info, sessionid):
@@ -655,6 +721,7 @@ def session_transactions(request, info, sessionid):
         raise Http404
 
     return ('session-transactions.ajax', {'session': s})
+
 
 @tillweb_view
 def sessiondept(request, info, sessionid, dept):
@@ -684,15 +751,18 @@ def sessiondept(request, info, sessionid, dept):
                      .order_by(Transline.id)\
                      .all()
 
-    return ('sessiondept.html',
-            {'nav': s.tillweb_nav() + [
-                (dept.description,
-                 info.reverse("tillweb-session-department", kwargs={
-                     'sessionid': s.id,
-                     'dept': dept.id}))],
-             'session': s, 'department': dept,
-             'translines': translines,
-             'nextlink': nextlink, 'prevlink': prevlink})
+    return ('sessiondept.html', {
+        'nav': s.tillweb_nav() + [
+            (dept.description,
+             info.reverse("tillweb-session-department", kwargs={
+                 'sessionid': s.id,
+                 'dept': dept.id}))],
+        'session': s, 'department': dept,
+        'translines': translines,
+        'nextlink': nextlink,
+        'prevlink': prevlink,
+    })
+
 
 @tillweb_view
 def transactions_deferred(request, info):
@@ -704,11 +774,14 @@ def transactions_deferred(request, info):
             .all()
     return ('transactions-deferred.html', {
         'transactions': t,
-        'nav': [("Deferred transactions", info.reverse('tillweb-deferred-transactions'))],
+        'nav': [("Deferred transactions",
+                 info.reverse('tillweb-deferred-transactions'))],
     })
+
 
 class TransactionNotesForm(forms.Form):
     notes = forms.CharField(required=False, max_length=60)
+
 
 @tillweb_view
 def transaction(request, info, transid):
@@ -724,7 +797,7 @@ def transaction(request, info, transid):
 
     form = None
     if info.user_has_perm("edit-transaction-note"):
-        initial = {'notes': t.notes }
+        initial = {'notes': t.notes}
         if request.method == "POST":
             form = TransactionNotesForm(request.POST, initial=initial)
             if form.is_valid():
@@ -741,6 +814,7 @@ def transaction(request, info, transid):
         'form': form,
     })
 
+
 @tillweb_view
 def transline(request, info, translineid):
     tl = td.s.query(Transline)\
@@ -751,6 +825,7 @@ def transline(request, info, translineid):
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
+
 
 @tillweb_view
 def supplierlist(request, info):
@@ -764,11 +839,13 @@ def supplierlist(request, info):
         'may_create_supplier': may_edit,
     })
 
+
 class SupplierForm(forms.Form):
     name = forms.CharField(max_length=60)
     telephone = forms.CharField(max_length=20, required=False)
     email = forms.EmailField(max_length=60, required=False)
     web = forms.URLField(required=False)
+
 
 @tillweb_view
 def supplier(request, info, supplierid):
@@ -777,8 +854,8 @@ def supplier(request, info, supplierid):
         raise Http404
 
     deliveries = td.s.query(Delivery)\
-                 .order_by(desc(Delivery.id))\
-                 .filter(Delivery.supplier == s)
+                     .order_by(desc(Delivery.id))\
+                     .filter(Delivery.supplier == s)
 
     form = None
     can_delete = False
@@ -811,7 +888,8 @@ def supplier(request, info, supplierid):
                     return HttpResponseRedirect(s.get_absolute_url())
                 except sqlalchemy.exc.IntegrityError:
                     td.s.rollback()
-                    form.add_error("name", "There is another supplier with this name")
+                    form.add_error(
+                        "name", "There is another supplier with this name")
                     messages.error(
                         request, "Could not update supplier: there is "
                         "another supplier with this name")
@@ -827,10 +905,12 @@ def supplier(request, info, supplierid):
         'can_delete': can_delete,
     })
 
+
 @tillweb_view
 def create_supplier(request, info):
     if not info.user_has_perm("edit-supplier"):
-        return HttpResponseForbidden("You don't have permission to create new suppliers")
+        return HttpResponseForbidden(
+            "You don't have permission to create new suppliers")
 
     if request.method == "POST":
         form = SupplierForm(request.POST)
@@ -850,7 +930,8 @@ def create_supplier(request, info):
                 return HttpResponseRedirect(s.get_absolute_url())
             except sqlalchemy.exc.IntegrityError:
                 td.s.rollback()
-                form.add_error("name", "There is another supplier with this name")
+                form.add_error(
+                    "name", "There is another supplier with this name")
                 messages.error(
                     request, "Could not add supplier: there is "
                     "another supplier with this name")
@@ -862,6 +943,7 @@ def create_supplier(request, info):
                 ("New", info.reverse("tillweb-create-supplier"))],
         'form': form,
     })
+
 
 @tillweb_view
 def deliverylist(request, info):
@@ -877,21 +959,24 @@ def deliverylist(request, info):
         'nav': [("Deliveries", info.reverse("tillweb-deliveries"))],
         'pager': pager,
         'may_create_delivery': may_create_delivery,
-        })
+    })
+
 
 class DeliveryForm(forms.Form):
     supplier = SQLAModelChoiceField(
         Supplier,
-        query_filter=lambda x:x.order_by(Supplier.name),
+        query_filter=lambda x: x.order_by(Supplier.name),
         widget=Select2)
     docnumber = forms.CharField(
         label="Document number", required=False, max_length=40)
     date = forms.DateField(widget=DateInput)
 
+
 @tillweb_view
 def create_delivery(request, info):
     if not info.user_has_perm("deliveries"):
-        return HttpResponseForbidden("You don't have permission to create new deliveries")
+        return HttpResponseForbidden(
+            "You don't have permission to create new deliveries")
 
     if request.method == "POST":
         form = DeliveryForm(request.POST)
@@ -903,7 +988,7 @@ def create_delivery(request, info):
                 date=cd['date'])
             td.s.add(d)
             td.s.commit()
-            messages.success(request, f"Draft delivery created.")
+            messages.success(request, "Draft delivery created.")
             return HttpResponseRedirect(d.get_absolute_url())
     else:
         form = DeliveryForm()
@@ -913,6 +998,7 @@ def create_delivery(request, info):
                 ("New", info.reverse("tillweb-create-delivery"))],
         'form': form,
     })
+
 
 class EditDeliveryForm(DeliveryForm):
     def __init__(self, info, *args, **kwargs):
@@ -932,8 +1018,8 @@ class EditDeliveryForm(DeliveryForm):
         required=False,
         empty_label='Choose a stock type',
         label_function=stocktype_widget_label,
-        query_filter=lambda x:x.order_by(StockType.manufacturer,
-                                         StockType.name),
+        query_filter=lambda x: x.order_by(StockType.manufacturer,
+                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
     itemsize = SQLAModelChoiceField(StockUnit, required=False,
                                     empty_label='Choose an item size')
@@ -960,6 +1046,7 @@ class EditDeliveryForm(DeliveryForm):
             if cd['itemsize'].unit != cd['stocktype'].unit:
                 self.add_error('itemsize', 'Item size is not valid for '
                                'the selected stock type')
+
 
 @tillweb_view
 def delivery(request, info, deliveryid):
@@ -990,7 +1077,7 @@ def delivery(request, info, deliveryid):
                         request, "There are items in this delivery.  The "
                         "delivery can't be deleted until they are removed.")
                     return HttpResponseRedirect(d.get_absolute_url())
-                messages.success(request, f"Delivery deleted.")
+                messages.success(request, "Delivery deleted.")
                 td.s.delete(d)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-deliveries"))
@@ -1033,12 +1120,13 @@ def delivery(request, info, deliveryid):
         'total': total,
     })
 
+
 class StockTypeSearchForm(forms.Form):
     manufacturer = forms.CharField(required=False)
     name = forms.CharField(required=False)
     department = SQLAModelChoiceField(
         Department,
-        query_filter=lambda q:q.order_by(Department.id),
+        query_filter=lambda q: q.order_by(Department.id),
         required=False)
 
     def is_filled_in(self):
@@ -1056,6 +1144,7 @@ class StockTypeSearchForm(forms.Form):
         if cd['department']:
             q = q.filter(StockType.department == cd['department'])
         return q
+
 
 @tillweb_view
 def stocktypesearch(request, info):
@@ -1100,10 +1189,11 @@ def stocktypesearch(request, info):
         'candidate_stocktakes': candidate_stocktakes,
     })
 
+
 class NewStockTypeForm(forms.Form):
     department = SQLAModelChoiceField(
         Department,
-        query_filter=lambda q:q.order_by(Department.id),
+        query_filter=lambda q: q.order_by(Department.id),
         required=True)
     manufacturer = forms.CharField(max_length=30, widget=forms.TextInput(
         attrs={'list': 'manufacturers', 'autocomplete': 'off'}))
@@ -1115,21 +1205,23 @@ class NewStockTypeForm(forms.Form):
                              max_value=Decimal("99.9"))
     unit = SQLAModelChoiceField(
         Unit,
-        query_filter=lambda x:x.order_by(Unit.name),
-        label_function=lambda u:f"{u.description} (base unit: {u.name})")
+        query_filter=lambda x: x.order_by(Unit.name),
+        label_function=lambda u: f"{u.description} (base unit: {u.name})")
     saleprice = forms.DecimalField(
         label="Sale price inc. VAT",
         required=False, decimal_places=money_decimal_places,
         min_value=zero, max_digits=money_max_digits)
 
+
 @tillweb_view
 def create_stocktype(request, info):
     if not info.user_has_perm("alter-stocktype"):
-        return HttpResponseForbidden("You don't have permission to create new stock types")
+        return HttpResponseForbidden(
+            "You don't have permission to create new stock types")
 
     manufacturers = [x[0].strip() for x in
-                     td.s.query(distinct(StockType.manufacturer))\
-                     .order_by(StockType.manufacturer)\
+                     td.s.query(distinct(StockType.manufacturer))
+                     .order_by(StockType.manufacturer)
                      .all()]
 
     if request.method == 'POST':
@@ -1159,12 +1251,14 @@ def create_stocktype(request, info):
         'manufacturers': manufacturers,
     })
 
+
 def _stocktype_to_dict(x, include_stockunits):
     return {'id': str(x.id), 'text': stocktype_widget_label(x),
             'saleprice': x.saleprice,
             'stockunits': [{'id': str(su.id), 'text': str(su.name)}
                            for su in x.unit.stockunits]
             if include_stockunits else []}
+
 
 @tillweb_view
 def stocktype_search_json(request, info, include_stockunits=False):
@@ -1189,13 +1283,14 @@ def stocktype_search_json(request, info, include_stockunits=False):
         {'results': [_stocktype_to_dict(x, include_stockunits)
                      for x in results]})
 
+
 @tillweb_view
 def stocktype_info_json(request, info):
     if 'id' not in request.GET:
         raise Http404
     try:
         id = int(request.GET['id'])
-    except:
+    except Exception:
         raise Http404
     st = td.s.query(StockType)\
              .options(joinedload('unit').joinedload('stockunits'))\
@@ -1203,6 +1298,7 @@ def stocktype_info_json(request, info):
     if not st:
         raise Http404
     return JsonResponse(_stocktype_to_dict(st, True))
+
 
 class EditStockTypeForm(forms.Form):
     manufacturer = forms.CharField(max_length=30)
@@ -1213,14 +1309,16 @@ class EditStockTypeForm(forms.Form):
                              max_value=Decimal("99.9"))
     department = SQLAModelChoiceField(
         Department,
-        query_filter=lambda q:q.order_by(Department.id),
+        query_filter=lambda q: q.order_by(Department.id),
         required=True)
+
 
 class RepriceStockTypeForm(forms.Form):
     saleprice = forms.DecimalField(
         label="New sale price inc. VAT",
         required=False, decimal_places=money_decimal_places,
         min_value=zero, max_digits=money_max_digits)
+
 
 @tillweb_view
 def stocktype(request, info, stocktype_id):
@@ -1268,10 +1366,10 @@ def stocktype(request, info, stocktype_id):
             reprice_form = RepriceStockTypeForm(request.POST)
             if reprice_form.is_valid():
                 new_price = reprice_form.cleaned_data['saleprice']
-                old_price = s.saleprice
                 if new_price != s.saleprice:
-                    user.log(f"Changed sale price of {s.logref} from "
-                             f"{info.money}{s.saleprice} to {info.money}{new_price}")
+                    user.log(
+                        f"Changed sale price of {s.logref} from "
+                        f"{info.money}{s.saleprice} to {info.money}{new_price}")
                     s.saleprice = new_price
                     s.saleprice_changed = datetime.datetime.now()
                     td.s.commit()
@@ -1300,19 +1398,21 @@ def stocktype(request, info, stocktype_id):
     if not include_finished:
         items = items.filter(StockItem.finished == None)
     items = items.all()
-    return ('stocktype.html',
-            {'tillobject': s,
-             'stocktype': s,
-             'alter_form': alter_form,
-             'reprice_form': reprice_form,
-             'may_delete': may_delete,
-             'items': items,
-             'include_finished': include_finished,
-            })
+    return ('stocktype.html', {
+        'tillobject': s,
+        'stocktype': s,
+        'alter_form': alter_form,
+        'reprice_form': reprice_form,
+        'may_delete': may_delete,
+        'items': items,
+        'include_finished': include_finished,
+    })
+
 
 class StockSearchForm(StockTypeSearchForm):
     include_finished = forms.BooleanField(
         required=False, label="Include finished items")
+
 
 @tillweb_view
 def stocksearch(request, info):
@@ -1339,24 +1439,27 @@ def stocksearch(request, info):
         'stocklist': pager.items() if pager else [],
         'pager': pager})
 
+
 class StockAnnotateForm(forms.Form):
     annotation_type = StringIDChoiceField(
         AnnotationType, 'id',
-        query_filter=lambda x:x.order_by(AnnotationType.description)\
+        query_filter=lambda x: x.order_by(AnnotationType.description)
         .filter(~(AnnotationType.id.in_(["start", "stop"]))),
         empty_label="Choose a type of annotation"
     )
     annotation = forms.CharField()
 
+
 class StockWasteForm(forms.Form):
     waste_type = StringIDChoiceField(
         RemoveCode, 'id',
-        query_filter=lambda x:x.order_by(RemoveCode.reason)\
+        query_filter=lambda x: x.order_by(RemoveCode.reason)
         .filter(RemoveCode.id != 'sold'),
         empty_label="Choose the type of waste to record"
-        )
+    )
     amount = forms.DecimalField(
         max_digits=qty_max_digits, decimal_places=qty_decimal_places)
+
 
 class EditStockForm(forms.Form):
     def __init__(self, info, *args, **kwargs):
@@ -1372,8 +1475,8 @@ class EditStockForm(forms.Form):
         StockType,
         label="Stock type",
         label_function=stocktype_widget_label,
-        query_filter=lambda x:x.order_by(StockType.manufacturer,
-                                         StockType.name),
+        query_filter=lambda x: x.order_by(StockType.manufacturer,
+                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
     description = forms.CharField()
     size = forms.DecimalField(
@@ -1385,6 +1488,7 @@ class EditStockForm(forms.Form):
         max_digits=money_max_digits, decimal_places=money_decimal_places)
     bestbefore = forms.DateField(label="Best before", required=False,
                                  widget=DateInput)
+
 
 @tillweb_view
 def stock(request, info, stockid):
@@ -1487,6 +1591,7 @@ def stock(request, info, stockid):
         'wform': wform,
     })
 
+
 @tillweb_view
 def units(request, info):
     u = td.s.query(Unit).order_by(Unit.description).all()
@@ -1497,6 +1602,7 @@ def units(request, info):
         'may_create_unit': may_edit,
     })
 
+
 class UnitForm(forms.Form):
     description = forms.CharField()
     base_unit = forms.CharField()
@@ -1505,6 +1611,7 @@ class UnitForm(forms.Form):
         decimal_places=qty_decimal_places, initial=1)
     item_name = forms.CharField()
     item_name_plural = forms.CharField()
+
 
 @tillweb_view
 def unit(request, info, unit_id):
@@ -1551,10 +1658,12 @@ def unit(request, info, unit_id):
         'can_delete': can_delete,
     })
 
+
 @tillweb_view
 def create_unit(request, info):
     if not info.user_has_perm("edit-unit"):
-        return HttpResponseForbidden("You don't have permission to create new units")
+        return HttpResponseForbidden(
+            "You don't have permission to create new units")
 
     if request.method == "POST":
         form = UnitForm(request.POST)
@@ -1579,6 +1688,7 @@ def create_unit(request, info):
         'form': form,
     })
 
+
 @tillweb_view
 def stockunits(request, info):
     su = td.s.query(StockUnit)\
@@ -1592,17 +1702,19 @@ def stockunits(request, info):
         'may_create_stockunit': may_edit,
     })
 
+
 class StockUnitForm(forms.Form):
     description = forms.CharField()
     unit = SQLAModelChoiceField(
         Unit,
-        query_filter=lambda x:x.order_by(Unit.name),
-        label_function=lambda u:f"{u.description} (base unit: {u.name})")
+        query_filter=lambda x: x.order_by(Unit.name),
+        label_function=lambda u: f"{u.description} (base unit: {u.name})")
     size = forms.DecimalField(
         label="Size in base units",
         min_value=min_quantity, max_digits=qty_max_digits,
         decimal_places=qty_decimal_places)
     merge = forms.BooleanField(required=False)
+
 
 @tillweb_view
 def stockunit(request, info, stockunit_id):
@@ -1643,10 +1755,12 @@ def stockunit(request, info, stockunit_id):
         'form': form,
     })
 
+
 @tillweb_view
 def create_stockunit(request, info):
     if not info.user_has_perm("edit-stockunit"):
-        return HttpResponseForbidden("You don't have permission to create new item sizes")
+        return HttpResponseForbidden(
+            "You don't have permission to create new item sizes")
 
     if request.method == "POST":
         form = StockUnitForm(request.POST)
@@ -1669,6 +1783,7 @@ def create_stockunit(request, info):
                 ("New", info.reverse("tillweb-create-stockunit"))],
         'form': form,
     })
+
 
 @tillweb_view
 def stocklinelist(request, info):
@@ -1696,6 +1811,7 @@ def stocklinelist(request, info):
         'continuous': continuous,
     })
 
+
 @tillweb_view
 def stockline(request, info, stocklineid):
     s = td.s.query(StockLine)\
@@ -1718,6 +1834,7 @@ def stockline(request, info, stocklineid):
         'stockline': s,
     })
 
+
 class RegularStockLineForm(forms.Form):
     def __init__(self, info, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1737,19 +1854,20 @@ class RegularStockLineForm(forms.Form):
         label="Restrict new stock to this type",
         empty_label="Don't restrict by stock type",
         label_function=stocktype_widget_label,
-        query_filter=lambda x:x.order_by(StockType.manufacturer,
-                                         StockType.name),
+        query_filter=lambda x: x.order_by(StockType.manufacturer,
+                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
     department = SQLAModelChoiceField(
         Department,
         label="Restrict new stock to this department",
         empty_label="Don't restrict by department",
-        query_filter=lambda q:q.order_by(Department.id),
+        query_filter=lambda q: q.order_by(Department.id),
         required=False)
     pullthru = forms.DecimalField(
         label="Pull-through amount",
         max_digits=qty_max_digits, decimal_places=qty_decimal_places,
         required=False)
+
 
 def stockline_regular(request, info, s):
     form = None
@@ -1796,6 +1914,7 @@ def stockline_regular(request, info, s):
         'locations': locations,
     })
 
+
 class DisplayStockLineForm(forms.Form):
     def __init__(self, info, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1815,11 +1934,12 @@ class DisplayStockLineForm(forms.Form):
         label="Type of stock on sale",
         empty_label="Choose a stock type",
         label_function=stocktype_widget_label,
-        query_filter=lambda x:x.order_by(StockType.manufacturer,
-                                         StockType.name),
+        query_filter=lambda x: x.order_by(StockType.manufacturer,
+                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
     capacity = forms.IntegerField(
         label="Maximum number of items on display", min_value=1)
+
 
 def stockline_display(request, info, s):
     form = None
@@ -1872,6 +1992,7 @@ def stockline_display(request, info, s):
         'locations': locations,
     })
 
+
 class ContinuousStockLineForm(forms.Form):
     def __init__(self, info, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1891,9 +2012,10 @@ class ContinuousStockLineForm(forms.Form):
         label="Type of stock on sale",
         empty_label="Choose a stock type",
         label_function=stocktype_widget_label,
-        query_filter=lambda x:x.order_by(StockType.manufacturer,
-                                         StockType.name),
+        query_filter=lambda x: x.order_by(StockType.manufacturer,
+                                          StockType.name),
         widget=Select2Ajax(min_input_length=2))
+
 
 def stockline_continuous(request, info, s):
     form = None
@@ -1936,6 +2058,7 @@ def stockline_continuous(request, info, s):
         'locations': locations,
     })
 
+
 @tillweb_view
 def plulist(request, info):
     plus = td.s.query(PriceLookup)\
@@ -1950,11 +2073,12 @@ def plulist(request, info):
         'may_create_plu': may_create_plu,
     })
 
+
 class PLUForm(forms.Form):
     description = forms.CharField()
     department = SQLAModelChoiceField(
         Department,
-        query_filter=lambda q:q.order_by(Department.id),
+        query_filter=lambda q: q.order_by(Department.id),
         required=True)
     note = forms.CharField(required=False)
     price = forms.DecimalField(
@@ -1969,6 +2093,7 @@ class PLUForm(forms.Form):
     altprice3 = forms.DecimalField(
         required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
+
 
 @tillweb_view
 def plu(request, info, pluid):
@@ -1989,7 +2114,8 @@ def plu(request, info, pluid):
         }
         if request.method == "POST":
             if 'submit_delete' in request.POST:
-                messages.success(request, "Price lookup '{}' deleted.".format(p.description))
+                messages.success(
+                    request, f"Price lookup '{p.description}' deleted.")
                 td.s.delete(p)
                 td.s.commit()
                 return HttpResponseRedirect(info.reverse("tillweb-plus"))
@@ -2004,7 +2130,8 @@ def plu(request, info, pluid):
                 p.altprice2 = cd['altprice2']
                 p.altprice3 = cd['altprice3']
                 td.s.commit()
-                messages.success(request, "Price lookup '{}' updated.".format(p.description))
+                messages.success(
+                    request, "Price lookup '{p.description}' updated.")
                 return HttpResponseRedirect(p.get_absolute_url())
         else:
             form = PLUForm(initial=initial)
@@ -2015,10 +2142,12 @@ def plu(request, info, pluid):
         'form': form,
     })
 
+
 @tillweb_view
 def create_plu(request, info):
     if not info.user_has_perm("create-plu"):
-        return HttpResponseForbidden("You don't have permission to create new price lookups")
+        return HttpResponseForbidden(
+            "You don't have permission to create new price lookups")
 
     if request.method == "POST":
         form = PLUForm(request.POST)
@@ -2034,7 +2163,8 @@ def create_plu(request, info):
                 altprice3=cd['altprice3'])
             td.s.add(p)
             td.s.commit()
-            messages.success(request, "Price lookup '{}' created.".format(p.description))
+            messages.success(
+                request, f"Price lookup '{p.description}' created.")
             return HttpResponseRedirect(p.get_absolute_url())
     else:
         form = PLUForm()
@@ -2048,6 +2178,7 @@ def create_plu(request, info):
 
 class BarcodeSearchForm(forms.Form):
     barcode = forms.CharField()
+
 
 @tillweb_view
 def barcodelist(request, info):
@@ -2072,28 +2203,26 @@ def barcodelist(request, info):
 
     pager = Pager(request, barcodes)
 
-    return (
-        'barcodes.html',
-        {'nav': [
+    return ('barcodes.html', {
+        'nav': [
             ("Barcodes", info.reverse("tillweb-barcodes")),
         ],
-         'form': form,
-         'recent': pager.items,
-         'pager': pager,
-         'nextlink': pager.nextlink(),
-         'prevlink': pager.prevlink(),
-        })
+        'form': form,
+        'recent': pager.items,
+        'pager': pager,
+        'nextlink': pager.nextlink(),
+        'prevlink': pager.prevlink(),
+    })
 
 
 @tillweb_view
 def barcode(request, info, barcode):
     b = td.s.query(Barcode).get(barcode)
 
-    return ('barcode.html',
-            {
-                'barcode': b,
-                'tillobject': b,
-            })
+    return ('barcode.html', {
+        'barcode': b,
+        'tillobject': b,
+    })
 
 
 @tillweb_view
@@ -2107,11 +2236,12 @@ def departmentlist(request, info):
         'may_create_department': info.user_has_perm("edit-department"),
     })
 
+
 class NewDepartmentForm(forms.Form):
     number = forms.IntegerField(
         min_value=1, help_text="Must be unique")
     description = forms.CharField(
-        max_length=20, help_text="Used in web interface, printed on "\
+        max_length=20, help_text="Used in web interface, printed on "
         "price lists and session total lists")
     vatband = StringIDChoiceField(
         VatBand, 'band',
@@ -2138,6 +2268,7 @@ class NewDepartmentForm(forms.Form):
         if d:
             raise ValidationError(f"Department {n} already exists")
         return n
+
 
 @tillweb_view
 def create_department(request, info):
@@ -2170,9 +2301,10 @@ def create_department(request, info):
         'form': form,
     })
 
+
 class EditDepartmentForm(forms.Form):
     description = forms.CharField(
-        max_length=20, help_text="Used in web interface, printed on "\
+        max_length=20, help_text="Used in web interface, printed on "
         "price lists and session total lists")
     vatband = StringIDChoiceField(
         VatBand, 'band',
@@ -2192,6 +2324,7 @@ class EditDepartmentForm(forms.Form):
     accinfo = forms.CharField(
         label="Accounting details", required=False,
         help_text="Configuration for accounting system integration")
+
 
 @tillweb_view
 def department(request, info, departmentid, as_spreadsheet=False):
@@ -2225,7 +2358,7 @@ def department(request, info, departmentid, as_spreadsheet=False):
                     d.accinfo = cd['accinfo']
                     user.log(f"Updated department {d.logref}")
                     td.s.commit()
-                    messages.success(request, f"Department details updated")
+                    messages.success(request, "Department details updated")
                 return HttpResponseRedirect(d.get_absolute_url())
         else:
             form = EditDepartmentForm(initial=initial)
@@ -2255,13 +2388,15 @@ def department(request, info, departmentid, as_spreadsheet=False):
 
     pager = Pager(request, items, preserve_query_parameters=["show_finished"])
 
-    return ('department.html',
-            {'tillobject': d,
-             'department': d, 'pager': pager,
-             'include_finished': include_finished,
-             'may_edit': may_edit,
-             'form': form,
-            })
+    return ('department.html', {
+        'tillobject': d,
+        'department': d,
+        'pager': pager,
+        'include_finished': include_finished,
+        'may_edit': may_edit,
+        'form': form,
+    })
+
 
 class StockCheckForm(forms.Form):
     short = forms.TextInput(attrs={'size': 3, 'maxlength': 3})
@@ -2276,7 +2411,8 @@ class StockCheckForm(forms.Form):
         min_value=0.0, initial=1.0)
     department = SQLAModelChoiceField(
         Department,
-        query_filter=lambda q:q.order_by(Department.id))
+        query_filter=lambda q: q.order_by(Department.id))
+
 
 @tillweb_view
 def stockcheck(request, info):
@@ -2316,6 +2452,7 @@ def stockcheck(request, info):
         'buylist': buylist,
     })
 
+
 @tillweb_view
 def userlist(request, info):
     q = td.s.query(User).order_by(User.fullname)
@@ -2323,11 +2460,12 @@ def userlist(request, info):
     if not include_inactive:
         q = q.filter(User.enabled == True)
     users = q.all()
-    return ('userlist.html',
-            {'nav': [("Users", info.reverse("tillweb-till-users"))],
-             'users': users,
-             'include_inactive': include_inactive,
-            })
+    return ('userlist.html', {
+        'nav': [("Users", info.reverse("tillweb-till-users"))],
+        'users': users,
+        'include_inactive': include_inactive,
+    })
+
 
 class EditUserForm(forms.Form):
     fullname = forms.CharField()
@@ -2336,8 +2474,9 @@ class EditUserForm(forms.Form):
     enabled = forms.BooleanField(required=False)
     groups = StringIDMultipleChoiceField(
         Group, 'id',
-        query_filter=lambda q:q.order_by(Group.id),
+        query_filter=lambda q: q.order_by(Group.id),
         required=False)
+
 
 @tillweb_view
 def userdetail(request, info, userid):
@@ -2400,15 +2539,16 @@ def userdetail(request, info, userid):
                .filter(LogEntry.loguser == u)\
                .order_by(desc(LogEntry.id))[:50]
 
-    return ('user.html',
-            {'tillobject': u,
-             'tuser': u,
-             'sales': sales,
-             'payments': payments,
-             'annotations': annotations,
-             'logs': logs,
-             'form': form,
-            })
+    return ('user.html', {
+        'tillobject': u,
+        'tuser': u,
+        'sales': sales,
+        'payments': payments,
+        'annotations': annotations,
+        'logs': logs,
+        'form': form,
+    })
+
 
 @tillweb_view
 def grouplist(request, info):
@@ -2416,19 +2556,21 @@ def grouplist(request, info):
                  .order_by(Group.id)\
                  .all()
 
-    return ('grouplist.html',
-            {'nav': [("Groups", info.reverse("tillweb-till-groups"))],
-             'groups': groups,
-             'may_create_group': info.user_has_perm("edit-user"),
-            })
+    return ('grouplist.html', {
+        'nav': [("Groups", info.reverse("tillweb-till-groups"))],
+        'groups': groups,
+        'may_create_group': info.user_has_perm("edit-user"),
+    })
+
 
 class EditGroupForm(forms.Form):
     name = forms.CharField()
     description = forms.CharField()
     permissions = StringIDMultipleChoiceField(
         Permission, 'id',
-        query_filter=lambda q:q.order_by(Permission.id),
+        query_filter=lambda q: q.order_by(Permission.id),
         required=False)
+
 
 @tillweb_view
 def group(request, info, groupid):
@@ -2448,30 +2590,31 @@ def group(request, info, groupid):
         }
         if request.method == "POST":
             if 'submit_delete' in request.POST:
-                messages.success(request, "Group '{}' deleted.".format(g.id))
+                messages.success(request, f"Group '{g.id}' deleted.")
                 td.s.delete(g)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-till-groups"))
+                return HttpResponseRedirect(
+                    info.reverse("tillweb-till-groups"))
             form = EditGroupForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
-                changed = form.changed_data
                 g.id = cd['name']
                 g.description = cd['description']
                 g.permissions = cd['permissions']
                 td.s.commit()
-                messages.success(request, "Group '{}' updated.".format(g.id))
+                messages.success(request, f"Group '{g.id}' updated.")
                 return HttpResponseRedirect(
                     info.reverse("tillweb-till-groups") + "#row-" + g.id)
         else:
             form = EditGroupForm(initial=initial)
 
-    return ('group.html',
-            {'tillobject': g,
-             'group': g,
-             'form': form,
-             'can_delete': len(g.users) == 0,
-            })
+    return ('group.html', {
+        'tillobject': g,
+        'group': g,
+        'form': form,
+        'can_delete': len(g.users) == 0,
+    })
+
 
 @tillweb_view
 def create_group(request, info):
@@ -2503,15 +2646,12 @@ def create_group(request, info):
     else:
         form = EditGroupForm()
 
-    return ('new-group.html',
-            {'form': form,
-             'nav': [("Groups", info.reverse("tillweb-till-groups")),
-                     ("New", info.reverse("tillweb-create-till-group"))],
-            })
+    return ('new-group.html', {
+        'form': form,
+        'nav': [("Groups", info.reverse("tillweb-till-groups")),
+                ("New", info.reverse("tillweb-create-till-group"))],
+    })
 
-import matplotlib
-matplotlib.use("SVG")
-import matplotlib.pyplot as plt
 
 @tillweb_view
 def session_sales_pie_chart(request, info, sessionid):
@@ -2536,6 +2676,7 @@ def session_sales_pie_chart(request, info, sessionid):
     plt.close(fig)
     return response
 
+
 @tillweb_view
 def session_users_pie_chart(request, info, sessionid):
     s = td.s.query(Session).get(sessionid)
@@ -2559,6 +2700,7 @@ def session_users_pie_chart(request, info, sessionid):
     plt.close(fig)
     return response
 
+
 @tillweb_view
 def logsindex(request, info):
     logs = td.s.query(LogEntry)\
@@ -2566,32 +2708,35 @@ def logsindex(request, info):
 
     pager = Pager(request, logs)
 
-    return ('logs.html',
-            {'nav': [("Logs", info.reverse("tillweb-logs"))],
-             'recent': pager.items,
-             'pager': pager,
-             'nextlink': pager.nextlink(),
-             'prevlink': pager.prevlink(),
-            })
+    return ('logs.html', {
+        'nav': [("Logs", info.reverse("tillweb-logs"))],
+        'recent': pager.items,
+        'pager': pager,
+        'nextlink': pager.nextlink(),
+        'prevlink': pager.prevlink(),
+    })
+
 
 @tillweb_view
 def logdetail(request, info, logid):
     l = td.s.query(LogEntry)\
-             .get(logid)
+            .get(logid)
     if not l:
         raise Http404
-    return ('logentry.html',
-            {'log': l,
-             'tillobject': l,
-            })
+    return ('logentry.html', {
+        'log': l,
+        'tillobject': l,
+    })
+
 
 @tillweb_view
 def configindex(request, info):
     c = td.s.query(Config).order_by(Config.key).all()
-    return ('configindex.html',
-            {'config': c,
-             'nav': [("Config", info.reverse("tillweb-config-index"))],
-            })
+    return ('configindex.html', {
+        'config': c,
+        'nav': [("Config", info.reverse("tillweb-config-index"))],
+    })
+
 
 class ConfigItemUpdateForm(forms.Form):
     def __init__(self, datatype, *args, **kwargs):
@@ -2599,7 +2744,8 @@ class ConfigItemUpdateForm(forms.Form):
         if datatype == "multiline text":
             self.fields['value'].widget = forms.Textarea()
 
-    value = forms.CharField(required = False)
+    value = forms.CharField(required=False)
+
 
 @tillweb_view
 def configitem(request, info, key):
@@ -2610,7 +2756,7 @@ def configitem(request, info, key):
 
     form = None
     if may_edit:
-        initial = { 'value': c.value }
+        initial = {'value': c.value}
         if request.method == 'POST':
             form = ConfigItemUpdateForm(c.type, request.POST, initial=initial)
             if form.is_valid():
@@ -2631,23 +2777,26 @@ def configitem(request, info, key):
         else:
             form = ConfigItemUpdateForm(c.type, initial=initial)
 
-    return ('configitem.html',
-            {'config': c,
-             'tillobject': c,
-             'form': form,
-            })
+    return ('configitem.html', {
+        'config': c,
+        'tillobject': c,
+        'form': form,
+    })
+
 
 @tillweb_view
 def reportindex(request, info):
-    return ('reports.html',
-            {'nav': [("Reports", info.reverse("tillweb-reports"))],
-            })
+    return ('reports.html', {
+        'nav': [("Reports", info.reverse("tillweb-reports"))],
+    })
+
 
 class WasteReportForm(DatePeriodForm):
     columns = forms.ChoiceField(label="Columns show", choices=[
         ("depts", "Departments"),
         ("waste", "Waste type"),
     ])
+
 
 @tillweb_view
 def waste_report(request, info):
@@ -2663,20 +2812,21 @@ def waste_report(request, info):
     else:
         wasteform = WasteReportForm(prefix="waste")
 
-    return (
-        'wasted-stock-report.html',
-        {'nav': [
+    return ('wasted-stock-report.html', {
+        'nav': [
             ("Reports", info.reverse("tillweb-reports")),
             ("Wasted stock", info.reverse("tillweb-report-wasted-stock")),
         ],
-         'wasteform': wasteform,
-        })
+        'wasteform': wasteform,
+    })
+
 
 class StockSoldReportForm(DatePeriodForm):
     dates = forms.ChoiceField(label="Based on", choices=[
         ("transaction", "Transaction Date"),
         ("stockusage", "Date entered"),
     ])
+
 
 @tillweb_view
 def stock_sold_report(request, info):
@@ -2692,11 +2842,10 @@ def stock_sold_report(request, info):
     else:
         stocksoldform = StockSoldReportForm(prefix="stocksold")
 
-    return (
-        'stock-sold-report.html',
-        {'nav': [
+    return ('stock-sold-report.html', {
+        'nav': [
             ("Reports", info.reverse("tillweb-reports")),
             ("Stock sold", info.reverse("tillweb-report-stock-sold")),
         ],
-         'stocksoldform': stocksoldform,
-        })
+        'stocksoldform': stocksoldform,
+    })

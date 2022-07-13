@@ -17,13 +17,13 @@ from . import ui, td, keyboard, tillconfig, cmdline
 from .models import User, UserToken, Permission, Group, LogEntry
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
-import types
 import socket
 import logging
 import datetime
 
 # We declare 'log' later on for writing log entries to the database
 debug_log = logging.getLogger(__name__)
+
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self, key):
@@ -39,7 +39,9 @@ class ActionDescriptionRegistry(dict):
             return
         dict.__setitem__(self, key, val)
 
+
 action_descriptions = ActionDescriptionRegistry()
+
 
 class _permission_checked_metaclass(type):
     """Metaclass for permission_checked classes."""
@@ -60,16 +62,17 @@ class _permission_checked_metaclass(type):
         else:
             if u:
                 ui.infopopup(
-                    ["{user} does not have the '{req}' permission "
-                     "which is required for this operation.".format(
-                            user=u.fullname, req=cls.permission_required[0])],
+                    [f"{u.fullname} does not have the "
+                     f"'{cls.permission_required[0]}' permission "
+                     "which is required for this operation."],
                     title="Not allowed")
             else:
                 ui.infopopup(
-                    ["This operation needs the '{req}' permission, "
-                     "but there is no current user.".format(
-                            req=cls.permission_required[0])],
+                    [f"This operation needs the "
+                     f"'{cls.permission_required[0]}' permission, "
+                     f"but there is no current user."],
                     title="Not allowed")
+
 
 class permission_checked(object, metaclass=_permission_checked_metaclass):
     """Base class for restricted access classes
@@ -91,6 +94,7 @@ class permission_checked(object, metaclass=_permission_checked_metaclass):
         if user is None:
             return False
         return user.may(cls.permission_required[0])
+
 
 class permission_required:
     """Function decorator to perform permission check
@@ -141,7 +145,10 @@ class permission_required:
         permission_check.allowed = allowed
         return permission_check
 
+
 _permissions_checked = False
+
+
 def _check_permissions():
     """Check that all permissions exist, and assign to default groups
     """
@@ -152,7 +159,7 @@ def _check_permissions():
     # created.  Load all existing permissions at once in a single
     # database query.  We'll only make further queries if we have a
     # new permission.
-    dbpermissions = td.s.query(Permission).all()
+    td.s.query(Permission).all()
     for p, d in action_descriptions.items():
         dbperm = td.s.query(Permission).get(p)
         if dbperm:
@@ -173,10 +180,12 @@ def _check_permissions():
     td.s.flush()
     _permissions_checked = True
 
+
 def current_dbuser():
     user = ui.current_user()
     if user and hasattr(user, 'dbuser'):
         return user.dbuser
+
 
 class built_in_user:
     """A user not present in the database
@@ -187,7 +196,8 @@ class built_in_user:
     permissions is a list of strings.  It's stored as-is for
     reference, and also flattened into a set for lookup purposes.
     """
-    def __init__(self, fullname, shortname, permissions=[], is_superuser=False):
+    def __init__(self, fullname, shortname, permissions=[],
+                 is_superuser=False):
         self.fullname = fullname
         self.shortname = shortname
         self.permissions = permissions
@@ -203,7 +213,7 @@ class built_in_user:
             return True
         return self.has_permission(action)
 
-    def has_permission(self,action):
+    def has_permission(self, action):
         """Does this user have the specified permission?
 
         This ignores the superuser flag.
@@ -223,14 +233,15 @@ class built_in_user:
             else:
                 return ["  (None)"]
         info = ["Full name: {}".format(self.fullname),
-                "Short name: {}".format(self.shortname),""]
+                "Short name: {}".format(self.shortname), ""]
         if self.is_superuser:
             info.append("Has all permissions.")
         else:
             info = info + ["Permissions:"]\
-                   + pl_display(self._flat_permissions)
-        ui.infopopup(info, title="{} user information".format(self.fullname),
+                + pl_display(self._flat_permissions)
+        ui.infopopup(info, title=f"{self.fullname} user information",
                      colour=ui.colour_info)
+
 
 class database_user(built_in_user):
     """A user loaded from the database.
@@ -245,6 +256,7 @@ class database_user(built_in_user):
             user.fullname, user.shortname,
             permissions=[p.id for p in user.permissions],
             is_superuser=user.superuser)
+
 
 def load_user(userid):
     """Load the specified user from the database
@@ -261,6 +273,7 @@ def load_user(userid):
         return
     return database_user(dbuser)
 
+
 class token:
     """A user token
 
@@ -269,14 +282,18 @@ class token:
     """
     def __init__(self, t):
         self.usertoken = t
+
     def __eq__(self, other):
         if not isinstance(other, token):
             return False
         return self.usertoken == other.usertoken
+
     def __hash__(self):
         return hash(self.usertoken)
+
     def __repr__(self):
         return "token('{}')".format(self.usertoken)
+
 
 class tokenkey(token):
     """A key that represents a user token
@@ -287,6 +304,7 @@ class tokenkey(token):
 
     def __str__(self):
         return self.keycap
+
 
 class tokenlistener:
     def __init__(self, address, addressfamily=socket.AF_INET):
@@ -303,6 +321,7 @@ class tokenlistener:
             ui.unblank_screen()
             with td.orm_session():
                 ui.handle_keyboard_input(token(d))
+
 
 def user_from_token(t):
     """Find a user given a token object.
@@ -326,10 +345,12 @@ def user_from_token(t):
         return
     return database_user(u)
 
+
 class LogError(Exception):
     """Tried to make an entry in the user activity log with no current user
     """
     pass
+
 
 def log(message):
     """Record an entry in the user activity log
@@ -337,11 +358,12 @@ def log(message):
     u = current_dbuser()
     if not u:
         raise LogError
-    l = LogEntry(source=tillconfig.configname,
-                 loguser=u,
-                 description=message)
-    l.update_refs(td.s)
-    td.s.add(l)
+    le = LogEntry(source=tillconfig.configname,
+                  loguser=u,
+                  description=message)
+    le.update_refs(td.s)
+    td.s.add(le)
+
 
 # Here is the user interface for adding, editing and deleting users.
 class adduser(permission_checked, ui.dismisspopup):
@@ -375,8 +397,10 @@ class adduser(permission_checked, ui.dismisspopup):
         self.dismiss()
         edituser(u.id)
 
+
 class tokenfield(ui.ignore_hotkeys, ui.valuefield):
     emptymessage = "Use a token to fill in this field"
+
     def __init__(self, y, x, w, allow_inuse=False, keymap={}):
         self.y = y
         self.x = x
@@ -434,6 +458,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             self.set(None)
         else:
             super().keypress(k)
+
 
 class manage_user_tokens(ui.dismisspopup):
     """Manage the tokens assigned to a user
@@ -521,6 +546,7 @@ class manage_user_tokens(ui.dismisspopup):
                 td.s.add(dbt)
             dbt.description = self.description.f
 
+
 def do_add_group(userid, group):
     u = td.s.query(User).get(userid)
     g = td.s.query(Group).get(group)
@@ -528,22 +554,23 @@ def do_add_group(userid, group):
     log(f"Granted permission group {g.logref} to {u.logref}")
     td.s.flush()
 
+
 def addgroup(userid):
     """Add a permission to a user.
 
     Displays a list of all available groups.
     """
-    cu = ui.current_user()
     gl = td.s.query(Group).order_by(Group.id).all()
     # Remove permissions the user already has
     u = td.s.query(User).get(userid)
     existing = [g.id for g in u.groups]
-    gl = [ g for g in gl if g not in existing]
+    gl = [g for g in gl if g not in existing]
     f = ui.tableformatter(' l l ')
     menu = [(f(g.id, g.description),
              do_add_group, (userid, g.id)) for g in gl]
     ui.menu(menu, title=f"Give permission group to {u.fullname}",
             blurb=f"Choose the permission group to give to {u.fullname}")
+
 
 class edituser(permission_checked, ui.basicpopup):
     permission_required = ('edit-user', 'Edit a user')
@@ -598,8 +625,8 @@ class edituser(permission_checked, ui.basicpopup):
     def editpermissions(self):
         u = td.s.query(User).get(self.userid)
         f = ui.tableformatter(' l l ')
-        pl = [ (f(g.id, g.description),
-                self.removepermission, (g.id,)) for g in u.groups ]
+        pl = [(f(g.id, g.description),
+               self.removepermission, (g.id,)) for g in u.groups]
         pl.insert(0, ("Add permission group", addgroup, (self.userid,)))
         ui.menu(pl, title=f"Permissions for {u.fullname}",
                 blurb="Select a permission group and press Cash/Enter "
@@ -610,8 +637,9 @@ class edituser(permission_checked, ui.basicpopup):
         sn = self.snfield.f.strip()
         wn = self.wnfield.f.strip()
         if len(fn) == 0 or len(sn) == 0:
-            ui.infopopup(["You can't leave the full name or short name blank."],
-                         title="Error")
+            ui.infopopup(
+                ["You can't leave the full name or short name blank."],
+                title="Error")
             return
         u = td.s.query(User).get(self.userid)
         u.fullname = fn
@@ -625,6 +653,7 @@ class edituser(permission_checked, ui.basicpopup):
         cu.dbuser = td.s.query(User).get(cu.userid)
         log(f"Updated details for user {u.logref}")
 
+
 def display_info(userid=None):
     if userid is None:
         u = ui.current_user()
@@ -637,14 +666,16 @@ def display_info(userid=None):
         u = database_user(td.s.query(User).get(userid))
         u.display_info()
 
+
 def usersmenu():
     """Create and edit users and tokens
     """
-    ui.keymenu([
-        ("1", "Users", manageusers, None),
-        ("2", "Tokens", managetokens, None),
-        ("3", "Current user information", display_info, None),
-        ], title="Manage Users")
+    ui.keymenu(
+        [("1", "Users", manageusers, None),
+         ("2", "Tokens", managetokens, None),
+         ("3", "Current user information", display_info, None),
+         ], title="Manage Users")
+
 
 def reactivate_user(userid):
     u = td.s.query(User).get(userid)
@@ -653,6 +684,7 @@ def reactivate_user(userid):
     ui.toast(f'User "{u.fullname}" reactivated.')
     log(f"Reactivated user {u.logref}")
     edituser(userid)
+
 
 @permission_required('edit-user', 'Edit a user')
 def maybe_adduser():
@@ -680,6 +712,7 @@ def maybe_adduser():
             "of inactive user records?  If they are, pick them from the list "
             "to reactivate them.")
 
+
 @permission_required("list-users", "List till users")
 def manageusers(include_inactive=False):
     """List, create and edit users.
@@ -703,10 +736,12 @@ def manageusers(include_inactive=False):
     ui.menu(lines, title="User list",
             blurb="Select a user and press Cash/Enter")
 
+
 class managetokens(permission_checked, ui.dismisspopup):
     """Manage the users assigned to tokens
     """
     permission_required = ("manage-tokens", "Manage user login tokens")
+
     def __init__(self):
         super().__init__(12, 60, title="Manage tokens", colour=ui.colour_input)
         self.win.drawstr(2, 2, 13, "Token: ", align=">")
@@ -811,6 +846,7 @@ class managetokens(permission_checked, ui.dismisspopup):
         td.s.add(dbt)
         self.tokenfield_set()
 
+
 class adduser_cmd(cmdline.command):
     """Add a user.
 
@@ -837,7 +873,8 @@ class adduser_cmd(cmdline.command):
             try:
                 td.s.flush()
             except IntegrityError:
-                print(f"A user with web username '{u.webuser}' already exists.")
+                print(f"A user with web username '{u.webuser}' "
+                      "already exists.")
                 td.s.rollback()
                 return 1
             t = UserToken(
@@ -850,6 +887,7 @@ class adduser_cmd(cmdline.command):
                 td.s.rollback()
                 return 1
             print("User added.")
+
 
 class listusers(cmdline.command):
     """List all active users.
@@ -909,10 +947,12 @@ class show_usertoken(cmdline.command):
         finally:
             s.close()
 
+
 # These permissions aren't used directly in the till but may be used
 # in other components like the web interface
 action_descriptions['edit-config'] = "Modify the till configuration"
 action_descriptions['edit-department'] = "Create or alter departments"
+
 
 class default_groups:
     """Three basic group definitions.

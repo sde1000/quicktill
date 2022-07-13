@@ -1,7 +1,7 @@
 from . import td, ui, tillconfig, payment
 from decimal import Decimal
-from .models import Delivery, VatBand, Business, Transline, Transaction
-from .models import zero,penny
+from .models import Delivery, VatBand, Business, Transaction
+from .models import penny
 from . import pdrivers
 from . import config
 
@@ -16,6 +16,7 @@ labelprinters = []
 checkdigit_print = config.BooleanConfigItem(
     'core:checkdigit_print', False, display_name="Print check digits?",
     description="Should check digits be printed on stock labels?")
+
 
 # All of these functions assume there's a database session in td.s
 # This should be the case if called during a keypress!  If being used
@@ -47,8 +48,10 @@ def print_receipt(transid):
             else:
                 d.printline("{}\t\t{}".format(left, right), font=1)
         totalpad = "  " if len(bandtotals) > 1 else ""
-        d.printline("\t\tSubtotal {}{}".format(tillconfig.fc(trans.total), totalpad),
-                    colour=1, emph=1)
+        d.printline(
+            "\t\tSubtotal {}{}".format(
+                tillconfig.fc(trans.total), totalpad),
+            colour=1, emph=1)
         for p in trans.payments:
             pl = payment.pline(p)
             d.printline("\t\t{}{}".format(pl.text, totalpad))
@@ -63,7 +66,9 @@ def print_receipt(transid):
             # business.  In each section, show the business name and
             # address, VAT number, and then for each VAT band the net
             # amount, VAT and total.
-            businesses = {} # Keys are business IDs, values are (band,rate) tuples
+
+            # Keys are business IDs, values are (band,rate) tuples
+            businesses = {}
             for i in list(bandtotals.keys()):
                 vr = td.s.query(VatBand).get(i).at(trans.session.date)
                 businesses.setdefault(vr.business.id, []).append((i, vr.rate))
@@ -86,23 +91,26 @@ def print_receipt(transid):
                 for band, rate in bands:
                     # Print the band, amount ex VAT, amount inc VAT, gross
                     gross = bandtotals[band]
-                    net = (gross / ((rate / Decimal("100.0")) + Decimal("1.0")))\
-                          .quantize(penny)
+                    net = (
+                        gross / ((rate / Decimal("100.0")) + Decimal("1.0")))\
+                        .quantize(penny)
                     vat = gross - net
-                    d.printline("{}: {} net, {} VAT @ {:0.1f}%\t\tTotal {}".format(
+                    d.printline(
+                        "{}: {} net, {} VAT @ {:0.1f}%\t\tTotal {}".format(
                             band, tillconfig.fc(net), tillconfig.fc(vat), rate,
                             tillconfig.fc(gross)), font=1)
                 d.printline("")
             d.printline("\tReceipt number {}".format(trans.id))
         d.printline("\t{}".format(ui.formatdate(trans.session.date)))
 
+
 def print_sessioncountup(s):
     with driver as d:
-        d.printline("\t%s"%tillconfig.pubname,emph=1)
-        d.printline("\tSession %d"%s.id,colour=1)
-        d.printline("\t%s"%ui.formatdate(s.date),colour=1)
-        d.printline("Started %s"%ui.formattime(s.starttime))
-        d.printline("  Ended %s"%ui.formattime(s.endtime))
+        d.printline("\t%s" % tillconfig.pubname, emph=1)
+        d.printline("\tSession %d" % s.id, colour=1)
+        d.printline("\t%s" % ui.formatdate(s.date), colour=1)
+        d.printline("Started %s" % ui.formattime(s.starttime))
+        d.printline("  Ended %s" % ui.formattime(s.endtime))
         d.printline()
         d.printline("Amounts registered:")
         for paytype, total in s.payment_totals:
@@ -118,7 +126,7 @@ def print_sessioncountup(s):
                     d.printline()
                 if print_fields:
                     d.printline("", underline=1)
-                if len(pm.total_fields)>1:
+                if len(pm.total_fields) > 1:
                     d.printline("{} {}".format(pm.description, name),
                                 colour=1, emph=1)
                 else:
@@ -127,6 +135,7 @@ def print_sessioncountup(s):
                 d.printline("", underline=1)
         d.printline("Enter totals into till using")
         d.printline("management menu option 1,3.")
+
 
 def print_sessiontotals(s):
     """Print a session totals report given a Session object.
@@ -141,8 +150,8 @@ def print_sessiontotals(s):
     # consistent order; any payment types not in this list are
     # appended to it and printed last, because they will be for
     # historical payment types not currently configured
-    all_paytypes = list(set(list(till_totals.keys()) +
-                            list(actual_totals.keys())))
+    all_paytypes = list(set(list(till_totals.keys())
+                            + list(actual_totals.keys())))
     pms = list(tillconfig.all_payment_methods)
     pts = [pm.paytype for pm in pms]
 
@@ -195,6 +204,7 @@ def print_sessiontotals(s):
         d.printline()
         d.printline("\tPrinted %s" % ui.formattime(now()))
 
+
 def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
     """Print a wrapper for a deferred payment
 
@@ -225,9 +235,11 @@ def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
             d.printline()
             d.printline()
 
-def label_print_delivery(p,delivery):
+
+def label_print_delivery(p, delivery):
     d = td.s.query(Delivery).get(delivery)
     stocklabel_print(p, d.items)
+
 
 def stock_label(f, d):
     """Draw a stock label (d) on a PDF canvas (f).
@@ -238,15 +250,17 @@ def stock_label(f, d):
     pitch = fontsize + 2
     fontname = "Times-Roman"
     f.setFont(fontname, fontsize)
+
     def fits(s):
         sw = f.stringWidth(s, fontname, fontsize)
         return sw < (width - (2 * margin))
+
     s = d.stocktype.format()
     while len(s) > 10:
         sw = f.stringWidth(s, fontname, fontsize)
         if sw < (width - (2 * margin)):
             break
-        s = d.stocktype.format(len(s)-1)
+        s = d.stocktype.format(len(s) - 1)
 
     y = height - margin - fontsize
     f.drawCentredString(width / 2, y, s)
@@ -263,6 +277,7 @@ def stock_label(f, d):
     f.drawCentredString(width / 2, margin, str(d.id))
     f.showPage()
 
+
 def stocklabel_print(p, sl):
     """Print stock labels for a list of stock numbers to the specified
     printer.
@@ -271,6 +286,7 @@ def stocklabel_print(p, sl):
     with p as d:
         for sd in sl:
             stock_label(d, sd)
+
 
 def print_restock_list(rl):
     """
@@ -299,6 +315,7 @@ def print_restock_list(rl):
                         -move, item.id, stockqty_after_move), colour=1)
         d.printline()
         d.printline("\tEnd of list")
+
 
 def kickout():
     """Kick out the cash drawer.

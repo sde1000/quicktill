@@ -37,11 +37,11 @@ from .models import Session, Business, zero
 import subprocess
 
 # The following imports are to ensure subcommands are loaded
-from . import extras
-from . import dbsetup
-from . import dbutils
-from . import foodcheck
-from . import secretstore
+from . import extras  # noqa: F401
+from . import dbsetup  # noqa: F401
+from . import dbutils  # noqa: F401
+from . import foodcheck  # noqa: F401
+from . import secretstore  # noqa: F401
 # End of subcommand imports
 
 log = logging.getLogger(__name__)
@@ -66,6 +66,7 @@ configurations = {
 }
 """
 
+
 class intropage(ui.basicpage):
     def __init__(self):
         super().__init__()
@@ -77,8 +78,8 @@ class intropage(ui.basicpage):
             self.win.drawstr(3, 1, w - 2,
                              "To continue, press one of these keys:")
             for k in tillconfig.hotkeys:
-               self.win.drawstr(y, 3, w - 4, str(k))
-               y = y + 1
+                self.win.drawstr(y, 3, w - 4, str(k))
+                y = y + 1
         self.win.drawstr(y, 1, w - 2, "Press Q to quit.")
         self.win.move(0, 0)
 
@@ -86,6 +87,7 @@ class intropage(ui.basicpage):
         if k == "q" or k == "Q":
             tillconfig.mainloop.shutdown(1)
         super().keypress(k)
+
 
 class ValidateExitOption(argparse.Action):
     def __call__(self, parser, args, values, option_string=None):
@@ -102,6 +104,7 @@ class ValidateExitOption(argparse.Action):
         current.append((code, text))
         setattr(args, self.dest, current)
 
+
 def window_geometry(value):
     parts = value.split('x')
     if len(parts) != 2:
@@ -114,6 +117,7 @@ def window_geometry(value):
         raise argparse.ArgumentTypeError(
             str(e))
     return width, height
+
 
 class runtill(cmdline.command):
     """
@@ -129,7 +133,7 @@ class runtill(cmdline.command):
             "-e", "--exit-option", nargs=2,
             dest="exitoptions",
             action=ValidateExitOption,
-            metavar=("EXITCODE","TEXT"),
+            metavar=("EXITCODE", "TEXT"),
             help="Add an option to the exit menu")
         parser.add_argument(
             "-i", "--exit-when-idle",
@@ -290,7 +294,7 @@ class runtill(cmdline.command):
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
-        except:
+        except Exception:
             log.exception("Exception caught at top level")
         finally:
             if dbg_kbd is not None:
@@ -300,6 +304,7 @@ class runtill(cmdline.command):
         log.info("Shutting down")
         logging.shutdown()
         return tillconfig.mainloop.exit_code
+
 
 class on_screen_keyboard(cmdline.command):
     command = "on-screen-keyboard"
@@ -312,6 +317,7 @@ class on_screen_keyboard(cmdline.command):
         from . import event_glib
         tillconfig.mainloop = event_glib.GLibMainLoop()
         from . import keyboard_gtk
+
         def input_handler(keycode):
             if hasattr(keycode, "usertoken"):
                 print("usertoken:" + keycode.usertoken)
@@ -320,9 +326,11 @@ class on_screen_keyboard(cmdline.command):
             else:
                 print(keycode)
             sys.stdout.flush()
+
         window = keyboard_gtk.kbwindow(
             tillconfig.keyboard, input_handler)
         keyboard_gtk.run_standalone(window)
+
 
 class totals(cmdline.command):
     """
@@ -333,55 +341,59 @@ class totals(cmdline.command):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument("-d","--days",type=int,dest="days",
-                            help="number of days to display",default=40)
+        parser.add_argument("-d", "--days", type=int, dest="days",
+                            help="number of days to display", default=40)
+
     @staticmethod
     def run(args):
         with td.orm_session():
-            sessions=td.s.query(Session).\
-                filter(Session.endtime!=None).\
-                order_by(Session.id)[-args.days:]
-            businesses=td.s.query(Business).order_by(Business.id).all()
-            f="{s.id:>5} | {s.date} | "
-            h="  ID  |    Date    | "
+            sessions = td.s.query(Session)\
+                           .filter(Session.endtime != None)\
+                           .order_by(Session.id)[-args.days:]
+            businesses = td.s.query(Business).order_by(Business.id).all()
+            f = "{s.id:>5} | {s.date} | "
+            h = "  ID  |    Date    | "
             for x in tillconfig.all_payment_methods:
-                f=f+"{p[%s]:>8} | "%x.paytype
-                h=h+"{:^8} | ".format(x.description)
-            f=f+"{error:>7} | "
-            h=h+" Error  | "
+                f = f + "{p[%s]:>8} | " % x.paytype
+                h = h + "{:^8} | ".format(x.description)
+            f = f + "{error:>7} | "
+            h = h + " Error  | "
             for b in businesses:
                 if b.show_vat_breakdown:
-                    f=f+"{b[%s][1]:>10} | {b[%s][2]:>8} | "%(b.id,b.id)
-                    h=h+"{:^10} | {:^8} | ".format(
-                        b.abbrev+" ex-VAT",b.abbrev+" VAT")
+                    f = f + "{b[%s][1]:>10} | {b[%s][2]:>8} | " % (b.id, b.id)
+                    h = h + "{:^10} | {:^8} | ".format(
+                        b.abbrev + " ex-VAT", b.abbrev + " VAT")
                 else:
-                    f=f+"{b[%s][0]:>8} | "%b.id
-                    h=h+"{:^8} | ".format(b.abbrev)
-            f=f[:-2]
-            h=h[:-2]
+                    f = f + "{b[%s][0]:>8} | " % b.id
+                    h = h + "{:^8} | ".format(b.abbrev)
+            f = f[:-2]
+            h = h[:-2]
             print(h)
             for s in sessions:
                 # Sessions with no total recorded will report actual_total
                 # of None
-                if s.actual_total is None: continue
-                vbt=s.vatband_totals
-                p={}
+                if s.actual_total is None:
+                    continue
+                vbt = s.vatband_totals
+                p = {}
                 for x in tillconfig.all_payment_methods:
-                    p[x.paytype]=""
+                    p[x.paytype] = ""
                 for t in s.actual_totals:
-                    p[t.paytype_id]=t.amount
-                b={}
+                    p[t.paytype_id] = t.amount
+                b = {}
                 for x in businesses:
-                    b[x.id]=(zero,zero,zero)
+                    b[x.id] = (zero, zero, zero)
                 for x in vbt:
-                    o=b[x[0].businessid]
-                    o=(o[0]+x[1],o[1]+x[2],o[2]+x[3])
-                    b[x[0].businessid]=o
-                print(f.format(s=s,p=p,error=s.actual_total-s.total,b=b))
+                    o = b[x[0].businessid]
+                    o = (o[0] + x[1], o[1] + x[2], o[2] + x[3])
+                    b[x[0].businessid] = o
+                print(f.format(s=s, p=p, error=s.actual_total - s.total, b=b))
+
 
 class ToastHandler(logging.Handler):
     def emit(self, record):
         ui.toast(self.format(record))
+
 
 def _process_importsfile(path):
     try:
@@ -389,9 +401,10 @@ def _process_importsfile(path):
             for l in f.readlines():
                 for i in l.partition('#')[0].split():
                     importlib.import_module(i)
-    except:
+    except Exception:
         print(f"Exception raised while working on {path}")
         raise
+
 
 def main():
     """Usual main entry point for the till software.
@@ -425,8 +438,8 @@ def main():
     parser.add_argument("--version", action="version", version=version)
     parser.add_argument("-u", "--config-url", action="store",
                         dest="configurl", default=configurl,
-                        help="URL of global till configuration file; overrides "
-                        "contents of %s"%configurlfile)
+                        help="URL of global till configuration file; "
+                        f"overrides contents of {configurlfile}")
     parser.add_argument("-c", "--config-name", action="store",
                         dest="configname", default="default",
                         help="Till type to use from configuration file")
@@ -439,7 +452,8 @@ def main():
                         help="User ID to use when no other user information "
                         "is available (use 'listusers' command to check IDs)")
     loggroup = parser.add_mutually_exclusive_group()
-    loggroup.add_argument("-y", "--log-config", help="Logging configuration file "
+    loggroup.add_argument("-y", "--log-config",
+                          help="Logging configuration file "
                           "in YAML", type=argparse.FileType('r'),
                           dest="logconfig")
     loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
@@ -449,7 +463,7 @@ def main():
     parser.add_argument("--log-sql", action="store_true", dest="logsql",
                         help="Include SQL queries in logfile")
     parser.add_argument("--disable-printer", action="store_true",
-                        dest="disable_printer",help="Use the null printer "
+                        dest="disable_printer", help="Use the null printer "
                         "instead of the configured printer")
     cmdline.command.add_subparsers(parser)
     parser.set_defaults(configurl=configurl, configname="default",
@@ -515,7 +529,7 @@ def main():
 
     config = g.configurations.get(args.configname)
     if config is None:
-        print(f'Configuration "{args.configname}" does not exist.  ' \
+        print(f'Configuration "{args.configname}" does not exist.  '
               'Available configurations:')
         for k, v in g.configurations.items():
             print(f"{k}: {v['description']}")
@@ -536,7 +550,8 @@ def main():
     tillconfig.database = config.get('database')
     if args.database is not None:
         tillconfig.database = args.database
-    # Setting of .default items from the config file to be removed in release 20
+    # Setting of .default items from the config file to be removed in
+    # release 20
     if 'pubname' in config:
         tillconfig.pubname.default = config['pubname']
     if 'pubnumber' in config:
@@ -547,7 +562,7 @@ def main():
         tillconfig.currency.default = config['currency']
     tillconfig.all_payment_methods = config['all_payment_methods']
     tillconfig.payment_methods = config['payment_methods']
-    tillconfig.keyboard_driver = kbdrivers.prehkeyboard # Default
+    tillconfig.keyboard_driver = kbdrivers.prehkeyboard  # Default
     if 'keyboard_driver' in config:
         tillconfig.keyboard_driver = config['keyboard_driver']
     if 'keyboard' in config:

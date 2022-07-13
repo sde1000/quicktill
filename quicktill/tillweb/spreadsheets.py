@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-
 from django.http import HttpResponse
-from quicktill.models import *
+from quicktill.models import (
+    Department,
+    Transline,
+    Session,
+    SessionTotal,
+    RemoveCode,
+    StockOut,
+    StockType,
+    StockItem,
+    Unit,
+    Transaction,
+)
+import datetime
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import contains_eager
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, func, and_
 from sqlalchemy.sql.expression import literal
 from odf.opendocument import OpenDocumentSpreadsheet
 from odf.style import Style, TextProperties, ParagraphProperties
@@ -12,6 +24,7 @@ from odf.text import P
 from odf.table import Table, TableColumn, TableRow, TableCell
 import odf.number as number
 from .db import td
+
 
 class Sheet:
     """A table in a spreadsheet"""
@@ -42,7 +55,7 @@ class Sheet:
         c = col + 1
         cv = []
         while c:
-            c, r = divmod(c-1, len(self._LETTERS))
+            c, r = divmod(c - 1, len(self._LETTERS))
             cv[:0] = self._LETTERS[r]
         return "{}{}{}{}".format("$" if scol else "",
                                  "".join(cv),
@@ -72,6 +85,7 @@ class Sheet:
                 else:
                     tr.addElement(TableCell())
         return t
+
 
 class Document:
     """An OpenDocumentSpreadsheet under construction"""
@@ -180,10 +194,10 @@ class Document:
         return currencystyle
 
     def moneycell(self, m, formula=None, style=None):
-        a = { "valuetype": "currency",
-              "currency": "GBP",
-              "stylename": style if style else self.currencystyle,
-        }
+        a = {"valuetype": "currency",
+             "currency": "GBP",
+             "stylename": style if style else self.currencystyle,
+             }
         if m is not None:
             a["value"] = str(m)
         if formula is not None:
@@ -231,6 +245,7 @@ class Document:
         self.doc.write(r)
         return r
 
+
 def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
     """A spreadsheet summarising sessions between the start and end date.
     """
@@ -245,19 +260,21 @@ def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
         end = td.s.query(func.max(Session.date)).scalar()
 
     if rows == "Sessions":
-        depttotals = td.s.query(Session, Department.id, tf)\
-                         .select_from(Session)\
-                         .options(undefer('actual_total'))\
-                         .order_by(Session.id, Department.id)\
-                         .group_by(Session.id, Department.id)\
-                         .filter(select([func.count(SessionTotal.sessionid)],
-                                        whereclause=SessionTotal.sessionid == Session.id)\
-                                 .correlate(Session.__table__)\
-                                 .as_scalar() != 0)\
-                         .filter(Session.endtime != None)\
-                         .filter(Session.date >= start)\
-                         .filter(Session.date <= end)\
-                         .join(Transaction, Transline, Department)
+        depttotals = \
+            td.s.query(Session, Department.id, tf)\
+                .select_from(Session)\
+                .options(undefer('actual_total'))\
+                .order_by(Session.id, Department.id)\
+                .group_by(Session.id, Department.id)\
+                .filter(
+                    select([func.count(SessionTotal.sessionid)],
+                           whereclause=SessionTotal.sessionid == Session.id)
+                    .correlate(Session.__table__)
+                    .as_scalar() != 0)\
+                .filter(Session.endtime != None)\
+                .filter(Session.date >= start)\
+                .filter(Session.date <= end)\
+                .join(Transaction, Transline, Department)
     else:
         dateranges = td.s.query(func.min(Session.date).label("start"),
                                 func.max(Session.date).label("end"))\
@@ -271,30 +288,32 @@ def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
             dateranges = dateranges.group_by(weeks)
         dateranges = dateranges.cte(name="dateranges")
 
-        depttotals = td.s.query(
-            dateranges.c.start,
-            dateranges.c.end,
-            Transline.dept_id,
-            tf)\
-                         .select_from(dateranges.join(Session, and_(
-                             Session.date >= dateranges.c.start,
-                             Session.date <= dateranges.c.end))
-                                      .join(Transaction)\
-                                      .join(Transline))\
+        depttotals = td.s.query(dateranges.c.start,
+                                dateranges.c.end,
+                                Transline.dept_id,
+                                tf)\
+                         .select_from(
+                             dateranges.join(
+                                 Session,
+                                 and_(
+                                     Session.date >= dateranges.c.start,
+                                     Session.date <= dateranges.c.end)
+                             ).join(Transaction)
+                             .join(Transline))\
                          .group_by(dateranges.c.start,
                                    dateranges.c.end,
                                    Transline.dept_id)\
                          .order_by(dateranges.c.start, Transline.dept_id)
 
-        acttotals = td.s.query(
-            dateranges.c.start, dateranges.c.end,
-            select([func.sum(SessionTotal.amount)])\
-            .correlate(dateranges)\
-            .where(and_(
-                Session.date >= dateranges.c.start,
-                Session.date <= dateranges.c.end))\
-            .select_from(Session.__table__.join(SessionTotal))\
-            .label('actual_total'))\
+        acttotals = td.s.query(dateranges.c.start, dateranges.c.end,
+                               select([func.sum(SessionTotal.amount)])
+                               .correlate(dateranges)
+                               .where(and_(
+                                   Session.date >= dateranges.c.start,
+                                   Session.date <= dateranges.c.end))
+                               .select_from(
+                                   Session.__table__.join(SessionTotal))
+                               .label('actual_total'))\
                         .select_from(dateranges)\
                         .group_by(dateranges.c.start,
                                   dateranges.c.end)\
@@ -417,6 +436,7 @@ def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
 
     return doc.as_response()
 
+
 def session(s, tillname="Till"):
     """A spreadsheet giving full details for a session
     """
@@ -507,6 +527,7 @@ def session(s, tillname="Till"):
 
     return doc.as_response()
 
+
 def stock(stocklist, tillname="Till", filename=None):
     """A list of stock items as a spreadsheet
     """
@@ -567,6 +588,7 @@ def stock(stocklist, tillname="Till", filename=None):
     doc.add_table(sheet)
     return doc.as_response()
 
+
 def daterange(start, end):
     """Produce a list of dates between start and end, inclusive
     """
@@ -574,6 +596,7 @@ def daterange(start, end):
     while n <= end:
         yield n
         n += datetime.timedelta(days=1)
+
 
 def waste(start=None, end=None, cols="depts", tillname="Till"):
     """A report on waste
@@ -635,12 +658,12 @@ def waste(start=None, end=None, cols="depts", tillname="Till"):
 
     if cols == "depts":
         # Sheets are remove codes
-        dept_cols = {} # Column indexed by dept_id
+        dept_cols = {}  # Column indexed by dept_id
         col = 1
         for dept in depts:
             dept_cols[dept.id] = col
             col += 1
-        waste_sheets = {} # Sheet indexed by removecode_id
+        waste_sheets = {}  # Sheet indexed by removecode_id
         for rc in wastes:
             table = Sheet(rc.reason)
             waste_sheets[rc.id] = table
@@ -650,12 +673,12 @@ def waste(start=None, end=None, cols="depts", tillname="Till"):
                            doc.headercell(dept.description))
     else:
         # Sheets are departments
-        waste_cols = {} # Column indexed by removecode_id
+        waste_cols = {}  # Column indexed by removecode_id
         col = 1
         for rc in wastes:
             waste_cols[rc.id] = col
             col += 1
-        dept_sheets = {} # Sheet indexed by dept_id
+        dept_sheets = {}  # Sheet indexed by dept_id
         for dept in depts:
             table = Sheet(dept.description)
             dept_sheets[dept.id] = table
@@ -681,6 +704,7 @@ def waste(start=None, end=None, cols="depts", tillname="Till"):
             doc.add_table(dept_sheets[dept.id])
 
     return doc.as_response()
+
 
 def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
     sold = td.s.query(StockType, func.sum(StockOut.qty))\

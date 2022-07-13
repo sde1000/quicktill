@@ -1,17 +1,17 @@
 from . import keyboard, ui, td, user
 from .models import KeyCap, KeyboardBinding, StockLine, PriceLookup
-from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import select, update
 
 import logging
 log = logging.getLogger(__name__)
 
+
 def _complete_class(m):
     result = td.s.execute(
-        select([KeyCap.css_class]).\
-            where(KeyCap.css_class.ilike(m+'%'))
-        )
+        select([KeyCap.css_class]).where(KeyCap.css_class.ilike(m + '%'))
+    )
     return [x[0] for x in result]
+
 
 def validate_class(s, c):
     t = s[: c + 1]
@@ -26,16 +26,19 @@ def validate_class(s, c):
         return t
     return s
 
+
 class edit_keycaps(user.permission_checked, ui.dismisspopup):
     """This popup window enables the keycaps of line keys to be edited.
     """
     permission_required = ('edit-keycaps',
                            'Change the names of keys on the keyboard')
+
     def __init__(self):
         super().__init__(11, 60, title="Edit Keycaps",
                          colour=ui.colour_input)
         self.win.drawstr(
-            2, 2, 56, "Press a line key; alter the legend and press Cash/Enter.")
+            2, 2, 56,
+            "Press a line key; alter the legend and press Cash/Enter.")
         self.win.drawstr(4, 2, 11, "Keycode: ", align=">")
         self.win.drawstr(5, 2, 11, "Legend: ", align=">")
         self.win.drawstr(6, 2, 11, "CSS class: ", align=">")
@@ -79,6 +82,7 @@ class edit_keycaps(user.permission_checked, ui.dismisspopup):
         else:
             super().keypress(k)
 
+
 def keyboard_bindings_table(bindings, formatter):
     """Given a list of keyboard bindings, from the database, format a
     table to show them.
@@ -93,6 +97,7 @@ def keyboard_bindings_table(bindings, formatter):
              str(keyboard.__dict__.get(x.menukey, x.menukey)),
              x.modifier, userdata=x) for x in bindings]
     return kbl
+
 
 class addbinding(ui.listpopup):
     """Add a binding for a stockline, PLU or modifier to the database.
@@ -178,6 +183,7 @@ class addbinding(ui.listpopup):
         else:
             self.func()
 
+
 def changebinding(binding, func, available_modifiers):
     """Enable the default modifier on the binding to be changed.
     """
@@ -193,10 +199,12 @@ def changebinding(binding, func, available_modifiers):
     ml = [("No modifier", _finish_changebinding, (binding, func, None))] + ml
     ui.automenu(ml, title="Choose default modifier", blurb=blurb)
 
+
 def _finish_changebinding(binding, func, mod):
     td.s.add(binding)
     binding.modifier = mod
     func()
+
 
 class move_keys(user.permission_checked, ui.dismisspopup):
     permission_required = ('move-keys',
@@ -234,28 +242,28 @@ class move_keys(user.permission_checked, ui.dismisspopup):
         # value.  This occurs within a transaction so will never be
         # visible to other database clients.
         td.s.execute(
-            update(KeyboardBinding)\
-            .where(KeyboardBinding.keycode == self.key.name)\
+            update(KeyboardBinding)
+            .where(KeyboardBinding.keycode == self.key.name)
             .values(keycode="swapping"))
         td.s.execute(
-            update(KeyboardBinding)\
-            .where(KeyboardBinding.keycode == k.name)\
+            update(KeyboardBinding)
+            .where(KeyboardBinding.keycode == k.name)
             .values(keycode=self.key.name))
         td.s.execute(
-            update(KeyboardBinding)\
-            .where(KeyboardBinding.keycode == "swapping")\
+            update(KeyboardBinding)
+            .where(KeyboardBinding.keycode == "swapping")
             .values(keycode=k.name))
         td.s.execute(
-            update(KeyCap)\
-            .where(KeyCap.keycode == self.key.name)\
+            update(KeyCap)
+            .where(KeyCap.keycode == self.key.name)
             .values(keycode="swapping"))
         td.s.execute(
-            update(KeyCap)\
-            .where(KeyCap.keycode == k.name)\
+            update(KeyCap)
+            .where(KeyCap.keycode == k.name)
             .values(keycode=self.key.name))
         td.s.execute(
-            update(KeyCap)\
-            .where(KeyCap.keycode == "swapping")\
+            update(KeyCap)
+            .where(KeyCap.keycode == "swapping")
             .values(keycode=k.name))
         # Ensure that BOTH keycaps have been notified, even if there's no
         # database keycap record for one or the other of them
@@ -270,6 +278,7 @@ class move_keys(user.permission_checked, ui.dismisspopup):
             self.reset()
         else:
             super().keypress(k)
+
 
 def linemenu(keycode, func, allow_stocklines=True, allow_plus=False,
              allow_mods=False, add_query_options=None,
@@ -305,20 +314,21 @@ def linemenu(keycode, func, allow_stocklines=True, allow_plus=False,
     elif len(kb) > 1:
         il = sorted(
             [(keyboard.__dict__.get(x.menukey, x.menukey),
-              f"{x.name} ({x.modifier})" if x.modifier \
-              and (x.stockline or x.plu) \
-              and not suppress_modifier_display \
+              f"{x.name} ({x.modifier})" if x.modifier
+              and (x.stockline or x.plu)
+              and not suppress_modifier_display
               else x.name,
               _linemenu_chosen,
               (x.keycode, x.menukey, func, add_query_options))
-             for x in kb], key=lambda x:str(x[0]))
+             for x in kb], key=lambda x: str(x[0]))
         ui.keymenu(il, title=keycode.keycap, colour=ui.colour_line)
     return len(kb)
 
+
 def _linemenu_chosen(keycode, menukey, func, add_query_options):
     kb = td.s.query(KeyboardBinding)\
-         .filter(KeyboardBinding.keycode == keycode)\
-         .filter(KeyboardBinding.menukey == menukey)
+             .filter(KeyboardBinding.keycode == keycode)\
+             .filter(KeyboardBinding.menukey == menukey)
     if add_query_options:
         kb = add_query_options(kb)
     kb = kb.one_or_none()

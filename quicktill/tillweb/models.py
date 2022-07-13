@@ -1,13 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# They moved it again!  As of django-1.10 reverse is found in
-# django.urls, but we need to retain compatibility with django-1.8
-# while we are still targetting Ubuntu-16.04 LTS.
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
+from django.urls import reverse
+
 
 def get_app_details(user):
     tills = Till.objects.filter(access__user=user).order_by('name')
@@ -16,6 +11,7 @@ def get_app_details(user):
                  'url': reverse('tillweb-publist'),
                  'objects': tills}]
     return []
+
 
 class Till(models.Model):
     """An available till database
@@ -35,11 +31,13 @@ class Till(models.Model):
     def __str__(self):
         return self.name
 
+
 PERMISSIONS = (
     ('R', 'Read-only'),
     ('M', 'Read/write, following till permissions'),
     ('F', 'Full access, ignoring till permissions'),
 )
+
 
 class Access(models.Model):
     """Access to a till by a particular user
@@ -54,7 +52,7 @@ class Access(models.Model):
     permission = models.CharField(max_length=1, choices=PERMISSIONS)
 
     class Meta(object):
-        unique_together = ( ("till", "user"), )
+        unique_together = (("till", "user"),)
 
     def __str__(self):
         return "%s can access %s %s" % (

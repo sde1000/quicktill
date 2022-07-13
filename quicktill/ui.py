@@ -14,10 +14,12 @@ from decimal import Decimal
 import logging
 log = logging.getLogger(__name__)
 
+
 class colourpair:
     """A pair of colours to be used for rendering text
     """
     all_colourpairs = []
+
     def __init__(self, name, foreground, background):
         self.name = name
         self.foreground = foreground
@@ -33,6 +35,7 @@ class colourpair:
         self._reversed._reversed = self
         return self._reversed
 
+
 colour_default = colourpair("header", "white", "black")
 colour_header = colourpair("header", "white", "red")
 colour_error = colourpair("error", "white", "red")
@@ -45,8 +48,10 @@ colour_changeline = colourpair("changeline", "yellow", "black")
 colour_cancelline = colourpair("cancelline", "blue", "black")
 colour_confirm = colourpair("confirm", "black", "cyan")
 
+
 # The display system root window, and access to the header/clock/title bar
 rootwin = None
+
 
 def formattime(ts):
     "Returns ts formatted as %Y-%m-%d %H:%M:%S"
@@ -54,11 +59,13 @@ def formattime(ts):
         return ""
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
+
 def formatdate(ts):
     "Returns ts formatted as %Y-%m-%d"
     if ts is None:
         return ""
     return ts.strftime("%Y-%m-%d")
+
 
 def handle_keyboard_input(k):
     """Deal with input from the user
@@ -78,8 +85,10 @@ def handle_keyboard_input(k):
     log.debug("Keypress %s", k)
     basicwin._focus.hotkeypress(k)
 
+
 # Keypresses are passed to each filter in this stack in order.
 keyboard_filter_stack = []
+
 
 def handle_raw_keyboard_input(k):
     """Deal with input from the user
@@ -98,6 +107,7 @@ def handle_raw_keyboard_input(k):
         with td.orm_session():
             handle_keyboard_input(k)
 
+
 def current_user():
     """Return the current user
 
@@ -108,6 +118,7 @@ def current_user():
     for i in stack:
         if hasattr(i, 'user'):
             return i.user
+
 
 class _toastmaster:
     """Display brief messages to the user
@@ -183,7 +194,7 @@ class _toastmaster:
             self.win = rootwin.new(
                 h, w, y, "center",
                 colour=colour_toast, always_on_top=True)
-        except:
+        except Exception:
             return self.start_display("(toast too long)")
         y = 1
         for l in lines:
@@ -208,7 +219,9 @@ class _toastmaster:
         else:
             self.start_display(self.messagequeue.pop(0))
 
+
 toaster = _toastmaster()
+
 
 def toast(message):
     """Display a message briefly to the user
@@ -217,10 +230,12 @@ def toast(message):
     """
     toaster.toast(message)
 
+
 def update_header_message(message):
     """Update the message in the middle of the header
     """
     rootwin.update_header(middle=message)
+
 
 class ignore_hotkeys:
     """Mixin class for UI elements that disables handling of hotkeys
@@ -230,6 +245,7 @@ class ignore_hotkeys:
     """
     def hotkeypress(self, k):
         basicwin._focus.keypress(k)
+
 
 class basicwin:
     """Base class for all pages, popup windows and fields.
@@ -280,6 +296,7 @@ class basicwin:
         """
         self.parent.hotkeypress(k)
 
+
 class basicpage(basicwin):
     _pagelist = []
     _basepage = None
@@ -302,14 +319,14 @@ class basicpage(basicwin):
         self.stack = None
         basicpage._basepage = self
         basicwin._focus = self
-        super().__init__() # Sets self.parent to self - ok!
+        super().__init__()  # Sets self.parent to self - ok!
 
     def pagename(self):
         return "Basic page"
 
     def select(self):
         if basicpage._basepage == self:
-            return # Nothing to do
+            return  # Nothing to do
         # Tell the current page we're switching away
         if basicpage._basepage:
             basicpage._basepage.deselect()
@@ -375,6 +392,7 @@ class basicpage(basicwin):
             if basicwin._focus:
                 basicwin._focus.keypress(k)
 
+
 class basicpopup(basicwin):
     """A popup window
 
@@ -423,6 +441,7 @@ class basicpopup(basicwin):
         else:
             beep()
 
+
 class dismisspopup(basicpopup):
     """A popup window with implicit handling of a "dismiss" key
 
@@ -453,6 +472,7 @@ class dismisspopup(basicpopup):
             return self.dismiss()
         super().keypress(k)
 
+
 class listpopup(dismisspopup):
     """A popup window with a scrollable list of items
 
@@ -467,8 +487,9 @@ class listpopup(dismisspopup):
         mh, mw = rootwin.size()
         dl = [x if isinstance(x, emptyline) else line(x, colour=colour)
               for x in linelist]
-        hl = [x if isinstance(x, emptyline) else marginline(
-            lrline(x, colour=colour), margin=1)
+        hl = [x if isinstance(x, emptyline) else
+              marginline(
+                  lrline(x, colour=colour), margin=1)
               for x in header] if header else []
         if w is None:
             w = max((x.idealwidth() for x in dl), default=0)
@@ -512,6 +533,7 @@ class listpopup(dismisspopup):
         else:
             self.s = None
 
+
 class infopopup(listpopup):
     """A pop-up box that formats and displays text.
 
@@ -533,6 +555,7 @@ class infopopup(listpopup):
         w = (maxw * 2) // 3
         if cleartext:
             w = max(w, len(cleartext) - 1)
+
         def formatat(width):
             r = []
             for i in text:
@@ -542,6 +565,7 @@ class infopopup(listpopup):
                     for j in textwrap.wrap(i, width):
                         r.append(j)
             return r
+
         t = formatat(w)
         while len(t) > maxh and w < maxw:
             w = w + 1
@@ -552,6 +576,7 @@ class infopopup(listpopup):
         super().__init__(t, title=title, dismiss=dismiss,
                          cleartext=cleartext, colour=colour, keymap=keymap,
                          show_cursor=False, w=w + 4)
+
 
 class alarmpopup(infopopup):
     """An annoying infopopup
@@ -582,41 +607,46 @@ class alarmpopup(infopopup):
             self._alarmhandle.cancel()
         super().dismiss()
 
+
 def validate_int(s, c):
     if s == '-':
         return s
     try:
         int(s)
-    except:
+    except Exception:
         return None
     return s
+
 
 def validate_positive_nonzero_int(s, c):
     try:
         x = int(s)
         if x < 1:
             return None
-    except:
+    except Exception:
         return None
     return s
+
 
 def validate_float(s, c):
     if s == '-':
         return s
     try:
         float(s)
-    except:
+    except Exception:
         return None
     return s
+
 
 def validate_positive_float(s, c):
     try:
         x = float(s)
         if x < 0.0:
             return None
-    except:
+    except Exception:
         return None
     return s
+
 
 class label(basicwin):
     """An area of a window that has a value that can be changed.
@@ -636,6 +666,7 @@ class label(basicwin):
         self.win.drawstr(self._y, self._x, self._w, contents, align=self._align,
                          colour=colour)
         self.win.move(y, x)
+
 
 class field(basicwin):
     """A field inside a window.
@@ -667,11 +698,12 @@ class field(basicwin):
         elif (k in (keyboard.K_DOWN, keyboard.K_CASH, keyboard.K_TAB)
               and self.nextfield):
             self.nextfield.focus()
-        elif (k in (keyboard.K_UP,keyboard.K_CLEAR)
+        elif (k in (keyboard.K_UP, keyboard.K_CLEAR)
               and self.prevfield):
             self.prevfield.focus()
         else:
             self.parent.keypress(k)
+
 
 class valuefield(field):
     """A field that can have a variable value.
@@ -695,7 +727,7 @@ class valuefield(field):
         If you completely override this method, remember to call
         sethook() after changing the value!
         """
-        self._f = f
+        self._f = value
         self.sethook()
 
     def setf(self, value):
@@ -706,6 +738,7 @@ class valuefield(field):
 
     def read(self):
         return self._f
+
 
 class scrollable(field):
     """A rectangular field of a page or popup that contains a list of
@@ -737,7 +770,7 @@ class scrollable(field):
     def set(self, dl):
         self.dl = dl
         # self.sethook()  - not used by anything, but should it work?
-        self.redraw() # Does implicit set_cursor()
+        self.redraw()  # Does implicit set_cursor()
 
     def set_cursor(self, c):
         if len(self.dl) == 0 and not self.lastline:
@@ -764,7 +797,7 @@ class scrollable(field):
 
     def defocus(self):
         super().defocus()
-        self.drawdl() # We don't want to scroll
+        self.drawdl()  # We don't want to scroll
 
     def drawdl(self, display=True):
         """Draw the scrollable contents
@@ -811,7 +844,7 @@ class scrollable(field):
             l = item.display(self.w)
             colour = item.colour if item.colour else self.win.colour
             ccolour = item.cursor_colour if item.cursor_colour \
-                      else self.win.colour.reversed
+                else self.win.colour.reversed
             if self.focused and i == self.cursor and self.show_cursor:
                 colour = ccolour
                 cursor_y = y + item.cursor[1]
@@ -911,6 +944,7 @@ class scrollable(field):
         else:
             super().keypress(k)
 
+
 class emptyline:
     """A line for use in a scrollable.
 
@@ -937,6 +971,7 @@ class emptyline:
         self.cursor = (0, 0)
         return [""]
 
+
 class emptylines(emptyline):
     def __init__(self, colour=None, lines=1, userdata=None):
         super().__init__(colour, userdata)
@@ -945,6 +980,7 @@ class emptylines(emptyline):
     def display(self, width):
         self.cursor = (0, 0)
         return [""] * self.lines
+
 
 class line(emptyline):
     """A line for use in a scrollable.
@@ -973,6 +1009,7 @@ class line(emptyline):
         self.cursor = (0, 0)
         return [self.text[:width]]
 
+
 class marginline(emptyline):
     """Indent another line with a margin at the left and right.
 
@@ -989,8 +1026,9 @@ class marginline(emptyline):
     def display(self, width):
         m = ' ' * self.margin
         ll = [m + x + m for x in self.l.display(width - (2 * self.margin))]
-        cursor = (self.l.cursor[0] + self.margin, self.l.cursor[1])
+        self.cursor = (self.l.cursor[0] + self.margin, self.l.cursor[1])
         return ll
+
 
 class lrline(emptyline):
     """A line for use in a scrollable.
@@ -1038,9 +1076,10 @@ class lrline(emptyline):
         if len(w[-1]) + len(self.rtext) >= width:
             w.append("")
         w[-1] = w[-1] + (' ' * (width - len(w[-1]) - len(self.rtext))) \
-                + self.rtext
+            + self.rtext
         self._outputs[width] = w
         return w
+
 
 class tableformatter:
     """Format a table.
@@ -1057,7 +1096,7 @@ class tableformatter:
     """
     def __init__(self, format):
         self._f = format
-        self._rows = [] # Doesn't need to be kept in order
+        self._rows = []  # Doesn't need to be kept in order
         self._formats = {}
         self._colwidths = None
         # Remove the formatting characters from the format and see
@@ -1112,7 +1151,7 @@ class tableformatter:
         """
         if width in self._formats:
             return self._formats[width]
-        w = list(self.colwidths) # copy
+        w = list(self.colwidths)  # copy
         r = []
         pads = self._f.count("p")
         if pads > 0:
@@ -1153,6 +1192,7 @@ class tableformatter:
     def format(self, row, width):
         return [self._formatstr(width).format(*row.fields)[:width]]
 
+
 class _tableline(emptyline):
     """A line for use in a tableformatter table.
 
@@ -1173,6 +1213,7 @@ class _tableline(emptyline):
     def display(self, width):
         self.cursor = (0, 0)
         return self._formatter.format(self, width)
+
 
 class menu(listpopup):
     """A popup menu with a list of selections.
@@ -1211,6 +1252,7 @@ class menu(listpopup):
         else:
             super().keypress(k)
 
+
 class _keymenuline(emptyline):
     """A line for use in a keymenu.
 
@@ -1235,13 +1277,13 @@ class _keymenuline(emptyline):
         dl = list(self.desc.display(width - self._keymenu.promptwidth))
         # First line is the prompt padded to promptwidth followed by
         # the first line of the description
-        ll = [" " * (self._keymenu.promptwidth - len(self.prompt)) +
-              self.prompt +
-              dl.pop(0)]
+        ll = [" " * (self._keymenu.promptwidth - len(self.prompt))
+              + self.prompt + dl.pop(0)]
         # Subsequent lines are an indentation of the width of the
         # prompt followed by the line of the description
         ll = ll + [" " * self._keymenu.promptwidth + x for x in dl]
         return ll
+
 
 class keymenu(listpopup):
     """A popup menu with a list of selections.
@@ -1263,8 +1305,8 @@ class keymenu(listpopup):
         self._not_allowed_colour = colour_error
         lines = [_keymenuline(self, *x) for x in itemlist]
         self.promptwidth = max(len(l.prompt) for l in lines)
-        for keycode, desc, func, args in itemlist:
-            km[keycode] = (func, args, dismiss_on_select)
+        for keycode, desc, func_, args in itemlist:
+            km[keycode] = (func_, args, dismiss_on_select)
         self.menukeys = km
         if blank_line_between_items:
             def yl(lines):
@@ -1277,6 +1319,7 @@ class keymenu(listpopup):
         super().__init__(lines,
                          header=blurb, title=title,
                          colour=colour, w=w, keymap=km, show_cursor=False)
+
 
 def automenu(itemlist, spill="menu", **kwargs):
     """A popup menu with a list of selections.
@@ -1298,12 +1341,13 @@ def automenu(itemlist, spill="menu", **kwargs):
     if spill == "menu" and len(itemlist) > len(possible_keys):
         return menu(itemlist, **kwargs)
     if len(itemlist) > len(possible_keys):
-        remainder = itemlist[len(possible_keys) - 1 :]
-        itemlist = itemlist[: len(possible_keys) - 1] + [
+        remainder = itemlist[len(possible_keys) - 1:]
+        itemlist = itemlist[:len(possible_keys) - 1] + [
             ("More...", (lambda: automenu(
                 remainder, spill="keymenu", **kwargs)), None)]
     return keymenu([(possible_keys.pop(0), desc, func, args)
                     for desc, func, args in itemlist], **kwargs)
+
 
 class booleanfield(valuefield):
     """A field with boolean value.
@@ -1349,12 +1393,13 @@ class booleanfield(valuefield):
         elif k in ('n', 'N', '0', '00'):
             self.set(False)
         elif k in (keyboard.K_LEFT, keyboard.K_RIGHT, ' ') \
-             and self._f is not None:
+          and self._f is not None:  # noqa: E127
             self.set(not self._f)
         elif k == keyboard.K_CLEAR and self.allow_blank and self._f is not None:
             self.set(None)
         else:
             super().keypress(k)
+
 
 class editfield(valuefield):
     """Accept typed-in input in a field.
@@ -1412,7 +1457,7 @@ class editfield(valuefield):
             l = l[:self.flen]
         self._f = l
         self.c = len(self._f)
-        self.i = 0 # will be updated by draw() if necessary
+        self.i = 0  # will be updated by draw() if necessary
         self.sethook()
         self.draw()
 
@@ -1424,7 +1469,7 @@ class editfield(valuefield):
             self.i = self.c
         self.win.clear(self.y, self.x, 1, self.w,
                        colour=self.win.colour.reversed)
-        self.win.addstr(self.y, self.x, self._f[self.i : self.i + self.w],
+        self.win.addstr(self.y, self.x, self._f[self.i:self.i + self.w],
                         self.win.colour.reversed)
         if self.focused:
             self.win.move(self.y, self.x + self.c - self.i)
@@ -1522,6 +1567,7 @@ class editfield(valuefield):
         else:
             super().keypress(k)
 
+
 class datefield(editfield):
     """A field for entry of dates
 
@@ -1536,25 +1582,20 @@ class datefield(editfield):
     @staticmethod
     def validate_date(s, c):
         def checkdigit(i):
-            a = s[i : i + 1]
+            a = s[i:i + 1]
             if len(a) == 0:
                 return True
             return a.isdigit()
+
         def checkdash(i):
-            a = s[i : i + 1]
+            a = s[i:i + 1]
             if len(a) == 0:
                 return True
             return a == '-'
-        if (checkdigit(0) and
-            checkdigit(1) and
-            checkdigit(2) and
-            checkdigit(3) and
-            checkdash(4) and
-            checkdigit(5) and
-            checkdigit(6) and
-            checkdash(7) and
-            checkdigit(8) and
-            checkdigit(9)):
+
+        if (checkdigit(0) and checkdigit(1) and checkdigit(2) and checkdigit(3)
+          and checkdash(4) and checkdigit(5) and checkdigit(6)    # noqa: E128
+          and checkdash(7) and checkdigit(8) and checkdigit(9)):  # noqa: E128
             return s
         return None
 
@@ -1566,8 +1607,8 @@ class datefield(editfield):
 
     def read(self):
         try:
-            d = datetime.datetime.strptime(self._f,"%Y-%m-%d")
-        except:
+            d = datetime.datetime.strptime(self._f, "%Y-%m-%d")
+        except Exception:
             d = None
         return d
 
@@ -1582,6 +1623,7 @@ class datefield(editfield):
         super().insert(s)
         if len(self._f) == 4 or len(self._f) == 7:
             self.set(self._f + '-')
+
 
 class moneyfield(editfield):
     """A field that allows an amount of money to be entered
@@ -1609,9 +1651,10 @@ class moneyfield(editfield):
     def read(self):
         try:
             a = Decimal(self._f)
-        except:
+        except Exception:
             a = Decimal(0)
         return a
+
 
 class modelfield(editfield):
     """A field that allows a model instance to be chosen
@@ -1708,11 +1751,12 @@ class modelfield(editfield):
                     .filter(self._field.ilike("{}%".format(self._f)))\
                     .order_by(self._field)\
                     .all()
-            ml = [ (x[0], super(modelfield, self).set, (x[0],)) for x in m ]
+            ml = [(x[0], super(modelfield, self).set, (x[0],)) for x in m]
             if self._create:
                 ml.append(("Create new...", self._create, (self, self._f,)))
             self.set(None)
             menu(ml, title="Choose...")
+
 
 class modelpopupfield(valuefield):
     """A field that allows a model instance to be chosen using a popup dialog
@@ -1750,7 +1794,7 @@ class modelpopupfield(valuefield):
 
     def set(self, value):
         self._f = sqlalchemy.inspection.inspect(value).identity \
-                  if value else None
+            if value else None
         self.sethook()
         self.draw()
 
@@ -1786,14 +1830,16 @@ class modelpopupfield(valuefield):
             self.set(None)
         elif k == keyboard.K_CASH and not self.readonly:
             self.popup()
-        elif k and isinstance(k, str) and self.read() is None \
-             and not self.readonly:
+        elif k and isinstance(k, str) \
+             and self.read() is None \
+             and not self.readonly:     # noqa: E127
             # If the field is blank and the user starts typing into it,
             # pop up the dialog and send the keypress to it.
             self.popup()
             handle_keyboard_input(k)
         else:
             super().keypress(k)
+
 
 class modellistfield(modelpopupfield):
     """A field that allows a model instance to be chosen from a list
@@ -1898,6 +1944,7 @@ class modellistfield(modelpopupfield):
                 return self.prefixitem(k)
         super().keypress(k)
 
+
 class buttonfield(field):
     def __init__(self, y, x, w, text, keymap={}):
         self._y = y
@@ -1905,7 +1952,8 @@ class buttonfield(field):
         self._w = w
         super().__init__(keymap)
         self.win.clear(y, x, 1, w, colour=self.win.colour.reversed)
-        self.win.drawstr(y, x, w, text, align="^", colour=self.win.colour.reversed)
+        self.win.drawstr(y, x, w, text, align="^",
+                         colour=self.win.colour.reversed)
         self.draw()
 
     def focus(self):
@@ -1937,6 +1985,7 @@ class buttonfield(field):
                             self.win.colour.reversed)
             self.win.move(*pos)
 
+
 def map_fieldlist(fl):
     """Set up navigation between fields
 
@@ -1955,9 +2004,11 @@ def map_fieldlist(fl):
         fl[i].nextfield = next
         fl[i].prevfield = prev
 
+
 def popup_exception(title):
     e = traceback.format_exception(*sys.exc_info())
     infopopup(e, title=title)
+
 
 class exception_popup:
     """Pop up a window describing a caught exception.
@@ -1981,6 +2032,7 @@ class exception_popup:
         infopopup(
             [self._description, ""] + e, title=self._title)
 
+
 class exception_guard:
     """Context manager for code that may fail
 
@@ -2001,17 +2053,20 @@ class exception_guard:
         exception_popup(self._description, self._title, type, value, tb)
         return self._suppress_exception
 
+
 # Functions to be called after the ui and main loop are initialised
 run_after_init = []
 
 # Functions to be called after the screen is resized
 run_after_resize = []
 
+
 def beep():
     """Make the terminal go beep
     """
     # display system patches this to work
     log.warning("ui.beep() called before display system init")
+
 
 # Turn off the screensaver if the screen has gone blank
 def unblank_screen():

@@ -1,6 +1,7 @@
 from . import td, ui
 from .models import Department
 
+
 def menu(func, title, allowall=False):
     depts = td.s.query(Department).order_by(Department.id).all()
     f = ui.tableformatter(' r l ')

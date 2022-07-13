@@ -1,6 +1,5 @@
 import urllib
 from types import ModuleType
-import textwrap
 import sys
 import traceback
 import datetime
@@ -13,6 +12,7 @@ from .models import zero, penny
 from decimal import Decimal
 
 log = logging.getLogger(__name__)
+
 
 class fooditem(ui.lrline):
     def __init__(self, name, price, dept=None):
@@ -30,6 +30,7 @@ class fooditem(ui.lrline):
     def copy(self):
         return fooditem(self.name, self.price, self.dept)
 
+
 def handle_option(itemfunc, option):
     """Handle an option chosen from a menu
 
@@ -43,6 +44,7 @@ def handle_option(itemfunc, option):
     else:
         itemfunc(fooditem(*option))
 
+
 class simplemenu:
     def __init__(self, options, title=None):
         self.options = options
@@ -50,9 +52,10 @@ class simplemenu:
 
     def display_menu(self, itemfunc, default_title=None):
         il = [(opt[0], handle_option, (itemfunc, opt))
-            for opt in self.options]
+              for opt in self.options]
         ui.automenu(il, spill="keymenu", colour=ui.colour_line,
                     title=self.title or default_title)
+
 
 class subopts:
     """A menu item which can have an arbitrary number of suboptions.
@@ -100,7 +103,8 @@ class subopts:
         else:
             name = self.nameconnector.join([self.name, listpart])
         itemfunc(fooditem(name, total, self.dept))
-        
+
+
 class subopts_dialog(ui.dismisspopup):
     def __init__(self, name, subopts, atleast, atmost, connector, nameconnector,
                  func, itemfunc):
@@ -109,7 +113,7 @@ class subopts_dialog(ui.dismisspopup):
         # If we have more options than keys, split them into a submenu.
         if len(subopts) > len(possible_keys):
             subopts = subopts[:len(possible_keys) - 1] + \
-                     [("More...", subopts[len(possible_keys) - 1:])]
+                [("More...", subopts[len(possible_keys) - 1:])]
         # Height: we need four lines for the "text entry" box at the top,
         # four lines for the top/bottom border, three lines for the prompt,
         # and len(subopts) lines for the suboptions list.
@@ -118,7 +122,7 @@ class subopts_dialog(ui.dismisspopup):
         opts = list(zip(possible_keys, subopts))
         km = {keyboard.K_CASH: (self.finish, None, False)}
         for k, so in opts:
-           km[k] = (self.newsubopt, (so,), False)
+            km[k] = (self.newsubopt, (so,), False)
         super().__init__(h, self.w, name + " options",
                          colour=ui.colour_line, keymap=km)
         y = 9
@@ -147,7 +151,7 @@ class subopts_dialog(ui.dismisspopup):
         lines = self.win.wrapstr(2, 2, self.w - 4, o,
                                  colour=ui.colour_line.reversed)
         if lines > 3:
-            self.atmost = len(self.ol) - 1 # stop sillyness!
+            self.atmost = len(self.ol) - 1  # stop sillyness!
         if len(self.ol) < self.atleast:
             self.promptlabel.set("Choose options from the list below.")
         elif self.atmost is None or len(self.ol) < self.atmost:
@@ -182,7 +186,9 @@ class subopts_dialog(ui.dismisspopup):
         else:
             super().keypress(k)
 
-def print_food_order(driver, number, ol, verbose=True, tablenumber=None, footer="",
+
+def print_food_order(driver, number, ol, verbose=True,
+                     tablenumber=None, footer="",
                      transid=None, print_total=True, user=None):
     """This function prints a food order to the _specified_ printer.
     """
@@ -190,7 +196,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None, footer=
         if verbose:
             d.printline(f"\t{tillconfig.pubname}", emph=1)
             for i in tillconfig.pubaddr().splitlines():
-                d.printline(f"\t{i}",colour=1)
+                d.printline(f"\t{i}", colour=1)
             d.printline(f"\tTel. {tillconfig.pubnumber}")
             d.printline()
         if tablenumber is not None:
@@ -242,6 +248,7 @@ class tablenumber(ui.dismisspopup):
         self.dismiss()
         self.func(self.numberfield.f)
 
+
 class edititem(ui.dismisspopup):
     """Allow the user to edit the text of a food order item.
     """
@@ -262,6 +269,7 @@ class edititem(ui.dismisspopup):
             self.item.update(self.linefield.f, self.item.price)
         self.dismiss()
         self.func()
+
 
 class popup(user.permission_checked, ui.basicpopup):
     """Ask the user for a food order
@@ -288,7 +296,7 @@ class popup(user.permission_checked, ui.basicpopup):
                 self.__class__.menu_module = ModuleType("foodmenu")
                 exec(g, self.menu_module.__dict__)
                 self.__class__.menu_hash = hash
-            except:
+            except Exception:
                 self.__class__.menu_hash = None
                 self.__class__.menu_module = None
                 ui.popup_exception("There is a problem with the menu")
@@ -338,7 +346,8 @@ class popup(user.permission_checked, ui.basicpopup):
         # If we have more options than keys, split them into a submenu.
         if len(foodmenu.menu) > len(possible_keys):
             menu = foodmenu.menu[:len(possible_keys) - 1] + \
-                [("More...", simplemenu(foodmenu.menu[len(possible_keys) - 1:]))]
+                [("More...", simplemenu(
+                    foodmenu.menu[len(possible_keys) - 1:]))]
         else:
             menu = foodmenu.menu
         tlm = [""]
@@ -357,7 +366,7 @@ class popup(user.permission_checked, ui.basicpopup):
         for i in tlm:
             self.win.addstr(y, 2, i)
             y = y + 1
-        self.ml = [] # list of chosen items
+        self.ml = []  # list of chosen items
         self.order = ui.scrollable(2, 2, self.w - 4, maxy - 1, self.ml,
                                    lastline=ui.emptyline())
         self.order.focus()
@@ -406,7 +415,7 @@ class popup(user.permission_checked, ui.basicpopup):
         The cursor stays in the same place.
         """
         if len(self.ml) == 0:
-            return # Nothing to delete
+            return  # Nothing to delete
         if self.order.cursor_at_end():
             self.ml.pop()
             self.order.cursor_up()
@@ -430,7 +439,6 @@ class popup(user.permission_checked, ui.basicpopup):
                  f"The problem is: {rpprob}"],
                 title="Receipt printer problem")
             return
-        tot = sum((x.price for x in self.ml), zero)
         number = self.ordernumberfunc()
         # We need to prepare a list of (dept, text, items, amount)
         # tuples for the register.  We enter these into the register
@@ -440,11 +448,13 @@ class popup(user.permission_checked, ui.basicpopup):
                1 if x.price >= 0 else -1, x.price if x.price >= 0 else -x.price)
               for x in self.ml]
         if tablenumber:
-            rl.insert(0, (self.dept, f"Food order {number} (table {tablenumber}):",
-                          1, zero))
+            rl.insert(
+                0, (self.dept, f"Food order {number} (table {tablenumber}):",
+                    1, zero))
         else:
             rl.insert(0, (self.dept, f"Food order {number}:", 1, zero))
-        r = self.func(rl) # Return values: True=success; string or None=failure
+        # Return values: True=success; string or None=failure
+        r = self.func(rl)
 
         # If r is None then a window will have been popped up telling the
         # user what's happened to their transaction.  It will have popped
@@ -467,7 +477,7 @@ class popup(user.permission_checked, ui.basicpopup):
                         verbose=False, tablenumber=tablenumber,
                         footer=self.footer, transid=self.transid,
                         user=user.shortname if user else None)
-            except:
+            except Exception:
                 e = traceback.format_exception_only(
                     sys.exc_info()[0], sys.exc_info()[1])
                 try:
@@ -476,7 +486,7 @@ class popup(user.permission_checked, ui.basicpopup):
                         verbose=False, tablenumber=tablenumber,
                         footer=self.footer, transid=self.transid,
                         user=user.shortname if user else None)
-                except:
+                except Exception:
                     pass
                 ui.infopopup(
                     ["There was a problem sending the order to the "
@@ -512,10 +522,11 @@ class popup(user.permission_checked, ui.basicpopup):
         else:
             super().keypress(k)
 
+
 class message(user.permission_checked, ui.dismisspopup):
     """Send a printed message to the kitchen.
     """
-    permission_required = ('kitchen-message','Send a message to the kitchen')
+    permission_required = ('kitchen-message', 'Send a message to the kitchen')
 
     def __init__(self, kitchenprinters):
         self.kitchenprinters = kitchenprinters
@@ -528,7 +539,7 @@ class message(user.permission_checked, ui.dismisspopup):
                          colour=ui.colour_input)
         self.win.drawstr(2, 2, 14, "Order number: ", align=">")
         self.onfield = ui.editfield(2, 16, 5, keymap={
-                keyboard.K_CLEAR: (self.dismiss, None)})
+            keyboard.K_CLEAR: (self.dismiss, None)})
         self.win.drawstr(2, 23, 14, "(may be blank)")
         self.win.drawstr(3, 2, 14, "Message: ", align=">")
         self.messagefield = ui.editfield(
@@ -576,6 +587,7 @@ class message(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["The message has been printed in the kitchen."],
                          title="Message sent",
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
+
 
 class FoodOrderPlugin(register.RegisterPlugin):
     """Create an instance of this plugin to enable food ordering

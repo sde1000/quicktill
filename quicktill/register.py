@@ -39,18 +39,18 @@ from . import plugins
 from . import config
 import logging
 import datetime
-log = logging.getLogger(__name__)
-from .models import Transline, Transaction, Session, StockOut, Transline, penny
-from .models import Payment, zero, User, Department, desc, RemoveCode
+from .models import Transline, Transaction, Session, StockOut, penny
+from .models import Payment, zero, User, Department, desc
 from .models import StockType
 from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
-from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
 import uuid
+
+log = logging.getLogger(__name__)
 
 # How old can a transaction line be before it is unable to be modified
 # in place?
@@ -80,7 +80,8 @@ open_transaction_lock_after = config.IntervalConfigItem(
 open_transaction_lock_message = config.ConfigItem(
     'register:open_transaction_lock_message', "",
     display_name="Locked transaction message",
-    description="Display this message to the user when a transaction is locked.")
+    description="Display this message to the user when a transaction "
+    "is locked.")
 
 # Allow transactions with payments to be merged?
 allow_mergetrans_with_payments = config.BooleanConfigItem(
@@ -104,22 +105,24 @@ transaction_message_key = "register-message"
 colour_locked = ui.colourpair("locked", "yellow", "blue")
 
 # Permissions checked for explicitly in this module
-user.action_descriptions['override-price'] = "Override the sale price of an item"
+user.action_descriptions['override-price'] = "Override the sale price " \
+    "of an item"
 user.action_descriptions['nosale'] = "Open the cash drawer with no payment"
-user.action_descriptions['suppress-refund-help-text'] = (
-    "Don't show the refund help text")
-user.action_descriptions['cancel-line-in-open-transaction'] = (
-    "Delete or reverse a line in an open transaction")
-user.action_descriptions['void-from-closed-transaction'] = (
-    "Create a transaction voiding lines from a closed transaction")
-user.action_descriptions['sell-dept'] = (
-    "Sell items using a department key")
+user.action_descriptions['suppress-refund-help-text'] = \
+    "Don't show the refund help text"
+user.action_descriptions['cancel-line-in-open-transaction'] = \
+    "Delete or reverse a line in an open transaction"
+user.action_descriptions['void-from-closed-transaction'] = \
+    "Create a transaction voiding lines from a closed transaction"
+user.action_descriptions['sell-dept'] = \
+    "Sell items using a department key"
 
 # Whenever the register is started it generates a new unique ID for
 # itself.  This is used to distinguish register instances that are
 # running at the same time, so they can coordinate moving transactions
 # and users between registers.
 register_instance = str(uuid.uuid4())
+
 
 class RegisterPlugin(metaclass=plugins.InstancePluginMount):
     """A plugin to add functionality to the register
@@ -143,11 +146,14 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - nosale() - just before kicking out the cash drawer on closed transaction
      - cashkey(trans) - cash/enter on an open transaction
      - paymentkey(method, trans) - payment key on an open transaction
-     - close_transaction(trans) - called just before closing a balanced transaction
-     - start_payment(method, trans, amount, balance) - about to invoke a payment method
+     - close_transaction(trans) - called just before closing a balanced
+         transaction
+     - start_payment(method, trans, amount, balance) - about to invoke a
+         payment method
      - printkey(trans)
      - cancelkey(trans) - cancel key on an open or closed transaction
-     - cancelmarked(trans) - cancel marked lines on an open or closed transaction
+     - cancelmarked(trans) - cancel marked lines on an open or closed
+         transaction
      - canceltrans(trans) - trans may be open or closed
      - cancelempty(trans) - cash/enter on an empty transaction
      - cancelline(l)
@@ -156,10 +162,10 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - recalltranskey()
      - defertrans(trans) - trans is open
      - mergetrans(trans) - merge transaction menu option
-     - mergetrans_finish(trans, othertrans) - about to merge trans into othertrans
+     - mergetrans_finish(trans, othertrans) - about to merge trans into
+         othertrans
      - apply_discount_menu()
      - managetrans(trans) - Manage Transaction menu
-
     """
     def keypress(self, register, keypress):
         """Handle an unknown keypress on the register
@@ -193,6 +199,7 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
         """
         return
 
+
 class _DiscountPolicyMount(type):
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, 'policies'):
@@ -204,6 +211,7 @@ class _DiscountPolicyMount(type):
         if x.permission_required:
             user.action_descriptions[x.permission_required[0]] \
                 = x.permission_required[1]
+
 
 class DiscountPolicyPlugin(metaclass=_DiscountPolicyMount):
     """A plugin to add a discount policy to the register
@@ -239,6 +247,7 @@ class DiscountPolicyPlugin(metaclass=_DiscountPolicyMount):
         """
         return zero, self.policy_name
 
+
 class PercentageDiscount(DiscountPolicyPlugin):
     """A flat percentage discount, optionally restricted to a set of departments
 
@@ -259,12 +268,14 @@ class PercentageDiscount(DiscountPolicyPlugin):
         return (transline.original_amount * Decimal(self._percentage / 100.0))\
             .quantize(penny), self.policy_name
 
+
 def _transaction_age_locked(trans):
     """Is the transaction to be treated as locked?
     """
     if trans.closed or not open_transaction_lock_after():
         return False
     return trans.age > open_transaction_lock_after()
+
 
 class bufferline(ui.lrline):
     """The last line on the register display
@@ -282,7 +293,7 @@ class bufferline(ui.lrline):
         self.reg = reg
 
     def display(self, width):
-        self.update() # clear cached outputs
+        self.update()  # clear cached outputs
         if self.reg.qty is not None:
             m = "{} of ".format(self.reg.qty)
         else:
@@ -323,6 +334,7 @@ class bufferline(ui.lrline):
         l = [''] + super().display(width)
         self.cursor = (cursorx, len(l) - 1)
         return l
+
 
 class tline(ui.lrline):
     """A transaction line loaded to be displayed
@@ -368,6 +380,7 @@ class tline(ui.lrline):
         self.marked = self in ml
         self.update_colour()
 
+
 class edittransnotes(user.permission_checked, ui.dismisspopup):
     """A popup to allow a transaction's notes to be edited."""
     permission_required = ("edit-transaction-note",
@@ -389,6 +402,7 @@ class edittransnotes(user.permission_checked, ui.dismisspopup):
         notes = self.notesfield.f
         self.dismiss()
         self.func(notes)
+
 
 class splittrans(user.permission_checked, ui.dismisspopup):
     """A popup to allow marked lines to be split into a different transaction.
@@ -418,6 +432,7 @@ class splittrans(user.permission_checked, ui.dismisspopup):
             return
         self.dismiss()
         self._func(notes)
+
 
 class addtransline(user.permission_checked, ui.dismisspopup):
     """A popup to allow an arbitrary transaction line to be created.
@@ -449,7 +464,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.addbutton = ui.buttonfield(
             6, 25, 20, "Add transaction line",
             keymap={
-                keyboard.K_CASH: (self.enter,None)})
+                keyboard.K_CASH: (self.enter, None)})
         ui.map_fieldlist(
             [self.deptfield, self.descfield, self.itemsfield,
              self.amountfield, self.addbutton])
@@ -463,7 +478,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
             amount = Decimal(self.amountfield.f)
             if items == 0:
                 raise Exception("Zero items not permitted")
-        except:
+        except Exception:
             return
         self.total.set(tillconfig.fc(items * amount))
 
@@ -476,7 +491,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         try:
             items = int(self.itemsfield.f)
             amount = Decimal(self.amountfield.f)
-        except:
+        except Exception:
             return ui.infopopup(["You must specify the number of items and "
                                  "the amount per item."], title="Error")
         if items == 0:
@@ -491,13 +506,16 @@ class addtransline(user.permission_checked, ui.dismisspopup):
         self.dismiss()
         self.func([(dept.id, text, items, amount)])
 
+
 class recalltranspopup(user.permission_checked, ui.dismisspopup):
     """Popup to allow transaction number entry
 
     Recalls the transaction to the register.
     """
     permission_required = (
-        "recall-any-trans", "Recall any transaction, even from previous sessions")
+        "recall-any-trans", "Recall any transaction, even from "
+        "previous sessions")
+
     def __init__(self, reg):
         self._reg = reg
         super().__init__(5, 34, title="Recall Transaction",
@@ -512,14 +530,16 @@ class recalltranspopup(user.permission_checked, ui.dismisspopup):
         self.dismiss()
         try:
             transid = int(self.transfield.read())
-        except:
+        except Exception:
             return
         self._reg.recalltrans(transid)
+
 
 def strtoamount(s):
     if s.find('.') >= 0:
         return Decimal(s).quantize(penny)
     return int(s) * penny
+
 
 def no_saleprice_popup(user, stocktype):
     """The user tried to sell an item that doesn't have a price set
@@ -542,26 +562,27 @@ def no_saleprice_popup(user, stocktype):
                     None, True)})
     elif user.may('override-price'):
         ui.infopopup(
-            ["No sale price has been set for {}.  You can enter a price "
-             "before pressing the line key to set the price just this once.".\
-             format(ist.format())],
+            [f"No sale price has been set for {ist}.  You can enter a price "
+             "before pressing the line key to set the price just this once."],
             title="Unpriced item found")
     else:
         ui.infopopup(
-            ["No sale price has been set for {}.  You must ask a manager "
-             "to set a price for it before you can sell it.".format(
-                 ist.format())],
+            [f"No sale price has been set for {ist}.  You must ask a manager "
+             "to set a price for it before you can sell it."],
             title="Unpriced item found")
+
 
 def record_pullthru(stockid, qty):
     td.s.add(StockOut(stockid=stockid, qty=qty, removecode_id='pullthru'))
     td.s.flush()
+
 
 class repeatinfo:
     """Information for repeat keypresses."""
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
 
 class _update_timeout_scrollable(ui.scrollable):
     """A scrollable that calls _update_timeout() on its parent when it
@@ -571,9 +592,11 @@ class _update_timeout_scrollable(ui.scrollable):
         super().focus()
         self.parent._update_timeout()
 
+
 class InvalidSale(Exception):
     def __init__(self, msg):
         self.msg = msg
+
 
 class ProposedSale:
     """A proposed sale of a single item.
@@ -625,6 +648,7 @@ class ProposedSale:
             if self.qty is not None:
                 raise InvalidSale("qty present with no stocktype")
 
+
 class page(ui.basicpage):
     def __init__(self, user, hotkeys, autolock=None, timeout=300):
         """A cash register page
@@ -646,11 +670,11 @@ class page(ui.basicpage):
         self._autolock = autolock
         self.locked = False
         self._timeout = timeout
-        self._timeout_handle = None # Used to cancel timeout
+        self._timeout_handle = None  # Used to cancel timeout
         self._update_timeout()
-        self.h = self.h - 1 # XXX hack to avoid drawing into bottom
-                            # right-hand cell; is this still
-                            # necessary?
+        # XXX hack to avoid drawing into bottom right-hand cell; is
+        # this still necessary?
+        self.h = self.h - 1
         self.hotkeys = hotkeys
         self.defaultprompt = "Ready"
         # Set user's current register to be us
@@ -723,9 +747,9 @@ class page(ui.basicpage):
 
         Doesn't reset the prompt or current balance.
         """
-        self.buf = "" # Input buffer
-        self.qty = None # Quantity (integer)
-        self.mod = None # Modifier (modkey object)
+        self.buf = ""    # Input buffer
+        self.qty = None  # Quantity (integer)
+        self.mod = None  # Modifier (modkey object)
 
     def _clear(self):
         """Reset the page.
@@ -736,21 +760,23 @@ class page(ui.basicpage):
         example loading a previous transaction) before requesting a
         redraw.
         """
-        self.dl = [] # Display list
+        self.dl = []  # Display list
         if hasattr(self, 's'):
-            self.s.set(self.dl) # Tell the scrollable about the new display list
-        self.ml = set() # Set of marked tlines
-        self.transid = None # Current transaction
+            # Tell the scrollable about the new display list
+            self.s.set(self.dl)
+        self.ml = set()  # Set of marked tlines
+        self.transid = None  # Current transaction
         self.discount_policy = None
         self.user.dbuser.transaction = None
         # If the transaction is locked this will be a list of messages to
         # display to the user about why the transaction is locked.  Otherwise,
         # it will be an empty list.
         self.transaction_locked = []
-        self.repeat = None # If dept/line button pressed, update this transline
+        # If dept/line button pressed, update this transline
+        self.repeat = None
         self.keyguard = False
         self.clearbuffer()
-        self.balance = zero # Cache of balance of current transaction
+        self.balance = zero  # Cache of balance of current transaction
         self.prompt = self.defaultprompt
         self._redraw_note()
         td.s.flush()
@@ -768,13 +794,13 @@ class page(ui.basicpage):
         """
         log.debug("Register: loadtrans %s", transid)
         # Reload the transaction and its related objects
-        trans = td.s.query(Transaction).\
-                filter_by(id=transid).\
-                options(subqueryload('payments')).\
-                options(joinedload('lines.user')).\
-                options(joinedload('meta')).\
-                options(undefer('total')).\
-                one()
+        trans = td.s.query(Transaction)\
+                    .filter_by(id=transid)\
+                    .options(subqueryload('payments'))\
+                    .options(joinedload('lines.user'))\
+                    .options(joinedload('meta'))\
+                    .options(undefer('total'))\
+                    .one()
         self.transid = trans.id
         if trans.user:
             # There is a unique constraint on User.trans_id - if
@@ -790,7 +816,7 @@ class page(ui.basicpage):
             for line in trans.lines:
                 self._apply_discount(line)
         self.dl = [tline(l.id) for l in trans.lines] \
-                  + [payment.pline(i) for i in trans.payments]
+            + [payment.pline(i) for i in trans.payments]
         self.s.set(self.dl)
         self.ml = set()
         if _transaction_age_locked(trans):
@@ -866,9 +892,9 @@ class page(ui.basicpage):
 
     def close_if_balanced(self):
         trans = self._gettrans()
-        if (trans and not trans.closed and (
-                trans.lines or trans.payments)
-            and trans.total == trans.payments_total):
+        if trans and not trans.closed \
+           and (trans.lines or trans.payments) \
+           and trans.total == trans.payments_total:
             if self.hook("close_transaction", trans):
                 return
             # Yes, it's balanced!
@@ -1014,7 +1040,7 @@ class page(ui.basicpage):
     @user.permission_required('sell-plu', 'Sell items using a price lookup')
     def _sell_plu(self, plu, mod):
         items = self.qty or 1
-        mod = self.mod or mod # self.mod is an override of the default
+        mod = self.mod or mod  # self.mod is an override of the default
         buf = self.buf
         self.clearbuffer()
         self._redraw()
@@ -1023,12 +1049,12 @@ class page(ui.basicpage):
         # many of the usual checks.  If it's the same PLU again, just
         # increase the number of items
         may_repeat = hasattr(self.repeat, 'plu') \
-                     and self.repeat.plu == plu.id \
-                     and self.repeat.mod == mod
+            and self.repeat.plu == plu.id \
+            and self.repeat.mod == mod
 
-        trans = self.get_open_trans() # Zaps self.repeat
+        trans = self.get_open_trans()  # Zaps self.repeat
         if not trans:
-            return # Will already be displaying an error.
+            return  # Will already be displaying an error.
 
         # Check for an explicit price
         explicitprice = None
@@ -1042,7 +1068,7 @@ class page(ui.basicpage):
                 explicitprice = self._read_explicitprice(
                     buf, plu.department, permission_required="sell-dept")
             if not explicitprice:
-                return # Error popup already in place
+                return  # Error popup already in place
 
         # If we are dealing with a repeat press on the PLU line key, skip
         # all the remaining checks and just increase the number of items
@@ -1063,19 +1089,19 @@ class page(ui.basicpage):
 
         sale.validate()
 
-        # Pass the proposed sale to the modifier to let it change it or reject it
+        # Pass the proposed sale to the modifier to let it change it
+        # or reject it
         if mod:
             try:
                 with ui.exception_guard(
-                        "running the '{}' modifier".format(mod.name),
+                        f"running the '{mod.name}' modifier",
                         suppress_exception=False):
                     try:
                         mod.mod_plu(plu, sale)
                         sale.validate()
                     except modifiers.Incompatible as i:
-                        msg = "The '{}' modifier can't be used with " \
-                              "the '{}' price lookup." \
-                              .format(mod.name, plu.description)
+                        msg = f"The '{mod.name}' modifier can't be used " \
+                              f"with the '{plu.description}' price lookup."
                         ui.infopopup([i.msg if i.msg else msg],
                                      title="Incompatible modifier",
                                      colour=ui.colour_error)
@@ -1088,7 +1114,7 @@ class page(ui.basicpage):
                              .format(mod.name, i.msg)],
                             title="Till configuration error")
                         return
-            except Exception as e:
+            except Exception:
                 # ui.exception_guard() will already have popped up the error.
                 return
 
@@ -1099,12 +1125,13 @@ class page(ui.basicpage):
         # If we still don't have a price, we can't continue
         if sale.price is None:
             if self.user.may('sell-dept'):
-                msg = "'{}' doesn't have a price set.  You must enter a " \
-                      "price before choosing the item.".format(plu.description)
+                msg = f"'{plu.description}' doesn't have a price set.  You " \
+                    "must enter a price before choosing the item."
             else:
-                msg = "This item doesn't have a price set, and you don't have " \
-                      "permission to override it.  You must ask your manager " \
-                      "to set a price on the item before you can sell it."
+                msg = "This item doesn't have a price set, and you don't " \
+                    "have permission to override it.  You must ask your " \
+                    "manager to set a price on the item before you can " \
+                    "sell it."
                 ui.infopopup([msg], title="Price not set")
             return
 
@@ -1123,7 +1150,7 @@ class page(ui.basicpage):
             user.log(f"Price override on {plu.logref} to "
                      f"{tillconfig.fc(sale.price)} for transaction "
                      f"line {tl.logref}")
-        td.s.refresh(tl, ['time']) # load time from database
+        td.s.refresh(tl, ['time'])  # load time from database
         self.dl.append(tline(tl.id))
         self.repeat = repeatinfo(plu=plu.id, mod=mod)
         td.s.expire(trans, ['total'])
@@ -1166,8 +1193,8 @@ class page(ui.basicpage):
                         mod.mod_stocktype(st, sale)
                         sale.validate()
                     except modifiers.Incompatible as i:
-                        msg = f"The '{mod.name}' modifier can't be used with " \
-                              f"the '{st}' stock type."
+                        msg = f"The '{mod.name}' modifier can't be used " \
+                            f"with the '{st}' stock type."
                         ui.infopopup([i.msg if i.msg else msg],
                                      title="Incompatible modifier",
                                      colour=ui.colour_error)
@@ -1180,7 +1207,7 @@ class page(ui.basicpage):
                              f"state is: {i.msg}"],
                             title="Till configuration error")
                         return
-            except Exception as e:
+            except Exception:
                 # ui.exception_guard() will already have popped up the error.
                 return
 
@@ -1189,7 +1216,7 @@ class page(ui.basicpage):
             explicitprice = self._read_explicitprice(
                 buf, sale.stocktype.department)
             if not explicitprice:
-                return # Error popup already in place
+                return  # Error popup already in place
 
         if not explicitprice:
             if sale.price is None:
@@ -1214,8 +1241,8 @@ class page(ui.basicpage):
         # NB get_open_trans() may call _clear() and will zap self.repeat when
         # it creates a new transaction!
         may_repeat = self.repeat and hasattr(self.repeat, 'stocktype_id') \
-                     and self.repeat.stocktype_id == st.id \
-                     and self.repeat.mod == mod
+            and self.repeat.stocktype_id == st.id \
+            and self.repeat.mod == mod
 
         trans = self.get_open_trans()
         if trans is None:
@@ -1262,7 +1289,7 @@ class page(ui.basicpage):
                         ["You can't sell {} {}s of {} in one go.".format(
                             items_to_sell, stockitem.stocktype.unit.name,
                             stockitem.stocktype.format())],
-                                 title="Error")
+                        title="Error")
                     return
             tl = Transline(
                 transaction=trans, items=items,
@@ -1286,7 +1313,7 @@ class page(ui.basicpage):
                     f"for transaction line {tl.logref} stock item "
                 for stockitem, items_to_sell in sell:
                     user.log(logmsg + stockitem.logref)
-            td.s.refresh(tl, ['time']) # load time from database
+            td.s.refresh(tl, ['time'])  # load time from database
             self.dl.append(tline(tl.id))
 
         self.repeat = repeatinfo(stocktype_id=st.id, mod=mod)
@@ -1308,7 +1335,7 @@ class page(ui.basicpage):
 
     @user.permission_required('sell-stock', 'Sell stock from a stockline')
     def _sell_stockline(self, stockline, mod):
-        mod = self.mod or mod # self.mod is an override of the default
+        mod = self.mod or mod  # self.mod is an override of the default
         items = self.qty or 1
 
         # Cache the bufferline contents, clear it and redraw - this
@@ -1326,34 +1353,34 @@ class page(ui.basicpage):
         if not st:
             log.info("linekey: no stock in use for %s", stockline.name)
             ui.infopopup(
-                ["No stock is registered for {}.".format(stockline.name),
-                 "To tell the till about stock on sale, "
-                 "press the '{}' button after "
-                 "dismissing this message.".format(keyboard.K_USESTOCK.keycap)],
-                title="{} has no stock".format(stockline.name))
+                [f"No stock is registered for {stockline.name}.",
+                 f"To tell the till about stock on sale, "
+                 f"press the '{keyboard.K_USESTOCK.keycap}' button after "
+                 f"dismissing this message."],
+                title=f"{stockline.name} has no stock")
             return
         sale = ProposedSale(
             stocktype=st,
             qty=st.unit.units_per_item,
-            description=st.format() + " {}".format(st.unit.item_name),
+            description=f"{st} {st.unit.item_name}",
             price=st.saleprice,
             whole_items=(stockline.linetype == "display"))
 
         sale.validate()
 
-        # Pass the proposed sale to the modifier to let it change it or reject it
+        # Pass the proposed sale to the modifier to let it change it
+        # or reject it
         if mod:
             try:
                 with ui.exception_guard(
-                        "running the '{}' modifier".format(mod.name),
+                        f"running the '{mod.name}' modifier",
                         suppress_exception=False):
                     try:
                         mod.mod_stockline(stockline, sale)
                         sale.validate()
                     except modifiers.Incompatible as i:
-                        msg = "The '{}' modifier can't be used with " \
-                              "the '{}' stockline." \
-                              .format(mod.name, stockline.name)
+                        msg = f"The '{mod.name}' modifier can't be used " \
+                            f"with the '{stockline.name}' stockline."
                         ui.infopopup([i.msg if i.msg else msg],
                                      title="Incompatible modifier",
                                      colour=ui.colour_error)
@@ -1366,7 +1393,7 @@ class page(ui.basicpage):
                              .format(mod.name, i.msg)],
                             title="Till configuration error")
                         return
-            except Exception as e:
+            except Exception:
                 # ui.exception_guard() will already have popped up the error.
                 return
 
@@ -1375,7 +1402,7 @@ class page(ui.basicpage):
             explicitprice = self._read_explicitprice(
                 buf, sale.stocktype.department)
             if not explicitprice:
-                return # Error popup already in place
+                return  # Error popup already in place
 
         if not explicitprice:
             if sale.price is None:
@@ -1396,28 +1423,28 @@ class page(ui.basicpage):
                  "If you have recently put more stock on display you "
                  "must tell the till about it using the 'Use Stock' "
                  "button after dismissing this message.".format(
-                        total_qty, stockline.name)],
+                     total_qty, stockline.name)],
                 title="Not enough stock on display")
             return
         if len(sell) == 0:
             log.info("linekey: no stock in use for %s", stockline.name)
             ui.infopopup(
-                ["No stock is registered for {}.".format(stockline.name),
-                 "To tell the till about stock on sale, "
-                 "press the '{}' button after "
-                 "dismissing this message.".format(keyboard.K_USESTOCK.keycap)],
-                title="{} has no stock".format(stockline.name))
+                [f"No stock is registered for {stockline.name}.",
+                 f"To tell the till about stock on sale, "
+                 f"press the '{keyboard.K_USESTOCK.keycap}' button after "
+                 f"dismissing this message."],
+                title=f"{stockline.name} has no stock")
             return
 
         # NB get_open_trans() may call _clear() and will zap self.repeat when
         # it creates a new transaction!
         may_repeat = self.repeat and hasattr(self.repeat, 'stocklineid') \
-                     and self.repeat.stocklineid == stockline.id \
-                     and self.repeat.mod == mod
+            and self.repeat.stocklineid == stockline.id \
+            and self.repeat.mod == mod
 
         trans = self.get_open_trans()
         if trans is None:
-            return # Will already be displaying an error.
+            return  # Will already be displaying an error.
 
         # If the transaction is locked, we can't continue
         if self.transaction_locked:
@@ -1484,7 +1511,7 @@ class page(ui.basicpage):
                         ["You can't sell {} {}s of {} in one go.".format(
                             items_to_sell, stockitem.stocktype.unit.name,
                             stockitem.stocktype.format())],
-                                 title="Error")
+                        title="Error")
                     return
             tl = Transline(
                 transaction=trans, items=items,
@@ -1508,7 +1535,7 @@ class page(ui.basicpage):
                     f"for transaction line {tl.logref} stock item "
                 for stockitem, items_to_sell in sell:
                     user.log(logmsg + stockitem.logref)
-            td.s.refresh(tl, ['time']) # load time from database
+            td.s.refresh(tl, ['time'])  # load time from database
             self.dl.append(tline(tl.id))
 
         self.repeat = repeatinfo(stocklineid=stockline.id, mod=mod)
@@ -1522,20 +1549,20 @@ class page(ui.basicpage):
                 stockitem.stocktype.unit.format_qty(stockitem.remaining),
                 stockitem.stocktype.format())
             if stockitem.remaining < Decimal("0.0"):
-                ui.infopopup([
-                    "There appears to be {} {}s of {} left!  Please "
-                    "check that you're still using stock item {}; if you've "
-                    "started using a new item, tell the till about it "
-                    "using the '{}' button after dismissing this "
-                    "message.".format(
-                        stockitem.remaining,
-                        stockitem.stocktype.unit.name,
-                        stockitem.stocktype.format(),
-                        stockitem.id,
-                        keyboard.K_USESTOCK.keycap),
-                    "", "If you don't understand this message, you MUST "
-                    "call your manager to deal with it."],
-                             title="Warning", dismiss=keyboard.K_USESTOCK)
+                ui.infopopup(
+                    ["There appears to be {} {}s of {} left!  Please "
+                     "check that you're still using stock item {}; if you've "
+                     "started using a new item, tell the till about it "
+                     "using the '{}' button after dismissing this "
+                     "message.".format(
+                         stockitem.remaining,
+                         stockitem.stocktype.unit.name,
+                         stockitem.stocktype.format(),
+                         stockitem.id,
+                         keyboard.K_USESTOCK.keycap),
+                     "", "If you don't understand this message, you MUST "
+                     "call your manager to deal with it."],
+                    title="Warning", dismiss=keyboard.K_USESTOCK)
         elif stockline.linetype == "display":
             self.prompt = "{}: {} left on display; {} in stock".format(
                 stockline.name, int(remaining[0]), int(remaining[1]))
@@ -1544,20 +1571,20 @@ class page(ui.basicpage):
                 stockline.name, stockline.stocktype.unit.format_qty(remaining),
                 stockline.stocktype.format())
             if remaining < Decimal("0.0"):
-                ui.infopopup([
-                    "There appears to be {} {}s of {} left!  Please "
-                    "check that you're still using {}; if you've "
-                    "started using a new type of stock, tell the till "
-                    "about it by changing the stock type of the "
-                    "'{}' stock line after dismissing this message.".format(
-                        remaining,
-                        stockline.stocktype.unit.name,
-                        stockline.stocktype.format(),
-                        stockline.stocktype.format(),
-                        stockline.name),
-                    "", "If you don't understand this message, you MUST "
-                    "call your manager to deal with it."],
-                             title="Warning", dismiss=keyboard.K_USESTOCK)
+                ui.infopopup(
+                    ["There appears to be {} {}s of {} left!  Please "
+                     "check that you're still using {}; if you've "
+                     "started using a new type of stock, tell the till "
+                     "about it by changing the stock type of the "
+                     "'{}' stock line after dismissing this message.".format(
+                         remaining,
+                         stockline.stocktype.unit.name,
+                         stockline.stocktype.format(),
+                         stockline.stocktype.format(),
+                         stockline.name),
+                     "", "If you don't understand this message, you MUST "
+                     "call your manager to deal with it."],
+                    title="Warning", dismiss=keyboard.K_USESTOCK)
 
         # Adding and altering translines changes the total
         td.s.expire(trans, ['total'])
@@ -1597,7 +1624,7 @@ class page(ui.basicpage):
             self._apply_discount(tl)
             td.s.flush()
             log.info("Register: deptlines: trans=%d,lid=%d,dept=%d,"
-                     "price=%f,text=%s"%(trans.id, tl.id, dept, amount, text))
+                     "price=%f,text=%s", trans.id, tl.id, dept, amount, text)
             self.dl.append(tline(tl.id))
         self.repeat = None
         self.cursor_off()
@@ -1677,8 +1704,8 @@ class page(ui.basicpage):
         pm = tillconfig.payment_methods[0]
         if not pm.change_given:
             self._redraw()
-            ui.infopopup(["The %s payment method doesn't support change."%
-                          pm.description], title="Error")
+            ui.infopopup([f"The {pm.description} payment method doesn't "
+                          "support change."], title="Error")
             return
         p = pm.add_change(trans, description="Drink 'In'", amount=-amount)
         self.dl.append(p)
@@ -1754,8 +1781,7 @@ class page(ui.basicpage):
         # pop up a menu allowing them to be resumed.
         ml = [(p.description(), p.resume, (self,))
               for p in self.dl
-              if hasattr(p, 'is_pending')
-              and p.is_pending()]
+              if hasattr(p, 'is_pending') and p.is_pending()]
         log.debug("Pending payments: %s", ml)
         if ml:
             ui.menu(
@@ -1774,7 +1800,8 @@ class page(ui.basicpage):
         #
         # We do this by opening the payment methods menu.
         if self.keyguard:
-            self._payment_method_menu(title="Choose payment method for this transaction")
+            self._payment_method_menu(title="Choose payment method for "
+                                      "this transaction")
             return
         self.paymentkey(pm)
 
@@ -1823,7 +1850,7 @@ class page(ui.basicpage):
         if self.buf:
             amount = strtoamount(self.buf)
             if self.balance < zero:
-                amount = zero - amount # refund amount
+                amount = zero - amount  # refund amount
         elif self.ml:
             log.info("Register: paymentkey: amount from marked lines")
             amount = self._total_value_of_marked_translines()
@@ -1908,8 +1935,7 @@ class page(ui.basicpage):
     def numkey(self, n):
         """A number key was pressed."""
         trans = self._gettrans()
-        if (not self.buf and self.qty == None and
-            trans and trans.closed):
+        if not self.buf and self.qty == None and trans and trans.closed:
             log.info("Register: numkey on closed transaction; "
                      "clearing display")
             self._clear()
@@ -1968,8 +1994,7 @@ class page(ui.basicpage):
     def clearkey(self):
         """The Clear key was pressed."""
         trans = self._gettrans()
-        if (not self.buf and self.qty == None and
-            trans and trans.closed):
+        if not self.buf and self.qty == None and trans and trans.closed:
             log.info("Register: clearkey on closed transaction; "
                      "clearing display")
             self._clear()
@@ -2067,9 +2092,9 @@ class page(ui.basicpage):
         if self.s.cursor >= len(self.dl):
             # The user has not indicated a particular line to cancel.
             # Try to cancel the whole transaction.
-            if not closed and (
-                    self.keyguard or 
-                    (len(self.dl) > 0 and
+            if not closed \
+               and (self.keyguard or  # noqa: W504
+                    (len(self.dl) > 0 and  # noqa: W504
                      self.dl[0].age() > max_transline_modify_age())):
                 log.info("Register: cancelkey kill transaction denied")
                 ui.infopopup(
@@ -2202,7 +2227,7 @@ class page(ui.basicpage):
             trans = self.get_open_trans()
             if not trans:
                 return
-            self._void_lines([ l for l in tl if isinstance(l, tline) ])
+            self._void_lines([l for l in tl if isinstance(l, tline)])
             self.cursor_off()
             self.update_balance()
             self._redraw()
@@ -2283,12 +2308,12 @@ class page(ui.basicpage):
         if not ll:
             return
         trans = self._gettrans()
-        tll = [ td.s.query(Transline).get(l.transline) for l in ll ]
-        voidlines = [ transline.void(trans, self.user.dbuser)
-                      for transline in tll ]
-        voidlines = [ x for x in voidlines if x ]
+        tll = [td.s.query(Transline).get(l.transline) for l in ll]
+        voidlines = [transline.void(trans, self.user.dbuser)
+                     for transline in tll]
+        voidlines = [x for x in voidlines if x]
         td.s.add_all(voidlines)
-        td.s.flush() # get transline IDs, fill in voided_by
+        td.s.flush()  # get transline IDs, fill in voided_by
         for ntl in voidlines:
             self._apply_discount(ntl)
             self.dl.append(tline(ntl.id))
@@ -2395,7 +2420,7 @@ class page(ui.basicpage):
             log.info("Register: recalltrans %d", transid)
             trans = td.s.query(Transaction).get(transid)
             if not trans:
-                ui.infopopup(["Transaction {} does not exist.".format(transid)],
+                ui.infopopup([f"Transaction {transid} does not exist."],
                              title="Error")
                 return
             # Leave a message if the transaction belonged to another
@@ -2403,10 +2428,11 @@ class page(ui.basicpage):
             user = td.s.query(User).filter(User.transaction == trans).first()
             if user:
                 user.transaction = None
-                user.message = "Your transaction {} ({}) was taken over by {} " \
-                               "using the Recall Transaction function.".format(
-                                   trans.id, trans.notes or "no notes",
-                                   self.user.fullname)
+                user.message = \
+                    f"Your transaction {trans.id} "\
+                    f"({trans.notes or 'no notes'}) was taken over "\
+                    f"by {self.user.fullname} " \
+                    f"using the Recall Transaction function."
             self._loadtrans(trans.id)
             self.keyguard = True
             self.close_if_balanced()
@@ -2452,14 +2478,14 @@ class page(ui.basicpage):
                  "be able to find it again."],
                 title="Transaction note required")
             return
-        transactions = td.s.query(Transaction).\
-                       filter(Transaction.session == sc).\
-                       options(undefer('age')).\
-                       options(undefer('total')).\
-                       options(joinedload('user')).\
-                       order_by(Transaction.closed == True).\
-                       order_by(desc(Transaction.id)).\
-                       all()
+        transactions = td.s.query(Transaction)\
+                           .filter(Transaction.session == sc)\
+                           .options(undefer('age'))\
+                           .options(undefer('total'))\
+                           .options(joinedload('user'))\
+                           .order_by(Transaction.closed == True)\
+                           .order_by(desc(Transaction.id))\
+                           .all()
         f = ui.tableformatter(' r l r l l ')
         sl = [(f(x.id, ('open', 'closed')[x.closed],
                  tillconfig.fc(x.total),
@@ -2639,14 +2665,14 @@ class page(ui.basicpage):
         # ID (i.e. most recent transaction first), but we've been
         # doing it the other way long enough that changing would upset
         # people!  Consult first, and possibly make it configurable.
-        tl = td.s.query(Transaction).\
-             filter(Transaction.session == sc).\
-             filter(Transaction.closed == False).\
-             options(undefer('age')).\
-             options(undefer('total')).\
-             options(joinedload('user')).\
-             order_by(Transaction.id).\
-             all()
+        tl = td.s.query(Transaction)\
+                 .filter(Transaction.session == sc)\
+                 .filter(Transaction.closed == False)\
+                 .options(undefer('age'))\
+                 .options(undefer('total'))\
+                 .options(joinedload('user'))\
+                 .order_by(Transaction.id)\
+                 .all()
         f = ui.tableformatter(' r r l l ')
         sl = [(f(x.id, tillconfig.fc(x.total),
                  x.user.shortname if x.user else "", x.notes or "",
@@ -2687,9 +2713,8 @@ class page(ui.basicpage):
         if _transaction_age_locked(othertrans):
             message = [
                 f"Transaction {othertrans.id} ({othertrans.notes}) is "
-                 "locked because it is more than "
-                 f"than {open_transaction_lock_after().days} days "
-                 "old."]
+                f"locked because it is more than "
+                f"{open_transaction_lock_after().days} days old."]
             if open_transaction_lock_message():
                 message.append("")
                 message.append(open_transaction_lock_message())
@@ -2759,14 +2784,16 @@ class page(ui.basicpage):
                      clear=keyboard.K_CLEAR.keycap)],
                 title="Transaction split", colour=ui.colour_info,
                 dismiss=keyboard.K_CLEAR, keymap={
-                    keyboard.K_RECALLTRANS: (self.recalltrans, (nt.id,), True)})
+                    keyboard.K_RECALLTRANS: (self.recalltrans, (nt.id,),
+                                             True)})
         else:
-            ui.infopopup(["The selected lines were moved to a new transaction, "
-                          "number {}, called '{}'.  You can find it using the "
-                          "{} button.".format(nt.id, nt.notes,
-                                              keyboard.K_RECALLTRANS.keycap)],
-                         title="Transaction split", colour=ui.colour_info,
-                         dismiss=keyboard.K_CASH)
+            ui.infopopup(
+                ["The selected lines were moved to a new transaction, "
+                 "number {}, called '{}'.  You can find it using the "
+                 "{} button.".format(nt.id, nt.notes,
+                                     keyboard.K_RECALLTRANS.keycap)],
+                title="Transaction split", colour=ui.colour_info,
+                dismiss=keyboard.K_CASH)
 
     def settransnote(self, notes):
         if not self.entry():
@@ -2784,7 +2811,8 @@ class page(ui.basicpage):
         tline.discount_name = None
         if tline.items > 0:
             if self.discount_policy:
-                discount, discount_name = self.discount_policy.discount_for(tline)
+                discount, discount_name = \
+                    self.discount_policy.discount_for(tline)
                 tline.amount = tline.amount - discount
                 tline.discount = discount
                 tline.discount_name = discount_name if discount else None
@@ -2833,8 +2861,8 @@ class page(ui.basicpage):
         if self.hook("apply_discount_menu"):
             return
         menu = [("No discount", self._apply_discount_policy, (None,))] \
-               + [(x.policy_name, self._apply_discount_policy, (x,))
-                  for x in DiscountPolicyPlugin.policies.values()]
+            + [(x.policy_name, self._apply_discount_policy, (x,))
+               for x in DiscountPolicyPlugin.policies.values()]
         ui.automenu(menu, title="Apply Discount")
 
     def managetranskey(self):
@@ -2936,8 +2964,7 @@ class page(ui.basicpage):
         # should either both be None or both refer to the current
         # transaction.
         self.transid = self.user.dbuser.transaction.id \
-                       if self.user.dbuser.transaction \
-                          else None
+            if self.user.dbuser.transaction else None
         self._update_timeout()
         return True
 
@@ -3037,7 +3064,7 @@ class page(ui.basicpage):
 
     def select(self, u):
         # Called when the appropriate user token is presented
-        self.user = u # Permissions might have changed!
+        self.user = u  # Permissions might have changed!
         self.user.dbuser.register = register_instance
         td.s.flush()
         if self.locked:
@@ -3052,7 +3079,7 @@ class page(ui.basicpage):
         # deselection if none of the popups has unsaved data.  When we
         # are recreated we can reload the current transaction from the
         # database.
-        focus = ui.basicwin._focus # naughty!
+        focus = ui.basicwin._focus  # naughty!
         self.unsaved_data = None
         while focus != self.s:
             unsaved_data = getattr(focus, 'unsaved_data', None)
@@ -3079,6 +3106,7 @@ class page(ui.basicpage):
         self._timeout_handle = None
         if self.s.focused:
             self.deselect()
+
 
 def handle_usertoken(t, *args, **kwargs):
     """User token handler for the register.

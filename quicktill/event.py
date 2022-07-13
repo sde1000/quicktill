@@ -4,6 +4,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 class time_guard:
     def __init__(self, name, max_time):
         self._name = name
@@ -18,9 +19,11 @@ class time_guard:
         if time_taken > self._max_time:
             log.info("time_guard: %s took %f seconds", self._name, time_taken)
 
+
 doread_time_guard = time_guard("doread", 0.5)
 dowrite_time_guard = time_guard("dowrite", 0.5)
 timeout_time_guard = time_guard("timeout", 0.5)
+
 
 class SelectorsMainLoop:
     """Event loop based on selectors module

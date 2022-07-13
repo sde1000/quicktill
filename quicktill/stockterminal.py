@@ -1,14 +1,14 @@
 """Stock Terminal page"""
 
-import time
 import logging
 from . import ui, td, keyboard, usestock, stocklines, user, tillconfig
 from .user import load_user
 from .models import StockLine, StockAnnotation, StockItem
 from sqlalchemy.sql.expression import tuple_, func, null
-from sqlalchemy.sql import select, not_
+from sqlalchemy.sql import select
 from sqlalchemy.orm import joinedload, undefer_group
 log = logging.getLogger(__name__)
+
 
 class page(ui.basicpage):
     def __init__(self, hotkeys, locations=None, user=None,
@@ -28,15 +28,16 @@ class page(ui.basicpage):
         return self.user.fullname if self.user else "Stock Control"
 
     def drawlines(self, h):
-        sl = td.s.query(StockLine).\
-             filter(StockLine.location.in_(self.locations)).\
-             order_by(StockLine.name).\
-             options(joinedload('stockonsale')).\
-             options(joinedload('stockonsale.stocktype')).\
-             options(undefer_group('qtys')).\
-             all()
+        sl = td.s.query(StockLine)\
+                 .filter(StockLine.location.in_(self.locations))\
+                 .order_by(StockLine.name)\
+                 .options(joinedload('stockonsale'))\
+                 .options(joinedload('stockonsale.stocktype'))\
+                 .options(undefer_group('qtys'))\
+                 .all()
         f = ui.tableformatter("pl l L r rp")
         header = f("Line", "StockID", "Stock", "Used", "Remaining")
+
         def fl(line):
             if line.linetype == "regular" and line.stockonsale:
                 sos = line.stockonsale[0]
@@ -52,6 +53,7 @@ class page(ui.basicpage):
                         "{}+{} {}".format(line.ondisplay, line.instock,
                                           line.stocktype.unit.name))
             return (line.name, "", "", "", "")
+
         ml = [header] + [f(*fl(line)) for line in sl]
         y = 0
         for l in ml:
@@ -65,11 +67,12 @@ class page(ui.basicpage):
         sl = td.s.query(StockAnnotation)\
                  .join(StockItem)\
                  .outerjoin(StockLine)\
-                 .filter(tuple_(StockAnnotation.text,StockAnnotation.time).in_(
-                     select([StockAnnotation.text,
-                             func.max(StockAnnotation.time)],
-                            StockAnnotation.atype == 'location')\
-                 .group_by(StockAnnotation.text)))\
+                 .filter(
+                     tuple_(StockAnnotation.text, StockAnnotation.time).in_(
+                         select([StockAnnotation.text,
+                                 func.max(StockAnnotation.time)],
+                                StockAnnotation.atype == 'location')
+                         .group_by(StockAnnotation.text)))\
                  .filter(StockItem.finished == None)\
                  .order_by(StockLine.name != null(), StockAnnotation.time)\
                  .options(joinedload('stockitem'))\
@@ -131,7 +134,7 @@ class page(ui.basicpage):
             self.remaining_life = self.max_unattended_updates
             self.redraw()
 
-    def keypress(self,k):
+    def keypress(self, k):
         if k == 'l' or k == 'L':
             self.choose_location()
         elif k == keyboard.K_CASH:
@@ -156,8 +159,9 @@ class page(ui.basicpage):
     def choose_location(self):
         locations = StockLine.locations(td.s)
         if not locations:
-            ui.infopopup(["There are no locations. Please create a stock line."],
-                         title="Error")
+            ui.infopopup(
+                ["There are no locations. Please create a stock line."],
+                title="Error")
         else:
             ui.automenu([(x, self.set_location, (x,)) for x in locations],
                         title="Choose location")
@@ -165,6 +169,7 @@ class page(ui.basicpage):
     def set_location(self, location):
         self.locations = [location]
         self.alarm(called_by_timer=False)
+
 
 def handle_usertoken(t, *args, **kwargs):
     """
@@ -174,5 +179,5 @@ def handle_usertoken(t, *args, **kwargs):
     """
     u = user.user_from_token(t)
     if u is None:
-        return # Should already have toasted
+        return  # Should already have toasted
     return page(*args, user=u, **kwargs)

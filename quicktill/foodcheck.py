@@ -11,8 +11,10 @@ from . import pdrivers
 import logging
 log = logging.getLogger(__name__)
 
+
 class page(ui.basicpage):
-    def __init__(self, *args, commitcode=0, quitcode=1, menuurl=None, **kwargs):
+    def __init__(self, *args, commitcode=0, quitcode=1, menuurl=None,
+                 **kwargs):
         super().__init__()
         self._commitcode = commitcode
         self._quitcode = quitcode
@@ -27,8 +29,9 @@ class page(ui.basicpage):
                   "Press Q to quit.")
         promptheight = self.win.wrapstr(0, 0, self.w, prompt, display=False)
         self.win.wrapstr(self.h - promptheight, 0, self.w, prompt)
-        self.s = ui.scrollable(1, 0, self.w, self.h - promptheight - 1, self.dl,
-                               show_cursor=False)
+        self.s = ui.scrollable(
+            1, 0, self.w, self.h - promptheight - 1, self.dl,
+            show_cursor=False)
         self.s.focus()
 
     def pagename(self):
@@ -56,6 +59,7 @@ class page(ui.basicpage):
         else:
             ui.beep()
 
+
 class testmenu(cmdline.command):
     help = "test a menu file"
     database_required = False
@@ -79,7 +83,7 @@ class testmenu(cmdline.command):
                                             menuurl=args.url)
         try:
             ui_ncurses.run()
-        except:
+        except Exception:
             log.exception("Exception caught at top level running foodcheck")
 
         return tillconfig.mainloop.exit_code

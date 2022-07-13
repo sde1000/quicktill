@@ -1,6 +1,5 @@
 # Various region-specific utility functions
 # and configuration that is recommended for many common cases
-from . import kbdrivers
 from . import user
 from . import lockscreen
 from . import stockterminal
@@ -14,14 +13,43 @@ from . import register
 from . import ui
 from . import td
 from .models import Transline, zero
-from .keyboard import *
+from .keyboard import (
+    K_STOCKTERMINAL,
+    K_MANAGETILL,
+    K_MANAGESTOCK,
+    K_USESTOCK,
+    K_WASTE,
+    K_RECALLTRANS,
+    K_MANAGETRANS,
+    K_PRICECHECK,
+    K_PRINT,
+    K_CANCEL,
+    K_APPS,
+    K_CLEAR,
+    K_MARK,
+    K_FOODORDER,
+    K_FOODMESSAGE,
+    K_LEFT,
+    K_UP,
+    K_DOWN,
+    K_RIGHT,
+    K_CASH,
+    K_LOCK,
+    K_QUANTITY,
+    K_DRINKIN,
+    Key,
+    notekey,
+    paymentkey,
+    linekey,
+)
 import datetime
 from decimal import Decimal
 from dateutil.easter import easter, EASTER_WESTERN
-from dateutil.relativedelta import relativedelta, MO, FR
+from dateutil.relativedelta import relativedelta, MO
 
 import logging
 log = logging.getLogger(__name__)
+
 
 def is_england_banking_day(d):
     """Is a day a likely England banking day?
@@ -101,13 +129,14 @@ def is_england_banking_day(d):
     # Scotland, although we're not going to calculate that).
     start_of_august = datetime.date(d.year, 8, 1)
     last_monday_of_august = start_of_august \
-                            + relativedelta(day=31, weekday=MO(-1))
+        + relativedelta(day=31, weekday=MO(-1))
     if d == last_monday_of_august:
         return False
 
     # That's it, unless the government introduce any non-standard bank
     # holidays.  If we've got this far, the day is a banking day.
     return True
+
 
 def delta_england_banking_days(date, n):
     """Return the date plus a number of banking days
@@ -123,12 +152,14 @@ def delta_england_banking_days(date, n):
             n = n - 1
     return date
 
+
 def next_england_banking_day(date):
     """Return the next banking day on or after date
     """
     while not is_england_banking_day(date):
         date = date + datetime.timedelta(days=1)
     return date
+
 
 def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
                       card_payment_method=None, overrides={}):
@@ -187,8 +218,8 @@ def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
         (3, 12): Key(K_QUANTITY, css_class="register"),
         (0, 12): Key(K_DRINKIN, css_class="register"),
     })
-    del kb[(6, 15)], kb[(7, 14)], kb[(7, 15)] # Cash key
-    del kb[(4, 15)] # Lock key
+    del kb[(6, 15)], kb[(7, 14)], kb[(7, 15)]  # Cash key
+    del kb[(4, 15)]  # Lock key
     if cash_payment_method:
         kb.update({
             (5, 13): Key(notekey('K_TWENTY', '£20', cash_payment_method,
@@ -209,6 +240,7 @@ def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
         del kb[(5, 15)]
     kb.update(overrides)
     return kb
+
 
 def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
                       card_payment_method=None, overrides={}):
@@ -265,7 +297,7 @@ def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
         (2, 16): Key(K_QUANTITY, css_class="register"),
         (2, 12): Key(K_LOCK, css_class="lock"),
     })
-    del kb[(5, 19)], kb[(6, 18)], kb[(6, 19)] # Cash key
+    del kb[(5, 19)], kb[(6, 18)], kb[(6, 19)]  # Cash key
     if cash_payment_method:
         kb.update({
             (4, 17): Key(notekey('K_TWENTY', '£20', cash_payment_method,
@@ -287,6 +319,7 @@ def stdkeyboard_20by7(line_base=1, cash_payment_method=None,
     kb.update(overrides)
     return kb
 
+
 def resize(keyboard, maxwidth, maxheight):
     """Chop a keyboard down to size
     """
@@ -295,6 +328,7 @@ def resize(keyboard, maxwidth, maxheight):
         if loc[1] < maxwidth and loc[0] < maxheight:
             kb[loc] = contents
     return kb
+
 
 def keyboard(width, height, maxwidth=None, line_base=1, overrides={}):
     """A keyboard suitable for use on-screen
@@ -328,7 +362,6 @@ def keyboard(width, height, maxwidth=None, line_base=1, overrides={}):
     managestock = Key(K_MANAGESTOCK, css_class="management")
     usestock = Key(K_USESTOCK, css_class="management")
     waste = Key(K_WASTE, css_class="management")
-    recalltrans = Key(K_RECALLTRANS, css_class="register")
     recalltrans2 = Key(K_RECALLTRANS, height=2, css_class="register")
     managetrans = Key(K_MANAGETRANS, css_class="register")
     pricecheck = Key(K_PRICECHECK, css_class="register")
@@ -336,42 +369,42 @@ def keyboard(width, height, maxwidth=None, line_base=1, overrides={}):
     cancel = Key(K_CANCEL, css_class="management")
     apps = Key(K_APPS, css_class="management")
     clear = Key(K_CLEAR, css_class="clear")
-    mark = Key(K_MARK, css_class="register")
 
     # Now fill in control keys according to available height
     if height == 8:
         kb.update({
-            (0, 0): alice,         (0, 1): managetill,
-            (1, 0): bob,           (1, 1): managestock,
-            (2, 0): charlie,       (2, 1): usestock,
-            (3, 0): recalltrans2 , (3, 1): waste,
+            (0, 0): alice,         (0, 1): managetill,     # noqa: E241
+            (1, 0): bob,           (1, 1): managestock,    # noqa: E241
+            (2, 0): charlie,       (2, 1): usestock,       # noqa: E241
+            (3, 0): recalltrans2,  (3, 1): waste,          # noqa: E241
                                    (4, 1): managetrans,
-            (5, 0): pricecheck,    (5, 1): printkey,
-            (6, 0): cancel,        (6, 1): apps,
-            (7, 0): clear,         (7, 1): stockterminal,
+            (5, 0): pricecheck,    (5, 1): printkey,       # noqa: E241
+            (6, 0): cancel,        (6, 1): apps,           # noqa: E241
+            (7, 0): clear,         (7, 1): stockterminal,  # noqa: E241
         })
     elif height == 7:
         kb.update({
-            (0, 0): alice,         (0, 1): managetill,
-            (1, 0): managestock,   (1, 1): usestock,
-            (2, 0): recalltrans2,  (2, 1): waste,
+            (0, 0): alice,         (0, 1): managetill,     # noqa: E241
+            (1, 0): managestock,   (1, 1): usestock,       # noqa: E241
+            (2, 0): recalltrans2,  (2, 1): waste,          # noqa: E241
                                    (3, 1): managetrans,
-            (4, 0): pricecheck,    (4, 1): printkey,
-            (5, 0): cancel,        (5, 1): apps,
-            (6, 0): clear,         (6, 1): stockterminal,
+            (4, 0): pricecheck,    (4, 1): printkey,       # noqa: E241
+            (5, 0): cancel,        (5, 1): apps,           # noqa: E241
+            (6, 0): clear,         (6, 1): stockterminal,  # noqa: E241
         })
     elif height == 6:
         kb.update({
-            (0, 0): managetill,    (0, 1): managestock,
-            (1, 0): waste        , (1, 1): usestock,
-            (2, 0): recalltrans2,  (2, 1): managetrans,
+            (0, 0): managetill,    (0, 1): managestock,    # noqa: E241
+            (1, 0): waste,         (1, 1): usestock,       # noqa: E241
+            (2, 0): recalltrans2,  (2, 1): managetrans,    # noqa: E241
                                    (3, 1): printkey,
-            (4, 0): cancel,        (4, 1): pricecheck,
-            (5, 0): clear,         (5, 1): stockterminal,
+            (4, 0): cancel,        (4, 1): pricecheck,     # noqa: E241
+            (5, 0): clear,         (5, 1): stockterminal,  # noqa: E241
             (0, width - 1): apps,
         })
     kb.update(overrides)
     return kb
+
 
 def keyboard_rhpanel(cash_payment_method,
                      card_payment_method,
@@ -412,6 +445,7 @@ def keyboard_rhpanel(cash_payment_method,
     kb.update(overrides)
     return kb
 
+
 # These keys are used by the register and stock terminal pages if they
 # haven't already found a use for a keypress
 def register_hotkeys(appsmenu=None):
@@ -437,6 +471,7 @@ def register_hotkeys(appsmenu=None):
         hk['T'] = appsmenu
     return hk
 
+
 # Useful dictionaries of things that will be referenced by most
 # configuration files
 def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
@@ -445,6 +480,7 @@ def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
             register_hotkeys, ["Bar"]),
         K_LOCK: lockscreen.lockpage,
     }
+
 
 # Dictionary to include in config to enable usertokens to activate the register
 def activate_register_with_usertoken(register_hotkeys, timeout=300):
@@ -457,6 +493,7 @@ def activate_register_with_usertoken(register_hotkeys, timeout=300):
         'barcode_listen': ('127.0.0.1', 8456),
         'barcode_listen_v6': ('::1', 8456),
     }
+
 
 def activate_stockterminal_with_usertoken(
         register_hotkeys,
@@ -472,6 +509,7 @@ def activate_stockterminal_with_usertoken(
         'barcode_listen': ('127.0.0.1', 8456),
         'barcode_listen_v6': ('::1', 8456),
     }
+
 
 class ServiceCharge(register.RegisterPlugin):
     """Apply a service charge to the current transaction
@@ -498,18 +536,19 @@ class ServiceCharge(register.RegisterPlugin):
             return
         # Delete all the transaction lines that are in the service charge
         # department, as long as they are not voided or voids
-        td.s.query(Transline).filter(
-            Transline.transaction == trans,
-            Transline.transcode == 'S',
-            Transline.voided_by_id == None,
-            Transline.dept_id == self._dept)\
-                             .delete()
+        td.s.query(Transline)\
+            .filter(
+                Transline.transaction == trans,
+                Transline.transcode == 'S',
+                Transline.voided_by_id == None,
+                Transline.dept_id == self._dept)\
+            .delete()
         td.s.flush()
         balance = trans.balance
         if balance > zero:
             td.s.add(
                 Transline(
-                    items=1, dept_id = self._dept,
+                    items=1, dept_id=self._dept,
                     amount=balance * self._percentage / 100,
                     user=ui.current_user().dbuser,
                     transcode='S',

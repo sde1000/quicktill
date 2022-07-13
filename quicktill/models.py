@@ -7,14 +7,14 @@ from sqlalchemy.schema import Sequence, Index, MetaData, DDL
 from sqlalchemy.schema import CheckConstraint, Table
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.schema import ForeignKeyConstraint
-from sqlalchemy.sql.expression import text, alias, case, literal
+from sqlalchemy.sql.expression import text, case, literal
 from sqlalchemy.orm import relationship, backref, object_session
-from sqlalchemy.orm import joinedload, subqueryload, lazyload
+from sqlalchemy.orm import joinedload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
-from sqlalchemy.orm import undefer, undefer_group
+from sqlalchemy.orm import undefer_group
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import select, func, desc, and_, or_
+from sqlalchemy.sql import select, func, desc, and_
 from sqlalchemy import event
 from sqlalchemy import distinct
 from sqlalchemy import inspect
@@ -51,6 +51,7 @@ max_quantity = Decimal("9" * (qty_max_digits - qty_decimal_places)
 
 metadata = MetaData()
 
+
 # Methods common to all models
 class Base:
     def get_view_url(self, viewname, *args, **kwargs):
@@ -83,7 +84,9 @@ class Base:
             return ','.join(str(x) for x in insp.identity)
         return "<unknown>"
 
+
 Base = declarative_base(metadata=metadata, cls=Base)
+
 
 # Use this class as a mixin to request a foreign key relationship from
 # the 'log' table.  Log entries are accessible using the 'logs'
@@ -111,6 +114,7 @@ class Logged:
     def _log_relationship_name(cls):
         return cls.__name__.lower()
 
+
 # Rules that depend on the existence of more than one table must be
 # added to the metadata rather than the table - they will be created
 # after all tables, and dropped before any tables.
@@ -127,6 +131,7 @@ def add_ddl(target, create, drop):
         event.listen(target, "before_drop",
                      DDL(drop).execute_if(dialect='postgresql'))
 
+
 class Business(Base, Logged):
     __tablename__ = 'businesses'
     id = Column('business', Integer, primary_key=True, autoincrement=False)
@@ -134,7 +139,7 @@ class Business(Base, Logged):
     abbrev = Column(String(20), nullable=False)
     address = Column(String(), nullable=False)
     vatno = Column(String(30))
-    show_vat_breakdown = Column(Boolean(),nullable=False,default=False)
+    show_vat_breakdown = Column(Boolean(), nullable=False, default=False)
 
     def __str__(self):
         return self.abbrev
@@ -143,27 +148,35 @@ class Business(Base, Logged):
     def logtext(self):
         return self.abbrev
 
+
 # This is intended to be a mixin for both VatBand and VatRate.  It's
 # not intended to be instantiated.
 class Vat:
     @declared_attr
     def rate(cls):
         return Column(Numeric(5, 2), nullable=False)
+
     @declared_attr
     def businessid(cls):
         return Column('business', Integer, ForeignKey('businesses.business'),
                       nullable=False)
+
     @property
     def rate_fraction(self):
         return self.rate / Decimal(100)
+
     def inc_to_exc(self, n):
         return (n / (self.rate_fraction + Decimal(1))).quantize(penny)
+
     def inc_to_vat(self, n):
         return n - self.inc_to_exc(n)
+
     def exc_to_vat(self, n):
         return (n * self.rate_fraction).quantize(penny)
+
     def exc_to_inc(self, n):
         return n + self.exc_to_vat(n)
+
     def at(self, date):
         """VatRate at specified date
 
@@ -177,6 +190,7 @@ class Vat:
             filter(VatRate.active <= date).\
             order_by(desc(VatRate.active)).\
             first() or self
+
     @property
     def current(self):
         """VatRate at current date
@@ -187,10 +201,12 @@ class Vat:
         """
         return self.at(datetime.datetime.now())
 
+
 class VatBand(Base, Vat, Logged):
     __tablename__ = 'vat'
     band = Column(CHAR(1), primary_key=True)
     business = relationship(Business, backref='vatbands')
+
 
 # Note that the tillweb index page code ignores the 'business' field
 # in VatRate and only uses VatBand.  Until this is fixed you should
@@ -202,6 +218,7 @@ class VatRate(Base, Vat, Logged):
     active = Column(Date, nullable=False, primary_key=True)
     business = relationship(Business, backref='vatrates')
 
+
 class PayType(Base):
     __tablename__ = 'paytypes'
     paytype = Column(String(8), nullable=False, primary_key=True)
@@ -210,7 +227,9 @@ class PayType(Base):
     def __str__(self):
         return self.description
 
+
 sessions_seq = Sequence('sessions_seq')
+
 
 class Session(Base, Logged):
     """A group of transactions with an accounting date
@@ -234,14 +253,17 @@ class Session(Base, Logged):
 
     tillweb_viewname = "tillweb-session"
     tillweb_argname = "sessionid"
+
     def tillweb_nav(self):
         return [("Sessions", self.get_view_url("tillweb-sessions")),
-                ("{} ({})".format(self.id, self.date), self.get_absolute_url())]
-    
+                ("{} ({})".format(self.id, self.date),
+                 self.get_absolute_url())]
+
     incomplete_transactions = relationship(
         "Transaction",
         viewonly=True,
-        primaryjoin="and_(Transaction.sessionid==Session.id,Transaction.closed==False)")
+        primaryjoin="and_(Transaction.sessionid==Session.id,"
+        "Transaction.closed==False)")
 
     @property
     def accounts_url(self):
@@ -302,14 +324,15 @@ class Session(Base, Logged):
     @property
     def user_totals(self):
         "Transaction lines broken down by User; also count of items sold."
-        return object_session(self).\
-            query(User, func.sum(Transline.items), func.sum(
-                Transline.items*Transline.amount)).\
-            filter(Transaction.sessionid == self.id).\
-            join(Transline, Transaction).\
-            order_by(desc(func.sum(
-                Transline.items * Transline.amount))).\
-            group_by(User).all()
+        return object_session(self)\
+            .query(User, func.sum(Transline.items), func.sum(
+                Transline.items * Transline.amount))\
+            .filter(Transaction.sessionid == self.id)\
+            .join(Transline, Transaction)\
+            .order_by(desc(func.sum(
+                Transline.items * Transline.amount)))\
+            .group_by(User).all()
+
     @property
     def payment_totals(self):
         "Transactions broken down by payment type."
@@ -319,8 +342,10 @@ class Session(Base, Logged):
             filter(Session.id == self.id).\
             join(Transaction, Payment, PayType).\
             group_by(PayType).all()
+
     # total and closed_total are declared after Transline
     # actual_total is declared after SessionTotal
+
     @hybrid_property
     def pending_total(self):
         "Total of open transactions"
@@ -330,6 +355,7 @@ class Session(Base, Logged):
     def error(self):
         "Difference between actual total and transaction line total."
         return self.actual_total - self.total if self.actual_total else None
+
     @error.expression
     def error(cls):
         return cls.actual_total - cls.total
@@ -340,20 +366,22 @@ class Session(Base, Logged):
 
         Returns (VatRate, amount, ex-vat amount, vat)
         """
-        vt = object_session(self).\
-            query(VatBand, func.sum(Transline.items * Transline.amount)).\
-            select_from(Session).\
-            filter(Session.id == self.id).\
-            join(Transaction, Transline, Department, VatBand).\
-            order_by(VatBand.band).\
-            group_by(VatBand).\
-            all()
-        vt=[(a.at(self.date), b) for a, b in vt]
+        vt = object_session(self)\
+            .query(VatBand, func.sum(Transline.items * Transline.amount))\
+            .select_from(Session)\
+            .filter(Session.id == self.id)\
+            .join(Transaction, Transline, Department, VatBand)\
+            .order_by(VatBand.band)\
+            .group_by(VatBand)\
+            .all()
+        vt = [(a.at(self.date), b) for a, b in vt]
         return [(a, b, a.inc_to_exc(b), a.inc_to_vat(b)) for a, b in vt]
+
     # It may become necessary to add a further query here that returns
     # transaction lines broken down by Business.  Must take into
     # account multiple VAT rates per business - probably best to do
     # the summing client side using the methods in the VatRate object.
+
     @property
     def stock_sold(self):
         "Returns a list of (StockType, quantity) tuples."
@@ -370,6 +398,7 @@ class Session(Base, Logged):
             group_by(StockType, Unit).\
             order_by(StockType.dept_id, desc(func.sum(StockOut.qty))).\
             all()
+
     @classmethod
     def current(cls, session):
         """Current session
@@ -410,6 +439,7 @@ class Session(Base, Logged):
             .first()
         return self._prevsession
 
+
 add_ddl(Session.__table__, """
 CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
 BEGIN
@@ -427,35 +457,42 @@ DROP TRIGGER max_one_session_open ON sessions;
 DROP FUNCTION check_max_one_session_open();
 """)
 
+
 class SessionTotal(Base):
     __tablename__ = 'sessiontotals'
     sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
                        primary_key=True)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
-                      primary_key=True)
+                        primary_key=True)
     amount = Column(money, nullable=False)
     session = relationship(Session, backref=backref(
         'actual_totals', order_by=desc('paytype')))
     paytype = relationship(PayType)
 
+
 Session.actual_total = column_property(
     select([func.sum(SessionTotal.amount)],
-           whereclause=and_(SessionTotal.sessionid == Session.id)).\
-        correlate(Session.__table__).\
-        label('actual_total'),
+           whereclause=and_(SessionTotal.sessionid == Session.id))
+    .correlate(Session.__table__)
+    .label('actual_total'),
     deferred=True,
     doc="Actual recorded total")
 
+
 transactions_seq = Sequence('transactions_seq')
+
 
 class Transaction(Base, Logged):
     __tablename__ = 'transactions'
     id = Column('transid', Integer, transactions_seq, nullable=False,
                 primary_key=True)
+
+    # Deferred transactions have a null sessionid
     sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
-                       nullable=True) # Null sessionid for deferred transactions
+                       nullable=True)
     notes = Column(String(60), nullable=False, default='')
     closed = Column(Boolean, nullable=False, default=False)
+
     # The discount policy column is used when transactions are open to
     # store the name of the discount policy to apply whenever a
     # transaction line is added or changed.  Closed transactions are
@@ -470,7 +507,8 @@ class Transaction(Base, Logged):
             name="discount_policy_closed_constraint"),
     )
 
-    session = relationship(Session, backref=backref('transactions', order_by=id))
+    session = relationship(
+        Session, backref=backref('transactions', order_by=id))
 
     meta = relationship("TransactionMeta",
                         collection_class=attribute_mapped_collection('key'),
@@ -521,6 +559,7 @@ class Transaction(Base, Logged):
                 key=key,
                 value=val)
 
+
 class TransactionMeta(Base):
     """Metadata on a transaction
 
@@ -542,6 +581,7 @@ class TransactionMeta(Base):
 
     transaction = relationship(Transaction, back_populates='meta')
 
+
 add_ddl(Transaction.__table__, """
 CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
 BEGIN
@@ -562,7 +602,9 @@ DROP TRIGGER close_only_if_balanced ON transactions;
 DROP FUNCTION check_transaction_balances();
 """)
 
+
 user_seq = Sequence('user_seq')
+
 
 class User(Base, Logged):
     """A till user.
@@ -591,7 +633,8 @@ class User(Base, Logged):
     groups = relationship("Group", secondary="group_grants", backref="users")
     permissions = relationship(
         "Permission",
-        secondary="join(group_membership, group_grants, group_membership.c.group == group_grants.c.group)"
+        secondary="join(group_membership, group_grants, "
+        "group_membership.c.group == group_grants.c.group)"
         ".join(Permission, group_membership.c.permission == Permission.id)",
         viewonly=True)
     transaction = relationship(Transaction, backref=backref(
@@ -599,6 +642,7 @@ class User(Base, Logged):
 
     tillweb_viewname = "tillweb-till-user"
     tillweb_argname = "userid"
+
     def tillweb_nav(self):
         return [("Users", self.get_view_url("tillweb-till-users")),
                 (self.fullname, self.get_absolute_url())]
@@ -609,6 +653,7 @@ class User(Base, Logged):
     @property
     def logtext(self):
         return self.fullname
+
 
 class UserToken(Base, Logged):
     """A token used by a till user to identify themselves
@@ -623,6 +668,7 @@ class UserToken(Base, Logged):
     user_id = Column('user', Integer, ForeignKey('users.id'))
     last_seen = Column(DateTime)
     user = relationship(User, backref='tokens')
+
 
 class Permission(Base):
     """Permission to do something
@@ -642,6 +688,7 @@ class Permission(Base):
     def __str__(self):
         return f"{self.id} — {self.description}"
 
+
 class Group(Base, Logged):
     """A group of permissions
 
@@ -660,12 +707,14 @@ class Group(Base, Logged):
 
     tillweb_viewname = "tillweb-till-group"
     tillweb_argname = "groupid"
+
     def tillweb_nav(self):
         return [("Groups", self.get_view_url("tillweb-till-groups")),
                 (self.id, self.get_absolute_url())]
 
     def __str__(self):
         return f"{self.id} — {self.description}"
+
 
 # Accessed through Group.permissions and Permission.groups
 group_membership_table = Table(
@@ -677,6 +726,7 @@ group_membership_table = Table(
            ForeignKey('permissions.id', ondelete='CASCADE'),
            primary_key=True)
 )
+
 add_ddl(group_membership_table, """
 CREATE OR REPLACE FUNCTION notify_group_membership_change() RETURNS trigger AS $$
 DECLARE
@@ -691,7 +741,7 @@ CREATE TRIGGER group_membership_changed
 """, """
 DROP TRIGGER group_membership_changed ON group_membership;
 DROP FUNCTION notify_group_membership_change();
-""")
+""")  # noqa: E501
 
 # Accessed through User.groups and Group.users
 group_grants_table = Table(
@@ -701,6 +751,7 @@ group_grants_table = Table(
            ForeignKey('groups.id', ondelete='CASCADE', onupdate='CASCADE'),
            primary_key=True)
 )
+
 add_ddl(group_grants_table, """
 CREATE OR REPLACE FUNCTION notify_group_grants_change() RETURNS trigger AS $$
 DECLARE
@@ -715,9 +766,11 @@ CREATE TRIGGER group_grants_changed
 """, """
 DROP TRIGGER group_grants_changed ON group_grants;
 DROP FUNCTION notify_group_grants_change();
-""")
+""")  # noqa: E501
+
 
 payments_seq = Sequence('payments_seq', start=1)
+
 
 class Payment(Base, Logged):
     __tablename__ = 'payments'
@@ -758,6 +811,7 @@ class Payment(Base, Logged):
                 key=key,
                 value=val)
 
+
 class PaymentMeta(Base):
     """Metadata on a payment
 
@@ -779,6 +833,7 @@ class PaymentMeta(Base):
 
     payment = relationship(Payment, back_populates='meta')
 
+
 add_ddl(Payment.__table__, """
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
 BEGIN
@@ -794,7 +849,8 @@ CREATE CONSTRAINT TRIGGER no_modify_closed
 """, """
 DROP TRIGGER no_modify_closed ON payments;
 DROP FUNCTION check_modify_closed_trans_payment();
-""")
+""")  # noqa: E501
+
 
 class Department(Base, Logged):
     __tablename__ = 'departments'
@@ -820,6 +876,7 @@ class Department(Base, Logged):
 
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
+
     def tillweb_nav(self):
         return [("Departments", self.get_view_url("tillweb-departments")),
                 ("{}. {}".format(self.id, self.description),
@@ -836,6 +893,7 @@ class Department(Base, Logged):
         if accounts:
             return accounts.decode_dept_accinfo(self.accinfo)
 
+
 class TransCode(Base):
     __tablename__ = 'transcodes'
     code = Column('transcode', CHAR(1), nullable=False, primary_key=True)
@@ -844,7 +902,9 @@ class TransCode(Base):
     def __str__(self):
         return self.description
 
+
 translines_seq = Sequence('translines_seq', start=1)
+
 
 class Transline(Base, Logged):
     __tablename__ = 'translines'
@@ -874,9 +934,10 @@ class Transline(Base, Logged):
     # The discount column records the discount applied to the amount
     # _per item_, i.e. you must multiply by the number of items to get
     # the total discount.
-    discount = Column(money, CheckConstraint("discount >= 0.00"),
-                      nullable=False, server_default=literal(zero),
-                      doc="Amount of discount applied to this transaction line")
+    discount = Column(
+        money, CheckConstraint("discount >= 0.00"),
+        nullable=False, server_default=literal(zero),
+        doc="Amount of discount applied to this transaction line")
     discount_name = Column(String(), nullable=True)
 
     __table_args__ = (
@@ -919,6 +980,7 @@ class Transline(Base, Logged):
 
     tillweb_viewname = "tillweb-transline"
     tillweb_argname = "translineid"
+
     def tillweb_nav(self):
         return self.transaction.tillweb_nav() \
             + [("Line {}{}".format(
@@ -980,6 +1042,7 @@ class Transline(Base, Logged):
                 key=key,
                 value=val)
 
+
 class TranslineMeta(Base):
     """Metadata on a transaction line
 
@@ -1001,6 +1064,7 @@ class TranslineMeta(Base):
     value = Column(String(), nullable=False)
 
     transline = relationship(Transline, back_populates='meta')
+
 
 # This trigger permits null columns (text or user) to be set to
 # not-null in closed transactions but subsequently prevents
@@ -1029,7 +1093,8 @@ CREATE CONSTRAINT TRIGGER no_modify_closed
 """, """
 DROP TRIGGER no_modify_closed ON translines;
 DROP FUNCTION check_modify_closed_trans_line();
-""")
+""")  # noqa: E501
+
 
 # Add "total" column property to the Session class now that
 # transactions and translines are defined
@@ -1037,19 +1102,20 @@ Session.total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
                           zero)],
            whereclause=and_(Transline.transid == Transaction.id,
-                            Transaction.sessionid == Session.id)).\
-        correlate(Session.__table__).\
-        label('total'),
+                            Transaction.sessionid == Session.id))
+    .correlate(Session.__table__)
+    .label('total'),
     deferred=True,
     doc="Transaction lines total")
+
 Session.closed_total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
                           zero)],
            whereclause=and_(Transline.transid == Transaction.id,
                             Transaction.closed,
-                            Transaction.sessionid == Session.id)).\
-        correlate(Session.__table__).\
-        label('closed_total'),
+                            Transaction.sessionid == Session.id))
+    .correlate(Session.__table__)
+    .label('closed_total'),
     deferred=True,
     doc="Transaction lines total, closed transactions only")
 
@@ -1057,29 +1123,30 @@ Session.discount_total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.discount),
                           zero)],
            whereclause=and_(Transline.transid == Transaction.id,
-                            Transaction.sessionid == Session.id)).\
-        correlate(Session.__table__).\
-        label('discount_total'),
+                            Transaction.sessionid == Session.id))
+    .correlate(Session.__table__)
+    .label('discount_total'),
     deferred=True,
     doc="Discount total")
+
 
 # Add Transline-related column properties to the Transaction class now
 # that transactions and translines are both defined
 Transaction.total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.amount),
                           zero)],
-           whereclause=and_(Transline.transid == Transaction.id)).\
-        correlate(Transaction.__table__).\
-        label('total'),
+           whereclause=and_(Transline.transid == Transaction.id))
+    .correlate(Transaction.__table__)
+    .label('total'),
     deferred=True,
     doc="Transaction lines total")
 
 Transaction.discount_total = column_property(
     select([func.coalesce(func.sum(Transline.items * Transline.discount),
                           zero)],
-           whereclause=and_(Transline.transid == Transaction.id)).\
-        correlate(Transaction.__table__).\
-        label('discount_total'),
+           whereclause=and_(Transline.transid == Transaction.id))
+    .correlate(Transaction.__table__)
+    .label('discount_total'),
     deferred=True,
     doc="Transaction lines discount total")
 
@@ -1087,21 +1154,24 @@ Transaction.age = column_property(
     select([func.coalesce(
         func.current_timestamp() - func.min(Transline.time),
         func.cast("0", Interval))],
-           whereclause=and_(Transline.transid == Transaction.id))\
-    .correlate(Transaction.__table__)\
+           whereclause=and_(Transline.transid == Transaction.id))  # noqa: E126
+    .correlate(Transaction.__table__)
     .label('age'),
     deferred=True,
     doc="Transaction age")
 
 Transaction.payments_total = column_property(
     select([func.coalesce(func.sum(Payment.amount), zero)],
-           whereclause=and_(Payment.transid == Transaction.id))\
-    .correlate(Transaction.__table__)\
+           whereclause=and_(Payment.transid == Transaction.id))
+    .correlate(Transaction.__table__)
     .label('payments_total'),
     deferred=True,
     doc="Payments total")
 
+
 stocklines_seq = Sequence('stocklines_seq', start=100)
+
+
 class StockLine(Base, Logged):
     """A place where stock is sold
 
@@ -1175,7 +1245,8 @@ class StockLine(Base, Logged):
                       'of stock that should be disposed of the first time the '
                       'stock is sold each day.')
     stocktype_id = Column(
-        'stocktype', Integer, ForeignKey('stocktypes.stocktype'), nullable=True)
+        'stocktype', Integer, ForeignKey('stocktypes.stocktype'),
+        nullable=True)
     department = relationship(
         Department, lazy='joined',
         doc="Stock items put on sale on this line are restricted to this "
@@ -1188,7 +1259,8 @@ class StockLine(Base, Logged):
     # capacity and pullthru can't both be non-null at the same time
     __table_args__ = (
         CheckConstraint(
-            "linetype='regular' OR linetype='display' OR linetype='continuous'",
+            "linetype='regular' OR linetype='display' "
+            "OR linetype='continuous'",
             name="linetype_name_constraint"),
         # linetype != 'display' implies capacity is null
         CheckConstraint(
@@ -1212,7 +1284,7 @@ class StockLine(Base, Logged):
         CheckConstraint(
             "capacity IS NULL OR capacity > 0",
             name="capacity_greater_than_zero_constraint"),
-        )
+    )
 
     def __str__(self):
         return self.name
@@ -1248,6 +1320,7 @@ class StockLine(Base, Logged):
 
     tillweb_viewname = "tillweb-stockline"
     tillweb_argname = "stocklineid"
+
     def tillweb_nav(self):
         return [("Stock lines", self.get_view_url("tillweb-stocklines")),
                 (self.name, self.get_absolute_url())]
@@ -1263,6 +1336,7 @@ class StockLine(Base, Logged):
         if self.linetype != "display":
             return None
         return sum(sos.ondisplay for sos in self.stockonsale) or Decimal("0.0")
+
     @property
     def instock(self):
         """Number of units of stock available
@@ -1275,6 +1349,7 @@ class StockLine(Base, Logged):
         if self.linetype != "display":
             return None
         return sum(sos.instock for sos in self.stockonsale) or Decimal("0.0")
+
     @property
     def remaining(self):
         """Amount of unsold stock on the stock line."""
@@ -1314,7 +1389,7 @@ class StockLine(Base, Logged):
         if self.linetype != "display":
             return None
         target = self.capacity if target is None else target
-        sos = list(self.stockonsale) # copy because we may reverse it later
+        sos = list(self.stockonsale)  # copy because we may reverse it later
         needed = target - self.ondisplay
         # If needed is negative we need to return some stock!  The list
         # returned via the stockonsale backref is sorted by best before
@@ -1391,10 +1466,12 @@ class StockLine(Base, Logged):
 
     @classmethod
     def locations(cls, session):
-        return [x[0] for x in session.query(distinct(cls.location))\
+        return [x[0] for x in session.query(distinct(cls.location))
                 .order_by(cls.location).all()]
 
+
 plu_seq = Sequence('plu_seq')
+
 
 class PriceLookup(Base, Logged):
     """A PriceLookup enables an item or service to be sold that is not
@@ -1436,11 +1513,14 @@ class PriceLookup(Base, Logged):
 
     tillweb_viewname = "tillweb-plu"
     tillweb_argname = "pluid"
+
     def tillweb_nav(self):
         return [("Price lookups", self.get_view_url("tillweb-plus")),
                 (self.description, self.get_absolute_url())]
 
+
 suppliers_seq = Sequence('suppliers_seq')
+
 
 class Supplier(Base, Logged):
     __tablename__ = 'suppliers'
@@ -1461,6 +1541,7 @@ class Supplier(Base, Logged):
 
     tillweb_viewname = "tillweb-supplier"
     tillweb_argname = "supplierid"
+
     def tillweb_nav(self):
         return [("Suppliers", self.get_view_url("tillweb-suppliers")),
                 (self.name, self.get_absolute_url())]
@@ -1479,6 +1560,7 @@ class Supplier(Base, Logged):
 
 deliveries_seq = Sequence('deliveries_seq')
 
+
 class Delivery(Base, Logged):
     __tablename__ = 'deliveries'
     id = Column('deliveryid', Integer, deliveries_seq,
@@ -1486,11 +1568,12 @@ class Delivery(Base, Logged):
     supplierid = Column(Integer, ForeignKey('suppliers.supplierid'),
                         nullable=False)
     docnumber = Column(String(40))
-    date = Column(Date, nullable=False, server_default=func.current_timestamp())
+    date = Column(Date, nullable=False,
+                  server_default=func.current_timestamp())
     checked = Column(Boolean, nullable=False, server_default=literal(False))
-    supplier = relationship(Supplier, backref=backref(
-        'deliveries', order_by=desc(id)),
-                            lazy="joined")
+    supplier = relationship(
+        Supplier, backref=backref('deliveries', order_by=desc(id)),
+        lazy="joined")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
     items = relationship("StockItem", order_by="StockItem.id",
@@ -1498,6 +1581,7 @@ class Delivery(Base, Logged):
 
     tillweb_viewname = "tillweb-delivery"
     tillweb_argname = "deliveryid"
+
     def tillweb_nav(self):
         return [("Deliveries", self.get_view_url("tillweb-deliveries")),
                 ("{} ({} {})".format(self.id, self.supplier.name, self.date),
@@ -1543,7 +1627,9 @@ class Delivery(Base, Logged):
                 qty -= 1
         return items
 
+
 stocktake_seq = Sequence('stocktake_seq')
+
 
 class StockTake(Base, Logged):
     __tablename__ = 'stocktakes'
@@ -1623,6 +1709,7 @@ class StockTake(Base, Logged):
 
     tillweb_viewname = "tillweb-stocktake"
     tillweb_argname = "stocktake_id"
+
     def tillweb_nav(self):
         return [("Stock takes", self.get_view_url("tillweb-stocktakes")),
                 (str(self), self.get_absolute_url())]
@@ -1677,7 +1764,9 @@ class StockTake(Base, Logged):
 
 # XXX add rules to ensure that stocktakes cannot be deleted once committed
 
+
 units_seq = Sequence('units_seq')
+
 
 class Unit(Base, Logged):
     """A unit in which stock is held, and its default quantity for pricing
@@ -1707,6 +1796,7 @@ class Unit(Base, Logged):
 
     tillweb_viewname = "tillweb-unit"
     tillweb_argname = "unit_id"
+
     def tillweb_nav(self):
         return [("Units", self.get_view_url("tillweb-units")),
                 (self.description, self.get_absolute_url())]
@@ -1725,7 +1815,9 @@ class Unit(Base, Logged):
     def logtext(self):
         return self.name
 
+
 stockunits_seq = Sequence('stockunits_seq')
+
 
 class StockUnit(Base, Logged):
     """A unit in which stock is bought
@@ -1747,6 +1839,7 @@ class StockUnit(Base, Logged):
 
     tillweb_viewname = "tillweb-stockunit"
     tillweb_argname = "stockunit_id"
+
     def tillweb_nav(self):
         return [("Item sizes", self.get_view_url("tillweb-stockunits")),
                 (self.name, self.get_absolute_url())]
@@ -1758,7 +1851,9 @@ class StockUnit(Base, Logged):
     def logtext(self):
         return self.name
 
+
 stocktypes_seq = Sequence('stocktypes_seq')
+
 
 class StockType(Base, Logged):
     __tablename__ = 'stocktypes'
@@ -1770,8 +1865,9 @@ class StockType(Base, Logged):
     name = Column(String(30), nullable=False)
     abv = Column(Numeric(3, 1))
     unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
-    saleprice = Column(money, nullable=True) # inc VAT
-    pricechanged = Column(DateTime, nullable=True) # Last time price was changed
+    saleprice = Column(money, nullable=True)  # inc VAT
+    # Last time price was changed
+    pricechanged = Column(DateTime, nullable=True)
     stocktake_id = Column(
         Integer, ForeignKey('stocktakes.id', ondelete='SET NULL'),
         nullable=True)
@@ -1795,6 +1891,7 @@ class StockType(Base, Logged):
 
     tillweb_viewname = "tillweb-stocktype"
     tillweb_argname = "stocktype_id"
+
     def tillweb_nav(self):
         return [("Stock types", self.get_view_url("tillweb-stocktype-search")),
                 (str(self), self.get_absolute_url())]
@@ -1845,7 +1942,8 @@ class StockType(Base, Logged):
                 return x
         return self.descriptions[-1][:maxw]
 
-    _specre = re.compile(r"^(?:(?P<fill>.?)(?P<align>[<>^]))?#?0?(?P<minwidth>\d+)?(?:\.(?P<maxwidth>\d+))?(?P<type>s)?$")
+    _specre = re.compile(r"^(?:(?P<fill>.?)(?P<align>[<>^]))?#?0?(?P<minwidth>\d+)?(?:\.(?P<maxwidth>\d+))?(?P<type>s)?$")  # noqa: E501
+
     def __format__(self, spec):
         """Format the stock type according to the supplied specification
         """
@@ -1927,7 +2025,10 @@ class FinishCode(Base):
     def __str__(self):
         return self.description
 
+
 stock_seq = Sequence('stock_seq')
+
+
 class StockItem(Base, Logged):
     """An item of stock - a cask, keg, case of bottles, card of snacks,
     and so on.
@@ -1956,7 +2057,8 @@ class StockItem(Base, Logged):
     <-------------- displayqty -------------->|
     """
     __tablename__ = 'stock'
-    id = Column('stockid', Integer, stock_seq, nullable=False, primary_key=True)
+    id = Column('stockid', Integer, stock_seq, nullable=False,
+                primary_key=True)
     deliveryid = Column(Integer, ForeignKey('deliveries.deliveryid'),
                         nullable=True)
     stocktake_id = Column(Integer, ForeignKey('stocktakes.id'), nullable=True)
@@ -1964,7 +2066,7 @@ class StockItem(Base, Logged):
                           ForeignKey('stocktypes.stocktype'), nullable=False)
     description = Column(String(), nullable=False)
     size = Column(quantity, CheckConstraint("size > 0.0"), nullable=False)
-    costprice = Column(money) # ex VAT
+    costprice = Column(money)  # ex VAT
     onsale = Column(DateTime)
     finished = Column(DateTime)
     finishcode_id = Column('finishcode', String(8),
@@ -1997,10 +2099,10 @@ class StockItem(Base, Logged):
     )
 
     stockline = relationship(StockLine, backref=backref(
-            'stockonsale',
-            order_by=lambda: (
-                desc(func.coalesce(StockItem.displayqty, 0)),
-                StockItem.id)))
+        'stockonsale',
+        order_by=lambda: (
+            desc(func.coalesce(StockItem.displayqty, 0)),
+            StockItem.id)))
 
     @property
     def logtext(self):
@@ -2018,7 +2120,8 @@ class StockItem(Base, Logged):
         """
         if self.bestbefore is None:
             return None
-        return (self.bestbefore - (self.finished or datetime.date.today())).days
+        return (
+            self.bestbefore - (self.finished or datetime.date.today())).days
 
     @property
     def displayqty_or_zero(self):
@@ -2091,10 +2194,12 @@ class StockItem(Base, Logged):
 
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
+
     def tillweb_nav(self):
         return self.delivery.tillweb_nav() + [
-            (f"Item {self.id} ({self.stocktype.manufacturer} {self.stocktype.name})",
-             self.get_absolute_url())]
+            (f"Item {self.id} ({self.stocktype.manufacturer} "
+             f"{self.stocktype.name})", self.get_absolute_url())]
+
 
 StockItem.checked = column_property(
     select([
@@ -2106,8 +2211,7 @@ StockItem.checked = column_property(
             select([StockTake.commit_time != None])
             .correlate(StockItem.__table__)
             .where(StockTake.id == StockItem.stocktake_id)
-            .label("found_in_stocktake"))
-        ])
+            .label("found_in_stocktake"))])
     .label("checked"),
     deferred=True,
     doc="Is this item available for use?")
@@ -2126,6 +2230,7 @@ Delivery.costprice = column_property(
     deferred=True,
     doc="Cost ex-VAT of this delivery")
 
+
 class AnnotationType(Base):
     __tablename__ = 'annotation_types'
     id = Column('atype', String(8), nullable=False, primary_key=True)
@@ -2134,11 +2239,14 @@ class AnnotationType(Base):
     def __str__(self):
         return self.description
 
-stock_annotation_seq = Sequence('stock_annotation_seq');
+
+stock_annotation_seq = Sequence('stock_annotation_seq')
+
 
 class StockAnnotation(Base, Logged):
     __tablename__ = 'stock_annotations'
-    id = Column(Integer, stock_annotation_seq, nullable=False, primary_key=True)
+    id = Column(Integer, stock_annotation_seq, nullable=False,
+                primary_key=True)
     stockid = Column(Integer, ForeignKey('stock.stockid', ondelete='CASCADE'),
                      nullable=False)
     atype = Column(String(8), ForeignKey('annotation_types.atype'),
@@ -2153,6 +2261,7 @@ class StockAnnotation(Base, Logged):
     type = relationship(AnnotationType)
     user = relationship(User, backref=backref("annotations", order_by=time))
 
+
 class RemoveCode(Base, Logged):
     __tablename__ = 'stockremove'
     id = Column('removecode', String(8), nullable=False, primary_key=True)
@@ -2161,7 +2270,9 @@ class RemoveCode(Base, Logged):
     def __str__(self):
         return self.reason
 
+
 stockout_seq = Sequence('stockout_seq')
+
 
 class StockOut(Base, Logged):
     __tablename__ = 'stockout'
@@ -2169,13 +2280,15 @@ class StockOut(Base, Logged):
                 nullable=False, primary_key=True)
     stockid = Column(Integer, ForeignKey('stock.stockid'), nullable=False)
     qty = Column(quantity, nullable=False)
-    removecode_id = Column('removecode', String(8),
-                           ForeignKey('stockremove.removecode'), nullable=False)
-    translineid = Column(Integer, ForeignKey('translines.translineid',
-                                             ondelete='CASCADE'),
-                         nullable=True)
+    removecode_id = Column(
+        'removecode', String(8),
+        ForeignKey('stockremove.removecode'), nullable=False)
+    translineid = Column(
+        Integer, ForeignKey('translines.translineid', ondelete='CASCADE'),
+        nullable=True)
     stocktake_id = Column(
-        Integer, ForeignKey('stocktakes.id', ondelete='CASCADE'), nullable=True)
+        Integer, ForeignKey('stocktakes.id', ondelete='CASCADE'),
+        nullable=True)
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
     stockitem = relationship(StockItem, backref=backref('out', order_by=id))
@@ -2191,47 +2304,52 @@ class StockOut(Base, Logged):
             name="be_unambiguous_constraint"),
     )
 
+
 # These are added to the StockItem class here because they refer
 # directly to the StockOut class, defined just above.
 StockItem.used = column_property(
-    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))]).\
-        correlate(StockItem.__table__).\
-        where(StockOut.stockid == StockItem.id).\
-        label('used'),
+    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    .correlate(StockItem.__table__)
+    .where(StockOut.stockid == StockItem.id)
+    .label('used'),
     deferred=True,
     group="qtys",
     doc="Amount of this item that has been used for any reason")
+
 StockItem.sold = column_property(
-    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))]).\
-        correlate(StockItem.__table__).\
-        where(StockOut.stockid == StockItem.id).\
-        where(StockOut.removecode_id == "sold").\
-        label('sold'),
+    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    .correlate(StockItem.__table__)
+    .where(StockOut.stockid == StockItem.id)
+    .where(StockOut.removecode_id == "sold")
+    .label('sold'),
     deferred=True,
     group="qtys",
     doc="Amount of this item that has been used by being sold")
+
 StockItem.remaining = column_property(
     select([StockItem.size
-            - func.coalesce(func.sum(StockOut.qty), text("0.0"))]).\
-        where(StockOut.stockid == StockItem.id).\
-        label('remaining'),
+            - func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    .where(StockOut.stockid == StockItem.id)
+    .label('remaining'),
     deferred=True,
     group="qtys",
     doc="Amount of this item remaining")
+
 StockItem.firstsale = column_property(
-    select([func.min(StockOut.time)]).\
-        correlate(StockItem.__table__).\
-        where(StockOut.stockid == StockItem.id).\
-        where(StockOut.removecode_id == 'sold').\
-        label('firstsale'),
+    select([func.min(StockOut.time)])
+    .correlate(StockItem.__table__)
+    .where(StockOut.stockid == StockItem.id)
+    .where(StockOut.removecode_id == 'sold')
+    .label('firstsale'),
     deferred=True,
     doc="Time of first sale of this item")
+
 StockItem.lastsale = column_property(
-    select([func.max(StockOut.time)]).\
-        correlate(StockItem.__table__).\
-        where(StockOut.stockid == StockItem.id).\
-        where(StockOut.removecode_id == 'sold').\
-        label('lastsale'),
+    select([func.max(StockOut.time)])
+    .correlate(StockItem.__table__)
+    .where(StockOut.stockid == StockItem.id)
+    .where(StockOut.removecode_id == 'sold')
+    .label('lastsale'),
     deferred=True,
     doc="Time of last sale of this item")
 
@@ -2243,30 +2361,35 @@ StockItem.lastsale = column_property(
 # lines, because that stock isn't directly sellable through the
 # continuous stock line or the stock type.
 StockType.instock = column_property(
-    select([func.coalesce(func.sum(
-                    StockItem.size -
-                    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))],
-                           StockOut.stockid == StockItem.id,
-                           ).as_scalar()
-                    ), text("0.0"))],
-           and_(StockItem.stocktype_id == StockType.id,
-                StockItem.finished == None,
-                StockItem.stocklineid == None,
-                StockItem.checked == True)).\
-        correlate(StockType.__table__).\
-        label('instock'),
+    select(
+        [func.coalesce(
+            func.sum(
+                StockItem.size - select(
+                    [func.coalesce(func.sum(StockOut.qty), text("0.0"))],
+                    StockOut.stockid == StockItem.id,
+                ).as_scalar()),
+            text("0.0"))],
+        and_(StockItem.stocktype_id == StockType.id,
+             StockItem.finished == None,
+             StockItem.stocklineid == None,
+             StockItem.checked == True))
+    .correlate(StockType.__table__)
+    .label('instock'),
     deferred=True,
     doc="Amount remaining in stock")
+
 StockType.remaining = StockType.instock
+
 StockType.lastsale = column_property(
     select([func.max(StockOut.time)],
            and_(StockItem.stocktype_id == StockType.id,
                 StockOut.stockid == StockItem.id,
-                StockItem.checked == True)).\
-        correlate(StockType.__table__).\
-        label('lastsale'),
+                StockItem.checked == True))
+    .correlate(StockType.__table__)
+    .label('lastsale'),
     deferred=True,
     doc="Date of last sale")
+
 
 class StockTakeSnapshot(Base):
     """Snapshot of stock levels at the start of a stock take
@@ -2325,6 +2448,7 @@ class StockTakeSnapshot(Base):
                 f'{u.format_qty(self.newqty - self.newdisplayqty)}'
         return u.format_qty(self.newqty)
 
+
 class StockTakeAdjustment(Base):
     """Adjustment to stock level during a stock take
 
@@ -2351,29 +2475,33 @@ class StockTakeAdjustment(Base):
                              ondelete='CASCADE'),
     )
 
+
 StockTakeSnapshot.newqty = column_property(
-    select([StockTakeSnapshot.qty - func.coalesce(func.sum(
-        StockTakeAdjustment.qty), text("0.0"))],
-           and_(StockTakeAdjustment.stocktake_id == StockTakeSnapshot.stocktake_id,
-                StockTakeAdjustment.stock_id == StockTakeSnapshot.stock_id)).\
-        correlate(StockTakeSnapshot.__table__).\
-        label('newqty'),
+    select(
+        [StockTakeSnapshot.qty - func.coalesce(
+            func.sum(StockTakeAdjustment.qty),
+            text("0.0"))],
+        and_(StockTakeAdjustment.stocktake_id == StockTakeSnapshot.stocktake_id,
+             StockTakeAdjustment.stock_id == StockTakeSnapshot.stock_id))
+    .correlate(StockTakeSnapshot.__table__)
+    .label('newqty'),
     deferred=True,
     doc="Amount remaining after adjustments")
+
 
 class KeyboardBinding(Base):
     __tablename__ = 'keyboard'
     keycode = Column(String(20), nullable=False, primary_key=True)
     menukey = Column(String(20), nullable=False, primary_key=True)
     stocklineid = Column(Integer, ForeignKey(
-            'stocklines.stocklineid', ondelete='CASCADE'))
+        'stocklines.stocklineid', ondelete='CASCADE'))
     pluid = Column(Integer, ForeignKey(
         'pricelookups.id', ondelete='CASCADE'))
     modifier = Column(String(), nullable=True)
-    stockline = relationship(StockLine,
-                             backref=backref('keyboard_bindings', cascade='all'))
-    plu = relationship(PriceLookup,
-                       backref=backref('keyboard_bindings', cascade='all'))
+    stockline = relationship(
+        StockLine, backref=backref('keyboard_bindings', cascade='all'))
+    plu = relationship(
+        PriceLookup, backref=backref('keyboard_bindings', cascade='all'))
 
     @property
     def stocktype(self):
@@ -2420,11 +2548,13 @@ class KeyboardBinding(Base):
         """
         return object_session(self).query(KeyCap).get(self.keycode)
 
+
 class KeyCap(Base):
     __tablename__ = 'keycaps'
     keycode = Column(String(20), nullable=False, primary_key=True)
     keycap = Column(String(), nullable=False, server_default=literal(''))
     css_class = Column(String(), nullable=False, server_default=literal(''))
+
 
 add_ddl(KeyCap.__table__, """
 CREATE OR REPLACE FUNCTION notify_keycap_change() RETURNS trigger AS $$
@@ -2441,6 +2571,7 @@ CREATE TRIGGER keycap_changed
 DROP TRIGGER keycap_changed ON keycaps;
 DROP FUNCTION notify_keycap_change();
 """)
+
 
 class StockLineTypeLog(Base):
     """Association table for stocklines to stocktypes
@@ -2465,6 +2596,7 @@ class StockLineTypeLog(Base):
         StockType, backref=backref('stockline_log', passive_deletes=True),
         lazy='joined')
 
+
 add_ddl(StockLineTypeLog.__table__, """
 CREATE OR REPLACE RULE ignore_duplicate_stockline_types AS
        ON INSERT TO stockline_stocktype_log
@@ -2485,6 +2617,7 @@ CREATE OR REPLACE RULE log_stocktype AS ON UPDATE TO stock
 DROP RULE log_stocktype ON stock
 """)
 
+
 class Barcode(Base):
     """Barcodes
 
@@ -2497,7 +2630,7 @@ class Barcode(Base):
     __tablename__ = 'barcodes'
     id = Column('barcode', String(), primary_key=True)
     stocklineid = Column(Integer, ForeignKey(
-            'stocklines.stocklineid', ondelete='CASCADE'))
+        'stocklines.stocklineid', ondelete='CASCADE'))
     pluid = Column(Integer, ForeignKey(
         'pricelookups.id', ondelete='CASCADE'))
     stocktype_id = Column(
@@ -2593,6 +2726,7 @@ class Config(Base, Logged):
     def logtext(self):
         return self.display_name
 
+
 add_ddl(Config.__table__, """
 CREATE OR REPLACE FUNCTION notify_config_change() RETURNS trigger AS $$
 DECLARE
@@ -2608,6 +2742,7 @@ CREATE TRIGGER config_change
 DROP TRIGGER config_change ON config;
 DROP FUNCTION notify_config_change();
 """)
+
 
 class Secret(Base):
     """A cryptographic secret or a password
@@ -2626,7 +2761,9 @@ class Secret(Base):
     secret_name = Column(String(), primary_key=True)
     token = Column(LargeBinary(), nullable=False)
 
+
 log_seq = Sequence('log_seq')
+
 
 class LogEntry(Base):
     """A user did something, possibly involving some other tables
@@ -2719,6 +2856,7 @@ class LogEntry(Base):
     def __str__(self):
         return self.as_text()
 
+
 _constraints = []
 
 # Add the columns, foreign key constraints and relationships to
@@ -2728,7 +2866,7 @@ for _m in LogEntry._logged_models:
     _primary_keys = list(inspect(_m).primary_key)
     _cols = []
     for _num, _key in enumerate(_primary_keys):
-        _colname = f"{_key.table.name}_id{_num if len(_primary_keys) > 1 else ''}"
+        _colname = f"{_key.table.name}_id{_num if len(_primary_keys) > 1 else ''}"  # noqa: E501
         _colval = Column(_colname, _key.type, nullable=True)
         setattr(LogEntry, _colname, _colval)
         _cols.append(_colval)
@@ -2756,6 +2894,7 @@ DROP TRIGGER log_entry ON log;
 DROP FUNCTION notify_log_entry();
 """)
 
+
 # Add indexes here
 Index('translines_transid_key', Transline.transid)
 Index('payments_transid_key', Payment.transid)
@@ -2769,10 +2908,14 @@ Index('translines_time_key', Transline.time)
 # considerably by an index on stockout.time::date.
 Index('stockout_date_key', func.cast(StockOut.time, Date))
 
+
 foodorder_seq = Sequence('foodorder_seq', metadata=metadata)
 
+
 # Very simple refusals log for EMF 2018.  Log templates are in config.
-refusals_log_seq = Sequence('refusals_log_seq');
+refusals_log_seq = Sequence('refusals_log_seq')
+
+
 class RefusalsLog(Base):
     __tablename__ = 'refusals_log'
     id = Column(Integer, refusals_log_seq, nullable=False, primary_key=True)

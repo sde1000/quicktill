@@ -6,39 +6,42 @@ import logging
 from . import ui, keyboard, td, printer, tillconfig, user
 from . import lockscreen
 from . import register
-from .models import zero, penny
+from .models import zero
 from decimal import Decimal
 
 log = logging.getLogger(__name__)
 
-menu_keys = [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
+menu_keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
 
 class Menu:
     def __init__(self, d, allowable_departments):
         self.name = d.get('name', 'Unnamed menu')
         self.footer = d.get('footer', 'Thank you')
-        self.sections = [ Section(x, allowable_departments)
-                          for x in d.get('sections', []) ]
-        self.sections = [ x for x in self.sections if x.ok ]
+        self.sections = [Section(x, allowable_departments)
+                         for x in d.get('sections', [])]
+        self.sections = [x for x in self.sections if x.ok]
+
 
 class Section:
     def __init__(self, d, allowable_departments):
         self.title = d.get('title', 'Untitled section')
         self.available = d.get('available', True)
-        self.dishes = [ Dish(x) for x in d.get('dishes', []) ]
-        self.dishes = [ x for x in self.dishes if x.ok ]
+        self.dishes = [Dish(x) for x in d.get('dishes', [])]
+        self.dishes = [x for x in self.dishes if x.ok]
         if allowable_departments:
-            self.dishes = [ x for x in self.dishes
-                            if x.department in allowable_departments ]
+            self.dishes = [x for x in self.dishes
+                           if x.department in allowable_departments]
 
     @property
     def ok(self):
         return self.available and self.dishes
 
     def select(self, dialog):
-        menu = [ (dish.name, dish.select, (dialog,)) for dish in self.dishes ]
+        menu = [(dish.name, dish.select, (dialog,)) for dish in self.dishes]
         ui.automenu(menu, spill="keymenu", title=self.title,
                     colour=ui.colour_line)
+
 
 class Dish:
     def __init__(self, d):
@@ -47,16 +50,16 @@ class Dish:
         self.placeholder = d.get('placeholder', False)
         self.available = d.get('available', False)
         self.department = d.get('department')
-        self.option_groups = [ OptionGroup(x)
-                               for x in d.get('option_groups', []) ]
-        self.option_groups = [ x for x in self.option_groups if x.ok ]
+        self.option_groups = [OptionGroup(x)
+                              for x in d.get('option_groups', [])]
+        self.option_groups = [x for x in self.option_groups if x.ok]
 
     @property
     def ok(self):
         return self.available and not self.placeholder
 
     def options(self):
-        return [ opt for og in self.option_groups for opt in og.options ]
+        return [opt for og in self.option_groups for opt in og.options]
 
     def price_with_options(self, options):
         return self.price + sum(opt.price * qty for opt, qty in options)
@@ -64,7 +67,7 @@ class Dish:
     def name_with_options(self, options, comment):
         d = self.name
         if options:
-            d += f"; {', '.join(opt.name_with_qty(qty) for opt, qty in options)}"
+            d += f"; {', '.join(opt.name_with_qty(qty) for opt, qty in options)}"  # noqa: E501
         if comment:
             d += f". Comment: {comment}"
         return d
@@ -72,20 +75,22 @@ class Dish:
     def select(self, dialog):
         orderline(self).edit(dialog.insert_item)
 
+
 class OptionGroup:
     def __init__(self, d):
         self.description = d.get('description', 'Unnamed option group')
         self.min_choices = d.get('min_choices', 0)
         self.max_choices = d.get('max_choices')
         self.available = d.get('available', True)
-        self.options = [ Option(x, self) for x in d.get('options', []) ]
-        self.options = [ x for x in self.options if x.available ]
+        self.options = [Option(x, self) for x in d.get('options', [])]
+        self.options = [x for x in self.options if x.available]
 
     @property
     def ok(self):
         # NB an option group with no options is still valid and its
         # min_choices must still be respected!
         return self.available
+
 
 class Option:
     def __init__(self, d, group):
@@ -98,6 +103,7 @@ class Option:
     def name_with_qty(self, qty):
         return self.name if qty == 1 else f"{self.name} (×{qty})"
 
+
 class optiongroup_selection:
     """Options chosen from an option group
     """
@@ -107,8 +113,8 @@ class optiongroup_selection:
 
     def options(self):
         # Return a list of (Option, qty)
-        return [ (opt, self.o.count(opt)) for opt in self.option_group.options
-                 if self.o.count(opt) ]
+        return [(opt, self.o.count(opt)) for opt in self.option_group.options
+                if self.o.count(opt)]
 
     def valid(self):
         return len(self.o) >= self.option_group.min_choices
@@ -128,14 +134,15 @@ class optiongroup_selection:
             return removed != option
         return True
 
+
 class orderline(ui.lrline):
     def __init__(self, dish):
         super().__init__()
         self.dish = dish
         # Options stored as a list of (option, qty)
         self.options = []
-        # Options stored as a list, in the order in which the user selected them
-        # - only used by the editor
+        # Options stored as a list, in the order in which the user
+        # selected them - only used by the editor
         self.option_selections = []
         self.comment = ""
         self.update()
@@ -164,6 +171,7 @@ class orderline(ui.lrline):
         ol.update()
         return ol
 
+
 class orderline_dialog(ui.dismisspopup):
     def __init__(self, orderline, func):
         self.orderline = orderline
@@ -191,7 +199,7 @@ class orderline_dialog(ui.dismisspopup):
 
         # If there are any options, we need a blank line, plus one
         # line for each option key.
-        self.option_index = 0 # how far have we scrolled through the options?
+        self.option_index = 0  # how far have we scrolled through the options?
         if self.optionlist:
             display_options = min(len(menu_keys), len(self.optionlist))
             if display_options + 1 > available_height:
@@ -203,7 +211,7 @@ class orderline_dialog(ui.dismisspopup):
 
         # We could go wider. But would it look odd?
         self.w = 68
-        km = { keyboard.K_CASH: (self.finish, None, False) }
+        km = {keyboard.K_CASH: (self.finish, None, False)}
         super().__init__(h, self.w, orderline.dish.name + " options",
                          colour=ui.colour_line, keymap=km)
         self.promptlabel = ui.label(7, 2, self.w - 14)
@@ -222,14 +230,16 @@ class orderline_dialog(ui.dismisspopup):
             return
         y = 9
         self.win.clear(y, 2, len(self.menu_keys), self.w - 4)
-        for key, opt in zip(self.menu_keys, self.optionlist[self.option_index:]):
+        for key, opt in zip(
+                self.menu_keys, self.optionlist[self.option_index:]):
             self.win.drawstr(y, 2, 3, f"{key}: ", align=">")
             self.win.drawstr(y, 5, self.w - 7, opt.name)
             y += 1
         self.leftlabel.set("◀ More" if self.option_index > 0 else "")
         self.rightlabel.set(
-            "More ▶" if self.option_index + len(self.menu_keys)
-            < len(self.optionlist) else "")
+            "More ▶"
+            if self.option_index + len(self.menu_keys) < len(self.optionlist)
+            else "")
         self.win.move(2, 2)
 
     def update_description(self):
@@ -243,14 +253,14 @@ class orderline_dialog(ui.dismisspopup):
     def update_options(self):
         # Recalculate self.options and self.options_valid from
         # self.option_selections
-        ogs = { og: optiongroup_selection(og)
-                for og in self.orderline.dish.option_groups }
+        ogs = {og: optiongroup_selection(og)
+               for og in self.orderline.dish.option_groups}
         self.option_selections = [
             opt for opt in self.option_selections
-            if ogs[opt.optiongroup].add_option(opt) ]
-        valid = [ og.valid() for og in ogs.values() ]
-        self.options = [ x for og in self.orderline.dish.option_groups
-                         for x in ogs[og].options() ]
+            if ogs[opt.optiongroup].add_option(opt)]
+        valid = [og.valid() for og in ogs.values()]
+        self.options = [x for og in self.orderline.dish.option_groups
+                        for x in ogs[og].options()]
         self.options_valid = not (False in valid)
 
     def redraw(self):
@@ -287,14 +297,16 @@ class orderline_dialog(ui.dismisspopup):
             editcomment(self.comment, self.orderline.dish.name,
                         self.update_comment)
         elif k == keyboard.K_RIGHT \
-             and self.option_index + len(self.menu_keys) < len(self.optionlist):
+             and self.option_index + len(self.menu_keys) \
+             < len(self.optionlist):  # noqa: E127
             self.option_index += len(self.menu_keys)
             self.draw_option_menu()
         elif k == keyboard.K_LEFT and self.option_index > 0:
             self.option_index -= len(self.menu_keys)
             self.draw_option_menu()
-        elif k in self.menu_keys and self.menu_keys.index(k) \
-             + self.option_index < len(self.optionlist):
+        elif k in self.menu_keys \
+             and self.menu_keys.index(k) + self.option_index \
+             < len(self.optionlist):  # noqa: E127
             self.option_selections.append(
                 self.optionlist[self.menu_keys.index(k) + self.option_index])
             self.update_options()
@@ -307,6 +319,7 @@ class orderline_dialog(ui.dismisspopup):
         else:
             super().keypress(k)
 
+
 class editcomment(ui.dismisspopup):
     """Allow the user to edit the comment of an order line.
     """
@@ -317,13 +330,14 @@ class editcomment(ui.dismisspopup):
         self.win.drawstr(2, 2, 50, f"Edit the comment for {description}:")
         self.commentfield = ui.editfield(
             4, 2, 62, f=comment, flen=240,
-            keymap={ keyboard.K_CASH: (self.enter, None) })
+            keymap={keyboard.K_CASH: (self.enter, None)})
         self.func = func
         self.commentfield.focus()
 
     def enter(self):
         self.dismiss()
         self.func(self.commentfield.f)
+
 
 class tablenumber(ui.dismisspopup):
     """Request a table number and call a function with it.
@@ -342,6 +356,7 @@ class tablenumber(ui.dismisspopup):
         self.dismiss()
         self.func(self.numberfield.f)
 
+
 def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
                      footer="", transid=None, user=None):
     """This function prints a food order to the specified printer.
@@ -350,7 +365,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
         if verbose:
             d.printline(f"\t{tillconfig.pubname}", emph=1)
             for i in tillconfig.pubaddr().splitlines():
-                d.printline(f"\t{i}",colour=1)
+                d.printline(f"\t{i}", colour=1)
             d.printline(f"\tTel. {tillconfig.pubnumber}")
             d.printline()
         if tablenumber is not None:
@@ -384,6 +399,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
         else:
             d.printline()
             d.printline()
+
 
 class popup(user.permission_checked, ui.basicpopup):
     """Take a food order from the user and print it
@@ -435,7 +451,7 @@ class popup(user.permission_checked, ui.basicpopup):
         self.win.bordertext("Cancel: delete item", "L>")
         # Split the top level menu into lines for display, and add the
         # options to the keymap
-        menu = [ (s.title, s.select, (self,)) for s in self.menu.sections ]
+        menu = [(s.title, s.select, (self,)) for s in self.menu.sections]
         # If we have more options than keys, split them into a submenu.
         if len(self.menu.sections) > len(menu_keys):
             menu = menu[:len(menu_keys) - 1] + \
@@ -444,9 +460,10 @@ class popup(user.permission_checked, ui.basicpopup):
             menu_keys, menu))
         for key, i in zip(menu_keys, menu):
             self.keymap[key] = i[1:]
-        menuheight = self.win.wrapstr(0, 0, self.w - 4, menutext, display=False)
+        menuheight = self.win.wrapstr(
+            0, 0, self.w - 4, menutext, display=False)
         self.win.wrapstr(self.h - menuheight - 1, 2, self.w - 4, menutext)
-        self.ml = [] # list of chosen items
+        self.ml = []  # list of chosen items
         self.order = ui.scrollable(
             2, 2, self.w - 4, self.h - menuheight - 4, self.ml,
             lastline=ui.emptyline())
@@ -499,7 +516,7 @@ class popup(user.permission_checked, ui.basicpopup):
         The cursor stays in the same place.
         """
         if len(self.ml) == 0:
-            return # Nothing to delete
+            return  # Nothing to delete
         if self.order.cursor_at_end():
             self.ml.pop()
             self.order.cursor_up()
@@ -528,7 +545,7 @@ class popup(user.permission_checked, ui.basicpopup):
         # tuples for the register.  We enter these into the register
         # before printing, so that we can avoid printing if there is a
         # register problem.
-        rl = [ (x.dish.department, x.ltext, 1, x.price) for x in self.ml ]
+        rl = [(x.dish.department, x.ltext, 1, x.price) for x in self.ml]
         if tablenumber:
             rl.insert(0, (self.message_department,
                           f"Food order {number} (table {tablenumber}):",
@@ -536,7 +553,8 @@ class popup(user.permission_checked, ui.basicpopup):
         else:
             rl.insert(0, (self.message_department,
                           f"Food order {number}:", 1, zero))
-        r = self.func(rl) # Return values: True=success; string or None=failure
+        # Return values: True=success; string or None=failure
+        r = self.func(rl)
 
         # If r is None then a window will have been popped up telling the
         # user what's happened to their transaction.  It will have popped
@@ -558,7 +576,7 @@ class popup(user.permission_checked, ui.basicpopup):
                         verbose=False, tablenumber=tablenumber,
                         footer=self.menu.footer, transid=self.transid,
                         user=user.shortname)
-            except:
+            except Exception:
                 e = traceback.format_exception_only(
                     sys.exc_info()[0], sys.exc_info()[1])
                 try:
@@ -567,7 +585,7 @@ class popup(user.permission_checked, ui.basicpopup):
                         verbose=False, tablenumber=tablenumber,
                         footer=self.menu.footer, transid=self.transid,
                         user=user.shortname)
-                except:
+                except Exception:
                     pass
                 ui.infopopup(
                     ["There was a problem sending the order to the "
@@ -602,6 +620,7 @@ class popup(user.permission_checked, ui.basicpopup):
             self.edit_item()
         else:
             super().keypress(k)
+
 
 class message(user.permission_checked, ui.dismisspopup):
     """Send a printed message to the kitchen.
@@ -668,6 +687,7 @@ class message(user.permission_checked, ui.dismisspopup):
                          title="Message sent",
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
+
 class FoodOrderPlugin(register.RegisterPlugin):
     """Create an instance of this plugin to enable food ordering
 
@@ -695,7 +715,8 @@ class FoodOrderPlugin(register.RegisterPlugin):
         if not menuurl:
             raise Exception("FoodOrderPlugin: you must specify menuurl")
         if message_department is None:
-            raise Exception("FoodOrderPlugin: you must specify message_department")
+            raise Exception("FoodOrderPlugin: you must specify "
+                            "message_department")
         for p in printers:
             lockscreen.CheckPrinter("Kitchen printer", p)
 

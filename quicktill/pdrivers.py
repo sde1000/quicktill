@@ -1,5 +1,4 @@
 import socket
-import os
 import tempfile
 import io
 import textwrap
@@ -15,15 +14,26 @@ try:
 except ImportError:
     _qrcode_supported = False
 
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import toLength
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.platypus import Flowable
+from reportlab.platypus import Frame
+from reportlab.platypus import BaseDocTemplate
+from reportlab.platypus import PageTemplate
+
 import logging
 log = logging.getLogger(__name__)
+
 
 class PrinterConfigurationError(Exception):
     def __init__(self, desc):
         self.desc = desc
 
     def __str__(self):
-        return "PrinterConfigurationError('{}')".format(self.desc)
+        return f"PrinterConfigurationError('{self.desc}')"
+
 
 class PrinterError(Exception):
     def __init__(self, printer, desc):
@@ -31,17 +41,19 @@ class PrinterError(Exception):
         self.desc = desc
 
     def __str__(self):
-        return "PrinterError({},'{}')".format(self.printer,self.desc)
+        return f"PrinterError({self.printer}, '{self.desc}')"
+
 
 def test_ping(host):
     """Check whether a host is alive using ping; returns True if it is alive.
     """
-    with open('/dev/null','w') as null:
+    with open('/dev/null', 'w') as null:
         r = subprocess.call("ping -q -w 2 -c 1 %s" % host,
                             shell=True, stdout=null, stderr=null)
     if r == 0:
         return True
     return False
+
 
 def _lrwrap(l, r, width):
     w = textwrap.wrap(l, width)
@@ -52,11 +64,13 @@ def _lrwrap(l, r, width):
     w[-1] = w[-1] + (' ' * (width - len(w[-1]) - len(r))) + r
     return w
 
+
 def _wrap(l, width):
     w = textwrap.wrap(l, width)
     if len(w) == 0:
         w = [""]
     return w
+
 
 class ReceiptElement:
     """The null receipt element
@@ -65,6 +79,7 @@ class ReceiptElement:
     """
     def __str__(self):
         return "(blank line)"
+
 
 class TextElement(ReceiptElement):
     def __init__(self, left="", center="", right="",
@@ -84,6 +99,7 @@ class TextElement(ReceiptElement):
     def __str__(self):
         return "\t".join((self.left, self.center, self.right))
 
+
 class QRCodeElement(ReceiptElement):
     def __init__(self, data):
         self.qrcode_data = data
@@ -91,12 +107,14 @@ class QRCodeElement(ReceiptElement):
     def __str__(self):
         return "QR code: " + self.qrcode_data
 
+
 class ImageElement(ReceiptElement):
     def __init__(self, image):
         self.image_data = image
 
     def __str__(self):
         return "Image"
+
 
 class ReceiptCanvas:
     def __init__(self):
@@ -129,6 +147,7 @@ class ReceiptCanvas:
 
     def __iter__(self):
         return iter(self.story)
+
 
 class printer:
     """Base printer class.
@@ -178,11 +197,13 @@ class printer:
     def __str__(self):
         return self.description or "Base printer class"
 
+
 class _null_printer_driver:
     canvastype = "receipt"
 
     def get_canvas(self):
         return ReceiptCanvas()
+
 
 class nullprinter(printer):
     # XXX change to just writing to a BytesIO and throwing it away
@@ -202,6 +223,7 @@ class nullprinter(printer):
     def __str__(self):
         return self.description or self._name
 
+
 class badprinter(nullprinter):
     """A null printer that always reports it is offline, for testing.
 
@@ -213,7 +235,9 @@ class badprinter(nullprinter):
     def print_canvas(self, canvas):
         raise PrinterError(self, "badprinter is always offline!")
 
+
 # XXX Add a 'logprinter' class
+
 
 class fileprinter(printer):
     """Print to a file.  The file may be a device file!
@@ -258,17 +282,19 @@ class fileprinter(printer):
         with open(self._getfilename(), 'ab') as f:
             self._driver.kickout(f)
 
+
 def _lpgetstatus(f):
     LPGETSTATUS = 0x060b
     buf = array.array('b', [0])
     fcntl.ioctl(f, LPGETSTATUS, buf)
     status = buf[0]
     if status & 0x20:
-        return "out of paper" # LP_POUTPA
+        return "out of paper"  # LP_POUTPA
     if ~status & 0x10:
-        return "off-line" # LP_PSELECD
+        return "off-line"  # LP_PSELECD
     if ~status & 0x08:
-        return "error light is on" # LP_PERRORP
+        return "error light is on"  # LP_PERRORP
+
 
 class linux_lpprinter(fileprinter):
     """Print to a lp device file - /dev/lp? or /dev/usblp? on Linux
@@ -278,8 +304,8 @@ class linux_lpprinter(fileprinter):
     def __init__(self, *args, **kwargs):
         if not sys.platform.startswith("linux"):
             raise PrinterError(
-                self,"linux_lpprinter: wrong platform '{}' "
-                "(expected 'linux...')".format(sys.platform))
+                self, f"linux_lpprinter: wrong platform '{sys.platform}' "
+                "(expected 'linux...')")
         super().__init__(*args, **kwargs)
 
     def offline(self):
@@ -295,6 +321,7 @@ class linux_lpprinter(fileprinter):
         return self.description or "Print to lp device {}".format(
             self._filename)
 
+
 class autodetect_printer:
     """Use the first available device
 
@@ -307,6 +334,7 @@ class autodetect_printer:
     All drivers must support the same canvas type
     """
     NOT_CONNECTED = "No printer connected"
+
     def __init__(self, printers, description=None):
         self.canvastype = None
         for path, driver, getstatus in printers:
@@ -395,6 +423,7 @@ class autodetect_printer:
         return self.description or "one of: {}".format(', '.join(
             (glob for glob, driver, status in self._printers)))
 
+
 class netprinter(printer):
     """Print to a network socket.  connection is a (hostname, port) tuple.
     """
@@ -447,6 +476,7 @@ class netprinter(printer):
             f.close()
             s.close()
 
+
 class tmpfileprinter(printer):
     """Print to a temporary file.
 
@@ -466,6 +496,7 @@ class tmpfileprinter(printer):
     def finish(self, filename):
         pass
 
+
 class commandprinter(tmpfileprinter):
     """Invoke a command to print.
 
@@ -481,9 +512,10 @@ class commandprinter(tmpfileprinter):
             self._printcmd)
 
     def finish(self, filename):
-        with open('/dev/null','w') as null:
-            r = subprocess.call(self._printcmd % filename,
-                                shell=True, stdout=null, stderr=null)
+        with open('/dev/null', 'w') as null:
+            subprocess.call(self._printcmd % filename,
+                            shell=True, stdout=null, stderr=null)
+
 
 class cupsprinter(printer):
     """Print to a CUPS printer.
@@ -532,12 +564,13 @@ class cupsprinter(printer):
         connection = cups.Connection(**self._connect_kwargs)
         job = connection.createJob(self._printername, "quicktill output",
                                    self._options)
-        doc = connection.startDocument(self._printername, job, "quicktill",
-                                       self._driver.mimetype, 1)
+        connection.startDocument(self._printername, job, "quicktill",
+                                 self._driver.mimetype, 1)
         b = f.getvalue()
         connection.writeRequestData(b, len(b))
         connection.finishDocument(self._printername)
         f.close()
+
 
 class escpos:
     """The ESC/POS protocol for controlling receipt printers.
@@ -559,7 +592,8 @@ class escpos:
     ep_fullcut = bytes([27, 105])
     ep_unidirectional_on = bytes([27, 85, 1])
     ep_unidirectional_off = bytes([27, 85, 0])
-    ep_bitimage_sd = bytes([27, 42, 0]) # follow with 16-bit little-endian data length
+    # follow ep_bitimage_sd with 16-bit little-endian data length
+    ep_bitimage_sd = bytes([27, 42, 0])
     ep_short_feed = bytes([27, 74, 5])
     ep_half_dot_feed = bytes([27, 74, 1])
 
@@ -653,9 +687,10 @@ class escpos:
                     pad = max(cpl - len(left) - len(center) - len(right), 0)
                     padl = pad // 2
                     padr = pad - padl
-                    f.write(("%s%s%s%s%s\n" % (
-                        left, ' ' * padl, center, ' ' * padr, right)).
-                            encode(self.coding))
+                    f.write(
+                        ("%s%s%s%s%s\n" % (
+                            left, ' ' * padl, center, ' ' * padr, right))
+                        .encode(self.coding))
             elif hasattr(i, 'qrcode_data'):
                 self._qrcode(i.qrcode_data, f)
             else:
@@ -678,34 +713,46 @@ class escpos:
         # closer to the paper and the paper can be held flat using
         # fingers on the margin.
         ms = 8
-        if self.dpl == 420: # 58mm paper width
-            #if len(data) > 14: ms = 14
-            #if len(data) > 24: ms = 12
-            #if len(data) > 34: ms = 11
-            #if len(data) > 44: ms = 10
-            #if len(data) > 58: ms = 9
-            #if len(data) > 64: ms = 8
-            if len(data) > 84: ms = 7
-            if len(data) > 119: ms = 6
-            if len(data) > 177: ms = 5
-            if len(data) > 250: ms = 4
-            if len(data) > 439: ms = 3
-            if len(data) > 742: return # Too big to print
-        else: # 80mm paper width
-            #if len(data) > 34: ms = 15
-            #if len(data) > 44: ms = 14
-            #if len(data) > 45: ms = 13
-            #if len(data) > 58: ms = 12
-            #if len(data) > 64: ms = 11
-            #if len(data) > 84: ms = 10
-            #if len(data) > 119: ms = 9
-            #if len(data) > 137: ms = 8
-            if len(data) > 177: ms = 7
-            if len(data) > 250: ms = 6
-            if len(data) > 338: ms = 5
-            if len(data) > 511: ms = 4
-            if len(data) > 790: ms = 3
-            if len(data) > 1273: return # Too big to print
+        if self.dpl == 420:  # 58mm paper width
+            # if len(data) > 14: ms = 14
+            # if len(data) > 24: ms = 12
+            # if len(data) > 34: ms = 11
+            # if len(data) > 44: ms = 10
+            # if len(data) > 58: ms = 9
+            # if len(data) > 64: ms = 8
+            if len(data) > 84:
+                ms = 7
+            if len(data) > 119:
+                ms = 6
+            if len(data) > 177:
+                ms = 5
+            if len(data) > 250:
+                ms = 4
+            if len(data) > 439:
+                ms = 3
+            if len(data) > 742:
+                return  # Too big to print
+        else:  # 80mm paper width
+            # if len(data) > 34: ms = 15
+            # if len(data) > 44: ms = 14
+            # if len(data) > 45: ms = 13
+            # if len(data) > 58: ms = 12
+            # if len(data) > 64: ms = 11
+            # if len(data) > 84: ms = 10
+            # if len(data) > 119: ms = 9
+            # if len(data) > 137: ms = 8
+            if len(data) > 177:
+                ms = 7
+            if len(data) > 250:
+                ms = 6
+            if len(data) > 338:
+                ms = 5
+            if len(data) > 511:
+                ms = 4
+            if len(data) > 790:
+                ms = 3
+            if len(data) > 1273:
+                return  # Too big to print
         f.write(self._ep_2d_cmd(49, 67, ms))
 
         # Set error correction:
@@ -743,7 +790,7 @@ class escpos:
             (False, True): bytes([0x1c]),
             (True, False): bytes([0xe0]),
             (True, True): bytes([0xfc]),
-            }
+        }
         while len(code) > 0:
             if len(code) > 1:
                 row = zip(code[0], code[1])
@@ -758,8 +805,8 @@ class escpos:
             padding = (self.dpl - width) // 2
             width = width + padding
             padchars = bytes([0]) * padding
-            header = escpos.ep_bitimage_sd + \
-                     bytes([width & 0xff, (width >> 8) & 0xff])
+            header = escpos.ep_bitimage_sd \
+                + bytes([width & 0xff, (width >> 8) & 0xff])
             f.write(header + padchars + row + b'\r')
             f.write(escpos.ep_half_dot_feed)
             f.write(header + padchars + row + b'\r')
@@ -769,6 +816,7 @@ class escpos:
     def kickout(self, f):
         f.write(escpos.ep_pulse)
         f.flush()
+
 
 class Epson_TM_U220_driver(escpos):
     """Driver for Epson TM-U220 dot-matrix receipt printers
@@ -785,6 +833,7 @@ class Epson_TM_U220_driver(escpos):
             raise Exception("Unknown paper width")
         escpos.__init__(self, cpl, dpl, coding, has_cutter,
                         default_font=1)
+
 
 class Epson_TM_T20_driver(escpos):
     """Driver for Epson TM-T20 thermal receipt printers
@@ -803,6 +852,7 @@ class Epson_TM_T20_driver(escpos):
                         lines_before_cut=0, default_font=0,
                         native_qrcode_support=True)
 
+
 class Aures_ODP_333_driver(escpos):
     """Driver for Aures ODP 333 thermal receipt printers
 
@@ -817,18 +867,6 @@ class Aures_ODP_333_driver(escpos):
                         lines_before_cut=0, default_font=0,
                         native_qrcode_support=True)
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import toLength
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import Flowable
-from reportlab.platypus import Spacer
-from reportlab.platypus import Frame
-from reportlab.platypus import BaseDocTemplate
-from reportlab.platypus import PageTemplate
-from reportlab.platypus import Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.styles import ParagraphStyle
 
 class CenterLine(Flowable):
     def __init__(self, text, font, fontsize, pitch):
@@ -846,6 +884,7 @@ class CenterLine(Flowable):
         c.setFont(self.font, self.fontsize)
         c.drawCentredString(self.width / 2, self.pitch - self.fontsize,
                             self.text)
+
 
 class LRLine(Flowable):
     def __init__(self, ltext, rtext, font, fontsize, pitch):
@@ -876,7 +915,8 @@ class LRLine(Flowable):
         # Does the rtext fit on the last line?
         if self.rtext:
             trial = lines[-1] + " " + self.rtext
-            extraline = stringWidth(trial, self.font, self.fontsize) > availWidth
+            extraline = stringWidth(
+                trial, self.font, self.fontsize) > availWidth
         else:
             extraline = False
         height = len(lines) * self.pitch
@@ -898,6 +938,7 @@ class LRLine(Flowable):
         if not self._extraline:
             y += self.pitch
         c.drawRightString(self.width, y, self.rtext)
+
 
 class pdf_driver:
     """PDF driver that offers a receipt canvas
@@ -921,11 +962,11 @@ class pdf_driver:
 
     def process_canvas(self, canvas, f):
         frames = []
-        colwidth = (self.pagesize[0] \
-                    - (2 * self.margin) \
+        colwidth = (self.pagesize[0]
+                    - (2 * self.margin)
                     - ((self.columns - 1) * self.colgap)) / self.columns
         colheight = self.pagesize[1] \
-                    - (2 * self.margin)
+            - (2 * self.margin)
         colspacing = colwidth + self.colgap
         for col in range(0, self.columns):
             frames.append(Frame(
@@ -962,6 +1003,7 @@ class pdf_driver:
     def kickout(self, f):
         pass
 
+
 # The rest of this file deals with offering PDF canvases
 # (canvastype='pdf' as opposed to canvastype='receipt').  We use
 # reportlab.pdfgen, but augment it somewhat because its API is
@@ -995,6 +1037,7 @@ class Canvas(canvas.Canvas):
             filename = self._filename
         self._doc.SaveToFile(filename, self)
 
+
 class pdf_page:
     """PDF driver that offers a PDF canvas
 
@@ -1015,6 +1058,7 @@ class pdf_page:
 
     def process_canvas(self, canvas, f):
         canvas.save(filename=f)
+
 
 class LabelCanvas(Canvas):
     """Canvas augmented to provide n-up printing
@@ -1057,6 +1101,7 @@ class LabelCanvas(Canvas):
             super().showPage()
         self.save(filename=fileobj)
 
+
 class pdf_labelpage:
     """n-up PDF driver that offers a PDF canvas
 
@@ -1083,10 +1128,10 @@ class pdf_labelpage:
         vertlabelgap = toLength(vertlabelgap)
         pagewidth = pagesize[0]
         pageheight = pagesize[1]
-        sidemargin = (pagewidth - (self.width * labelsacross) -
-                      (horizlabelgap * (labelsacross - 1))) / 2
-        endmargin = (pageheight - (self.height * labelsdown) -
-                     (vertlabelgap * (labelsdown - 1))) / 2
+        sidemargin = (pagewidth - (self.width * labelsacross)
+                      - (horizlabelgap * (labelsacross - 1))) / 2
+        endmargin = (pageheight - (self.height * labelsdown)
+                     - (vertlabelgap * (labelsdown - 1))) / 2
         self.label = 0
         self.ll = []
         for y in range(0, labelsdown):
@@ -1096,8 +1141,8 @@ class pdf_labelpage:
                 # are consistent.  The page origin is in the bottom-left.
                 # We record the bottom-left-hand corner of each label.
                 xpos = sidemargin + ((self.width + horizlabelgap) * x)
-                ypos = (pageheight - endmargin -
-                        ((self.height + vertlabelgap) * y) - self.height)
+                ypos = (pageheight - endmargin
+                        - ((self.height + vertlabelgap) * y) - self.height)
                 self.ll.append((xpos, ypos))
 
     def get_canvas(self):

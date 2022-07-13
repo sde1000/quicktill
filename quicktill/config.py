@@ -1,6 +1,7 @@
 from .models import Config, penny
 from . import td
 from . import cmdline
+from decimal import Decimal
 import datetime
 import sys
 
@@ -15,6 +16,7 @@ log = logging.getLogger(__name__)
 # default.
 
 # What do we do when there's no database available?  Just use the defaults
+
 
 class ConfigItem:
     """A configuration setting
@@ -111,9 +113,11 @@ class ConfigItem:
     def __str__(self):
         return str(self())
 
+
 class MultiLineConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="multiline text", **kwargs)
+
 
 class IntConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
@@ -123,12 +127,13 @@ class IntConfigItem(ConfigItem):
     def from_db(cls, s):
         try:
             return int(s)
-        except:
+        except Exception:
             return
 
     @classmethod
     def to_db(cls, v):
         return str(v)
+
 
 class BooleanConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
@@ -147,6 +152,7 @@ class BooleanConfigItem(ConfigItem):
     def to_db(cls, v):
         return "Yes" if v else "No"
 
+
 class DateConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="date", **kwargs)
@@ -155,12 +161,13 @@ class DateConfigItem(ConfigItem):
     def from_db(cls, s):
         try:
             return datetime.date(*(int(x) for x in s.split('-')))
-        except:
+        except Exception:
             return
 
     @classmethod
     def to_db(cls, v):
         return str(v)
+
 
 class IntervalConfigItem(ConfigItem):
     _units = {
@@ -183,6 +190,7 @@ class IntervalConfigItem(ConfigItem):
         'second': 'seconds',
         'seconds': 'seconds',
     }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="interval", **kwargs)
 
@@ -191,7 +199,7 @@ class IntervalConfigItem(ConfigItem):
         if not s:
             return
         kwargs = {}
-        parts = [ x.strip().split() for x in s.split(',') ]
+        parts = [x.strip().split() for x in s.split(',')]
         try:
             for p in parts:
                 num = int(p[0])
@@ -206,6 +214,7 @@ class IntervalConfigItem(ConfigItem):
             return ""
         return f"{v.days} days, {v.seconds} seconds"
 
+
 class MoneyConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="money", **kwargs)
@@ -214,12 +223,13 @@ class MoneyConfigItem(ConfigItem):
     def from_db(cls, s):
         try:
             return Decimal(s).quantize(penny)
-        except:
+        except Exception:
             return
 
     @classmethod
     def to_db(cls, v):
         return str(v)
+
 
 class config_cmd(cmdline.command):
     command = "config"
@@ -260,4 +270,5 @@ class config_cmd(cmdline.command):
                 print(f"Description: {cf.description}")
                 print(f"Type: {cf.type}")
                 print(f"Default value: {cf.to_db(cf.default)}")
-            print(f"{'New' if args.set or args.value else 'Current'} value: {ci.value}")
+            print(f"{'New' if args.set or args.value else 'Current'} "
+                  f"value: {ci.value}")

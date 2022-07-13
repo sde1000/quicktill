@@ -1,12 +1,12 @@
-from .event import *
 import sys
 
 try:
     import gi
     gi.require_version('GLib', '2.0')
     from gi.repository import GLib
-except:
+except Exception:
     GLib = None
+
 
 class GLibMainLoop:
     def __init__(self):
@@ -44,7 +44,7 @@ class GLibMainLoop:
                     self._doread()
                 if condition & GLib.IOCondition.OUT:
                     self._dowrite()
-            except Exception as e:
+            except Exception:
                 self._mainloop._exc_info = sys.exc_info()
             return True
 
@@ -66,7 +66,7 @@ class GLibMainLoop:
         def _call(self, *args):
             try:
                 self._func()
-            except Exception as e:
+            except Exception:
                 self._mainloop._exc_info = sys.exc_info()
             return False
 
@@ -77,5 +77,6 @@ class GLibMainLoop:
     def add_timeout(self, timeout, func, desc=None):
         return self._glib_timeout(self, timeout, func, desc)
 
+
 if GLib is None:
-    GLibMainLoop = None
+    GLibMainLoop = None  # noqa: F811

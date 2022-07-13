@@ -1,10 +1,12 @@
 import hashlib
 from . import user
 
+
 class nullfilter:
     """Keyboard input filter that passes on all events unchanged"""
     def __call__(self, keys):
         return keys
+
 
 class _magstripecode:
     """A keycode used to indicate the start or end of a magstripe card
@@ -15,6 +17,7 @@ class _magstripecode:
 
     def __str__(self):
         return "Magstripe {}".format(self.magstripe)
+
 
 class prehkeyboard:
     """Keyboard input filter for Preh keyboards
@@ -43,14 +46,14 @@ class prehkeyboard:
                     for y in range(0, key.height):
                         self.inputs["{}{:02}".format(
                             rows[row + y], col + x + 1)] = key.keycode
-        self.ibuf = [] # Sequence of characters received after a '['
-        self.decode = False # Are we reading into ibuf at the moment?
+        self.ibuf = []  # Sequence of characters received after a '['
+        self.decode = False  # Are we reading into ibuf at the moment?
         if magstripe:
             for start, end in magstripe:
                 self.inputs[start] = _magstripecode(start)
                 self.inputs[end] = _magstripecode(end)
             self.finishmagstripe = end
-        self.magstripe = None # Magstripe read in progress if not-None
+        self.magstripe = None  # Magstripe read in progress if not-None
 
     def _pass_on_buffer(self):
         # A sequence that started '[...' didn't finish with ']' so we
@@ -100,8 +103,8 @@ class prehkeyboard:
                 if "BadRead" in mr:
                     return
                 k = user.token(
-                    "magstripe:" +
-                    hashlib.sha1(mr.encode('utf-8')).hexdigest()[:16])
+                    "magstripe:" + hashlib.sha1(
+                        mr.encode('utf-8')).hexdigest()[:16])
         if self.magstripe is not None and isinstance(k, str):
             self.magstripe.append(k)
         else:

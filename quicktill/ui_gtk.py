@@ -3,7 +3,7 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
 gi.require_version('PangoCairo', '1.0')
 gi.require_foreign('cairo')
-from gi.repository import Gtk, Pango, GLib, Gdk, PangoCairo
+from gi.repository import Gtk, Pango, Gdk, PangoCairo
 import sys
 import os
 import subprocess
@@ -11,18 +11,17 @@ import cairo
 import time
 import math
 from . import keyboard_gtk
-
-if not hasattr(cairo, 'OPERATOR_DIFFERENCE'):
-    # This has been in cairo since 1.10 and is still not in the
-    # version of pycairo in Ubuntu 17.10!
-    cairo.OPERATOR_DIFFERENCE = 23
-
 from . import ui
 from . import keyboard
 from . import tillconfig
 
 import logging
 log = logging.getLogger(__name__)
+
+if not hasattr(cairo, 'OPERATOR_DIFFERENCE'):
+    # This has been in cairo since 1.10 and is still not in the
+    # version of pycairo in Ubuntu 17.10!
+    cairo.OPERATOR_DIFFERENCE = 23
 
 colours = {
     "black": (0.0, 0.0, 0.0),
@@ -34,6 +33,7 @@ colours = {
     "cyan": (0.0, 0.8, 0.8),
     "white": (1.0, 1.0, 1.0),
 }
+
 
 class GtkWindow(Gtk.Window):
     def __init__(self, drawing_area, kbgrid=None):
@@ -52,16 +52,16 @@ class GtkWindow(Gtk.Window):
     keys = {
         '\r': keyboard.K_CASH,
         '\n': keyboard.K_CASH,
-        '\x01': keyboard.K_HOME,        # Ctrl-A
-        '\x04': keyboard.K_DEL,         # Ctrl-D
-        '\x05': keyboard.K_END,         # Ctrl-E
-        '\x06': keyboard.K_RIGHT,       # Ctrl-F
-        '\x0b': keyboard.K_EOL,         # Ctrl-K
-        '\x0f': keyboard.K_QUANTITY,    # Ctrl-O
-        '\x10': keyboard.K_PRINT,       # Ctrl-P
-        '\x14': keyboard.K_MANAGETRANS, # Ctrl-T
-        '\x18': keyboard.K_CLEAR,       # Ctrl-X
-        '\x19': keyboard.K_CANCEL,      # Ctrl-Y
+        '\x01': keyboard.K_HOME,         # Ctrl-A
+        '\x04': keyboard.K_DEL,          # Ctrl-D
+        '\x05': keyboard.K_END,          # Ctrl-E
+        '\x06': keyboard.K_RIGHT,        # Ctrl-F
+        '\x0b': keyboard.K_EOL,          # Ctrl-K
+        '\x0f': keyboard.K_QUANTITY,     # Ctrl-O
+        '\x10': keyboard.K_PRINT,        # Ctrl-P
+        '\x14': keyboard.K_MANAGETRANS,  # Ctrl-T
+        '\x18': keyboard.K_CLEAR,        # Ctrl-X
+        '\x19': keyboard.K_CANCEL,       # Ctrl-Y
         Gdk.KEY_Left: keyboard.K_LEFT,
         Gdk.KEY_Right: keyboard.K_RIGHT,
         Gdk.KEY_Up: keyboard.K_UP,
@@ -76,11 +76,12 @@ class GtkWindow(Gtk.Window):
         Gdk.KEY_Page_Up: keyboard.K_PAGEUP,
         Gdk.KEY_Page_Down: keyboard.K_PAGEDOWN,
         Gdk.KEY_KP_Page_Up: keyboard.K_PAGEUP,
-        Gdk.KEY_KP_Next: keyboard.K_PAGEDOWN, # Odd name!
+        Gdk.KEY_KP_Next: keyboard.K_PAGEDOWN,  # Odd name!
         Gdk.KEY_Tab: keyboard.K_TAB,
         Gdk.KEY_Home: keyboard.K_HOME,
         Gdk.KEY_End: keyboard.K_END,
     }
+
     def _keypress(self, widget, event):
         k = None
         log.debug("Gtk keypress %s", Gdk.keyval_name(event.keyval))
@@ -99,9 +100,10 @@ class GtkWindow(Gtk.Window):
             # guaranteed to be the GLib one when Gtk is in use.
             try:
                 ui.handle_raw_keyboard_input(k)
-            except Exception as e:
+            except Exception:
                 tillconfig.mainloop._exc_info = sys.exc_info()
-        return True # Don't propagate the event to widgets in the window
+        return True  # Don't propagate the event to widgets in the window
+
 
 class gtk_root(Gtk.DrawingArea):
     """Root window with single-line header
@@ -130,7 +132,7 @@ class gtk_root(Gtk.DrawingArea):
         self._ontop = []
         self.left = "Quicktill"
         self.middle = ""
-        self._cursor_state = False # Alternates between shown and not-shown
+        self._cursor_state = False  # Alternates between shown and not-shown
         self._cursor_location = None
         self._cursor_timeout()
 
@@ -172,7 +174,7 @@ class gtk_root(Gtk.DrawingArea):
             always_on_top=False):
         """Create a child text window
         """
-        mh, mw = self.size() # In characters
+        mh, mw = self.size()  # In characters
         pw = self.get_allocated_width()
         ph = self.get_allocated_height()
         if height == "max":
@@ -273,6 +275,7 @@ class gtk_root(Gtk.DrawingArea):
             self.damage(*self._cursor_location)
         self._cursor_state = not self._cursor_state
 
+
 class window_stack:
     def __init__(self, stack, drawable):
         self._stack = stack
@@ -282,6 +285,7 @@ class window_stack:
         self._drawable._contents += self._stack
         for i in self._stack:
             self._drawable.damage(i.y, i.x, i.height, i.width)
+
 
 class window:
     """A rectangular area of the display
@@ -321,6 +325,7 @@ class window:
     @property
     def cursor_location(self):
         return
+
 
 class text_window(window):
     """A window to draw text in.
@@ -556,19 +561,23 @@ class text_window(window):
         ctx.fill()
         self.damage(0, 0, self.height, self.width)
 
+
 def _quit(widget, event):
     tillconfig.mainloop.shutdown(0)
+
 
 def _onscreen_keyboard_input(keycode):
     try:
         ui.handle_raw_keyboard_input(keycode)
-    except Exception as e:
+    except Exception:
         tillconfig.mainloop._exc_info = sys.exc_info()
+
 
 def _x_unblank_screen():
     r = subprocess.run(["/usr/bin/xset", "s", "reset"])
     if r.returncode != 0:
-            log.error("_x_unblank_screen: xset returned %s", r.returncode)
+        log.error("_x_unblank_screen: xset returned %s", r.returncode)
+
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
         keyboard=False, geometry=None):
@@ -595,7 +604,7 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
         if tillconfig.keyboard_right:
             rhgrid = keyboard_gtk.kbgrid(
                 tillconfig.keyboard_right, _onscreen_keyboard_input)
-            split = 4 # maybe make this configurable?
+            split = 4  # maybe make this configurable?
             # Use a Grid to get a consistent split
             newbox = Gtk.Grid()
             newbox.attach(wincontents, 0, 0, split, 1)
