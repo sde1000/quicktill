@@ -1,0 +1,121 @@
+
+# This is a database setup file for quicktill.  It is written in YAML
+# (see http://en.wikipedia.org/wiki/YAML)
+
+# Import this file into the till database using the 'dbsetup' command:
+# runtill dbsetup this-file
+
+# If you re-import this file, it will update rows in the database
+# based on the primary keys.
+
+
+# It's possible for multiple businesses to sell through the same till.
+# Business receipts are separated out by department (the relationship
+# is defined later through the VAT rate and department mechanism).
+
+- model:   Business
+  id:      1
+  name:    EMF Festivals Ltd
+  abbrev:  EMF
+  address: |
+    483 Green Lanes
+    London N13 4BS
+  vatno:   '387001308'
+  show_vat_breakdown: True
+
+- model:   Business
+  id:      2
+  name:    Red Cross
+  abbrev:  RC
+  address: |
+    EMF Shop
+  vatno:   Not registered
+  show_vat_breakdown: False
+
+# VAT bands are identified by single letters.  Each department has a
+# single VAT band associated with it.  VAT details for each band can
+# change over time; here we list the business (which can also change),
+# the rate and the effective date of that rate.
+
+# Historic VAT rate information is used when printing old receipts and
+# when reporting through the web interface.
+
+# The VatBand model sets defaults for each band which are used when
+# looking up a date not covered vby any VatRate objects.
+
+# EMF general 20% VAT band
+- model:      VatBand
+  band:       A
+  rate:       20.0
+  businessid: 1
+
+# EMF sometimes-reduced VAT band (snacks and non-alcoholic drinks)
+# Back up to 20% for June 2022
+- model:      VatBand
+  band:       N
+  rate:       20.0
+  businessid: 1
+
+# EMF 5% VAT band (eg. some personal hygiene stuff)
+- model:      VatBand
+  band:       C
+  rate:       5.0
+  businessid: 1
+
+# EMF 0% VAT band (eg. food, milk, coffee)
+- model:      VatBand
+  band:       Z
+  rate:       0.0
+  businessid: 1
+
+# EMF VAT exempt band
+- model:      VatBand
+  band:       X
+  rate:       0.0
+  businessid: 1
+
+# Red Cross donations; no VAT
+- model:      VatBand
+  band:       R
+  rate:       0.0
+  businessid: 2
+
+- {model: VatRate, band: A, businessid: 1, rate: 20.0, active: 2011-01-04}
+- {model: VatRate, band: N, businessid: 1, rate: 20.0, active: 2022-04-01}
+- {model: VatRate, band: C, businessid: 1, rate: 5.0, active: 2011-01-04}
+- {model: VatRate, band: Z, businessid: 1, rate: 0.0, active: 2011-01-04}
+- {model: VatRate, band: X, businessid: 1, rate: 0.0, active: 2011-01-04}
+- {model: VatRate, band: R, businessid: 2, rate: 0.0, active: 2000-01-01}
+
+# These are referred to in the register code, so should not be changed.
+- {model: TransCode, code: S, description: Sale}
+- {model: TransCode, code: V, description: Void}
+
+# The 'sold' and 'pullthru' and 'freebie' stock removal codes are
+# referred to in the register code, so should not be changed.  All the
+# other removal reasons are optional.
+- {model: RemoveCode, id: sold,     reason: Sold}
+- {model: RemoveCode, id: pullthru, reason: "Pulled through"}
+- {model: RemoveCode, id: freebie,  reason: "Free drink"}
+- {model: RemoveCode, id: ood,      reason: "Out of date"}
+- {model: RemoveCode, id: taste,    reason: "Bad taste"}
+- {model: RemoveCode, id: taster,   reason: "Free taster"}
+- {model: RemoveCode, id: cellar,   reason: "Cellar work"}
+- {model: RemoveCode, id: damaged,  reason: Damaged}
+- {model: RemoveCode, id: missing,  reason: "Gone missing"}
+- {model: RemoveCode, id: driptray, reason: "Drip tray"}
+
+# The 'empty' finishcode is used in the code, so must exist.  All
+# other codes are optional.
+- {model: FinishCode, id: empty,  description: "All gone"}
+- {model: FinishCode, id: credit, description: "Returned for credit"}
+- {model: FinishCode, id: turned, description: "Turned sour / off taste"}
+- {model: FinishCode, id: ood,    description: "Out of date"}
+
+# The 'location', 'start' and 'stop' annotation types are referred to
+# in the code, so must exist.  Other types are optional.
+- {model: AnnotationType, id: location, description: "Location"}
+- {model: AnnotationType, id: start,    description: "Put on sale"}
+- {model: AnnotationType, id: stop,     description: "Removed from sale"}
+- {model: AnnotationType, id: vent,     description: "Vented"}
+- {model: AnnotationType, id: memo,     description: "Memo"}

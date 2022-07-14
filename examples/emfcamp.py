@@ -15,6 +15,7 @@ import quicktill.cash
 import quicktill.card
 import quicktill.modifiers
 import quicktill.localutils
+import quicktill.user
 from decimal import Decimal, ROUND_UP
 import datetime
 import logging
@@ -35,8 +36,8 @@ class Case(quicktill.modifiers.SimpleModifier):
         st = sale.stocktype
         if st.manufacturer != 'Club Mate':
             raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with "
-                "Club Mate.".format(self.name))
+                f"The {self.name} modifier can only be used with "
+                "Club Mate.")
         if st.name == "Regular 330ml":
             caseqty = 24
         else:
@@ -45,7 +46,7 @@ class Case(quicktill.modifiers.SimpleModifier):
         if sale.price:
             sale.price = sale.price * caseqty
         sale.qty = sale.qty * caseqty
-        sale.description = "{} case of {}".format(st.format(), caseqty)
+        sale.description = f"{st} case of {caseqty}"
 
 class Half(quicktill.modifiers.SimpleModifier):
     """Half pint modifier.
@@ -61,11 +62,11 @@ class Half(quicktill.modifiers.SimpleModifier):
             if sale.price:
                 sale.price = sale.price / 2
             sale.qty = sale.qty * Decimal("0.5")
-            sale.description = "{} half pint".format(sale.stocktype.format())
+            sale.description = f"{sale.stocktype} half pint"
             return
         raise quicktill.modifiers.Incompatible(
-            "The {} modifier can only be used with stock "
-            "that is sold in pints.".format(self.name))
+            f"The {self.name} modifier can only be used with stock "
+            "that is sold in pints.")
 
 class Mixer(quicktill.modifiers.SimpleModifier):
     """Mixers modifier.
@@ -78,12 +79,28 @@ class Mixer(quicktill.modifiers.SimpleModifier):
         if sale.stocktype.unit.name != 'ml' \
            or sale.stocktype.unit.units_per_item != 568:
             raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with soft drinks."\
-                .format(self.name))
+                f"The {self.name} modifier can only be used with soft drinks.")
         if sale.price:
             sale.price = Decimal("0.70")
         sale.qty = Decimal("100.0")
-        sale.description = "{} mixer".format(sale.stocktype.format())
+        sale.description = f"{sale.stocktype} mixer"
+
+class Carton(quicktill.modifiers.SimpleModifier):
+    """1l Carton modifier.
+
+    When used with a stockline, checks that the stock is sold in ml
+    and priced in pints (568ml), sets the quantity to 1000ml and the
+    sale price to £2.00.
+    """
+    def mod_stockline(self, stockline, sale):
+        if sale.stocktype.unit.name != 'ml' \
+           or sale.stocktype.unit.units_per_item != 568:
+            raise quicktill.modifiers.Incompatible(
+                f"The {self.name} modifier can only be used with soft drinks.")
+        if sale.price:
+            sale.price = Decimal("2.00")
+        sale.qty = Decimal("1000.0")
+        sale.description = f"{sale.stocktype} carton"
 
 class Double(quicktill.modifiers.SimpleModifier):
     """Double spirits modifier.
@@ -94,14 +111,12 @@ class Double(quicktill.modifiers.SimpleModifier):
     def mod_stockline(self, stockline, sale):
         if sale.stocktype.unit.name not in ('25ml', '50ml'):
             raise quicktill.modifiers.Incompatible(
-                "The {} modifier can only be used with spirits."\
-                .format(self.name))
+                f"The {self.name} modifier can only be used with spirits.")
         # There may not be a price at this point
         if sale.price:
             sale.price = sale.price * 2
         sale.qty = sale.qty * 2
-        sale.description = "{} double {}".format(
-            sale.stocktype.format(), sale.stocktype.unit.name)
+        sale.description = f"{sale.stocktype} double {sale.stocktype.unit.name}"
 
 class Wine(quicktill.modifiers.BaseModifier):
     """Wine serving modifier.
@@ -125,11 +140,11 @@ class Wine(quicktill.modifiers.BaseModifier):
         if stockline.linetype != "continuous" \
            or (stockline.stocktype.unit.name != 'ml') \
            or (stockline.stocktype.unit.units_per_item != 750) \
-           or (stockline.stocktype.dept_id != 9):
+           or (stockline.stocktype.dept_id != 90):
             raise quicktill.modifiers.Incompatible(
                 "This modifier can only be used with wine.")
         sale.qty = self.size
-        sale.description = stockline.stocktype.format() + " " + self.text
+        sale.description = f"{stockline.stocktype} {self.text}"
         if sale.price:
             sale.price = (self.size / Decimal("750.0") * sale.price)\
                 .quantize(Decimal("0.1"), rounding=ROUND_UP)\
@@ -137,14 +152,14 @@ class Wine(quicktill.modifiers.BaseModifier):
             sale.price += self.extra
 
     def mod_plu(self, plu, sale):
-        if plu.dept_id != 9:
+        if plu.dept_id != 90:
             raise quicktill.modifiers.Incompatible(
                 "This modifier can only be used with wine.")
         price = getattr(plu, self.field)
         if not price:
             raise modifiers.Incompatible(
-                "The {} price lookup does not have {} set."
-                .format(plu.description, self.field))
+                f"The {plu.description} price lookup does not have "
+                f"{self.field} set.")
         sale.price = price
         sale.description = plu.description + " " + self.text
 
@@ -187,56 +202,33 @@ cash = quicktill.cash.CashPayment(
     'CASH', 'Cash', change_description="Change", drawers=3,
     countup=[])
 card = quicktill.card.CardPayment(
-    'CARD', 'Card', machines=3, cashback_method=cash,
+    'CARD', 'Card', machines=5, cashback_method=cash,
     max_cashback=Decimal("100.00"), kickout=True,
     rollover_guard_time=datetime.time(4, 0, 0),
-    ask_for_machine_id=True)
+    ask_for_machine_id=False)
 all_payment_methods = [cash, card] # Used for session totals entry
 payment_methods = all_payment_methods # Used in register
 
-# Twitter API
-tapi = quicktill.extras.twitter_api(
-    token='not-a-valid-token',
-    token_secret='not-a-valid-token-secret',
-    consumer_key='not-a-valid-consumer-key',
-    consumer_secret='not-a-valid-consumer-secret')
-
-# When an item is put on sale, tweet about it
-class UseStockTwitterHook(quicktill.usestock.UseStockHook):
-    def __init__(self, tapi):
-        self.tapi = tapi
-
-    def regular_usestock(self, item, line):
-        t = None
-        if item.stocktype.dept_id == 3:
-            # It's a cider. Tweet it.
-            t = "We just put a cider on sale: " + item.stocktype.format()
-        elif item.stocktype.dept_id == 1:
-            t = "We just started a fresh cask of {}".format(
-                item.stocktype.format())
-        elif item.stocktype.dept_id == 2:
-            t = "We've just put a keg of {} on sale.".format(
-                item.stocktype.format())
-        if t:
-            quicktill.extras.twitter_post(
-                self.tapi, default_text=t, fail_silently=True)
-
-# This is commented out to disable it, because this example config
-# file does not include genuine Twitter credentials and the error
-# popups would be annoying
-
-#UseStockTwitterHook(tapi)
+quicktill.register.PercentageDiscount("Free", 100, permission_required=(
+    "convert-to-free-drinks", "Convert a transaction to free drinks"))
 
 # This is a very simple 'sample' app
 def qr():
     import quicktill.printer as printer
     with printer.driver as p:
-        p.printqrcode(bytes("https://www.individualpubs.co.uk/", "utf-8"))
+        p.printline("\tWelcome to EMF!", colour=1)
+        p.printline()
+        p.printqrcode(bytes("https://bar.emfcamp.org/", "utf-8"))
+        p.printline()
+        p.printline("\tVisit")
+        p.printline()
+        p.printline("\tbar.emfcamp.org", colour=1)
+        p.printline()
+        p.printline("\tfor the price list")
 
 def appsmenu():
     menu = [
         ("1", "Refusals log", quicktill.extras.refusals, ()),
-        #("2", "Twitter", quicktill.extras.twitter_client, (tapi,)),
         ("3", "QR code print", qr, ()),
     ]
     quicktill.ui.keymenu(menu, title="Apps")
@@ -257,8 +249,10 @@ localprinter = {
         ("/dev/aures-odp-333",
          quicktill.pdrivers.Aures_ODP_333_driver(), False),
         ("/dev/epson-tm-u220",
-         quicktill.pdrivers.Epson_TM_U220_driver(57, has_cutter=True), False),
-        ]),
+         quicktill.pdrivers.Epson_TM_U220_driver(76, has_cutter=True), False),
+        ("/dev/lp0", # We have two parallel TM-U220s this year!
+         quicktill.pdrivers.Epson_TM_U220_driver(76, has_cutter=True), True),
+    ]),
 }
 # 'Print' into a popup window
 windowprinter = {
@@ -276,14 +270,14 @@ label11356 = (252, 118)
 label99015 = (198, 154)
 labelprinter = {
     'labelprinters': [
-        #quicktill.pdrivers.cupsprinter(
-        #    "DYMO-LabelWriter-450",
-        #    driver=quicktill.pdrivers.pdf_page(pagesize=label11356),
-        #    description="DYMO label printer"),
-        quicktill.pdrivers.commandprinter(
-            "evince %s",
+        quicktill.pdrivers.cupsprinter(
+            "DYMO_LabelWriter_450",
             driver=quicktill.pdrivers.pdf_page(pagesize=label99015),
-            description="PDF viewer"),
+            description="DYMO label printer"),
+        #quicktill.pdrivers.commandprinter(
+        #    "evince %s",
+        #    driver=quicktill.pdrivers.pdf_page(pagesize=label99015),
+        #description="PDF viewer"),
     ],
 }
 
@@ -293,58 +287,79 @@ register_hotkeys = quicktill.localutils.register_hotkeys(appsmenu=appsmenu)
 
 global_hotkeys = quicktill.localutils.global_hotkeys(register_hotkeys)
 
-config0 = {
-    'description': "Stock-control terminal, default user is manager",
-    'firstpage': lambda: quicktill.stockterminal.page(
-        register_hotkeys, ["Bar"]),
-}
-config0.update(std)
-config0.update(windowprinter)
-config0.update(labelprinter)
-
-config1 = {
-    'description': "Main bar",
-    'hotkeys': global_hotkeys,
-    'keyboard': quicktill.localutils.keyboard(
-        13, 7, line_base=1, maxwidth=16),
-    'keyboard_right': quicktill.localutils.keyboard_rhpanel(
-        cash, card),
-}
-config1.update(std)
-config1.update(quicktill.localutils.activate_register_with_usertoken(
-    register_hotkeys))
-#config1.update(localprinter) # Used when live
-config1.update(windowprinter) # Used for examples
-config1.update(labelprinter)
-
-config2 = {
-    'description': "Stock-control terminal with card reader",
-}
-config2.update(std)
-config2.update(quicktill.localutils.activate_stockterminal_with_usertoken(
-    register_hotkeys))
-config2.update(windowprinter)
-config2.update(labelprinter)
-
-config3 = {
-    'description': "Cybar",
-    'hotkeys': global_hotkeys,
-    'keyboard': quicktill.localutils.stdkeyboard_16by8(
-        line_base=201, cash_payment_method=cash, card_payment_method=card),
-}
-config3.update(std)
-config3.update(quicktill.localutils.activate_register_with_usertoken(
-    register_hotkeys))
-#config3.update(localprinter) # Used when live
-config3.update(windowprinter) # Used for examples
-config3.update(labelprinter)
+from contextlib import nullcontext
+from collections import defaultdict
 
 # After this configuration file is read, the code in quicktill/till.py
 # simply looks for configurations[configname]
 
-configurations = {
-    'default': config0,
-    'mainbar': config1,
-    'stockterminal': config2,
-    'cybar': config3,
-}
+configurations = defaultdict(lambda: dict(std))
+
+def cf(n):
+    return nullcontext(configurations[n])
+
+with cf("default") as c:
+    c.update({
+        'description': "Stock-control terminal, default user is manager",
+        'firstpage': lambda: quicktill.stockterminal.page(
+            register_hotkeys, ["Bar"]),
+    })
+    c.update(windowprinter)
+    c.update(labelprinter)
+
+with cf("mainbar") as c:
+    c.update({
+        'description': "Main bar",
+        'hotkeys': global_hotkeys,
+        'keyboard': quicktill.localutils.keyboard(
+            13, 6, line_base=1, maxwidth=16),
+        'keyboard_right': quicktill.localutils.keyboard_rhpanel(
+            cash, card),
+    })
+    c.update(quicktill.localutils.activate_register_with_usertoken(
+        register_hotkeys))
+    c.update(localprinter) # Used when live
+    #c.update(windowprinter) # Used for examples
+    c.update(labelprinter)
+
+with cf("stockterminal") as c:
+    c.update({
+        'description': "Stock-control terminal with card reader",
+    })
+    c.update(quicktill.localutils.activate_stockterminal_with_usertoken(
+        register_hotkeys))
+    #c.update(windowprinter)
+    c.update(labelprinter)
+
+with cf("cybar") as c:
+    c.update({
+        'description': "Cybar",
+        'hotkeys': global_hotkeys,
+        'keyboard': quicktill.localutils.keyboard(
+            13, 6, line_base=201, maxwidth=16),
+        'keyboard_right': quicktill.localutils.keyboard_rhpanel(
+            cash, card),
+    })
+    c.update(quicktill.localutils.activate_register_with_usertoken(
+        register_hotkeys))
+    c.update(localprinter) # Used when live
+    #c.update(windowprinter) # Used for examples
+    c.update(labelprinter)
+
+with cf("shop") as c:
+    c.update({
+        'description': "Shop",
+        'hotkeys': global_hotkeys,
+        'keyboard': quicktill.localutils.keyboard(
+            13, 6, line_base=401, maxwidth=16, overrides={
+                (5, 1): Key(quicktill.user.tokenkey('builtin:shop', "Shop"),
+                            css_class="usertoken"),
+            }),
+        'keyboard_right': quicktill.localutils.keyboard_rhpanel(
+            cash, card),
+    })
+    c.update(quicktill.localutils.activate_register_with_usertoken(
+        register_hotkeys))
+    c.update(localprinter) # Used when live
+    #c.update(windowprinter) # Used for examples
+    c.update(labelprinter)
