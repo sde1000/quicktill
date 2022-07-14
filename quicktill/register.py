@@ -98,6 +98,19 @@ lock_after_nosale = config.BooleanConfigItem(
     display_name="Lock after No Sale",
     description="Lock the register after performing a No Sale operation?")
 
+# RemoveCode ID to use for stock that is sold
+sold_removecode_id = config.ConfigItem(
+    'register:sold_stock_removecode_id', "sold",
+    display_name="Code for sold stock",
+    description="Stock usage code (RemoveCode.id) for stock that is sold")
+
+# RemoveCode ID to use for stock that is wasted by pulling through
+pullthru_removecode_id = config.ConfigItem(
+    'register:pullthru_stock_removecode_id', "pullthru",
+    display_name="Code for stock pulled through",
+    description="Stock usage code (RemoveCode.id) for stock that "
+    "is pulled through")
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -573,7 +586,8 @@ def no_saleprice_popup(user, stocktype):
 
 
 def record_pullthru(stockid, qty):
-    td.s.add(StockOut(stockid=stockid, qty=qty, removecode_id='pullthru'))
+    td.s.add(StockOut(stockid=stockid, qty=qty,
+                      removecode_id=pullthru_removecode_id()))
     td.s.flush()
 
 
@@ -1301,7 +1315,7 @@ class page(ui.basicpage):
             for stockitem, items_to_sell in sell:
                 so = StockOut(
                     transline=tl, stockitem=stockitem,
-                    qty=items_to_sell, removecode_id='sold')
+                    qty=items_to_sell, removecode_id=sold_removecode_id())
                 td.s.add(so)
                 td.s.expire(
                     stockitem,
@@ -1523,7 +1537,7 @@ class page(ui.basicpage):
             for stockitem, items_to_sell in sell:
                 so = StockOut(
                     transline=tl, stockitem=stockitem,
-                    qty=items_to_sell, removecode_id='sold')
+                    qty=items_to_sell, removecode_id=sold_removecode_id())
                 td.s.add(so)
                 td.s.expire(
                     stockitem,
