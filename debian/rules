@@ -10,3 +10,9 @@
 
 override_dh_compress:
 	dh_compress -X.py -X.sql
+
+# The current release of aptly does not understand zstd compression
+# which as of Ubuntu 21.10 is the default. Force gzip compression
+# until a suitable release of aptly.
+override_dh_builddeb:
+	dh_builddeb -- -Zgzip
