@@ -318,6 +318,9 @@ class on_screen_keyboard(cmdline.command):
         tillconfig.mainloop = event_glib.GLibMainLoop()
         from . import keyboard_gtk
 
+        # Initialise database notifications listener
+        listen.listener = listen.db_listener(tillconfig.mainloop, td.engine)
+
         def input_handler(keycode):
             if hasattr(keycode, "usertoken"):
                 print("usertoken:" + keycode.usertoken)
