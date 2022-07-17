@@ -62,10 +62,12 @@ template = r"""
   band:       A
   rate:       17.5
   businessid: 1
+  description: Standard rate
 - model:      VatBand
   band:       B
   rate:       0.0
   businessid: 2
+  description: External kitchen
 
 - {model: VatRate, band: A, businessid: 1, rate: 15.0, active: 2008-12-01}
 - {model: VatRate, band: A, businessid: 1, rate: 17.5, active: 2010-01-01}

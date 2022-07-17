@@ -2257,6 +2257,7 @@ def barcode(request, info, barcode):
 @tillweb_view
 def departmentlist(request, info):
     depts = td.s.query(Department)\
+                .options(joinedload('vat'))\
                 .order_by(Department.id)\
                 .all()
     return ('departmentlist.html', {
@@ -2275,6 +2276,7 @@ class NewDepartmentForm(forms.Form):
     vatband = StringIDChoiceField(
         VatBand, 'band',
         label="VAT band", empty_label="Choose a VAT band",
+        label_function=lambda x: f"{x.band} ({x.description})",
         help_text="VAT rate and business")
     notes = forms.CharField(
         widget=forms.Textarea(), required=False,
@@ -2338,6 +2340,7 @@ class EditDepartmentForm(forms.Form):
     vatband = StringIDChoiceField(
         VatBand, 'band',
         label="VAT band", empty_label="Choose a VAT band",
+        label_function=lambda x: f"{x.band} ({x.description})",
         help_text="VAT rate and business; see note below")
     notes = forms.CharField(
         widget=forms.Textarea(), required=False,

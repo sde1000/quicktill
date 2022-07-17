@@ -22,7 +22,7 @@
 <tr>
 <td><a href="{{d.get_absolute_url}}">{{d.id}}</a></td>
 <td><a href="{{d.get_absolute_url}}">{{d.description}}</a></td>
-<td>{{d.vatband}}</td>
+<td>{{d.vat.band}} ({{d.vat.description}})</td>
 <td>{% if d.minprice %}{{money}}{{d.minprice}}{% endif %}</td>
 <td>{% if d.maxprice %}{{money}}{{d.maxprice}}{% endif %}</td>
 <td>{% if d.minabv is not None %}{{d.minabv}}%{% endif %}</td>

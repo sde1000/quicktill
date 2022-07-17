@@ -215,6 +215,7 @@ class VatBand(Base, Vat, Logged):
     __tablename__ = 'vat'
     band = Column(CHAR(1), primary_key=True)
     business = relationship(Business, backref='vatbands')
+    description = Column(String(), nullable=False, server_default="None")
 
 
 # Note that the tillweb index page code ignores the 'business' field

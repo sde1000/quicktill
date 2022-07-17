@@ -10,6 +10,8 @@ What's new:
 
  * `pricechanged` column of `stocktypes` is removed (it was unused)
 
+ * Add a `description` column to VAT bands, shown on the web interface
+
 To upgrade the database:
 
  - run psql and give the following commands to the database:
@@ -23,6 +25,9 @@ ALTER TABLE departments
 
 ALTER TABLE stocktypes
 	DROP COLUMN pricechanged;
+
+ALTER TABLE vat
+        ADD COLUMN description character varying DEFAULT 'None'::character varying NOT NULL;
 
 COMMIT;
 ```
