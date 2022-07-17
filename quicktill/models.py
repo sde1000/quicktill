@@ -275,6 +275,22 @@ class Session(Base, Logged):
         primaryjoin="and_(Transaction.sessionid==Session.id,"
         "Transaction.closed==False)")
 
+    meta = relationship("SessionMeta",
+                        collection_class=attribute_mapped_collection('key'),
+                        back_populates="session",
+                        passive_deletes=True,
+                        cascade="all,delete-orphan")
+
+    def set_meta(self, key, val):
+        val = str(val)
+        if key in self.meta:
+            o = self.meta[key]
+            o.value = val
+        else:
+            self.meta[key] = SessionMeta(
+                key=key,
+                value=val)
+
     @property
     def accounts_url(self):
         """Accounting system URL for this session
@@ -466,6 +482,28 @@ CREATE CONSTRAINT TRIGGER max_one_session_open
 DROP TRIGGER max_one_session_open ON sessions;
 DROP FUNCTION check_max_one_session_open();
 """)
+
+
+class SessionMeta(Base):
+    """Metadata on a session
+
+    Acts as a key/value store per session.  Only one instance of a
+    key can exist per session: the primary key for this table is
+    (session_id,key).
+
+    If the session is deleted, all its metadata is deleted too.
+
+    Session metadata is expected to be used by register plugins.
+    """
+    __tablename__ = 'session_meta'
+    session_id = Column('sessionid', Integer,
+                        ForeignKey('sessions.sessionid',
+                                   ondelete='CASCADE'),
+                        primary_key=True, nullable=False)
+    key = Column(String(), nullable=False, primary_key=True)
+    value = Column(String(), nullable=False)
+
+    session = relationship(Session, back_populates='meta')
 
 
 class SessionTotal(Base):

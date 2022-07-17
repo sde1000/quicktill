@@ -42,7 +42,7 @@ class ModelTest(unittest.TestCase):
 
     def tearDown(self):
         self.s.close()
-        self.trans.rollback()
+        # self.trans.rollback()
         self.connection.close()
 
     def test_add_business(self):
@@ -411,6 +411,25 @@ class ModelTest(unittest.TestCase):
         pa = self.s.query(models.Permission).get('frob')
         self.assertIsNotNone(pa)
         self.assertEqual(pa.groups[0].id, 'all-users')
+
+    def test_session_meta(self):
+        session = models.Session(datetime.date.today())
+        self.s.add(session)
+        session.set_meta('test', 'testval')
+        self.s.flush()
+        # SessionMeta row should exist
+        sm = self.s.query(models.SessionMeta).get((session.id, 'test'))
+        self.assertIsNotNone(sm)
+        self.assertEqual(sm.value, 'testval')
+        # SessionMeta should be accessible through the collection
+        self.assertIn('test', session.meta)
+        self.assertEqual(session.meta['test'].value, 'testval')
+        sid = session.id
+        self.s.delete(session)
+        self.s.flush()
+        # SessionMeta row should not exist
+        sm = self.s.query(models.SessionMeta).get((sid, 'test'))
+        self.assertIsNone(sm)
 
     def test_transaction_meta(self):
         self.template_setup()

@@ -12,7 +12,11 @@ What's new:
 
  * Add a `description` column to VAT bands, shown on the web interface
 
+ * Add a metadata table to sessions, for use by payment plugins
+
 To upgrade the database:
+
+ - run "runtill syncdb" to create the new sessions metadata table
 
  - run psql and give the following commands to the database:
 
