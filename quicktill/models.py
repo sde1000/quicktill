@@ -912,9 +912,11 @@ class Department(Base, Logged):
                       "single item in this department.")
     maxprice = Column(money, nullable=True, doc="Maximum price of a "
                       "single item in this department.")
-    minabv = Column(abv, nullable=True, doc="Minimum ABV of "
+    minabv = Column(abv, CheckConstraint("minabv >= 0.0"),
+                    nullable=True, doc="Minimum ABV of "
                     "stock types in this department")
-    maxabv = Column(abv, nullable=True, doc="Maximum ABV of "
+    maxabv = Column(abv, CheckConstraint("maxabv >= 0.0"),
+                    nullable=True, doc="Maximum ABV of "
                     "stock types in this department")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     vat = relationship(VatBand)
@@ -1914,7 +1916,8 @@ class StockType(Base, Logged):
                      nullable=False)
     manufacturer = Column(String(30), nullable=False)
     name = Column(String(30), nullable=False)
-    abv = Column(abv, nullable=True)
+    abv = Column(abv, CheckConstraint("abv >= 0.0"),
+                 nullable=True)
     unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     saleprice = Column(money, nullable=True)  # inc VAT
     stocktake_id = Column(

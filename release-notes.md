@@ -14,6 +14,8 @@ What's new:
 
  * Add a metadata table to sessions, for use by payment plugins
 
+ * Add database constraints for ABV: can't be negative
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new sessions metadata table
@@ -32,6 +34,15 @@ ALTER TABLE stocktypes
 
 ALTER TABLE vat
         ADD COLUMN description character varying DEFAULT 'None'::character varying NOT NULL;
+
+ALTER TABLE stocktypes
+	ADD CONSTRAINT stocktypes_abv_check CHECK ((abv >= 0.0));
+
+ALTER TABLE departments
+	ADD CONSTRAINT departments_maxabv_check CHECK ((maxabv >= 0.0));
+
+ALTER TABLE departments
+	ADD CONSTRAINT departments_minabv_check CHECK ((minabv >= 0.0));
 
 COMMIT;
 ```
