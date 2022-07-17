@@ -225,6 +225,7 @@ def tillweb_view(view):
 
         try:
             if settings.DEBUG:
+                queries_before_render = 0
                 queries = []
 
                 def querylog_callback(_conn, _cur, query, params, *_):
