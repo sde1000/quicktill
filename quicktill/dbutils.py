@@ -261,11 +261,11 @@ class checkdb(cmdline.command):
             engine = sqlalchemy.create_engine("postgresql+psycopg2:///postgres")
             conn = engine.connect()
             conn.execute('commit')
-            conn.execute('create database "{}"'.format(args.tempdb))
+            conn.execute(f'create database "{args.tempdb}"')
             conn.close()
         try:
             engine = sqlalchemy.create_engine(
-                "postgresql+psycopg2:///{}".format(args.tempdb))
+                f"postgresql+psycopg2:///{args.tempdb}")
             models.metadata.bind = engine
             try:
                 models.metadata.create_all()
@@ -299,8 +299,8 @@ class checkdb(cmdline.command):
             print(e)
         finally:
             if args.keeptmp:
-                print("Current database schema is in {}".format(current.name))
-                print("Pristine database schema is in {}".format(pristine.name))
+                print(f"Current database schema is in {current.name}")
+                print(f"Pristine database schema is in {pristine.name}")
             else:
                 os.unlink(current.name)
                 os.unlink(pristine.name)

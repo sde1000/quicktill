@@ -16,7 +16,7 @@ class _magstripecode:
         self.magstripe = code
 
     def __str__(self):
-        return "Magstripe {}".format(self.magstripe)
+        return f"Magstripe {self.magstripe}"
 
 
 class prehkeyboard:
@@ -44,8 +44,8 @@ class prehkeyboard:
                 row, col = loc
                 for x in range(0, key.width):
                     for y in range(0, key.height):
-                        self.inputs["{}{:02}".format(
-                            rows[row + y], col + x + 1)] = key.keycode
+                        self.inputs[f"{rows[row + y]}{col + x + 1:02}"] = \
+                            key.keycode
         self.ibuf = []  # Sequence of characters received after a '['
         self.decode = False  # Are we reading into ibuf at the moment?
         if magstripe:

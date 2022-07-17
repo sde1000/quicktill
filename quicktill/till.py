@@ -96,8 +96,7 @@ class ValidateExitOption(argparse.Action):
             code = int(code)
         except ValueError:
             raise argparse.ArgumentError(
-                self, "first argument to {} must be an integer".format(
-                    self.dest))
+                self, f"first argument to {self.dest} must be an integer")
         current = getattr(args, self.dest, None)
         if not current:
             current = []
@@ -109,7 +108,7 @@ def window_geometry(value):
     parts = value.split('x')
     if len(parts) != 2:
         raise argparse.ArgumentTypeError(
-            "'{}' is not a valid window geometry".format(value))
+            f"'{value}' is not a valid window geometry")
     try:
         width = int(parts[0])
         height = int(parts[1])
@@ -358,7 +357,7 @@ class totals(cmdline.command):
             h = "  ID  |    Date    | "
             for x in tillconfig.all_payment_methods:
                 f = f + "{p[%s]:>8} | " % x.paytype
-                h = h + "{:^8} | ".format(x.description)
+                h = h + f"{x.description:^8} | "
             f = f + "{error:>7} | "
             h = h + " Error  | "
             for b in businesses:

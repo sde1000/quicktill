@@ -43,22 +43,21 @@ def print_receipt(transid):
             right = tl.regtotal(tillconfig.currency())
             if len(bandtotals) > 1 and trans.closed:
                 d.printline(
-                    "{}\t\t{} {}".format(left, right, tl.department.vatband),
+                    f"{left}\t\t{right} {tl.department.vatband}",
                     font=1)
             else:
-                d.printline("{}\t\t{}".format(left, right), font=1)
+                d.printline(f"{left}\t\t{right}", font=1)
         totalpad = "  " if len(bandtotals) > 1 else ""
         d.printline(
-            "\t\tSubtotal {}{}".format(
-                tillconfig.fc(trans.total), totalpad),
+            f"\t\tSubtotal {tillconfig.fc(trans.total)}{totalpad}",
             colour=1, emph=1)
         for p in trans.payments:
             pl = payment.pline(p)
-            d.printline("\t\t{}{}".format(pl.text, totalpad))
+            d.printline(f"\t\t{pl.text}{totalpad}")
         d.printline("")
         if not trans.closed:
             d.printline("\tThis is not a VAT receipt", colour=1, emph=1)
-            d.printline("\tTransaction number {}".format(trans.id))
+            d.printline(f"\tTransaction number {trans.id}")
         else:
             # We have a list of VAT bands; we need to look up rate and
             # business information for each of them.  Once we have the
@@ -76,7 +75,7 @@ def print_receipt(transid):
                 business = td.s.query(Business).get(i)
                 bands = businesses[i]
                 # Print the business info
-                d.printline("\t{}".format(business.name))
+                d.printline(f"\t{business.name}")
                 # The business address may be stored in the database
                 # with either the string "\n" (legacy) or a newline
                 # character (current) to separate the lines.
@@ -85,9 +84,9 @@ def print_receipt(transid):
                 else:
                     addrlines = business.address.splitlines()
                 for l in addrlines:
-                    d.printline("\t{}".format(l))
+                    d.printline(f"\t{l}")
                 d.printline()
-                d.printline("VAT reg no. {}".format(business.vatno))
+                d.printline(f"VAT reg no. {business.vatno}")
                 for band, rate in bands:
                     # Print the band, amount ex VAT, amount inc VAT, gross
                     gross = bandtotals[band]
@@ -96,25 +95,25 @@ def print_receipt(transid):
                         .quantize(penny)
                     vat = gross - net
                     d.printline(
-                        "{}: {} net, {} VAT @ {:0.1f}%\t\tTotal {}".format(
-                            band, tillconfig.fc(net), tillconfig.fc(vat), rate,
-                            tillconfig.fc(gross)), font=1)
+                        f"{band}: {tillconfig.fc(net)} net, "
+                        f"{tillconfig.fc(vat)} VAT @ {rate:0.1f}%\t\t"
+                        f"Total {tillconfig.fc(gross)}", font=1)
                 d.printline("")
-            d.printline("\tReceipt number {}".format(trans.id))
-        d.printline("\t{}".format(ui.formatdate(trans.session.date)))
+            d.printline(f"\tReceipt number {trans.id}")
+        d.printline(f"\t{ui.formatdate(trans.session.date)}")
 
 
 def print_sessioncountup(s):
     with driver as d:
-        d.printline("\t%s" % tillconfig.pubname, emph=1)
-        d.printline("\tSession %d" % s.id, colour=1)
-        d.printline("\t%s" % ui.formatdate(s.date), colour=1)
-        d.printline("Started %s" % ui.formattime(s.starttime))
-        d.printline("  Ended %s" % ui.formattime(s.endtime))
+        d.printline(f"\t{tillconfig.pubname}", emph=1)
+        d.printline(f"\tSession {s.id}", colour=1)
+        d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
+        d.printline(f"Started {ui.formattime(s.starttime)}")
+        d.printline(f"  Ended {ui.formattime(s.endtime)}")
         d.printline()
         d.printline("Amounts registered:")
         for paytype, total in s.payment_totals:
-            d.printline("%s: %s" % (paytype.description, tillconfig.fc(total)))
+            d.printline(f"{paytype.description}: {tillconfig.fc(total)}")
         d.printline()
         # Now go through the current payment methods printing out their
         # input fields, with countup totals if necessary
@@ -122,12 +121,12 @@ def print_sessioncountup(s):
         for pm in tillconfig.all_payment_methods:
             for name, validator, print_fields in pm.total_fields:
                 for i in print_fields if print_fields else []:
-                    d.printline("{:>10}".format(i))
+                    d.printline(f"{i:>10}")
                     d.printline()
                 if print_fields:
                     d.printline("", underline=1)
                 if len(pm.total_fields) > 1:
-                    d.printline("{} {}".format(pm.description, name),
+                    d.printline(f"{pm.description} {name}",
                                 colour=1, emph=1)
                 else:
                     d.printline(pm.description, colour=1, emph=1)
@@ -141,6 +140,7 @@ def print_sessiontotals(s):
     """Print a session totals report given a Session object.
     """
     td.s.add(s)
+    printtime = ui.formattime(now())
     depts = s.dept_totals
     # Let's use the payment type (String(8)) as the dict key
     till_totals = dict((x.paytype, y) for x, y in s.payment_totals)
@@ -160,15 +160,15 @@ def print_sessiontotals(s):
             pms.append(payment.methods[pt])
 
     with driver as d:
-        d.printline("\t%s" % tillconfig.pubname, emph=1)
-        d.printline("\tSession %d" % s.id, colour=1)
-        d.printline("\t%s" % ui.formatdate(s.date), colour=1)
-        d.printline("Started %s" % ui.formattime(s.starttime))
+        d.printline(f"\t{tillconfig.pubname}", emph=1)
+        d.printline(f"\tSession {s.id}", colour=1)
+        d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
+        d.printline(f"Started {ui.formattime(s.starttime)}")
         if s.endtime is None:
             d.printline("Session still in progress")
-            d.printline("Printed %s" % ui.formattime(now()))
+            d.printline(f"Printed {printtime}")
         else:
-            d.printline("  Ended %s" % ui.formattime(s.endtime))
+            d.printline(f"  Ended {ui.formattime(s.endtime)}")
         d.printline("Till total:\t\tActual total:")
         ttt = Decimal("0.00")
         att = Decimal("0.00")
@@ -186,23 +186,25 @@ def print_sessiontotals(s):
             else:
                 at = ""
             if tt or at:
-                d.printline("%s: %s\t\t%s" % (desc, tt, at))
+                d.printline(f"{desc}: {tt}\t\t{at}")
         if len(pms) > 1:
             tt = tillconfig.fc(ttt)
             if att > Decimal("0.00"):
                 at = tillconfig.fc(att)
             else:
                 at = ""
-            d.printline("Total: %s\t\t%s" % (tt, at), colour=1, emph=1)
+            d.printline(f"Total: {tt}\t\t{at}", colour=1, emph=1)
         d.printline()
         dt = Decimal("0.00")
+        deptlen = max((len(str(dept.id)) for dept, total in depts), default=0)
         for dept, total in depts:
-            d.printline("%2d %s\t\t%s" % (dept.id, dept.description,
-                                          tillconfig.fc(total)))
+            d.printline(
+                f"{dept.id:{deptlen}} {dept.description}"
+                f"\t\t{tillconfig.fc(total)}")
             dt = dt + total
-        d.printline("\t\tTotal: %s" % tillconfig.fc(dt), colour=1, emph=1)
+        d.printline(f"\t\tTotal: {tillconfig.fc(dt)}", colour=1, emph=1)
         d.printline()
-        d.printline("\tPrinted %s" % ui.formattime(now()))
+        d.printline(f"\tPrinted {printtime}")
 
 
 def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
@@ -272,7 +274,7 @@ def stock_label(f, d):
     f.drawCentredString(width / 2, y, d.description)
     if checkdigit_print():
         y = y - pitch
-        f.drawCentredString(width / 2, y, "Check digits: %s" % (d.checkdigits,))
+        f.drawCentredString(width / 2, y, f"Check digits: {d.checkdigits}")
     f.setFont(fontname, y - margin)
     f.drawCentredString(width / 2, margin, str(d.id))
     f.showPage()
@@ -297,22 +299,24 @@ def print_restock_list(rl):
     session.
     """
     with driver as d:
-        d.printline("\t%s" % tillconfig.pubname, emph=1)
+        d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline("\tRe-stock list")
-        d.printline("\tPrinted %s" % ui.formattime(now()))
+        d.printline(f"\tPrinted {ui.formattime(now())}")
         d.printline()
         for sl, sm in rl:
             td.s.add(sl)
-            d.printline("%s:" % sl.name)
-            d.printline("%d/%d displayed" % (sl.ondisplay, sl.capacity))
+            d.printline(f"{sl.name}:")
+            d.printline(f"{sl.ondisplay}/{sl.capacity} displayed")
             for item, move, newdisplayqty, stockqty_after_move in sm:
                 td.s.add(item)
                 if move > 0:
-                    d.printline(" %d from item %d leaving %d" % (
-                        move, item.id, stockqty_after_move))
+                    d.printline(f" {move} from item {item.id} "
+                                f"leaving {stockqty_after_move}")
                 if move < 0:
-                    d.printline(" %d to item %d making %d" % (
-                        -move, item.id, stockqty_after_move), colour=1)
+                    d.printline(
+                        f" {-move} to item {item.id} "
+                        f"making {stockqty_after_move}",
+                        colour=1)
         d.printline()
         d.printline("\tEnd of list")
 
@@ -327,7 +331,7 @@ def kickout():
         try:
             driver.kickout()
         except pdrivers.PrinterError as e:
-            ui.infopopup(["Could not kick out the cash drawer: {}".format(
-                e.desc)], title="Printer problem")
+            ui.infopopup([f"Could not kick out the cash drawer: {e.desc}"],
+                         title="Printer problem")
             return False
     return True

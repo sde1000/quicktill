@@ -91,8 +91,8 @@ def keyboard_bindings_table(bindings, formatter):
     for b in bindings:
         if b.keycode not in keyboard.__dict__:
             keyboard.keycode(b.keycode, b.keycode)
-            log.warning("Keyboard binding {}: keycode {} "
-                        "does not exist.".format(b, b.keycode))
+            log.warning(f"Keyboard binding {b}: keycode {b.keycode} "
+                        f"does not exist.")
     kbl = [f(str(keyboard.__dict__[x.keycode]),
              str(keyboard.__dict__.get(x.menukey, x.menukey)),
              x.modifier, userdata=x) for x in bindings]
@@ -235,8 +235,8 @@ class move_keys(user.permission_checked, ui.dismisspopup):
             self.label.set(f"Push the key to swap with {k.keycap}")
 
     def swap(self, k):
-        ui.toast("{} swapped with {}".format(
-            str(self.key) or "(unlabeled)", str(k) or "(unlabeled)"))
+        ui.toast(f"{str(self.key) or '(unlabeled)'} swapped "
+                 f"with {str(k) or '(unlabeled)'}")
         # The keycode is (part of) the primary key and the key is not
         # set as deferrable, so we have to swap using an intermediate
         # value.  This occurs within a transaction so will never be

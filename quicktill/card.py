@@ -89,9 +89,8 @@ class _cardpopup(ui.dismisspopup):
             self.cbfield.set("")
             self.cbfield.focus()
             return ui.infopopup(
-                ["Cashback is limited to a maximum of {} per "
-                 "transaction.".format(tillconfig.fc(
-                     self.max_cashback))],
+                [f"Cashback is limited to a maximum of "
+                 f"{tillconfig.fc(self.max_cashback)} per transaction."],
                 title="Error")
         ref = []
         if self.pm._ask_for_machine_id:
@@ -172,7 +171,7 @@ class CardPayment(payment.PaymentMethod):
             raise BadCashbackMethod()
         self._max_cashback = max_cashback
         self._kickout = kickout
-        self._total_fields = [("Terminal {t}".format(t=t + 1),
+        self._total_fields = [(f"Terminal {t + 1}",
                                ui.validate_float, None)
                               for t in range(self._machines)]
         self._rollover_guard_time = rollover_guard_time
@@ -181,11 +180,10 @@ class CardPayment(payment.PaymentMethod):
 
     def describe_payment(self, payment):
         # Card payments use the 'ref' field for the card receipt number
+        rs = ' ' + payment.ref if payment.ref else ''
         if payment.amount >= zero:
-            return "{}{}{}".format(
-                self.description, " " if payment.ref else "", payment.ref)
-        return "{} refund{}{}".format(
-            self.description, " " if payment.ref else "", payment.ref)
+            return f"{self.description}{rs}"
+        return f"{self.description} refund{rs}"
 
     def start_payment(self, reg, transid, amount, outstanding):
         if self._rollover_guard_time:
@@ -280,4 +278,4 @@ class CardPayment(payment.PaymentMethod):
             date = self.account_date_policy(sessiontotal.session.date)
         else:
             date = sessiontotal.session.date
-        return self.account_code, date, "{} takings".format(self.description)
+        return self.account_code, date, f"{self.description} takings"

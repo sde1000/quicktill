@@ -64,13 +64,13 @@ class db_listener:
         for channel in to_add:
             log.debug("listen for %s", channel)
             self.connection.execute(
-                text("LISTEN {};".format(channel))
+                text(f"LISTEN {channel};")
                 .execution_options(autocommit=True))
             self._db_listening.add(channel)
         for channel in to_remove:
             log.debug("stop listening for %s", channel)
             self.connection.execute(
-                text("UNLISTEN {};".format(channel))
+                text(f"UNLISTEN {channel};")
                 .execution_options(autocommit=True))
             self._db_listening.discard(channel)
         if not self._db_listening:

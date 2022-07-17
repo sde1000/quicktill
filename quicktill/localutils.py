@@ -144,8 +144,8 @@ def delta_england_banking_days(date, n):
     Given any date, return the date of the nth banking day after it.
     """
     if n < 1:
-        raise ValueError("It doesn't make sense to ask for the {}th banking "
-                         "day after a date!".format(n))
+        raise ValueError(f"It doesn't make sense to ask for the {n}th banking "
+                         f"day after a date!")
     while n > 0:
         date = date + datetime.timedelta(days=1)
         if is_england_banking_day(date):

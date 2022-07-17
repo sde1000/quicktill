@@ -450,8 +450,8 @@ class new_stockitem(ui.basicpopup):
         else:
             if isinstance(g, Decimal):
                 g = g.quantize(penny)
-                self.suggested_price.set("{} per {}".format(
-                    tillconfig.fc(g), st.unit.item_name))
+                self.suggested_price.set(
+                    f"{tillconfig.fc(g)} per {st.unit.item_name}")
             else:
                 self.suggested_price.set(g)
 
@@ -600,8 +600,8 @@ class edit_stockitem(ui.basicpopup):
         else:
             if isinstance(g, Decimal):
                 g = g.quantize(penny)
-                self.suggested_price.set("{} per {}".format(
-                    tillconfig.fc(g), st.unit.item_name))
+                self.suggested_price.set(
+                    f"{tillconfig.fc(g)} per {st.unit.item_name}")
             else:
                 self.suggested_price.set(g)
 
@@ -703,8 +703,9 @@ class editsupplier(user.permission_checked, ui.basicpopup):
             user.log(f"Supplier {supplier.logref} created or updated")
         except IntegrityError:
             td.s.rollback()
-            ui.infopopup(["There is already a supplier called {}.".format(
-                self.namefield.f.strip())], title="Error")
+            ui.infopopup([f"There is already a supplier called "
+                          f"{self.namefield.f.strip()}."],
+                         title="Error")
             return
         self.dismiss()
         self.func(supplier)

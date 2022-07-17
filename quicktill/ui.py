@@ -464,7 +464,7 @@ class dismisspopup(basicpopup):
             elif dismiss is None:
                 return None
             else:
-                return "Press {} to dismiss".format(dismiss.keycap)
+                return f"Press {dismiss} to dismiss"
         return cleartext
 
     def keypress(self, k):
@@ -1688,7 +1688,7 @@ class modelfield(editfield):
 
     def _complete(self, m):
         q = td.s.query(self._field)
-        q = q.filter(self._field.ilike("{}%".format(m)))
+        q = q.filter(self._field.ilike(f"{m}%"))
         q = q.order_by(func.length(self._field), self._field)
         return [x[0] for x in q.all()]
 
@@ -1748,7 +1748,7 @@ class modelfield(editfield):
         if self._f and not i:
             # Find candidate matches and pop up a list of them
             m = td.s.query(self._field)\
-                    .filter(self._field.ilike("{}%".format(self._f)))\
+                    .filter(self._field.ilike(f"{self._f}%"))\
                     .order_by(self._field)\
                     .all()
             ml = [(x[0], super(modelfield, self).set, (x[0],)) for x in m]
@@ -2024,7 +2024,7 @@ class exception_popup:
         self._tb = tb
         infopopup(
             [description, "", str(value), "",
-             "Press {} to see more details.".format(keyboard.K_CASH.keycap)],
+             f"Press {keyboard.K_CASH} to see more details."],
             title=title, keymap={keyboard.K_CASH: (self.show_all, None, True)})
 
     def show_all(self):
@@ -2040,7 +2040,7 @@ class exception_guard:
     should be reported to the user.
     """
     def __init__(self, description, title=None, suppress_exception=True):
-        self._description = "There was a problem while {}.".format(description)
+        self._description = f"There was a problem while {description}."
         self._title = title if title else "Error"
         self._suppress_exception = suppress_exception
 

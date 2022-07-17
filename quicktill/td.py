@@ -167,22 +167,22 @@ def libpq_to_sqlalchemy(database):
     if 'user' in csdict:
         estring += csdict['user']
         if 'password' in csdict:
-            estring += ":{}".format(csdict['password'])
+            estring += f":{csdict['password']}"
         estring += '@'
     if 'host' in csdict:
         estring += csdict['host']
     if 'port' in csdict:
-        estring += ":{}".format(csdict['port'])
-    estring += "/{}".format(csdict['dbname'])
+        estring += f":{csdict['port']}"
+    estring += f"/{csdict['dbname']}"
     return estring
 
 
 def parse_database_name(database):
     if database[0] == ":":
-        database = "dbname={}".format(database[1:])
+        database = f"dbname={database[1:]}"
     if '://' not in database:
         if '=' not in database:
-            database = "dbname={}".format(database)
+            database = f"dbname={database}"
         database = libpq_to_sqlalchemy(database)
     return database
 

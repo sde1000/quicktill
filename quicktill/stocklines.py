@@ -470,9 +470,10 @@ class modify(user.permission_checked, ui.dismisspopup):
             self.stockline.name = self.namefield.f
             td.s.flush()
         except IntegrityError:
-            ui.infopopup(["There is already another stock line called '{}'. "
-                          "You can't give this stock line the same "
-                          "name.".format(self.namefield.f)])
+            ui.infopopup(
+                [f"There is already another stock line called "
+                 f"'{self.namefield.f}'. You can't give this stock line "
+                 f"the same name."])
             td.s.rollback()
             return
         self.stockline.location = self.locfield.f
@@ -481,12 +482,13 @@ class modify(user.permission_checked, ui.dismisspopup):
         try:
             td.s.flush()
         except Exception:
-            ui.infopopup(["Could not update stock line '{}'.".format(
-                self.stockline.name)], title="Error")
+            ui.infopopup(
+                [f"Could not update stock line '{self.stockline.name}'."],
+                title="Error")
             return
         self.dismiss()
         user.log(f"Updated stock line '{self.stockline.logref}'")
-        ui.infopopup(["Updated stock line '{}'.".format(self.stockline.name),
+        ui.infopopup([f"Updated stock line '{self.stockline.name}'.",
                       ""] + additional,
                      colour=ui.colour_info, dismiss=keyboard.K_CASH,
                      title="Confirmation")

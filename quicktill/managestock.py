@@ -53,7 +53,7 @@ def finishstock(dept=None):
                           'Print a list of stock')
 def print_stocklist_menu(sinfo, title):
     td.s.add_all(sinfo)
-    menu = [("Print labels on {}".format(str(x)),
+    menu = [(f"Print labels on {x}",
              printer.stocklabel_print, (x, sinfo))
             for x in printer.labelprinters]
     ui.automenu(menu, title="Stock print options", colour=ui.colour_confirm)
@@ -139,7 +139,7 @@ def stockhistory(dept=None):
     sl = [(f(x.id, x.stocktype.format(), x.remaining_units),
            stock.stockinfo_popup, (x.id,)) for x in sinfo]
     title = "Stock History" if dept is None \
-            else "Stock History department {}".format(dept)
+            else f"Stock History department {dept}"
     ui.menu(sl, title=title, blurb="Select a stock item and press "
             "Cash/Enter for more information.  The number of units remaining "
             "when the stock was finished is shown.", dismiss_on_select=False)
@@ -200,13 +200,13 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
             q = q.filter(StockType.dept_id == dept.id)
         r = q.all()
         f = ui.tableformatter(' l r  r  r ')
-        lines = [f(st.format(), '{:0.1f}'.format(sold), st.instock,
-                   '{:0.1f}'.format(sold * ahead.days - st.instock))
+        lines = [f(st.format(), f'{sold:0.1f}', st.instock,
+                   f'{sold * ahead.days - st.instock:0.1f}')
                  for st, sold in r]
         lines.sort(key=lambda l: float(l.fields[3]), reverse=True)
         header = [f('Name', 'Sold per day', 'In stock', 'Buy')]
         ui.listpopup(lines, header=header,
-                     title="Stock to buy for next {} weeks".format(weeks_ahead),
+                     title=f"Stock to buy for next {weeks_ahead} weeks",
                      colour=ui.colour_info, show_cursor=False,
                      dismiss=keyboard.K_CASH)
 
@@ -267,15 +267,13 @@ def stock_purge_internal(source):
             # Directly connected to a stockline
             td.s.add(StockAnnotation(
                 stockitem=item, atype="stop", user=user,
-                text="{} (display stockline, {})".format(
-                    item.stockline.name, source)))
+                text=f"{item.stockline.name} (display stockline, {source})"))
         else:
             # Indirectly connected via a continuous stockline
             for sl in item.stocktype.stocklines:
                 td.s.add(StockAnnotation(
                     stockitem=item, atype="stop", user=user,
-                    text="{} (continuous stockline, {})".format(
-                        sl.name, source)))
+                    text=f"{sl.name} (continuous stockline, {source})"))
         item.finished = datetime.datetime.now()
         item.finishcode_id = 'empty'  # guaranteed to exist
         item.displayqty = None
@@ -292,7 +290,7 @@ def purge_finished_stock():
     if purged:
         ui.infopopup(
             ["The following stock items were marked as finished:", ""]
-            + ["{} {}".format(p.id, p.stocktype.format()) for p in purged],
+            + [f"{p.id} {p.stocktype}" for p in purged],
             title="Stock Purged", colour=ui.colour_confirm,
             dismiss=keyboard.K_CASH)
     else:
@@ -328,7 +326,7 @@ def reprint_stocklabel_choose_printer(item):
     td.s.add(StockAnnotation(
         stockitem=item, atype="memo", user=user.current_dbuser(),
         text="Re-printed stock label"))
-    menu = [("Print label on {}".format(str(x)),
+    menu = [(f"Print label on {x}",
              printer.stocklabel_print, (x, [item]))
             for x in printer.labelprinters]
     ui.automenu(menu, title="Choose where to print label",
@@ -390,13 +388,13 @@ def return_finished_item():
 def finish_return_finished_item(item):
     td.s.add(StockAnnotation(
         stockitem=item, atype="memo", user=user.current_dbuser(),
-        text="Returned to stock; had been finished at {:%c}({})".format(
-            item.finished, item.finishcode)))
+        text=f"Returned to stock; had been finished "
+        f"at {item.finished:%c}({item.finishcode})"))
     item.finished = None
     item.finishcode = None
     ui.infopopup(
-        ["Stock item {} ({}) has been returned to stock.".format(
-            item.id, item.stocktype.format())],
+        [f"Stock item {item.id} ({item.stocktype}) has been "
+         f"returned to stock."],
         title="Item returned", colour=ui.colour_info,
         dismiss=keyboard.K_CASH)
 
@@ -453,7 +451,7 @@ def _finish_print_pricelist(dept_id, include_all):
     l = l.all()
 
     with printer.driver as d:
-        d.printline("\t{}".format(tillconfig.pubname), emph=1)
+        d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline()
         d.printline("\tPrice List", colour=1)
         d.printline()
@@ -464,8 +462,8 @@ def _finish_print_pricelist(dept_id, include_all):
                     d.printline()
                 current_dept = st.department
                 d.printline(current_dept.description, emph=1)
-            d.printline("{}\t\t{}{}".format(
-                st.descriptions[0], tillconfig.currency, st.pricestr))
+            d.printline(f"{st.descriptions[0]}\t\t"
+                        f"{tillconfig.currency}{st.pricestr}")
         d.printline()
         d.printline("\tEnd of list")
 

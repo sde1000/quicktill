@@ -16,10 +16,10 @@ class ModelTest(unittest.TestCase):
         engine = create_engine("postgresql+psycopg2:///postgres")
         conn = engine.connect()
         conn.execute('commit')
-        conn.execute('create database "{}"'.format(TEST_DATABASE_NAME))
+        conn.execute(f'create database "{TEST_DATABASE_NAME}"')
         conn.close()
-        cls._engine = create_engine("postgresql+psycopg2:///{}".format(
-            TEST_DATABASE_NAME))
+        cls._engine = create_engine(
+            f"postgresql+psycopg2:///{TEST_DATABASE_NAME}")
         models.metadata.bind = cls._engine
         models.metadata.create_all()
         cls._sm = sessionmaker()
@@ -32,7 +32,7 @@ class ModelTest(unittest.TestCase):
         engine = create_engine("postgresql+psycopg2:///postgres")
         conn = engine.connect()
         conn.execute('commit')
-        conn.execute('drop database "{}"'.format(TEST_DATABASE_NAME))
+        conn.execute(f'drop database "{TEST_DATABASE_NAME}"')
         conn.close()
 
     def setUp(self):

@@ -108,7 +108,7 @@ class kbutton(Gtk.Button):
         self.current_css_class = None
         ctx = self.get_style_context()
         if key.width > 1 or key.height > 1:
-            ctx.add_class("key{}x{}".format(key.width, key.height))
+            ctx.add_class(f"key{key.width}x{key.height}")
         if hasattr(key.keycode, "line"):
             ctx.add_class("linekey")
         self.update_class()

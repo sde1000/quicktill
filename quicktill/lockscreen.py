@@ -35,7 +35,7 @@ class CheckPrinter(LockScreenPlugin):
         problem = self._printer.offline()
         if problem:
             log.info("%s problem: %s", self._description, problem)
-            return "{} problem: {}".format(self._description, problem)
+            return f"{self._description} problem: {problem}"
 
 
 class lockpage(ui.basicpage):
@@ -53,7 +53,7 @@ class lockpage(ui.basicpage):
             self.line("The following users have unsaved work "
                       "on this terminal:")
             for p in unsaved:
-                self.line("  {} ({})".format(p.pagename(), p.unsaved_data))
+                self.line(f"  {p.pagename()} ({p.unsaved_data})")
             self.line("")
         else:
             # The till is idle - schedule an exit if configured
@@ -65,7 +65,7 @@ class lockpage(ui.basicpage):
                 self.idle_timeout = tillconfig.mainloop.add_timeout(
                     call_at - now, self.alarm)
         self.win.wrapstr(
-            self.h - 1, 0, self.w, "Till version: {}".format(version.version))
+            self.h - 1, 0, self.w, f"Till version: {version.version}")
         self.win.drawstr(self._y, 0, 3, '...')
         self.win.move(0, 0)
         self.refresh_timeout = tillconfig.mainloop.add_timeout(

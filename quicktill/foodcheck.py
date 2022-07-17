@@ -39,7 +39,7 @@ class page(ui.basicpage):
 
     def receive_order(self, lines):
         for dept, text, items, amount in lines:
-            self.dl.append(ui.lrline("{}: {}".format(dept, text),
+            self.dl.append(ui.lrline(f"{dept}: {text}",
                                      tillconfig.fc(items * amount)))
         self.s.redraw()
         return True

@@ -124,14 +124,15 @@ def finish_disconnect(line, sn):
     log.info("Use Stock: disconnected item %d from %s", sn, line.name)
     item = td.s.query(StockItem).get(sn)
     td.s.add(StockAnnotation(stockitem=item, atype="stop",
-                             text="{} (Use Stock disconnect)".format(line.name),
+                             text=f"{line.name} (Use Stock disconnect)",
                              user=user.current_dbuser()))
     item.displayqty = None
     item.stockline = None
     td.s.flush()
-    pick_new_stock(line, "Stock item {} disconnected from {}.  Now select "
-                   "a new stock item to put on sale, or press Clear to "
-                   "leave the line unused.".format(sn, line.name))
+    pick_new_stock(
+        line, f"Stock item {sn} disconnected from {line.name}.  Now select "
+        f"a new stock item to put on sale, or press Clear to "
+        f"leave the line unused.")
 
 
 def finish_reason(line, sn, reason):
@@ -139,7 +140,7 @@ def finish_reason(line, sn, reason):
     stockitem = td.s.query(StockItem).get(sn)
     td.s.add(StockAnnotation(
         stockitem=stockitem, atype="stop",
-        text="{} (Use Stock reason {})".format(line.name, reason),
+        text=f"{line.name} (Use Stock reason {reason})",
         user=user.current_dbuser()))
     stockitem.finished = datetime.datetime.now()
     stockitem.finishcode_id = reason
@@ -194,7 +195,7 @@ def put_on_sale(line, si):
     log.info("Use Stock: item %d (%s) put on sale as %s",
              si.id, si.stocktype.format(), line.name)
     ui.infopopup(["Stock item {} ({}) has been put on sale "
-                  "as '{}'.".format(si.id, si.stocktype.format(), line.name)],
+                  "as '{}'.".format(si.id, si.stocktype, line.name)],
                  title="Confirmation",
                  dismiss=keyboard.K_CASH, colour=ui.colour_info)
     if line.linetype == "regular":
@@ -234,14 +235,13 @@ def add_display_line_stock(line):
         # There's more than one display stock line with the same stock
         # type.  The user will have to choose stock items
         # individually.
-        menu = [("{}".format(s.id), put_on_sale, (line, s)) for s in new_stock]
-        ui.menu(menu, blurb="There are multiple display stock lines that "
-                "use {}.  (Other lines: {}.)  Please pick the "
-                "stock item that you want to add "
-                "to display stock line {}.".format(
-                    line.stocktype.format(),
-                    ", ".join([l.name for l in other_lines]),
-                    line.name))
+        menu = [(f"{s.id}", put_on_sale, (line, s)) for s in new_stock]
+        ui.menu(
+            menu, blurb=f"There are multiple display stock lines that "
+            f"use {line.stocktype}.  (Other lines: "
+            f"{', '.join([l.name for l in other_lines])}.)  Please pick the "
+            f"stock item that you want to add to display stock line "
+            f"{line.name}.")
     else:
         # This is the only display stock line with this stock type.
         # Pick up all the unallocated stock of this type.
@@ -255,14 +255,13 @@ def add_display_line_stock(line):
             ui.infopopup(
                 ["The following stock items were added to {}: {}".format(
                     line.name, ', '.join(str(s.id) for s in new_stock))],
-                title="Stock added to {}".format(line.name),
+                title=f"Stock added to {line.name}",
                 colour=ui.colour_confirm,
                 dismiss=keyboard.K_CASH)
         else:
             ui.infopopup(
-                ["There was no stock available to be added to {}.".format(
-                    line.name)],
-                title="No stock added to {}".format(line.name),
+                [f"There was no stock available to be added to {line.name}."],
+                title=f"No stock added to {line.name}",
                 colour=ui.colour_confirm,
                 dismiss=keyboard.K_CASH)
 
@@ -303,7 +302,7 @@ def remove_display_line_stockitem(line, item):
     td.s.flush()
     ui.infopopup(
         ["Stock item {} ({}) has been removed from line {}.{}".format(
-            item.id, item.stocktype.format(), line.name, displaynote)],
+            item.id, item.stocktype, line.name, displaynote)],
         title="Stock removed from line",
         colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
@@ -386,7 +385,7 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
                 item.onsale = datetime.datetime.now()
                 td.s.add(StockAnnotation(
                     stockitem=item, atype="start",
-                    text="{} (auto-allocate)".format(line.name),
+                    text=f"{line.name} (auto-allocate)",
                     user=dbu))
                 done.append(item)
             else:
@@ -400,7 +399,7 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
                    "display lines:", ""]
             msg = msg + [
                 "{} {} -> {}".format(
-                    item.id, item.stocktype.format(), item.stockline.name)
+                    item.id, item.stocktype, item.stockline.name)
                 for item in done]
         if done and manual:
             msg = msg + [""]
@@ -412,7 +411,7 @@ def auto_allocate_internal(deliveryid=None, message_on_no_work=True):
                    "one possible choice:", ""]
             msg = msg + [
                 "{} {} -> {}".format(
-                    item.id, item.stocktype.format(),
+                    item.id, item.stocktype,
                     " or ".join(line.name for line in st[item.stocktype]))
                 for item in manual]
         ui.infopopup(msg, title="Auto-allocate confirmation",

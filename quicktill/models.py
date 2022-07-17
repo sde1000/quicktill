@@ -34,8 +34,8 @@ qty_max_digits = 8
 qty_decimal_places = 1
 
 # Used for quantization of money
-zero = Decimal("0.{}".format("0" * money_decimal_places))
-penny = Decimal("0.{}1".format("0" * (money_decimal_places - 1)))
+zero = Decimal(f"0.{'0' * money_decimal_places}")
+penny = Decimal(f"0.{'0' * (money_decimal_places - 1)}1")
 
 # Common column types
 money = Numeric(money_max_digits, money_decimal_places)
@@ -256,7 +256,7 @@ class Session(Base, Logged):
 
     def tillweb_nav(self):
         return [("Sessions", self.get_view_url("tillweb-sessions")),
-                ("{} ({})".format(self.id, self.date),
+                (f"{self.id} ({self.date})",
                  self.get_absolute_url())]
 
     incomplete_transactions = relationship(
@@ -879,7 +879,7 @@ class Department(Base, Logged):
 
     def tillweb_nav(self):
         return [("Departments", self.get_view_url("tillweb-departments")),
-                ("{}. {}".format(self.id, self.description),
+                (f"{self.id}. {self.description}",
                  self.get_absolute_url())]
 
     @property
@@ -983,8 +983,7 @@ class Transline(Base, Logged):
 
     def tillweb_nav(self):
         return self.transaction.tillweb_nav() \
-            + [("Line {}{}".format(
-                self.id, " (VOIDED)" if self.voided_by else ""),
+            + [(f"Line {self.id}{' (VOIDED)' if self.voided_by else ''}",
                 self.get_absolute_url())]
 
     @property
@@ -1298,10 +1297,10 @@ class StockLine(Base, Logged):
         """Useful information about the line type"""
         if self.linetype == "regular":
             if self.pullthru:
-                return "Regular (pullthru {})".format(self.pullthru)
+                return f"Regular (pullthru {self.pullthru})"
             return "Regular"
         elif self.linetype == "display":
-            return "Display (capacity {})".format(self.capacity)
+            return f"Display (capacity {self.capacity})"
         elif self.linetype == "continuous":
             return "Continuous"
         else:
@@ -1584,7 +1583,7 @@ class Delivery(Base, Logged):
 
     def tillweb_nav(self):
         return [("Deliveries", self.get_view_url("tillweb-deliveries")),
-                ("{} ({} {})".format(self.id, self.supplier.name, self.date),
+                (f"{self.id} ({self.supplier.name} {self.date})",
                  self.get_absolute_url())]
 
     @property
@@ -1803,10 +1802,10 @@ class Unit(Base, Logged):
 
     def format_qty(self, qty):
         if qty < self.units_per_item and qty != 0:
-            return "{} {}".format(qty, self.name)
+            return f"{qty} {self.name}"
         n = self.item_name if qty == self.units_per_item \
             else self.item_name_plural
-        return "{:0.1f} {}".format(qty / self.units_per_item, n)
+        return f"{qty / self.units_per_item:0.1f} {n}"
 
     def __str__(self):
         return self.name

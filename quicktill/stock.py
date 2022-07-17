@@ -19,39 +19,35 @@ checkdigit_on_usestock = config.BooleanConfigItem(
 def stockinfo_linelist(sn):
     s = td.s.query(StockItem).get(sn)
     l = []
-    l.append(ui.lrline("{} - {} - {}".format(
-        s.stocktype.format(), s.id, s.description)))
-    l.append("Sells for %s%s.  "
-             "%s %ss used; %s %ss remaining." % (
+    l.append(ui.lrline(f"{s.stocktype} - {s.id} - {s.description}"))
+    l.append("Sells for {}{}.  "
+             "{} used; {} remaining.".format(
                  tillconfig.currency(), s.stocktype.pricestr,
-                 s.used, s.stocktype.unit.name,
-                 s.remaining, s.stocktype.unit.name))
+                 s.stocktype.unit.format_qty(s.used),
+                 s.stocktype.unit.format_qty(s.remaining)))
     l.append("")
-    l.append("Delivered %s by %s" % (s.delivery.date, s.delivery.supplier.name))
+    l.append(f"Delivered {s.delivery.date} by {s.delivery.supplier.name}")
     if s.bestbefore:
-        l.append("Best Before %s" % s.bestbefore)
+        l.append(f"Best Before {s.bestbefore}")
     if s.onsale:
-        l.append("Put on sale {:%c}".format(s.onsale))
+        l.append(f"Put on sale {s.onsale:%c}")
     if s.firstsale:
-        l.append("First sale: {:%c} Last sale: {:%c}".format(
-            s.firstsale, s.lastsale))
+        l.append(f"First sale: {s.firstsale:%c} Last sale: {s.lastsale:%c}")
     if s.finished:
-        l.append("Finished {:%c} {}".format(
-            s.finished, s.finishcode.description))
+        l.append(f"Finished {s.finished:%c} {s.finishcode.description}")
     l.append("")
     for code, qty in s.removed:
-        l.append("%s: %s" % (code.reason, qty))
+        l.append(f"{code.reason}: {s.stocktype.unit.format_qty(qty)}")
     if len(s.annotations) > 0:
         l.append("Annotations:")
     for a in s.annotations:
-        l.append(ui.lrline("{:%c}{}: {}".format(
-            a.time, a.type.description, a.text)))
+        l.append(ui.lrline(f"{a.time:%c}{a.type.description}: {a.text}"))
     return l
 
 
 def stockinfo_popup(sn):
     ui.listpopup(stockinfo_linelist(sn),
-                 title="Stock Item {}".format(sn),
+                 title=f"Stock Item {sn}",
                  dismiss=keyboard.K_CASH,
                  show_cursor=False,
                  colour=ui.colour_info)
@@ -110,8 +106,8 @@ class annotate(user.permission_checked, ui.dismisspopup):
         td.s.flush()
         self.dismiss()
         ui.infopopup(
-            ["Recorded annotation against stock item %d (%s)." % (
-                item.id, item.stocktype.format())],
+            [f"Recorded annotation against stock item {item.id} "
+             f"({item.stocktype})."],
             title="Annotation Recorded", dismiss=keyboard.K_CASH,
             colour=ui.colour_info)
 
@@ -321,7 +317,7 @@ class stockpicker(ui.dismisspopup):
                            .options(undefer('remaining'))[:100]
         f = ui.tableformatter(' r l c ')
         sl = [(f(s.id, s.stocktype.format(),
-                 "{} {}s".format(s.remaining, s.stocktype.unit.name)),
+                 s.stocktype.unit.format_qty(s.remaining)),
                self.item_chosen, (s.id,)) for s in items]
         ui.menu(sl, title=self.title)
 
@@ -347,14 +343,15 @@ class stockpicker(ui.dismisspopup):
             item = line.stockonsale[0]
             problem = self.filter.item_problem(item)
             if problem:
-                ui.infopopup(["You can't choose {}: {}".format(
-                    item.stocktype.format(), problem)], title="Error")
+                ui.infopopup(
+                    [f"You can't choose {item.stocktype}: {problem}"],
+                    title="Error")
                 return
             self.item_chosen(item.id)
         else:
             ui.infopopup(
-                ["There's more than one stock item on sale on {}".format(
-                    line.name)], title="Error")
+                [f"There's more than one stock item on sale on {line.name}"],
+                title="Error")
 
     def keypress(self, k):
         if hasattr(k, 'line'):
@@ -407,8 +404,8 @@ class stockfield(ui.modelpopupfield):
             self.setf(item)
         else:
             ui.infopopup(
-                ["There's more than one stock item on sale on {}".format(
-                    line.name)], title="Error")
+                [f"There's more than one stock item on sale on {line.name}"],
+                title="Error")
 
     def keypress(self, k):
         if hasattr(k, 'line'):

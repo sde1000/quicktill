@@ -373,9 +373,10 @@ class record(ui.dismisspopup):
             r = pm.pm.commit_total(self.session, pm.actual_total)
             if r is not None:
                 td.s.rollback()
-                ui.infopopup(["Totals not recorded: {} payment method "
-                              "says {}".format(pm.pm.description, r)],
-                             title="Payment method error")
+                ui.infopopup(
+                    [f"Totals not recorded: {pm.pm.description} payment "
+                     f"method says {r}"],
+                    title="Payment method error")
                 return
         self.dismiss()
         for i in SessionHooks.instances:

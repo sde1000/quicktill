@@ -76,7 +76,7 @@ class twitter_auth(cmdline.command):
         resource_owner_key = fetch_response.get('oauth_token')
         resource_owner_secret = fetch_response.get('oauth_token_secret')
         authorize_url = oauth.authorization_url(base_authorize_url)
-        print("Please visit this URL: {}".format(authorize_url))
+        print(f"Please visit this URL: {authorize_url}")
         verifier = input("Enter the PIN from Twitter: ")
         oauth = OAuth1Session(
             args.consumer_key,
@@ -95,8 +95,8 @@ class twitter_auth(cmdline.command):
             oauth_token_secret=resource_owner_secret)
         user = tapi.verify_credentials()
 
-        print("Paste the following to enable Twitter access as @{}:".format(
-            user['screen_name']))
+        print(f"Paste the following to enable Twitter access "
+              f"as @{user['screen_name']}:")
         print(f"""
         tapi = quicktill.extras.twitter_api(
             token='{resource_owner_key}',
@@ -209,8 +209,8 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
 
     def reply(self):
         # Fill field with reply info
-        self.tfield.set("@{}: ".format(
-            self.timeline[self.tweets.cursor]["user"]["screen_name"]))
+        self.tfield.set(
+            f'@{self.timeline[self.tweets.cursor]["user"]["screen_name"]}: ')
         self.tfield.focus()
 
     def refresh(self):

@@ -308,11 +308,11 @@ class bufferline(ui.lrline):
     def display(self, width):
         self.update()  # clear cached outputs
         if self.reg.qty is not None:
-            m = "{} of ".format(self.reg.qty)
+            m = f"{self.reg.qty} of "
         else:
             m = ""
         if self.reg.mod is not None:
-            m = m + "{} ".format(self.reg.mod.name)
+            m = m + f"{self.reg.mod.name} "
         if self.reg.buf is not None:
             m = m + self.reg.buf
         if len(m) > 0:
@@ -327,9 +327,9 @@ class bufferline(ui.lrline):
                     'suppress-refund-help-text'):
                 self.ltext = self.reg.refund_help_text
         if self.reg.ml:
-            self.rtext = "{} {}".format(
-                "Marked lines total",
-                tillconfig.fc(self.reg._total_value_of_marked_translines()))
+            self.rtext = \
+                f"Marked lines total "\
+                f"{tillconfig.fc(self.reg._total_value_of_marked_translines())}"
         else:
             log.debug("bal %s", repr(tillconfig.fc(self.reg.balance)))
             if self.reg.balance > zero:
@@ -339,8 +339,7 @@ class bufferline(ui.lrline):
                     if self.reg.discount_policy else "",
                     tillconfig.fc(self.reg.balance))
             elif self.reg.balance < zero:
-                self.rtext = "Refund amount {}".format(
-                    tillconfig.fc(self.reg.balance))
+                self.rtext = f"Refund amount {tillconfig.fc(self.reg.balance)}"
             else:
                 self.rtext = ""
         # Add the expected blank line
@@ -468,7 +467,7 @@ class addtransline(user.permission_checked, ui.dismisspopup):
                 keyboard.K_CLEAR: (self.dismiss, None)})
         self.descfield = ui.editfield(3, 15, 53, flen=300)
         self.itemsfield = ui.editfield(4, 15, 5, validate=ui.validate_int)
-        self.win.addstr(4, 21, "items @ {}".format(tillconfig.currency))
+        self.win.addstr(4, 21, f"items @ {tillconfig.currency}")
         self.amountfield = ui.editfield(4, 29 + len(tillconfig.currency()), 8,
                                         validate=ui.validate_positive_float)
         self.win.addstr(4, 38 + len(tillconfig.currency()), '=')
@@ -561,14 +560,13 @@ def no_saleprice_popup(user, stocktype):
     missing sale price.  Offer to let the user set it if they have the
     appropriate permissions.
     """
+    ist = stocktype
     if user.may('override-price') and user.may('reprice-stock'):
-        ist = stocktype
         ui.infopopup(
-            ["No sale price has been set for {}.  You can enter a price "
-             "before pressing the line key to set the price just this once, "
-             "or you can press {} now to set the price permanently.".format(
-                 ist.format(),
-                 keyboard.K_MANAGESTOCK.keycap)],
+            [f"No sale price has been set for {ist}.  You can enter a price "
+             f"before pressing the line key to set the price just this once, "
+             f"or you can press {keyboard.K_MANAGESTOCK} now to set "
+             f"the price permanently."],
             title="Unpriced item found", keymap={
                 keyboard.K_MANAGESTOCK: (
                     lambda: quicktill.stocktype.reprice_stocktype(ist),
@@ -937,8 +935,8 @@ class page(ui.basicpage):
             if kb.modifier not in modifiers.all:
                 log.error("Missing modifier '%s'", kb.modifier)
                 ui.infopopup(
-                    ["The modifer '{}' can't be found.  This is a till "
-                     "configuration error.".format(kb.modifier)],
+                    [f"The modifer '{kb.modifier}' can't be found.  This is "
+                     f"a till configuration error."],
                     title="Missing modifier")
                 return
             mod = modifiers.all[kb.modifier]
@@ -1015,36 +1013,31 @@ class page(ui.basicpage):
         explicitprice = strtoamount(buf)
         if explicitprice == zero:
             ui.infopopup(
-                ["You can't override the price of an item to be zero.  "
-                 "You should use the {} key instead to say why we're "
-                 "giving this item away.".format(
-                     keyboard.K_WASTE.keycap)],
+                [f"You can't override the price of an item to be zero.  "
+                 f"You should use the {keyboard.K_WASTE} key instead "
+                 f"to say why we're giving this item away."],
                 title="Zero price not allowed")
             return
         if not self.user.may(permission_required):
             ui.infopopup(
-                ["You don't have permission to override the price of "
-                 "this item to {}.  Did you mean to press the {} key "
-                 "to enter a number of items instead?".format(
-                     tillconfig.fc(explicitprice),
-                     keyboard.K_QUANTITY.keycap)],
+                [f"You don't have permission to override the price of "
+                 f"this item to {tillconfig.fc(explicitprice)}.  Did you "
+                 f"mean to press the {keyboard.K_QUANTITY} key "
+                 f"to enter a number of items instead?"],
                 title="Permission required")
             return
         if department.minprice and explicitprice < department.minprice:
             ui.infopopup(
-                ["Your price of {} per item is too low for {}.  "
-                 "Did you mean to press the {} key to enter a number "
-                 "of items instead?".format(
-                     tillconfig.fc(explicitprice),
-                     department.description,
-                     keyboard.K_QUANTITY.keycap)],
+                [f"Your price of {tillconfig.fc(explicitprice)} per item "
+                 f"is too low for {department.description}.  Did you mean "
+                 f"to press the {keyboard.K_QUANTITY} key to enter "
+                 f"a number of items instead?"],
                 title="Price too low")
             return
         if department.maxprice and explicitprice > department.maxprice:
             ui.infopopup(
-                ["Your price of {} per item is too high for {}.".format(
-                    tillconfig.fc(explicitprice),
-                    department.description)],
+                [f"Your price of {tillconfig.fc(explicitprice)} per item "
+                 f"is too high for {department.description}."],
                 title="Price too high")
             return
         log.info("Register: manual price override to %s by %s",
@@ -1122,10 +1115,10 @@ class page(ui.basicpage):
                         return
                     except InvalidSale as i:
                         ui.infopopup(
-                            ["The '{}' modifier left the Proposed Sale object "
-                             "in an invalid state.  This is an error in the "
-                             "till configuration.  The invalid state is: {}"
-                             .format(mod.name, i.msg)],
+                            [f"The '{mod.name}' modifier left the Proposed "
+                             f"Sale object in an invalid state.  This is an "
+                             f"error in the till configuration.  The "
+                             f"invalid state is: {i.msg}"],
                             title="Till configuration error")
                         return
             except Exception:
@@ -1300,9 +1293,9 @@ class page(ui.basicpage):
             for stockitem, items_to_sell in sell:
                 if items_to_sell > max_quantity:
                     ui.infopopup(
-                        ["You can't sell {} {}s of {} in one go.".format(
-                            items_to_sell, stockitem.stocktype.unit.name,
-                            stockitem.stocktype.format())],
+                        [f"You can't sell "
+                         f"{stockitem.stocktype.unit.format_qty(items_to_sell)}"
+                         f" of {stockitem.stocktype} in one go."],
                         title="Error")
                     return
             tl = Transline(
@@ -1369,7 +1362,7 @@ class page(ui.basicpage):
             ui.infopopup(
                 [f"No stock is registered for {stockline.name}.",
                  f"To tell the till about stock on sale, "
-                 f"press the '{keyboard.K_USESTOCK.keycap}' button after "
+                 f"press the '{keyboard.K_USESTOCK}' button after "
                  f"dismissing this message."],
                 title=f"{stockline.name} has no stock")
             return
@@ -1401,10 +1394,10 @@ class page(ui.basicpage):
                         return
                     except InvalidSale as i:
                         ui.infopopup(
-                            ["The '{}' modifier left the Proposed Sale object "
-                             "in an invalid state.  This is an error in the "
-                             "till configuration.  The invalid state is: {}"
-                             .format(mod.name, i.msg)],
+                            [f"The '{mod.name}' modifier left the Proposed "
+                             f"Sale object in an invalid state.  This is "
+                             f"an error in the till configuration.  The "
+                             f"invalid state is: {i.msg}"],
                             title="Till configuration error")
                         return
             except Exception:
@@ -1433,11 +1426,11 @@ class page(ui.basicpage):
         # This _should_ only be the case with display stocklines.
         if unallocated > 0:
             ui.infopopup(
-                ["There are fewer than {} items of {} on display.  "
-                 "If you have recently put more stock on display you "
-                 "must tell the till about it using the 'Use Stock' "
-                 "button after dismissing this message.".format(
-                     total_qty, stockline.name)],
+                [f"There are fewer than {total_qty} items of "
+                 f"{stockline.name} on display.  "
+                 f"If you have recently put more stock on display you "
+                 f"must tell the till about it using the 'Use Stock' "
+                 f"button after dismissing this message."],
                 title="Not enough stock on display")
             return
         if len(sell) == 0:
@@ -1445,7 +1438,7 @@ class page(ui.basicpage):
             ui.infopopup(
                 [f"No stock is registered for {stockline.name}.",
                  f"To tell the till about stock on sale, "
-                 f"press the '{keyboard.K_USESTOCK.keycap}' button after "
+                 f"press the '{keyboard.K_USESTOCK}' button after "
                  f"dismissing this message."],
                 title=f"{stockline.name} has no stock")
             return
@@ -1499,17 +1492,14 @@ class page(ui.basicpage):
             item = sell[0][0]
             if td.stock_checkpullthru(item.id, '11:00:00'):
                 ui.infopopup(
-                    ["According to the till records, {} hasn't been "
-                     "sold or pulled through in the last 11 hours.  "
-                     "Would you like to record that you've pulled "
-                     "through {} {}s?".format(
-                         item.stocktype.format(),
-                         stockline.pullthru,
-                         item.stocktype.unit.name),
+                    [f"According to the till records, {item.stocktype} "
+                     f"hasn't been sold or pulled through in the last "
+                     f"11 hours.  Would you like to record that you've "
+                     f"pulled through "
+                     f"{item.stocktype.unit.format_qty(stockline.pullthru)}?",
                      "",
-                     "Press '{}' if you do, or {} if you don't.".format(
-                         keyboard.K_WASTE.keycap,
-                         keyboard.K_CLEAR.keycap)],
+                     f"Press '{keyboard.K_WASTE}' if you do, or "
+                     f"{keyboard.K_CLEAR} if you don't."],
                     title="Pull through?", colour=ui.colour_input,
                     keymap={
                         keyboard.K_WASTE:
@@ -1522,9 +1512,9 @@ class page(ui.basicpage):
             for stockitem, items_to_sell in sell:
                 if items_to_sell > max_quantity:
                     ui.infopopup(
-                        ["You can't sell {} {}s of {} in one go.".format(
-                            items_to_sell, stockitem.stocktype.unit.name,
-                            stockitem.stocktype.format())],
+                        [f"You can't sell {items_to_sell} "
+                         f"{stockitem.stocktype.unit.name}s of "
+                         f"{stockitem.stocktype} in one go."],
                         title="Error")
                     return
             tl = Transline(
@@ -1558,22 +1548,21 @@ class page(ui.basicpage):
             # We are using the last value of so from either the
             # previous for loop, or the handling of may_repeat
             stockitem = so.stockitem
-            self.prompt = "{}: {} of {} remaining".format(
-                stockline.name,
-                stockitem.stocktype.unit.format_qty(stockitem.remaining),
-                stockitem.stocktype.format())
+            self.prompt = f"{stockline.name}: "\
+                f"{stockitem.stocktype.unit.format_qty(stockitem.remaining)} "\
+                f"of {stockitem.stocktype} remaining"
             if stockitem.remaining < Decimal("0.0"):
                 ui.infopopup(
-                    ["There appears to be {} {}s of {} left!  Please "
+                    ["There appears to be {} of {} left!  Please "
                      "check that you're still using stock item {}; if you've "
                      "started using a new item, tell the till about it "
                      "using the '{}' button after dismissing this "
                      "message.".format(
-                         stockitem.remaining,
-                         stockitem.stocktype.unit.name,
-                         stockitem.stocktype.format(),
+                         stockitem.stocktype.unit.format_qty(
+                             stockitem.remaining),
+                         stockitem.stocktype,
                          stockitem.id,
-                         keyboard.K_USESTOCK.keycap),
+                         keyboard.K_USESTOCK),
                      "", "If you don't understand this message, you MUST "
                      "call your manager to deal with it."],
                     title="Warning", dismiss=keyboard.K_USESTOCK)
@@ -1586,15 +1575,14 @@ class page(ui.basicpage):
                 stockline.stocktype.format())
             if remaining < Decimal("0.0"):
                 ui.infopopup(
-                    ["There appears to be {} {}s of {} left!  Please "
+                    ["There appears to be {} of {} left!  Please "
                      "check that you're still using {}; if you've "
                      "started using a new type of stock, tell the till "
                      "about it by changing the stock type of the "
                      "'{}' stock line after dismissing this message.".format(
-                         remaining,
-                         stockline.stocktype.unit.name,
-                         stockline.stocktype.format(),
-                         stockline.stocktype.format(),
+                         stockline.stocktype.unit.format_qty(remaining),
+                         stockline.stocktype,
+                         stockline.stocktype,
                          stockline.name),
                      "", "If you don't understand this message, you MUST "
                      "call your manager to deal with it."],
@@ -1885,7 +1873,7 @@ class page(ui.basicpage):
                 self.cursor_off()
                 self._redraw()
                 return
-            ui.infopopup(["You can't pay {}!".format(tillconfig.fc(zero)),
+            ui.infopopup([f"You can't pay {tillconfig.fc(zero)}!",
                           'If you meant "exact amount" then please '
                           'press Clear after dismissing this message, '
                           'and try again.'], title="Error")
@@ -2118,14 +2106,14 @@ class page(ui.basicpage):
                 return
             log.info("Register: cancelkey confirm kill "
                      "transaction %d", trans.id)
-            ui.infopopup(["Are you sure you want to {} all of "
-                          "transaction number {}?  Press Cash/Enter "
-                          "to confirm, or Clear to go back.".format(
-                              ("cancel", "void")[closed], trans.id)],
-                         title="Confirm Transaction Cancel",
-                         colour=ui.colour_confirm,
-                         keymap={
-                             keyboard.K_CASH: (self.canceltrans, None, True)})
+            ui.infopopup(
+                [f"Are you sure you want to {('cancel', 'void')[closed]} all "
+                 f"of transaction number {trans.id}?  Press Cash/Enter "
+                 f"to confirm, or Clear to go back."],
+                title="Confirm Transaction Cancel",
+                colour=ui.colour_confirm,
+                keymap={
+                    keyboard.K_CASH: (self.canceltrans, None, True)})
             return
         # The cursor is on a line.
         if closed:
@@ -2259,15 +2247,14 @@ class page(ui.basicpage):
             td.s.flush()
             if payments > zero:
                 printer.kickout()
-                refundtext = "{} had already been put in the " \
-                             "cash drawer.".format(tillconfig.fc(payments))
+                refundtext = f"{tillconfig.fc(payments)} had already been "\
+                    f"put in the cash drawer."
             else:
                 refundtext = ""
             self._clear()
             self._redraw()
             ui.infopopup(
-                ["Transaction number {} has been cancelled.  {}".format(
-                    tn, refundtext)],
+                [f"Transaction number {tn} has been cancelled.  {refundtext}"],
                 title="Transaction Cancelled",
                 dismiss=keyboard.K_CASH)
 
@@ -2741,11 +2728,11 @@ class page(ui.basicpage):
         user = td.s.query(User).filter(User.transaction == othertrans).first()
         if user:
             user.transaction = None
-            user.message = "Your transaction {} ({}) was taken over by {} " \
-                           "when they merged another transaction into it." \
-                           .format(
-                               othertrans.id, othertrans.notes or "no notes",
-                               self.user.fullname)
+            user.message = \
+                f"Your transaction {othertrans.id} " \
+                f"({othertrans.notes or 'no notes'}) was taken over " \
+                f"by {self.user.fullname} when they merged another " \
+                f"transaction into it."
         for line in list(trans.lines):
             line.transaction = othertrans
         for p in list(trans.payments):
@@ -2794,18 +2781,17 @@ class page(ui.basicpage):
                  "to the new transaction now, or {clear} to stay on the "
                  "current transaction.".format(
                      num=nt.id, note=nt.notes,
-                     recall=keyboard.K_RECALLTRANS.keycap,
-                     clear=keyboard.K_CLEAR.keycap)],
+                     recall=keyboard.K_RECALLTRANS,
+                     clear=keyboard.K_CLEAR)],
                 title="Transaction split", colour=ui.colour_info,
                 dismiss=keyboard.K_CLEAR, keymap={
                     keyboard.K_RECALLTRANS: (self.recalltrans, (nt.id,),
                                              True)})
         else:
             ui.infopopup(
-                ["The selected lines were moved to a new transaction, "
-                 "number {}, called '{}'.  You can find it using the "
-                 "{} button.".format(nt.id, nt.notes,
-                                     keyboard.K_RECALLTRANS.keycap)],
+                [f"The selected lines were moved to a new transaction, "
+                 f"number {nt.id}, called '{nt.notes}'.  You can find it "
+                 f"using the {keyboard.K_RECALLTRANS} button."],
                 title="Transaction split", colour=ui.colour_info,
                 dismiss=keyboard.K_CASH)
 

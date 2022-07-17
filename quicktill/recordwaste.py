@@ -148,12 +148,12 @@ class record_item_waste(ui.dismisspopup):
         # the amount wasted
         if item.stockline and item.stockline.linetype == "display":
             item.displayqty = item.displayqty_or_zero + amount
-        user.log(f"Recorded {amount} {item.stocktype.unit.name}s "
+        user.log(f"Recorded {item.stocktype.unit.format_qty(amount)} "
                  f"{waste} against stock item {item.logref}.")
         td.s.flush()
         self.dismiss()
         ui.infopopup(
-            [f"Recorded {amount:0.1f} {item.stocktype.unit.name}s "
+            [f"Recorded {item.stocktype.unit.format_qty(amount)} "
              f"against stock item {item.id} ({item.stocktype})."],
             title="Waste Recorded", dismiss=keyboard.K_CASH,
             colour=ui.colour_info)
@@ -215,9 +215,11 @@ class record_line_waste(ui.dismisspopup):
             return
         sell, unallocated, remaining = stockline.calculate_sale(amount)
         if unallocated > 0:
-            # XXX the grammar in this message isn't ideal...
-            ui.infopopup(["There is less than {} {}s on display.".format(
-                amount, stockline.sale_stocktype.unit.name)], title="Error")
+            ui.infopopup(
+                [f"There is less than "
+                 f"{stockline.sale_stocktype.unit.format_qty(amount)} "
+                 f"on display."],
+                title="Error")
             self.amountfield.set("")
             return
         if not sell:
@@ -233,13 +235,14 @@ class record_line_waste(ui.dismisspopup):
                 return
         for item, qty in sell:
             td.s.add(StockOut(stockitem=item, removecode=waste, qty=qty))
-        user.log(f"Recorded {amount} {stockline.sale_stocktype.unit.name}s "
-                 f"{waste} against stock line {stockline.logref}.")
+        user.log(
+            f"Recorded {stockline.sale_stocktype.unit.format_qty(amount)} "
+            f"{waste} against stock line {stockline.logref}.")
         td.s.flush()
         self.dismiss()
         ui.infopopup(
-            ["Recorded {} {}s against stock line {}.".format(
-                amount, stockline.sale_stocktype.unit.name, stockline.name)],
+            [f"Recorded {stockline.sale_stocktype.unit.format_qty(amount)} "
+             f"against stock line {stockline.name}."],
             title="Waste Recorded", dismiss=keyboard.K_CASH,
             colour=ui.colour_info)
 

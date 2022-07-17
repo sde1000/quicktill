@@ -574,11 +574,11 @@ class XeroIntegration:
             raise XeroError("Xero rejected invoice: {}".format(
                 ", ".join(messages)))
         if r.status_code != 200:
-            raise XeroError("Received {} response".format(r.status_code))
+            raise XeroError(f"Received {r.status_code} response")
         root = fromstring(r.text)
         if root.tag != "Response":
-            raise XeroError("Response root tag '{}' was not 'Response'".format(
-                root.tag))
+            raise XeroError(
+                f"Response root tag '{root.tag}' was not 'Response'")
         i = root.find("./Invoices/Invoice")
         if not i:
             raise XeroError("Response did not contain invoice details")
@@ -669,7 +669,7 @@ class XeroIntegration:
             li = SubElement(litems, "LineItem")
             li.append(_textelem(
                 "Description",
-                item.stocktype.format() + " " + item.description))
+                f"{item.stocktype} {item.description}"))
             li.append(_textelem(
                 "AccountCode",
                 self._purchases_account_for_department(
@@ -692,11 +692,11 @@ class XeroIntegration:
             raise XeroError("Xero rejected invoice: {}".format(
                 ", ".join(messages)))
         if r.status_code != 200:
-            raise XeroError("Received {} response".format(r.status_code))
+            raise XeroError(f"Received {r.status_code} response")
         root = fromstring(r.text)
         if root.tag != "Response":
-            raise XeroError("Response root tag '{}' was not 'Response'".format(
-                root.tag))
+            raise XeroError(
+                f"Response root tag '{root.tag}' was not 'Response'")
         i = root.find("./Invoices/Invoice")
         if not i:
             raise XeroError("Response did not contain invoice details")
@@ -709,10 +709,10 @@ class XeroIntegration:
     def _send_delivery(self, deliveryid):
         d = td.s.query(Delivery).get(deliveryid)
         if not d.supplier.accinfo:
-            ui.infopopup(["Couldn't send delivery {} to Xero; supplier {} "
-                          "is not linked to a Xero contact.".format(
-                              deliveryid, d.supplier.name)],
-                         title="Error")
+            ui.infopopup(
+                [f"Couldn't send delivery {deliveryid} to Xero; supplier "
+                 f"{d.supplier.name} is not linked to a Xero contact."],
+                title="Error")
             return
         with ui.exception_guard("sending bill for delivery to Xero"):
             iid = self._create_bill_for_delivery(deliveryid)
@@ -728,15 +728,15 @@ class XeroIntegration:
             XERO_ENDPOINT_URL + "Contacts/", params={
                 "where": w, "order": "Name"})
         if r.status_code != 200:
-            ui.infopopup(["Failed to retrieve contacts from Xero: "
-                          "error code {}".format(r.status_code)],
+            ui.infopopup([f"Failed to retrieve contacts from Xero: "
+                          f"error code {r.status_code}"],
                          title="Xero Error")
             return
         root = fromstring(r.text)
         if root.tag != "Response":
-            ui.infopopup(["Failed to retrieve contacts from Xero: "
-                          "root element of response was '{}' instead of "
-                          "'Response'".format(root.tag)],
+            ui.infopopup([f"Failed to retrieve contacts from Xero: "
+                          f"root element of response was '{root.tag}' "
+                          f"instead of 'Response'"],
                          title="Xero Error")
             return
         contacts = root.find("Contacts")
@@ -745,24 +745,25 @@ class XeroIntegration:
         else:
             cl = []
         if len(cl) == 0:
-            ui.infopopup(["There are no Xero contacts matching '{}'.  You "
-                          "could try renaming the contact in Xero to match "
-                          "the till, or renaming the supplier in the till "
-                          "to match Xero.".format(s.name)],
-                         title="No Matching Contacts")
+            ui.infopopup(
+                [f"There are no Xero contacts matching '{s.name}'.  You "
+                 f"could try renaming the contact in Xero to match "
+                 f"the till, or renaming the supplier in the till "
+                 f"to match Xero."],
+                title="No Matching Contacts")
             return
         ml = [(c.find("Name").text, self._finish_link_supplier_with_contact,
                (supplierid, c.find("Name").text, c.find("ContactID").text))
               for c in cl]
         ui.menu(
             ml, title="Choose matching contact",
-            blurb="Choose the Xero contact to link to the supplier '{}'".format(
-                s.name))
+            blurb=f"Choose the Xero contact to link to the supplier "
+            f"'{s.name}'")
 
     def _finish_link_supplier_with_contact(self, supplierid, name, contactid):
         s = td.s.query(Supplier).get(supplierid)
         if not s:
-            ui.infopopup(["Supplier {} not found.".format(supplierid)],
+            ui.infopopup([f"Supplier {supplierid} not found."],
                          title="Error")
             return
         if s.accinfo == contactid:
@@ -791,16 +792,17 @@ class XeroIntegration:
             return True
         r = self.xero_session().get(XERO_ENDPOINT_URL + "Organisation/")
         if r.status_code != 200:
-            ui.infopopup(["Failed to retrieve organisation details from Xero: "
-                          "error code {}".format(r.status_code)],
+            ui.infopopup([f"Failed to retrieve organisation details from Xero: "
+                          f"error code {r.status_code}"],
                          title="Xero Error")
             return
         root = fromstring(r.text)
         if root.tag != "Response":
-            ui.infopopup(["Failed to retrieve organisation details from Xero: "
-                          "root element of response was '{}' instead of "
-                          "'Response'".format(root.tag)],
-                         title="Xero Error")
+            ui.infopopup(
+                [f"Failed to retrieve organisation details from Xero: "
+                 f"root element of response was '{root.tag}' instead of "
+                 f"'Response'"],
+                title="Xero Error")
             return
         org = None
         orgs = root.find("Organisations")
@@ -813,8 +815,8 @@ class XeroIntegration:
             return
 
         ui.infopopup(["Successfully connected to Xero.", "",
-                      "Organisation name: {}".format(_fieldtext(org, "Name")),
-                      "Short code: {}".format(_fieldtext(org, "ShortCode"))],
+                      f"Organisation name: {_fieldtext(org, 'Name')}",
+                      f"Short code: {_fieldtext(org, 'ShortCode')}"],
                      title="Connected to Xero", colour=ui.colour_info,
                      dismiss=keyboard.K_CASH)
 
@@ -830,12 +832,12 @@ class XeroWebInfo:
 
     def _wrap(self, url):
         if self.shortcode:
-            url = "/organisationlogin/default.aspx?shortcode={}"\
-                  "&redirecturl={}".format(self.shortcode, url)
+            url = f"/organisationlogin/default.aspx?shortcode={self.shortcode}"\
+                  f"&redirecturl={url}"
         return "https://go.xero.com" + url
 
     def _url_for_id(self, id, doctype):
-        url = "/{}/View.aspx?InvoiceID={}".format(doctype, id)
+        url = f"/{doctype}/View.aspx?InvoiceID={id}"
         return self._wrap(url)
 
     def url_for_invoice(self, id):

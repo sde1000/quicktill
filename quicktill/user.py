@@ -132,15 +132,13 @@ class permission_required:
                 u = ui.current_user()
                 if u:
                     ui.infopopup(
-                        ["{user} does not have the '{req}' permission "
-                         "which is required for this operation.".format(
-                             user=u.fullname, req=self._action)],
+                        [f"{u.fullname} does not have the '{self._action}' "
+                         f"permission which is required for this operation."],
                         title="Not allowed")
                 else:
                     ui.infopopup(
-                        ["This operation needs the '{req}' permission, "
-                         "but there is no current user.".format(
-                             req=self._action)],
+                        [f"This operation needs the '{self._action}' "
+                         f"permission, but there is no current user."],
                         title="Not allowed")
         permission_check.allowed = allowed
         return permission_check
@@ -228,12 +226,11 @@ class built_in_user:
         def pl_display(perm):
             pl = sorted(perm)
             if pl:
-                return ["  {0} ({1})".format(
-                    x, action_descriptions[x]) for x in pl]
+                return [f"  {x} ({action_descriptions[x]})" for x in pl]
             else:
                 return ["  (None)"]
-        info = ["Full name: {}".format(self.fullname),
-                "Short name: {}".format(self.shortname), ""]
+        info = [f"Full name: {self.fullname}",
+                f"Short name: {self.shortname}", ""]
         if self.is_superuser:
             info.append("Has all permissions.")
         else:
@@ -292,7 +289,7 @@ class token:
         return hash(self.usertoken)
 
     def __repr__(self):
-        return "token('{}')".format(self.usertoken)
+        return f"token('{self.usertoken}')"
 
 
 class tokenkey(token):
@@ -316,7 +313,7 @@ class tokenlistener:
 
     def doread(self):
         d = self.s.recv(1024).strip().decode("utf-8")
-        debug_log.debug("Received: {}".format(repr(d)))
+        debug_log.debug(f"Received: {repr(d)}")
         if d:
             ui.unblank_screen()
             with td.orm_session():
@@ -332,16 +329,16 @@ def user_from_token(t):
                        joinedload('user.permissions'))\
               .get(t.usertoken)
     if not dbt:
-        ui.toast("User token '{}' not recognised.".format(t.usertoken))
+        ui.toast(f"User token '{t.usertoken}' not recognised.")
         return
     dbt.last_seen = datetime.datetime.now()
     u = dbt.user
     if not u:
-        ui.toast("User token '{}' ({}) is not assigned to a user".format(
-            t.usertoken, dbt.description))
+        ui.toast(f"User token '{t.usertoken}' ({dbt.description}) is not "
+                 f"assigned to a user")
         return
     if not u.enabled:
-        ui.toast("User '{}' is not active.".format(u.fullname))
+        ui.toast(f"User '{u.fullname}' is not active.")
         return
     return database_user(u)
 

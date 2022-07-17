@@ -569,19 +569,19 @@ class message(user.permission_checked, ui.dismisspopup):
                 with kp as d:
                     if self.onfield.f:
                         d.printline(
-                            "\tMessage about order {}".format(self.onfield.f),
+                            f"\tMessage about order {self.onfield.f}",
                             colour=1, emph=1)
                     else:
                         d.printline("\tMessage", colour=1, emph=1)
                     d.printline()
-                    d.printline("\t%s" % ui.formattime(datetime.datetime.now()))
+                    d.printline(f"\t{ui.formattime(datetime.datetime.now())}")
                     d.printline()
                     user = ui.current_user()
                     if user:
-                        d.printline("\t{}".format(user.shortname))
+                        d.printline(f"\t{user.shortname}")
                         d.printline()
                     if self.messagefield.f:
-                        d.printline("\t{}".format(self.messagefield.f))
+                        d.printline(f"\t{self.messagefield.f}")
                         d.printline()
                     d.printline()
             ui.infopopup(["The message has been printed in the kitchen."],

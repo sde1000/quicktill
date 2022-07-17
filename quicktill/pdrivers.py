@@ -211,7 +211,7 @@ class nullprinter(printer):
     """
     def __init__(self, name=None, description=None):
         if name:
-            self._name = "nullprinter {}".format(name)
+            self._name = f"nullprinter {name}"
         else:
             self._name = "nullprinter"
         super().__init__(_null_printer_driver(), description)
@@ -247,7 +247,7 @@ class fileprinter(printer):
         super().__init__(driver, description=description)
 
     def __str__(self):
-        return self.description or "Print to file {}".format(self._filename)
+        return self.description or f"Print to file {self._filename}"
 
     def _getfilename(self):
         gi = glob.iglob(self._filename)
@@ -318,8 +318,7 @@ class linux_lpprinter(fileprinter):
             return str(e)
 
     def __str__(self):
-        return self.description or "Print to lp device {}".format(
-            self._filename)
+        return self.description or f"Print to lp device {self._filename}"
 
 
 class autodetect_printer:
@@ -420,8 +419,8 @@ class autodetect_printer:
             driver.kickout(f)
 
     def __str__(self):
-        return self.description or "one of: {}".format(', '.join(
-            (glob for glob, driver, status in self._printers)))
+        return self.description or "one of: " + ', '.join(
+            (glob for glob, driver, status in self._printers))
 
 
 class netprinter(printer):
@@ -434,8 +433,7 @@ class netprinter(printer):
         super().__init__(driver, description=description)
 
     def __str__(self):
-        return self.description or \
-            "Print to network {}".format(self._connection)
+        return self.description or f"Print to network {self._connection}"
 
     def offline(self):
         """Is the printer available?
@@ -445,7 +443,7 @@ class netprinter(printer):
         """
         host = self._connection[0]
         if not test_ping(host):
-            return "Printer {} did not respond to ping".format(host)
+            return f"Printer {host} did not respond to ping"
 
     def _connect(self):
         s = socket.socket(self._family)
@@ -508,8 +506,7 @@ class commandprinter(tmpfileprinter):
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        return self.description or "Print to command '{}'".format(
-            self._printcmd)
+        return self.description or f"Print to command '{self._printcmd}'"
 
     def finish(self, filename):
         with open('/dev/null', 'w') as null:
@@ -539,10 +536,10 @@ class cupsprinter(printer):
             self._connect_kwargs['encryption'] = encryption
 
     def __str__(self):
-        x = self.description or "Print to '{}'".format(self._printername)
+        x = self.description or f"Print to '{self._printername}'"
         o = self.offline()
         if o:
-            x = x + " (offline: {})".format(o)
+            x = x + f" (offline: {o})"
         return x
 
     def offline(self):
@@ -552,8 +549,7 @@ class cupsprinter(printer):
                 self._printername)['printer-is-accepting-jobs']
             if accepting:
                 return
-            return "'{}' is not accepting jobs at the moment".format(
-                self._printername)
+            return f"'{self._printername}' is not accepting jobs at the moment"
         except cups.IPPError as e:
             return str(e)
 
@@ -847,7 +843,7 @@ class Epson_TM_T20_driver(escpos):
             cpl = (48, 64)
             dpl = 576
         else:
-            raise Exception("Unknown paper width {}".format(paperwidth))
+            raise Exception(f"Unknown paper width {paperwidth}")
         escpos.__init__(self, cpl, dpl, coding, has_cutter=True,
                         lines_before_cut=0, default_font=0,
                         native_qrcode_support=True)
