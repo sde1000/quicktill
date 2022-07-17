@@ -251,7 +251,7 @@ class checkdb(cmdline.command):
             td.parse_database_name(tillconfig.database))
         try:
             current_schema = subprocess.check_output(
-                ["pg_dump", "-s"] + checkdb.connection_options(url))
+                ["pg_dump", "-s", "-O"] + checkdb.connection_options(url))
         except OSError as e:
             print("Couldn't run pg_dump on current database; "
                   "is pg_dump installed?")
@@ -270,7 +270,7 @@ class checkdb(cmdline.command):
             try:
                 models.metadata.create_all()
                 pristine_schema = subprocess.check_output(
-                    ["pg_dump", "-s", args.tempdb])
+                    ["pg_dump", "-s", "-O", args.tempdb])
                 models.metadata.drop_all()
             finally:
                 # If we don't explicitly close the connection to the
