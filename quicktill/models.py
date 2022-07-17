@@ -1878,8 +1878,6 @@ class StockType(Base, Logged):
     abv = Column(abv, nullable=True)
     unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     saleprice = Column(money, nullable=True)  # inc VAT
-    # Last time price was changed
-    pricechanged = Column(DateTime, nullable=True)
     stocktake_id = Column(
         Integer, ForeignKey('stocktakes.id', ondelete='SET NULL'),
         nullable=True)

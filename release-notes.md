@@ -8,6 +8,8 @@ What's new:
 
  * Ability to specify minimum and/or maximum ABV for a department
 
+ * `pricechanged` column of `stocktypes` is removed (it was unused)
+
 To upgrade the database:
 
  - run psql and give the following commands to the database:
@@ -18,6 +20,9 @@ BEGIN;
 ALTER TABLE departments
 	ADD COLUMN minabv numeric(3,1),
 	ADD COLUMN maxabv numeric(3,1);
+
+ALTER TABLE stocktypes
+	DROP COLUMN pricechanged;
 
 COMMIT;
 ```

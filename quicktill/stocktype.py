@@ -5,7 +5,6 @@ from . import ui, td, keyboard, tillconfig, user
 from .models import Department, Unit, StockType, StockItem, Delivery, penny
 from .plugins import ClassPluginMount
 from decimal import Decimal
-import datetime
 log = logging.getLogger(__name__)
 
 
@@ -323,7 +322,6 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
         oldprice = st.saleprice
         st.saleprice = Decimal(self.salefield.f).quantize(penny)
         if st.saleprice != oldprice:
-            st.pricechanged = datetime.datetime.now()
             user.log(
                 f"Changed sale price of {st.logref} from "
                 f"{tillconfig.fc(oldprice)} to {tillconfig.fc(st.saleprice)}")

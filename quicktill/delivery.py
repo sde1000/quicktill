@@ -482,7 +482,6 @@ class new_stockitem(ui.basicpopup):
                 f"{tillconfig.fc(saleprice)} while working on delivery "
                 f"{delivery.logref}")
             stocktype.saleprice = saleprice
-            stocktype.pricechanged = datetime.datetime.now()
         qty = int(self.qtyfield.f)
         items = delivery.add_items(stocktype, stockunit, qty, cost, bestbefore)
         td.s.flush()

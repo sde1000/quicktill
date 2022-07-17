@@ -1107,7 +1107,6 @@ def delivery(request, info, deliveryid):
                             f"{info.money}{cd['saleprice']} while working "
                             f"on delivery {d.logref}")
                         stocktype.saleprice = cd['saleprice']
-                        stocktype.pricechanged = datetime.datetime.now()
                     qty = cd['quantity']
                     d.add_items(stocktype, stockunit, qty, cd['costprice'],
                                 cd['bestbefore'])
@@ -1255,13 +1254,14 @@ def create_stocktype(request, info):
         form = NewStockTypeForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            s = StockType(department=cd['department'],
-                          manufacturer=cd['manufacturer'],
-                          name=cd['name'],
-                          abv=cd['abv'],
-                          unit=cd['unit'],
-                          saleprice=cd['saleprice'],
-                          pricechanged=datetime.datetime.now())
+            s = StockType(
+                department=cd['department'],
+                manufacturer=cd['manufacturer'],
+                name=cd['name'],
+                abv=cd['abv'],
+                unit=cd['unit'],
+                saleprice=cd['saleprice'],
+            )
             td.s.add(s)
             td.s.flush()
             user.log(f"Created stock type {s.logref}")
