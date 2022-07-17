@@ -7,27 +7,39 @@
 <table class="kvtable mb-2">
   <tr><th scope="row">Number:</th><td>{{department.id}}</td></tr>
   <tr><th scope="row">Description:</th><td>{{department.description}}</td></tr>
+  {% if department.minprice %}
   <tr>
     <th scope="row">Minimum price per item:</th>
-    {% if department.minprice %}
     <td>{{money}}{{department.minprice}}</td>
-    {% else %}
-    <td>None</td>
-    {% endif %}
   </tr>
+    {% endif %}
+  {% if department.maxprice %}
   <tr>
     <th scope="row">Maximum price per item:</th>
-    {% if department.maxprice %}
     <td>{{money}}{{department.maxprice}}</td>
-    {% else %}
-    <td>None</td>
-    {% endif %}
   </tr>
+  {% endif %}
+  {% if department.minabv %}
+  <tr>
+    <th scope="row">Minimum ABV of stock:</th>
+    <td>{{department.minabv}}%</td>
+  </tr>
+  {% endif %}
+  {% if department.maxabv %}
+  <tr>
+    <th scope="row">Maximum ABV of stock:</th>
+    <td>{{department.maxabv}}%</td>
+  </tr>
+  {% endif %}
+  {% if department.notes %}
   <tr><th scope="row">Notes:</th><td>{{department.notes}}</td></tr>
+  {% endif %}
+  {% if department.accinfo %}
   <tr>
     <th scope="row">Accounting system info:</th>
     <td>{{department.accinfo}}</td>
   </tr>
+  {% endif %}
   {% for desc, data in department.decoded_accinfo %}
   <tr><th scope="row">{{desc}}:</th><td>{{data}}</td></tr>
   {% endfor %}

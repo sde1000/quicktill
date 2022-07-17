@@ -51,14 +51,17 @@ from quicktill.models import (
     money_decimal_places,
     qty_max_digits,
     qty_decimal_places,
+    abv_max_digits,
+    abv_decimal_places,
     min_quantity,
+    min_abv_value,
+    max_abv_value,
     zero,
 )
 from quicktill.version import version
 from . import spreadsheets
 import io
 import datetime
-from decimal import Decimal
 import logging
 from .db import td
 from .forms import SQLAModelChoiceField
@@ -1191,7 +1194,28 @@ def stocktypesearch(request, info):
     })
 
 
-class NewStockTypeForm(forms.Form):
+class ValidateStockTypeABV:
+    """Mixin class to validate abv of a stock type
+    """
+    def clean(self):
+        cd = super().clean()
+        minabv = cd['department'].minabv
+        maxabv = cd['department'].maxabv
+        if minabv is not None:
+            if cd['abv'] is None:
+                self.add_error(
+                    'abv', "ABV must be specified, even if it is zero")
+            elif cd['abv'] < minabv:
+                self.add_error(
+                    'abv', f"ABV must be at least {minabv}%")
+        if maxabv is not None:
+            if cd['abv'] is not None and cd['abv'] > maxabv:
+                self.add_error(
+                    'abv', f"ABV can be {maxabv}% at most")
+        return cd
+
+
+class NewStockTypeForm(ValidateStockTypeABV, forms.Form):
     department = SQLAModelChoiceField(
         Department,
         query_filter=lambda q: q.order_by(Department.id),
@@ -1200,10 +1224,12 @@ class NewStockTypeForm(forms.Form):
         attrs={'list': 'manufacturers', 'autocomplete': 'off'}))
     name = forms.CharField(max_length=30, widget=forms.TextInput(
         attrs={'autocomplete': 'off'}))
-    abv = forms.DecimalField(label="ABV",
-                             required=False, decimal_places=1,
-                             min_value=Decimal("0.1"),
-                             max_value=Decimal("99.9"))
+    abv = forms.DecimalField(
+        label="ABV",
+        required=False,
+        decimal_places=abv_decimal_places,
+        min_value=min_abv_value,
+        max_value=max_abv_value)
     unit = SQLAModelChoiceField(
         Unit,
         query_filter=lambda x: x.order_by(Unit.name),
@@ -1301,13 +1327,15 @@ def stocktype_info_json(request, info):
     return JsonResponse(_stocktype_to_dict(st, True))
 
 
-class EditStockTypeForm(forms.Form):
+class EditStockTypeForm(ValidateStockTypeABV, forms.Form):
     manufacturer = forms.CharField(max_length=30)
     name = forms.CharField(max_length=30)
-    abv = forms.DecimalField(label="ABV",
-                             required=False, decimal_places=1,
-                             min_value=Decimal("0.1"),
-                             max_value=Decimal("99.9"))
+    abv = forms.DecimalField(
+        label="ABV",
+        required=False,
+        decimal_places=abv_decimal_places,
+        min_value=min_abv_value,
+        max_value=max_abv_value)
     department = SQLAModelChoiceField(
         Department,
         query_filter=lambda q: q.order_by(Department.id),
@@ -2322,6 +2350,15 @@ class EditDepartmentForm(forms.Form):
         required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places,
         help_text="Maximum price per item when price is entered manually")
+    min_abv = forms.DecimalField(
+        label="Min ABV", required=False, min_value=min_abv_value,
+        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
+        help_text="Minimum ABV for stock types in this department; if "
+        "present, stock types with null ABV are not allowed")
+    max_abv = forms.DecimalField(
+        label="Max ABV", required=False, min_value=min_abv_value,
+        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
+        help_text="Maximum ABV for stock types in this department")
     accinfo = forms.CharField(
         label="Accounting details", required=False,
         help_text="Configuration for accounting system integration")
@@ -2344,6 +2381,8 @@ def department(request, info, departmentid, as_spreadsheet=False):
             'notes': d.notes,
             'min_price': d.minprice,
             'max_price': d.maxprice,
+            'min_abv': d.minabv,
+            'max_abv': d.maxabv,
             'accinfo': d.accinfo,
         }
         if request.method == 'POST' and 'submit_update' in request.POST:
@@ -2356,6 +2395,8 @@ def department(request, info, departmentid, as_spreadsheet=False):
                     d.notes = cd['notes']
                     d.minprice = cd['min_price']
                     d.maxprice = cd['max_price']
+                    d.minabv = cd['min_abv']
+                    d.maxabv = cd['max_abv']
                     d.accinfo = cd['accinfo']
                     user.log(f"Updated department {d.logref}")
                     td.s.commit()

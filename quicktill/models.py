@@ -33,6 +33,10 @@ money_decimal_places = 2
 qty_max_digits = 8
 qty_decimal_places = 1
 
+# Alcohol By Volume
+abv_max_digits = 3
+abv_decimal_places = 1
+
 # Used for quantization of money
 zero = Decimal(f"0.{'0' * money_decimal_places}")
 penny = Decimal(f"0.{'0' * (money_decimal_places - 1)}1")
@@ -48,6 +52,11 @@ min_quantity = Decimal("0." + "0" * (qty_decimal_places - 1) + "1")
 max_quantity = Decimal("9" * (qty_max_digits - qty_decimal_places)
                        + "."
                        + "9" * qty_decimal_places)
+
+abv = Numeric(abv_max_digits, abv_decimal_places)
+min_abv_value = Decimal("0." + "0" * abv_decimal_places)
+max_abv_value = Decimal("9" * (abv_max_digits - abv_decimal_places)
+                        + "." + "9" * abv_decimal_places)
 
 metadata = MetaData()
 
@@ -864,6 +873,10 @@ class Department(Base, Logged):
                       "single item in this department.")
     maxprice = Column(money, nullable=True, doc="Maximum price of a "
                       "single item in this department.")
+    minabv = Column(abv, nullable=True, doc="Minimum ABV of "
+                    "stock types in this department")
+    maxabv = Column(abv, nullable=True, doc="Maximum ABV of "
+                    "stock types in this department")
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
     vat = relationship(VatBand)
 
@@ -1862,7 +1875,7 @@ class StockType(Base, Logged):
                      nullable=False)
     manufacturer = Column(String(30), nullable=False)
     name = Column(String(30), nullable=False)
-    abv = Column(Numeric(3, 1))
+    abv = Column(abv, nullable=True)
     unit_id = Column(Integer, ForeignKey('unittypes.id'), nullable=False)
     saleprice = Column(money, nullable=True)  # inc VAT
     # Last time price was changed

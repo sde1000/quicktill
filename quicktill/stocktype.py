@@ -99,21 +99,30 @@ class choose_stocktype(ui.dismisspopup):
         self.abvfield.set(st.abv)
         self.unitfield.set(st.unit)
 
-    def validate_fields(self):
-        "Returns True or None."
-        if not self.deptfield.read():
-            return None
-        if not self.unitfield.read():
-            return None
+    def validate_fields(self, ignore_abv_problems=False):
+        """Returns a string describing the problem, or None if all valid
+        """
         if len(self.manufield.f) == 0:
-            return None
+            return "You must specify a manufacturer"
         if len(self.namefield.f) == 0:
-            return None
-        return True
+            return "You must specify a name"
+        dept = self.deptfield.read()
+        if not dept:
+            return "You must specify a department"
+        if not self.unitfield.read():
+            return "You must specify a unit"
+        if ignore_abv_problems:
+            return
+        abv = self.get_abv()
+        if dept.minabv is not None:
+            if abv is None or abv < dept.minabv:
+                return f"You must specify an ABV of at least {dept.minabv}%"
+        if dept.maxabv is not None and abv is not None and abv > dept.maxabv:
+            return f"You may specify an ABV of at most {dept.maxabv}%"
 
     def get_abv(self):
         try:
-            return float(self.abvfield.f)
+            return Decimal(self.abvfield.f)
         except Exception:
             return None
 
@@ -200,11 +209,14 @@ class choose_stocktype(ui.dismisspopup):
         # If there's an exact match then return the existing stock
         # type.  Otherwise pop up a confirmation box asking whether we
         # can create a new one.
-        if self.validate_fields() is None:
-            ui.infopopup(["You must fill in all the fields (except ABV, "
-                          "which should be left blank for non-alcoholic "
-                          "stock types)."], title="Error")
+
+        # Existing stock types may not pass ABV validation. We still
+        # need to be able to select them.
+        problem = self.validate_fields(ignore_abv_problems=True)
+        if problem:
+            ui.infopopup([problem], title="Error")
             return
+
         st = td.s.query(StockType).\
             filter_by(manufacturer=self.manufield.f).\
             filter_by(name=self.namefield.f).\
@@ -232,9 +244,9 @@ class choose_stocktype(ui.dismisspopup):
             self.func(st)
 
     def finish_update(self):
-        if self.validate_fields() is None:
-            ui.infopopup(["You are not allowed to leave any field other "
-                          "than ABV blank."], title="Error")
+        problem = self.validate_fields()
+        if problem:
+            ui.infopopup([problem], title="Error")
         else:
             self.dismiss()
             st = td.s.query(StockType).get(self.st)
