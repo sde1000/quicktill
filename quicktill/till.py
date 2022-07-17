@@ -445,6 +445,10 @@ def main():
     parser.add_argument("-c", "--config-name", action="store",
                         dest="configname", default="default",
                         help="Till type to use from configuration file")
+    parser.add_argument("-t", "--terminal-name", action="store",
+                        dest="terminalname", default=None,
+                        help="Terminal name to store for transaction lines "
+                        "and payments created by this till instance")
     parser.add_argument("-d", "--database", action="store",
                         dest="database",
                         help="Database connection string; overrides "
@@ -524,6 +528,7 @@ def main():
         globalconfig = default_config
 
     tillconfig.configname = args.configname
+    tillconfig.terminal_name = args.terminalname or args.configname
 
     g = ModuleType("globalconfig")
     g.configname = args.configname

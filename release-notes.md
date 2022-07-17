@@ -16,6 +16,12 @@ What's new:
 
  * Add database constraints for ABV: can't be negative
 
+ * Add a `source` column for transaction lines and payments; this
+   records which terminal they were created at. For transaction lines
+   and payments created after this change, this defaults to the
+   configuration name but can be set per till using the `-t` or
+   `--terminal-name` command line option.
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new sessions metadata table
@@ -43,6 +49,12 @@ ALTER TABLE departments
 
 ALTER TABLE departments
 	ADD CONSTRAINT departments_minabv_check CHECK ((minabv >= 0.0));
+
+ALTER TABLE payments
+	ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
+
+ALTER TABLE translines
+	ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
 
 COMMIT;
 ```

@@ -1149,7 +1149,8 @@ class page(ui.basicpage):
 
         tl = Transline(transaction=trans, items=items, amount=sale.price,
                        department=plu.department, user=self.user.dbuser,
-                       transcode='S', text=sale.description)
+                       transcode='S', text=sale.description,
+                       source=tillconfig.terminal_name)
         td.s.add(tl)
         self._apply_discount(tl)
         td.s.flush()
@@ -1303,7 +1304,8 @@ class page(ui.basicpage):
                 amount=sale.price,
                 department=sale.stocktype.department,
                 transcode='S', text=sale.description,
-                user=self.user.dbuser)
+                user=self.user.dbuser,
+                source=tillconfig.terminal_name)
             td.s.add(tl)
             for stockitem, items_to_sell in sell:
                 so = StockOut(
@@ -1522,7 +1524,8 @@ class page(ui.basicpage):
                 amount=sale.price,
                 department=sale.stocktype.department,
                 transcode='S', text=sale.description,
-                user=self.user.dbuser)
+                user=self.user.dbuser,
+                source=tillconfig.terminal_name)
             td.s.add(tl)
             for stockitem, items_to_sell in sell:
                 so = StockOut(
@@ -1621,7 +1624,8 @@ class page(ui.basicpage):
             tl = Transline(transaction=trans,
                            department=td.s.query(Department).get(dept),
                            items=items, amount=amount,
-                           transcode='S', text=text, user=self.user.dbuser)
+                           transcode='S', text=text, user=self.user.dbuser,
+                           source=tillconfig.terminal_name)
             td.s.add(tl)
             self._apply_discount(tl)
             td.s.flush()

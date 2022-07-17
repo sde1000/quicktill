@@ -17,6 +17,7 @@
 <tr><th scope="row">Transaction</th><td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></td></tr>
 <tr><th scope="row">Description</th><td>{{tl.text}}</td></tr>
 <tr><th scope="row">Time</th><td>{{tl.time}}</td></tr>
+<tr><th scope="row">Source</th><td>{{tl.source}}</td></tr>
 <tr><th scope="row">Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
 <tr><th scope="row">Items</th><td>{{tl.items}}</td></tr>
 <tr><th scope="row">Amount per item</th><td>{{money}}{{tl.amount}}</td></tr>
@@ -29,7 +30,7 @@
 {% if tl.voids %}
 <tr><th scope="row">This line voids</th><td><a href="{{tl.voids.get_absolute_url}}" class="text-warning">{{tl.voids}}</td></tr>
 {% endif %}
-<tr><th>User</th><td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}
+<tr><th scope="row">User</th><td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}
 </table>
 
 {% if tl.stockref %}

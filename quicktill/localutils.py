@@ -12,6 +12,7 @@ from . import stock
 from . import register
 from . import ui
 from . import td
+from . import tillconfig
 from .models import Transline, zero
 from .keyboard import (
     K_STOCKTERMINAL,
@@ -551,6 +552,7 @@ class ServiceCharge(register.RegisterPlugin):
                     items=1, dept_id=self._dept,
                     amount=balance * self._percentage / 100,
                     user=ui.current_user().dbuser,
+                    source=tillconfig.terminal_name,
                     transcode='S',
                     text=self._description,
                     transaction=trans))

@@ -248,7 +248,8 @@ class CardPayment(payment.PaymentMethod):
             return
         total = amount + cashback
         p = Payment(transaction=trans, paytype=self.get_paytype(),
-                    ref=ref, amount=total, user=user)
+                    ref=ref, amount=total, user=user,
+                    source=tillconfig.terminal_name)
         td.s.add(p)
         td.s.flush()
         r = [payment.pline(p, method=self)]

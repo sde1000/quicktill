@@ -14,6 +14,8 @@ debug = False
 configversion = "file:/dev/null"
 configname = "default"
 
+terminal_name = "default"
+
 keyboard = None
 keyboard_right = None
 

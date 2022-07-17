@@ -35,7 +35,8 @@ class CashPayment(payment.PaymentMethod):
         user = ui.current_user().dbuser
         td.s.add(user)
         p = Payment(transaction=transaction, paytype=self.get_paytype(),
-                    ref=description, amount=amount, user=user)
+                    ref=description, amount=amount, user=user,
+                    source=tillconfig.terminal_name)
         td.s.add(p)
         td.s.flush()
         return payment.pline(p, method=self)
@@ -52,7 +53,8 @@ class CashPayment(payment.PaymentMethod):
         user = ui.current_user().dbuser
         td.s.add(user)
         p = Payment(transaction=trans, paytype=self.get_paytype(),
-                    ref=description, amount=amount, user=user)
+                    ref=description, amount=amount, user=user,
+                    source=tillconfig.terminal_name)
         td.s.add(p)
         c = None
         if amount > zero:
@@ -60,7 +62,7 @@ class CashPayment(payment.PaymentMethod):
             if change < zero:
                 c = Payment(transaction=trans, paytype=self.get_paytype(),
                             ref=self._change_description, amount=change,
-                            user=user)
+                            user=user, source=tillconfig.terminal_name)
                 td.s.add(c)
         td.s.flush()
         r = [payment.pline(p, method=self)]

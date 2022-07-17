@@ -11,6 +11,7 @@
 <th scope="col" class="sorter-false">Value</th>
 <th scope="col" class="sorter-false">Discount</th>
 <th scope="col">Time</th>
+<th scope="col">Source</th>
 {% if exclude_column != "user" %}<th scope="col">User</th>{% endif %}
 </tr>
 </thead>
@@ -27,6 +28,7 @@
 <td>{% if tl.amount or tl.discount %}{{tl.items}} @ {{money}}{{tl.amount}} = {{money}}{{tl.total}}</span>{% endif %}</td>
 <td>{% if tl.discount %}{{money}}{{tl.total_discount}} ({{tl.discount_name}}){% endif %}</td>
 <td>{{tl.time|date:dtf}}</td>
+<td>{{tl.source}}</td>
 {% if exclude_column != "user" %}
 <td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}</td>{% endif %}
 </tr>

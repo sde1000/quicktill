@@ -836,6 +836,8 @@ class Payment(Base, Logged):
                   server_default=func.current_timestamp())
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this payment")
+    source = Column(String(), nullable=False, server_default="default",
+                    doc="On which terminal was this payment created?")
     transaction = relationship(
         Transaction,
         backref=backref('payments', order_by=id, cascade="all, delete-orphan",
@@ -993,6 +995,8 @@ class Transline(Base, Logged):
         nullable=False, server_default=literal(zero),
         doc="Amount of discount applied to this transaction line")
     discount_name = Column(String(), nullable=True)
+    source = Column(String(), nullable=False, server_default="default",
+                    doc="On which terminal was this transaction line created?")
 
     __table_args__ = (
         # If discount is zero, discount_name must be null
