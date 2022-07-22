@@ -9,7 +9,7 @@
 	dh $@ --with python3 --buildsystem=pybuild
 
 override_dh_compress:
-	dh_compress -X.py -X.sql
+	dh_compress -X.py -X.sql -X.yml
 
 # The current release of aptly does not understand zstd compression
 # which as of Ubuntu 21.10 is the default. Force gzip compression
