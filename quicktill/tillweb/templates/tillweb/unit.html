@@ -4,6 +4,8 @@
 
 {% block tillcontent %}
 
+{% include "tillweb/unit-info.html" %}
+
 {% if form %}
 <form action="" method="post">{% csrf_token %}
   {% include "form-horizontal.html" %}
@@ -26,9 +28,12 @@
 <table class="kvtable">
 <tr><th>Description</th><td>{{unit.description}}</td></tr>
 <tr><th>Base unit</th><td>{{unit.name}}</td></tr>
-<tr><th>Base units per item</th><td>{{unit.units_per_item}}</td></tr>
-<tr><th>Item name</th><td>{{unit.item_name}}</td></tr>
-<tr><th>Item name plural</th><td>{{unit.item_name_plural}}</td></tr>
+<tr><th>Base units per sale unit</th><td>{{unit.base_units_per_sale_unit}}</td></tr>
+<tr><th>Sale unit name</th><td>{{unit.sale_unit_name}}</td></tr>
+<tr><th>Sale unit name plural</th><td>{{unit.sale_unit_name_plural}}</td></tr>
+<tr><th>Base units per stock unit</th><td>{{unit.base_units_per_stock_unit}}</td></tr>
+<tr><th>Stock unit name</th><td>{{unit.stock_unit_name}}</td></tr>
+<tr><th>Stock unit name plural</th><td>{{unit.stock_unit_name_plural}}</td></tr>
 </table>
 {% endif %}
 

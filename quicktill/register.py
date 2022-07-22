@@ -1183,8 +1183,8 @@ class page(ui.basicpage):
 
         sale = ProposedSale(
             stocktype=st,
-            qty=st.unit.units_per_item,
-            description=f"{st} {st.unit.item_name}",
+            qty=st.unit.base_units_per_sale_unit,
+            description=f"{st} {st.unit.sale_unit_name}",
             price=st.saleprice,
             whole_items=False)
 
@@ -1293,9 +1293,10 @@ class page(ui.basicpage):
             # qty field of StockOut
             for stockitem, items_to_sell in sell:
                 if items_to_sell > max_quantity:
+                    unit = stockitem.stocktype.unit
                     ui.infopopup(
                         [f"You can't sell "
-                         f"{stockitem.stocktype.unit.format_qty(items_to_sell)}"
+                         f"{unit.format_sale_qty(items_to_sell)}"
                          f" of {stockitem.stocktype} in one go."],
                         title="Error")
                     return
@@ -1327,11 +1328,11 @@ class page(ui.basicpage):
 
         self.repeat = repeatinfo(stocktype_id=st.id, mod=mod)
 
-        self.prompt = f"{st}: {st.unit.format_qty(remaining)} remaining"
+        self.prompt = f"{st}: {st.unit.format_stock_qty(remaining)} remaining"
         if remaining < Decimal("0.0"):
             ui.infopopup([
-                f"There appears to be {remaining} {st.unit.name}s of {st} "
-                f"left!  Record a delivery or perform a stock take "
+                f"There appears to be {st.unit.format_stock_qty(remaining)} "
+                f"of {st} left!  Record a delivery or perform a stock take "
                 f"to fix this."],
                 title="Warning", dismiss=keyboard.K_USESTOCK)
 
@@ -1370,8 +1371,8 @@ class page(ui.basicpage):
             return
         sale = ProposedSale(
             stocktype=st,
-            qty=st.unit.units_per_item,
-            description=f"{st} {st.unit.item_name}",
+            qty=st.unit.base_units_per_sale_unit,
+            description=f"{st} {st.unit.sale_unit_name}",
             price=st.saleprice,
             whole_items=(stockline.linetype == "display"))
 
@@ -1493,12 +1494,13 @@ class page(ui.basicpage):
             # committing StockOut objects to the database.
             item = sell[0][0]
             if td.stock_checkpullthru(item.id, '11:00:00'):
+                unit = item.stocktype.unit
                 ui.infopopup(
                     [f"According to the till records, {item.stocktype} "
                      f"hasn't been sold or pulled through in the last "
                      f"11 hours.  Would you like to record that you've "
                      f"pulled through "
-                     f"{item.stocktype.unit.format_qty(stockline.pullthru)}?",
+                     f"{unit.format_sale_qty(stockline.pullthru)}?",
                      "",
                      f"Press '{keyboard.K_WASTE}' if you do, or "
                      f"{keyboard.K_CLEAR} if you don't."],
@@ -1551,8 +1553,9 @@ class page(ui.basicpage):
             # We are using the last value of so from either the
             # previous for loop, or the handling of may_repeat
             stockitem = so.stockitem
+            unit = stockitem.stocktype.unit
             self.prompt = f"{stockline.name}: "\
-                f"{stockitem.stocktype.unit.format_qty(stockitem.remaining)} "\
+                f"{unit.format_stock_qty(stockitem.remaining)} "\
                 f"of {stockitem.stocktype} remaining"
             if stockitem.remaining < Decimal("0.0"):
                 ui.infopopup(
@@ -1561,8 +1564,7 @@ class page(ui.basicpage):
                      "started using a new item, tell the till about it "
                      "using the '{}' button after dismissing this "
                      "message.".format(
-                         stockitem.stocktype.unit.format_qty(
-                             stockitem.remaining),
+                         unit.format_stock_qty(stockitem.remaining),
                          stockitem.stocktype,
                          stockitem.id,
                          keyboard.K_USESTOCK),
@@ -1574,8 +1576,9 @@ class page(ui.basicpage):
                 stockline.name, int(remaining[0]), int(remaining[1]))
         elif stockline.linetype == "continuous":
             self.prompt = "{}: {} of {} remaining".format(
-                stockline.name, stockline.stocktype.unit.format_qty(remaining),
-                stockline.stocktype.format())
+                stockline.name, stockline.stocktype.unit.format_stock_qty(
+                    remaining),
+                stockline.stocktype)
             if remaining < Decimal("0.0"):
                 ui.infopopup(
                     ["There appears to be {} of {} left!  Please "
@@ -1583,7 +1586,7 @@ class page(ui.basicpage):
                      "started using a new type of stock, tell the till "
                      "about it by changing the stock type of the "
                      "'{}' stock line after dismissing this message.".format(
-                         stockline.stocktype.unit.format_qty(remaining),
+                         stockline.stocktype.unit.format_stock_qty(remaining),
                          stockline.stocktype,
                          stockline.stocktype,
                          stockline.name),

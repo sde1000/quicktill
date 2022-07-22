@@ -52,9 +52,9 @@
       <td colspan="2">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
       <td>
 	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  {{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
+	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
 	  {% if st.adjustments %}
-	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
 	</div>
       </td>
       <td>
@@ -69,7 +69,7 @@
       </td>
       <td>
 	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  <input type="number" name="st{{st.id}}-adjustqty" step="0.1" min="0"> {{st.unit.item_name_plural}}
+	  <input type="number" name="st{{st.id}}-adjustqty" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
 	</div>
       </td>
       <td>
@@ -93,12 +93,12 @@
     {% if st.stocktake_by_items %}
     {% for ss in st.snapshots %}
     <tr class="stocktake-item">
-      <td colspan="2"></td>
+      <td colspan="2">{% comment %}Expand+StockType{% endcomment %}</td>
       <td>{{ss.stock_id}}{% if ss.stockitem.stockline %} (<a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>){% endif %}</td>
       <td>
-	{{ss.qty}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty}}{% endif %}
+	{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
 	{% if ss.adjustments %}
-	<br>({% for a in ss.adjustments %}{{a.qty}} {{st.unit.name}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	<br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
       </td>
       <td>
 	<select name="ss{{ss.stock_id}}-finishcode">
@@ -109,7 +109,7 @@
 	</select>
       </td>
       <td>
-	<input type="number" name="ss{{ss.stock_id}}-adjustqty" step="0.1" min="0"> {{st.unit.item_name_plural}}
+	<input type="number" name="ss{{ss.stock_id}}-adjustqty" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
       </td>
       <td>
 	<select name="ss{{ss.stock_id}}-adjustreason">

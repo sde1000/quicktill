@@ -23,8 +23,8 @@ def stockinfo_linelist(sn):
     l.append("Sells for {}{}.  "
              "{} used; {} remaining.".format(
                  tillconfig.currency(), s.stocktype.pricestr,
-                 s.stocktype.unit.format_qty(s.used),
-                 s.stocktype.unit.format_qty(s.remaining)))
+                 s.stocktype.unit.format_stock_qty(s.used),
+                 s.stocktype.unit.format_stock_qty(s.remaining)))
     l.append("")
     l.append(f"Delivered {s.delivery.date} by {s.delivery.supplier.name}")
     if s.bestbefore:
@@ -37,7 +37,7 @@ def stockinfo_linelist(sn):
         l.append(f"Finished {s.finished:%c} {s.finishcode.description}")
     l.append("")
     for code, qty in s.removed:
-        l.append(f"{code.reason}: {s.stocktype.unit.format_qty(qty)}")
+        l.append(f"{code.reason}: {s.stocktype.unit.format_stock_qty(qty)}")
     if len(s.annotations) > 0:
         l.append("Annotations:")
     for a in s.annotations:
@@ -317,7 +317,7 @@ class stockpicker(ui.dismisspopup):
                            .options(undefer('remaining'))[:100]
         f = ui.tableformatter(' r l c ')
         sl = [(f(s.id, s.stocktype.format(),
-                 s.stocktype.unit.format_qty(s.remaining)),
+                 s.stocktype.unit.format_stock_qty(s.remaining)),
                self.item_chosen, (s.id,)) for s in items]
         ui.menu(sl, title=self.title)
 

@@ -95,14 +95,73 @@ template = r"""
 - {model: Department, id: 10, vatband: B, description: Food}
 - {model: Department, id: 11, vatband: A, description: Hot Drinks}
 
-- {model: Unit, description: 'Pint (draught)', name: pint, item_name: pint, item_name_plural: pints}
-- {model: Unit, description: 'Packet', name: packet, item_name: packet, item_name_plural: packets}
-- {model: Unit, description: 'Capsule', name: capsule, item_name: capsule, item_name_plural: capsules}
-- {model: Unit, description: 'Bottle (whole)', name: bottle, item_name: bottle, item_name_plural: bottles}
-- {model: Unit, description: '50ml spirits', name: 50ml, item_name: 50ml measure, item_name_plural: 50ml measures}
-- {model: Unit, description: '25ml spirits', name: 25ml, item_name: 25ml measure, item_name_plural: 25ml measures}
-- {model: Unit, description: 'Bottle (wine)', name: ml, item_name: bottle, item_name_plural: bottles, units_per_item: 750}
-- {model: Unit, description: 'Pint (soft drink carton)', name: ml, item_name: pint, item_name_plural: pints, units_per_item: 568}
+- model: Unit
+  description: 'Pint (draught)'
+  name: pint
+  sale_unit_name: pint
+  sale_unit_name_plural: pints
+  stock_unit_name: pint
+  stock_unit_name_plural: pints
+
+- model: Unit
+  description: 'Packet'
+  name: packet
+  sale_unit_name: packet
+  sale_unit_name_plural: packets
+  stock_unit_name: packet
+  stock_unit_name_plural: packets
+
+- model: Unit
+  description: 'Capsule'
+  name: capsule
+  sale_unit_name: capsule
+  sale_unit_name_plural: capsules
+  stock_unit_name: capsule
+  stock_unit_name_plural: capsules
+
+- model: Unit
+  description: 'Bottle (whole)'
+  name: bottle
+  sale_unit_name: bottle
+  sale_unit_name_plural: bottles
+  stock_unit_name: bottle
+  stock_unit_name_plural: bottles
+
+- model: Unit
+  description: '50ml spirits'
+  name: 50ml
+  sale_unit_name: 50ml measure
+  sale_unit_name_plural: 50ml measures
+  stock_unit_name: 50ml measure
+  stock_unit_name_plural: 50ml measures
+
+- model: Unit
+  description: '25ml spirits'
+  name: 25ml
+  sale_unit_name: 25ml measure
+  sale_unit_name_plural: 25ml measures
+  stock_unit_name: 25ml measure
+  stock_unit_name_plural: 25ml measures
+
+- model: Unit
+  description: 'Bottle (wine)'
+  name: ml
+  sale_unit_name: bottle
+  sale_unit_name_plural: bottles
+  base_units_per_sale_unit: 750
+  stock_unit_name: bottle
+  stock_unit_name_plural: bottles
+  base_units_per_stock_unit: 750
+
+- model: Unit
+  description: 'Pint (soft drink carton)'
+  name: ml
+  sale_unit_name: pint
+  sale_unit_name_plural: pints
+  base_units_per_sale_unit: 568
+  stock_unit_name: '1l carton'
+  stock_unit_name_plural: '1l cartons'
+  base_units_per_stock_unit: 1000
 
 # These are referred to in the register code, so should not be changed.
 - {model: TransCode, code: S, description: Sale}

@@ -24,6 +24,7 @@ import hashlib
 from decimal import Decimal
 from inspect import isclass
 import re
+import warnings
 
 # Configuration of money
 money_max_digits = 10
@@ -1430,7 +1431,7 @@ class StockLine(Base, Logged):
         else:
             unit = self.stocktype.unit
         if unit:
-            return unit.format_qty(self.remaining)
+            return unit.format_stock_qty(self.remaining)
 
     def calculate_restock(self, target=None):
         """Prepare list of stock movements
@@ -1833,21 +1834,37 @@ class Unit(Base, Logged):
     types of stock they will be different, eg. wine is counted by the
     "ml" and priced per 750 "ml"; 750ml is called a "wine bottle".
 
-    Stock can be bought in different units.  For example, soft drink
-    cartons can be sold by the pint (568ml) but bought by the 1l
-    carton (1000ml).  The size of a stock item is stored with the
-    item, and default purchase units are described by the StockUnit class.
+    We call the fundamental unit the "base" unit.
+
+    When we count stock we may need to use a different unit again.
+    For example, soft drinks from cartons are sold by the pint (568ml)
+    but bought and counted in units of 1l carton (1000ml).
+
+    The size of a stock item in base units is stored with the
+    item. Sizes of units in which items are purchased are described by
+    the StockUnit class.
+
     """
     __tablename__ = 'unittypes'
     id = Column(Integer, units_seq, nullable=False, primary_key=True)
     # How this unit appears in menus
     description = Column(String(), nullable=False)
-    # Name of the fundamental unit, eg. ml, pint
+
+    # Name of the fundamental ("base") unit, eg. ml, pint
     name = Column(String(), nullable=False)
-    # Name of the pricing / stock-keeping unit, singular and plural form
-    item_name = Column(String(), nullable=False)
-    item_name_plural = Column(String(), nullable=False)
-    units_per_item = Column(quantity, nullable=False, default=Decimal("1.0"))
+
+    # Name of the pricing/sale unit, singular and plural form
+    sale_unit_name = Column(String(), nullable=False)
+    sale_unit_name_plural = Column(String(), nullable=False)
+    base_units_per_sale_unit = Column(quantity, nullable=False,
+                                      default=Decimal("1.0"))
+
+    # Name of the stock-keeping unit, singular and plural form
+    stock_unit_name = Column(String(), nullable=False)
+    stock_unit_name_plural = Column(String(), nullable=False)
+    base_units_per_stock_unit = Column(quantity, nullable=False,
+                                       default=Decimal("1.0"))
+
     # This may be a good place to put a stocktake_method column,
     # eg. "by item" or "by stocktype".
 
@@ -1858,12 +1875,43 @@ class Unit(Base, Logged):
         return [("Units", self.get_view_url("tillweb-units")),
                 (self.description, self.get_absolute_url())]
 
-    def format_qty(self, qty):
-        if qty < self.units_per_item and qty != 0:
+    def format_sale_qty(self, qty):
+        if qty < self.base_units_per_sale_unit and qty != 0:
             return f"{qty} {self.name}"
-        n = self.item_name if qty == self.units_per_item \
-            else self.item_name_plural
-        return f"{qty / self.units_per_item:0.1f} {n}"
+        n = self.sale_unit_name if qty == self.base_units_per_sale_unit \
+            else self.sale_unit_name_plural
+        return f"{qty / self.base_units_per_sale_unit:0.1f} {n}"
+
+    def format_stock_qty(self, qty):
+        if qty < self.base_units_per_stock_unit and qty != 0:
+            return f"{qty} {self.name}"
+        n = self.stock_unit_name if qty == self.base_units_per_stock_unit \
+            else self.stock_unit_name_plural
+        return f"{qty / self.base_units_per_stock_unit:0.1f} {n}"
+
+    # sale_unit_name etc. were renamed from item_name etc.; add properties
+    # to ease the migration XXX with deprecation warnings
+
+    @property
+    def item_name(self):
+        warnings.warn(
+            "Unit.item_name has been renamed to Unit.sale_unit_name",
+            DeprecationWarning, stacklevel=2)
+        return self.sale_unit_name
+
+    @property
+    def item_name_plural(self):
+        warnings.warn(
+            "Unit.item_name_plural has been renamed to "
+            "Unit.sale_unit_name_plural", DeprecationWarning, stacklevel=2)
+        return self.sale_unit_name_plural
+
+    @property
+    def units_per_item(self):
+        warnings.warn(
+            "Unit.units_per_item has been renamed to "
+            "Unit.base_units_per_sale_unit", DeprecationWarning, stacklevel=2)
+        return self.base_units_per_sale_unit
 
     def __str__(self):
         return self.name
@@ -1968,13 +2016,13 @@ class StockType(Base, Logged):
     @property
     def pricestr(self):
         if self.saleprice is not None:
-            return f"{self.saleprice}/{self.unit.item_name}"
+            return f"{self.saleprice}/{self.unit.sale_unit_name}"
         return ""
 
     @property
     def remaining_str(self):
         """Amount of unsold stock, including unit"""
-        return self.unit.format_qty(self.remaining)
+        return self.unit.format_stock_qty(self.remaining)
 
     @property
     def descriptions(self):
@@ -2240,13 +2288,28 @@ class StockItem(Base, Logged):
             all()
 
     @property
+    def used_units(self):
+        """Quantity used as a string with the unit name
+
+        eg. 2 pints, 1 pint, 3 bottles
+        """
+        return self.stocktype.unit.format_stock_qty(self.used)
+
+    @property
+    def sold_units(self):
+        """Quantity sold as a string with the unit name
+
+        eg. 2 pints, 1 pint, 3 bottles
+        """
+        return self.stocktype.unit.format_stock_qty(self.sold)
+
+    @property
     def remaining_units(self):
         """Quantity remaining as a string with the unit name
 
         eg. 2 pints, 1 pint, 3 bottles
         """
-        return f"{self.remaining} {self.stocktype.unit.name}"\
-            f"{'s' if self.remaining != Decimal(1) else ''}"
+        return self.stocktype.unit.format_stock_qty(self.remaining)
 
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
@@ -2489,20 +2552,20 @@ class StockTakeSnapshot(Base):
                                passive_deletes=True)
 
     @property
-    def qty_in_saleunits(self):
+    def qty_in_stock_units(self):
         u = self.stockitem.stocktype.unit
         if self.displayqty is not None:
-            return f'{u.format_qty(self.displayqty)} + ' \
-                f'{u.format_qty(self.qty - self.displayqty)}'
-        return u.format_qty(self.qty)
+            return f'{u.format_stock_qty(self.displayqty)} + ' \
+                f'{u.format_stock_qty(self.qty - self.displayqty)}'
+        return u.format_stock_qty(self.qty)
 
     @property
-    def newqty_in_saleunits(self):
+    def newqty_in_stock_units(self):
         u = self.stockitem.stocktype.unit
         if self.displayqty is not None:
-            return f'{u.format_qty(self.newdisplayqty)} + ' \
-                f'{u.format_qty(self.newqty - self.newdisplayqty)}'
-        return u.format_qty(self.newqty)
+            return f'{u.format_stock_qty(self.newdisplayqty)} + ' \
+                f'{u.format_stock_qty(self.newqty - self.newdisplayqty)}'
+        return u.format_stock_qty(self.newqty)
 
 
 class StockTakeAdjustment(Base):
@@ -2530,6 +2593,11 @@ class StockTakeAdjustment(Base):
                               StockTakeSnapshot.stock_id],
                              ondelete='CASCADE'),
     )
+
+    @property
+    def stock_qty(self):
+        return self.snapshot.stockitem.stocktype.unit.format_stock_qty(
+            self.qty)
 
 
 StockTakeSnapshot.newqty = column_property(

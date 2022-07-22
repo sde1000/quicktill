@@ -305,7 +305,7 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
         self.salefield.set(st.saleprice)
         self.win.drawstr(2, 21 + len(tillconfig.currency()),
                          w - 22 - len(tillconfig.currency()),
-                         f"per {st.unit.item_name}")
+                         f"per {st.unit.sale_unit_name}")
         self.win.addstr(4, 1, headerline.display(w - 2)[0])
         s = ui.scrollable(5, 1, w - 2, h - 6, dl=ll, show_cursor=False)
         self.salefield.keymap[keyboard.K_CASH] = (self.reprice, None)

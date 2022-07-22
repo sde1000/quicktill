@@ -176,10 +176,12 @@ def _snapshots_to_stocktypes(snapshots):
             q = st.adjustments.setdefault(a.removecode, Decimal(0))
             st.adjustments[a.removecode] = q + a.qty
     for st in stocktypes:
-        st.snapshot_qty_in_saleunits = \
-            st.unit.format_qty(st.snapshot_qty)
-        st.snapshot_newqty_in_saleunits = \
-            st.unit.format_qty(st.snapshot_newqty)
+        st.adjustments = {rc: st.unit.format_stock_qty(qty)
+                          for rc, qty in st.adjustments.items()}
+        st.snapshot_qty_in_stockunits = \
+            st.unit.format_stock_qty(st.snapshot_qty)
+        st.snapshot_newqty_in_stockunits = \
+            st.unit.format_stock_qty(st.snapshot_newqty)
 
     # Sort the stocktypes by department, manufacturer and name
     stocktypes.sort(key=lambda x: (x.dept_id, x.manufacturer, x.name))
@@ -268,8 +270,9 @@ def stocktake_in_progress(request, info, stocktake):
             try:
                 st_adjustqty = Decimal(request.POST.get(
                     f'st{stocktype.id}-adjustqty', None))
-                # Convert from sale units to base units
-                st_adjustqty = st_adjustqty * stocktype.unit.units_per_item
+                # Convert from stock units to base units
+                st_adjustqty = \
+                    st_adjustqty * stocktype.unit.base_units_per_stock_unit
                 # Convert from relative adjustment to absolute
                 st_adjustqty = stocktype.snapshot_newqty - st_adjustqty
             except Exception:
@@ -284,8 +287,9 @@ def stocktake_in_progress(request, info, stocktake):
                 try:
                     ss_adjustqty = Decimal(request.POST.get(
                         f'ss{ss.stock_id}-adjustqty', None))
-                    # Convert from sale units to base units
-                    ss_adjustqty = ss_adjustqty * stocktype.unit.units_per_item
+                    # Convert from stock units to base units
+                    ss_adjustqty = \
+                        ss_adjustqty * stocktype.unit.base_units_per_stock_unit
                     # Convert from relative adjustment to absolute
                     ss_adjustqty = ss.newqty - ss_adjustqty
                 except Exception:

@@ -431,7 +431,7 @@ class new_stockitem(ui.basicpopup):
                         .order_by(StockUnit.size)
         self.unitfield.change_query(unit_list)
         self.update_suggested_price()
-        self.saleunits.set(f"per {stocktype.unit.item_name}")
+        self.saleunits.set(f"per {stocktype.unit.sale_unit_name}")
         self.salefield.set(stocktype.saleprice)
 
     def update_suggested_price(self):
@@ -451,7 +451,7 @@ class new_stockitem(ui.basicpopup):
             if isinstance(g, Decimal):
                 g = g.quantize(penny)
                 self.suggested_price.set(
-                    f"{tillconfig.fc(g)} per {st.unit.item_name}")
+                    f"{tillconfig.fc(g)} per {st.unit.sale_unit_name}")
             else:
                 self.suggested_price.set(g)
 
@@ -564,7 +564,7 @@ class edit_stockitem(ui.basicpopup):
 
         self.unitfield.change_query(unit_list)
         self.update_suggested_price()
-        self.saleunits.set(f"per {stocktype.unit.item_name}")
+        self.saleunits.set(f"per {stocktype.unit.sale_unit_name}")
         self.salefield.set(stocktype.saleprice)
 
     def unitfield_changed(self):
@@ -600,7 +600,7 @@ class edit_stockitem(ui.basicpopup):
             if isinstance(g, Decimal):
                 g = g.quantize(penny)
                 self.suggested_price.set(
-                    f"{tillconfig.fc(g)} per {st.unit.item_name}")
+                    f"{tillconfig.fc(g)} per {st.unit.sale_unit_name}")
             else:
                 self.suggested_price.set(g)
 

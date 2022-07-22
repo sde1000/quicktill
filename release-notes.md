@@ -22,6 +22,11 @@ What's new:
    configuration name but can be set per till using the `-t` or
    `--terminal-name` command line option.
 
+ * Add extra columns to units to describe how stock is counted during
+   a stock-take (eg. soft drink cartons are sold in multiples of 568ml
+   but counted in multiples of 1000ml). Rename existing columns to be
+   more descriptive of what they do!
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new sessions metadata table
@@ -55,6 +60,31 @@ ALTER TABLE payments
 
 ALTER TABLE translines
 	ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
+
+ALTER TABLE unittypes
+	ADD COLUMN sale_unit_name character varying,
+	ADD COLUMN sale_unit_name_plural character varying,
+	ADD COLUMN base_units_per_sale_unit numeric(8,1),
+	ADD COLUMN stock_unit_name character varying,
+	ADD COLUMN stock_unit_name_plural character varying,
+	ADD COLUMN base_units_per_stock_unit numeric(8,1);
+UPDATE unittypes
+	SET sale_unit_name=item_name,
+	    sale_unit_name_plural=item_name_plural,
+	    base_units_per_sale_unit=units_per_item,
+	    stock_unit_name=item_name,
+	    stock_unit_name_plural=item_name_plural,
+	    base_units_per_stock_unit=units_per_item;
+ALTER TABLE unittypes
+	ALTER COLUMN sale_unit_name SET NOT NULL,
+	ALTER COLUMN sale_unit_name_plural SET NOT NULL,
+	ALTER COLUMN base_units_per_sale_unit SET NOT NULL,
+	ALTER COLUMN stock_unit_name SET NOT NULL,
+	ALTER COLUMN stock_unit_name_plural SET NOT NULL,
+	ALTER COLUMN base_units_per_stock_unit SET NOT NULL,
+	DROP COLUMN item_name,
+	DROP COLUMN item_name_plural,
+	DROP COLUMN units_per_item;
 
 COMMIT;
 ```

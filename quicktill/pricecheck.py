@@ -101,14 +101,15 @@ class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
             ]
         blurb += [
             "",
-            f"There are {st.unit.format_qty(remaining)} remaining in stock.",
+            f"There are {st.unit.format_stock_qty(remaining)} "
+            f"remaining in stock.",
         ]
         if other_remaining:
             blurb += [
                 "",
                 "Some stock items are not shown here because they are "
                 "on sale on other stock lines.  There are "
-                f"{st.unit.format_qty(other_remaining)} on sale on those "
+                f"{st.unit.format_stock_qty(other_remaining)} on sale on those "
                 "stock lines.",
             ]
         blurb += [
@@ -151,14 +152,15 @@ class pricecheck_stocktype(pricecheck_keypress, ui.menu):
             ]
         blurb += [
             "",
-            f"There are {st.unit.format_qty(remaining)} remaining in stock.",
+            f"There are {st.unit.format_stock_qty(remaining)} "
+            "remaining in stock.",
         ]
         if other_remaining:
             blurb += [
                 "",
                 "Some stock items are not shown here because they are "
                 "on sale on stock lines.  There are "
-                f"{st.unit.format_qty(other_remaining)} on sale on those "
+                f"{st.unit.format_stock_qty(other_remaining)} on sale on those "
                 "stock lines.",
             ]
         blurb += [

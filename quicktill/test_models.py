@@ -101,8 +101,10 @@ class ModelTest(unittest.TestCase):
 
     def template_stocktype_setup(self):
         """Add a stocktype to the database to make other tests shorter."""
-        pint = models.Unit(name='pint', description='Pint',
-                           item_name='pint', item_name_plural='pints')
+        pint = models.Unit(
+            name='pint', description='Pint',
+            sale_unit_name='pint', sale_unit_name_plural='pints',
+            stock_unit_name='pint', stock_unit_name_plural='pints')
         beer = models.StockType(
             manufacturer="A Brewery", name="A Beer",
             abv=5, unit=pint, dept_id=1)

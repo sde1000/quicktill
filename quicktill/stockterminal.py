@@ -42,11 +42,11 @@ class page(ui.basicpage):
             if line.linetype == "regular" and line.stockonsale:
                 sos = line.stockonsale[0]
                 return (line.name, sos.id, sos.stocktype.format(),
-                        sos.stocktype.unit.format_qty(sos.used),
-                        sos.stocktype.unit.format_qty(sos.remaining))
+                        sos.stocktype.unit.format_stock_qty(sos.used),
+                        sos.stocktype.unit.format_stock_qty(sos.remaining))
             elif line.linetype == "continuous":
                 return (line.name, "", line.stocktype.format(), "",
-                        line.stocktype.unit.format_qty(
+                        line.stocktype.unit.format_stock_qty(
                             line.stocktype.remaining))
             elif line.linetype == "display":
                 return (line.name, "", line.stocktype.format(), "",

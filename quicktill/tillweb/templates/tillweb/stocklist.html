@@ -22,9 +22,9 @@
 <td><a href="{{s.stocktype.get_absolute_url}}">{{s.stocktype.name}}</a></td>
 <td>{{s.stocktype.abvstr}}</td>
 <td>{% if s.costprice %}{{money}}{{s.costprice}}{% endif %}</td>
-<td>{{s.used}} {{s.stocktype.unit.name}}s</td>
-<td>{{s.sold}} {{s.stocktype.unit.name}}s</td>
-<td>{{s.remaining}} {{s.stocktype.unit.name}}s</td>
+<td>{{s.used_units}}</td>
+<td>{{s.sold_units}}</td>
+<td>{{s.remaining_units}}</td>
 {% if s.bestbefore != None %}<td {% if s.shelflife > 28 %}class="bbok"{% elif s.shelflife <= 0 %}class="bberr"{% else %}class="bbwarn"{% endif %}>{{s.bestbefore}}</td>
 {% else %}<td></td>{% endif %}
 <td>{% if s.delivery.checked %}

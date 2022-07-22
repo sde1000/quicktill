@@ -1,0 +1,20 @@
+<p>The "base unit" is the physical unit used by the system to count
+  how much stock we have: when we have "1" of something, this is how
+  much we have.</p>
+
+<p>It isn't always sensible to price stock using base units.  For
+  example, in the UK wine is generally bought in 75cl bottles
+  (although sometimes also in 1.5l bottles, or 5l, 10l or 20l
+  bags-in-boxes), but is sold in 125ml, 175ml or 250ml glasses.  175ml
+  doesn't divide exactly into 75cl so we can't use "bottle" as the
+  base unit; we use "ml" instead.  When we're setting a price for
+  wine, though, we don't want to price per ml, we want to price per
+  bottle.  This is what the "base units per sale unit" and "sale unit
+  name" are for: the price set for a stock type is per <em>sale
+  unit</em>, not per base unit.</p>
+
+<p>When we count stock, we don't always want to count in sale
+  units. For example, soft drinks are sold out of cartons in pints
+  (568ml) but when we count how much is in stock we'll generally be
+  counting whole cartons (1000ml). This is what the "base units per
+  stock unit" and "stock unit name" are for.</p>

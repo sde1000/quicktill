@@ -33,9 +33,9 @@
       <td colspan="2"><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
       <td>
 	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  {{st.snapshot_qty_in_saleunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_saleunits}}{% endif %}
+	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
           {% if st.adjustments %}
-	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{st.unit.name}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	  <br>({% for code, qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
 	</div>
       </td>
       <td>
@@ -49,8 +49,9 @@
     <tr class="stocktake-item">
       <td></td>
       <td><a href="{{ss.stockitem.get_absolute_url}}">{{ss.stock_id}}</a></td>
-      <td>{{ss.qty_in_saleunits}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_saleunits}}{% endif %}	{% if ss.adjustments %}
-	<br>({% for a in ss.adjustments %}{{a.qty}} {{st.unit.name}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+      <td>{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
+	{% if ss.adjustments %}
+	<br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
       </td>
       <td>{% if ss.finishcode %}{{ss.finishcode}}{% endif %}</td>
     </tr>

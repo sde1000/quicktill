@@ -1635,11 +1635,16 @@ def units(request, info):
 class UnitForm(forms.Form):
     description = forms.CharField()
     base_unit = forms.CharField()
-    base_units_per_item = forms.DecimalField(
+    base_units_per_sale_unit = forms.DecimalField(
         min_value=min_quantity, max_digits=qty_max_digits,
         decimal_places=qty_decimal_places, initial=1)
-    item_name = forms.CharField()
-    item_name_plural = forms.CharField()
+    sale_unit_name = forms.CharField()
+    sale_unit_name_plural = forms.CharField()
+    base_units_per_stock_unit = forms.DecimalField(
+        min_value=min_quantity, max_digits=qty_max_digits,
+        decimal_places=qty_decimal_places, initial=1)
+    stock_unit_name = forms.CharField()
+    stock_unit_name_plural = forms.CharField()
 
 
 @tillweb_view
@@ -1654,9 +1659,12 @@ def unit(request, info, unit_id):
         initial = {
             'description': u.description,
             'base_unit': u.name,
-            'base_units_per_item': u.units_per_item,
-            'item_name': u.item_name,
-            'item_name_plural': u.item_name_plural,
+            'base_units_per_sale_unit': u.base_units_per_sale_unit,
+            'sale_unit_name': u.sale_unit_name,
+            'sale_unit_name_plural': u.sale_unit_name_plural,
+            'base_units_per_stock_unit': u.base_units_per_stock_unit,
+            'stock_unit_name': u.stock_unit_name,
+            'stock_unit_name_plural': u.stock_unit_name_plural,
         }
         if len(u.stocktypes) == 0 and len(u.stockunits) == 0:
             can_delete = True
@@ -1671,9 +1679,12 @@ def unit(request, info, unit_id):
                 cd = form.cleaned_data
                 u.description = cd['description']
                 u.name = cd['base_unit']
-                u.units_per_item = cd['base_units_per_item']
-                u.item_name = cd['item_name']
-                u.item_name_plural = cd['item_name_plural']
+                u.base_units_per_sale_unit = cd['base_units_per_sale_unit']
+                u.sale_unit_name = cd['sale_unit_name']
+                u.sale_unit_name_plural = cd['sale_unit_name_plural']
+                u.base_units_per_stock_unit = cd['base_units_per_stock_unit']
+                u.stock_unit_name = cd['stock_unit_name']
+                u.stock_unit_name_plural = cd['stock_unit_name_plural']
                 td.s.commit()
                 messages.success(request, f"Unit '{u.description}' updated.")
                 return HttpResponseRedirect(u.get_absolute_url())
