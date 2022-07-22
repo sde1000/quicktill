@@ -563,16 +563,6 @@ def main():
     tillconfig.database = config.get('database')
     if args.database is not None:
         tillconfig.database = args.database
-    # Setting of .default items from the config file to be removed in
-    # release 20
-    if 'pubname' in config:
-        tillconfig.pubname.default = config['pubname']
-    if 'pubnumber' in config:
-        tillconfig.pubnumber.default = config['pubnumber']
-    if 'pubaddr' in config:
-        tillconfig.pubaddr.default = '\n'.join(config['pubaddr'])
-    if 'currency' in config:
-        tillconfig.currency.default = config['currency']
     tillconfig.all_payment_methods = config['all_payment_methods']
     tillconfig.payment_methods = config['payment_methods']
     tillconfig.keyboard_driver = kbdrivers.prehkeyboard  # Default
@@ -584,11 +574,6 @@ def main():
         tillconfig.keyboard_right = config['keyboard_right']
     if 'format_currency' in config:
         tillconfig.fc = config['format_currency']
-    if 'checkdigit_print' in config:
-        printer.checkdigit_print.default = config['checkdigit_print']
-    if 'checkdigit_on_usestock' in config:
-        from . import stock
-        stock.checkdigit_on_usestock.default = config['checkdigit_on_usestock']
     if 'hotkeys' in config:
         tillconfig.hotkeys = config['hotkeys']
     if 'firstpage' in config:
@@ -605,25 +590,6 @@ def main():
         tillconfig.usertoken_listen = config['usertoken_listen']
     if 'usertoken_listen_v6' in config:
         tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
-    if 'custom_css' in config:
-        from . import keyboard_gtk
-        keyboard_gtk.custom_css.default = config['custom_css']
-    if 'max_transline_modify_age' in config:
-        from . import register
-        register.max_transline_modify_age.default = \
-            config['max_transline_modify_age']
-    if 'open_transaction_warn_after' in config:
-        from . import register
-        register.open_transaction_warn_after.default = \
-            config['open_transaction_warn_after']
-    if 'open_transaction_lock_after' in config:
-        from . import register
-        register.open_transaction_lock_after.default = \
-            config['open_transaction_lock_after']
-    if 'open_transaction_lock_message' in config:
-        from . import register
-        register.open_transaction_lock_message.default = \
-            config['open_transaction_lock_message']
 
     if tillconfig.database:
         td.init(tillconfig.database)
