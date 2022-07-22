@@ -478,7 +478,7 @@ def register_hotkeys(appsmenu=None):
 def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
     return {
         K_STOCKTERMINAL: lambda: stockterminal.page(
-            register_hotkeys, ["Bar"]),
+            register_hotkeys, stockterminal_location),
         K_LOCK: lockscreen.lockpage,
     }
 
