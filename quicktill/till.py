@@ -12,6 +12,7 @@ import urllib.request
 import sys
 import logging
 import logging.config
+import warnings
 import argparse
 import yaml
 import socket
@@ -533,6 +534,11 @@ def main():
     g = ModuleType("globalconfig")
     g.configname = args.configname
     exec(globalconfig, g.__dict__)
+
+    # Take note of deprecation warnings from the config file
+    warnings.filterwarnings("default", category=DeprecationWarning,
+                            module=g.__name__)
+    logging.captureWarnings(True)
 
     config = g.configurations.get(args.configname)
     if config is None:
