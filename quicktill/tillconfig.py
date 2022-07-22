@@ -13,6 +13,7 @@ debug = False
 
 configversion = "file:/dev/null"
 configname = "default"
+configdescription = "default"
 
 terminal_name = "default"
 

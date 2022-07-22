@@ -57,12 +57,6 @@ default_config = """
 configurations = {
   'default': {
     'description': 'Built-in default configuration',
-    'pubname': 'Not configured',
-    'pubnumber': 'Not configured',
-    'pubaddr': ('Not configured',),
-    'currency': '',
-    'all_payment_methods': [],
-    'payment_methods': [],
   }
 }
 """
@@ -550,46 +544,60 @@ def main():
 
     if args.user:
         tillconfig.default_user = args.user
-    if 'printer' in config:
-        printer.driver = config['printer']
-    else:
+
+    # Defaults when options not specified in configuration
+    tillconfig.keyboard_driver = kbdrivers.prehkeyboard
+    tillconfig.firstpage = intropage
+
+    # Process the configuration
+    for opt, val in config.items():
+        if opt == 'printer':
+            if args.disable_printer:
+                printer.driver = pdrivers.nullprinter(name="disabled-printer")
+            else:
+                printer.driver = val
+                lockscreen.CheckPrinter("Receipt printer", printer.driver)
+        elif opt == 'labelprinters':
+            printer.labelprinters = val
+        elif opt == 'database':
+            tillconfig.database = val
+        elif opt == 'all_payment_methods':
+            tillconfig.all_payment_methods = val
+        elif opt == 'payment_methods':
+            tillconfig.payment_methods = val
+        elif opt == 'keyboard_driver':
+            tillconfig.keyboard_driver = val
+        elif opt == 'keyboard':
+            tillconfig.keyboard = val
+        elif opt == 'keyboard_right':
+            tillconfig.keyboard_right = val
+        elif opt == 'format_currency':
+            tillconfig.fc = val
+        elif opt == 'hotkeys':
+            tillconfig.hotkeys = val
+        elif opt == 'firstpage':
+            tillconfig.firstpage = val
+        elif opt == 'barcode_listen':
+            tillconfig.barcode_listen = val
+        elif opt == 'barcode_listen_v6':
+            tillconfig.barcode_listen_v6 = val
+        elif opt == 'usertoken_handler':
+            tillconfig.usertoken_handler = val
+        elif opt == 'usertoken_listen':
+            tillconfig.usertoken_listen = val
+        elif opt == 'usertoken_listen_v6':
+            tillconfig.usertoken_listen_v6 = val
+        elif opt == 'description':
+            tillconfig.configdescription = val
+        else:
+            log.warning("Unknown configuration option '%s'", opt)
+
+    if printer.driver is None:
         log.info("no printer configured: using nullprinter()")
         printer.driver = pdrivers.nullprinter()
-    if args.disable_printer:
-        printer.driver = pdrivers.nullprinter(name="disabled-printer")
-    lockscreen.CheckPrinter("Receipt printer", printer.driver)
-    if 'labelprinters' in config:
-        printer.labelprinters = config['labelprinters']
-    tillconfig.database = config.get('database')
+
     if args.database is not None:
         tillconfig.database = args.database
-    tillconfig.all_payment_methods = config['all_payment_methods']
-    tillconfig.payment_methods = config['payment_methods']
-    tillconfig.keyboard_driver = kbdrivers.prehkeyboard  # Default
-    if 'keyboard_driver' in config:
-        tillconfig.keyboard_driver = config['keyboard_driver']
-    if 'keyboard' in config:
-        tillconfig.keyboard = config['keyboard']
-    if 'keyboard_right' in config:
-        tillconfig.keyboard_right = config['keyboard_right']
-    if 'format_currency' in config:
-        tillconfig.fc = config['format_currency']
-    if 'hotkeys' in config:
-        tillconfig.hotkeys = config['hotkeys']
-    if 'firstpage' in config:
-        tillconfig.firstpage = config['firstpage']
-    else:
-        tillconfig.firstpage = intropage
-    if 'barcode_listen' in config:
-        tillconfig.barcode_listen = config['barcode_listen']
-    if 'barcode_listen_v6' in config:
-        tillconfig.barcode_listen_v6 = config['barcode_listen_v6']
-    if 'usertoken_handler' in config:
-        tillconfig.usertoken_handler = config['usertoken_handler']
-    if 'usertoken_listen' in config:
-        tillconfig.usertoken_listen = config['usertoken_listen']
-    if 'usertoken_listen_v6' in config:
-        tillconfig.usertoken_listen_v6 = config['usertoken_listen_v6']
 
     if tillconfig.database:
         td.init(tillconfig.database)
