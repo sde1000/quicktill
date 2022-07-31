@@ -105,10 +105,14 @@ def stocktake(request, info, stocktake_id):
 
     stocktypes = _snapshots_to_stocktypes(snapshots)
 
+    more_details_available = False in (
+        st.unit.stocktake_by_items for st in stocktypes)
+
     return ('stocktake.html', {
         'tillobject': stocktake,
         'stocktake': stocktake,
         'stocktypes': stocktypes,
+        'more_details_available': more_details_available,
     })
 
 
@@ -205,6 +209,8 @@ def stocktake_in_progress(request, info, stocktake):
     # the list of stocktypes.
 
     finishcodes = td.s.query(FinishCode).all()
+    # XXX the "sold" removecode should be read from the
+    # register:sold_stock_removecode_id configuration setting
     removecodes = td.s.query(RemoveCode)\
                       .filter(RemoveCode.id != "sold")\
                       .all()
@@ -213,7 +219,8 @@ def stocktake_in_progress(request, info, stocktake):
         .filter(StockTakeSnapshot.stocktake == stocktake)\
         .options(undefer('newqty'),
                  joinedload('adjustments'),
-                 joinedload('stockitem').joinedload('stocktype'),
+                 joinedload('stockitem').joinedload('stocktype')
+                 .joinedload('unit'),
                  joinedload('stockitem').joinedload('stockline'))\
         .order_by(StockTakeSnapshot.stock_id)\
         .all()
@@ -222,6 +229,7 @@ def stocktake_in_progress(request, info, stocktake):
     finishcode_dict = {x.id: x for x in finishcodes}
     removecode_dict = {x.id: x for x in removecodes}
 
+    # XXX this should be a configuration setting too
     default_adjustreason = 'missing' if 'missing' in removecode_dict else None
 
     def lookup_code(d, k):
@@ -260,12 +268,16 @@ def stocktake_in_progress(request, info, stocktake):
                         request,
                         f"Stock item {new_stockid} does not exist")
         for stocktype in stocktypes:
-            st_checkbox = f'st{stocktype.id}-checked' in request.POST
-            st_checkbox_changed = st_checkbox != stocktype.snapshot_checked
-            st_finishcode = lookup_code(
-                finishcode_dict, f'st{stocktype.id}-finishcode')
-            st_finishcode_changed = (
-                st_finishcode != stocktype.snapshot_finishcode)
+            if stocktype.unit.stocktake_by_items:
+                st_checkbox_changed = False
+                st_finishcode_changed = False
+            else:
+                st_checkbox = f'st{stocktype.id}-checked' in request.POST
+                st_checkbox_changed = st_checkbox != stocktype.snapshot_checked
+                st_finishcode = lookup_code(
+                    finishcode_dict, f'st{stocktype.id}-finishcode')
+                st_finishcode_changed = (
+                    st_finishcode != stocktype.snapshot_finishcode)
             st_adjusting = False
             try:
                 st_adjustqty = Decimal(request.POST.get(
@@ -296,7 +308,7 @@ def stocktake_in_progress(request, info, stocktake):
                     ss_adjustqty = None
                 ss_adjustreason = lookup_code(
                     removecode_dict, f'ss{ss.stock_id}-adjustreason')
-                if stocktype.stocktake_by_items:
+                if stocktype.unit.stocktake_by_items:
                     ss_checkbox_changed = ss_checkbox != ss.checked
                     ss_finishcode_changed = ss_finishcode != ss.finishcode
                 else:
@@ -372,16 +384,6 @@ def stocktake_in_progress(request, info, stocktake):
                     ss.checked = st_checkbox
                 if ss_checkbox_changed:
                     ss.checked = ss_checkbox
-
-            # expand and collapse must be processed after all other
-            # options because processing of individual snapshots
-            # depends on the state of the page as originally rendered
-            if f'expand-st{stocktype.id}' in request.POST \
-               or 'expand-all' in request.POST:
-                stocktype.stocktake_by_items = True
-            if f'collapse-st{stocktype.id}' in request.POST \
-               or 'collapse-all' in request.POST:
-                stocktype.stocktake_by_items = False
 
         if 'submit_abandon' in request.POST:
             checked = [ss for ss in snapshots if ss.checked]

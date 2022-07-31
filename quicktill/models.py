@@ -1865,8 +1865,9 @@ class Unit(Base, Logged):
     base_units_per_stock_unit = Column(quantity, nullable=False,
                                        default=Decimal("1.0"))
 
-    # This may be a good place to put a stocktake_method column,
-    # eg. "by item" or "by stocktype".
+    # This column has moved from StockType
+    stocktake_by_items = Column(
+        Boolean, nullable=False, server_default=literal(True))
 
     tillweb_viewname = "tillweb-unit"
     tillweb_argname = "unit_id"
@@ -1875,19 +1876,23 @@ class Unit(Base, Logged):
         return [("Units", self.get_view_url("tillweb-units")),
                 (self.description, self.get_absolute_url())]
 
+    @staticmethod
+    def _fq(q):
+        return f"{q:.1f}".rstrip('0').rstrip('.')
+
     def format_sale_qty(self, qty):
-        if qty < self.base_units_per_sale_unit and qty != 0:
-            return f"{qty} {self.name}"
-        n = self.sale_unit_name if qty == self.base_units_per_sale_unit \
+        if abs(qty) < self.base_units_per_sale_unit and qty != 0:
+            return f"{self._fq(qty)} {self.name}"
+        n = self.sale_unit_name if abs(qty) == self.base_units_per_sale_unit \
             else self.sale_unit_name_plural
-        return f"{qty / self.base_units_per_sale_unit:0.1f} {n}"
+        return f"{self._fq(qty / self.base_units_per_sale_unit)} {n}"
 
     def format_stock_qty(self, qty):
-        if qty < self.base_units_per_stock_unit and qty != 0:
-            return f"{qty} {self.name}"
-        n = self.stock_unit_name if qty == self.base_units_per_stock_unit \
+        if abs(qty) < self.base_units_per_stock_unit and qty != 0:
+            return f"{self._fq(qty)} {self.name}"
+        n = self.stock_unit_name if abs(qty) == self.base_units_per_stock_unit \
             else self.stock_unit_name_plural
-        return f"{qty / self.base_units_per_stock_unit:0.1f} {n}"
+        return f"{self._fq(qty / self.base_units_per_stock_unit)} {n}"
 
     # sale_unit_name etc. were renamed from item_name etc.; add properties
     # to ease the migration XXX with deprecation warnings
@@ -1912,6 +1917,11 @@ class Unit(Base, Logged):
             "Unit.units_per_item has been renamed to "
             "Unit.base_units_per_sale_unit", DeprecationWarning, stacklevel=2)
         return self.base_units_per_sale_unit
+
+    @property
+    def stocktake_method(self):
+        return "separate items" if self.stocktake_by_items \
+            else "total quantity"
 
     def __str__(self):
         return self.name
@@ -1975,8 +1985,6 @@ class StockType(Base, Logged):
     stocktake_id = Column(
         Integer, ForeignKey('stocktakes.id', ondelete='SET NULL'),
         nullable=True)
-    stocktake_by_items = Column(Boolean, nullable=False,
-                                server_default=literal(True))
     department = relationship(Department, lazy="joined")
     unit = relationship(Unit, lazy="joined",
                         backref=backref("stocktypes", order_by=id))

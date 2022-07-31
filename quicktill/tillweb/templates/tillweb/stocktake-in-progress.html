@@ -4,7 +4,7 @@
 
 {% block tillcontent %}
 
-<table class="kvtable">
+<table class="kvtable mb-2">
   <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
   <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
   <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
@@ -13,67 +13,31 @@
 </table>
 
 <form action="" method="post">{% csrf_token %}
-  <button type="submit" name="expand-all" class="btn btn-secondary mb-2">
-    Expand all
-  </button>
-  <button type="submit" name="collapse-all" class="btn btn-secondary mb-2">
-    Collapse all
-  </button>
-{% comment %}
-  <button type="button" data-toggle="collapse" class="btn btn-secondary mb-2" data-target=".stocktype-expanded">
-    Show/hide stock type summaries
-  </button>
-{% endcomment %}
-<table class="table table-sm table-striped table-hover">
-  <thead>
+<table class="table table-sm table-hover">
+  <thead class="sticky-top thead-light">
     <tr>
-      <th scope="col">Expand</th>
-      <th scope="col">Stock type</th>
-      <th scope="col">Stock ID</th>
+      <th scope="col">Stock type/ID</th>
       <th scope="col">Quantity</th>
-      <th scope="col">Finish?</th>
       <th scope="col">Adjust to</th>
-      <th scope="col">How?</th>
-      <th scope="col">Checked</th>
+      <th scope="col" class="text-center">Checked / finished</th>
     </tr>
   </thead>
   {% for st in stocktypes %}
   <tbody id="tbody-st{{st.id}}">
-    <tr class="stocktake-stocktype">
-      <td>{% if st.stocktake_by_items %}
-	<button type="submit" name="collapse-st{{st.id}}">
-	  -
-	</button>
-	{% else %}
-	<button type="submit" name="expand-st{{st.id}}">
-	  +
-	</button>{% endif %}
-      </td>
-      <td colspan="2">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
+    <tr class="stocktake-stocktype table-primary">
+      <td{% if st.unit.stocktake_by_items %} colspan="4"{% endif %}>{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
+      {% if not st.unit.stocktake_by_items %}
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
+	<div>
 	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
 	  {% if st.adjustments %}
 	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
 	</div>
       </td>
       <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  <select name="st{{st.id}}-finishcode">
-	    <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
-	    {% for opt in finishcodes %}
-	    <option value="{{opt.id}}"{% if st.snapshot_finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
-	    {% endfor %}
-	  </select>
-	</div>
-      </td>
-      <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  <input type="number" name="st{{st.id}}-adjustqty" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
-	</div>
-      </td>
-      <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
+	<div>
+	  <input type="number" name="st{{st.id}}-adjustqty" style="width: 100px;" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
+	  <br>
 	  <select name="st{{st.id}}-adjustreason">
 	    {% if not default_adjustreason %}
 	    <option value="" selected></option>
@@ -84,16 +48,21 @@
 	  </select>
 	</div>
       </td>
-      <td>
-	<div{% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  <input type="checkbox" class="stock-take-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}>
-	</div>
+      <td class="text-center">
+	<input type="checkbox" class="stock-take-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}>
+	<br>
+	<select name="st{{st.id}}-finishcode" style="width: 100px;">
+	  <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
+	  {% for opt in finishcodes %}
+	  <option value="{{opt.id}}"{% if st.snapshot_finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
+	  {% endfor %}
+	</select>
       </td>
+      {% endif %}
     </tr>
-    {% if st.stocktake_by_items %}
+    {% if st.unit.stocktake_by_items %}
     {% for ss in st.snapshots %}
-    <tr class="stocktake-item">
-      <td colspan="2">{% comment %}Expand+StockType{% endcomment %}</td>
+    <tr class="stocktake-item table-secondary">
       <td>{{ss.stock_id}}{% if ss.stockitem.stockline %} (<a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>){% endif %}</td>
       <td>
 	{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
@@ -101,17 +70,8 @@
 	<br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
       </td>
       <td>
-	<select name="ss{{ss.stock_id}}-finishcode">
-	  <option value=""{% if ss.finishcode == None %} selected{% endif %}></option>
-	  {% for opt in finishcodes %}
-	  <option value="{{opt.id}}"{% if ss.finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
-	  {% endfor %}
-	</select>
-      </td>
-      <td>
-	<input type="number" name="ss{{ss.stock_id}}-adjustqty" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
-      </td>
-      <td>
+	<input type="number" name="ss{{ss.stock_id}}-adjustqty" style="width: 100px;" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
+	<br>
 	<select name="ss{{ss.stock_id}}-adjustreason">
 	  {% if not default_adjustreason %}
 	  <option value="" selected></option>
@@ -121,7 +81,15 @@
 	  {% endfor %}
 	</select>
       </td>
-      <td><input type="checkbox" class="stock-take-checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}></td>
+      <td class="text-center"><input type="checkbox" class="stock-take-checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}>
+	<br>
+	<select name="ss{{ss.stock_id}}-finishcode" style="width: 100px;">
+	  <option value=""{% if ss.finishcode == None %} selected{% endif %}></option>
+	  {% for opt in finishcodes %}
+	  <option value="{{opt.id}}"{% if ss.finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
     </tr>
     {% endfor %}
     {% endif %}

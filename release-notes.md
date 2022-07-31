@@ -27,6 +27,14 @@ What's new:
    but counted in multiples of 1000ml). Rename existing columns to be
    more descriptive of what they do!
 
+ * The flag that determines whether stock take is done per-item or
+   per-stocktype has moved from being per stock type to being a
+   property of the stock type's Unit. It can no longer be edited
+   explicitly during a stock take — that feature turned out to be
+   confusing for users and led to some very inefficient working
+   practices! After the database update, it defaults to stock take
+   per-item for all Units and will need updating manually.
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new sessions metadata table
@@ -39,9 +47,6 @@ BEGIN;
 ALTER TABLE departments
 	ADD COLUMN minabv numeric(3,1),
 	ADD COLUMN maxabv numeric(3,1);
-
-ALTER TABLE stocktypes
-	DROP COLUMN pricechanged;
 
 ALTER TABLE vat
         ADD COLUMN description character varying DEFAULT 'None'::character varying NOT NULL;
@@ -81,10 +86,30 @@ ALTER TABLE unittypes
 	ALTER COLUMN base_units_per_sale_unit SET NOT NULL,
 	ALTER COLUMN stock_unit_name SET NOT NULL,
 	ALTER COLUMN stock_unit_name_plural SET NOT NULL,
-	ALTER COLUMN base_units_per_stock_unit SET NOT NULL,
+	ALTER COLUMN base_units_per_stock_unit SET NOT NULL;
+
+ALTER TABLE unittypes
+	ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
+
+COMMIT;
+
+/* If you are updating multiple systems that share a web service, you
+ * can defer executing the following until all systems and the web service
+ * have been updated.
+ */
+
+BEGIN;
+
+ALTER TABLE stocktypes
+	DROP COLUMN pricechanged;
+
+ALTER TABLE unittypes
 	DROP COLUMN item_name,
 	DROP COLUMN item_name_plural,
 	DROP COLUMN units_per_item;
+
+ALTER TABLE stocktypes
+	DROP COLUMN stocktake_by_items;
 
 COMMIT;
 ```

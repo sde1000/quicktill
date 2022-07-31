@@ -4,7 +4,7 @@
 
 {% block tillcontent %}
 
-<table class="kvtable">
+<table class="kvtable mb-2">
   <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
   <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
   <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
@@ -14,11 +14,13 @@
   <tr><th scope="row">Committed by</th><td>{{stocktake.commit_user}}</td></tr>
 </table>
 
-<button type="button" data-toggle="collapse" class="btn btn-secondary mb-2" data-target=".stocktype-expanded">
-    Show/hide stock type summaries
+{% if more_details_available %}
+<button type="button" data-toggle="collapse" class="btn btn-secondary mb-2" data-target=".st-detail-hidden">
+  Show stock item details
 </button>
+{% endif %}
 
-<table class="table table-sm table-striped table-hover">
+<table class="table table-sm table-hover">
   <thead>
     <tr>
       <th scope="col">Stock type</th>
@@ -27,26 +29,25 @@
       <th scope="col">Finish?</th>
     </tr>
   </thead>
+  {% for st in stocktypes %}
   <tbody>
-    {% for st in stocktypes %}
-    <tr class="stocktake-stocktype">
-      <td colspan="2"><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
+    <tr class="stocktake-stocktype table-primary">
+      <td colspan={% if st.unit.stocktake_by_items %}"4"{% else %}"2"{% endif %}><a href="{{st.get_absolute_url}}">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %}</a> — <a href="{{st.department.get_absolute_url}}">{{st.department}}</a></td>
+      {% if not st.unit.stocktake_by_items %}
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
-          {% if st.adjustments %}
-	  <br>({% for code, qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
-	</div>
+	{{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
+        {% if st.adjustments %}
+	<br>({% for code, qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
       </td>
       <td>
-	<div {% if st.stocktake_by_items %} class="stocktype-expanded collapse"{% endif %}>
-	  {% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}
-	</div>
+	{% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}
       </td>
+      {% endif %}
     </tr>
-    {% if st.stocktake_by_items %}
+  </tbody>
+  <tbody class="st-{{st.id}}-details{% if not st.unit.stocktake_by_items %} st-detail-hidden collapse{% endif %}">
     {% for ss in st.snapshots %}
-    <tr class="stocktake-item">
+    <tr class="stocktake-item table-secondary">
       <td></td>
       <td><a href="{{ss.stockitem.get_absolute_url}}">{{ss.stock_id}}</a></td>
       <td>{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
@@ -56,9 +57,8 @@
       <td>{% if ss.finishcode %}{{ss.finishcode}}{% endif %}</td>
     </tr>
     {% endfor %}
-    {% endif %}
-    {% endfor %}
   </tbody>
+    {% endfor %}
 </table>
 
 {% endblock %}

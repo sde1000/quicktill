@@ -1645,6 +1645,10 @@ class UnitForm(forms.Form):
         decimal_places=qty_decimal_places, initial=1)
     stock_unit_name = forms.CharField()
     stock_unit_name_plural = forms.CharField()
+    stock_take_method = forms.ChoiceField(
+        choices=[('items', 'Separate items'),
+                 ('stocktype', 'Total quantity in stock')],
+        required=True, initial='items')
 
 
 @tillweb_view
@@ -1665,11 +1669,14 @@ def unit(request, info, unit_id):
             'base_units_per_stock_unit': u.base_units_per_stock_unit,
             'stock_unit_name': u.stock_unit_name,
             'stock_unit_name_plural': u.stock_unit_name_plural,
+            'stock_take_method': 'items' if u.stocktake_by_items
+            else 'stocktype'
         }
         if len(u.stocktypes) == 0 and len(u.stockunits) == 0:
             can_delete = True
         if request.method == "POST":
             if can_delete and 'submit_delete' in request.POST:
+                user.log(f"Deleted unit {u.logref}")
                 messages.success(request, f"Unit '{u.description}' deleted.")
                 td.s.delete(u)
                 td.s.commit()
@@ -1685,9 +1692,11 @@ def unit(request, info, unit_id):
                 u.base_units_per_stock_unit = cd['base_units_per_stock_unit']
                 u.stock_unit_name = cd['stock_unit_name']
                 u.stock_unit_name_plural = cd['stock_unit_name_plural']
+                u.stocktake_by_items = cd['stock_take_method'] == 'items'
+                user.log(f"Updated unit {u.logref}")
                 td.s.commit()
                 messages.success(request, f"Unit '{u.description}' updated.")
-                return HttpResponseRedirect(u.get_absolute_url())
+                return HttpResponseRedirect(info.reverse("tillweb-units"))
         else:
             form = UnitForm(initial=initial)
 
@@ -1712,13 +1721,19 @@ def create_unit(request, info):
             u = Unit(
                 description=cd['description'],
                 name=cd['base_unit'],
-                units_per_item=cd['base_units_per_item'],
-                item_name=cd['item_name'],
-                item_name_plural=cd['item_name_plural'])
+                base_units_per_sale_unit=cd['base_units_per_sale_unit'],
+                sale_unit_name=cd['sale_unit_name'],
+                sale_unit_name_plural=cd['sale_unit_name_plural'],
+                base_units_per_stock_unit=cd['base_units_per_stock_unit'],
+                stock_unit_name=cd['stock_unit_name'],
+                stock_unit_name_plural=cd['stock_unit_name_plural'],
+                stocktake_by_items=cd['stock_take_method'] == 'items')
             td.s.add(u)
+            td.s.flush()
+            user.log(f"Created unit {u.logref}")
             td.s.commit()
             messages.success(request, f"Unit '{u.description}' created.")
-            return HttpResponseRedirect(u.get_absolute_url())
+            return HttpResponseRedirect(info.reverse("tillweb-units"))
     else:
         form = UnitForm()
 
