@@ -111,6 +111,32 @@ pullthru_removecode_id = config.ConfigItem(
     description="Stock usage code (RemoveCode.id) for stock that "
     "is pulled through")
 
+# Default payment method used (sometimes) when Cash/Enter is pressed
+# on an open transaction
+default_payment_method = config.ConfigItem(
+    'register:default_payment_method', "CASH",
+    display_name="Default payment method",
+    description="Code of payment method to use when Cash/Enter is pressed "
+    "on an open transaction. If empty or invalid, pressing Cash/Enter will "
+    "always open the payment methods menu.")
+
+# Payment method used for the "Drink 'In'" function
+drinkin_payment_method = config.ConfigItem(
+    'register:drinkin_payment_method', "CASH",
+    display_name="Drink 'In' payment method",
+    description="Code of payment method to use for the Drink 'In' function. "
+    "If empty or invalid, the Drink 'In' function will be disabled.")
+
+# Payment method used for deferring part-paid transactions
+defer_payment_method = config.ConfigItem(
+    'register:defer_payment_method', "CASH",
+    display_name="Deferred payment method",
+    description="Code of payment method to use when deferring a part-paid "
+    "transaction that has some non-deferrable payments. The amount of the "
+    "non-deferrable payments will be refunded, and a note will be printed "
+    "with instructions describing how to apply the payment to the "
+    "transaction in a future session.")
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -1705,12 +1731,17 @@ class page(ui.basicpage):
         self.clearbuffer()
         if self.hook("drinkin", trans, amount):
             return
-        if len(tillconfig.payment_methods) < 1:
+        pm = None
+        for x in tillconfig.payment_methods:
+            if x.paytype == drinkin_payment_method():
+                pm = x
+                break
+
+        if not pm:
             self._redraw()
-            ui.infopopup(["There are no payment methods configured."],
+            ui.infopopup(["There is no Drink 'In' payment method configured."],
                          title="Error")
             return
-        pm = tillconfig.payment_methods[0]
         if not pm.change_given:
             self._redraw()
             ui.infopopup([f"The {pm.description} payment method doesn't "
@@ -1778,14 +1809,6 @@ class page(ui.basicpage):
         if self.hook("cashkey", trans):
             return
 
-        # We now consider using the default payment method.  This is only
-        # possible if there is one!
-        if len(tillconfig.payment_methods) < 1:
-            ui.infopopup(["There are no payment methods configured."],
-                         title="Error")
-            return
-        pm = tillconfig.payment_methods[0]
-
         # If any of the transaction's existing payments are pending,
         # pop up a menu allowing them to be resumed.
         ml = [(p.description(), p.resume, (self,))
@@ -1801,6 +1824,14 @@ class page(ui.basicpage):
                 "the type of payment to take.",
                 title="Resume pending payment")
             return
+
+        # We now consider using the configured default payment method.
+        pm = None
+        for x in tillconfig.payment_methods:
+            if x.paytype == default_payment_method():
+                pm = x
+                break
+
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
         # confirmation - one of the most common user errors is to
@@ -1808,10 +1839,11 @@ class page(ui.basicpage):
         # lines to it, and then automatically press 'cash'.
         #
         # We do this by opening the payment methods menu.
-        if self.keyguard:
-            self._payment_method_menu(title="Choose payment method for "
-                                      "this transaction")
+        if self.keyguard or not pm:
+            self._payment_method_menu(
+                title="Choose payment method for this transaction")
             return
+
         self.paymentkey(pm)
 
     def _payment_method_menu(self, title="Payment methods"):
@@ -2557,21 +2589,25 @@ class page(ui.basicpage):
         # zero, check that there is a default payment method that
         # supports both change and refunds; we will need it later.
         defer_pm = None
+        for x in tillconfig.payment_methods:
+            if x.paytype == defer_payment_method():
+                defer_pm = x
+                break
+
         if nds:
-            # Check that there is a default payment method
-            if len(tillconfig.payment_methods) < 1:
+            if not defer_pm:
                 ui.infopopup(
                     ["This transaction is part-paid; to defer it "
-                     "we must refund the part-payment.  There is no default "
-                     "payment method so this can't be done now."],
+                     "we must refund the part-payment.  There is no "
+                     "payment method configured for this, so it "
+                     "cannot be done now."],
                     title="Error")
                 return
-            defer_pm = tillconfig.payment_methods[0]
             # The payment method must support both change and refunds
             if not defer_pm.change_given or not defer_pm.refund_supported:
                 ui.infopopup(
                     ["This transaction is part-paid; to defer it "
-                     "we must refund the part-payment.  The default payment "
+                     "we must refund the part-payment.  The defer payment "
                      "method does not support this."],
                     title="Error")
                 return
@@ -2606,9 +2642,20 @@ class page(ui.basicpage):
                     f"set aside to be used towards this transaction "
                     f"when you are ready to accept the final payment from "
                     f"the customer.")
-                printer.print_deferred_payment_wrapper(
-                    trans, defer_pm, nds, self.user.fullname)
-                printer.kickout()
+                try:
+                    printer.print_deferred_payment_wrapper(
+                        trans, defer_pm, nds, self.user.fullname)
+                    printer.kickout()
+                except Exception as e:
+                    ui.infopopup(
+                        ["There was an error printing the deferred payment "
+                         "wrapper. Ensure the printer is working and "
+                         "try again.",
+                         "",
+                         f"The error was: {e}"],
+                        title="Error")
+                    td.s.rollback()
+                    return
 
         transid = trans.id
         trans.session = None
