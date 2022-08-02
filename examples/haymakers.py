@@ -283,7 +283,8 @@ kitchenprinter = quicktill.pdrivers.nullprinter('kitchen')
 
 xapi = quicktill.xero.XeroIntegration(
     secrets=quicktill.secretstore.Secrets(
-        'xero-test', b'jVHsRc60cDQjTjTnKqyISP41kxKPSeT_kkDvTJjLsaY='))
+        'xero-test', b'jVHsRc60cDQjTjTnKqyISP41kxKPSeT_kkDvTJjLsaY='),
+    foo='bar', bar='baz')
 
 def appsmenu():
     menu = [
