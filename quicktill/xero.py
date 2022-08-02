@@ -236,9 +236,8 @@ class XeroIntegration:
             display_name="Xero deparment tracking category name",
             description="Name of a tracking cagegory to use for invoice and "
             "bill lines relating to departments.  The value will be read from "
-            "the department accinfo field; accinfo is expected to be "
-            "sales-account/purchases-account/tracking-value — "
-            "i.e. three fields separated by the '/' character.")
+            "the department sales_account and purchases_account fields; "
+            "it is separated from the account number by a '/' character.")
         self.reference_template = config.ConfigItem(
             f"{config_prefix}:reference_template", reference_template,
             display_name="Xero invoice reference template",
@@ -356,13 +355,30 @@ class XeroIntegration:
             contact.append(_textelem("ContactID", self.sales_contact_id()))
         return contact
 
-    def _get_tracking(self, department):
+    def _get_sales_tracking(self, department):
         tracking = []
         if self.tracking_category_name() and self.tracking_category_value():
             tracking.append((self.tracking_category_name(),
                              self.tracking_category_value()))
         if department and self.department_tracking_category_name():
-            v = self._tracking_for_department(department)
+            v = self._sales_tracking_for_department(department)
+            if v:
+                tracking.append((self.department_tracking_category_name(), v))
+        if tracking:
+            t = Element("Tracking")
+            for name, option in tracking:
+                tc = SubElement(t, "TrackingCategory")
+                tc.append(_textelem("Name", name))
+                tc.append(_textelem("Option", option))
+            return t
+
+    def _get_purchases_tracking(self, department):
+        tracking = []
+        if self.tracking_category_name() and self.tracking_category_value():
+            tracking.append((self.tracking_category_name(),
+                             self.tracking_category_value()))
+        if department and self.department_tracking_category_name():
+            v = self._purchases_tracking_for_department(department)
             if v:
                 tracking.append((self.department_tracking_category_name(), v))
         if tracking:
@@ -469,19 +485,22 @@ class XeroIntegration:
         ui.infopopup([f"Invoice ID is {iid}"])
 
     def _sales_account_for_department(self, department):
-        codes = department.accinfo.split("/")
+        codes = department.sales_account.split("/")
         return codes[0]
 
-    def _purchases_account_for_department(self, department):
-        codes = department.accinfo.split("/")
+    def _sales_tracking_for_department(self, department):
+        codes = department.sales_account.split("/", maxsplit=1)
         if len(codes) > 1:
             return codes[1]
+
+    def _purchases_account_for_department(self, department):
+        codes = department.purchases_account.split("/")
         return codes[0]
 
-    def _tracking_for_department(self, department):
-        codes = department.accinfo.split("/")
-        if len(codes) > 2:
-            return codes[2]
+    def _purchases_tracking_for_department(self, department):
+        codes = department.purchases_account.split("/", maxsplit=1)
+        if len(codes) > 1:
+            return codes[1]
 
     def _create_invoice_for_session(self, sessionid, approve=False):
         """Create an invoice for a session
@@ -526,7 +545,7 @@ class XeroIntegration:
             li.append(_textelem("AccountCode",
                                 self._sales_account_for_department(dept)))
             li.append(_textelem("LineAmount", str(amount)))
-            tracking = self._get_tracking(dept)
+            tracking = self._get_sales_tracking(dept)
             if tracking:
                 li.append(tracking)
         # If there is a discrepancy between the till totals and the
@@ -542,7 +561,7 @@ class XeroIntegration:
             li.append(_textelem("AccountCode", self.discrepancy_account()))
             li.append(_textelem("LineAmount", str(session.error)))
             li.append(_textelem("TaxType", "NONE"))
-            tracking = self._get_tracking(None)
+            tracking = self._get_sales_tracking(None)
             if tracking:
                 li.append(tracking)
         # Negative payment method totals are added as positive line items
@@ -678,7 +697,7 @@ class XeroIntegration:
                 li.append(_textelem("UnitAmount", str(item.costprice)))
             prevqty = _textelem("Quantity", "1")
             li.append(prevqty)
-            tracking = self._get_tracking(item.stocktype.department)
+            tracking = self._get_purchases_tracking(item.stocktype.department)
             if tracking:
                 li.append(tracking)
             previtem = item
@@ -848,13 +867,6 @@ class XeroWebInfo:
 
     def url_for_contact(self, id):
         return self._wrap("/Contacts/View/" + id)
-
-    def decode_dept_accinfo(self, accinfo):
-        """Return a list of strings to display given department accinfo
-        """
-        x = accinfo.split('/')
-        return zip(
-            ("Sales account", "Purchases account", "Tracking category"), x)
 
 
 def _textelem(name, text):

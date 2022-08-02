@@ -35,6 +35,9 @@ What's new:
    practices! After the database update, it defaults to stock take
    per-item for all Units and will need updating manually.
 
+ * The `departments.accinfo` column has been split into
+   `departments.sales_account` and `departments.purchases_account`.
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new sessions metadata table
@@ -91,6 +94,22 @@ ALTER TABLE unittypes
 ALTER TABLE unittypes
 	ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
 
+ALTER TABLE departments
+	ADD COLUMN sales_account character varying DEFAULT ''::character varying NOT NULL,
+	ADD COLUMN purchases_account character varying DEFAULT ''::character varying NOT NULL;
+
+UPDATE departments
+	SET sales_account = concat_ws(
+		'/',
+		nullif(split_part(accinfo, '/', 1), ''),
+		nullif(split_part(accinfo, '/', 3), ''));
+
+UPDATE departments
+	SET purchases_account = concat_ws(
+		'/',
+		nullif(split_part(accinfo, '/', 2), ''),
+		nullif(split_part(accinfo, '/', 3), ''));
+
 COMMIT;
 
 /* If you are updating multiple systems that share a web service, you
@@ -110,6 +129,9 @@ ALTER TABLE unittypes
 
 ALTER TABLE stocktypes
 	DROP COLUMN stocktake_by_items;
+
+ALTER TABLE departments
+	DROP COLUMN accinfo;
 
 COMMIT;
 ```

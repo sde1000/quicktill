@@ -921,7 +921,13 @@ class Department(Base, Logged):
     maxabv = Column(abv, CheckConstraint("maxabv >= 0.0"),
                     nullable=True, doc="Maximum ABV of "
                     "stock types in this department")
-    accinfo = Column(String(), nullable=True, doc="Accounting system info")
+    sales_account = Column(
+        String(), nullable=False, server_default='',
+        doc="Name of account in accounting system for sales")
+    purchases_account = Column(
+        String(), nullable=False, server_default='',
+        doc="Name of account in accounting system for purchases")
+
     vat = relationship(VatBand)
 
     def __str__(self):
@@ -938,17 +944,6 @@ class Department(Base, Logged):
         return [("Departments", self.get_view_url("tillweb-departments")),
                 (f"{self.id}. {self.description}",
                  self.get_absolute_url())]
-
-    @property
-    def decoded_accinfo(self):
-        """Return a list of (description, data) explaining accinfo
-        """
-        if not self.accinfo:
-            return
-        s = object_session(self)
-        accounts = s.info.get("accounts") if s else None
-        if accounts:
-            return accounts.decode_dept_accinfo(self.accinfo)
 
 
 class TransCode(Base):
@@ -2017,7 +2012,7 @@ class StockType(Base, Logged):
 
     @property
     def abvstr(self):
-        if self.abv:
+        if self.abv is not None:
             return f"{self.abv}%"
         return ""
 

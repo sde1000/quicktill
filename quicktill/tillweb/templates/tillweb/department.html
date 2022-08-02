@@ -34,15 +34,18 @@
   {% if department.notes %}
   <tr><th scope="row">Notes:</th><td>{{department.notes}}</td></tr>
   {% endif %}
-  {% if department.accinfo %}
+  {% if department.sales_account %}
   <tr>
-    <th scope="row">Accounting system info:</th>
-    <td>{{department.accinfo}}</td>
+    <th scope="row">Sales account:</th>
+    <td>{{department.sales_account}}</td>
   </tr>
   {% endif %}
-  {% for desc, data in department.decoded_accinfo %}
-  <tr><th scope="row">{{desc}}:</th><td>{{data}}</td></tr>
-  {% endfor %}
+  {% if department.purchases_account %}
+  <tr>
+    <th scope="row">Purchases account:</th>
+    <td>{{department.purchases_account}}</td>
+  </tr>
+  {% endif %}
 </table>
 
 {% if may_edit %}

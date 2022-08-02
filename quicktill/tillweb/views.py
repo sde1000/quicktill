@@ -2293,9 +2293,7 @@ def departmentlist(request, info):
     })
 
 
-class NewDepartmentForm(forms.Form):
-    number = forms.IntegerField(
-        min_value=1, help_text="Must be unique")
+class DepartmentForm(forms.Form):
     description = forms.CharField(
         max_length=20, help_text="Used in web interface, printed on "
         "price lists and session total lists")
@@ -2303,21 +2301,38 @@ class NewDepartmentForm(forms.Form):
         VatBand, 'band',
         label="VAT band", empty_label="Choose a VAT band",
         label_function=lambda x: f"{x.band} ({x.description})",
-        help_text="VAT rate and business")
+        help_text="VAT rate and business; see note below")
     notes = forms.CharField(
         widget=forms.Textarea(), required=False,
         help_text="Printed on price lists")
     min_price = forms.DecimalField(
-        required=False, min_value=zero,
+        label="Minimum price", required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places,
         help_text="Minimum price per item when price is entered manually")
     max_price = forms.DecimalField(
-        required=False, min_value=zero,
+        label="Maximum price", required=False, min_value=zero,
         max_digits=money_max_digits, decimal_places=money_decimal_places,
         help_text="Maximum price per item when price is entered manually")
-    accinfo = forms.CharField(
-        label="Accounting details", required=False,
-        help_text="Configuration for accounting system integration")
+    min_abv = forms.DecimalField(
+        label="Minimum ABV", required=False, min_value=min_abv_value,
+        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
+        help_text="Minimum ABV for stock types in this department; if "
+        "present, stock types with null ABV are not allowed")
+    max_abv = forms.DecimalField(
+        label="Maximum ABV", required=False, min_value=min_abv_value,
+        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
+        help_text="Maximum ABV for stock types in this department")
+    sales_account = forms.CharField(
+        required=False,
+        help_text="Name of sales account in accounting system")
+    purchases_account = forms.CharField(
+        required=False,
+        help_text="Name of purchases account in accounting system")
+
+
+class DepartmentNumberForm(forms.Form):
+    number = forms.IntegerField(
+        min_value=1, help_text="Must be unique")
 
     def clean_number(self):
         n = self.cleaned_data['number']
@@ -2325,6 +2340,10 @@ class NewDepartmentForm(forms.Form):
         if d:
             raise ValidationError(f"Department {n} already exists")
         return n
+
+
+class NewDepartmentForm(DepartmentForm, DepartmentNumberForm):
+    pass
 
 
 @tillweb_view
@@ -2342,7 +2361,10 @@ def create_department(request, info):
                            notes=cd['notes'] or None,
                            minprice=cd['min_price'],
                            maxprice=cd['max_price'],
-                           accinfo=cd['accinfo'] or None)
+                           minabv=cd['min_abv'],
+                           maxabv=cd['max_abv'],
+                           sales_account=cd['sales_account'],
+                           purchases_account=cd['purchases_account'])
             td.s.add(d)
             td.s.flush()
             user.log(f"Created department {d.logref}")
@@ -2357,40 +2379,6 @@ def create_department(request, info):
                 ("New", info.reverse("tillweb-create-department"))],
         'form': form,
     })
-
-
-class EditDepartmentForm(forms.Form):
-    description = forms.CharField(
-        max_length=20, help_text="Used in web interface, printed on "
-        "price lists and session total lists")
-    vatband = StringIDChoiceField(
-        VatBand, 'band',
-        label="VAT band", empty_label="Choose a VAT band",
-        label_function=lambda x: f"{x.band} ({x.description})",
-        help_text="VAT rate and business; see note below")
-    notes = forms.CharField(
-        widget=forms.Textarea(), required=False,
-        help_text="Printed on price lists")
-    min_price = forms.DecimalField(
-        required=False, min_value=zero,
-        max_digits=money_max_digits, decimal_places=money_decimal_places,
-        help_text="Minimum price per item when price is entered manually")
-    max_price = forms.DecimalField(
-        required=False, min_value=zero,
-        max_digits=money_max_digits, decimal_places=money_decimal_places,
-        help_text="Maximum price per item when price is entered manually")
-    min_abv = forms.DecimalField(
-        label="Min ABV", required=False, min_value=min_abv_value,
-        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
-        help_text="Minimum ABV for stock types in this department; if "
-        "present, stock types with null ABV are not allowed")
-    max_abv = forms.DecimalField(
-        label="Max ABV", required=False, min_value=min_abv_value,
-        max_digits=abv_max_digits, decimal_places=abv_decimal_places,
-        help_text="Maximum ABV for stock types in this department")
-    accinfo = forms.CharField(
-        label="Accounting details", required=False,
-        help_text="Configuration for accounting system integration")
 
 
 @tillweb_view
@@ -2412,10 +2400,11 @@ def department(request, info, departmentid, as_spreadsheet=False):
             'max_price': d.maxprice,
             'min_abv': d.minabv,
             'max_abv': d.maxabv,
-            'accinfo': d.accinfo,
+            'sales_account': d.sales_account,
+            'purchases_account': d.purchases_account,
         }
         if request.method == 'POST' and 'submit_update' in request.POST:
-            form = EditDepartmentForm(request.POST, initial=initial)
+            form = DepartmentForm(request.POST, initial=initial)
             if form.is_valid():
                 if form.has_changed():
                     cd = form.cleaned_data
@@ -2426,13 +2415,14 @@ def department(request, info, departmentid, as_spreadsheet=False):
                     d.maxprice = cd['max_price']
                     d.minabv = cd['min_abv']
                     d.maxabv = cd['max_abv']
-                    d.accinfo = cd['accinfo']
+                    d.sales_account = cd['sales_account']
+                    d.purchases_account = cd['purchases_account']
                     user.log(f"Updated department {d.logref}")
                     td.s.commit()
                     messages.success(request, "Department details updated")
                 return HttpResponseRedirect(d.get_absolute_url())
         else:
-            form = EditDepartmentForm(initial=initial)
+            form = DepartmentForm(initial=initial)
 
         # Can we delete this department? There must be no translines,
         # no PLUs, no stocklines, no stocktypes referencing it. Let's
