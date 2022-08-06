@@ -48,67 +48,67 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE departments
-	ADD COLUMN minabv numeric(3,1),
-	ADD COLUMN maxabv numeric(3,1);
+        ADD COLUMN minabv numeric(3,1),
+        ADD COLUMN maxabv numeric(3,1);
 
 ALTER TABLE vat
         ADD COLUMN description character varying DEFAULT 'None'::character varying NOT NULL;
 
 ALTER TABLE stocktypes
-	ADD CONSTRAINT stocktypes_abv_check CHECK ((abv >= 0.0));
+        ADD CONSTRAINT stocktypes_abv_check CHECK ((abv >= 0.0));
 
 ALTER TABLE departments
-	ADD CONSTRAINT departments_maxabv_check CHECK ((maxabv >= 0.0));
+        ADD CONSTRAINT departments_maxabv_check CHECK ((maxabv >= 0.0));
 
 ALTER TABLE departments
-	ADD CONSTRAINT departments_minabv_check CHECK ((minabv >= 0.0));
+        ADD CONSTRAINT departments_minabv_check CHECK ((minabv >= 0.0));
 
 ALTER TABLE payments
-	ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
+        ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
 
 ALTER TABLE translines
-	ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
+        ADD COLUMN source character varying DEFAULT 'default'::character varying NOT NULL;
 
 ALTER TABLE unittypes
-	ADD COLUMN sale_unit_name character varying,
-	ADD COLUMN sale_unit_name_plural character varying,
-	ADD COLUMN base_units_per_sale_unit numeric(8,1),
-	ADD COLUMN stock_unit_name character varying,
-	ADD COLUMN stock_unit_name_plural character varying,
-	ADD COLUMN base_units_per_stock_unit numeric(8,1);
+        ADD COLUMN sale_unit_name character varying,
+        ADD COLUMN sale_unit_name_plural character varying,
+        ADD COLUMN base_units_per_sale_unit numeric(8,1),
+        ADD COLUMN stock_unit_name character varying,
+        ADD COLUMN stock_unit_name_plural character varying,
+        ADD COLUMN base_units_per_stock_unit numeric(8,1);
 UPDATE unittypes
-	SET sale_unit_name=item_name,
-	    sale_unit_name_plural=item_name_plural,
-	    base_units_per_sale_unit=units_per_item,
-	    stock_unit_name=item_name,
-	    stock_unit_name_plural=item_name_plural,
-	    base_units_per_stock_unit=units_per_item;
+        SET sale_unit_name=item_name,
+            sale_unit_name_plural=item_name_plural,
+            base_units_per_sale_unit=units_per_item,
+            stock_unit_name=item_name,
+            stock_unit_name_plural=item_name_plural,
+            base_units_per_stock_unit=units_per_item;
 ALTER TABLE unittypes
-	ALTER COLUMN sale_unit_name SET NOT NULL,
-	ALTER COLUMN sale_unit_name_plural SET NOT NULL,
-	ALTER COLUMN base_units_per_sale_unit SET NOT NULL,
-	ALTER COLUMN stock_unit_name SET NOT NULL,
-	ALTER COLUMN stock_unit_name_plural SET NOT NULL,
-	ALTER COLUMN base_units_per_stock_unit SET NOT NULL;
+        ALTER COLUMN sale_unit_name SET NOT NULL,
+        ALTER COLUMN sale_unit_name_plural SET NOT NULL,
+        ALTER COLUMN base_units_per_sale_unit SET NOT NULL,
+        ALTER COLUMN stock_unit_name SET NOT NULL,
+        ALTER COLUMN stock_unit_name_plural SET NOT NULL,
+        ALTER COLUMN base_units_per_stock_unit SET NOT NULL;
 
 ALTER TABLE unittypes
-	ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
+        ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
 
 ALTER TABLE departments
-	ADD COLUMN sales_account character varying DEFAULT ''::character varying NOT NULL,
-	ADD COLUMN purchases_account character varying DEFAULT ''::character varying NOT NULL;
+        ADD COLUMN sales_account character varying DEFAULT ''::character varying NOT NULL,
+        ADD COLUMN purchases_account character varying DEFAULT ''::character varying NOT NULL;
 
 UPDATE departments
-	SET sales_account = concat_ws(
-		'/',
-		nullif(split_part(accinfo, '/', 1), ''),
-		nullif(split_part(accinfo, '/', 3), ''));
+        SET sales_account = concat_ws(
+                '/',
+                nullif(split_part(accinfo, '/', 1), ''),
+                nullif(split_part(accinfo, '/', 3), ''));
 
 UPDATE departments
-	SET purchases_account = concat_ws(
-		'/',
-		nullif(split_part(accinfo, '/', 2), ''),
-		nullif(split_part(accinfo, '/', 3), ''));
+        SET purchases_account = concat_ws(
+                '/',
+                nullif(split_part(accinfo, '/', 2), ''),
+                nullif(split_part(accinfo, '/', 3), ''));
 
 COMMIT;
 
@@ -120,18 +120,18 @@ COMMIT;
 BEGIN;
 
 ALTER TABLE stocktypes
-	DROP COLUMN pricechanged;
+        DROP COLUMN pricechanged;
 
 ALTER TABLE unittypes
-	DROP COLUMN item_name,
-	DROP COLUMN item_name_plural,
-	DROP COLUMN units_per_item;
+        DROP COLUMN item_name,
+        DROP COLUMN item_name_plural,
+        DROP COLUMN units_per_item;
 
 ALTER TABLE stocktypes
-	DROP COLUMN stocktake_by_items;
+        DROP COLUMN stocktake_by_items;
 
 ALTER TABLE departments
-	DROP COLUMN accinfo;
+        DROP COLUMN accinfo;
 
 COMMIT;
 ```
@@ -189,10 +189,10 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE log
-	ADD COLUMN config_id character varying;
+        ADD COLUMN config_id character varying;
 
 ALTER TABLE log
-	ADD CONSTRAINT log_config_fkey FOREIGN KEY (config_id) REFERENCES public.config(key) ON DELETE SET NULL;
+        ADD CONSTRAINT log_config_fkey FOREIGN KEY (config_id) REFERENCES public.config(key) ON DELETE SET NULL;
 
 COMMIT;
 ```
@@ -246,36 +246,36 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE log
-	ADD COLUMN stocktakes_id integer;
+        ADD COLUMN stocktakes_id integer;
 
 ALTER TABLE stock
-	ADD COLUMN stocktake_id integer,
-	ALTER COLUMN deliveryid DROP NOT NULL;
+        ADD COLUMN stocktake_id integer,
+        ALTER COLUMN deliveryid DROP NOT NULL;
 
 ALTER TABLE stockout
-	ADD COLUMN stocktake_id integer;
+        ADD COLUMN stocktake_id integer;
 
 ALTER TABLE stocktypes
-	ADD COLUMN stocktake_id integer,
-	ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
+        ADD COLUMN stocktake_id integer,
+        ADD COLUMN stocktake_by_items boolean DEFAULT true NOT NULL;
 
 ALTER TABLE log
-	ADD CONSTRAINT log_stocktake_fkey FOREIGN KEY (stocktakes_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
+        ADD CONSTRAINT log_stocktake_fkey FOREIGN KEY (stocktakes_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
 
 ALTER TABLE stock
-	ADD CONSTRAINT only_one_of_delivery_or_stocktake CHECK (((deliveryid IS NULL) <> (stocktake_id IS NULL)));
+        ADD CONSTRAINT only_one_of_delivery_or_stocktake CHECK (((deliveryid IS NULL) <> (stocktake_id IS NULL)));
 
 ALTER TABLE stock
-	ADD CONSTRAINT stock_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id);
+        ADD CONSTRAINT stock_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id);
 
 ALTER TABLE stockout
-	ADD CONSTRAINT be_unambiguous_constraint CHECK (((translineid IS NULL) OR (stocktake_id IS NULL)));
+        ADD CONSTRAINT be_unambiguous_constraint CHECK (((translineid IS NULL) OR (stocktake_id IS NULL)));
 
 ALTER TABLE stockout
-	ADD CONSTRAINT stockout_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE CASCADE;
+        ADD CONSTRAINT stockout_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE CASCADE;
 
 ALTER TABLE stocktypes
-	ADD CONSTRAINT stocktypes_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
+        ADD CONSTRAINT stocktypes_stocktake_id_fkey FOREIGN KEY (stocktake_id) REFERENCES public.stocktakes(id) ON DELETE SET NULL;
 
 COMMIT;
 ```
@@ -313,13 +313,13 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE stock_annotations
-	DROP CONSTRAINT stock_annotations_stockid_fkey;
+        DROP CONSTRAINT stock_annotations_stockid_fkey;
 
 ALTER TABLE stock_annotations
-	ADD CONSTRAINT stock_annotations_stockid_fkey FOREIGN KEY (stockid) REFERENCES public.stock(stockid) ON DELETE CASCADE;
+        ADD CONSTRAINT stock_annotations_stockid_fkey FOREIGN KEY (stockid) REFERENCES public.stock(stockid) ON DELETE CASCADE;
 
 ALTER TABLE stocktypes
-	ADD CONSTRAINT stocktypes_ambiguity_key UNIQUE (dept, manufacturer, name, abv, unit_id);
+        ADD CONSTRAINT stocktypes_ambiguity_key UNIQUE (dept, manufacturer, name, abv, unit_id);
 
 COMMIT;
 ```
@@ -657,9 +657,9 @@ ALTER TABLE transactions ALTER COLUMN notes SET NOT NULL;
 
 -- Add new columns to stocklines table and figure out line types
 ALTER TABLE stocklines
-	ADD COLUMN linetype character varying(20),
-	ADD COLUMN stocktype integer,
-	ALTER COLUMN dept DROP NOT NULL;
+        ADD COLUMN linetype character varying(20),
+        ADD COLUMN stocktype integer,
+        ALTER COLUMN dept DROP NOT NULL;
 
 UPDATE stocklines SET linetype='regular' WHERE capacity IS NULL;
 UPDATE stocklines SET linetype='display' WHERE capacity IS NOT NULL;
