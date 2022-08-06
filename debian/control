@@ -1,17 +1,17 @@
 Source: quicktill
 Section: python
-X-Python3-Version: >= 3.6
+X-Python3-Version: >= 3.7
 Priority: optional
 Maintainer: Stephen Early <steve@assorted.org.uk>
 Homepage: https://github.com/sde1000/quicktill
-Build-Depends: debhelper (>= 11), dh-python, python3-all, python3-setuptools, python3-sqlalchemy
+Build-Depends: debhelper-compat (= 12), dh-python, python3-all, python3-setuptools, python3-sqlalchemy
 Standards-Version: 3.9.6
 
-Package: quicktill20
+Package: quicktill21
 Architecture: all
 Depends: ${python3:Depends}
-Conflicts: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16, quicktill17, quicktill18, quicktill19
-Replaces: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16, quicktill17, quicktill18, quicktill19
+Conflicts: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16, quicktill17, quicktill18, quicktill19, quicktill20
+Replaces: quicktill, quicktill1, quicktill2, quicktill3, quicktill4, quicktill14, quicktill15, quicktill16, quicktill17, quicktill18, quicktill19, quicktill20
 Suggests: apgdiff
 Description: Simple stock-control and cash register software
  Figure out where all the money and stock went to!

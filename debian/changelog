@@ -1,3 +1,57 @@
+quicktill (21.0) stable; urgency=low
+
+  * New release 21.0
+
+  * Update example data from EMF 2022
+
+  * Untabify release notes
+
+  * Add explicit config options for "default" payment methods
+
+  * Warn when obsolete Xero config is present
+
+  * Split Department.accinfo
+
+  * Move stocktake_by_items from StockType to Unit
+
+  * Move sample dbsetup template from dbsetup.py to examples
+
+  * Add a minimal practical configuration file example
+
+  * Add stock-taking quantities to Unit
+
+  * Log when unknown config file options are encountered
+
+  * Don't set config variable defaults from the config file
+
+  * Log DeprecationWarnings from code called by the config file
+
+  * Use stockterminal_location in localutils.global_hotkeys()
+
+  * Add a "source" column for translines and payments
+
+  * Ignore role names when checking database schema
+
+  * Add database constraints to ensure abv/minabv/maxabv are not negative
+
+  * Add metadata table for sessions
+
+  * Add description column to VAT bands
+
+  * Remove "pricechanged" column from stocktypes
+
+  * Implement min/max ABV for departments
+
+  * Change many uses of .format() and % into f-strings
+
+  * Sample database and config file from EMF 2022
+
+  * Initialise queries_before_render before querylog_callback
+
+  * Initialise database event listener for standalone on-screen-keyboard
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 06 Aug 2022 11:55:21 +0100
+
 quicktill (20.3) stable; urgency=low
 
   * New release 20.3
