@@ -1923,7 +1923,7 @@ class Unit(Base, Logged):
 
     @property
     def logtext(self):
-        return self.name
+        return self.description
 
 
 stockunits_seq = Sequence('stockunits_seq')
