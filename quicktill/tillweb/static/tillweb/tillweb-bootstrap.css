@@ -92,3 +92,11 @@ tr:target {
        over the navbar when necessary */
     z-index: 2000;
 }
+
+/* Used for sortable lists */
+.grabbable {
+    cursor: move;
+    cursor: grab;
+    cursor: -moz-grab;
+    cursor: -webkit-grab;
+}

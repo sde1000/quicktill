@@ -1,13 +1,12 @@
 """Starting, ending, and recording totals for sessions."""
 
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
-from .models import Session, SessionTotal, Transaction, zero
+from .models import PayType, Session, SessionTotal, Transaction, zero
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import select, func, desc
 from .plugins import InstancePluginMount
 from decimal import Decimal
 import datetime
-import itertools
 
 import logging
 log = logging.getLogger(__name__)
@@ -181,30 +180,46 @@ class _PMWrapper:
 
     Remembers the total and where to put it when it's updated.
     """
-    def __init__(self, pm, till_total, popup):
-        self.pm = pm
-        self.lines = 1 if len(pm.total_fields) <= 1 \
-            else len(pm.total_fields) + 1
+    def __init__(self, paytype_id, till_total, popup):
+        self.paytype_id = paytype_id
+        pt = td.s.query(PayType).get(paytype_id)
+        self.description = pt.description
+        self.total_fields = pt.driver.total_fields
+        self.lines = 1 if len(self.total_fields) <= 1 \
+            else len(self.total_fields) + 1
         self.till_total = till_total
-        self.actual_total = pm.total(
-            popup.session, [""] * len(pm.total_fields))
+        self.actual_total = zero
+        self.fees = zero
+        self.total_valid = False
+        self.total_problem = ""
         self.fields = []
         self.popup = popup
 
-    def set_y(self, y):
+    def create_total_labels(self, y):
         self.total_label = ui.label(
             y, self.popup.atx, self.popup.ffw, align=">")
+        self.fees_label = ui.label(
+            y, self.popup.ftx, self.popup.ffw, align=">")
 
     def display_total(self):
-        if isinstance(self.actual_total, Decimal):
+        if self.total_valid:
             self.total_label.set(tillconfig.fc(self.actual_total))
+            self.fees_label.set(tillconfig.fc(self.fees))
         else:
             self.total_label.set("Error", colour=ui.colour_error)
+            self.fees_label.set("Error", colour=ui.colour_error)
 
     def update_total(self):
-        # One of the fields has been changed; redraw the total
-        self.actual_total = self.pm.total(
-            self.popup.session, [f.f for f in self.fields])
+        pt = td.s.query(PayType).get(self.paytype_id)
+        try:
+            self.actual_total, self.fees = pt.driver.total(
+                self.popup.sessionid, [f.f for f in self.fields])
+            self.total_valid = True
+            self.total_problem = ""
+        except Exception as e:
+            self.actual_total = zero
+            self.total_valid = False
+            self.total_problem = str(e)
         self.display_total()
         self.popup.update_total()
 
@@ -219,53 +234,56 @@ class record(ui.dismisspopup):
     """
     ttx = 30
     atx = 45
+    ftx = 60
     ff = "{:>13}"
     ffw = 13
 
     def __init__(self, sessionid):
+        log.info("Record session takings popup: session %d", sessionid)
+        self.sessionid = sessionid
         s = td.s.query(Session).get(sessionid)
-        log.info("Record session takings popup: session %d", s.id)
-        self.session = s
-        if not self.session_valid():
+        if not self.session_valid(s):
             return
         for i in SessionHooks.instances:
             if i.preRecordSessionTakings(s.id):
                 return
-        paytotals = dict([(x.paytype, y) for x, y in s.payment_totals])
-        self.pms = [_PMWrapper(pm, paytotals.get(pm.paytype, zero), self)
-                    for pm in tillconfig.all_payment_methods]
-        # XXX if paytotals includes payment types not included in the
-        # configured payment methods, add those here
+        paytotals = dict(s.payment_totals)
+        self.pms = [
+            _PMWrapper(pt.paytype, paytotals.get(pt, zero), self)
+            for pt in td.s.query(PayType)
+            .filter(PayType.mode != "disabled")
+            .order_by(PayType.order, PayType.paytype)
+            .all()]
         self.till_total = s.total
         # How tall does the window need to be?  Each payment type
-        # takes a minimum of one line; if len(pt.total_fields())>1
-        # then it takes len(pt.total_fields())+1 lines
+        # takes a minimum of one line; if len(pt.total_fields()) > 1
+        # then it takes len(pt.total_fields()) + 1 lines
         h = sum(pm.lines for pm in self.pms)
         # We also need the top border (2), a prompt and header at the
         # top (3) and a total and button at the bottom (4) and the
         # bottom border (2).
         h = h + 11
-        super().__init__(h, 60, title=f"Session {s.id}",
+        super().__init__(h, 75, title=f"Session {s.id}",
                          colour=ui.colour_input)
         self.win.drawstr(
             2, 2, 56, f"Please enter the actual takings for session {s.id}.")
         self.win.drawstr(4, self.ttx, self.ffw, "Till total:", align=">")
         self.win.drawstr(4, self.atx, self.ffw, "Actual total:", align=">")
+        self.win.drawstr(4, self.ftx, self.ffw, "Fees:", align=">")
         y = 5
         self.fl = []
         for pm in self.pms:
-            pm.set_y(y)
+            pm.create_total_labels(y)
             self.win.drawstr(
                 y, self.ttx, self.ffw, tillconfig.fc(pm.till_total),
                 align=">")
-            pm.display_total()
-            self.win.drawstr(y, 2, 18, f"{pm.pm.description}:")
-            if len(pm.pm.total_fields) == 0:
+            self.win.drawstr(y, 2, 18, f"{pm.description}:")
+            if len(pm.total_fields) == 0:
                 # No data entry; just the description
                 pm.fields = []
-            elif len(pm.pm.total_fields) == 1:
+            elif len(pm.total_fields) == 1:
                 # Single field using the description with no indent
-                field = pm.pm.total_fields[0]
+                field = pm.total_fields[0]
                 f = ui.editfield(y, 20, 8, validate=field[1])
                 self.fl.append(f)
                 pm.fields.append(f)
@@ -273,7 +291,7 @@ class record(ui.dismisspopup):
             else:
                 # Line with payment method description and totals, then
                 # one line per field with indent
-                for field in pm.pm.total_fields:
+                for field in pm.total_fields:
                     y = y + 1
                     self.win.drawstr(y, 4, 16, f"{field[0]}:")
                     f = ui.editfield(y, 20, 8, validate=field[1])
@@ -291,45 +309,54 @@ class record(ui.dismisspopup):
             self.total_y, self.ttx, self.ffw,
             tillconfig.fc(self.till_total), colour=ui.colour_confirm,
             align=">")
-        self.total_amount = ui.label(self.total_y, self.atx, self.ffw,
-                                     align=">")
-        self.update_total()
+        self.total_amount = ui.label(
+            self.total_y, self.atx, self.ffw, align=">")
+        self.fees_amount = ui.label(
+            self.total_y, self.ftx, self.ffw, align=">")
         y = y + 2
-        self.fl.append(ui.buttonfield(y, 20, 20, 'Record'))
+        self.fl.append(ui.buttonfield(y, 27, 21, 'Record'))
         ui.map_fieldlist(self.fl)
         # Override key bindings for first/last fields
         self.fl[0].keymap[keyboard.K_CLEAR] = (self.dismiss, None)
         self.fl[-1].keymap[keyboard.K_CASH] = (self.finish, None)
         self.fl[0].focus()
+        for pm in self.pms:
+            pm.update_total()
 
     def update_total(self):
         """A payment method wrapper has changed its total.
 
         Redraw the total line at the bottom of the window.
         """
-        try:
-            total = sum(pm.actual_total for pm in self.pms)
-            difference = self.till_total - total
-            description = "Total (DOWN by {})"
-            if difference == zero:
-                description = "Total (correct)"
-            elif difference < zero:
-                difference = -difference
-                description = "Total (UP by {})"
-            colour = ui.colour_error if difference > Decimal(20) \
-                else ui.colour_input
-            self.total_label.set(
-                description.format(tillconfig.fc(difference)),
-                colour=colour)
-            self.total_amount.set(
-                tillconfig.fc(total),
-                colour=ui.colour_confirm)
-        except Exception:
+        if False in (pm.total_valid for pm in self.pms):
             self.total_label.set("Can't calculate total",
                                  colour=ui.colour_error)
             self.total_amount.set("Error", colour=ui.colour_error)
+            self.fees_amount.set("Error", colour=ui.colour_error)
+            return
+        total = sum(pm.actual_total for pm in self.pms)
+        fees = sum(pm.fees for pm in self.pms)
+        difference = self.till_total - total
+        description = "Total (DOWN by {})"
+        if difference == zero:
+            description = "Total (correct)"
+        elif difference < zero:
+            difference = -difference
+            description = "Total (UP by {})"
+        colour = ui.colour_error if difference > Decimal(20) \
+            else ui.colour_input
+        self.total_label.set(
+            description.format(tillconfig.fc(difference)),
+            colour=colour)
+        self.total_amount.set(
+            tillconfig.fc(total),
+            colour=ui.colour_confirm)
+        self.fees_amount.set(
+            tillconfig.fc(fees),
+            colour=ui.colour_confirm)
 
-    def session_valid(self):
+    @staticmethod
+    def session_valid(session):
         """Is the session eligible to have its totals recorded?
 
         The session object is assumed to be in the current ORM
@@ -338,53 +365,53 @@ class record(ui.dismisspopup):
         Returns True if the session is still valid, otherwise pops up
         an error dialog and returns False.
         """
-        if self.session.endtime is None:
-            ui.infopopup([f"Session {self.session.id} is not finished."],
+        if session.endtime is None:
+            ui.infopopup([f"Session {session.id} is not finished."],
                          title="Error")
             return False
-        if self.session.actual_totals:
-            ui.infopopup([f"Session {self.session.id} has already had totals "
+        if session.actual_totals:
+            ui.infopopup([f"Session {session.id} has already had totals "
                           "recorded."], title="Error")
             return False
         return True
 
     def finish(self):
-        td.s.add(self.session)
-        if not self.session_valid():
+        session = td.s.query(Session).get(self.sessionid)
+        if not self.session_valid(session):
             return
         for pm in self.pms:
-            if isinstance(pm.actual_total, Decimal):
-                td.s.add(SessionTotal(session=self.session,
-                                      paytype=pm.pm.get_paytype(),
-                                      amount=pm.actual_total))
-            else:
+            if not pm.total_valid:
                 ui.infopopup(
-                    [f"The {pm.pm.description} payment method can't "
-                     "supply an actual total at the moment.", "",
-                     "Its error message is:",
-                     str(pm.actual_total), "",
+                    [f"The {pm.description} payment method can't "
+                     f"supply an actual total at the moment.", "",
+                     f"Its error message is: {pm.total_problem}", "",
                      "Please try again later."],
                     title="Payment method error")
-                td.s.rollback()
                 return
-        td.s.flush()
-        user.log(f"Recorded totals for session {self.session.logref}")
         for pm in self.pms:
-            r = pm.pm.commit_total(self.session, pm.actual_total)
+            pt = td.s.query(PayType).get(pm.paytype_id)
+            td.s.add(SessionTotal(
+                session=session, paytype=pt, amount=pm.actual_total,
+                fees=pm.fees))
+        td.s.flush()
+        user.log(f"Recorded totals for session {session.logref}")
+        for pm in self.pms:
+            pt = td.s.query(PayType).get(pm.paytype_id)
+            r = pt.driver.commit_total(self.sessionid, pm.actual_total, pm.fees)
             if r is not None:
                 td.s.rollback()
                 ui.infopopup(
-                    [f"Totals not recorded: {pm.pm.description} payment "
+                    [f"Totals not recorded: {pm.description} payment "
                      f"method says {r}"],
                     title="Payment method error")
                 return
         self.dismiss()
         for i in SessionHooks.instances:
-            i.postRecordSessionTakings(self.session.id)
+            i.postRecordSessionTakings(session.id)
         ui.toast("Printing the confirmed session totals.")
         with ui.exception_guard("printing the confirmed session totals",
                                 title="Printer error"):
-            printer.print_sessiontotals(self.session)
+            printer.print_sessiontotals(session.id)
 
 
 @user.permission_required('record-takings', "Record takings for a session")
@@ -409,19 +436,16 @@ def totalpopup(sessionid):
     s = td.s.query(Session).get(sessionid)
     log.info("Totals popup for session %d", s.id)
 
-    # All configured PayTypes
-    all_pts = [pm.get_paytype() for pm in tillconfig.all_payment_methods]
+    # All PayTypes
+    all_pts = td.s.query(PayType)\
+                  .order_by(PayType.order, PayType.paytype)\
+                  .all()
     # list of (Dept, total) tuples
     depts = s.dept_totals
     # dict of {PayType: total} for transactions
     paytotals = dict(s.payment_totals)
     # dict of {PayType: SessionTotal} for actual amounts paid
     payments = {x.paytype: x for x in s.actual_totals}
-    # If this session has PayTypes not currently configured,
-    # add them to the end of the list of PayTypes
-    for pt in itertools.chain(paytotals.keys(), payments.keys()):
-        if pt not in all_pts:
-            all_pts.append(pt)
     l = []
     l.append(f" Accounting date {s.date} ")
     l.append(f" Started {s.starttime:%Y-%m-%d %H:%M:%S} ")
@@ -460,7 +484,7 @@ def totalpopup(sessionid):
     l.append("")
     l.append(" Press Print for a hard copy ")
     keymap = {
-        keyboard.K_PRINT: (printer.print_sessiontotals, (s,), False),
+        keyboard.K_PRINT: (printer.print_sessiontotals, (s.id,), False),
     }
     ui.listpopup(l,
                  title=f"Session number {s.id}",
@@ -510,8 +534,9 @@ def currentsummary():
     l.append(f" Started {s.starttime:%Y-%m-%d %H:%M:%S} ")
     l.append("")
     tf = ui.tableformatter(" l rp")
-    for pm in tillconfig.payment_methods:
-        pt = pm.get_paytype()
+    for pt in td.s.query(PayType)\
+                  .order_by(PayType.order, PayType.paytype)\
+                  .all():
         if pt in paytotals:
             l.append(tf(pt.description + ":", tillconfig.fc(paytotals[pt])))
     l.append("")

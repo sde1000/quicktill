@@ -284,7 +284,7 @@ kitchenprinter = quicktill.pdrivers.nullprinter('kitchen')
 xapi = quicktill.xero.XeroIntegration(
     secrets=quicktill.secretstore.Secrets(
         'xero-test', b'jVHsRc60cDQjTjTnKqyISP41kxKPSeT_kkDvTJjLsaY='),
-    foo='bar', bar='baz')
+)
 
 def appsmenu():
     menu = [
@@ -362,10 +362,6 @@ def card_expected_payment_date(sessiondate):
     return date
 def amex_expected_payment_date(sessiondate):
     return quicktill.localutils.delta_england_banking_days(sessiondate, 2)
-def sumup_expected_payment_date(sessiondate):
-    # We're not sure yet, but we think sumup payments are in the
-    # account on the next banking day.
-    return quicktill.localutils.delta_england_banking_days(sessiondate, 1)
 
 card = quicktill.card.CardPayment(
     'CARD', 'Card', machines=3, cashback_method=cash,
@@ -376,9 +372,6 @@ amex = quicktill.card.CardPayment(
     'AMEX', 'AmEx', machines=3, kickout=True,
     rollover_guard_time=datetime.time(4, 0, 0),
     account_code="011", account_date_policy=amex_expected_payment_date)
-sumup = quicktill.card.CardPayment(
-    'SUMUP', 'SumUp', machines=1, kickout=False,
-    account_code="011", account_date_policy=sumup_expected_payment_date)
 
 # Used for session totals entry
 all_payment_methods = [ cash, amex, card ]
@@ -412,7 +405,7 @@ config1 = {
     'description': "Haymakers main bar",
     'hotkeys': global_hotkeys,
     'keyboard': quicktill.localutils.stdkeyboard_16by8(
-        cash_payment_method=cash, card_payment_method=card),
+        cash_payment_method="CASH", card_payment_method="CARD"),
 }
 config1.update(std)
 config1.update(quicktill.localutils.activate_register_with_usertoken(
@@ -433,7 +426,7 @@ config4 = {
     'description': "Haymakers festival bar",
     'hotkeys': global_hotkeys,
     'keyboard': quicktill.localutils.stdkeyboard_20by7(
-        151, cash_payment_method=cash, card_payment_method=card),
+        151, cash_payment_method="CASH", card_payment_method="CARD"),
 }
 config4.update(std)
 config4.update(quicktill.localutils.activate_register_with_usertoken(

@@ -1,6 +1,96 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v21.1 to v22
+--------------------
+
+Major internal changes to how Payments and payment methods work.
+
+What's new:
+
+ * Payments have been changed to work more like transaction lines: the
+   information displayed in the register is stored in a column called
+   "text" and it is no longer necessary to refer to the payment method
+   to calculate what to display.
+
+ * Pending payment status is now stored in the payments table and not
+   calculated from the payment using the payment method.
+
+ * Payment method configuration has moved to the database. Payment
+   method configuration in the configuration file will be migrated to
+   the database the first time the till is run with v22 installed.
+
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE payments
+        ADD COLUMN text text,
+        ADD COLUMN pending boolean DEFAULT false NOT NULL;
+
+SET session_replication_role = replica;
+UPDATE payments p
+        SET text=CASE WHEN p.paytype='CASH' THEN p.ref
+                      ELSE pt.description || ' ' || p.ref
+                 END
+        FROM paytypes pt WHERE p.paytype=pt.paytype;
+SET session_replication_role = default;
+ALTER TABLE payments
+        DROP COLUMN ref,
+        ALTER COLUMN text SET NOT NULL;
+
+ALTER TABLE payments
+        ADD CONSTRAINT pending_payment_constraint CHECK (((NOT pending) OR (amount = 0.00)));
+
+CREATE OR REPLACE FUNCTION check_no_pending_payments() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.closed=true
+    AND EXISTS (SELECT * FROM payments WHERE pending AND transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction % has pending payments', NEW.transid
+       USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER close_only_if_no_pending_payments
+  AFTER INSERT OR UPDATE ON transactions
+  FOR EACH ROW EXECUTE PROCEDURE check_no_pending_payments();
+
+ALTER TABLE paytypes
+        ADD COLUMN "order" integer,
+        ADD COLUMN driver_name character varying DEFAULT ''::character varying NOT NULL,
+        ADD COLUMN mode character varying DEFAULT 'disabled'::character varying NOT NULL,
+        ADD COLUMN config text,
+        ADD COLUMN state text,
+        ADD COLUMN payments_account character varying DEFAULT ''::character varying NOT NULL,
+        ADD COLUMN fees_account character varying DEFAULT ''::character varying NOT NULL,
+        ADD COLUMN payment_date_policy character varying DEFAULT 'same-day'::character varying NOT NULL;
+
+ALTER TABLE paytypes
+        ADD CONSTRAINT paytype_absent_driver_constraint CHECK (((NOT ((driver_name)::text = ''::text)) OR ((mode)::text = 'disabled'::text)));
+
+ALTER TABLE paytypes
+        ADD CONSTRAINT paytype_mode_constraint CHECK ((((mode)::text = 'disabled'::text) OR ((mode)::text = 'active'::text) OR ((mode)::text = 'total_only'::text)));
+
+ALTER TABLE sessiontotals
+        ADD COLUMN fees numeric(10,2) DEFAULT 0.00 NOT NULL;
+
+COMMIT;
+```
+
+ - run the till to migrate the payment method configuration, using
+   `runtill start`
+
+ - edit the payment methods in the web interface to set the
+   appropriate payment date policies, since these are not migrated
+   automatically.
+
 Upgrade v21.0 to v21.1
 ----------------------
 

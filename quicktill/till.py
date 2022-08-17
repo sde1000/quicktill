@@ -33,9 +33,11 @@ from . import keyboard
 from . import config
 from . import listen
 from . import barcode
+from . import payment
 from .version import version
-from .models import Session, Business, zero
+from .models import Session, PayType, Business, zero
 import subprocess
+from sqlalchemy.orm import joinedload
 
 # The following imports are to ensure subcommands are loaded
 from . import extras  # noqa: F401
@@ -217,6 +219,13 @@ class runtill(cmdline.command):
     @staticmethod
     def run(args):
         log.info("Starting version %s", version)
+
+        # If any payment methods are defined in the config file,
+        # migrate payments configuration
+        if tillconfig.all_payment_methods:
+            with td.orm_session():
+                payment.migrate_payment_method_config()
+
         if tillconfig.keyboard and tillconfig.keyboard_driver \
            and args.hwkeyboard:
             ui.keyboard_filter_stack.insert(
@@ -330,8 +339,7 @@ class on_screen_keyboard(cmdline.command):
 
 
 class totals(cmdline.command):
-    """
-    Display a table of session totals.
+    """Display a table of session totals.
 
     """
     help = "display table of session totals"
@@ -346,13 +354,22 @@ class totals(cmdline.command):
         with td.orm_session():
             sessions = td.s.query(Session)\
                            .filter(Session.endtime != None)\
+                           .options(joinedload('actual_totals'))\
                            .order_by(Session.id)[-args.days:]
             businesses = td.s.query(Business).order_by(Business.id).all()
+            paytypes = td.s.query(PayType)\
+                           .order_by(PayType.order, PayType.paytype)\
+                           .filter(PayType.paytype.in_({
+                               st.paytype.paytype
+                               for s in sessions
+                               for st in s.actual_totals}))\
+                           .all()
             f = "{s.id:>5} | {s.date} | "
             h = "  ID  |    Date    | "
-            for x in tillconfig.all_payment_methods:
-                f = f + "{p[%s]:>8} | " % x.paytype
-                h = h + f"{x.description:^8} | "
+            ptl = max([len(pt.description) for pt in paytypes] + [8])
+            for x in paytypes:
+                f = f + "{p[%s]:>%d} | " % (x.paytype, ptl)
+                h = h + ("{x.description:^%s} | " % ptl).format(x=x)
             f = f + "{error:>7} | "
             h = h + " Error  | "
             for b in businesses:
@@ -373,7 +390,7 @@ class totals(cmdline.command):
                     continue
                 vbt = s.vatband_totals
                 p = {}
-                for x in tillconfig.all_payment_methods:
+                for x in paytypes:
                     p[x.paytype] = ""
                 for t in s.actual_totals:
                     p[t.paytype_id] = t.amount

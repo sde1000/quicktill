@@ -1,0 +1,84 @@
+{% extends "tillweb/tillweb.html" %}
+{% load static %}
+
+{% block title %}{{till}} — Payment methods{% endblock %}
+{% block scripts %}
+{{block.super}}
+{% if may_manage_paytypes %}
+<script type="text/javascript" src="{% static "tillweb/Sortable.js" %}"></script>
+{% endif %}
+{% endblock %}
+
+{% block tillcontent %}
+
+{% if may_manage_paytypes %}
+<p>You can drag and drop payment methods below to change the order in
+which they are displayed in the till user interface.</p>
+<form action="" method="post">{% csrf_token %}
+  {% endif %}
+<table class="table table-striped table-hover table-sm">
+  <thead class="thead-light">
+    <tr>
+      {% if may_manage_paytypes %}
+      <th></th>
+      {% endif %}
+      <th>Code</th>
+      <th>Description</th>
+      <th>Driver</th>
+      <th>Mode</th>
+      <th>Payment date policy</th>
+      <th>Payments account</th>
+      <th>Fees account</th>
+    </tr>
+  </thead>
+  <tbody id="paytypes">
+{% for pt in paytypes %}
+<tr>
+  {% if may_manage_paytypes %}
+  <td class="sort-handle">
+    <span class="p-2 grabbable">=</span>
+    <input type="hidden" name="paytype_{{pt.paytype}}_order" value="{{pt.paytype.order}}">
+  </td>
+  {% endif %}
+<td><a href="{{pt.get_absolute_url}}">{{pt.paytype}}</a></td>
+<td><a href="{{pt.get_absolute_url}}">{{pt.description}}</a></td>
+<td>{{pt.driver_name}}</td>
+<td>{{pt.mode_display}}</td>
+<td>{{pt.payment_date_policy}}</td>
+<td>{{pt.payments_account}}</td>
+<td>{{pt.fees_account}}</td>
+</tr>
+{% endfor %}
+  </tbody>
+</table>
+{% if may_manage_paytypes %}
+<button class="btn btn-primary mb-2" type="submit">
+  Save order of payment methods
+</button>
+</form>
+{% endif %}
+
+{% if may_create_paytype %}
+<a href="{% url "tillweb-create-paytype" pubname=pubname %}" class="btn btn-secondary">Add new payment method</a>
+{% endif %}
+
+{% if may_manage_paytypes %}
+<script type="text/javascript">
+  var paytypes = document.getElementById('paytypes');
+  var sortable = Sortable.create(paytypes, {
+      handle: '.sort-handle',
+      animation: 150,
+      swapThreshold: 5,
+      onSort: function (evt) {
+	  rows = evt.to.children;
+	  for (var i = 0; i < rows.length; i++) {
+	      // Assume the 'sort' hidden field is the first input in the row
+	      sortfield = rows[i].querySelector("input");
+	      sortfield.value = (i + 1) * 10;
+	  }
+      }
+  });
+</script>
+{% endif %}
+
+{% endblock %}

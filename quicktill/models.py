@@ -231,12 +231,87 @@ class VatRate(Base, Vat, Logged):
 
 
 class PayType(Base):
+    """A payment method
+    """
     __tablename__ = 'paytypes'
     paytype = Column(String(8), nullable=False, primary_key=True)
     description = Column(String(10), nullable=False)
+    order = Column(Integer, doc="Hint for sorting")
+    driver_name = Column(
+        String(), nullable=False, server_default='',
+        doc="Name of driver code for this payment type")
+    mode = Column(
+        String(), nullable=False, server_default='disabled',
+        doc="How the payment method is currently used")
+    config = Column(
+        Text(), doc="Payment method configuration; format depends "
+        "on chosen driver")
+    state = Column(
+        Text(), doc="Payment method state; format depends on chosen driver, "
+        "not expected to be edited by users, only user option should be "
+        "reset to blank")
+    payments_account = Column(
+        String(), nullable=False, server_default='',
+        doc="Name of account in accounting system to receive payments")
+    fees_account = Column(
+        String(), nullable=False, server_default='',
+        doc="Name of account in accounting system for fees deducted from "
+        "payments")
+    payment_date_policy = Column(
+        String(), nullable=False, server_default='same-day',
+        doc="How to calculate the date the payment will arrive "
+        "in the payments account")
+
+    __table_args__ = (
+        CheckConstraint(
+            "mode='disabled' OR mode='active' OR mode='total_only'",
+            name="paytype_mode_constraint"),
+        # A paytype with no driver can only be disabled
+        CheckConstraint(
+            "NOT(driver_name='') OR (mode='disabled')",
+            name="paytype_absent_driver_constraint"),
+    )
 
     def __str__(self):
         return self.description
+
+    modes = {
+        'disabled': "Disabled",
+        'total_only': "Total entry only",
+        'active': "Active",
+    }
+
+    @property
+    def mode_display(self):
+        return self.modes[self.mode]
+
+    # This should be set to the appropriate payment driver factory
+    # before the `driver` property is accessed
+    driver_factory = None
+
+    @property
+    def driver(self):
+        if not hasattr(self, '_driver'):
+            self._driver = self.driver_factory()
+        return self._driver
+
+    @property
+    def active(self):
+        """Can the payment type be used to create new payments?
+        """
+        return self.mode == "active" and self.driver.config_valid
+
+    @property
+    def id(self):
+        # Needed for get_absolute_url
+        return self.paytype
+
+    tillweb_viewname = "tillweb-paytype"
+    tillweb_argname = "paytype"
+
+    def tillweb_nav(self):
+        return [("Payment methods", self.get_view_url("tillweb-paytypes")),
+                (self.description, self.get_absolute_url())]
 
 
 sessions_seq = Sequence('sessions_seq')
@@ -253,6 +328,8 @@ class Session(Base, Logged):
     __tablename__ = 'sessions'
 
     id = Column('sessionid', Integer, sessions_seq, primary_key=True)
+    # XXX starttime and endtime are currently stored in
+    # localtime. They should be stored with timezone info.
     starttime = Column(DateTime, nullable=False)
     endtime = Column(DateTime)
     date = Column('sessiondate', Date, nullable=False)
@@ -509,15 +586,34 @@ class SessionMeta(Base):
 
 
 class SessionTotal(Base):
+    """Actual total recorded for a payment type in a Session
+
+    The actual amount taken through this payment type is recorded as
+    'amount'. If the payment will be received net of fees, the amount
+    of fees to be deducted is recorded as 'fees'. The amount expected
+    to arrive in the bank account is 'amount - fees'.
+
+    Negative amounts are possible, for example when a payment type has
+    issued more refunds than it has taken payments. It is also
+    possible for the overall total for a session to be negative.
+
+    Negative fees may apply, for example where card payments have been
+    refunded and their fees have been refunded as well.
+    """
     __tablename__ = 'sessiontotals'
     sessionid = Column(Integer, ForeignKey('sessions.sessionid'),
                        primary_key=True)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
                         primary_key=True)
     amount = Column(money, nullable=False)
+    fees = Column(money, nullable=False, server_default=literal(zero))
     session = relationship(Session, backref=backref(
-        'actual_totals', order_by=desc('paytype')))
+        'actual_totals', order_by=desc(paytype_id)))
     paytype = relationship(PayType)
+
+    @property
+    def payment_amount(self):
+        return self.amount - self.fees
 
 
 Session.actual_total = column_property(
@@ -652,6 +748,25 @@ CREATE CONSTRAINT TRIGGER close_only_if_balanced
 DROP TRIGGER close_only_if_balanced ON transactions;
 DROP FUNCTION check_transaction_balances();
 """)  # noqa: E501
+
+add_ddl(Transaction.__table__, """
+CREATE OR REPLACE FUNCTION check_no_pending_payments() RETURNS trigger AS $$
+BEGIN
+  IF NEW.closed=true
+    AND EXISTS (SELECT * FROM payments WHERE pending AND transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction %% has pending payments', NEW.transid
+       USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE CONSTRAINT TRIGGER close_only_if_no_pending_payments
+  AFTER INSERT OR UPDATE ON transactions
+  FOR EACH ROW EXECUTE PROCEDURE check_no_pending_payments();
+""", """
+DROP TRIGGER close_only_if_no_pending_payments ON transactions;
+DROP FUNCTION check_no_pending_payments();
+""")
 
 
 user_seq = Sequence('user_seq')
@@ -834,13 +949,14 @@ class Payment(Base, Logged):
     amount = Column(money, nullable=False)
     paytype_id = Column('paytype', String(8), ForeignKey('paytypes.paytype'),
                         nullable=False)
-    ref = Column(String())
+    text = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False,
                   server_default=func.current_timestamp())
     user_id = Column('user', Integer, ForeignKey('users.id'), nullable=True,
                      doc="User who created this payment")
     source = Column(String(), nullable=False, server_default="default",
                     doc="On which terminal was this payment created?")
+    pending = Column(Boolean, nullable=False, server_default=literal(False))
     transaction = relationship(
         Transaction,
         backref=backref('payments', order_by=id, cascade="all, delete-orphan",
@@ -854,6 +970,13 @@ class Payment(Base, Logged):
                         passive_deletes=True,
                         cascade="all,delete-orphan")
 
+    __table_args__ = (
+        # If payment is pending, amount must be zero
+        CheckConstraint(
+            "(NOT pending) OR (amount = 0.00)",
+            name="pending_payment_constraint"),
+    )
+
     def set_meta(self, key, val):
         val = str(val)
         if key in self.meta:
@@ -863,6 +986,13 @@ class Payment(Base, Logged):
             self.meta[key] = PaymentMeta(
                 key=key,
                 value=val)
+
+    tillweb_viewname = "tillweb-payment"
+    tillweb_argname = "paymentid"
+
+    def tillweb_nav(self):
+        return self.transaction.tillweb_nav() \
+            + [(f"Payment {self.id}", self.get_absolute_url())]
 
 
 class PaymentMeta(Base):

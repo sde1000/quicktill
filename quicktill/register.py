@@ -40,7 +40,7 @@ from . import config
 import logging
 import datetime
 from .models import Transline, Transaction, Session, StockOut, penny
-from .models import Payment, zero, User, Department, desc
+from .models import PayType, Payment, zero, User, Department, desc
 from .models import StockType
 from .models import max_quantity
 from sqlalchemy.sql import func
@@ -184,10 +184,10 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
      - drinkin(trans, amount) - "drink in" function on open transaction
      - nosale() - just before kicking out the cash drawer on closed transaction
      - cashkey(trans) - cash/enter on an open transaction
-     - paymentkey(method, trans) - payment key on an open transaction
+     - paymentkey(paytype, trans) - payment key on an open transaction
      - close_transaction(trans) - called just before closing a balanced
          transaction
-     - start_payment(method, trans, amount, balance) - about to invoke a
+     - start_payment(paytype, trans, amount, balance) - about to invoke a
          payment method
      - printkey(trans)
      - cancelkey(trans) - cancel key on an open or closed transaction
@@ -743,6 +743,7 @@ class page(ui.basicpage):
         td.s.flush()
         self._redraw()
         self.hook("new_page")
+        self._resume_pending_payment()
 
     def _gettrans(self):
         """Obtain the Transaction object for the current transaction
@@ -933,6 +934,7 @@ class page(ui.basicpage):
         if trans and not trans.closed \
            and (trans.lines or trans.payments) \
            and trans.total == trans.payments_total:
+            # XXX check that there are no pending payments
             if self.hook("close_transaction", trans):
                 return
             # Yes, it's balanced!
@@ -1704,14 +1706,14 @@ class page(ui.basicpage):
         """The user pressed the 'Drink In' key.
 
         The 'Drink In' key creates a negative entry in the
-        transaction's payments section using the default payment
+        transaction's payments section using its configured payment
         method; the intent is that staff who are offered a drink that
         they don't want to pour immediately can use this key to enable
         the till to add the cost of their drink onto a transaction.
-        They can take the cash from the till tray or make a note that
+        They can take the money from the till tray or make a note that
         it's in there, and use it later to buy a drink.
 
-        This only works if the default payment method supports change.
+        This only works if the configured payment method supports change.
         """
         if self.qty or self.mod:
             ui.infopopup(["You can't enter a quantity or use a modifier key "
@@ -1731,23 +1733,26 @@ class page(ui.basicpage):
         self.clearbuffer()
         if self.hook("drinkin", trans, amount):
             return
-        pm = None
-        for x in tillconfig.payment_methods:
-            if x.paytype == drinkin_payment_method():
-                pm = x
-                break
+
+        pm = td.s.query(PayType).get(drinkin_payment_method())
 
         if not pm:
             self._redraw()
             ui.infopopup(["There is no Drink 'In' payment method configured."],
                          title="Error")
             return
-        if not pm.change_given:
+        if not pm.active:
+            self._redraw()
+            ui.infopopup([f"The {pm.description} payment method is not "
+                          f"active."], title="Error")
+            return
+        if not pm.driver.change_given:
             self._redraw()
             ui.infopopup([f"The {pm.description} payment method doesn't "
                           "support change."], title="Error")
             return
-        p = pm.add_change(trans, description="Drink 'In'", amount=-amount)
+        p = pm.driver.add_change(
+            trans, description="Drink 'In'", amount=-amount)
         self.dl.append(p)
         self._clear_marks()
         self.cursor_off()
@@ -1809,28 +1814,13 @@ class page(ui.basicpage):
         if self.hook("cashkey", trans):
             return
 
-        # If any of the transaction's existing payments are pending,
-        # pop up a menu allowing them to be resumed.
-        ml = [(p.description(), p.resume, (self,))
-              for p in self.dl
-              if hasattr(p, 'is_pending') and p.is_pending()]
-        log.debug("Pending payments: %s", ml)
-        if ml:
-            ui.menu(
-                ml, blurb="This transaction has one or more pending payments."
-                "  Choose a payment to resume from this list.  If you would "
-                "like to add a new payment, dismiss this menu and then "
-                "press Manage Transaction, choose option 6, then choose "
-                "the type of payment to take.",
-                title="Resume pending payment")
+        if self._resume_pending_payment():
             return
 
         # We now consider using the configured default payment method.
-        pm = None
-        for x in tillconfig.payment_methods:
-            if x.paytype == default_payment_method():
-                pm = x
-                break
+        pm = td.s.query(PayType).get(default_payment_method())
+        if pm and not pm.active:
+            pm = None
 
         # If the transaction is an old one (i.e. the "recall
         # transaction" function has been used on it) then require
@@ -1844,21 +1834,37 @@ class page(ui.basicpage):
                 title="Choose payment method for this transaction")
             return
 
-        self.paymentkey(pm)
+        self.paymentkey(pm.paytype)
 
     def _payment_method_menu(self, title="Payment methods"):
-        ui.automenu([(m.description, self.paymentkey, (m,))
-                     for m in tillconfig.payment_methods],
-                    title=title, spill="keymenu")
+        ui.automenu(
+            [(m.description, self.paymentkey, (m.paytype,))
+             for m in td.s.query(PayType)
+             .filter(PayType.mode == 'active')
+             .order_by(PayType.order, PayType.paytype)
+             .all()],
+            title=title, spill="keymenu")
 
     @user.permission_required("take-payment", "Take a payment")
-    def paymentkey(self, method):
+    def paymentkey(self, paytype_id):
         """Deal with a payment.
 
         Deal with a keypress that might be a payment key.  We might be
         entered directly rather than through our keypress method, so
         refresh the transaction first.
+
+        For release 22, paytype_id may be a PayType.paytype
+        (preferred) or a payment.PaymentConfig object. After release
+        22, paytype_id must be a PayType.paytype.
         """
+        if isinstance(paytype_id, payment.PaymentConfig):
+            log.warning(
+                f"configuration file should be updated so that "
+                f"the {paytype_id.description} payment key has its "
+                f"method set to the string '{paytype_id.paytype}' "
+                f"instead of a PaymentConfig object instance.")
+            paytype_id = paytype_id.paytype
+
         # UI sanity checks first
         if self.qty is not None:
             log.info("Register: paymentkey: payment with quantity not allowed")
@@ -1884,7 +1890,26 @@ class page(ui.basicpage):
             self.clearbuffer()
             self._redraw()
             return
-        if self.hook("paymentkey", method, trans):
+        paytype = td.s.query(PayType).get(paytype_id)
+        if not paytype:
+            log.info("Register: paymentkey: missing payment method")
+            ui.infopopup(["This payment method does not exist."], title="Error")
+            return
+        if paytype.mode != "active":
+            log.info("Register: paymentkey: inactive payment method")
+            ui.infopopup([f"This payment method is not active. Its mode "
+                          f"is '{paytype.mode}'."], title="Error")
+            return
+        if not paytype.driver.config_valid:
+            log.info("Register: paymentkey: payment method invalid config")
+            ui.infopopup(["This payment method is not configured correctly.",
+                          "",
+                          f"The problem is: {paytype.driver.config_problem}"],
+                         title="Error")
+            self.clearbuffer()
+            self._redraw()
+            return
+        if self.hook("paymentkey", paytype, trans):
             return
         self.prompt = self.defaultprompt
         self.balance = trans.balance
@@ -1919,9 +1944,9 @@ class page(ui.basicpage):
             return
         # We have a non-zero amount and we're happy to proceed.  Pass
         # to the payment method.
-        if self.hook("start_payment", method, trans, amount, self.balance):
+        if self.hook("start_payment", paytype, trans, amount, self.balance):
             return
-        method.start_payment(self, trans.id, amount, self.balance)
+        paytype.driver.start_payment(self, trans.id, amount, self.balance)
 
     def add_payments(self, transid, payments):
         """Payments have been added to a transaction.
@@ -1960,6 +1985,25 @@ class page(ui.basicpage):
         self.close_if_balanced()
         self.cursor_off()
         self._redraw()
+
+    def _resume_pending_payment(self):
+        """Check for any pending payments and resume one of them if present
+
+        Returns True if a payment was resumed
+        """
+        trans = self._gettrans()
+        if not trans or trans.closed:
+            return
+
+        pending_payments = [p for p in self.dl if isinstance(p, payment.pline)
+                            and p.pending]
+        if pending_payments:
+            p = td.s.query(Payment)\
+                    .options(joinedload('meta'))\
+                    .get(pending_payments[0].payment_id)
+            p.paytype.driver.resume_payment(self, p)
+            return True
+        return False
 
     def notekey(self, k):
         if self.qty is not None or self.buf:
@@ -2496,6 +2540,7 @@ class page(ui.basicpage):
         self.cursor_off()
         self.update_balance()
         self._redraw()
+        self._resume_pending_payment()
 
     @user.permission_required("recall-trans", "Change to a different "
                               "transaction")
@@ -2574,8 +2619,7 @@ class page(ui.basicpage):
         nds = zero
         ndps = []
         for p in trans.payments:
-            pm = payment.methods[p.paytype_id]
-            if not pm.deferrable:
+            if not p.paytype.driver.deferrable:
                 nds = nds + p.amount
                 ndps.append(p)
 
@@ -2587,13 +2631,11 @@ class page(ui.basicpage):
             return
 
         # 2. If non-deferrable payments sum to anything other than
-        # zero, check that there is a default payment method that
+        # zero, check that there is a payment method configured that
         # supports both change and refunds; we will need it later.
-        defer_pm = None
-        for x in tillconfig.payment_methods:
-            if x.paytype == defer_payment_method():
-                defer_pm = x
-                break
+        defer_pm = td.s.query(PayType).get(defer_payment_method())
+        if not defer_pm or not defer_pm.active:
+            defer_pm = None
 
         if nds:
             if not defer_pm:
@@ -2605,7 +2647,8 @@ class page(ui.basicpage):
                     title="Error")
                 return
             # The payment method must support both change and refunds
-            if not defer_pm.change_given or not defer_pm.refund_supported:
+            if not defer_pm.driver.change_given \
+               or not defer_pm.driver.refund_supported:
                 ui.infopopup(
                     ["This transaction is part-paid; to defer it "
                      "we must refund the part-payment.  The defer payment "
@@ -2634,7 +2677,7 @@ class page(ui.basicpage):
             if nds != zero:
                 user.log(f"Deferred transaction {trans.logref} which was "
                          f"part-paid by {tillconfig.fc(nds)}")
-                defer_pm.add_change(ptrans, "Deferred", zero - nds)
+                defer_pm.driver.add_change(ptrans, "Deferred", zero - nds)
                 trans.set_meta(
                     transaction_message_key,
                     f"This transaction was part-paid when it was deferred on "
@@ -3021,6 +3064,29 @@ class page(ui.basicpage):
         self.transid = self.user.dbuser.transaction.id \
             if self.user.dbuser.transaction else None
         self._update_timeout()
+        return True
+
+    def entry_noninteractive(self):
+        """Check for valid transaction
+
+        This function is called to check whether the current
+        transaction is still valid, in contexts where the user may not
+        be standing in front of the register (eg. when a card payment
+        dialog is checking payment state based on a timer).
+
+        If this returns False, the caller should clean up and then
+        call the deselect() method.
+        """
+        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        if self.user.dbuser.register != register_instance:
+            # User has logged in somewhere else
+            return False
+        if self.transid and not self.user.dbuser.transaction:
+            # Transaction has been taken by another user
+            return False
+        if self.transid != self.user.dbuser.transaction.id:
+            # This _should_ never happen but would be very bad if it did!
+            return False
         return True
 
     def hook(self, action, *args, **kwargs):

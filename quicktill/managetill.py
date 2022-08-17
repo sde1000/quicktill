@@ -5,7 +5,7 @@ import sys
 import os
 from . import ui, keyboard, td, printer, session, user
 from . import tillconfig, linekeys, stocklines, plu, modifiers
-from . import barcode
+from . import barcode, payment
 from .version import version
 import subprocess
 
@@ -202,7 +202,8 @@ def popup():
         ("1", "Sessions", session.menu, None),
         ("2", "Current session summary", session.currentsummary, None),
         ("4", "Stock lines, PLUs, modifiers and keyboard", slmenu, None),
-        ("6", "Print a receipt", receiptprint, None),
+        ("5", "Print a receipt", receiptprint, None),
+        ("6", "Payment methods", payment.manage, None),
         ("7", "Users", user.usersmenu, None),
         exit,
         ("9", "System information and settings", sys_menu, None),

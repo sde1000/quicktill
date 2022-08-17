@@ -9,7 +9,7 @@
 {% if form %}
 <form action="" method="post">{% csrf_token %}
 {% endif %}
-<table class="kvtable">
+<table class="kvtable mb-2">
 <tr><th>ID</th><td>{{transaction.id}}</td></tr>
 {% if transaction.session %}
 <tr><th>Session</th><td><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></td></tr>
@@ -27,7 +27,7 @@
 <tr><th>Total</th><td>{{money}}{{transaction.total}}</td></tr>
 </table>
 {% if form %}
-<button class="btn btn-primary" type="submit" name="submit_update">
+<button class="btn btn-primary mb-2" type="submit" name="submit_update">
   Update notes
 </button>
 </form>

@@ -1,0 +1,35 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — payment {{payment.id}}{% endblock %}
+
+{% block heading %}{{till}} — payment {{payment.id}}{% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable mb-2">
+<tr><th scope="row">ID</th><td>{{payment.id}}</td></tr>
+<tr><th scope="row">Transaction</th><td><a href="{{payment.transaction.get_absolute_url}}">{{payment.transid}}</a></td></tr>
+<tr><th scope="row">Description</th><td>{{payment.text}}</td></tr>
+<tr><th scope="row">Time</th><td>{{payment.time}}</td></tr>
+<tr><th scope="row">Source</th><td>{{payment.source}}</td></tr>
+<tr><th scope="row">Payment method</th><td><a href="{{payment.paytype.get_absolute_url}}">{{payment.paytype.description}}</a></td></tr>
+<tr><th scope="row">Amount</th><td>{{money}}{{payment.amount}}</td></tr>
+<tr><th scope="row">Pending?</th><td>{% if payment.pending %}Yes{% else %}No{% endif %}</td></tr>
+<tr><th scope="row">User</th><td>{% if payment.user %}<a href="{{payment.user.get_absolute_url}}">{{payment.user.fullname}}</a>{% endif %}
+</table>
+
+{% if payment.logs %}
+<h2>Log entries</h2>
+{% with logs=payment.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
+{% if payment.meta.values %}
+<h2>Metadata</h2>
+<ul>
+  {% for m in payment.meta.values %}
+  <li>{{m.key}}: {{m.value}}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}

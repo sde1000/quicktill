@@ -1,0 +1,75 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — {{paytype.description}} payment method{% endblock %}
+
+{% block heading %}{{till}} — {{paytype.description}} payment method{% endblock %}
+
+{% block tillcontent %}
+
+{% if may_edit %}
+<form class="mb-2" action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_update">
+    Update payment method
+  </button>
+  {% if not recent_payments and not recent_totals %}
+  <button class="btn btn-danger" type="submit" name="submit_delete">
+    Delete payment method
+  </button>
+  {% endif %}
+</form>
+{% else %}
+<table class="kvtable mb-2">
+<tr><th scope="row">Code</th><td>{{paytype.paytype}}</td></tr>
+<tr><th scope="row">Description</th><td>{{paytype.description}}</td></tr>
+<tr><th scope="row">Driver name</th><td>{{paytype.driver_name}}</td></tr>
+<tr><th scope="row">Mode</th><td>{{paytype.mode_display}}</td></tr>
+<tr><th scope="row">Config</th><td>{{paytype.config}}</td></tr>
+<tr><th scope="row">Payments account</th><td>{{paytype.payments_account}}</td></tr>
+<tr><th scope="row">Fees account</th><td>{{paytype.fees_account}}</td></tr>
+<tr><th scope="row">Payment date policy</th><td>{{paytype.payment_date_policy}}</td></tr>
+</table>
+{% endif %}
+
+{% if paytype.state %}
+<h2>Internal state</h2>
+<p>{{paytype.state}}</p>
+{% endif %}
+
+{% if recent_payments %}
+<h2>Recent payments</h2>
+{% with payments=recent_payments %}{% include "tillweb/paymentlist.html" %}{% endwith %}
+{% endif %}
+
+{% if recent_totals %}
+<h2>Recent session totals</h2>
+<table class="table table-striped table-hover table-sm mb-2" id="payments">
+  <thead>
+    <tr>
+      <th>Session</th>
+      <th>Date</th>
+      <th>Total amount</th>
+      <th>Fees</th>
+      <th>Payment amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in recent_totals %}
+    <tr>
+      <td><a href="{{t.session.get_absolute_url}}">{{t.session.id}}</a></td>
+      <td><a href="{{t.session.get_absolute_url}}">{{t.session.date}}</a></td>
+      <td>{{money}}{{t.amount}}</td>
+      <td>{{money}}{{t.fees}}</td>
+      <td>{{money}}{{t.payment_amount}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if paytype.logs %}
+<h2>Log entries</h2>
+{% with logs=paytype.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+{% endif %}
+
+{% endblock %}

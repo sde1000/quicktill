@@ -29,6 +29,7 @@ from quicktill.models import (
     VatBand,
     Department,
     Session,
+    SessionTotal,
     StockLine,
     StockAnnotation,
     StockItem,
@@ -47,6 +48,7 @@ from quicktill.models import (
     Permission,
     Config,
     Payment,
+    PayType,
     money_max_digits,
     money_decimal_places,
     qty_max_digits,
@@ -859,6 +861,184 @@ def transline(request, info, translineid):
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
+
+
+@tillweb_view
+def payment(request, info, paymentid):
+    payment = td.s.query(Payment)\
+                  .options(joinedload('paytype'),
+                           joinedload('user'))\
+                  .get(paymentid)
+    if not payment:
+        raise Http404
+    return ('payment.html', {'payment': payment, 'tillobject': payment})
+
+
+@tillweb_view
+def paytypelist(request, info):
+    paytypes = td.s.query(PayType)\
+                   .order_by(PayType.order, PayType.paytype)\
+                   .all()
+
+    may_manage_paytypes = info.user_has_perm("manage-payment-methods")
+
+    if may_manage_paytypes and request.method == "POST":
+        for pt in paytypes:
+            key = f"paytype_{pt.paytype}_order"
+            try:
+                pt.order = int(request.POST.get(key))
+            except Exception:
+                pass
+        user.log(
+            "Changed order of payment methods to: "
+            + ', '.join(pt.description for pt in paytypes
+                        if pt.mode != 'disabled'))
+        td.s.commit()
+        messages.info(request, "Payment method order saved")
+        return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+
+    return ('paytypelist.html', {
+        'nav': [("Payment methods", info.reverse("tillweb-paytypes"))],
+        'paytypes': paytypes,
+        'may_create_paytype': info.user_has_perm("edit-payment-methods"),
+        'may_manage_paytypes': may_manage_paytypes,
+    })
+
+
+class PayTypeForm(forms.Form):
+    description = forms.CharField(
+        max_length=10,
+        help_text="Shown in menus, on receipts, etc.")
+    driver_name = forms.CharField(
+        required=False,
+        help_text="Name of driver module to use")
+    mode = forms.ChoiceField(choices=PayType.modes.items())
+    config = forms.CharField(widget=forms.TextInput, required=False)
+    payments_account = forms.CharField(
+        required=False,
+        help_text="Name of account to receive payments in accounting system")
+    fees_account = forms.CharField(
+        required=False,
+        help_text="Name of account to receive fees in accounting system")
+    payment_date_policy = forms.CharField(
+        help_text="Name of date policy function to use for payments "
+        "to the payment account in the accounting system")
+
+    def clean(self):
+        cd = super().clean()
+        if cd['mode'] != 'disabled' and not cd['driver_name']:
+            self.add_error(
+                'mode', "Driver name must be specified to activate "
+                "a payment method")
+
+
+@tillweb_view
+def paytype(request, info, paytype):
+    pt = td.s.query(PayType).get(paytype)
+    if not pt:
+        raise Http404
+
+    may_edit = info.user_has_perm("edit-payment-methods")
+
+    initial = {
+        'description': pt.description,
+        'driver_name': pt.driver_name,
+        'mode': pt.mode,
+        'config': pt.config,
+        'payments_account': pt.payments_account,
+        'fees_account': pt.fees_account,
+        'payment_date_policy': pt.payment_date_policy,
+    }
+
+    recent_payments = td.s.query(Payment)\
+                          .order_by(desc(Payment.id))\
+                          .filter(Payment.paytype == pt)\
+                          .limit(100)\
+                          .all()
+    recent_totals = td.s.query(SessionTotal)\
+                        .options(joinedload('session'))\
+                        .order_by(desc(SessionTotal.sessionid))\
+                        .filter(SessionTotal.paytype == pt)\
+                        .limit(50)\
+                        .all()
+
+    if may_edit and request.method == "POST":
+        if 'submit_update' in request.POST:
+            form = PayTypeForm(request.POST, initial=initial)
+            if form.is_valid():
+                cd = form.cleaned_data
+                pt.description = cd['description']
+                pt.driver_name = cd['driver_name']
+                pt.mode = cd['mode']
+                pt.config = cd['config']
+                pt.payments_account = cd['payments_account']
+                pt.fees_account = cd['fees_account']
+                pt.payment_date_policy = cd['payment_date_policy']
+                user.log(f"Updated payment method '{pt}'")
+                td.s.commit()
+                messages.info(request, f"Updated payment method '{pt}'")
+                return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+        elif 'submit_delete' in request.POST:
+            if recent_payments or recent_totals:
+                messages.error(request, "Cannot delete a payment method "
+                               "that has been used")
+                return HttpResponseRedirect(pt.get_absolute_url())
+            user.log(f"Deleted unused payment method '{pt}'")
+            messages.info(request, f"Deleted payment method '{pt}'")
+            td.s.delete(pt)
+            td.s.commit()
+            return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+    else:
+        form = PayTypeForm(initial=initial)
+
+    return ('paytype.html', {
+        'paytype': pt,
+        'form': form,
+        'tillobject': pt,
+        'recent_payments': recent_payments,
+        'recent_totals': recent_totals,
+        'may_edit': may_edit,
+    })
+
+
+class NewPayTypeForm(forms.Form):
+    code = forms.CharField(
+        max_length=8,
+        help_text="Internal name for new payment method; must be unique")
+    description = forms.CharField(
+        max_length=10,
+        help_text="Description of new payment method, used in menus and "
+        "printed on receipts, etc.")
+
+
+@tillweb_view
+def create_paytype(request, info):
+    if not info.user_has_perm("edit-payment-methods"):
+        return HttpResponseForbidden("You cannot create new payment methods")
+
+    if request.method == "POST":
+        form = NewPayTypeForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            pt = PayType(paytype=cd['code'], description=cd['description'],
+                         order=10000000)
+            try:
+                td.s.add(pt)
+                user.log(f"Created payment method '{pt}' (code '{pt.paytype}')")
+                td.s.commit()
+                return HttpResponseRedirect(pt.get_absolute_url())
+            except sqlalchemy.exc.IntegrityError:
+                td.s.rollback()
+                form.add_error(
+                    "code", "There is another payment method with this code")
+    else:
+        form = NewPayTypeForm()
+
+    return ('new-paytype.html', {
+        'nav': [("Payment methods", info.reverse("tillweb-paytypes")),
+                ("New", info.reverse("tillweb-create-paytype"))],
+        'form': form,
+    })
 
 
 @tillweb_view

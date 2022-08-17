@@ -323,15 +323,8 @@ class XeroIntegration:
             contact.append(_textelem("ContactID", self.sales_contact_id()))
         return contact
 
-    def _get_sales_tracking(self, department):
-        tracking = []
-        if self.tracking_category_name() and self.tracking_category_value():
-            tracking.append((self.tracking_category_name(),
-                             self.tracking_category_value()))
-        if department and self.department_tracking_category_name():
-            v = self._sales_tracking_for_department(department)
-            if v:
-                tracking.append((self.department_tracking_category_name(), v))
+    @staticmethod
+    def _tracking_list_to_xml(tracking):
         if tracking:
             t = Element("Tracking")
             for name, option in tracking:
@@ -340,22 +333,31 @@ class XeroIntegration:
                 tc.append(_textelem("Option", option))
             return t
 
-    def _get_purchases_tracking(self, department):
+    def _get_general_tracking(self):
         tracking = []
         if self.tracking_category_name() and self.tracking_category_value():
             tracking.append((self.tracking_category_name(),
                              self.tracking_category_value()))
+        return tracking
+
+    def _get_sales_tracking(self, department):
+        tracking = self._get_general_tracking()
+        if department and self.department_tracking_category_name():
+            v = self._sales_tracking_for_department(department)
+            if v:
+                tracking.append((self.department_tracking_category_name(), v))
+        return self._tracking_list_to_xml(tracking)
+
+    def _get_purchases_tracking(self, department):
+        tracking = self._get_general_tracking()
         if department and self.department_tracking_category_name():
             v = self._purchases_tracking_for_department(department)
             if v:
                 tracking.append((self.department_tracking_category_name(), v))
-        if tracking:
-            t = Element("Tracking")
-            for name, option in tracking:
-                tc = SubElement(t, "TrackingCategory")
-                tc.append(_textelem("Name", name))
-                tc.append(_textelem("Option", option))
-            return t
+        return self._tracking_list_to_xml(tracking)
+
+    def _get_fees_tracking(self):
+        return self._tracking_list_to_xml(self._get_general_tracking())
 
     @user.permission_required("xero-admin", "Xero integration admin")
     def app_menu(self):
@@ -535,7 +537,7 @@ class XeroIntegration:
         # Negative payment method totals are added as positive line items
         # against the suspense account
         for total in session.actual_totals:
-            if total.amount < zero:
+            if total.payment_amount < zero:
                 if not self.suspense_account():
                     raise XeroError(
                         f"Session {session.id} has a negative till total, "
@@ -546,10 +548,30 @@ class XeroIntegration:
                     "Description",
                     f"Negative {total.paytype.description} total"))
                 li.append(_textelem("AccountCode", self.suspense_account()))
-                li.append(_textelem("LineAmount", str(zero - total.amount)))
+                li.append(_textelem("LineAmount", str(
+                    zero - total.payment_amount)))
                 li.append(_textelem("TaxType", "NONE"))
                 # No tracking category
                 negative_totals = True
+        # Fees are added as negative line items against the
+        # appropriate fees account for the payment method
+        for total in session.actual_totals:
+            if total.fees != zero:
+                if not total.paytype.fees_account:
+                    raise XeroError(
+                        f"Session {session.id} has fees recorded for "
+                        f"{total.paytype} payments, but there is no account "
+                        f"configured for these fees to be paid to.")
+                li = SubElement(litems, "LineItem")
+                li.append(_textelem(
+                    "Description",
+                    f"{total.paytype} fees"))
+                li.append(_textelem("AccountCode", total.paytype.fees_account))
+                li.append(_textelem("LineAmount", str(zero - total.fees)))
+                tracking = self._get_fees_tracking()
+                if tracking:
+                    li.append(tracking)
+
         if approve and not negative_totals:
             inv.append(_textelem("Status", "AUTHORISED"))
         xml = tostring(invoices)
@@ -593,15 +615,23 @@ class XeroIntegration:
 
         payments = Element("Payments")
         for total in session.actual_totals:
-            pm = payment.methods[total.paytype_id]
-            account, date, ref = pm.accounting_info(total)
-            if total.amount == zero:
+            if total.payment_amount == zero:
                 continue
+            if not total.paytype.payments_account:
+                raise XeroError(
+                    f"{total.paytype} has no payments account configured")
+            dp = payment.date_policy.get(total.paytype.payment_date_policy)
+            if not dp:
+                raise XeroError(
+                    f"{total.paytype} payment date policy is not defined")
+            account = total.paytype.payments_account
+            date = dp(session.date)
+            ref = f"{total.paytype} takings"
             p = SubElement(payments, "Payment")
             SubElement(p, "Invoice").append(_textelem("InvoiceID", invoice))
             SubElement(p, "Account").append(_textelem("Code", account))
             p.append(_textelem("Date", date.isoformat()))
-            p.append(_textelem("Amount", str(total.amount)))
+            p.append(_textelem("Amount", str(total.payment_amount)))
             p.append(_textelem("Reference", ref))
 
         xml = tostring(payments)

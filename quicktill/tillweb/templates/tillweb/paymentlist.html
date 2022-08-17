@@ -1,11 +1,14 @@
-<table class="table table-striped table-hover table-sm w-auto" id="payments">
+<table class="table table-striped table-hover table-sm w-auto mb-2" id="payments">
 <thead class="thead-light">
 <tr>
 {% if excluded_column != "transaction" %}<th scope="col">Transaction</th>{% endif %}
 <th scope="col">ID</th>
+{% if excluded_column != "method" %}<th scope="col">Method</th>{% endif %}
 <th scope="col">Description</th>
 <th scope="col">Amount</th>
 <th scope="col">Time</th>
+<th scope="col">Source</th>
+<th scope="col">Pending?</th>
 {% if excluded_column != "user" %}<th scope="col">User</th>{% endif %}
 </tr>
 </thead>
@@ -15,8 +18,14 @@
 {% if excluded_column != "transaction" %}
 <td><a href="{{p.transaction.get_absolute_url}}">{{p.transaction.id}}</a></td>
 {% endif %}
-<td>{{p.id}}</td><td>{{p.paytype}}{% if p.ref %} ({{p.ref}}){% endif %}</td>
+<td><a href="{{p.get_absolute_url}}">{{p.id}}</a></td>
+{% if excluded_column != "method" %}
+<td><a href="{{p.paytype.get_absolute_url}}">{{p.paytype.description}}</a></td>
+{% endif %}
+<td>{{p.text}}</td>
 <td class="money">{{money}}{{p.amount}}</td><td>{{p.time|date:dtf}}</td>
+<td>{{p.source}}</td>
+<td>{% if p.pending %}Yes{% else %}No{% endif %}</td>
 {% if excluded_column != "user" %}
 <td>{% if p.user %}<a href="{{p.user.get_absolute_url}}">{{p.user.fullname}}</a>{% endif %}</td>
 {% endif %}

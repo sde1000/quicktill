@@ -355,7 +355,7 @@ def log(message):
     u = current_dbuser()
     if not u:
         raise LogError
-    le = LogEntry(source=tillconfig.configname,
+    le = LogEntry(source=tillconfig.terminal_name,
                   loguser=u,
                   description=message)
     le.update_refs(td.s)
@@ -1035,12 +1035,18 @@ class default_groups:
         "edit-unit",
         "edit-stockunit",
         "stocktake",
+        "manage-payment-methods",
+    ])
+
+    installer = set([
+        "edit-payment-methods",
     ])
 
     groups = [
         ('basic-user', "Default for all users", basic_user),
         ('skilled-user', "Functions for more skilled users", skilled_user),
         ('manager', "Management functions", manager),
+        ('installer', "Initial configuration options", installer),
     ]
 
 # I'm not doing anything with this list yet, but here are permissions

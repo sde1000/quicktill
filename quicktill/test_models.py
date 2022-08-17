@@ -497,7 +497,7 @@ class ModelTest(unittest.TestCase):
         trans = models.Transaction(session=session)
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"),
-            paytype=cash, ref="Test")
+            paytype=cash, text="Test")
         self.s.add_all([cash, session, trans, payment])
         self.s.flush()
         payment.set_meta('test', 'testval')
@@ -515,14 +515,47 @@ class ModelTest(unittest.TestCase):
         pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
         self.assertIsNone(pm)
 
-    def test_transaction_close_unbalanced(self):
-        "Closed transactions must balance"
+    def test_nonzero_pending_payment(self):
+        "Pending payments must have zero amount"
         card = models.PayType(paytype='CARD', description='Card')
         session = models.Session(datetime.date.today())
         trans = models.Transaction(session=session)
         payment = models.Payment(
+            transaction=trans, amount=Decimal("10.00"), pending=True,
+            paytype=card, text="Pending")
+        self.s.add(payment)
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_transaction_close_with_pending_payment(self):
+        "Closed transactions cannot have pending payments"
+        card = models.PayType(paytype='CARD', description='Card',
+                              order=1, mode='active', driver_name='Card')
+        session = models.Session(datetime.date.today())
+        trans = models.Transaction(session=session)
+        payment1 = models.Payment(
+            transaction=trans, amount=Decimal("0.00"),
+            paytype=card, text="Card")
+        payment2 = models.Payment(
+            transaction=trans, amount=Decimal("0.00"), pending=True,
+            paytype=card, text="Card")
+        self.s.add_all([payment1, payment2])
+        self.s.commit()
+        # It should not be possible to close the transaction with the
+        # pending payment present
+        trans.closed = True
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
+    def test_transaction_close_unbalanced(self):
+        "Closed transactions must balance"
+        card = models.PayType(paytype='CARD', description='Card',
+                              order=1, mode='active', driver_name='Card')
+        session = models.Session(datetime.date.today())
+        trans = models.Transaction(session=session)
+        payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"),
-            paytype=card, ref="0000")
+            paytype=card, text="Card")
         self.s.add(payment)
         self.s.flush()
         trans.closed = True

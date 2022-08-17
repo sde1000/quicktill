@@ -32,6 +32,9 @@ tillurls = [
     path('transline/<int:translineid>/', views.transline,
          name="tillweb-transline"),
 
+    path('payment/<int:paymentid>/', views.payment,
+         name="tillweb-payment"),
+
     path('supplier/', views.supplierlist, name="tillweb-suppliers"),
     path('supplier/<int:supplierid>/', views.supplier,
          name="tillweb-supplier"),
@@ -98,6 +101,11 @@ tillurls = [
          {'as_spreadsheet': True}, name="tillweb-department-sheet"),
     path('new/department/', views.create_department,
          name="tillweb-create-department"),
+
+    path('paytype/', views.paytypelist, name="tillweb-paytypes"),
+    path('paytype/<paytype>/', views.paytype, name="tillweb-paytype"),
+    path('new/paytype/', views.create_paytype,
+         name="tillweb-create-paytype"),
 
     path('user/', views.userlist, name="tillweb-till-users"),
     path('user/<int:userid>/', views.userdetail, name="tillweb-till-user"),

@@ -1,7 +1,7 @@
 from . import td, ui, tillconfig, payment
 from decimal import Decimal
-from .models import Delivery, VatBand, Business, Transaction
-from .models import penny
+from .models import Delivery, VatBand, Business, Transaction, PayType
+from .models import penny, Session
 from . import pdrivers
 from . import config
 
@@ -99,7 +99,12 @@ def print_receipt(transid):
                         f"{tillconfig.fc(vat)} VAT @ {rate:0.1f}%\t\t"
                         f"Total {tillconfig.fc(gross)}", font=1)
                 d.printline("")
+
+            for p in trans.payments:
+                p.paytype.driver.receipt_details(d, p)
+
             d.printline(f"\tReceipt number {trans.id}")
+
         d.printline(f"\t{ui.formatdate(trans.session.date)}")
 
 
@@ -118,14 +123,18 @@ def print_sessioncountup(s):
         # Now go through the current payment methods printing out their
         # input fields, with countup totals if necessary
         d.printline("", underline=1)
-        for pm in tillconfig.all_payment_methods:
-            for name, validator, print_fields in pm.total_fields:
-                for i in print_fields if print_fields else []:
-                    d.printline(f"{i:>10}")
-                    d.printline()
+        for pm in td.s.query(PayType)\
+                      .filter(PayType.mode != "disabled")\
+                      .order_by(PayType.order, PayType.paytype)\
+                      .all():
+            for name, validator, print_fields in pm.driver.total_fields:
                 if print_fields:
+                    d.printline()
+                    for i in print_fields:
+                        d.printline(f"{i:>10}")
+                        d.printline()
                     d.printline("", underline=1)
-                if len(pm.total_fields) > 1:
+                if len(pm.driver.total_fields) > 1:
                     d.printline(f"{pm.description} {name}",
                                 colour=1, emph=1)
                 else:
@@ -136,28 +145,15 @@ def print_sessioncountup(s):
         d.printline("management menu option 1,3.")
 
 
-def print_sessiontotals(s):
-    """Print a session totals report given a Session object.
+def print_sessiontotals(session_id):
+    """Print a session totals report given a Session id.
     """
-    td.s.add(s)
+    s = td.s.query(Session).get(session_id)
     printtime = ui.formattime(now())
     depts = s.dept_totals
-    # Let's use the payment type (String(8)) as the dict key
-    till_totals = dict((x.paytype, y) for x, y in s.payment_totals)
-    actual_totals = dict((x.paytype_id, x.amount) for x in s.actual_totals)
-
-    # Use the configured list of payment types so that we print in a
-    # consistent order; any payment types not in this list are
-    # appended to it and printed last, because they will be for
-    # historical payment types not currently configured
-    all_paytypes = list(set(list(till_totals.keys())
-                            + list(actual_totals.keys())))
-    pms = list(tillconfig.all_payment_methods)
-    pts = [pm.paytype for pm in pms]
-
-    for pt in all_paytypes:
-        if pt not in pts:
-            pms.append(payment.methods[pt])
+    # Let's use the payment type as the dict key
+    till_totals = dict(s.payment_totals)
+    actual_totals = dict((x.paytype, x.amount) for x in s.actual_totals)
 
     with driver as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
@@ -172,9 +168,10 @@ def print_sessiontotals(s):
         d.printline("Till total:\t\tActual total:")
         ttt = Decimal("0.00")
         att = Decimal("0.00")
-        for pm in pms:
-            desc = pm.description
-            pt = pm.paytype
+        for pt in td.s.query(PayType)\
+                      .order_by(PayType.order, PayType.paytype)\
+                      .all():
+            desc = pt.description
             if pt in till_totals:
                 tt = tillconfig.fc(till_totals[pt])
                 ttt = ttt + till_totals[pt]
@@ -187,13 +184,12 @@ def print_sessiontotals(s):
                 at = ""
             if tt or at:
                 d.printline(f"{desc}: {tt}\t\t{at}")
-        if len(pms) > 1:
-            tt = tillconfig.fc(ttt)
-            if att > Decimal("0.00"):
-                at = tillconfig.fc(att)
-            else:
-                at = ""
-            d.printline(f"Total: {tt}\t\t{at}", colour=1, emph=1)
+        tt = tillconfig.fc(ttt)
+        if att > Decimal("0.00"):
+            at = tillconfig.fc(att)
+        else:
+            at = ""
+        d.printline(f"Total: {tt}\t\t{at}", colour=1, emph=1)
         d.printline()
         dt = Decimal("0.00")
         deptlen = max((len(str(dept.id)) for dept, total in depts), default=0)
@@ -207,7 +203,7 @@ def print_sessiontotals(s):
         d.printline(f"\tPrinted {printtime}")
 
 
-def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
+def print_deferred_payment_wrapper(trans, paytype, amount, user_name):
     """Print a wrapper for a deferred payment
 
     Print a wrapper for money (cash, etc.) to be set aside to use
@@ -220,7 +216,7 @@ def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
             d.printline()
             d.printline(
                 f"This is {tillconfig.fc(amount)} in "
-                f"{payment_method.description} to be used in part-payment "
+                f"{paytype.description} to be used in part-payment "
                 f"of transaction {trans.id} ({trans.notes}) when that "
                 f"transaction is ready to be closed.")
             d.printline()
@@ -230,7 +226,7 @@ def print_deferred_payment_wrapper(trans, payment_method, amount, user_name):
                 f"{datetime.date.today()}.")
             d.printline()
             d.printline(
-                f"Use this printout to wrap the {payment_method.description} "
+                f"Use this printout to wrap the {paytype.description} "
                 "before putting it aside.")
             d.printline()
             d.printline()

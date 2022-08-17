@@ -13,6 +13,7 @@ from . import register
 from . import ui
 from . import td
 from . import tillconfig
+from . import payment
 from .models import Transline, zero
 from .keyboard import (
     K_STOCKTERMINAL,
@@ -164,6 +165,26 @@ def next_england_banking_day(date):
     while not is_england_banking_day(date):
         date = date + datetime.timedelta(days=1)
     return date
+
+
+# Useful payment date policies for the UK
+
+def _uk_barclaycard_expected_payment_date(sessiondate):
+    # Card payments are expected in the bank account two days after
+    # the session, or the next banking day if the expected date is not
+    # a banking day.
+    date = sessiondate + datetime.timedelta(days=2)
+    while not is_england_banking_day(date):
+        date = date + datetime.timedelta(days=1)
+    return date
+
+
+def _uk_amex_expected_payment_date(sessiondate):
+    return delta_england_banking_days(sessiondate, 2)
+
+
+payment.date_policy["uk-barclaycard"] = _uk_barclaycard_expected_payment_date
+payment.date_policy["uk-amex"] = _uk_amex_expected_payment_date
 
 
 def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
