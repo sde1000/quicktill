@@ -1,3 +1,15 @@
+quicktill (21.1) stable; urgency=low
+
+  * New release 21.1
+
+  * Record terminal name when voiding a transaction line
+
+  * Minor database trigger updates
+
+  * Update log text for Unit
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 22 Aug 2022 12:08:42 +0100
+
 quicktill (21.0) stable; urgency=low
 
   * New release 21.0
