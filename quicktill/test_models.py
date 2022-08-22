@@ -258,7 +258,7 @@ class ModelTest(unittest.TestCase):
         self.s.add(transline)
         self.s.commit()
         self.assertEqual(trans.balance, Decimal("10.00"))
-        void = transline.void(trans, None)
+        void = transline.void(trans, None, "test_transline_void")
         self.s.add(void)
         self.s.commit()
         self.assertEqual(transline.voided_by_id, void.id)

@@ -2349,8 +2349,9 @@ class page(ui.basicpage):
             return
         trans = self._gettrans()
         tll = [td.s.query(Transline).get(l.transline) for l in ll]
-        voidlines = [transline.void(trans, self.user.dbuser)
-                     for transline in tll]
+        voidlines = [
+            transline.void(trans, self.user.dbuser, tillconfig.terminal_name)
+            for transline in tll]
         voidlines = [x for x in voidlines if x]
         td.s.add_all(voidlines)
         td.s.flush()  # get transline IDs, fill in voided_by

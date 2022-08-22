@@ -1064,7 +1064,7 @@ class Transline(Base, Logged):
             self.items, currency, self.amount, currency,
             self.items * self.amount)
 
-    def void(self, transaction, user):
+    def void(self, transaction, user, source):
         """Void this transaction line
 
         Create a new transaction line in the specified transaction
@@ -1080,7 +1080,8 @@ class Transline(Base, Logged):
                       amount=self.amount, discount=self.discount,
                       discount_name=self.discount_name,
                       department=self.department,
-                      user=user, transcode='V', text=self.text)
+                      user=user, transcode='V', text=self.text,
+                      source=source)
         self.voided_by = v
         for stockout in self.stockref:
             v.stockref.append(StockOut(
