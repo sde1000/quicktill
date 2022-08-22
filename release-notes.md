@@ -1,6 +1,88 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v21.0 to v21.1
+----------------------
+
+What's new:
+
+ * database trigger updates and additional tests
+
+ * minor bug fixes
+
+To upgrade the database, run psql and give the following
+commands. This can be done either before or after upgrading quicktill
+since the changes are backwards-compatible.
+
+```
+BEGIN;
+
+CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT count(*) FROM sessions WHERE endtime IS NULL)>1 THEN
+    RAISE EXCEPTION 'there is already an open session'
+          USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_modify_closed_trans_line() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+    AND (OLD.translineid != NEW.translineid
+      OR OLD.transid != NEW.transid
+      OR OLD.items != NEW.items
+      OR OLD.amount != NEW.amount
+      OR OLD.dept != NEW.dept
+      OR OLD.user != NEW.user
+      OR OLD.transcode != NEW.transcode
+      OR OLD.time != NEW.time
+      OR OLD.discount != NEW.discount
+      OR OLD.discount_name != NEW.discount_name
+      OR OLD.source != NEW.source
+      OR OLD.text != NEW.text)
+    THEN RAISE EXCEPTION 'attempt to modify closed transaction % line', NEW.transid
+               USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction % payment', NEW.transid
+             USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.closed=true
+    AND (SELECT COALESCE(sum(amount*items), 0.00) FROM translines
+      WHERE transid=NEW.transid)!=
+      (SELECT COALESCE(sum(amount), 0.00) FROM payments WHERE transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction % does not balance', NEW.transid
+       USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+COMMIT;
+```
+
 Upgrade v20.x to v21
 --------------------
 

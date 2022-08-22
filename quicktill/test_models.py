@@ -82,6 +82,13 @@ class ModelTest(unittest.TestCase):
         self.s.commit()
         self.assertEqual(session.actual_total, Decimal(3))
 
+    def test_multiple_sessions_not_allowed(self):
+        session1 = models.Session(datetime.date.today())
+        session2 = models.Session(datetime.date.today())
+        self.s.add_all([session1, session2])
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
+
     def template_setup(self):
         """Add template data to the database to make other tests shorter.
         """
@@ -507,6 +514,20 @@ class ModelTest(unittest.TestCase):
         # PaymentMeta row should not exist
         pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
         self.assertIsNone(pm)
+
+    def test_transaction_close_unbalanced(self):
+        "Closed transactions must balance"
+        card = models.PayType(paytype='CARD', description='Card')
+        session = models.Session(datetime.date.today())
+        trans = models.Transaction(session=session)
+        payment = models.Payment(
+            transaction=trans, amount=Decimal("10.00"),
+            paytype=card, ref="0000")
+        self.s.add(payment)
+        self.s.flush()
+        trans.closed = True
+        with self.assertRaises(IntegrityError):
+            self.s.commit()
 
 
 if __name__ == '__main__':

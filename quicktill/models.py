@@ -471,7 +471,8 @@ add_ddl(Session.__table__, """
 CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
 BEGIN
   IF (SELECT count(*) FROM sessions WHERE endtime IS NULL)>1 THEN
-    RAISE EXCEPTION 'there is already an open session';
+    RAISE EXCEPTION 'there is already an open session'
+          USING ERRCODE = 'integrity_constraint_violation';
   END IF;
   RETURN NULL;
 END;
@@ -635,10 +636,11 @@ add_ddl(Transaction.__table__, """
 CREATE OR REPLACE FUNCTION check_transaction_balances() RETURNS trigger AS $$
 BEGIN
   IF NEW.closed=true
-    AND (SELECT sum(amount*items) FROM translines
+    AND (SELECT COALESCE(sum(amount*items), 0.00) FROM translines
       WHERE transid=NEW.transid)!=
-      (SELECT sum(amount) FROM payments WHERE transid=NEW.transid)
-  THEN RAISE EXCEPTION 'transaction %% does not balance', NEW.transid;
+      (SELECT COALESCE(sum(amount), 0.00) FROM payments WHERE transid=NEW.transid)
+  THEN RAISE EXCEPTION 'transaction %% does not balance', NEW.transid
+       USING ERRCODE = 'integrity_constraint_violation';
   END IF;
   RETURN NULL;
 END;
@@ -649,7 +651,7 @@ CREATE CONSTRAINT TRIGGER close_only_if_balanced
 """, """
 DROP TRIGGER close_only_if_balanced ON transactions;
 DROP FUNCTION check_transaction_balances();
-""")
+""")  # noqa: E501
 
 
 user_seq = Sequence('user_seq')
@@ -889,7 +891,8 @@ add_ddl(Payment.__table__, """
 CREATE OR REPLACE FUNCTION check_modify_closed_trans_payment() RETURNS trigger AS $$
 BEGIN
   IF (SELECT closed FROM transactions WHERE transid=NEW.transid)=true
-  THEN RAISE EXCEPTION 'attempt to modify closed transaction %% payment', NEW.transid;
+  THEN RAISE EXCEPTION 'attempt to modify closed transaction %% payment', NEW.transid
+             USING ERRCODE = 'integrity_constraint_violation';
   END IF;
   RETURN NULL;
 END;
@@ -1119,9 +1122,12 @@ class TranslineMeta(Base):
     transline = relationship(Transline, back_populates='meta')
 
 
-# This trigger permits null columns (text or user) to be set to
+# This trigger permits null columns (user or voided_by) to be set to
 # not-null in closed transactions but subsequently prevents
-# modification
+# modification. Note: any attempt to change discount_name between null
+# and not-null will be caught by the discount_name_constraint because
+# it would need to involve a change of discount between zero and
+# non-zero.
 add_ddl(Transline.__table__, """
 CREATE FUNCTION check_modify_closed_trans_line() RETURNS trigger AS $$
 BEGIN
@@ -1134,8 +1140,12 @@ BEGIN
       OR OLD.user != NEW.user
       OR OLD.transcode != NEW.transcode
       OR OLD.time != NEW.time
+      OR OLD.discount != NEW.discount
+      OR OLD.discount_name != NEW.discount_name
+      OR OLD.source != NEW.source
       OR OLD.text != NEW.text)
-    THEN RAISE EXCEPTION 'attempt to modify closed transaction %% line', NEW.transid;
+    THEN RAISE EXCEPTION 'attempt to modify closed transaction %% line', NEW.transid
+               USING ERRCODE = 'integrity_constraint_violation';
   END IF;
   RETURN NULL;
 END;
