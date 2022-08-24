@@ -7,7 +7,7 @@ import sys
 import textwrap
 import traceback
 from . import keyboard, tillconfig, td
-from .td import func
+from sqlalchemy.sql.expression import func
 import sqlalchemy.inspection
 from decimal import Decimal
 
