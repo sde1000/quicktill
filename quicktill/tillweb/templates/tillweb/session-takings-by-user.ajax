@@ -26,10 +26,30 @@ $(document).ready(function(){
 </script>
 </div>
 <div class="col-md-7">
-<img src="{% url "tillweb-session-users-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales by user pie chart">
+  <canvas id="users-pie-chart" width="480" height="480"></canvas>
 </div>
 {% else %}
 <p>No information.</p>
 {% endif %}
 </div>
+
+<script type="text/javascript">
+new Chart(document.getElementById('users-pie-chart'), {
+    type: 'pie',
+    data: {
+        labels: [{% for user,i,t in usertotals %}'{{user.fullname|escapejs}}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Sales by user',
+            data: [{% for user,i,t in usertotals %}{{t}}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [{% for c in colours %}'rgba({{c}}, 0.8)'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: [{% for c in colours %}'rgba({{c}}, 1)'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: false,
+        rotation: 90
+    }
+});
+</script>
 {% endwith %}

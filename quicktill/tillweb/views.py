@@ -60,7 +60,6 @@ from quicktill.models import (
 )
 from quicktill.version import version
 from . import spreadsheets
-import io
 import datetime
 import logging
 from .db import td
@@ -68,9 +67,6 @@ from .forms import SQLAModelChoiceField
 from .forms import StringIDMultipleChoiceField
 from .forms import StringIDChoiceField
 from .forms import Select2, Select2Ajax
-import matplotlib
-matplotlib.use("SVG")
-import matplotlib.pyplot as plt
 
 
 log = logging.getLogger(__name__)
@@ -78,6 +74,34 @@ log = logging.getLogger(__name__)
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
 dtf = "Y-m-d H:i"
+
+
+# Colour cycle for charts etc.
+# Taken from https://sashamaps.net/docs/resources/20-colors/
+colours = [
+    '230, 25, 75',    # Red
+    '60, 180, 75',    # Green
+    '255, 225, 25',   # Yellow
+    '0, 130, 200',    # Blue
+    '245, 130, 48',   # Orange
+    '145, 30, 180',   # Purple
+    '70, 240, 240',   # Cyan
+    '240, 50, 230',   # Magenta
+    '210, 245, 60',   # Lime
+    '250, 190, 212',  # Pink
+    '0, 128, 128',    # Teal
+    '220, 190, 255',  # Lavendar
+    '170, 110, 40',   # Brown
+    '255, 250, 200',  # Beige
+    '128, 0, 0',      # Maroon
+    '170, 255, 195',  # Mint
+    '128, 128, 0',    # Olive
+    '255, 215, 180',  # Apricot
+    '0, 0, 128',      # Navy
+    '128, 128, 128',  # Grey
+    '255, 255, 255',  # White
+    '0, 0, 0',        # Black
+]
 
 
 # Custom DateInput widget: use ISO 8601 dates only
@@ -650,7 +674,10 @@ def session_takings_by_dept(request, info, sessionid):
     if not s:
         raise Http404
 
-    return ('session-takings-by-dept.ajax', {'session': s})
+    return ('session-takings-by-dept.ajax', {
+        'session': s,
+        'colours': colours,
+    })
 
 
 @tillweb_view
@@ -659,7 +686,10 @@ def session_takings_by_user(request, info, sessionid):
     if not s:
         raise Http404
 
-    return ('session-takings-by-user.ajax', {'session': s})
+    return ('session-takings-by-user.ajax', {
+        'session': s,
+        'colours': colours,
+    })
 
 
 @tillweb_view
@@ -2712,54 +2742,6 @@ def create_group(request, info):
         'nav': [("Groups", info.reverse("tillweb-till-groups")),
                 ("New", info.reverse("tillweb-create-till-group"))],
     })
-
-
-@tillweb_view
-def session_sales_pie_chart(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
-    if not s:
-        raise Http404
-    dt = s.dept_totals
-    fig = plt.figure(figsize=(5, 5))
-    ax = fig.add_subplot(1, 1, 1)
-    patches, texts = ax.pie(
-        [x[1] for x in dt], labels=[x[0].description for x in dt],
-        colors=['r', 'g', 'b', 'c', 'y', 'm', 'olive', 'brown', 'orchid',
-                'royalblue', 'sienna', 'steelblue'])
-    for t in texts:
-        t.set_fontsize(8)
-    for p in patches:
-        p.set_linewidth(0.5)
-        p.set_joinstyle("bevel")
-    response = HttpResponse(content_type="image/svg+xml")
-    wrapper = io.TextIOWrapper(response, encoding="utf-8")
-    fig.savefig(wrapper, format="svg", transparent=True)
-    plt.close(fig)
-    return response
-
-
-@tillweb_view
-def session_users_pie_chart(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
-    if not s:
-        raise Http404
-    ut = s.user_totals
-    fig = plt.figure(figsize=(5, 5))
-    ax = fig.add_subplot(1, 1, 1)
-    patches, texts = ax.pie(
-        [x[2] for x in ut], labels=[x[0].fullname for x in ut],
-        colors=['r', 'g', 'b', 'c', 'y', 'm', 'olive', 'brown', 'orchid',
-                'royalblue', 'sienna', 'steelblue'])
-    for t in texts:
-        t.set_fontsize(8)
-    for p in patches:
-        p.set_linewidth(0.5)
-        p.set_joinstyle("bevel")
-    response = HttpResponse(content_type="image/svg+xml")
-    wrapper = io.TextIOWrapper(response, encoding="utf-8")
-    fig.savefig(wrapper, format="svg", transparent=True)
-    plt.close(fig)
-    return response
 
 
 @tillweb_view

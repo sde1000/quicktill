@@ -43,13 +43,32 @@
 </tfoot>
 </table>
 
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#depttakings").tablesorter();
-});
-</script>
   </div>
   <div class="col-md-7">
-    <img src="{% url "tillweb-session-sales-pie-chart" pubname=pubname sessionid=session.id %}" alt="Sales pie chart" />
+    <canvas id="sales-pie-chart" width="480" height="480"></canvas>
   </div>
 </div>
+
+<script type="text/javascript">
+    $(document).ready(function(){
+	$("#depttakings").tablesorter();
+    });
+
+new Chart(document.getElementById('sales-pie-chart'), {
+    type: 'pie',
+    data: {
+        labels: [{% for dept, total in session.dept_totals %}'{{dept.description|escapejs}}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Sales by department',
+            data: [{% for dept, total in session.dept_totals %}{{total}}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [{% for c in colours %}'rgba({{c}}, 0.8)'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: [{% for c in colours %}'rgba({{c}}, 1)'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderWidth: 1
+        }]
+    },
+    options: {
+	responsive: false,
+	rotation: 90
+    }
+});
+</script>
