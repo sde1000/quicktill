@@ -279,6 +279,16 @@ class basicwin:
         """
         pass
 
+    def notify_hide(self):
+        """Called when this field or popup is about to be hidden
+
+        The page that is the ultimate parent of this field or popup is
+        about to be deselected, and the popup stack will be
+        saved. This method gives an opportunity to clean up before
+        this happens: cancel timers, dismiss self, etc.
+        """
+        pass
+
     def parents(self):
         if self.parent == self:
             return [self]
@@ -345,6 +355,8 @@ class basicpage(basicwin):
         """
         if basicpage._basepage != self:
             return
+        for f in basicwin._focus.parents():
+            f.notify_hide()
         self.savedfocus = basicwin._focus
         self.stack = self.win.save_stack()
         basicpage._basepage = None
