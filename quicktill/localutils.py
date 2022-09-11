@@ -134,8 +134,12 @@ def is_england_banking_day(d):
     if d == last_monday_of_august:
         return False
 
-    # That's it, unless the government introduce any non-standard bank
-    # holidays.  If we've got this far, the day is a banking day.
+    # The Queen's funeral is a bank holiday
+    if d == datetime.date(2022, 9, 19):
+        return False
+
+    # That's it, unless the government introduce any more non-standard
+    # bank holidays.  If we've got this far, the day is a banking day.
     return True
 
 
