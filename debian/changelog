@@ -1,3 +1,17 @@
+quicktill (21.2) stable; urgency=low
+
+  * New release 21.2
+
+  * Add non-standard bank holiday for Queen's funeral
+
+  * Add method to notify ui elements that they are about to be hidden
+
+  * Use chart.js for pie charts instead of matplotlib
+
+  * Import func directly from sqlalchemy, not via td
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 11 Sep 2022 12:05:45 +0100
+
 quicktill (21.1) stable; urgency=low
 
   * New release 21.1
