@@ -5,6 +5,7 @@ import datetime
 from requests_oauthlib import OAuth1Session
 from . import td
 from .models import RefusalsLog
+from .secretstore import Secrets, SecretException
 
 
 # Reminders at particular times of day
@@ -50,7 +51,7 @@ class twitter_auth(cmdline.command):
     """
     command = "twitter-auth"
     help = "authorise with Twitter"
-    database_required = False
+    database_required = True
 
     @staticmethod
     def add_arguments(parser):
@@ -60,18 +61,37 @@ class twitter_auth(cmdline.command):
         parser.add_argument("--consumer-secret", action="store",
                             dest="consumer_secret",
                             help="OAuth1 consumer secret")
+        parser.add_argument("secretstore",
+                            help="Name of secretstore for credentials")
 
     @staticmethod
     def run(args):
-        if not args.consumer_key:
-            args.consumer_key = input("Consumer key: ")
-        if not args.consumer_secret:
-            args.consumer_secret = input("Consumer secret: ")
+        secrets = Secrets.find(args.secretstore)
+        if not secrets:
+            print(f"Unable to access secret store '{args.secretstore}'.")
+            return 1
+        try:
+            with td.orm_session():
+                consumer_key = secrets.fetch("consumer-key")
+                consumer_secret = secrets.fetch("consumer-secret")
+        except SecretException:
+            consumer_key = None
+            consumer_secret = None
+        if args.consumer_key and args.consumer_secret:
+            consumer_key = args.consumer_key
+            consumer_secret = args.consumer_secret
+        if not consumer_key:
+            consumer_key = input("Consumer key: ")
+        if not consumer_secret:
+            consumer_secret = input("Consumer secret: ")
+        with td.orm_session():
+            secrets.store("consumer-key", consumer_key, create=True)
+            secrets.store("consumer-secret", consumer_secret, create=True)
         request_token_url = 'https://api.twitter.com/oauth/request_token'
         base_authorize_url = 'https://api.twitter.com/oauth/authorize'
         access_token_url = 'https://api.twitter.com/oauth/access_token'
         oauth = OAuth1Session(
-            args.consumer_key, client_secret=args.consumer_secret)
+            consumer_key, client_secret=consumer_secret)
         fetch_response = oauth.fetch_request_token(request_token_url)
         resource_owner_key = fetch_response.get('oauth_token')
         resource_owner_secret = fetch_response.get('oauth_token_secret')
@@ -79,8 +99,8 @@ class twitter_auth(cmdline.command):
         print(f"Please visit this URL: {authorize_url}")
         verifier = input("Enter the PIN from Twitter: ")
         oauth = OAuth1Session(
-            args.consumer_key,
-            client_secret=args.consumer_secret,
+            consumer_key,
+            client_secret=consumer_secret,
             resource_owner_key=resource_owner_key,
             resource_owner_secret=resource_owner_secret,
             verifier=verifier)
@@ -89,32 +109,68 @@ class twitter_auth(cmdline.command):
         resource_owner_secret = oauth_tokens.get('oauth_token_secret')
 
         tapi = twython.Twython(
-            app_key=args.consumer_key,
-            app_secret=args.consumer_secret,
+            app_key=consumer_key,
+            app_secret=consumer_secret,
             oauth_token=resource_owner_key,
             oauth_token_secret=resource_owner_secret)
         user = tapi.verify_credentials()
 
-        print(f"Paste the following to enable Twitter access "
-              f"as @{user['screen_name']}:")
-        print(f"""
-        tapi = quicktill.extras.twitter_api(
-            token='{resource_owner_key}',
-            token_secret='{resource_owner_secret}',
-            consumer_key='{args.consumer_key}',
-            consumer_secret='{args.consumer_secret}')""")
+        print(f"Twitter access as @{user['screen_name']} configured.")
+
+        with td.orm_session():
+            secrets.store("token", resource_owner_key, create=True)
+            secrets.store("token-secret", resource_owner_secret, create=True)
 
 
-def twitter_api(token, token_secret, consumer_key, consumer_secret):
-    return twython.Twython(
-        app_key=consumer_key,
-        app_secret=consumer_secret,
-        oauth_token=token,
-        oauth_token_secret=token_secret)
+class twitter_api:
+    def __init__(self, token=None, token_secret=None,
+                 consumer_key=None, consumer_secret=None,
+                 secrets=None):
+        self.token = token
+        self.token_secret = token_secret
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.credentials_provided = \
+            token and token_secret and consumer_key and consumer_secret
+        self.secrets = secrets
+
+        # The database isn't available when __init__ is
+        # called. Schedule a callback once initialisation is complete.
+        if secrets:
+            ui.run_after_init.append(self._secret_init)
+
+    def _secret_init(self):
+        try:
+            if self.credentials_provided:
+                # Store the credentials in the secretstore
+                self.secrets.store(
+                    "token", self.token, create=True)
+                self.secrets.store(
+                    "token-secret", self.token_secret, create=True)
+                self.secrets.store(
+                    "consumer-key", self.consumer_key, create=True)
+                self.secrets.store(
+                    "consumer-secret", self.consumer_secret, create=True)
+            else:
+                # Read the credentials from the secretstore
+                self.token = self.secrets.fetch("token")
+                self.token_secret = self.secrets.fetch("token-secret")
+                self.consumer_key = self.secrets.fetch("consumer-key")
+                self.consumer_secret = self.secrets.fetch("consumer-secret")
+        except SecretException:
+            pass
+
+    def __call__(self):
+        return twython.Twython(
+            app_key=self.consumer_key,
+            app_secret=self.consumer_secret,
+            oauth_token=self.token,
+            oauth_token_secret=self.token_secret)
 
 
 class twitter_post(ui.dismisspopup):
     def __init__(self, tapi, default_text="", fail_silently=False):
+        tapi = tapi()
         try:
             user = tapi.verify_credentials()
         except Exception:
@@ -162,6 +218,7 @@ class twitter_client(user.permission_checked, ui.dismisspopup):
     permission_required = ("twitter", "Use the Twitter client")
 
     def __init__(self, tapi):
+        tapi = tapi()
         mh, mw = ui.rootwin.size()
         # We want to make our window very-nearly full screen
         w = mw - 4
