@@ -1,3 +1,13 @@
+quicktill (22.0) stable; urgency=low
+
+  * New release 22.0
+
+  * Square Terminal driver
+
+  * Major payments system changes
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 23 Sep 2022 20:02:39 +0100
+
 quicktill (21.3) stable; urgency=low
 
   * New release 21.3

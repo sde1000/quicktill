@@ -1,8 +1,10 @@
 quicktill — cash register software
 ==================================
 
-Upgrade v21.1 to v22
+Upgrade v21.x to v22
 --------------------
+
+(Ensure the update from v21.0 to v21.1 has been performed first.)
 
 Major internal changes to how Payments and payment methods work.
 
@@ -19,6 +21,8 @@ What's new:
  * Payment method configuration has moved to the database. Payment
    method configuration in the configuration file will be migrated to
    the database the first time the till is run with v22 installed.
+
+ * A payment driver for Square Terminal is included.
 
 To upgrade the database:
 
