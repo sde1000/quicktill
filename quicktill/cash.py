@@ -17,7 +17,7 @@ _default_countup = [
 class CashPayment(payment.PaymentConfig):
     def __init__(self, paytype, description, change_description, drawers=1,
                  countup=_default_countup,
-                 account_code=None):
+                 account_code=""):
         super().__init__(paytype, description)
         self.change_description = change_description
         self.drawers = drawers

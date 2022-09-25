@@ -12,7 +12,7 @@ class CardPayment(payment.PaymentConfig):
     def __init__(self, paytype, description, machines=1, cashback_method=None,
                  max_cashback=zero, kickout=False,
                  rollover_guard_time=None,
-                 account_code=None, account_date_policy=None,
+                 account_code="", account_date_policy=None,
                  ask_for_machine_id=False,
                  ref_required=True):
         super().__init__(paytype, description)
