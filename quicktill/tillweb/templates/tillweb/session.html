@@ -24,8 +24,12 @@
 {% if session.actual_totals %}
 <table class="table text-center">
   <tr>
-{% for p in session.actual_totals %}
-<td><strong>{{p.paytype.description}}</strong><br>{{money}}{{p.amount}}</td>
+{% for p in totals %}
+<td>
+  <strong>{{p.paytype.description}}</strong>
+  <br>{{money}}{{p.amount}}
+  {% if p.fees %}<br><small>({{money}}{{p.fees}} fees)</small>{% endif %}
+</td>
 {% endfor %}
 <td><strong>Error</strong><br />{{money}}{{session.error}}</td>
 {% for vb,t,ex,vat in session.vatband_totals %}

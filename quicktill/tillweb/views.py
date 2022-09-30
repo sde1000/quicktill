@@ -651,9 +651,16 @@ def session(request, info, sessionid):
     nextlink = s.next.get_absolute_url() if s.next else None
     prevlink = s.previous.get_absolute_url() if s.previous else None
 
+    totals = td.s.query(SessionTotal)\
+                 .join(PayType)\
+                 .order_by(PayType.order, PayType.paytype)\
+                 .filter(SessionTotal.sessionid == sessionid)\
+                 .all()
+
     return ('session.html',
             {'tillobject': s,
              'session': s,
+             'totals': totals,
              'nextlink': nextlink,
              'prevlink': prevlink,
              })
