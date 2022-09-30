@@ -4,7 +4,7 @@ from .models import zero, PayType, Payment, Session, Transaction
 from . import ui
 from . import tillconfig
 from . import td
-from .keyboard import K_CANCEL, K_CASH
+from .keyboard import K_CANCEL, K_CASH, K_CLEAR
 import json
 import requests
 import uuid
@@ -525,7 +525,7 @@ class _NewTerminal(ui.dismisspopup):
     """
     def __init__(self, paytype):
         self.paytype = paytype
-        super().__init__(17, 60, title="Add new terminal",
+        super().__init__(18, 60, title="Add new terminal",
                          colour=ui.colour_input)
         self.win.wrapstr(
             2, 2, 56,
@@ -540,10 +540,11 @@ class _NewTerminal(ui.dismisspopup):
             "'About Terminal'. The software update status is then shown "
             "at the top of the screen, and if any updates are available "
             "you will be prompted to install them.")
-        self.win.drawstr(13, 2, 6, "Name: ", align=">")
-        self.namefield = ui.editfield(13, 8, 50)
+        self.win.drawstr(14, 2, 6, "Name: ", align=">")
+        self.namefield = ui.editfield(
+            14, 8, 50, keymap={K_CLEAR: (self.dismiss, None)})
         button = ui.buttonfield(
-            15, 27, 6, "Add", keymap={K_CASH: (self.finish, None)})
+            16, 27, 7, "Add", keymap={K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.namefield, button])
         self.namefield.focus()
 
