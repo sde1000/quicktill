@@ -363,7 +363,7 @@ class _SquareProgress(ui.basicpopup):
         self.terminal = ui.label(2, 16, 43)
         self.terminal.set(payment_instance.meta.get(
             checkout_device_name_key).value)
-        self.status = ui.label(4, 16, 43, contents="Waiting for Square")
+        self.status = ui.label(4, 16, 43, contents="Connecting to Square")
         self.session = payment_instance.paytype.driver.api_session()
         # NB if timeout is set to "0" then update() is called before the
         # display is flushed
@@ -616,7 +616,7 @@ class _ManageTerminal(ui.dismisspopup):
                          "disable it.")
         self.disabled = ui.label(5, 17, 10)
         self.win.drawstr(7, 2, 24, "Fetching device status: ", align=">")
-        self.status = ui.label(7, 26, 30, contents="Waiting for Square")
+        self.status = ui.label(7, 26, 30, contents="Connecting to Square")
         self.session = driver.api_session()
         self.action_id = None
         self.device_metadata = None
