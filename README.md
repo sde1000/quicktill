@@ -259,3 +259,16 @@ database):
 
     >>> from sqlalchemy.orm import undefer
     >>> [(x,x.total) for x in td.s.query(Session).options(undefer('total')).all()]
+
+Credits
+-------
+
+This software incorporates code from the following projects, which may
+be under a different licence:
+
+* [jQuery](https://jquery.com/) (MIT licence)
+* [TableSorter](https://plugins.jquery.com/tablesorter/) (MIT/GPL dual licence)
+* [MultiSelect](https://plugins.jquery.com/multi-select/) ([DWTFYWT](http://www.wtfpl.net/txt/copying/) licence)
+* [Select2](https://select2.org/) (MIT licence)
+* [Chart.js](https://www.chartjs.org/) (MIT licence)
+* [Sortable](https://github.com/SortableJS/Sortable) (MIT licence)
