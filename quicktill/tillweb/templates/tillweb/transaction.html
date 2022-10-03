@@ -1,8 +1,19 @@
 {% extends "tillweb/tillweb.html" %}
+{% load static %}
 
 {% block title %}{{till}} — transaction {{transaction.id}}{% endblock %}
 
 {% block heading %}{{till}} — transaction {{transaction.id}}{% endblock %}
+
+{% block style %}
+{{ block.super }}
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/json-viewer.css" %}" />
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script type="text/javascript" src="{% static "tillweb/json-viewer.js" %}"></script>
+{% endblock %}
 
 {% block tillcontent %}
 
@@ -57,13 +68,6 @@
 {% with logs=transaction.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
 {% endif %}
 
-{% if transaction.meta.values %}
-<h2>Metadata</h2>
-<ul>
-  {% for m in transaction.meta.values %}
-  <li>{{m.key}}: {{m.value}}</li>
-  {% endfor %}
-</ul>
-{% endif %}
+{% include "tillweb/metadata.html" with meta=transaction.meta %}
 
 {% endblock %}

@@ -272,3 +272,4 @@ be under a different licence:
 * [Select2](https://select2.org/) (MIT licence)
 * [Chart.js](https://www.chartjs.org/) (MIT licence)
 * [Sortable](https://github.com/SortableJS/Sortable) (MIT licence)
+* [json-viewer](https://github.com/LorDOniX/json-viewer) (MIT licence)

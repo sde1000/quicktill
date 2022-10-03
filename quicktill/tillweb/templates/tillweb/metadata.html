@@ -1,0 +1,39 @@
+{% comment %}
+When you include this template to display metadata, ensure you load the
+json-viewer.css stylesheet and json-viewer.js script.
+{% endcomment %}
+
+{% if meta.values %}
+<h2>Metadata</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Key</th>
+      <th>Data</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in meta.values %}
+    <tr>
+      <td class="metadata-key">{{m.key}}</td>
+      <td class="metadata-value">{{m.value}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script type="text/javascript">
+  let elements = document.querySelectorAll('tr > td.metadata-value');
+
+  for (let elem of elements) {
+      try {
+	  jsonObj = JSON.parse(elem.innerText);
+	  elem.innerText = "";
+	  jsonViewer = new JSONViewer();
+	  elem.appendChild(jsonViewer.getContainer());
+	  jsonViewer.showJSON(jsonObj, null, 1);
+      } catch (err) {
+      }
+  }
+</script>
+{% endif %}
