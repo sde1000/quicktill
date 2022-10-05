@@ -2797,8 +2797,7 @@ class page(ui.basicpage):
                 title="Error")
             return
         for p in trans.payments:
-            pm = payment.methods[p.paytype_id]
-            if not pm.mergeable:
+            if not p.paytype.driver.mergeable:
                 ui.infopopup(
                     [f"Transaction {trans.id} has one or more payments that "
                      "can't be merged with another transaction."],
