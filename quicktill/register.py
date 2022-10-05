@@ -1746,12 +1746,12 @@ class page(ui.basicpage):
             ui.infopopup([f"The {pm.description} payment method is not "
                           f"active."], title="Error")
             return
-        if not pm.driver.change_given:
+        if not pm.driver.add_payment_supported:
             self._redraw()
             ui.infopopup([f"The {pm.description} payment method doesn't "
                           "support change."], title="Error")
             return
-        p = pm.driver.add_change(
+        p = pm.driver.add_payment(
             trans, description="Drink 'In'", amount=-amount)
         self.dl.append(p)
         self._clear_marks()
@@ -2646,9 +2646,10 @@ class page(ui.basicpage):
                      "cannot be done now."],
                     title="Error")
                 return
-            # The payment method must support both change and refunds
-            if not defer_pm.driver.change_given \
-               or not defer_pm.driver.refund_supported:
+            # The payment method must support negative payments, and
+            # the noninteractive add_payment() method.
+            if not defer_pm.driver.refund_supported \
+               or not defer_pm.driver.add_payment_supported:
                 ui.infopopup(
                     ["This transaction is part-paid; to defer it "
                      "we must refund the part-payment.  The defer payment "
@@ -2667,9 +2668,9 @@ class page(ui.basicpage):
                 p.transaction = ptrans
 
             # 4. If the new transaction doesn't balance (i.e. it has a
-            # positive balance), a refund is made using the default
+            # positive balance), a refund is made using the defer
             # payment method and a receipt is printed out stating that
-            # the cash should be used towards the deferred
+            # the refund should be used towards the deferred
             # transaction.  A popup note is left in the deferred
             # transaction's metadata explaining that there should be
             # cash to use towards paying it
@@ -2677,7 +2678,7 @@ class page(ui.basicpage):
             if nds != zero:
                 user.log(f"Deferred transaction {trans.logref} which was "
                          f"part-paid by {tillconfig.fc(nds)}")
-                defer_pm.driver.add_change(ptrans, "Deferred", zero - nds)
+                defer_pm.driver.add_payment(ptrans, "Deferred", zero - nds)
                 trans.set_meta(
                     transaction_message_key,
                     f"This transaction was part-paid when it was deferred on "

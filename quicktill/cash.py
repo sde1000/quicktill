@@ -35,6 +35,7 @@ class CashPayment(payment.PaymentConfig):
 
 
 class Cash(payment.PaymentDriver):
+    add_payment_supported = True
     change_given = True
     refund_supported = True
     cancel_supported = True
@@ -53,7 +54,9 @@ class Cash(payment.PaymentDriver):
             (f"Tray {t + 1}", ui.validate_float, self._countup)
             for t in range(self._drawers)]
 
-    def add_change(self, transaction, description, amount):
+    def add_payment(self, transaction, description, amount):
+        # Typically used by other payment drivers for cashback, or by
+        # the register when deferring part-paid transactions
         user = ui.current_user().dbuser
         td.s.add(user)
         p = Payment(transaction=transaction, paytype=self.paytype,

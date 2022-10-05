@@ -111,6 +111,7 @@ class pline(ui.line):
 
 
 class PaymentDriver(metaclass=_PaymentDriverMeta):
+    add_payment_supported = False  # Noninteractive payment supported
     change_given = False      # Overpayment is supported
     refund_supported = False  # Negative payment is supported
     cancel_supported = False  # Payment can be cancelled instead of refunded
@@ -143,6 +144,13 @@ class PaymentDriver(metaclass=_PaymentDriverMeta):
         If there is a problem, return a string describing the problem
         """
         return f"Driver '{self.paytype.driver_name}' not found"
+
+    def add_payment(self, transaction, description, amount):
+        """Add a payment to the transaction with no user interaction
+
+        Returns a pline if successful, otherwise None.
+        """
+        pass
 
     def start_payment(self, register, transid, amount, outstanding):
         # We don't permit new payments with no drivers

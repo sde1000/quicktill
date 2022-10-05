@@ -173,7 +173,7 @@ class _cardpopup(ui.dismisspopup):
         td.s.flush()
         r = [payment.pline(p)]
         if cashback > zero:
-            r.append(pt.driver._cashback_method.driver.add_change(
+            r.append(pt.driver._cashback_method.driver.add_payment(
                 trans, f"{pt.description} cashback",
                 zero - cashback))
         if cashback > zero or pt.driver._kickout:
@@ -236,8 +236,11 @@ class Card(payment.PaymentDriver):
                 problem = "Cashback method does not exist"
             elif not cashback_pt.active:
                 problem = "Cashback method is not active"
-            elif not cashback_pt.driver.change_given:
-                problem = "Cashback method does not support change"
+            elif not cashback_pt.driver.refund_supported:
+                problem = "Cashback method does not support refunds"
+            elif not cashback_pt.driver.add_payment_supported:
+                problem = "Cashback method does not support noninteractive "\
+                    "payments"
             else:
                 self._cashback_method = cashback_pt
 
