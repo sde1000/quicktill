@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship, backref, object_session
 from sqlalchemy.orm import joinedload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
 from sqlalchemy.orm import undefer_group
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select, func, desc, and_
@@ -675,6 +676,41 @@ class Transaction(Base, Logged):
         for p in self.payments:
             pts[p.paytype] = pts.get(p.paytype, zero) + p.amount
         return list(pts.items())
+
+    def related_transaction_ids(self):
+        """A set of transaction IDs related to this transaction
+
+        Currently derived by following chains of void transaction
+        lines, but may be extended in the future (for example if we
+        implement a "related transactions" table).
+
+        Transaction IDs are not guaranteed to exist, for example if a
+        related transaction has been merged.
+
+        The returned set of transaction IDs will always include the ID
+        of this transaction.
+        """
+        s = object_session(self)
+
+        # We are trying to build something like the following CTE:
+
+        # WITH RECURSIVE related(transid) AS (
+        #   SELECT self.id
+        #   UNION
+        #   SELECT voided.transid FROM related
+        #   INNER JOIN translines AS tl ON tl.transid=related.transid
+        #   INNER JOIN translines AS voided ON voided.voided_by=tl.translineid
+        # ) SELECT transid FROM related;
+
+        trans_line = aliased(Transline, name="tl")
+        voided_line = aliased(Transline, name="voided")
+        rel = s.query(literal(self.id).label("transid"))\
+               .cte("related", recursive=True)
+        rec = s.query(voided_line.transid)\
+               .select_from(rel)\
+               .join(trans_line, trans_line.transid == rel.c.transid)\
+               .join(voided_line, voided_line.voided_by_id == trans_line.id)
+        return set(t.transid for t in s.query(rel.union(rec)).all())
 
     @property
     def balance(self):
