@@ -958,6 +958,7 @@ def paytype(request, info, paytype):
     }
 
     recent_payments = td.s.query(Payment)\
+                          .options(joinedload('transaction'))\
                           .order_by(desc(Payment.id))\
                           .filter(Payment.paytype == pt)\
                           .limit(100)\
