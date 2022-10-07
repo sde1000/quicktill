@@ -237,6 +237,26 @@ class PaymentDriver(metaclass=_PaymentDriverMeta):
             title=f"Manage {self.paytype.description} payments",
             colour=ui.colour_info)
 
+    def notify_session_start(self, session):
+        """Perform any operations needed at the start of a session
+
+        This may include contacting external services or setting up
+        payment hardware.
+
+        Not interactive. Cannot veto the start of a session.
+        """
+        pass
+
+    def notify_session_end(self, session):
+        """Perform any operations needed at the end of a session
+
+        This may include contacting external services or closing down
+        payment hardware.
+
+        Not interactive. Cannot veto the end of a session.
+        """
+        pass
+
     def configure_cmd(self):
         """Interactive configuration from the command line
 
@@ -259,6 +279,32 @@ def manage():
                 title="Manage payment methods",
                 blurb="To add new payment methods or change the configuration "
                 "of existing ones, use the web interface.")
+
+
+def notify_session_start(session):
+    """Notify payment methods that a session is starting
+
+    Some payment methods may need to contact external services or set
+    up payment hardware for a new session.
+    """
+    for pm in td.s.query(PayType)\
+                  .order_by(PayType.order, PayType.paytype)\
+                  .filter(PayType.mode != "disabled")\
+                  .all():
+        pm.driver.notify_session_start(session)
+
+
+def notify_session_end(session):
+    """Notify payment methods that a session is ending
+
+    Some payment methods may need to contact external services or
+    close down payment hardware at the end of a session.
+    """
+    for pm in td.s.query(PayType)\
+                  .order_by(PayType.order, PayType.paytype)\
+                  .filter(PayType.mode != "disabled")\
+                  .all():
+        pm.driver.notify_session_end(session)
 
 
 # This permission is used in the web interface to control creation and

@@ -1,6 +1,7 @@
 """Starting, ending, and recording totals for sessions."""
 
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
+from . import payment
 from .models import PayType, Session, SessionTotal, Transaction, zero
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import select, func, desc
@@ -66,6 +67,7 @@ class ssdialog(ui.dismisspopup):
         td.foodorder_reset()
         log.info("Started session number %d", sc.id)
         user.log(f"Started session {sc.logref}")
+        payment.notify_session_start(sc)
         printer.kickout()
         if deferred:
             deferred = [
@@ -136,6 +138,7 @@ def confirmendsession():
         printer.print_sessioncountup(r)
     printer.kickout()
     managestock.stock_purge_internal(source="session end")
+    payment.notify_session_end(r)
 
 
 @user.permission_required("end-session", "End a session")
