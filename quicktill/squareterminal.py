@@ -1,6 +1,7 @@
 from . import payment
 from .secretstore import Secrets, SecretDoesNotExist, SecretNotAvailable
 from .models import zero, PayType, Payment, Session, Transaction
+from .models import PaymentMeta
 from . import ui
 from . import tillconfig
 from . import td
@@ -1564,6 +1565,33 @@ class SquareTerminal(payment.PaymentDriver):
             ("Test connection to Square", _test_connection,
              (self.paytype.paytype,)),
         ], title=f"{self.paytype} management")
+
+    def notify_session_end(self, session):
+        # Clean up payment metadata that is no longer needed
+
+        # Purgeable keys can be cleared after approx two
+        # days. (Actually they could all be cleared immediately,
+        # because at the end of a session there are guaranteed to be
+        # no checkouts or refunds in progress, but we keep them around
+        # for debugging.)
+        t = datetime.date.today() - datetime.timedelta(days=2)
+
+        # This is not the most efficient way to delete things, but is
+        # tolerable for now because it will generally only delete one
+        # days worth of transaction metadata at a time.
+        for pm in td.s.query(PaymentMeta)\
+                      .join(Payment)\
+                      .filter(Payment.paytype == self.paytype)\
+                      .filter(Payment.pending == False)\
+                      .filter(PaymentMeta.key.in_(purgeable_metadata_keys))\
+                      .filter(Payment.time < t)\
+                      .all():
+            td.s.delete(pm)
+
+        # XXX We may eventually want to clean up payment_key and
+        # refund_key metadata, leaving only payment_id_key and
+        # refund_id_key. The length of time we retain it should be
+        # configurable. In the UK it should be at least 3 years.
 
     def _configure_secretstore(self):
         self._secretstore_name = input("Secret store name: ")
