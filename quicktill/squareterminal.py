@@ -32,12 +32,28 @@ sandbox_devices = {
 }
 
 # Payment metadata keys
+
 checkout_device_name_key = "square:checkout_device_name"
-checkout_details_key = "square:checkout_details_key"
+checkout_details_key = "square:checkout_details"
 checkout_id_key = "square:checkout_id"
 checkout_key = "square:checkout_object"
 payment_id_key = "square:payment_id"
 payment_key = "square:payment_object"
+refund_details_key = "square:refund_details"
+refund_id_key = "square:refund_id"
+refund_key = "square:refund_object"
+refund_card_key = "square:refund_card"
+
+
+# The following keys should be purged after a couple of days: they are
+# not valid beyond the day the transaction took place
+purgeable_metadata_keys = [
+    checkout_device_name_key,
+    checkout_details_key,
+    checkout_id_key,
+    checkout_key,
+    refund_details_key,
+]
 
 
 def idempotency_key():
@@ -139,15 +155,30 @@ class TerminalAction:
 class Money:
     """Square API Money object
     """
+    two_decimal_currencies = ("AUD", "CAD", "GBP", "USD", "EUR")
+    zero_decimal_currencies = ("JPY",)
+
     def __init__(self, d):
         self.source_data = d
         self.amount = d.get("amount")
         self.currency = d.get("currency")
 
     def as_decimal(self):
-        if self.currency in ("AUD", "CAD", "GBP", "USD", "EUR"):
+        if self.currency in self.two_decimal_currencies:
             return Decimal(self.amount) / Decimal("100")
-        return Decimal(self.amount)
+        elif self.currency in self.zero_decimal_currencies:
+            return Decimal(self.amount)
+        raise Exception(f"Unknown Square currency {self.currency}")
+
+    @classmethod
+    def from_decimal(cls, amount, currency):
+        if currency in cls.two_decimal_currencies:
+            amount = amount * 100
+        elif currency in cls.zero_decimal_currencies:
+            pass
+        else:
+            raise Exception(f"Unknown Square currency {currency}")
+        return cls({"amount": int(amount), "currency": currency})
 
 
 class Card:
@@ -162,8 +193,11 @@ class Card:
         self.exp_year = d.get("exp_year")
         self.last_4 = d.get("last_4")
 
+        self.cardnum = f"{self.bin}...{self.last_4}"
+        self.expires = f"{self.exp_month}/{self.exp_year}"
+
     def __str__(self):
-        return f"{self.bin}...{self.last_4}"
+        return self.cardnum
 
 
 class CardPaymentDetails:
@@ -197,15 +231,61 @@ class SquarePayment:
     Named SquarePayment to distinguish it from models.Payment
 
     Represents a completed payment.
+
+    processing_fee is populated a short time (10–15 seconds) after the
+    payment is created.
     """
     def __init__(self, d):
         self.source_data = d
         self.id = d.get("id")
         self.total_money = Money(d.get("total_money", {}))
+        if "refunded_money" in d:
+            self.refunded_money = Money(d["refunded_money"])
+        else:
+            self.refunded_money = None
         self.status = d.get("status")
         self.card_details = CardPaymentDetails(d.get("card_details", {}))
         self.processing_fee = [
             ProcessingFee(x) for x in d.get("processing_fee", [])]
+        self.version_token = d.get("version_token")
+
+
+class PaymentRefund:
+    """Square API PaymentRefund object
+
+    Represents a refund, possibly still in progress. When created,
+    status is "PENDING". After some time (possibly hours) this will
+    change to "COMPLETED", "REJECTED" or "FAILED".
+
+    processing_fee is populated a short time (10–15 seconds) after the
+    refund is created.
+    """
+    def __init__(self, d):
+        self.source_data = d
+        self.id = d.get("id")
+        self.amount_money = Money(d.get("amount_money", {}))
+        self.payment_id = d.get("payment_id")
+        self.processing_fee = [
+            ProcessingFee(x) for x in d.get("processing_fee", [])]
+        self.reason = d.get("reason")
+        self.status = d.get("status")
+
+
+class _SquareAPIError(Exception):
+    """A Square API call returned one or more errors
+    """
+    def __init__(self, description, errors=[]):
+        super().__init__(description)
+        self.errors = errors
+
+    def __contains__(self, code):
+        for e in self.errors:
+            if code in e.get("code") or code in e.get("category"):
+                return True
+        return False
+
+    def __str__(self):
+        return f"Square API error: {self.description}; errors=[self.errors]"
 
 
 class _SquareAPISession:
@@ -216,6 +296,7 @@ class _SquareAPISession:
             self.api = "https://connect.squareup.com/v2/"
         self._secret = secret
         self.session = requests.Session()
+        self.session.hooks['response'].append(self._response_hook)
         self.session.verify = True
         self.session.headers.update(
             {'Square-Version': api_version,
@@ -226,15 +307,24 @@ class _SquareAPISession:
     def close(self):
         self.session.close()
 
+    def _response_hook(self, r, *args, **kwargs):
+        if r.status_code >= 400:
+            try:
+                d = r.json()
+            except Exception:
+                raise _SquareAPIError(
+                    f"{r.url}: {r.status_code} HTTP response with no JSON")
+            errors = d.get("errors", [])
+            raise _SquareAPIError(
+                f"{r.url}: {r.status_code} HTTP response", errors=errors)
+
     def list_locations(self):
         r = self.session.get(self.api + "locations")
-        r.raise_for_status()
         d = r.json()
         return [Location(x) for x in d.get("locations", [])]
 
     def get_location(self, location_id):
         r = self.session.get(self.api + "locations/" + location_id)
-        r.raise_for_status()
         d = r.json()
         return Location(d["location"]) if "location" in d else None
 
@@ -245,13 +335,11 @@ class _SquareAPISession:
             "product_type": "TERMINAL_API",
         }
         r = self.session.get(f"{self.api}devices/codes", params=params)
-        r.raise_for_status()
         d = r.json()
         return [DeviceCode(x) for x in d.get("device_codes", [])]
 
     def get_device_code(self, device_code_id):
         r = self.session.get(self.api + "devices/codes/" + device_code_id)
-        r.raise_for_status()
         d = r.json()
         return DeviceCode(d["device_code"]) if "device_code" in d else None
 
@@ -266,53 +354,45 @@ class _SquareAPISession:
         }
         r = self.session.post(self.api + "devices/codes",
                               data=json.dumps(params))
-        r.raise_for_status()
         d = r.json()
         return DeviceCode(d["device_code"]) if "device_code" in d else None
 
     def create_terminal_checkout(self, checkout_data):
         r = self.session.post(self.api + "terminals/checkouts",
                               data=json.dumps(checkout_data))
-        r.raise_for_status()
         d = r.json()
         return TerminalCheckout(d["checkout"]) if "checkout" in d else None
 
     def cancel_terminal_checkout(self, checkout_id):
         r = self.session.post(
             f"{self.api}terminals/checkouts/{checkout_id}/cancel")
-        r.raise_for_status()
         d = r.json()
         return TerminalCheckout(d["checkout"]) if "checkout" in d else None
 
     def get_terminal_checkout(self, checkout_id):
         r = self.session.get(f"{self.api}terminals/checkouts/{checkout_id}")
-        r.raise_for_status()
         d = r.json()
         return TerminalCheckout(d["checkout"]) if "checkout" in d else None
 
     def create_terminal_action(self, action_data):
         r = self.session.post(self.api + "terminals/actions",
                               data=json.dumps(action_data))
-        r.raise_for_status()
         d = r.json()
         return TerminalAction(d["action"]) if "action" in d else None
 
     def cancel_terminal_action(self, action_id):
         r = self.session.post(
             f"{self.api}terminals/actions/{action_id}/cancel")
-        r.raise_for_status()
         d = r.json()
         return TerminalAction(d["action"]) if "action" in d else None
 
     def get_terminal_action(self, action_id):
         r = self.session.get(f"{self.api}terminals/actions/{action_id}")
-        r.raise_for_status()
         d = r.json()
         return TerminalAction(d["action"]) if "action" in d else None
 
     def get_payment(self, payment_id):
         r = self.session.get(f"{self.api}payments/{payment_id}")
-        r.raise_for_status()
         d = r.json()
         return SquarePayment(d["payment"]) if "payment" in d else None
 
@@ -323,10 +403,12 @@ class _SquareAPISession:
         # info. A database change for the future!  In the meantime, we
         # err on the side of requesting too much data.
         params = {
-            "begin_time":
-            (begin_time - datetime.timedelta(hours=1)).isoformat("T"),
-            "end_time":
-            (end_time + datetime.timedelta(hours=1)).isoformat("T"),
+            "begin_time": (
+                begin_time.astimezone(datetime.timezone.utc)
+                - datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
+            "end_time": (
+                end_time.astimezone(datetime.timezone.utc)
+                + datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
             "location_id": location_id,
         }
         r = {"cursor": None}
@@ -334,13 +416,47 @@ class _SquareAPISession:
             params['cursor'] = r['cursor']
             r = self.session.get(
                 f"{self.api}payments", params=params)
-            r.raise_for_status()
             d = r.json()
             payments.extend(SquarePayment(p) for p in d.get("payments", []))
         return payments
 
+    def get_refund(self, refund_id):
+        r = self.session.get(f"{self.api}refunds/{refund_id}")
+        d = r.json()
+        return PaymentRefund(d["refund"]) if "refund" in d else None
 
-class _SquareProgress(ui.basicpopup):
+    def list_refunds(self, begin_time, end_time, location_id):
+        refunds = []
+        # XXX The session start and end times are currently stored in
+        # localtime; really they should be stored with timezone
+        # info. A database change for the future!  In the meantime, we
+        # err on the side of requesting too much data.
+        params = {
+            "begin_time": (
+                begin_time.astimezone(datetime.timezone.utc)
+                - datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
+            "end_time": (
+                end_time.astimezone(datetime.timezone.utc)
+                + datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
+            "location_id": location_id,
+        }
+        r = {"cursor": None}
+        while "cursor" in r:
+            params['cursor'] = r['cursor']
+            r = self.session.get(
+                f"{self.api}refunds", params=params)
+            d = r.json()
+            refunds.extend(PaymentRefund(p) for p in d.get("refunds", []))
+        return refunds
+
+    def create_refund(self, refund_data):
+        r = self.session.post(self.api + "refunds",
+                              data=json.dumps(refund_data))
+        d = r.json()
+        return PaymentRefund(d["refund"]) if "refund" in d else None
+
+
+class _SquarePaymentProgress(ui.basicpopup):
     """Popup window that progresses a Square payment
     """
     def __init__(self, register, payment_instance):
@@ -350,7 +466,7 @@ class _SquareProgress(ui.basicpopup):
         # using register.entry_noninteractive(); if it returns False
         # we should clean up and exit since the payment will now be
         # progressing on another terminal.
-        log.debug("SquareProgress starting")
+        log.debug("SquarePaymentProgress starting")
         self.register = register
         self.payment_id = payment_instance.id
         super().__init__(
@@ -375,14 +491,14 @@ class _SquareProgress(ui.basicpopup):
         # hidden, or it may be dismissed entirely. We can't continue
         # processing in the background with no register page, so halt
         # our timer and exit.
-        log.debug("SquareProgress notify_hide: dismissing")
+        log.debug("SquarePaymentProgress notify_hide: dismissing")
         if self.timeout:
             self.timeout.cancel()
             self.timeout = None
         self.dismiss()
 
     def dismiss(self):
-        log.debug("SquareProgress dismiss")
+        log.debug("SquarePaymentProgress dismiss")
         self.session.close()
         del self.session
         super().dismiss()
@@ -402,7 +518,7 @@ class _SquareProgress(ui.basicpopup):
 
     def update(self, cancel=False):
         # Called by timer or if Cancel key is pressed
-        log.debug("SquareProgress update(cancel=%s)", cancel)
+        log.debug("SquarePaymentProgress update(cancel=%s)", cancel)
         self.timeout = None
         if not self.register.entry_noninteractive():
             self.dismiss()
@@ -428,10 +544,7 @@ class _SquareProgress(ui.basicpopup):
             c = {
                 "idempotency_key": details["idempotency_key"],
                 "checkout": {
-                    "amount_money": {
-                        "amount": details["amount"],
-                        "currency": details["currency"],
-                    },
+                    "amount_money": details["amount"],
                     "device_options": {
                         "skip_receipt_screen": details["skip_receipt_screen"],
                         "device_id": details["device_id"],
@@ -497,11 +610,151 @@ class _SquareProgress(ui.basicpopup):
             # XXX insert additional payments into register dl?
             self.register.payments_update()
             self.dismiss()
+            return
         else:
             self.status.set(f"Unrecognised checkout status {checkout.status}")
             self.timeout = tillconfig.mainloop.add_timeout(
                 20, self._timer_update, "square progress wait unknown status")
             return
+
+
+class _SquareRefundProgress(ui.basicpopup):
+    """Popup window that progresses a Square refund
+    """
+    def __init__(self, register, payment_instance):
+        # At this point, register is guaranteed to be current. Every
+        # other time we are called (timeout) the register
+        # may have ceased to be current and this should be checked
+        # using register.entry_noninteractive(); if it returns False
+        # we should clean up and exit since the payment will now be
+        # progressing on another terminal.
+        log.debug("SquareRefundProgress starting")
+        self.register = register
+        self.payment_id = payment_instance.id
+        super().__init__(
+            5, 36, title=f"{payment_instance.paytype.description} refund",
+            colour=ui.colour_input)
+        self.win.set_cursor(False)
+        self.win.drawstr(2, 2, 32, "Connecting to Square")
+        self.session = payment_instance.paytype.driver.api_session()
+        # NB if timeout is set to "0" then update() is called before the
+        # display is flushed
+        self.timeout = tillconfig.mainloop.add_timeout(
+            0.1, self._timer_update, "square refund progress init")
+
+    def notify_hide(self):
+        # The register page is about to be deselected. It may be
+        # hidden, or it may be dismissed entirely. We can't continue
+        # processing in the background with no register page, so halt
+        # our timer and exit.
+        log.debug("SquareRefundProgress notify_hide: dismissing")
+        if self.timeout:
+            self.timeout.cancel()
+            self.timeout = None
+        self.dismiss()
+
+    def dismiss(self):
+        log.debug("SquareRefundProgress dismiss")
+        self.session.close()
+        del self.session
+        super().dismiss()
+
+    def _timer_update(self):
+        # Timer doesn't start database session
+        with td.orm_session():
+            self.update()
+
+    def update(self):
+        # Called by timer
+        log.debug("SquareRefundProgress update")
+        self.timeout = None
+        if not self.register.entry_noninteractive():
+            self.dismiss()
+            return
+        p = td.s.query(Payment)\
+                .options(joinedload('meta'))\
+                .get(self.payment_id)
+        failed = f"{p.paytype.description} refund failed"
+        details = json.loads(p.meta[refund_details_key].value)
+        op = td.s.query(Payment)\
+                 .options(joinedload('meta'))\
+                 .get(details["till_payment_id"])
+        # Sanity checks
+        if not op or op.paytype != p.paytype \
+           or payment_id_key not in op.meta \
+           or payment_key not in op.meta:
+            # We don't have enough details to continue
+            # Abort the refund
+            self.dismiss()
+            p.text = failed
+            p.pending = False
+            self.register.payments_update()
+            ui.infopopup(["The original payment could not be found or "
+                          "was in an incorrect state."], title="Square error")
+            return
+        # Fetch the card details from the original payment
+        op_sq = SquarePayment(json.loads(op.meta[payment_key].value))
+        card = op_sq.card_details.card
+        try:
+            if refund_id_key in p.meta:
+                # The refund has been created; we need to read it for
+                # an update.
+                refund = self.session.get_refund(
+                    p.meta[refund_id_key].value)
+            else:
+                # The refund has not been created yet, or we might have
+                # crashed after creating it but before committing its ID
+                # to the database.
+                refund = self.session.create_refund({
+                    "idempotency_key": details["idempotency_key"],
+                    "amount_money": details["amount"],
+                    "payment_id": op.meta[payment_id_key].value,
+                    "reason": f"Transaction {p.transid} refund {p.id}",
+                    "payment_version_token": details["payment_version_token"],
+                })
+        except _SquareAPIError as e:
+            # Abort the refund
+            if "VERSION_MISMATCH" in e:
+                # If this was a VERSION_MISMATCH we need to update the
+                # cached SquarePayment on the original payment before
+                # we exit, so we don't just get another
+                # VERSION_MISMATCH when we try again
+                self._update_original_payment(op)
+            self.dismiss()
+            p.text = failed
+            p.pending = False
+            self.register.payments_update()
+            for error in e.errors:
+                log.warning("Refund error code '%s'", error.get('code'))
+            return
+        p.set_meta(refund_id_key, refund.id)
+        p.set_meta(refund_key, json.dumps(refund.source_data))
+        p.set_meta(refund_card_key, json.dumps(card.source_data))
+        if refund.status not in ("PENDING", "COMPLETED"):
+            # The refund failed.
+            self.dismiss()
+            p.text = failed
+            p.pending = False
+            self.register.payments_update()
+            log.warning("Refund ended up in state '%s'", refund.status)
+            return
+        # The refund succeeded.
+        p.text = f"{p.paytype.description} refund {refund.id[:6]}"
+        p.amount = -refund.amount_money.as_decimal()
+        p.pending = False
+        self.register.payments_update()
+        td.s.commit()  # Ensure refund committed even if orig update failes
+        self._update_original_payment(op)
+        self.dismiss()
+
+    def _update_original_payment(self, p):
+        try:
+            sp = self.session.get_payment(p.meta[payment_id_key].value)
+        except _SquareAPIError:
+            log.warning(
+                "Could not fetch updated Square payment for %d", p.id)
+            return
+        p.set_meta(payment_key, json.dumps(sp.source_data))
 
 
 def _load_driver(paytype):
@@ -787,16 +1040,17 @@ def _test_connection(paytype):
         with closing(d.api_session()) as s:
             l = s.get_location(d._location)
     if l:
-        ui.infopopup([f"Mode: {'Sandbox' if d._sandbox_mode else 'Production'}",
-                      "",
-                      "Location details:",
-                      "",
-                      f"      ID: {l.id}",
-                      f"    Name: {l.name}",
-                      f"  Status: {l.status}",
-                      f"Currency: {l.currency}"],
-                     title="Connected to Square",
-                     colour=ui.colour_info, dismiss=K_CASH)
+        ui.infopopup(
+            [f"Mode: {'Sandbox' if d._sandbox_mode else 'Production'}",
+             "",
+             "Location details:",
+             "",
+             f"      ID: {l.id}",
+             f"    Name: {l.name}",
+             f"  Status: {l.status}",
+             f"Currency: {l.currency}"],
+            title="Connected to Square",
+            colour=ui.colour_info, dismiss=K_CASH)
 
 
 class SquareTerminal(payment.PaymentDriver):
@@ -949,25 +1203,8 @@ class SquareTerminal(payment.PaymentDriver):
         return _SquareAPISession(self._sandbox_mode, self._secret)
 
     def start_payment(self, register, transid, amount, outstanding):
-        if amount < zero:
-            ui.infopopup(
-                [f"{self.paytype.description} refunds are not yet "
-                 f"implemented."],
-                title=f"{self.paytype.description} refund")
-            return
-        if amount < self._minimum_charge:
-            ui.infopopup(
-                [f"The minimum amount you can charge using "
-                 f"{self.paytype.description} is "
-                 f"{tillconfig.fc(self._minimum_charge)}."],
-                title=f"{self.paytype.description} payment")
-            return
-        if amount > outstanding:
-            ui.infopopup(
-                [f"You can't take an overpayment using "
-                 f"{self.paytype.description}."],
-                title="Overpayment not accepted")
-            return
+        # rollover_guard_time applies to refunds as well as payments,
+        # so check it before checking whether we are refunding
         if self._rollover_guard_time:
             session = Session.current(td.s)
             # session should not be None; this should have been
@@ -987,22 +1224,50 @@ class SquareTerminal(payment.PaymentDriver):
                      "",
                      f"The current session is for {session.date:%d %B}.",
                      "",
-                     f"To take a {self.paytype} payment, close the current "
-                     f"session and start a new one dated {date}.",
+                     f"To perform a {self.paytype} transaction, close the "
+                     f"current session and start a new one dated {date}.",
                      ],
                     title=f"{self.paytype} transactions not allowed")
                 return
+        if amount < zero:
+            self._start_refund(register, transid, amount, outstanding)
+            return
+        if amount < self._minimum_charge:
+            ui.infopopup(
+                [f"The minimum amount you can charge using "
+                 f"{self.paytype.description} is "
+                 f"{tillconfig.fc(self._minimum_charge)}."],
+                title=f"{self.paytype.description} payment")
+            return
+        if amount > outstanding:
+            ui.infopopup(
+                [f"You can't take an overpayment using "
+                 f"{self.paytype.description}."],
+                title="Overpayment not accepted")
+            return
         state = self._check_state()
 
         devices = [(ds['device_id'], ds['name']) for ds in state['devices']
                    if ds['id'] not in state['disabled']]
         if self._sandbox_mode:
             devices.extend(sandbox_devices.items())
-        menu = [(name, self._start_payment_with_device,
-                 (self.paytype.paytype, register, transid, amount,
-                  outstanding, device_id, name, state['currency'],
-                  self._skip_receipt_screen))
-                for device_id, name in devices]
+        idk = idempotency_key()
+        square_amount = Money.from_decimal(amount, state["currency"])
+        menu = [
+            (device_name,
+             self._create_pending_payment,
+             (self.paytype.paytype, register, transid, outstanding,
+              {
+                  checkout_device_name_key: device_name,
+                  checkout_details_key: json.dumps({
+                      'idempotency_key': idk,
+                      'amount': square_amount.source_data,
+                      'device_id': device_id,
+                      'skip_receipt_screen': self._skip_receipt_screen,
+                  }),
+              }),
+             )
+            for device_id, device_name in devices]
         title = f"{self.paytype} payment of {tillconfig.fc(amount)}"
         if len(menu) > 1:
             ui.automenu(menu, title=title,
@@ -1015,10 +1280,123 @@ class SquareTerminal(payment.PaymentDriver):
                           f"Payment methods → {self.paytype} → "
                           f"Manage terminals."], title=title)
 
+    def _start_refund(self, register, transid, amount, outstanding):
+        if amount < outstanding:
+            ui.infopopup(
+                ["You can't refund more than the amount due back."],
+                title="Refund too large")
+            return
+
+        trans = td.s.query(Transaction).get(transid)
+        related = trans.related_transaction_ids()
+
+        # Filter payments by age: if over a year old they can't be
+        # refunded through Square
+        oldest_refundable = datetime.date.today()\
+            - datetime.timedelta(days=364)
+        payments = td.s.query(Payment)\
+                       .options(joinedload('meta'))\
+                       .filter(Payment.paytype == self.paytype)\
+                       .filter(Payment.transid.in_(related))\
+                       .filter(Payment.amount > zero)\
+                       .filter(Payment.time > oldest_refundable)\
+                       .order_by(Payment.time)\
+                       .all()
+
+        f = ui.tableformatter(" c l l l r r r ")
+        header = f("Transaction", "Time", "Card number", "Expires",
+                   "Paid", "Refunded", "Available")
+        idk = idempotency_key()
+
+        try:
+            with closing(self.api_session()) as s:
+                # really want the walrus for this... :=
+                menu = [
+                    self._refund_details_from_payment(
+                        s, f, idk, payment, register, transid,
+                        amount, outstanding)
+                    for payment in payments]
+                menu = [x for x in menu if x]
+        except _SquareAPIError as e:
+            ui.infopopup(
+                ["There was an error fetching payment information from "
+                 "Square. Please try again later.",
+                 "",
+                 f"The error was: {e}"], title="Square error")
+            return
+
+        if not menu:
+            ui.infopopup(
+                [f"There are no eligible {self.paytype.description} "
+                 f"payments in the transactions that were voided to "
+                 f"set up this refund, so it's not possible to issue a "
+                 f"refund using {self.paytype.description}.",
+                 "",
+                 f"Hint: you must find the transaction with the original "
+                 f"{self.paytype.description} payment in that you need to "
+                 f"refund, and void the appropriate lines from there.",
+                 "",
+                 "Payments that have already been fully refunded cannot "
+                 "be used to issue further refunds.",
+                 ], title="No refundable payments found")
+            return
+
+        blurb = [
+            ui.emptyline(),
+            ui.lrline(
+                "Check that the card details match the customer's card, "
+                "and the original payment amount is as expected. The "
+                "refund will be sent directly to this card."),
+            ui.emptyline(),
+            ui.lrline(
+                "Hint: if the payment was made using a phone or watch, "
+                "the card number will be different to the original card "
+                "and can be viewed in the wallet application on the "
+                "device."),
+            ui.emptyline(),
+            header,
+        ]
+
+        ui.menu(menu, blurb=blurb, title="Choose payment to refund")
+
+    def _refund_details_from_payment(
+            self, s, f, idk, payment, register, transid, amount, outstanding):
+        # Refresh the SquarePayment because it will probably have changed
+        # (fees added) since it was cached
+        pi = s.get_payment(payment.meta[payment_id_key].value)
+        payment.set_meta(payment_key, json.dumps(pi.source_data))
+        card = pi.card_details.card
+        paid = pi.total_money.as_decimal()
+        refunded = pi.refunded_money.as_decimal() if pi.refunded_money \
+            else zero
+        available = paid - refunded
+        if available <= zero:
+            return
+
+        fc = tillconfig.fc
+
+        refund_amount = min(available, -amount)
+        square_amount = Money.from_decimal(
+            refund_amount, pi.total_money.currency)
+
+        return (
+            f(payment.transid, payment.time.strftime("%H:%M"),
+              card.cardnum, card.expires,
+              fc(paid), fc(refunded), fc(available)),
+            SquareTerminal._create_pending_payment,
+            (self.paytype.paytype, register, transid, outstanding, {
+                refund_details_key: json.dumps({
+                    'idempotency_key': idk,
+                    'amount': square_amount.source_data,
+                    'till_payment_id': payment.id,
+                    'payment_version_token': pi.version_token,
+                }),
+            }),
+        )
+
     @staticmethod
-    def _start_payment_with_device(
-            paytype, register, transid, amount, outstanding, device_id,
-            device_name, currency, skip_receipt_screen):
+    def _create_pending_payment(
+            paytype, register, transid, outstanding, metadata):
         # Load the payment method and driver
         pm = td.s.query(PayType).get(paytype)
         if not pm:
@@ -1049,15 +1427,8 @@ class SquareTerminal(payment.PaymentDriver):
         p = Payment(transaction=reg_trans, amount=zero, paytype=pm,
                     text=pm.description, user=user,
                     source=tillconfig.terminal_name, pending=True)
-        p.set_meta(checkout_device_name_key, device_name)
-        details = {
-            'idempotency_key': idempotency_key(),
-            'amount': int(amount * 100) if currency != 'YEN' else int(amount),
-            'device_id': device_id,
-            'currency': currency,
-            'skip_receipt_screen': skip_receipt_screen,
-        }
-        p.set_meta(checkout_details_key, json.dumps(details))
+        for k, v in metadata.items():
+            p.set_meta(k, v)
         td.s.add(p)
         td.s.flush()  # ensure p.id is known
         pline = payment.pline(p)
@@ -1067,52 +1438,67 @@ class SquareTerminal(payment.PaymentDriver):
     def resume_payment(self, register, payment_instance):
         if payment_instance.paytype != self.paytype:
             return
-        _SquareProgress(register, payment_instance)
+        if checkout_details_key in payment_instance.meta:
+            _SquarePaymentProgress(register, payment_instance)
+        elif refund_details_key in payment_instance.meta:
+            _SquareRefundProgress(register, payment_instance)
+        else:
+            ui.infopopup(["Can't work out whether this pending Square "
+                          "payment is a checkout or a refund"],
+                         title="Error")
 
     def receipt_details(self, d, p):
         if p.paytype != self.paytype:
             return
-        if payment_key not in p.meta:
+        if payment_key not in p.meta and refund_card_key not in p.meta:
             return
         d.printline(f"{p.text}:")
-        pi = SquarePayment(json.loads(p.meta[payment_key].value))
-        card = pi.card_details.card
-        cardnum = f"{card.bin}......{card.last_4}"
-        expires = f"{card.exp_month}/{card.exp_year}"
-        entry_method = pi.card_details.entry_method
-        aid = pi.card_details.application_identifier
-        aname = pi.card_details.application_name
-        acryptogram = pi.card_details.application_cryptogram
-        authcode = pi.card_details.auth_result_code
-        vmethod = pi.card_details.verification_method
-        d.printline(f"       Card number: {cardnum}")
-        d.printline(f"       Expiry date: {expires}")
-        d.printline(f" Card entry method: {entry_method}")
-        if aid:
-            d.printline(f"    Application ID: {aid}")
-        if aname:
-            d.printline(f"  Application name: {aname}")
-        if acryptogram:
-            d.printline(f"    App cryptogram: {acryptogram}")
-        if vmethod:
-            d.printline(f"               CVM: {vmethod}")
-        if authcode:
-            d.printline(f"         Auth code: {authcode}")
+        if p.amount < zero:
+            pi = None
+            card = Card(json.loads(p.meta[refund_card_key].value))
+            d.printline(f"     Refund amount: {tillconfig.fc(-p.amount)}")
+        else:
+            pi = SquarePayment(json.loads(p.meta[payment_key].value))
+            card = pi.card_details.card
+        d.printline(f"       Card number: {card.cardnum}")
+        d.printline(f"       Expiry date: {card.expires}")
+        if p.amount >= zero:
+            entry_method = pi.card_details.entry_method
+            aid = pi.card_details.application_identifier
+            aname = pi.card_details.application_name
+            acryptogram = pi.card_details.application_cryptogram
+            authcode = pi.card_details.auth_result_code
+            vmethod = pi.card_details.verification_method
+            d.printline(f" Card entry method: {entry_method}")
+            if aid:
+                d.printline(f"    Application ID: {aid}")
+            if aname:
+                d.printline(f"  Application name: {aname}")
+            if acryptogram:
+                d.printline(f"    App cryptogram: {acryptogram}")
+            if vmethod:
+                d.printline(f"               CVM: {vmethod}")
+            if authcode:
+                d.printline(f"         Auth code: {authcode}")
         d.printline()
 
     def total(self, sessionid, fields):
-        # The Payment objects stored in the payment_key metadata are
-        # likely to be missing their processing_fee data: Square do
-        # not guarantee a time frame for this field to be populated,
-        # they merely state it is likely to be "ten seconds or so".
+        # The Payment objects stored in the payment_key and refund_key
+        # metadata are likely to be missing their processing_fee data:
+        # Square do not guarantee a time frame for this field to be
+        # populated, they merely state it is likely to be "ten seconds
+        # or so".
         #
-        # We start by bulk fetching payments for the time frame
-        # covered by the session. Any payments that happen to fall
-        # outside this time frame can be fetched by ID.
+        # We start by bulk fetching payments and refunds for the time
+        # frame covered by the session. Any payments that happen to
+        # fall outside this time frame can be fetched by ID.
         session = td.s.query(Session).get(sessionid)
         with closing(self.api_session()) as s:
             sqpayments = {
                 sp.id: sp for sp in s.list_payments(
+                    session.starttime, session.endtime, self._location)}
+            sqrefunds = {
+                sr.id: sr for sr in s.list_refunds(
                     session.starttime, session.endtime, self._location)}
 
             payments = td.s.query(Payment)\
@@ -1130,10 +1516,11 @@ class SquareTerminal(payment.PaymentDriver):
                             f"Payment {p.id} is missing {payment_id_key} "
                             f"metadata")
                     sqid = p.meta[payment_id_key].value
-                    # Try to find the SquarePayment for the transaction
                     if sqid in sqpayments:
                         sp = sqpayments[sqid]
                     else:
+                        log.warning(
+                            "Square payment %d not in bulk fetch", p.id)
                         sp = s.get_payment(sqid)
                     if not sp:
                         raise payment.PaymentTotalError(
@@ -1147,8 +1534,28 @@ class SquareTerminal(payment.PaymentDriver):
                     for pf in sp.processing_fee:
                         fees += pf.amount_money.as_decimal()
                 elif p.amount < zero:
-                    raise payment.PaymentTotalError(
-                        f"Payment {p.id} is a refund — not supported")
+                    if refund_id_key not in p.meta:
+                        raise payment.PaymentTotalError(
+                            f"Refund {p.id} is missing {refund_id_key} "
+                            f"metadata")
+                    sqid = p.meta[refund_id_key].value
+                    if sqid in sqrefunds:
+                        sr = sqrefunds[sqid]
+                    else:
+                        log.warning(
+                            "Square refund %d not in bulk fetch", p.id)
+                        sr = s.get_refund(sqid)
+                    if not sr:
+                        raise payment.PaymentTotalError(
+                            f"Could not retrieve Square Refund details for "
+                            f"refund number {p.id}")
+                    p.set_meta(refund_key, json.dumps(sr.source_data))
+                    amount -= sr.amount_money.as_decimal()
+                    if not sr.processing_fee:
+                        raise payment.PaymentTotalError(
+                            f"No Square fees listed for refund number {p.id}")
+                    for pf in sr.processing_fee:
+                        fees += pf.amount_money.as_decimal()
         return (amount, fees)
 
     def manage(self):
