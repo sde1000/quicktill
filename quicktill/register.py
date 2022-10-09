@@ -2229,8 +2229,9 @@ class page(ui.basicpage):
             # method; if it fails, we assume an error box will have
             # been popped up.)
             log.info("Register: cancelline: cancel payment")
-            if l.method.cancel_supported:
-                l.method.cancel_payment(self, l)
+            p = td.s.query(Payment).get(l.payment_id)
+            if p.paytype.driver.cancel_supported:
+                p.paytype.driver.cancel_payment(self, l)
                 self.cursor_off()
             else:
                 ui.infopopup(["You can't cancel this type of payment.  "
