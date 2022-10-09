@@ -1,3 +1,39 @@
+quicktill (22.1) stable; urgency=low
+
+  * New release 22.1
+
+  * Enable failed Square payments to be removed from transactions
+
+  * Fix cancelling payments
+
+  * Purge SquareTerminal temporary metadata at end of session
+
+  * Add notifications of session start/end to payment drivers
+
+  * Square Terminal refunds
+
+  * Minor optimisation to payment type view in tillweb
+
+  * Fix merging transactions with payments
+
+  * Don't conflate giving change with noninteractive payments
+
+  * Add a Transaction method to return related transaction IDs
+
+  * Change "Waiting for Square" to "Connecting to Square"
+
+  * Prettify JSON metadata in web interface
+
+  * Add note about imported code to README
+
+  * Show fees on web sessions page
+
+  * Enable "Add new terminal" popup to be dismissed
+
+  * Default account_code to "" not None
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 09 Oct 2022 23:21:48 +0100
+
 quicktill (22.0) stable; urgency=low
 
   * New release 22.0
