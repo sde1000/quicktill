@@ -1093,6 +1093,7 @@ class SquareTerminal(payment.PaymentDriver):
     "Manage Terminals" menu is opened.
     """
     mergeable = True
+    cancel_supported = True
 
     def read_config(self):
         try:
@@ -1447,6 +1448,15 @@ class SquareTerminal(payment.PaymentDriver):
             ui.infopopup(["Can't work out whether this pending Square "
                           "payment is a checkout or a refund"],
                          title="Error")
+
+    def cancel_payment(self, register, pline_instance):
+        p = td.s.query(Payment).get(pline_instance.payment_id)
+        if p.pending is False and p.amount == zero:
+            register.cancelpayment(pline_instance)
+        else:
+            ui.infopopup(
+                ["You can't cancel completed Square payments. You should "
+                 "issue a refund instead."], title="Cancel payment")
 
     def receipt_details(self, d, p):
         if p.paytype != self.paytype:
