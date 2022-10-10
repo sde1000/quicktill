@@ -32,9 +32,11 @@ Features
 
  * Web interface for reporting and management
 
+ * Flexible discount policies, and reporting on discounts given
+
  * [Xero](https://www.xero.com/) integration
 
- * Flexible discount policies, and reporting on discounts given
+ * [Square Terminal](https://developer.squareup.com/docs/terminal-api/overview) integration
 
 It should be possible to run this software on any system that supports
 Python 3.7.  Usually it runs on Debian-derived Linux systems like
