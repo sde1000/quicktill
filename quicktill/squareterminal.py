@@ -547,6 +547,7 @@ class _SquarePaymentProgress(ui.basicpopup):
                 "checkout": {
                     "amount_money": details["amount"],
                     "device_options": {
+                        "collect_signature": details["collect_signature"],
                         "skip_receipt_screen": details["skip_receipt_screen"],
                         "device_id": details["device_id"],
                     },
@@ -1084,6 +1085,10 @@ class SquareTerminal(payment.PaymentDriver):
     - "skip_receipt_screen" is set to True to skip the screen on the
       terminal that offers to print a card receipt.
 
+    - "collect_signature" is set to True to enable collection of
+      signatures when requested by the card provider. When set to
+      False, transactions will be approved without signature.
+
     PayType.state is used as a cache of terminal details so we can
     avoid calling list_device_codes() for every transaction. We also
     store a "disabled" setting for each terminal to temporarily remove
@@ -1149,6 +1154,12 @@ class SquareTerminal(payment.PaymentDriver):
             self._skip_receipt_screen = True
             problems.append("Skip receipt screen is invalid")
 
+        try:
+            self._collect_signature = bool(c.get('collect_signature', True))
+        except Exception:
+            self._collect_signature = True
+            problems.append("Collect signature setting is invalid")
+
         return ", ".join(problems)
 
     def save_config(self):
@@ -1157,7 +1168,8 @@ class SquareTerminal(payment.PaymentDriver):
             'sandbox': getattr(self, "_sandbox_mode", None),
             'location': getattr(self, "_location", None),
             'mincharge': str(getattr(self, "_minimum_charge", minimum_charge)),
-            'skip_receipt_screen': getattr(self, "_skip_receipt_screen", True)
+            'skip_receipt_screen': getattr(self, "_skip_receipt_screen", True),
+            'collect_signature': getattr(self, "_collect_signature", True),
         }
         if hasattr(self, "_rollover_guard_time") and self._rollover_guard_time:
             cfg['rollover_guard_time'] = str(self._rollover_guard_time)
@@ -1266,6 +1278,7 @@ class SquareTerminal(payment.PaymentDriver):
                       'amount': square_amount.source_data,
                       'device_id': device_id,
                       'skip_receipt_screen': self._skip_receipt_screen,
+                      'collect_signature': self._collect_signature,
                   }),
               }),
              )
@@ -1625,6 +1638,7 @@ class SquareTerminal(payment.PaymentDriver):
     def configure_cmd(self):
         if self.config_valid:
             print("Configuration is currently valid.\n")
+            self.save_config()
             if self._sandbox_mode:
                 print("*** IN SANDBOX MODE: no devices can be paired ***\n")
             with closing(self.api_session()) as s:
