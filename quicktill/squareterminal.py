@@ -412,11 +412,10 @@ class _SquareAPISession:
                 + datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
             "location_id": location_id,
         }
-        r = {"cursor": None}
-        while "cursor" in r:
-            params['cursor'] = r['cursor']
-            r = self.session.get(
-                f"{self.api}payments", params=params)
+        d = {"cursor": None}
+        while "cursor" in d:
+            params['cursor'] = d['cursor']
+            r = self.session.get(f"{self.api}payments", params=params)
             d = r.json()
             payments.extend(SquarePayment(p) for p in d.get("payments", []))
         return payments
@@ -441,11 +440,10 @@ class _SquareAPISession:
                 + datetime.timedelta(hours=1)).isoformat("T", "milliseconds"),
             "location_id": location_id,
         }
-        r = {"cursor": None}
-        while "cursor" in r:
-            params['cursor'] = r['cursor']
-            r = self.session.get(
-                f"{self.api}refunds", params=params)
+        d = {"cursor": None}
+        while "cursor" in d:
+            params['cursor'] = d['cursor']
+            r = self.session.get(f"{self.api}refunds", params=params)
             d = r.json()
             refunds.extend(PaymentRefund(p) for p in d.get("refunds", []))
         return refunds
