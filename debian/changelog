@@ -1,3 +1,13 @@
+quicktill (22.2) stable; urgency=low
+
+  * New release 22.2
+
+  * Add "collect_signature" setting to Square Terminal driver
+
+  * Update README
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 13 Oct 2022 20:02:08 +0100
+
 quicktill (22.1) stable; urgency=low
 
   * New release 22.1
