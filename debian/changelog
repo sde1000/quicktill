@@ -1,3 +1,11 @@
+quicktill (22.3) stable; urgency=low
+
+  * New release 22.3
+
+  * Fix reading of paginated results from Square API
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 14 Oct 2022 00:11:31 +0100
+
 quicktill (22.2) stable; urgency=low
 
   * New release 22.2
