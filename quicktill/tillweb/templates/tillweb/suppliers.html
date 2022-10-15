@@ -4,8 +4,7 @@
 
 {% block tillcontent %}
 
-<div class="table-responsive">
-<table class="table table-striped table-hover table-sm" id="suppliers">
+<table class="table table-sm table-striped" id="suppliers">
 <thead class="thead-light">
   <tr>
     <th scope="col">Name</th>
@@ -27,10 +26,9 @@
 {% endfor %}
 </tbody>
 </table>
-</div>
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#suppliers").tablesorter();
+  $("#suppliers").DataTable();
 });
 </script>
 

@@ -275,3 +275,4 @@ be under a different licence:
 * [Chart.js](https://www.chartjs.org/) (MIT licence)
 * [Sortable](https://github.com/SortableJS/Sortable) (MIT licence)
 * [json-viewer](https://github.com/LorDOniX/json-viewer) (MIT licence)
+* [DataTables](https://datatables.net/) (MIT licence)

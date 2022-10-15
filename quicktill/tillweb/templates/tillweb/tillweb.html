@@ -8,14 +8,46 @@
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/tillweb-bootstrap.css" %}" />
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2/select2.min.css" %}" />
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2-bootstrap4.min.css" %}" />
+<link rel="stylesheet" type="text/css" href="{% static "tillweb/DataTables-1.12.1/css/dataTables.bootstrap4.css" %}"/>
 {% endblock %}
 {% block jquery %}
 {# We assume jquery and jquery-ui are already present #}
 {{ block.super }}
 <script type="text/javascript" src="{% static "tillweb/jquery.tablesorter.js" %}"></script>
 <script type="text/javascript" src="{% static "tillweb/select2/select2.min.js" %}"></script>
+<script type="text/javascript" src="{% static "tillweb/DataTables-1.12.1/js/jquery.dataTables.js" %}"></script>
+<script type="text/javascript" src="{% static "tillweb/DataTables-1.12.1/js/dataTables.bootstrap4.js" %}"></script>
 <script type="text/javascript">
+  $.extend(true, $.fn.dataTable.defaults, {
+      "pageLength": 25,
+      "autoWidth": false,
+      "searchDelay": 500
+  });
+
   $.fn.select2.defaults.set("theme", "bootstrap4");
+
+  function render_money() {
+      return DataTable.render.number(null, null, 2, '{{money}}');
+  };
+
+  function render_link(linkfield, render_data) {
+      /* Some of the built-in helpers appear to be objects with a
+      'display' member rather than functions. Cope with either. */
+      const render_inner = (typeof render_data === 'function') ?
+	    render_data : render_data.display;
+      return function (data, type, row) {
+	  return '<a href="' + row[linkfield] + '">'
+	      + render_inner(data, type, row) + '</a>';
+      };
+  };
+
+  function render_day() {
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+		    'Friday', 'Saturday', 'Sunday'];
+      return function (data, type, row) {
+	  return days[data]
+      };
+  };
 </script>
 {% endblock %}
 {% block breadcrumbs %}
@@ -41,8 +73,8 @@
 <div class="container-fluid h-100">
   {% include "tillweb/versioncheck.html" %}
   <div class="row">
-    <div class="col-sm-12 col-md-12 col-lg-2">
-      <nav class="navbar navbar-expand-lg navbar-light bg-light flex-lg-column flex-row align-items-start">
+    <div class="col-sm-12 col-md-12 col-lg-12 col-xl-2">
+      <nav class="navbar navbar-expand-xl navbar-light bg-light flex-lg-column flex-row align-items-start">
 	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tillwebNavbar" aria-controls="tillwebNavbar" aria-expanded="false" aria-label="Toggle till navigation">
 	  <span class="navbar-toggler-icon"></span>
 	</button>

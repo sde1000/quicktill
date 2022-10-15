@@ -18,7 +18,7 @@ from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import undefer, undefer_group
 from sqlalchemy.sql import select, desc
-from sqlalchemy.sql.expression import tuple_, func, null
+from sqlalchemy.sql.expression import tuple_, func, null, or_
 from sqlalchemy import distinct
 from quicktill.models import (
     StockType,
@@ -136,6 +136,41 @@ class DatePeriodForm(forms.Form):
 # Format a StockType model as a string for Select widgets
 def stocktype_widget_label(x):
     return f"{x.format()} ({x.department}, sold in {x.unit.item_name_plural})"
+
+
+# Utilities to help write views for datatables
+def _datatables_order(query, columns, params):
+    for onum in range(1000):
+        order_col = params.get(f"order[{onum}][column]")
+        order_dir = params.get(f"order[{onum}][dir]")
+        if not order_col or not order_dir:
+            break
+        expr = columns[int(order_col)]
+        if order_dir == "desc":
+            expr = expr.desc()
+        query = query.order_by(expr)
+
+    return query
+
+
+def _datatables_paginate(query, params):
+    start = int(params.get("start", "0"))
+    length = int(params.get("length", "100"))
+    query = query.offset(start)
+    if length >= 0:
+        query = query.limit(length)
+    return query
+
+
+def _datatables_json(request, query, filtered_query, order_columns, rowfunc):
+    q = _datatables_order(filtered_query, order_columns, request.GET)
+    q = _datatables_paginate(q, request.GET)
+    return JsonResponse({
+        'draw': int(request.GET.get("draw", "1")),
+        'recordsTotal': query.count(),
+        'recordsFiltered': filtered_query.count(),
+        'data': [rowfunc(x) for x in q.all()],
+    })
 
 
 # This view is only used when the tillweb is integrated into another
@@ -583,10 +618,6 @@ def location(request, info, location):
     })
 
 
-class SessionFinderForm(forms.Form):
-    session = forms.IntegerField(label="Session ID")
-
-
 class SessionSheetForm(DatePeriodForm):
     rows = forms.ChoiceField(label="Rows show", choices=[
         ("Sessions", "Sessions"),
@@ -596,17 +627,7 @@ class SessionSheetForm(DatePeriodForm):
 
 
 @tillweb_view
-def sessionfinder(request, info):
-    if request.method == 'POST' and "submit_find" in request.POST:
-        form = SessionFinderForm(request.POST)
-        if form.is_valid():
-            s = td.s.query(Session).get(form.cleaned_data['session'])
-            if s:
-                return HttpResponseRedirect(s.get_absolute_url())
-            form.add_error(None, "This session does not exist.")
-    else:
-        form = SessionFinderForm()
-
+def sessions(request, info):
     if request.method == 'POST' and "submit_sheet" in request.POST:
         rangeform = SessionSheetForm(request.POST)
         if rangeform.is_valid():
@@ -619,23 +640,53 @@ def sessionfinder(request, info):
     else:
         rangeform = SessionSheetForm()
 
-    sessions = td.s.query(Session)\
-                   .options(undefer('total'),
-                            undefer('actual_total'),
-                            undefer('discount_total'))\
-                   .order_by(desc(Session.id))
-
-    pager = Pager(request, sessions)
-
     return ('sessions.html',
             {'nav': [("Sessions", info.reverse("tillweb-sessions"))],
-             'recent': pager.items,
-             'pager': pager,
-             'nextlink': pager.nextlink(),
-             'prevlink': pager.prevlink(),
-             'form': form,
              'rangeform': rangeform,
              })
+
+
+@tillweb_view
+def datatable_sessions(request, info):
+    columns = [
+        Session.id,
+        Session.date,
+        func.to_char(Session.date, 'Day'),
+        Session.discount_total,
+        Session.total,
+        Session.actual_total,
+        Session.error,
+    ]
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(Session)\
+            .options(undefer('total'),
+                     undefer('actual_total'),
+                     undefer('discount_total'))
+
+    # Apply filters - we filter on weekday name or session ID
+    fq = q
+    if search_value:
+        try:
+            sessionid = int(search_value)
+        except ValueError:
+            sessionid = None
+        qs = [columns[2].ilike(search_value + '%')]
+        if sessionid:
+            qs.append(columns[0] == sessionid)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda s: {
+            'id': s.id,
+            'url': s.get_absolute_url(),
+            'date': s.date,
+            'day': s.date.weekday(),
+            'discount': s.discount_total,
+            'till_total': s.total,
+            'actual_total': s.actual_total,
+            'difference': s.error,
+            'DT_RowClass': "table-warning" if s.actual_total is None else None,
+        })
 
 
 @tillweb_view
@@ -2934,18 +2985,51 @@ def create_group(request, info):
 
 @tillweb_view
 def logsindex(request, info):
-    logs = td.s.query(LogEntry)\
-               .order_by(desc(LogEntry.id))
-
-    pager = Pager(request, logs)
-
     return ('logs.html', {
         'nav': [("Logs", info.reverse("tillweb-logs"))],
-        'recent': pager.items,
-        'pager': pager,
-        'nextlink': pager.nextlink(),
-        'prevlink': pager.prevlink(),
     })
+
+
+@tillweb_view
+def datatable_logs(request, info):
+    columns = [
+        LogEntry.id,
+        LogEntry.time,
+        LogEntry.source,
+        User.fullname,
+        LogEntry.description,
+    ]
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(LogEntry)\
+            .join(User, User.id == LogEntry.user_id)\
+            .options(joinedload('loguser'))
+
+    # Apply filters - we filter on weekday name or session ID
+    fq = q
+    if search_value:
+        try:
+            logid = int(search_value)
+        except ValueError:
+            logid = None
+        qs = [
+            columns[2].ilike(f"%{search_value}%"),
+            columns[3].ilike(f"%{search_value}%"),
+            columns[4].ilike(f"%{search_value}%"),
+        ]
+        if logid:
+            qs.append(columns[0] == logid)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda l: {
+            'id': l.id,
+            'url': l.get_absolute_url(),
+            'time': l.time.isoformat(sep=' ', timespec="seconds"),
+            'source': l.source,
+            'user': l.loguser.fullname,
+            'userlink': l.loguser.get_absolute_url(),
+            'description': l.as_text(),
+        })
 
 
 @tillweb_view

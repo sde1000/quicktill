@@ -5,7 +5,9 @@ from quicktill.tillweb import stocktake
 tillurls = [
     path('', views.pubroot, name="tillweb-pubroot"),
 
-    path('session/', views.sessionfinder, name="tillweb-sessions"),
+    path('session/', views.sessions, name="tillweb-sessions"),
+    path('datatable/sessions.json', views.datatable_sessions,
+         name="tillweb-datatable-sessions"),
     path('session/<int:sessionid>/', include([
         path('', views.session, name="tillweb-session"),
         path('spreadsheet.ods', views.session_spreadsheet,
@@ -117,6 +119,8 @@ tillurls = [
 
     path('logs/', views.logsindex, name="tillweb-logs"),
     path('logs/<int:logid>', views.logdetail, name="tillweb-logentry"),
+    path('datatable/logs.json', views.datatable_logs,
+         name="tillweb-datatable-logs"),
 
     path('config/', views.configindex, name="tillweb-config-index"),
     path('config/<key>/', views.configitem, name="tillweb-config-item"),
