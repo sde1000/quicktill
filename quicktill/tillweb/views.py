@@ -162,15 +162,33 @@ def _datatables_paginate(query, params):
     return query
 
 
-def _datatables_json(request, query, filtered_query, order_columns, rowfunc):
+def _datatables_json(request, query, filtered_query, columns, rowfunc):
+    order_columns = []
+    error = None
+    for cnum in range(1000):
+        cname = request.GET.get(f"columns[{cnum}][name]") \
+            or request.GET.get(f"columns[{cnum}][data]")
+        if cname:
+            cexpr = columns.get(cname)
+            if cexpr is not None:
+                order_columns.append(cexpr)
+            else:
+                error = f'column {cname} not defined'
+                break
+        else:
+            break
+
     q = _datatables_order(filtered_query, order_columns, request.GET)
     q = _datatables_paginate(q, request.GET)
-    return JsonResponse({
+    r = {
         'draw': int(request.GET.get("draw", "1")),
         'recordsTotal': query.count(),
         'recordsFiltered': filtered_query.count(),
         'data': [rowfunc(x) for x in q.all()],
-    })
+    }
+    if error:
+        r['error'] = error
+    return JsonResponse(r)
 
 
 # This view is only used when the tillweb is integrated into another
@@ -648,15 +666,15 @@ def sessions(request, info):
 
 @tillweb_view
 def datatable_sessions(request, info):
-    columns = [
-        Session.id,
-        Session.date,
-        func.to_char(Session.date, 'Day'),
-        Session.discount_total,
-        Session.total,
-        Session.actual_total,
-        Session.error,
-    ]
+    columns = {
+        'id': Session.id,
+        'date': Session.date,
+        'day': func.to_char(Session.date, 'Day'),
+        'discount': Session.discount_total,
+        'till_total': Session.total,
+        'actual_total': Session.actual_total,
+        'difference': Session.error,
+    }
     search_value = request.GET.get("search[value]")
     q = td.s.query(Session)\
             .options(undefer('total'),
@@ -2992,13 +3010,13 @@ def logsindex(request, info):
 
 @tillweb_view
 def datatable_logs(request, info):
-    columns = [
-        LogEntry.id,
-        LogEntry.time,
-        LogEntry.source,
-        User.fullname,
-        LogEntry.description,
-    ]
+    columns = {
+        'id': LogEntry.id,
+        'time': LogEntry.time,
+        'source': LogEntry.source,
+        'user': User.fullname,
+        'description': LogEntry.description,
+    }
     search_value = request.GET.get("search[value]")
     q = td.s.query(LogEntry)\
             .join(User, User.id == LogEntry.user_id)\
@@ -3012,12 +3030,12 @@ def datatable_logs(request, info):
         except ValueError:
             logid = None
         qs = [
-            columns[2].ilike(f"%{search_value}%"),
-            columns[3].ilike(f"%{search_value}%"),
-            columns[4].ilike(f"%{search_value}%"),
+            columns['source'].ilike(f"%{search_value}%"),
+            columns['name'].ilike(f"%{search_value}%"),
+            columns['description'].ilike(f"%{search_value}%"),
         ]
         if logid:
-            qs.append(columns[0] == logid)
+            qs.append(columns['id'] == logid)
         fq = q.filter(or_(*qs))
 
     return _datatables_json(
