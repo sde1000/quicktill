@@ -36,6 +36,9 @@
       const render_inner = (typeof render_data === 'function') ?
 	    render_data : render_data.display;
       return function (data, type, row) {
+	  if (row[linkfield] === null) {
+	      return render_inner(data, type, row);
+	  }
 	  return '<a href="' + row[linkfield] + '">'
 	      + render_inner(data, type, row) + '</a>';
       };
@@ -45,7 +48,16 @@
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
 		    'Friday', 'Saturday', 'Sunday'];
       return function (data, type, row) {
-	  return days[data]
+	  return days[data];
+      };
+  };
+
+  function render_yesno() {
+      return function (data, type, row) {
+	  if (data) {
+	      return "Yes";
+	  }
+	  return "No";
       };
   };
 </script>

@@ -36,13 +36,72 @@
 <p>{{paytype.state}}</p>
 {% endif %}
 
-{% if recent_payments %}
-<h2>Recent payments</h2>
-{% with payments=recent_payments %}{% include "tillweb/paymentlist.html" %}{% endwith %}
-{% endif %}
+<h2>Payments</h2>
+
+<table class="table table-sm table-striped" id="payments">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Transaction</th>
+      <th scope="col">Description</th>
+      <th scope="col">Amount</th>
+      <th scope="col">Time</th>
+      <th scope="col">Source</th>
+      <th scope="col">Pending?</th>
+      <th scope="col">User</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#payments").DataTable({
+	ajax: {
+	    url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	    dataSrc: 'data',
+	    data: function (d) {
+		d.paytype = '{{paytype.paytype}}';
+	    },
+	},
+	columns: [
+	    { data: 'id',
+	      render: render_link('url', DataTable.render.text()),
+	    },
+	    { data: 'transid',
+	      render: render_link('trans_url', DataTable.render.text()),
+	    },
+	    { data: 'text',
+	      render: DataTable.render.text(),
+	    },
+	    { data: 'amount',
+	      render: render_money(),
+	    },
+	    { data: 'time',
+	      render: render_link('url', DataTable.render.datetime()),
+	      searchable: false,
+	    },
+	    { data: 'source',
+	      render: DataTable.render.text(),
+	    },
+	    { data: 'pending',
+	      render: render_yesno(),
+	      searchable: false,
+	    },
+	    { data: 'user',
+	      render: render_link('user_url', DataTable.render.text()),
+	    },
+	],
+	order: [ [0, 'desc'] ],
+	searching: true,
+	paging: true,
+	serverSide: true
+    });
+  });
+</script>
 
 {% if recent_totals %}
-<h2>Recent session totals</h2>
+<h2>Session totals</h2>
 <table class="table table-striped table-hover table-sm mb-2" id="payments">
   <thead>
     <tr>

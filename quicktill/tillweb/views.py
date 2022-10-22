@@ -20,6 +20,7 @@ from sqlalchemy.orm import undefer, undefer_group
 from sqlalchemy.sql import select, desc
 from sqlalchemy.sql.expression import tuple_, func, null, or_
 from sqlalchemy import distinct
+from decimal import Decimal
 from quicktill.models import (
     StockType,
     LogEntry,
@@ -948,6 +949,81 @@ def payment(request, info, paymentid):
     if not payment:
         raise Http404
     return ('payment.html', {'payment': payment, 'tillobject': payment})
+
+
+@tillweb_view
+def datatable_payments(request, info):
+    columns = {
+        'id': Payment.id,
+        'transid': Payment.transid,
+        'time': Payment.time,
+        'paytype': Payment.paytype_id,
+        'text': Payment.text,
+        'source': Payment.source,
+        'amount': Payment.amount,
+        'pending': Payment.pending,
+        'user': User.fullname,
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(Payment)\
+            .join(User, isouter=True)\
+            .options(joinedload('paytype'),
+                     joinedload('user'),
+                     joinedload('transaction'),
+                     joinedload('transaction.session'))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        sessionid = int(request.GET.get('sessionid'))
+        q = q.filter(Session.id == sessionid)
+    except (ValueError, TypeError):
+        pass
+    paytype = request.GET.get('paytype')
+    if paytype:
+        q = q.filter(Payment.paytype_id == paytype)
+
+    # Apply filters from search value. The 'filtered' item count is
+    # after this filtering step.
+    fq = q
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except Exception:
+            decsearch = None
+        qs = [
+            columns['text'].ilike(f'%{search_value}%'),
+            columns['source'].ilike(f'{search_value}%'),
+            columns['user'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+            qs.append(columns['transid'] == intsearch)
+        if decsearch is not None:
+            qs.append(columns['amount'] == decsearch)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda p: {
+            'id': p.id,
+            'url': p.get_absolute_url(),
+            'transid': p.transid,
+            'trans_url': p.transaction.get_absolute_url(),
+            'time': p.time,
+            'paytype': p.paytype_id,
+            'paytype_url': p.paytype.get_absolute_url(),
+            'text': p.text,
+            'source': p.source,
+            'amount': p.amount,
+            'pending': p.pending,
+            'user': p.user.fullname if p.user else '',
+            'user_url': p.user.get_absolute_url() if p.user else None,
+            'DT_RowClass': "table-warning" if p.pending else None,
+        })
 
 
 @tillweb_view
