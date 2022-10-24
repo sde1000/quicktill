@@ -612,7 +612,7 @@ class SessionTotal(Base):
         'actual_totals', order_by=desc(paytype_id)))
     paytype = relationship(PayType)
 
-    @property
+    @hybrid_property
     def payment_amount(self):
         return self.amount - self.fees
 
