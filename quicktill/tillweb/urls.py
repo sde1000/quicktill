@@ -130,6 +130,8 @@ tillurls = [
 
     path('datatable/sessions.json', views.datatable_sessions,
          name="tillweb-datatable-sessions"),
+    path('datatable/sessiontotals.json', views.datatable_sessiontotals,
+         name="tillweb-datatable-sessiontotals"),
     path('datatable/payments.json', views.datatable_payments,
          name="tillweb-datatable-payments"),
     path('datatable/logs.json', views.datatable_logs,

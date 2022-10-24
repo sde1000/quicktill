@@ -36,99 +36,139 @@
 <p>{{paytype.state}}</p>
 {% endif %}
 
-<h2>Payments</h2>
-
-<table class="table table-sm table-striped" id="payments">
-  <thead class="thead-light">
-    <tr>
-      <th scope="col">ID</th>
-      <th scope="col">Transaction</th>
-      <th scope="col">Description</th>
-      <th scope="col">Amount</th>
-      <th scope="col">Time</th>
-      <th scope="col">Source</th>
-      <th scope="col">Pending?</th>
-      <th scope="col">User</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<ul class="nav nav-tabs mb-2" id="tables" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="payments-tab" data-toggle="tab" href="#payments-panel" role="tab" aria-controls="payments-panel" aria-selected="true">Payments</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="totals-tab" data-toggle="tab" href="#totals-panel" role="tab" aria-controls="totals-panel" aria-selected="false">Totals</a>
+  </li>
+  {% if paytype.logs %}
+  <li class="nav-item">
+    <a class="nav-link" id="logs-tab" data-toggle="tab" href="#logs-panel" role="tab" aria-controls="logs-panel" aria-selected="false">Logs</a>
+  </li>
+  {% endif %}
+</ul>
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="payments-panel" role="tabpanel" aria-labelledby="payments-tab">
+    <table class="table table-sm table-striped" id="payments">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Amount</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Source</th>
+	  <th scope="col">Pending?</th>
+	  <th scope="col">User</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="totals-panel" role="tabpanel" aria-labelledby="totals-tab">
+    <table class="table table-striped table-sm" id="totals">
+      <thead>
+	<tr>
+	  <th scope="col">Session</th>
+	  <th scope="col">Date</th>
+	  <th scope="col">Total amount</th>
+	  <th scope="col">Fees</th>
+	  <th scope="col">Payment amount</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  {% if paytype.logs %}
+  <div class="tab-pane fade" id="logs-panel" role="tabpanel" aria-labelledby="logs-tab">
+    {% with logs=paytype.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+  </div>
+  {% endif %}
+</div>
 
 <script type="text/javascript">
-  $(document).ready(function(){
-    $("#payments").DataTable({
-	ajax: {
-	    url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
-	    dataSrc: 'data',
-	    data: function (d) {
-		d.paytype = '{{paytype.paytype}}';
-	    },
-	},
-	columns: [
-	    { data: 'id',
-	      render: render_link('url', DataTable.render.text()),
-	    },
-	    { data: 'transid',
-	      render: render_link('trans_url', DataTable.render.text()),
-	    },
-	    { data: 'text',
-	      render: DataTable.render.text(),
-	    },
-	    { data: 'amount',
-	      render: render_money(),
-	    },
-	    { data: 'time',
-	      render: render_link('url', DataTable.render.datetime()),
-	      searchable: false,
-	    },
-	    { data: 'source',
-	      render: DataTable.render.text(),
-	    },
-	    { data: 'pending',
-	      render: render_yesno(),
-	      searchable: false,
-	    },
-	    { data: 'user',
-	      render: render_link('user_url', DataTable.render.text()),
-	    },
-	],
-	order: [ [0, 'desc'] ],
-	searching: true,
-	paging: true,
-	serverSide: true
-    });
+  $(document).ready(function() {
+      const payments_api = $("#payments").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.paytype = '{{paytype.paytype}}';
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: render_link('url', DataTable.render.datetime()),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'pending',
+		render: render_yesno(),
+		searchable: false,
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+      const totals_api = $("#totals").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-sessiontotals" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.paytype = '{{paytype.paytype}}';
+	      },
+	  },
+	  columns: [
+	      { data: 'sessionid',
+		render: render_link('session_url', DataTable.render.text()),
+	      },
+	      { data: 'date',
+		render: render_link('session_url', DataTable.render.date()),
+		searchable: false,
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'fees',
+		render: render_money(),
+	      },
+	      { data: 'payment_amount',
+		render: render_money(),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+	  deferLoading: 1,
+      });
+      /* Load the table data in the totals tab the first time it is shown */
+      $('#totals-tab').on('show.bs.tab', function (e) {
+	  totals_api.ajax.reload(null, false);
+	  $('#totals-tab').off('show.bs.tab');
+      });
   });
 </script>
-
-{% if recent_totals %}
-<h2>Session totals</h2>
-<table class="table table-striped table-hover table-sm mb-2" id="payments">
-  <thead>
-    <tr>
-      <th>Session</th>
-      <th>Date</th>
-      <th>Total amount</th>
-      <th>Fees</th>
-      <th>Payment amount</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for t in recent_totals %}
-    <tr>
-      <td><a href="{{t.session.get_absolute_url}}">{{t.session.id}}</a></td>
-      <td><a href="{{t.session.get_absolute_url}}">{{t.session.date}}</a></td>
-      <td>{{money}}{{t.amount}}</td>
-      <td>{{money}}{{t.fees}}</td>
-      <td>{{money}}{{t.payment_amount}}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-
-{% if paytype.logs %}
-<h2>Log entries</h2>
-{% with logs=paytype.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
-{% endif %}
 
 {% endblock %}

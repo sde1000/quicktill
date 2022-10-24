@@ -14,6 +14,7 @@ import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import undefer, undefer_group
@@ -966,11 +967,14 @@ def datatable_payments(request, info):
     }
     search_value = request.GET.get("search[value]")
     q = td.s.query(Payment)\
+            .join(PayType)\
             .join(User, isouter=True)\
-            .options(joinedload('paytype'),
-                     joinedload('user'),
-                     joinedload('transaction'),
-                     joinedload('transaction.session'))
+            .join(Transaction)\
+            .join(Session, isouter=True)\
+            .options(contains_eager(Payment.paytype),
+                     contains_eager(Payment.user),
+                     contains_eager(Payment.transaction)
+                     .contains_eager(Transaction.session))
 
     # Apply filters from parameters. The 'unfiltered' item count for
     # this table is after this filtering step.
@@ -1023,6 +1027,64 @@ def datatable_payments(request, info):
             'user': p.user.fullname if p.user else '',
             'user_url': p.user.get_absolute_url() if p.user else None,
             'DT_RowClass': "table-warning" if p.pending else None,
+        })
+
+
+@tillweb_view
+def datatable_sessiontotals(request, info):
+    columns = {
+        'sessionid': Session.id,
+        'paytype': PayType.description,
+        'date': Session.date,
+        'amount': SessionTotal.amount,
+        'fees': SessionTotal.fees,
+        'payment_amount': SessionTotal.payment_amount,
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(SessionTotal)\
+            .join(Session)\
+            .join(PayType)\
+            .options(contains_eager(SessionTotal.session),
+                     contains_eager(SessionTotal.paytype))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    paytype = request.GET.get('paytype')
+    if paytype:
+        q = q.filter(PayType.paytype == paytype)
+
+    # Apply filters from search value. The 'filtered' item count is
+    # after this filtering step.
+    fq = q
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except Exception:
+            decsearch = None
+        qs = []
+        if intsearch:
+            qs.append(columns['sessionid'] == intsearch)
+        if decsearch is not None:
+            qs.append(columns['amount'] == decsearch)
+            qs.append(columns['fees'] == decsearch)
+            qs.append(columns['payment_amount'] == decsearch)
+        if qs:
+            fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda t: {
+            'sessionid': t.session.id,
+            'session_url': t.session.get_absolute_url(),
+            'paytype': t.paytype.paytype,
+            'paytype_url': t.paytype.get_absolute_url(),
+            'date': t.session.date,
+            'amount': t.amount,
+            'fees': t.fees,
+            'payment_amount': t.payment_amount,
         })
 
 
@@ -1102,17 +1164,16 @@ def paytype(request, info, paytype):
         'payment_date_policy': pt.payment_date_policy,
     }
 
+    # Even though the tables on the page are loaded by DataTables now,
+    # we have to check whether any payments or totals exist to disable
+    # the "Delete" button where necessary.
     recent_payments = td.s.query(Payment)\
-                          .options(joinedload('transaction'))\
-                          .order_by(desc(Payment.id))\
                           .filter(Payment.paytype == pt)\
-                          .limit(100)\
+                          .limit(1)\
                           .all()
     recent_totals = td.s.query(SessionTotal)\
-                        .options(joinedload('session'))\
-                        .order_by(desc(SessionTotal.sessionid))\
                         .filter(SessionTotal.paytype == pt)\
-                        .limit(50)\
+                        .limit(1)\
                         .all()
 
     if may_edit and request.method == "POST":
