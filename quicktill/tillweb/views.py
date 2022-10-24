@@ -966,12 +966,10 @@ def datatable_payments(request, info):
         'user': User.fullname,
     }
     search_value = request.GET.get("search[value]")
-    # NB join to Transaction must come before join to User so that
-    # Transaction is joined on Payment.transid rather than User.transid
     q = td.s.query(Payment)\
             .join(PayType)\
-            .join(Transaction)\
-            .join(User, isouter=True)\
+            .join(Payment.transaction)\
+            .join(Payment.user, isouter=True)\
             .join(Session, isouter=True)\
             .options(contains_eager(Payment.paytype),
                      contains_eager(Payment.user),
