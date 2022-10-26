@@ -1,3 +1,31 @@
+quicktill (22.4) stable; urgency=low
+
+  * New release 22.4
+
+  * Installing odfpy is optional
+
+  * Make opening the payment method menu on void optional
+
+  * Fix join to User in datatable_payments view
+
+  * Fix join to Transaction in datatable_payments view
+
+  * Use DataTables for payment type page
+
+  * Change SessionTotal.payment_amount to be a hybrid_property
+
+  * DataTable for payments
+
+  * Use column names when ordering datatables server-side
+
+  * Don't insert commas into log ID numbers
+
+  * Start to use DataTables in web interface
+
+  * Remove obsolete zebra tables CSS classes
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 26 Oct 2022 13:01:43 +0100
+
 quicktill (22.3) stable; urgency=low
 
   * New release 22.3
