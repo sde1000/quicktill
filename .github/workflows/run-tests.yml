@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Check out project
         uses: actions/checkout@v2
+      - name: Update OS package list
+        run: |
+          sudo apt-get update
       - name: Install OS-level dependencies
         run: |
           sudo apt-get install \
