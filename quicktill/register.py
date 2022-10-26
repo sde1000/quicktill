@@ -137,6 +137,14 @@ defer_payment_method = config.ConfigItem(
     "with instructions describing how to apply the payment to the "
     "transaction in a future session.")
 
+# Automatically open the payment method menu after creating a
+# transaction that voids lines from another transaction?
+payment_method_menu_after_void = config.BooleanConfigItem(
+    'register:payment_method_menu_after_void', False,
+    display_name="Payment method menu after void",
+    description="Automatically open the payment method menu after "
+    "creating a transaction that voids lines from another transaction?")
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -2272,8 +2280,10 @@ class page(ui.basicpage):
             self.cursor_off()
             self.update_balance()
             self._redraw()
-            self._payment_method_menu(
-                title="Choose refund type, or press Clear to add more items")
+            if payment_method_menu_after_void():
+                self._payment_method_menu(
+                    title="Choose refund type, or press Clear "
+                    "to add more items")
         else:
             if not self.user.may("cancel-line-in-open-transaction"):
                 ui.infopopup(
@@ -2317,8 +2327,10 @@ class page(ui.basicpage):
             self.cursor_off()
             self.update_balance()
             self._redraw()
-            self._payment_method_menu(
-                title="Choose refund type, or press Clear to add more items")
+            if payment_method_menu_after_void():
+                self._payment_method_menu(
+                    title="Choose refund type, or press Clear "
+                    "to add more items")
         else:
             # Delete this transaction and everything to do with it
             tn = trans.id
