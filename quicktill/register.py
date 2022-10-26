@@ -581,6 +581,66 @@ class recalltranspopup(user.permission_checked, ui.dismisspopup):
         self._reg.recalltrans(transid)
 
 
+class transline_search_popup(ui.dismisspopup):
+    """Popup to allow a transaction line to be searched for
+
+    Calls func with the transaction ID as the argument.
+    """
+    def __init__(self, func):
+        self._func = func
+        super().__init__(11, 70, title="Search for an item",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 12, "Search for: ", align=">")
+        self.win.drawstr(3, 2, 12, "Department: ", align=">")
+        self.win.drawstr(3, 35, 30, "(leave blank for 'any')")
+        self.win.drawstr(5, 2, 26, "Number of days to search: ",
+                         align=">")
+        self.win.drawstr(6, 15, 40, "(leave blank for current day only)")
+        self.textfield = ui.editfield(
+            2, 14, 54,
+            keymap={
+                keyboard.K_CLEAR: (self.dismiss, None)})
+        self.deptfield = ui.modellistfield(
+            3, 14, 20, Department,
+            lambda q: q.order_by(Department.id),
+            d=lambda x: x.description,
+        )
+        self.daysfield = ui.editfield(5, 28, 3, validate=ui.validate_int)
+        self.searchbutton = ui.buttonfield(
+            8, 30, 10, "Search", keymap={
+                keyboard.K_CASH: (self.enter, None, False)})
+        ui.map_fieldlist([self.textfield, self.deptfield, self.daysfield,
+                          self.searchbutton])
+        self.textfield.focus()
+
+    def enter(self):
+        if not self.textfield.f:
+            ui.infopopup(["You must enter some text to search for."],
+                         title="Error")
+            return
+        self.dismiss()
+        dept = self.deptfield.read()
+        try:
+            days = int(self.daysfield.f)
+        except Exception:
+            days = 0
+        after = datetime.date.today() - datetime.timedelta(days=days)
+
+        q = td.s.query(Transline)\
+                .join(Transaction)\
+                .join(Session)\
+                .filter(Transline.text.ilike(f'%{self.textfield.f}%'))\
+                .filter(Session.date >= after)\
+                .order_by(Transline.id.desc())
+        if dept:
+            q = q.filter(Transline.department == dept)
+        f = ui.tableformatter(" l r l ")
+        header = f("Time", "Qty", "Description")
+        menu = [(f(ui.formattime(x.time), x.items, x.text),
+                 self._func, (x.transid,)) for x in q.limit(1000).all()]
+        ui.menu(menu, blurb=header, title="Search results")
+
+
 def strtoamount(s):
     if s.find('.') >= 0:
         return Decimal(s).quantize(penny)
@@ -2976,6 +3036,32 @@ class page(ui.basicpage):
                for x in DiscountPolicyPlugin.policies.values()]
         ui.automenu(menu, title="Apply Discount")
 
+    def _start_payment_search(self, paytype_id):
+        paytype = td.s.query(PayType).get(paytype_id)
+        paytype.driver.search(self.recalltrans)
+
+    def _payment_search_menu(self):
+        ui.automenu(
+            [(m.description, self._start_payment_search, (m.paytype,))
+             for m in td.s.query(PayType)
+             .filter(PayType.mode == 'active')
+             .order_by(PayType.order, PayType.paytype)
+             .all()],
+            title="Payment search",
+            blurb="What type of payment are you searching for?",
+            spill="keymenu")
+
+    def search_menu(self):
+        if self.hook("search_menu"):
+            return
+        menu = [
+            ("1", "Recall a transaction by number", recalltranspopup, (self,)),
+            ("2", "Search for an item in the transaction",
+             transline_search_popup, (self.recalltrans,)),
+            ("3", "Search for a payment", self._payment_search_menu, None),
+        ]
+        ui.keymenu(menu, title="Search for a transaction")
+
     def managetranskey(self):
         trans = self._gettrans()
         if self.hook("managetrans", trans):
@@ -3016,8 +3102,7 @@ class page(ui.basicpage):
             menu = []
         menu.append(("7", "Add a custom transaction line",
                      addtransline, (self.deptlines,)))
-        menu.append(("8", "Recall a transaction by number",
-                     recalltranspopup, (self,)))
+        menu.append(("8", "Search for a transaction", self.search_menu, None))
         if trans and not trans.closed and DiscountPolicyPlugin.policies:
             menu.append(("9", "Apply a discount", self._discount_menu, None))
 

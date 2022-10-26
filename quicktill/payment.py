@@ -1,8 +1,9 @@
-from . import ui, tillconfig, td, user
-from .models import PayType, Payment, zero
+from . import ui, tillconfig, td, user, keyboard
+from .models import PayType, Payment, Transaction, Session, zero
 from .cmdline import command
 from sqlalchemy.sql.expression import literal
 import datetime
+from decimal import Decimal
 
 
 class PaymentConfig:
@@ -237,6 +238,14 @@ class PaymentDriver(metaclass=_PaymentDriverMeta):
             title=f"Manage {self.paytype.description} payments",
             colour=ui.colour_info)
 
+    def search(self, func):
+        """Display UI for searching for a payment
+
+        When a payment is found, func() should be called with the
+        transaction ID of the payment as its argument.
+        """
+        payment_search_popup(func, self.paytype)
+
     def notify_session_start(self, session):
         """Perform any operations needed at the start of a session
 
@@ -265,6 +274,71 @@ class PaymentDriver(metaclass=_PaymentDriverMeta):
         secret from the configuration file.
         """
         print("This payment method has no interactive configuration options.")
+
+
+class payment_search_popup(ui.dismisspopup):
+    """Popup to allow a payment to be searched for
+
+    Calls func with the payment's transaction ID as the argument.
+
+    This is a generic, default implementation. Some payment drivers
+    will want to supply their own implementation.
+    """
+    def __init__(self, func, paytype):
+        self._func = func
+        self._paytype_id = paytype.paytype
+        super().__init__(
+            11, 70, title=f"Search for a {paytype.description} payment",
+            colour=ui.colour_input)
+        self.win.drawstr(2, 2, 13, "Description: ", align=">")
+        self.win.drawstr(3, 2, 13, "Amount: ", align=">")
+        self.win.drawstr(3, 35, 30, "(leave blank for 'any')")
+        self.win.drawstr(5, 2, 26, "Number of days to search: ",
+                         align=">")
+        self.win.drawstr(6, 15, 40, "(leave blank for current day only)")
+        self.textfield = ui.editfield(
+            2, 15, 53,
+            keymap={
+                keyboard.K_CLEAR: (self.dismiss, None)})
+        self.amountfield = ui.editfield(
+            3, 15, 10, validate=ui.validate_float)
+        self.daysfield = ui.editfield(5, 28, 3, validate=ui.validate_int)
+        self.searchbutton = ui.buttonfield(
+            8, 30, 10, "Search", keymap={
+                keyboard.K_CASH: (self.enter, None, False)})
+        ui.map_fieldlist([self.textfield, self.amountfield, self.daysfield,
+                          self.searchbutton])
+        self.textfield.focus()
+
+    def enter(self):
+        self.dismiss()
+        paytype = td.s.query(PayType).get(self._paytype_id)
+        try:
+            days = int(self.daysfield.f)
+        except Exception:
+            days = 0
+        after = datetime.date.today() - datetime.timedelta(days=days)
+
+        q = td.s.query(Payment)\
+                .join(Transaction)\
+                .join(Session)\
+                .filter(Payment.paytype == paytype)\
+                .filter(Session.date >= after)\
+                .order_by(Payment.id.desc())
+
+        if self.textfield.f:
+            q = q.filter(Payment.text.ilike(f'%{self.textfield.f}%'))
+        if self.amountfield.f:
+            try:
+                amount = Decimal(self.amountfield.f)
+                q = q.filter(Payment.amount == amount)
+            except Exception:
+                pass
+        f = ui.tableformatter(" l l r ")
+        header = f("Time", "Description", "Amount")
+        menu = [(f(ui.formattime(x.time), x.text, tillconfig.fc(x.amount)),
+                 self._func, (x.transid,)) for x in q.limit(1000).all()]
+        ui.menu(menu, blurb=header, title="Search results")
 
 
 @user.permission_required(
