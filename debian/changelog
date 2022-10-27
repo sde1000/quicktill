@@ -1,3 +1,15 @@
+quicktill (22.5) stable; urgency=low
+
+  * New release 22.5
+
+  * Search for Square card transactions
+
+  * Update apt package list before installing packages for testing
+
+  * Simple transaction search function
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 27 Oct 2022 13:17:48 +0100
+
 quicktill (22.4) stable; urgency=low
 
   * New release 22.4
