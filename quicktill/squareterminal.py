@@ -1587,6 +1587,9 @@ class SquareTerminal(payment.PaymentDriver):
              (self.paytype.paytype,)),
         ], title=f"{self.paytype} management")
 
+    def search(self, func):
+        square_search_popup(func, self.paytype)
+
     def notify_session_end(self, session):
         # Clean up payment metadata that is no longer needed
 
@@ -1680,3 +1683,122 @@ class SquareTerminal(payment.PaymentDriver):
 
         if not self._location:
             self._configure_location()
+
+
+class square_search_popup(ui.dismisspopup):
+    """Popup to allow a payment to be searched for
+
+    Calls func with the payment's transaction ID as the argument.
+    """
+    def __init__(self, func, paytype):
+        self._func = func
+        self._paytype_id = paytype.paytype
+        super().__init__(
+            14, 56, title=f"Search for a {paytype.description} payment",
+            colour=ui.colour_input)
+        self.win.drawstr(2, 2, 18, "Amount: ", align=">")
+        self.win.drawstr(2, 31, 25, "(negative for refund)")
+        self.win.drawstr(3, 2, 18, "Last four digits: ", align=">")
+        self.win.drawstr(4, 2, 18, "First six digits: ", align=">")
+        self.win.drawstr(4, 31, 25, "(leave blank for 'any')")
+        self.win.drawstr(5, 2, 18, "Expiry month: ", align=">")
+        self.win.drawstr(6, 2, 18, "Expiry year: ", align=">")
+        self.win.drawstr(8, 2, 26, "Number of days to search: ",
+                         align=">")
+        self.win.drawstr(9, 15, 40, "(leave blank for current day only)")
+        self.amountfield = ui.editfield(
+            2, 20, 10, validate=ui.validate_float,
+            keymap={K_CLEAR: (self.dismiss, None)})
+        self.lastfour = ui.editfield(
+            3, 20, 4)
+        self.firstsix = ui.editfield(
+            4, 20, 6)
+        self.expmonth = ui.editfield(
+            5, 20, 2, validate=ui.validate_positive_nonzero_int)
+        self.expyear = ui.editfield(
+            6, 20, 4, validate=ui.validate_positive_nonzero_int)
+        self.daysfield = ui.editfield(8, 28, 3, validate=ui.validate_int)
+        self.searchbutton = ui.buttonfield(
+            11, 25, 10, "Search", keymap={
+                K_CASH: (self.enter, None, False)})
+        ui.map_fieldlist([self.amountfield, self.lastfour, self.firstsix,
+                          self.expmonth, self.expyear,
+                          self.daysfield, self.searchbutton])
+        self.amountfield.focus()
+
+    @staticmethod
+    def _match_payment(f, p, firstsix, lastfour, expmonth, expyear):
+        if p.amount < zero:
+            pi = None
+            if refund_card_key not in p.meta:
+                return
+            card = Card(json.loads(p.meta[refund_card_key].value))
+        else:
+            if payment_key not in p.meta:
+                return
+            pi = SquarePayment(json.loads(p.meta[payment_key].value))
+            card = pi.card_details.card
+        if not card.bin.startswith(firstsix):
+            return
+        if not card.last_4.endswith(lastfour):
+            return
+        if expmonth and expmonth != card.exp_month:
+            return
+        if expyear and expyear != card.exp_year:
+            return
+        return f(ui.formattime(p.time), card.cardnum, card.expires,
+                 tillconfig.fc(p.amount))
+
+    def enter(self):
+        expmonth = int(self.expmonth.f) if self.expmonth.f else None
+        expyear = int(self.expyear.f) if self.expyear.f else None
+        if expmonth is not None and (expmonth < 1 or expmonth > 12):
+            ui.infopopup(["Expiry month must be between 1 and 12, or blank."],
+                         title="Error")
+            return
+        if expyear is not None:
+            if expyear < 100:
+                expyear = expyear + 2000
+            if expyear < 2000:
+                ui.infopopup(["Expiry year must be at least 2000, or blank."],
+                             title="Error")
+                return
+        self.dismiss()
+        paytype = td.s.query(PayType).get(self._paytype_id)
+        try:
+            days = int(self.daysfield.f)
+        except Exception:
+            days = 0
+        after = datetime.date.today() - datetime.timedelta(days=days)
+
+        q = td.s.query(Payment)\
+                .options(joinedload('meta'))\
+                .join(Transaction)\
+                .join(Session)\
+                .filter(Payment.paytype == paytype)\
+                .filter(Session.date >= after)\
+                .filter(Payment.pending == False)\
+                .filter(Payment.amount != zero)\
+                .order_by(Payment.id.desc())
+
+        if self.amountfield.f:
+            try:
+                amount = Decimal(self.amountfield.f)
+                q = q.filter(Payment.amount == amount)
+            except Exception:
+                pass
+
+        f = ui.tableformatter(" l l r r ")
+        header = f("Time", "Card number", "Expires", "Amount")
+        menu = [
+            (self._match_payment(
+                f, p, self.firstsix.f, self.lastfour.f, expmonth, expyear),
+             self._func, (p.transid,)) for p in q.limit(1000).all()]
+        menu = [x for x in menu if x[0]]
+
+        if not menu:
+            ui.infopopup(["No matching payments found."],
+                         title="Search result", colour=ui.colour_info)
+            return
+
+        ui.menu(menu, blurb=header, title="Search results")
