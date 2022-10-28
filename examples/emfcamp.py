@@ -11,8 +11,6 @@ import quicktill.ui
 import quicktill.stockterminal
 import quicktill.stocktype
 import quicktill.usestock
-import quicktill.cash
-import quicktill.card
 import quicktill.modifiers
 import quicktill.localutils
 import quicktill.user
@@ -197,17 +195,6 @@ def markup(stocktype, stockunit, cost, markup):
         cost * markup / stockunit.size).\
         quantize(Decimal("0.1"), rounding=ROUND_UP)
 
-# Payment methods.
-cash = quicktill.cash.CashPayment(
-    'CASH', 'Cash', change_description="Change", drawers=3,
-    countup=[])
-card = quicktill.card.CardPayment(
-    'CARD', 'Card', machines=5, cashback_method=cash,
-    max_cashback=Decimal("100.00"), kickout=True,
-    rollover_guard_time=datetime.time(4, 0, 0),
-    ask_for_machine_id=False)
-all_payment_methods = [cash, card] # Used for session totals entry
-payment_methods = all_payment_methods # Used in register
 
 quicktill.register.PercentageDiscount("Free", 100, permission_required=(
     "convert-to-free-drinks", "Convert a transaction to free drinks"))
@@ -234,8 +221,6 @@ def appsmenu():
     quicktill.ui.keymenu(menu, title="Apps")
 
 std = {
-    'all_payment_methods': all_payment_methods,
-    'payment_methods': payment_methods,
     'database': 'dbname=emfcamp',
 }
 
@@ -314,7 +299,7 @@ with cf("mainbar") as c:
         'keyboard': quicktill.localutils.keyboard(
             13, 6, line_base=1, maxwidth=16),
         'keyboard_right': quicktill.localutils.keyboard_rhpanel(
-            cash, card),
+            "CASH", "CARD"),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(
         register_hotkeys))
@@ -338,7 +323,7 @@ with cf("cybar") as c:
         'keyboard': quicktill.localutils.keyboard(
             13, 6, line_base=201, maxwidth=16),
         'keyboard_right': quicktill.localutils.keyboard_rhpanel(
-            cash, card),
+            "CASH", "CARD"),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(
         register_hotkeys))
@@ -356,7 +341,7 @@ with cf("shop") as c:
                             css_class="usertoken"),
             }),
         'keyboard_right': quicktill.localutils.keyboard_rhpanel(
-            cash, card),
+            "CASH", "CARD"),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(
         register_hotkeys))
