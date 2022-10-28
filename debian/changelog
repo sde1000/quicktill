@@ -1,3 +1,11 @@
+quicktill (22.6) stable; urgency=low
+
+  * New release 22.6
+
+  * Include all tillweb static js and css files
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 28 Oct 2022 10:55:27 +0100
+
 quicktill (22.5) stable; urgency=low
 
   * New release 22.5
