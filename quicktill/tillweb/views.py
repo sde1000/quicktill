@@ -690,7 +690,7 @@ def datatable_sessions(request, info):
             sessionid = int(search_value)
         except ValueError:
             sessionid = None
-        qs = [columns[2].ilike(search_value + '%')]
+        qs = [columns['day'].ilike(search_value + '%')]
         if sessionid:
             qs.append(columns[0] == sessionid)
         fq = q.filter(or_(*qs))
