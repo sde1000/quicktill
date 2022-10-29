@@ -718,6 +718,10 @@ class Transaction(Base, Logged):
         """
         return self.total - self.payments_total
 
+    @property
+    def state(self):
+        return "closed" if self.closed else "open"
+
     tillweb_viewname = "tillweb-transaction"
     tillweb_argname = "transid"
 

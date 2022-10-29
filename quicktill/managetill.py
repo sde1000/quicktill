@@ -6,6 +6,7 @@ import os
 from . import ui, keyboard, td, printer, session, user
 from . import tillconfig, linekeys, stocklines, plu, modifiers
 from . import barcode, payment
+from .models import Transaction, UserToken
 from .version import version
 import subprocess
 
@@ -35,8 +36,15 @@ class receiptprint(user.permission_checked, ui.dismisspopup):
         if rn is None:
             return
         self.dismiss()
+        trans = td.s.query(Transaction).get(rn)
+        if not trans:
+            ui.infopopup([f"Transaction {rn} does not exist."],
+                         title="Error")
+            return
         log.info("Manage Till: printing transaction %d", rn)
         ui.toast("The receipt is being printed.")
+        user.log(f"Printed {trans.state} transaction {trans.logref} "
+                 f"from transaction number")
         with ui.exception_guard("printing the receipt", title="Printer error"):
             printer.print_receipt(rn)
 
@@ -167,7 +175,6 @@ def debug_menu():
                 raise Exception
 
     def send_usertoken():
-        from .models import UserToken
         tl = td.s.query(UserToken)\
                  .order_by(UserToken.user_id, UserToken.description)\
                  .all()

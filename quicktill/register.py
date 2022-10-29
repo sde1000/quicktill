@@ -2175,7 +2175,8 @@ class page(ui.basicpage):
                           "'Manage Till'."], title="Error")
             return
         log.info("Register: printing transaction %d", trans.id)
-        user.log(f"Printed transaction {trans.logref}")
+        user.log(f"Printed {trans.state} transaction {trans.logref} "
+                 f"from register")
         ui.toast("The receipt is being printed.")
         with ui.exception_guard("printing the receipt", title="Printer error"):
             printer.print_receipt(trans.id)
