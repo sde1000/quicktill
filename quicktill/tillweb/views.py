@@ -692,7 +692,7 @@ def datatable_sessions(request, info):
             sessionid = None
         qs = [columns['day'].ilike(search_value + '%')]
         if sessionid:
-            qs.append(columns[0] == sessionid)
+            qs.append(columns['id'] == sessionid)
         fq = q.filter(or_(*qs))
 
     return _datatables_json(
