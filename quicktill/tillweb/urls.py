@@ -137,6 +137,8 @@ tillurls = [
          name="tillweb-datatable-payments"),
     path('datatable/logs.json', datatable.logs,
          name="tillweb-datatable-logs"),
+    path('datatable/users.json', datatable.users,
+         name="tillweb-datatable-users"),
 ]
 
 urls = [

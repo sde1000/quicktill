@@ -2706,15 +2706,8 @@ def stockcheck(request, info):
 
 @tillweb_view
 def userlist(request, info):
-    q = td.s.query(User).order_by(User.fullname)
-    include_inactive = request.GET.get("include_inactive", "off") == "on"
-    if not include_inactive:
-        q = q.filter(User.enabled == True)
-    users = q.all()
     return ('userlist.html', {
         'nav': [("Users", info.reverse("tillweb-till-users"))],
-        'users': users,
-        'include_inactive': include_inactive,
     })
 
 

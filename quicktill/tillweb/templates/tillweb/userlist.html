@@ -4,32 +4,7 @@
 
 {% block tillcontent %}
 
-{% if users %}
-<table class="table table-striped table-hover table-sm" id="userlist">
-  <thead class="thead-light">
-    <tr>
-      <th>Name</th>
-      <th>Short name</th>
-      <th>Web username</th>
-    </tr>
-  </thead>
-  <tbody>
-{% for user in users %}
-<tr{% if not user.enabled %} class="table-secondary"{% endif %}>
-<td><a href="{{user.get_absolute_url}}">{{user.fullname}}</a></td>
-<td><a href="{{user.get_absolute_url}}">{{user.shortname}}</a></td>
-<td>{% if user.webuser %}<a href="{{user.get_absolute_url}}">{{user.webuser}}</a>{% endif %}</td>
-</tr>
-{% endfor %}
-  </tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#userlist").tablesorter();
-});
-</script>
-{% else %}
+<div class="d-none alert alert-info" id="no_users_message">
 <p>No users have been defined.  You will have to create at least one
 superuser using the command line and then use the user management
 interface on the till to set up your real users.</p>
@@ -38,10 +13,63 @@ interface on the till to set up your real users.</p>
 the keyboard that produces the "builtin:alice" user token is:</p>
 
 <pre>runtill adduser root root builtin:alice</pre>
+</div>
 
-{% endif %}
-{% if not include_inactive %}
-<p><a href="?include_inactive=on">Include inactive users</a></p>
-{% endif %}
+<div class="form-group form-check">
+  <input type="checkbox" class="form-check-input" id="show_disabled">
+  <label class="form-check-label" for="show_disabled">
+    Include disabled users in the table
+  </label>
+</div>
+
+<table class="table table-sm table-striped" id="userlist">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Short name</th>
+      <th scope="col">Web username</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      var include_disabled = false;
+      const userlist_api = $("#userlist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-users" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.include_disabled = include_disabled ? 'yes': 'no';
+	      },
+	  },
+	  columns: [
+	      { data: 'name',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'shortname',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'webuser',
+		render: DataTable.render.text(),
+	      },
+	  ],
+	  order: [ [0, 'asc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+      $("#show_disabled").change(function() {
+	  include_disabled = this.checked;
+	  userlist_api.ajax.reload(null, true);
+      });
+      userlist_api.on('draw', function () {
+	  if (userlist_api.page.info().recordsTotal == 0) {
+	      $("#no_users_message").removeClass("d-none");
+	  }
+      });
+  });
+</script>
 
 {% endblock %}

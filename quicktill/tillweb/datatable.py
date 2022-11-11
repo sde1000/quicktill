@@ -277,7 +277,7 @@ def logs(request, info):
         ]
         if logid:
             qs.append(columns['id'] == logid)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda l: {
@@ -288,4 +288,47 @@ def logs(request, info):
             'user': l.loguser.fullname,
             'userlink': l.loguser.get_absolute_url(),
             'description': l.as_text(),
+        })
+
+
+@tillweb_view
+def users(request, info):
+    columns = {
+        'name': User.fullname,
+        'shortname': User.shortname,
+        'webuser': User.webuser,
+        'enabled': User.enabled,
+        'superuser': User.superuser,
+    }
+    q = td.s.query(User)
+    fq = q
+
+    # Apply filters from parameters - these are from a tickbox on the
+    # page, they should not be applied before the item count
+    include_disabled = request.GET.get("include_disabled", "no") == "yes"
+    if not include_disabled:
+        fq = fq.filter(User.enabled == True)
+
+    # Apply filters from search
+    search_value = request.GET.get("search[value]")
+    if search_value:
+        qs = [
+            columns['name'].ilike(f"%{search_value}%"),
+            columns['shortname'].ilike(f"%{search_value}%"),
+            columns['webuser'].ilike(f"%{search_value}%"),
+        ]
+        fq = fq.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda u: {
+            'id': u.id,
+            'url': u.get_absolute_url(),
+            'name': u.fullname,
+            'shortname': u.shortname,
+            'webuser': u.webuser,
+            'enabled': u.enabled,
+            'superuser': u.superuser,
+            'DT_RowClass': (
+                "table-warning" if not u.enabled else
+                "table-primary" if u.superuser else None),
         })
