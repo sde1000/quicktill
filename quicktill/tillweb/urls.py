@@ -1,6 +1,7 @@
 from django.urls import include, path, re_path
 from quicktill.tillweb import views
 from quicktill.tillweb import stocktake
+from quicktill.tillweb import datatable
 
 tillurls = [
     path('', views.pubroot, name="tillweb-pubroot"),
@@ -128,13 +129,13 @@ tillurls = [
          name="tillweb-report-stock-sold"),
     path('reports/stockcheck/', views.stockcheck, name="tillweb-stockcheck"),
 
-    path('datatable/sessions.json', views.datatable_sessions,
+    path('datatable/sessions.json', datatable.sessions,
          name="tillweb-datatable-sessions"),
-    path('datatable/sessiontotals.json', views.datatable_sessiontotals,
+    path('datatable/sessiontotals.json', datatable.sessiontotals,
          name="tillweb-datatable-sessiontotals"),
-    path('datatable/payments.json', views.datatable_payments,
+    path('datatable/payments.json', datatable.payments,
          name="tillweb-datatable-payments"),
-    path('datatable/logs.json', views.datatable_logs,
+    path('datatable/logs.json', datatable.logs,
          name="tillweb-datatable-logs"),
 ]
 
