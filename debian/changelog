@@ -1,3 +1,25 @@
+quicktill (22.7) stable; urgency=low
+
+  * New release 22.7
+
+  * Log when transaction notes are changed manually
+
+  * Fix StockTake.contact property
+
+  * Datatable for users
+
+  * Move datatable views to a new module
+
+  * Fix searching for a session id in the web interface
+
+  * Log state of transaction when printing
+
+  * Fix search in sessions datatable
+
+  * Update EMF example for release 22
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 12 Nov 2022 14:16:17 +0000
+
 quicktill (22.6) stable; urgency=low
 
   * New release 22.6
