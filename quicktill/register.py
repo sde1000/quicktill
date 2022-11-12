@@ -2975,6 +2975,7 @@ class page(ui.basicpage):
             return
         # Truncate note to fit in field in model
         trans.notes = notes[:60]
+        user.log(f"Set the note on {trans.logref} to '{trans.notes}'")
         self._redraw_note()
 
     def _apply_discount(self, tline):
