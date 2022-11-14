@@ -358,10 +358,13 @@ def depttotals(request, info):
                        .filter(Transaction.sessionid.in_(sessions))\
                        .filter(Transline.dept_id == Department.id)
 
+    # Ordering by Department.id ensures stable colours for each
+    # department in the pie chart.
     r = td.s.query(Department,
                    tot_closed.label("paid"),
                    tot_open.label("pending"),
                    tot_discount.label("discount_total"))\
+            .order_by(Department.id)\
             .group_by(Department).all()
 
     c = cycle(colours)
@@ -389,11 +392,14 @@ def usertotals(request, info):
     sessions = [int(x) for x in request.GET.get("sessions", "").split(",")
                 if x]
 
+    # Ordering by user ID ensures stable colours per user, as long as
+    # the set of users doesn't change.
     r = td.s.query(User,
                    func.sum(Transline.items),
                    func.sum(Transline.items * Transline.amount))\
             .join(Transline, Transaction)\
             .filter(Transaction.sessionid.in_(sessions))\
+            .order_by(User.id)\
             .group_by(User).all()
 
     c = cycle(colours)
