@@ -35,7 +35,7 @@ the keyboard that produces the "builtin:alice" user token is:</p>
 
 <script type="text/javascript">
   $(document).ready(function() {
-      var include_disabled = false;
+      let include_disabled = false;
       const userlist_api = $("#userlist").DataTable({
 	  ajax: {
 	      url: '{% url "tillweb-datatable-users" pubname=pubname %}',

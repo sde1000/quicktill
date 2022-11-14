@@ -17,7 +17,7 @@ table.kvtable td {
 }
 
 td.money {
-    text-align: right;
+    text-align: right !important;
 }
 
 table.index-summary-table {

@@ -651,30 +651,6 @@ def session_spreadsheet(request, info, sessionid):
 
 
 @tillweb_view
-def session_takings_by_dept(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
-    if not s:
-        raise Http404
-
-    return ('session-takings-by-dept.ajax', {
-        'session': s,
-        'colours': colours,
-    })
-
-
-@tillweb_view
-def session_takings_by_user(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
-    if not s:
-        raise Http404
-
-    return ('session-takings-by-user.ajax', {
-        'session': s,
-        'colours': colours,
-    })
-
-
-@tillweb_view
 def session_discounts(request, info, sessionid):
     s = td.s.query(Session).get(sessionid)
     if not s:

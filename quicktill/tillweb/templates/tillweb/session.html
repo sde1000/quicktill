@@ -49,12 +49,12 @@
 
 <ul class="nav nav-tabs mt-3 w-100" id="sessionTabs" role="tablist">
   <li class="nav-item">
-    <a class="nav-link" id="deptTakingsTab" href="{% url "tillweb-session-takings-by-dept" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
+    <a class="nav-link" id="deptTakingsTab" href="#deptTakings" data-toggle="tab" data-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
       Takings by department
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="userTakingsTab" href="{% url "tillweb-session-takings-by-user" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#userTakings" role="tab" aria-controls="userTakings" aria-selected="false">
+    <a class="nav-link" id="userTakingsTab" href="#userTakings" data-toggle="tab" data-target="#userTakings" role="tab" aria-controls="userTakings" aria-selected="false">
       Takings by user
     </a>
   </li>
@@ -82,8 +82,61 @@
 
 <div class="tab-content">
   <div class="tab-pane fade" id="deptTakings" aria-labelledby="deptTakingsTab">
+    <div class="row mt-2">
+      <div class="col-lg-5 col">
+	<p class="d-none" id="session_open_warning">
+	  This session is still open, and includes transactions that
+	  have not been closed. These are shown in the "Pending"
+	  column, even if they have been part-paid.
+	</p>
+	<table class="table table-striped table-sm" id="depttakings">
+	  <thead class="thead-light">
+	    <tr>
+	      <th scope="col">Dept</th>
+	      <th scope="col">Description</th>
+	      <th scope="col">Discount</th>
+	      <th scope="col">Paid</th>
+	      <th scope="col">Pending</th>
+	      <th scope="col">Total</th>
+	    </tr>
+	  </thead>
+	  <tbody>
+	  </tbody>
+	  <tfoot>
+	    <tr>
+	      <td></td>
+	      <th scope="row">Total</th>
+	      <td class="money"></td>
+	      <td class="money"></td>
+	      <td class="money"></td>
+	      <td class="money"></td>
+	    </tr>
+	  </tfoot>
+	</table>
+      </div>
+      <div class="col-lg-7 col">
+	<canvas id="sales-pie-chart" class="ml-auto mr-auto" width="480" height="480"></canvas>
+      </div>
+    </div>
   </div>
   <div class="tab-pane fade" id="userTakings" aria-labelledby="userTakingsTab">
+    <div class="row mt-2">
+      <div class="col-md-5">
+	<table class="table table-striped table-sm" id="usertakings">
+	  <thead class="thead-light">
+	    <tr>
+	      <th scope="col">User</th>
+	      <th scope="col">Items</th>
+	      <th scope="col">Total</th>
+	    </tr>
+	  </thead>
+	  <tbody></tbody>
+	</table>
+      </div>
+      <div class="col-md-7">
+	<canvas id="users-pie-chart" class="ml-auto mr-auto" width="480" height="480"></canvas>
+      </div>
+    </div>
   </div>
   <div class="tab-pane fade" id="discounts" aria-labelledby="discountsTab">
   </div>
@@ -100,22 +153,220 @@
 </div>
 
 <script type="text/javascript">
-$(document).ready(function() {
-$('[data-toggle="tabajax"]').click(function(e) {
-var $this = $(this),
-    loadurl = $this.attr('href'),
-    targ = $this.attr('data-target');
+  const depttotals_chart = new Chart(
+      document.getElementById('sales-pie-chart'), {
+	  type: 'pie',
+	  options: {
+	      responsive: false,
+	      rotation: 90,
+	  },
+	  data: {
+	      labels: [],
+	      datasets: [{
+		  label: 'Sales by department',
+		  data: [],
+		  backgroundColor: [],
+		  borderColor: [],
+		  borderWidth: 1,
+	      }],
+	  },
+      });
 
-$.get(loadurl, function(data) {
-    $(targ).html(data);
-});
+  const usertotals_chart = new Chart(
+      document.getElementById('users-pie-chart'), {
+	  type: 'pie',
+	  data: {
+	      labels: [],
+	      datasets: [{
+		  label: 'Sales by user',
+		  data: [],
+		  backgroundColor: [],
+		  borderColor: [],
+		  borderWidth: 1
+	      }]
+	  },
+	  options: {
+	      responsive: false,
+	      rotation: 90
+	  }
+      });
 
-$this.tab('show');
-return false;
-});
+  let depttotals_table = null;
+  let usertotals_table = null;
 
-$('#deptTakingsTab').trigger('click');
-});
+  function init_depttotals_table() {
+      depttotals_table = $("#depttakings").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-depttotals" pubname=pubname %}',
+	      dataSrc: function (json) {
+		  return json.data;
+	      },
+	      data: function (d) {
+		  d.sessions = "{{session.id}}";
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: DataTable.render.text(),
+	      },
+	      /* XXX still need to add link to table of translines for this
+		 department in this session */
+	      { data: 'description',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'discount',
+		render: render_money(),
+		className: "money",
+	      },
+	      { data: 'paid',
+		render: render_money(),
+		className: "money",
+	      },
+	      { data: 'pending',
+		render: render_money(),
+		className: "money",
+	      },
+	      { data: 'total',
+		render: render_money(),
+		className: "money",
+	      },
+	  ],
+	  order: [ [0, 'asc'] ],
+	  searching: false,
+	  paging: false,
+	  info: false,
+	  serverSide: false,
+	  drawCallback: function (settings) {
+	      const api = this.api();
+	      for (const c of [2, 3, 4, 5]) {
+		  $(api.column(c).footer()).text(
+		      render_money().display(api.column(c).data().sum()));
+	      }
+	      /* If the "pending" column total is zero, hide the
+		 "paid" and "pending" columns and the warning message */
+	      if (api.column(4).data().sum() == 0) {
+		  api.column(3).visible(false, false);
+		  api.column(4).visible(false, true);
+		  $("#session_open_warning").addClass("d-none");
+	      } else {
+		  api.column(3).visible(true, false);
+		  api.column(4).visible(true, true);
+		  $("#session_open_warning").removeClass("d-none");
+	      }
+	      /* Update the pie chart with the current data */
+	      const labels = [];
+	      const cdata = [];
+	      const bgcolours = [];
+	      const bordercolours = [];
+	      for (row of api.data().toArray()) {
+		  labels.push(row.description);
+		  cdata.push(row.total);
+		  bgcolours.push("rgba("+row.colour+", 0.8)")
+		  bordercolours.push("rgba("+row.colour+", 1)")
+	      }
+	      depttotals_chart.data.labels = labels;
+	      const ds0 = depttotals_chart.data.datasets[0];
+	      ds0.data = cdata;
+	      ds0.backgroundColor = bgcolours;
+	      ds0.borderColor = bordercolours;
+	      depttotals_chart.update();
+	  },
+      });
+  };
+
+  function init_usertotals_table () {
+      usertotals_table = $("#usertakings").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-usertotals" pubname=pubname %}',
+	      dataSrc: function (json) {
+		  return json.data;
+	      },
+	      data: function (d) {
+		  d.sessions = "{{session.id}}";
+	      },
+	  },
+	  columns: [
+	      { data: 'user_name',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	      { data: 'items',
+		render: DataTable.render.number(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+		className: "money",
+	      },
+	  ],
+	  order: [ [2, 'desc'] ],
+	  searching: false,
+	  paging: false,
+	  info: false,
+	  serverSide: false,
+	  drawCallback: function (settings) {
+	      const api = this.api();
+	      const labels = [];
+	      const cdata = [];
+	      const bgcolours = [];
+	      const bordercolours = [];
+	      for (row of api.data().toArray()) {
+		  labels.push(row.user_name);
+		  cdata.push(row.amount);
+		  bgcolours.push("rgba("+row.colour+", 0.8)")
+		  bordercolours.push("rgba("+row.colour+", 1)")
+	      }
+	      usertotals_chart.data.labels = labels;
+	      const ds0 = usertotals_chart.data.datasets[0];
+	      ds0.data = cdata;
+	      ds0.backgroundColor = bgcolours;
+	      ds0.borderColor = bordercolours;
+	      usertotals_chart.update();
+	  },
+      });
+  };
+
+  $(document).ready(function(){
+      $('[data-toggle="tabajax"]').on("click.tillweb", function (e) {
+	  const $this = $(this),
+		loadurl = $this.attr('href'),
+		targ = $this.attr('data-target');
+
+	  {% if session.endtime %}
+	  /* Convert back to a regular tab - the pane won't change */
+	  $this.off("click.tillweb");
+	  $this.attr('data-toggle', 'tab');
+	  $this.tab();
+	  {% endif %}
+
+	  $.get(loadurl, function(data) {
+	      $(targ).html(data);
+	  });
+
+	  $this.tab('show');
+	  return false;
+      });
+
+      $('#deptTakingsTab').on("click", function (e) {
+	  if (depttotals_table === null) {
+	      init_depttotals_table();
+	  } else {
+	      {% if not session.endtime %}
+	      depttotals_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#userTakingsTab').on("click", function (e) {
+	  if (usertotals_table === null) {
+	      init_usertotals_table();
+	  } else {
+	      {% if not session.endtime %}
+	      usertotals_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#deptTakingsTab').trigger('click');
+  });
 </script>
 
 {% endblock %}

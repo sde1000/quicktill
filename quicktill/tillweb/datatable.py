@@ -1,5 +1,6 @@
-from .views import tillweb_view
+from .views import tillweb_view, colours
 from decimal import Decimal
+from itertools import cycle
 from django.http import JsonResponse
 from sqlalchemy.sql.expression import func, or_
 from sqlalchemy.orm import contains_eager
@@ -14,6 +15,9 @@ from quicktill.models import (
     Payment,
     User,
     LogEntry,
+    Transline,
+    Department,
+    zero,
 )
 
 
@@ -332,3 +336,74 @@ def users(request, info):
                 "table-warning" if not u.enabled else
                 "table-primary" if u.superuser else None),
         })
+
+
+# N.B. This is _not_ a serverSide: true datatable; we just need to
+# return the requested data
+@tillweb_view
+def depttotals(request, info):
+    sessions = [int(x) for x in request.GET.get("sessions", "").split(",")
+                if x]
+
+    tot_all = td.s.query(func.sum(Transline.items * Transline.amount))\
+                  .select_from(Transline.__table__)\
+                  .join(Transaction)\
+                  .filter(Transaction.sessionid.in_(sessions))\
+                  .filter(Transline.dept_id == Department.id)
+    tot_closed = tot_all.filter(Transaction.closed == True)
+    tot_open = tot_all.filter(Transaction.closed == False)
+    tot_discount = td.s.query(func.sum(Transline.items * Transline.discount))\
+                       .select_from(Transline.__table__)\
+                       .join(Transaction)\
+                       .filter(Transaction.sessionid.in_(sessions))\
+                       .filter(Transline.dept_id == Department.id)
+
+    r = td.s.query(Department,
+                   tot_closed.label("paid"),
+                   tot_open.label("pending"),
+                   tot_discount.label("discount_total"))\
+            .group_by(Department).all()
+
+    c = cycle(colours)
+
+    return JsonResponse({
+        "data": [
+            {"id": d.id,
+             "url": d.get_absolute_url(),
+             "description": d.description,
+             "paid": paid or zero,
+             "pending": pending or zero,
+             "total": (paid or zero) + (pending or zero),
+             "discount": discount_total or zero,
+             "colour": colour,
+             } for (d, paid, pending, discount_total), colour
+            in zip(r, c)
+            if paid or pending or discount_total],
+    })
+
+
+# N.B. This is _not_ a serverSide: true datatable; we just need to
+# return the requested data
+@tillweb_view
+def usertotals(request, info):
+    sessions = [int(x) for x in request.GET.get("sessions", "").split(",")
+                if x]
+
+    r = td.s.query(User,
+                   func.sum(Transline.items),
+                   func.sum(Transline.items * Transline.amount))\
+            .join(Transline, Transaction)\
+            .filter(Transaction.sessionid.in_(sessions))\
+            .group_by(User).all()
+
+    c = cycle(colours)
+
+    return JsonResponse({
+        "data": [
+            {"user_name": u.fullname,
+             "user_url": u.get_absolute_url(),
+             "items": items,
+             "amount": amount,
+             "colour": colour,
+             } for (u, items, amount), colour in zip(r, c)],
+    })

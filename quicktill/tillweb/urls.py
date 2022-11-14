@@ -11,10 +11,6 @@ tillurls = [
         path('', views.session, name="tillweb-session"),
         path('spreadsheet.ods', views.session_spreadsheet,
              name="tillweb-session-spreadsheet"),
-        path('takings-by-dept.html', views.session_takings_by_dept,
-             name="tillweb-session-takings-by-dept"),
-        path('takings-by-user.html', views.session_takings_by_user,
-             name="tillweb-session-takings-by-user"),
         path('discounts.html', views.session_discounts,
              name="tillweb-session-discounts"),
         path('stock-sold.html', views.session_stock_sold,
@@ -139,6 +135,10 @@ tillurls = [
          name="tillweb-datatable-logs"),
     path('datatable/users.json', datatable.users,
          name="tillweb-datatable-users"),
+    path('datatable/depttotals.json', datatable.depttotals,
+         name="tillweb-datatable-depttotals"),
+    path('datatable/usertotals.json', datatable.usertotals,
+         name="tillweb-datatable-usertotals"),
 ]
 
 urls = [
