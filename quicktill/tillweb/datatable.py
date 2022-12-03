@@ -374,6 +374,13 @@ def depttotals(request, info):
             {"id": d.id,
              "url": d.get_absolute_url(),
              "description": d.description,
+             # Bodge a link to the old department translines page until we
+             # can link to the new table. Only works if a single session
+             # is being requested.
+             "deptlines_url": info.reverse(
+                 "tillweb-session-department",
+                 kwargs={'sessionid': sessions[0],
+                         'dept': d.id}),
              "paid": paid or zero,
              "pending": pending or zero,
              "total": (paid or zero) + (pending or zero),

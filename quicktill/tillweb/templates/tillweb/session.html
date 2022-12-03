@@ -210,9 +210,9 @@
 		render: DataTable.render.text(),
 	      },
 	      /* XXX still need to add link to table of translines for this
-		 department in this session */
+		 department in this session. We bodge it for now. */
 	      { data: 'description',
-		render: DataTable.render.text(),
+		render: render_link('deptlines_url', DataTable.render.text()),
 	      },
 	      { data: 'discount',
 		render: render_money(),
