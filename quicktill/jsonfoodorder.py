@@ -4,6 +4,7 @@ import traceback
 import datetime
 import logging
 from . import ui, keyboard, td, printer, tillconfig, user
+from .user import log as userlog
 from . import lockscreen
 from . import register
 from .models import zero
@@ -686,6 +687,11 @@ class message(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["The message has been printed in the kitchen."],
                          title="Message sent",
                          colour=ui.colour_info, dismiss=keyboard.K_CASH)
+            if self.onfield.f:
+                userlog(f"Message sent to kitchen about table "
+                        f"{self.onfield.f}: {self.messagefield.f}")
+            else:
+                userlog(f"Message sent to kitchen: {self.messagefield.f}")
 
 
 class FoodOrderPlugin(register.RegisterPlugin):
