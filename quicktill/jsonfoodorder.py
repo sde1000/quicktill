@@ -428,6 +428,10 @@ class popup(user.permission_checked, ui.basicpopup):
             ui.infopopup(["Unable to connect to the server to read the menu."],
                          title="Could not read menu")
             return
+        except requests.exceptions.ReadTimeout:
+            ui.infopopup(["The server did not send the menu quickly enough."],
+                         title="Could not read menu")
+            return
         self.menu = Menu(r.json(), allowable_departments)
         self.func = func
         self.transid = transid
