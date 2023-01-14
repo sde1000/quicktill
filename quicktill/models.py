@@ -1939,7 +1939,7 @@ class StockTake(Base, Logged):
         Describes the stock take, who started it, and when.
         """
         return f"{self.id} ({self.description}, {self.state}) started at " \
-            f"{self.start_time:%Y-%m-%d %H:%M:%S} by {self.start_user}"
+            f"{self.create_time:%Y-%m-%d %H:%M:%S} by {self.create_user}"
 
     tillweb_viewname = "tillweb-stocktake"
     tillweb_argname = "stocktake_id"
