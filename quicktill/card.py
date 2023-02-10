@@ -2,6 +2,7 @@ import logging
 from . import payment, ui, td, tillconfig, keyboard, printer
 from .models import PayType, Session, Payment, Transaction, zero, penny
 from decimal import Decimal
+import decimal
 import datetime
 import json
 
@@ -88,8 +89,7 @@ class _cardpopup(ui.dismisspopup):
             self.cbfield.sethook = self.update_total_amount
             self.update_total_amount()
         y += self.win.wrapstr(
-            y, 2, 40,
-            "Please enter the receipt number from the merchant receipt.")
+            y, 2, 40, pt.driver._ref_prompt)
         y += 1
 
         if self.ask_for_machine_id:
@@ -188,32 +188,85 @@ class Card(payment.PaymentDriver):
     This payment method records the receipt number ("reference") from
     the PDQ machine as confirmation, and optionally supports cashback.
 
-    The kickout parameter sets whether the cash drawer will be opened
-    on a card transaction that does not include cashback.
+    Configuration parameters:
 
-    rollover_guard_time is the time at which the card terminals roll
-    over from recording one day's totals to recording the next.  For
-    example, if rollover_guard_time is 3am then transactions at 2am on
-    2nd February will be recorded against the card machine totals for
-    1st February, and transactions at 4am on 2nd February will be
-    recorded against the card machine totals for 2nd February.  This
-    time is determined by the bank; it can't be configured directly on
-    the card machines.
+    - cashback_method (optional string) is the code of the payment
+      method to use for cashback. This payment method must exist, not
+      be disabled, support refunds, and support noninteractive
+      payments.
 
-    If rollover_guard_time is set then the card machine totals date
-    will be checked against the current session's date, and the
-    payment will be prevented if it would be recorded against the
-    wrong day.
+    - max_cashback (string, default "0.00"; Decimal) is the maximum
+      amount of cashback that is allowed per transaction. If set to
+      zero, the cashback feature is disabled.
 
-    The ask_for_machine_id parameter sets whether the card payment
-    dialog will ask for a card machine id, which will be added to the
-    reference field. This only makes sense if you have more than one
-    machine.
+    - machines (integer, default 1) is the number of terminals in use.
 
-    If ref_required is set to False then blank entries for machine ID
-    (if present) and reference will be permitted.
+    - ask_for_machine_id (boolean, default False) sets whether the
+      card payment dialog will ask for a card machine id, which will
+      be added to the reference field. This only makes sense if you
+      have more than one machine; this setting is ignored if the
+      "machines" setting is 1.
+
+    - ask_for_totals (boolean, default True) controls whether the user
+      is requested to enter the totals from each card terminal, or
+      whether the total of all the transactions in the session is
+      assumed to be correct.
+
+    - kickout (boolean, default False) sets whether the cash drawer
+      will be opened on a card transaction that does not include
+      cashback.
+
+    - rollover_guard_time (optional string; time of day in ISO format)
+      is the time at which the card terminals roll over from recording
+      one day's totals to recording the next.  For example, if
+      rollover_guard_time is 3am then transactions at 2am on 2nd
+      February will be recorded against the card machine totals for
+      1st February, and transactions at 4am on 2nd February will be
+      recorded against the card machine totals for 2nd February.  This
+      time is determined by the bank; it can't be configured directly
+      on the card machines. If rollover_guard_time is set then the
+      card machine totals date will be checked against the current
+      session's date, and the payment will be prevented if it would be
+      recorded against the wrong day.
+
+    - ref_prompt (string, default "Please enter the receipt number
+      from the merchant receipt") will be displayed above the Receipt
+      number field in the card payment popup.
+
+    - ref_required (boolean, default False) determines whether blank
+      entries for machine ID (if present) and reference will be
+      permitted.
+
+    Payment service providers that send payouts net of fees are
+    supported by the following parameters:
+
+    - fee_pct (float, default 0.0) is the percentage fee charged; for
+      example 1.69 means "1.69%"
+
+    - fee_calculation_method (string, default "per-session") is either
+      "per-session" or "per-payment" (only available if
+      "ask_for_totals" is set to False). If set to "per-payment" then
+      the fee will be calculated by summing the fee calculated for
+      each individual payment in the session.
+
+    - fee_rounding_mode (string, default "ROUND_HALF_EVEN") is the
+      rounding mode to be used when calculating fees. See the python
+      Decimal library for descriptions of all the available rounding
+      modes. "ROUND_HALF_EVEN" is "Banker's Rounding".
+
     """
     refund_supported = True
+
+    rounding_modes = {
+        'ROUND_CEILING': decimal.ROUND_CEILING,
+        'ROUND_DOWN': decimal.ROUND_DOWN,
+        'ROUND_FLOOR': decimal.ROUND_FLOOR,
+        'ROUND_HALF_DOWN': decimal.ROUND_HALF_DOWN,
+        'ROUND_HALF_EVEN': decimal.ROUND_HALF_EVEN,
+        'ROUND_HALF_UP': decimal.ROUND_HALF_UP,
+        'ROUND_UP': decimal.ROUND_UP,
+        'ROUND_05UP': decimal.ROUND_05UP,
+    }
 
     def read_config(self):
         try:
@@ -226,6 +279,10 @@ class Card(payment.PaymentDriver):
         self._machines = c.get('machines', 1)
         self._ask_for_machine_id = c.get('ask_for_machine_id', False) \
             if self._machines > 1 else False
+
+        self._ref_prompt = c.get(
+            'ref_prompt',
+            "Please enter the receipt number from the merchant receipt.")
         self._ref_required = c.get('ref_required', False)
 
         self._cashback_method = None
@@ -246,14 +303,34 @@ class Card(payment.PaymentDriver):
 
         self._max_cashback = Decimal(c.get('max_cashback', zero))
         self._kickout = c.get('kickout', False)
-        self._total_fields = [(f"Terminal {t + 1}",
-                               ui.validate_float, None)
-                              for t in range(self._machines)]
+
+        self._ask_for_totals = c.get('ask_for_totals', True)
+        if self._ask_for_totals:
+            self._total_fields = [(f"Terminal {t + 1}",
+                                   ui.validate_float, None)
+                                  for t in range(self._machines)]
+        else:
+            self._total_fields = []
 
         self._rollover_guard_time = c.get('rollover_guard_time', None)
         if self._rollover_guard_time:
             self._rollover_guard_time = datetime.time.fromisoformat(
                 self._rollover_guard_time)
+
+        self._fee = Decimal(c.get('fee_pct', "0.0")) / Decimal("100")
+        fee_calculation_method = c.get('fee_calculation_method', 'per-session')
+        if fee_calculation_method not in ("per-session", "per-payment"):
+            problem = f"Bad fee calculation method '{fee_calculation_method}'"
+        self._fee_per_transaction = False
+        if not self._ask_for_totals:
+            if fee_calculation_method == 'per-payment':
+                self._fee_per_transaction = True
+        fee_rounding_mode = c.get('fee_rounding_mode', 'ROUND_HALF_EVEN')
+        if fee_rounding_mode in self.rounding_modes:
+            self._fee_rounding_mode = self.rounding_modes[fee_rounding_mode]
+        else:
+            self._fee_rounding_mode = decimal.ROUND_UP
+            problem = f"Unknown rounding mode '{fee_rounding_mode}'"
 
         return problem
 
@@ -317,10 +394,30 @@ class Card(payment.PaymentDriver):
         return self._total_fields
 
     def total(self, sessionid, fields):
-        try:
-            return (sum(Decimal(x) if len(x) > 0 else zero for x in fields),
-                    zero)
-        except Exception:
-            raise payment.PaymentTotalError(
-                "One or more of the total fields has something "
-                "other than a number in it.")
+        if self._ask_for_totals:
+            try:
+                total = sum(Decimal(x) if len(x) > 0 else zero for x in fields)
+            except Exception:
+                raise payment.PaymentTotalError(
+                    "One or more of the total fields has something "
+                    "other than a number in it.")
+        else:
+            session = td.s.query(Session).get(sessionid)
+            total = zero
+            for paytype, amount in session.payment_totals:
+                if paytype == self.paytype:
+                    total = amount
+                    break
+        if self._fee_per_transaction:
+            payments = td.s.query(Payment)\
+                           .join(Transaction)\
+                           .filter(Transaction.sessionid == sessionid)\
+                           .filter(Payment.paytype == self.paytype)\
+                           .all()
+            fee = sum(((p.amount * self._fee)
+                       .quantize(penny, rounding=self._fee_rounding_mode)
+                       for p in payments), start=zero)
+        else:
+            fee = (total * self._fee).quantize(
+                penny, rounding=self._fee_rounding_mode)
+        return (total, fee)

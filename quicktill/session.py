@@ -251,12 +251,23 @@ class record(ui.dismisspopup):
             if i.preRecordSessionTakings(s.id):
                 return
         paytotals = dict(s.payment_totals)
+        payment_methods = td.s.query(PayType)\
+            .filter(PayType.mode != "disabled")\
+            .order_by(PayType.order, PayType.paytype)\
+            .all()
+        # Check that all payment methods are correctly configured
+        for pm in payment_methods:
+            if not pm.driver.config_valid:
+                ui.infopopup(
+                    [f"The {pm.description} payment method is not configured "
+                     f"correctly.",
+                     "",
+                     f"The problem is: {pm.driver.config_problem}"],
+                    title="Error")
+                return
         self.pms = [
             _PMWrapper(pt.paytype, paytotals.get(pt, zero), self)
-            for pt in td.s.query(PayType)
-            .filter(PayType.mode != "disabled")
-            .order_by(PayType.order, PayType.paytype)
-            .all()]
+            for pt in payment_methods]
         self.till_total = s.total
         # How tall does the window need to be?  Each payment type
         # takes a minimum of one line; if len(pt.total_fields()) > 1
