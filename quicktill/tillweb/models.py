@@ -4,15 +4,6 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 
-def get_app_details(user):
-    tills = Till.objects.filter(access__user=user).order_by('name')
-    if len(tills) > 0:
-        return [{'name': "Till access",
-                 'url': reverse('tillweb-publist'),
-                 'objects': tills}]
-    return []
-
-
 class Till(models.Model):
     """An available till database
 
