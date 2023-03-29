@@ -191,19 +191,20 @@ class stocklevelcheck(user.permission_checked, ui.dismisspopup):
                 .join(StockOut)\
                 .options(lazyload(StockType.department))\
                 .options(lazyload(StockType.unit))\
-                .options(undefer(StockType.instock))\
+                .options(undefer(StockType.all_instock))\
                 .filter(StockOut.removecode_id == 'sold')\
                 .filter((func.now() - StockOut.time) < behind)\
                 .having(func.sum(StockOut.qty) / behind.days > min_sale)\
                 .group_by(StockType)
         if dept:
             q = q.filter(StockType.dept_id == dept.id)
-        r = q.all()
+        r = sorted(q.all(), key=lambda x: x[1] * ahead.days - x[0].all_instock,
+                   reverse=True)
         f = ui.tableformatter(' l r  r  r ')
-        lines = [f(st.format(), f'{sold:0.1f}', st.instock,
-                   f'{sold * ahead.days - st.instock:0.1f}')
+        lines = [f(st.format(), st.unit.format_stock_qty(sold),
+                   st.unit.format_stock_qty(st.all_instock),
+                   st.unit.format_stock_qty(sold * ahead.days - st.all_instock))
                  for st, sold in r]
-        lines.sort(key=lambda l: float(l.fields[3]), reverse=True)
         header = [f('Name', 'Sold per day', 'In stock', 'Buy')]
         ui.listpopup(lines, header=header,
                      title=f"Stock to buy for next {weeks_ahead} weeks",

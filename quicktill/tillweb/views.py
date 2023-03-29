@@ -2658,17 +2658,20 @@ def stockcheck(request, info):
                     .join(StockOut)\
                     .options(lazyload(StockType.department),
                              lazyload(StockType.unit),
-                             undefer(StockType.instock))\
+                             undefer(StockType.all_instock))\
                     .filter(StockOut.removecode_id == 'sold')\
                     .filter((func.now() - StockOut.time) < behind)\
                     .filter(StockType.department == dept)\
                     .having(func.sum(StockOut.qty) / behind.days > min_sale)\
                     .group_by(StockType)\
                     .all()
-            buylist = [(st, '{:0.1f}'.format(sold),
-                        '{:0.1f}'.format(sold * ahead.days - st.instock))
-                       for st, sold in r]
-            buylist.sort(key=lambda l: float(l[2]), reverse=True)
+            buylist = sorted(
+                ((st, sold / st.unit.base_units_per_stock_unit,
+                  st.all_instock / st.unit.base_units_per_stock_unit,
+                  (sold * ahead.days - st.all_instock)
+                  / st.unit.base_units_per_stock_unit)
+                 for st, sold in r),
+                key=lambda x: x[3], reverse=True)
     else:
         form = StockCheckForm()
     return ('stockcheck.html', {

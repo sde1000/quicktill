@@ -2059,15 +2059,15 @@ class Unit(Base, Logged):
     def format_sale_qty(self, qty):
         if abs(qty) < self.base_units_per_sale_unit and qty != 0:
             return f"{self._fq(qty)} {self.name}"
-        n = self.sale_unit_name if abs(qty) == self.base_units_per_sale_unit \
-            else self.sale_unit_name_plural
+        single = abs(qty) - self.base_units_per_sale_unit < 0.05
+        n = self.sale_unit_name if single else self.sale_unit_name_plural
         return f"{self._fq(qty / self.base_units_per_sale_unit)} {n}"
 
     def format_stock_qty(self, qty):
         if abs(qty) < self.base_units_per_stock_unit and qty != 0:
             return f"{self._fq(qty)} {self.name}"
-        n = self.stock_unit_name if abs(qty) == self.base_units_per_stock_unit \
-            else self.stock_unit_name_plural
+        single = abs(qty) - self.base_units_per_stock_unit < 0.05
+        n = self.stock_unit_name if single else self.stock_unit_name_plural
         return f"{self._fq(qty / self.base_units_per_stock_unit)} {n}"
 
     # sale_unit_name etc. were renamed from item_name etc.; add properties
@@ -2679,9 +2679,29 @@ StockType.instock = column_property(
     .correlate(StockType.__table__)
     .label('instock'),
     deferred=True,
-    doc="Amount remaining in stock")
+    doc="Amount remaining in stock, not already on sale")
 
 StockType.remaining = StockType.instock
+
+# This is used for the buying list: it includes stock items attached
+# to stock lines because it only cares about the total amount of stock
+# on the premises.
+StockType.all_instock = column_property(
+    select(
+        [func.coalesce(
+            func.sum(
+                StockItem.size - select(
+                    [func.coalesce(func.sum(StockOut.qty), text("0.0"))],
+                    StockOut.stockid == StockItem.id,
+                ).as_scalar()),
+            text("0.0"))],
+        and_(StockItem.stocktype_id == StockType.id,
+             StockItem.finished == None,
+             StockItem.checked == True))
+    .correlate(StockType.__table__)
+    .label('all_instock'),
+    deferred=True,
+    doc="Total amount remaining in stock")
 
 StockType.lastsale = column_property(
     select([func.max(StockOut.time)],

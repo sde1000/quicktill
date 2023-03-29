@@ -18,11 +18,18 @@ months{% if form.months_behind.errors %}
 
 <p>
 Ignore stock that sold less than {{form.minimum_sold}}
-units per day{% if form.minimum_sold.errors %}
+<a href="{% url "tillweb-units" pubname=pubname %}">base units</a>
+per day{% if form.minimum_sold.errors %}
 <span class="error">({% for e in form.minimum_sold.errors %}{{e}}{% endfor %})</span>{% endif %} in that period.
 </p>
 
 <p>Restrict the list to the {{form.department}} department.{% if form.department.errors %} <span class="error">({% for e in form.department.errors %}{{e}}{% endfor %}</span>{% endif %}</p>
+
+<p>N.B. This list will only be accurate if the stock levels on the
+till are up to date. If we are changing the type of stock we sell
+(eg. swapping one brand for another) then the list will show too few
+of the new type and too many of the old type until the changeover has
+been complete for as many months as you specify above.</p>
 
 <button class="btn btn-primary mb-2" type="submit" name="submit_calculate">Calculate</button>
 </form>
@@ -39,12 +46,12 @@ units per day{% if form.minimum_sold.errors %}
   </tr>
 </thead>
 <tbody>
-{% for st,sold,buy in buylist %}
+{% for st, sold, instock, buy in buylist %}
 <tr>
 <td><a href="{{st.get_absolute_url}}">{{st}}</a></td>
-<td>{{sold}} {{st.unit.name}}s</td>
-<td>{{st.instock}} {{st.unit.name}}s</td>
-<td>{{buy}} {{st.unit.name}}s</td>
+<td>{{sold|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td>{{instock|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td>{{buy|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
 </tr>
 {% endfor %}
 </tbody>
