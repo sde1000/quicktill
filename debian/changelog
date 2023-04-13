@@ -1,3 +1,19 @@
+quicktill (22.10) stable; urgency=low
+
+  * New release 22.10
+
+  * Check ABV when creating a new stock type
+
+  * Fix tests and test warnings
+
+  * Remove app info from tillweb models
+
+  * Add apps module to tillweb
+
+  * Fix the buying list report
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 13 Apr 2023 11:58:43 +0100
+
 quicktill (22.9) stable; urgency=low
 
   * New release 22.9
