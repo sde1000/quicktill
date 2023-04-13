@@ -240,6 +240,7 @@ class SquarePayment:
         self.source_data = d
         self.id = d.get("id")
         self.total_money = Money(d.get("total_money", {}))
+        self.approved_money = Money(d.get("approved_money", {}))
         if "refunded_money" in d:
             self.refunded_money = Money(d["refunded_money"])
         else:
@@ -589,6 +590,13 @@ class _SquarePaymentProgress(ui.basicpopup):
             # Fetch the payments. If there is more than one payment, insert
             # additional payments in the transaction.
             for idx, square_payment_id in enumerate(checkout.payment_ids):
+                square_payment = self.session.get_payment(square_payment_id)
+                value = square_payment.total_money.as_decimal()
+                if square_payment.state in ("FAILED", "CANCELED"):
+                    # This payment has zero value
+                    log.warning("payment %s in state %s", square_payment_id,
+                                square_payment.state)
+                    value = zero
                 if idx == 0:
                     payment = p
                 else:
@@ -599,11 +607,10 @@ class _SquarePaymentProgress(ui.basicpopup):
                         source=p.source,
                     )
                     td.s.add(payment)
-                square_payment = self.session.get_payment(square_payment_id)
                 payment.set_meta(payment_id_key, square_payment_id)
                 payment.set_meta(
                     payment_key, json.dumps(square_payment.source_data))
-                payment.amount = square_payment.total_money.as_decimal()
+                payment.amount = value
                 payment.pending = False
                 payment.text = f"{payment.paytype.description} "\
                     f"{square_payment_id[:6]}"
