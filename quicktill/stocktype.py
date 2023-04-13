@@ -226,6 +226,11 @@ class choose_stocktype(ui.dismisspopup):
         # Confirmation box time...
         if st is None:
             if self.allownew:
+                # Re-check, including checking the ABV this time
+                problem = self.validate_fields()
+                if problem:
+                    ui.infopopup([problem], title="Error")
+                    return
                 ui.infopopup(
                     ["There's no existing stock type that matches the "
                      "details you've entered.  Press Cash/Enter to "
