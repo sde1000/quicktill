@@ -592,10 +592,10 @@ class _SquarePaymentProgress(ui.basicpopup):
             for idx, square_payment_id in enumerate(checkout.payment_ids):
                 square_payment = self.session.get_payment(square_payment_id)
                 value = square_payment.total_money.as_decimal()
-                if square_payment.state in ("FAILED", "CANCELED"):
+                if square_payment.status in ("FAILED", "CANCELED"):
                     # This payment has zero value
                     log.warning("payment %s in state %s", square_payment_id,
-                                square_payment.state)
+                                square_payment.status)
                     value = zero
                 if idx == 0:
                     payment = p
