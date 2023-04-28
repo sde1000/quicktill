@@ -372,7 +372,7 @@ class Card(payment.PaymentDriver):
                     ["You can't refund more than the amount due back."],
                     title="Refund too large")
                 return
-            _cardpopup(self, reg, transid, amount, refund=True)
+            _cardpopup(self.paytype.paytype, reg, transid, amount, refund=True)
             return
         if amount > outstanding:
             if self._cashback_method:
