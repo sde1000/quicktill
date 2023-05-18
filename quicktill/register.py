@@ -145,6 +145,19 @@ payment_method_menu_after_void = config.BooleanConfigItem(
     description="Automatically open the payment method menu after "
     "creating a transaction that voids lines from another transaction?")
 
+refund_help_text = config.ConfigItem(
+    'register:refund_help_text',
+    "This transaction has a negative balance, so a "
+    "refund is due.  Press the appropriate payment key "
+    "to issue a refund of that type.  If you are replacing "
+    "items for a customer you can enter the replacement "
+    "items now; the till will show the difference in price "
+    "between the original and replacement items.",
+    display_name="Refund help text",
+    description="Prompt displayed when a transaction has a negative balance "
+    "and a refund may be due")
+
+
 # Transaction metadata keys
 transaction_message_key = "register-message"
 
@@ -359,7 +372,7 @@ class bufferline(ui.lrline):
             cursorx = 0
             if self.reg.balance < zero and not self.reg.user.has_permission(
                     'suppress-refund-help-text'):
-                self.ltext = self.reg.refund_help_text
+                self.ltext = self.reg.current_refund_help_text
         if self.reg.ml:
             self.rtext = \
                 f"Marked lines total "\
@@ -983,18 +996,11 @@ class page(ui.basicpage):
         trans = self._gettrans()
         self.balance = trans.balance if trans else zero
         if self.balance < zero:
-            self.refund_help_text = (
-                "This transaction has a negative balance, so a "
-                "refund is due.  Press the appropriate payment key "
-                "to issue a refund of that type.  If you are replacing "
-                "items for a customer you can enter the replacement "
-                "items now; the till will show the difference in price "
-                "between the original and replacement items."
-            )
+            self.current_refund_help_text = refund_help_text()
             for i in RegisterPlugin.instances:
                 x = i.override_refund_help_text(self, trans)
                 if x:
-                    self.refund_help_text = x
+                    self.current_refund_help_text = x
                     break
 
     def close_if_balanced(self):
