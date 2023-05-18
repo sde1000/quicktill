@@ -2,6 +2,7 @@
 
 from . import ui, keyboard, td, printer, tillconfig, user, managestock
 from . import payment
+from . import config
 from .models import PayType, Session, SessionTotal, Transaction, zero
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import select, func, desc
@@ -11,6 +12,12 @@ import datetime
 
 import logging
 log = logging.getLogger(__name__)
+
+
+sessiontotal_print = config.BooleanConfigItem(
+    'core:sessiontotal_print', True, display_name="Print session totals?",
+    description="Should session totals be printed after they have been "
+    "confirmed?")
 
 
 def trans_restore():
@@ -422,10 +429,13 @@ class record(ui.dismisspopup):
         self.dismiss()
         for i in SessionHooks.instances:
             i.postRecordSessionTakings(session.id)
-        ui.toast("Printing the confirmed session totals.")
-        with ui.exception_guard("printing the confirmed session totals",
-                                title="Printer error"):
-            printer.print_sessiontotals(session.id)
+        if sessiontotal_print():
+            ui.toast("Printing the confirmed session totals.")
+            with ui.exception_guard("printing the confirmed session totals",
+                                    title="Printer error"):
+                printer.print_sessiontotals(session.id)
+        else:
+            ui.toast(f"Totals for session {session.id} confirmed.")
 
 
 @user.permission_required('record-takings', "Record takings for a session")
