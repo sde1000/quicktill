@@ -1,3 +1,11 @@
+quicktill (22.14) stable; urgency=low
+
+  * New release 22.14
+
+  * Fix crash on Square Terminal refund
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 26 May 2023 20:22:18 +0100
+
 quicktill (22.13) stable; urgency=low
 
   * New release 22.13
