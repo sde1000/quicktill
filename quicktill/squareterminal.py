@@ -749,8 +749,12 @@ class _SquareRefundProgress(ui.basicpopup):
         p.text = f"{p.paytype.description} refund {refund.id[:6]}"
         p.amount = -refund.amount_money.as_decimal()
         p.pending = False
+        td.s.flush()
         self.register.payments_update()
-        td.s.commit()  # Ensure refund committed even if orig update failes
+        # Ensure refund committed even if orig update failed
+        td.s.commit()
+        # _update_original_payment requires self.session, which is deleted
+        # by self.dismiss()
         self._update_original_payment(op)
         self.dismiss()
 
