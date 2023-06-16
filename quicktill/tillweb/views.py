@@ -1582,7 +1582,10 @@ def stocktype(request, info, stocktype_id):
                 .options(undefer_group('qtys'),
                          joinedload('delivery'))\
                 .order_by(desc(StockItem.id))
-    may_delete = may_alter and items.count() == 0
+    stocklines = td.s.query(StockLine)\
+                     .filter(StockLine.stocktype == s)\
+                     .filter(StockLine.linetype != "regular")
+    may_delete = may_alter and items.count() == 0 and stocklines.count() == 0
 
     if may_delete and request.method == 'POST' \
        and 'submit_delete' in request.POST:
