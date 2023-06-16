@@ -8,6 +8,7 @@ from . import td
 from .keyboard import K_CANCEL, K_CASH, K_CLEAR
 import json
 import requests
+import requests.exceptions
 import uuid
 from contextlib import closing
 from decimal import Decimal
@@ -278,6 +279,7 @@ class _SquareAPIError(Exception):
     """
     def __init__(self, description, errors=[]):
         super().__init__(description)
+        self.description = description
         self.errors = errors
 
     def __contains__(self, code):
@@ -287,7 +289,10 @@ class _SquareAPIError(Exception):
         return False
 
     def __str__(self):
-        return f"Square API error: {self.description}; errors=[self.errors]"
+        return f"Square API error: {self.description}; errors={self.errors}"
+
+    def __repr__(self):
+        return f"_SquareAPIError({self.description}, errors={self.errors})"
 
 
 class _SquareAPISession:
@@ -531,12 +536,34 @@ class _SquarePaymentProgress(ui.basicpopup):
             # The checkout has been created; we need to read it for
             # an update. If we are cancelling, read it by posting to
             # the cancel endpoint instead
-            if cancel:
-                checkout = self.session.cancel_terminal_checkout(
-                    p.meta[checkout_id_key].value)
-            else:
-                checkout = self.session.get_terminal_checkout(
-                    p.meta[checkout_id_key].value)
+            try:
+                if cancel:
+                    try:
+                        checkout = self.session.cancel_terminal_checkout(
+                            p.meta[checkout_id_key].value)
+                    except _SquareAPIError as e:
+                        # If the checkout has already completed, this API
+                        # call will return error code 'BAD_REQUEST'; we
+                        # should try again with a 'get' call
+                        if 'BAD_REQUEST' in e:
+                            cancel = False
+                        else:
+                            raise
+                if not cancel:
+                    checkout = self.session.get_terminal_checkout(
+                        p.meta[checkout_id_key].value)
+            except _SquareAPIError as e:
+                self.status.set("API error fetching checkout; retrying...")
+                log.error("Square API error fetching terminal checkout: %s", e)
+                self.timeout = tillconfig.mainloop.add_timeout(
+                    10, self._timer_update, "square progress error")
+                return
+            except requests.exceptions.RequestException as e:
+                self.status.set("Network error fetching checkout; retrying...")
+                log.error("Request error fetching terminal checkout: %s", e)
+                self.timeout = tillconfig.mainloop.add_timeout(
+                    10, self._timer_update, "square network error")
+                return
         else:
             # Post the checkout, even if we are supposed to be
             # cancelling: there is no guarantee that we haven't
@@ -555,7 +582,20 @@ class _SquarePaymentProgress(ui.basicpopup):
                     "note": f"Transaction {p.transaction.id} payment {p.id}",
                 },
             }
-            checkout = self.session.create_terminal_checkout(c)
+            try:
+                checkout = self.session.create_terminal_checkout(c)
+            except _SquareAPIError as e:
+                self.status.set("API error creating checkout; retrying...")
+                log.error("Square API error creating terminal checkout: %s", e)
+                self.timeout = tillconfig.mainloop.add_timeout(
+                    10, self._timer_update, "square progress error")
+                return
+            except requests.exceptions.RequestException as e:
+                self.status.set("Network error creating checkout; retrying...")
+                log.error("Request error creating terminal checkout: %s", e)
+                self.timeout = tillconfig.mainloop.add_timeout(
+                    10, self._timer_update, "square network error")
+                return
         p.set_meta(checkout_id_key, checkout.id)
         p.set_meta(checkout_key, json.dumps(checkout.source_data))
         if checkout.status == "PENDING":
@@ -590,7 +630,23 @@ class _SquarePaymentProgress(ui.basicpopup):
             # Fetch the payments. If there is more than one payment, insert
             # additional payments in the transaction.
             for idx, square_payment_id in enumerate(checkout.payment_ids):
-                square_payment = self.session.get_payment(square_payment_id)
+                try:
+                    square_payment = self.session.get_payment(square_payment_id)
+                except _SquareAPIError as e:
+                    self.status.set("API error fetching payment; retrying...")
+                    log.error("Square API error fetching payment: %s", e)
+                    self.timeout = tillconfig.mainloop.add_timeout(
+                        10, self._timer_update, "square progress error")
+                    td.s.rollback()  # may already have processed a payment
+                    return
+                except requests.exceptions.RequestException as e:
+                    self.status.set("Network error fetching payment; "
+                                    "retrying...")
+                    log.error("Network error fetching payment: %s", e)
+                    self.timeout = tillconfig.mainloop.add_timeout(
+                        10, self._timer_update, "square network error")
+                    td.s.rollback()  # may already have processed a payment
+                    return
                 value = square_payment.total_money.as_decimal()
                 if square_payment.status in ("FAILED", "CANCELED"):
                     # This payment has zero value
@@ -734,6 +790,12 @@ class _SquareRefundProgress(ui.basicpopup):
             for error in e.errors:
                 log.warning("Refund error code '%s'", error.get('code'))
             return
+        except requests.exceptions.RequestException as e:
+            log.error("Network error processing refund: %s", e)
+            self.timeout = tillconfig.mainloop.add_timeout(
+                10, self._timer_update, "square refund network error")
+            return
+
         p.set_meta(refund_id_key, refund.id)
         p.set_meta(refund_key, json.dumps(refund.source_data))
         p.set_meta(refund_card_key, json.dumps(card.source_data))
@@ -1347,6 +1409,13 @@ class SquareTerminal(payment.PaymentDriver):
                  "Square. Please try again later.",
                  "",
                  f"The error was: {e}"], title="Square error")
+            return
+        except requests.exceptions.RequestException as e:
+            ui.infopopup(
+                ["There was a network error fetching payment information from "
+                 "Square. Please try again later.",
+                 "",
+                 f"The error was: {e}"], title="Network error")
             return
 
         if not menu:
