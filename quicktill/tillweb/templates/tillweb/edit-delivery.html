@@ -12,6 +12,13 @@ We are going to use custom rendering for the form, so the fields used to add
 new stock items can be placed at appropriate places in the table.
 {% endcomment %}
 <form action="" method="post">{% csrf_token %}
+    {% comment %}
+    We add a hidden button at the start to be the default submit button
+    that will be used if the user hits "Enter"
+    {% endcomment %}
+    <button style="position: absolute; left: -9999px" tabindex="-1" type="submit" name="default_hack" value="submit_update">
+    </button>
+
     {% for hidden_field in form.hidden_fields %}
     {{ hidden_field }}
     {% endfor %}
