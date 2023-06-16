@@ -1207,15 +1207,16 @@ class EditDeliveryForm(DeliveryForm):
         if cd['stocktype'] or cd['itemsize'] or cd['quantity'] \
            or cd['costprice'] or cd['saleprice'] or cd['bestbefore']:
             msg = 'Required when adding stock to a delivery'
-            if not cd['stocktype']:
+            if not cd.get('stocktype'):
                 self.add_error('stocktype', msg)
-            if not cd['itemsize']:
+            if not cd.get('itemsize'):
                 self.add_error('itemsize', msg)
-            if not cd['quantity']:
+            if not cd.get('quantity'):
                 self.add_error('quantity', msg)
-            if cd['itemsize'].unit != cd['stocktype'].unit:
-                self.add_error('itemsize', 'Item size is not valid for '
-                               'the selected stock type')
+            if cd.get('itemsize') and cd.get('stocktype'):
+                if cd['itemsize'].unit != cd['stocktype'].unit:
+                    self.add_error('itemsize', 'Item size is not valid for '
+                                   'the selected stock type')
 
 
 @tillweb_view
