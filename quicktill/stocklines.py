@@ -115,7 +115,7 @@ class stockline_associations(user.permission_checked, ui.listpopup):
                     headerline])
 
     def keypress(self, k):
-        if k == keyboard.K_CANCEL and self.s:
+        if k == keyboard.K_CANCEL and self.s and self.s.cursor is not None:
             line = self.s.dl.pop(self.s.cursor)
             self.s.redraw()
             td.s.add(line.userdata)
