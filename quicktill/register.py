@@ -852,7 +852,8 @@ class page(ui.basicpage):
 
         Used by plugins.
         """
-        return self._clear()
+        self._clear()
+        self._redraw()
 
     def _update_timeout(self):
         if self._timeout_handle:
@@ -2021,6 +2022,10 @@ class page(ui.basicpage):
         if self.hook("start_payment", paytype, trans, amount, self.balance):
             return
         paytype.driver.start_payment(self, trans.id, amount, self.balance)
+
+    # XXX the add_payments / payments_update API isn't sufficient for
+    # Square Terminal, where a single pending payment may become
+    # multiple completed payments. Reconsider this!
 
     def add_payments(self, transid, payments):
         """Payments have been added to a transaction.

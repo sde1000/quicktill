@@ -5,7 +5,7 @@ from .models import PaymentMeta
 from . import ui
 from . import tillconfig
 from . import td
-from .keyboard import K_CANCEL, K_CASH, K_CLEAR
+from .keyboard import K_CANCEL, K_CASH, K_CLEAR, K_RECALLTRANS
 import json
 import requests
 import requests.exceptions
@@ -513,6 +513,12 @@ class _SquarePaymentProgress(ui.basicpopup):
         self.timeout = None
         if k == K_CANCEL:
             self.update(cancel=True)
+        elif k == K_RECALLTRANS:
+            self.dismiss()
+            self.register.clear()
+            ui.toast("The Square payment is still proceeding in the "
+                     "background. Recall the transaction to check the "
+                     "payment status.")
         else:
             self.update(cancel=False)
 
