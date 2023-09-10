@@ -1,3 +1,11 @@
+quicktill (22.16) stable; urgency=low
+
+  * New release 22.16
+
+  * Enable in-progress Square transactions to be backgrounded
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 10 Sep 2023 11:17:44 +0100
+
 quicktill (22.15) stable; urgency=low
 
   * New release 22.15
