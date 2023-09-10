@@ -714,7 +714,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
 def updatesupplier():
     log.info("Update supplier")
     sl = td.s.query(Supplier).order_by(Supplier.name).all()
-    m = [(x.name, editsupplier, (lambda a:None, x)) for x in sl]
+    m = [(x.name, editsupplier, (lambda a: None, x)) for x in sl]
     ui.menu(m, blurb="Select a supplier from the list and press Cash/Enter.",
             title="Edit Supplier")
 
