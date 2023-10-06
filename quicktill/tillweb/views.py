@@ -3019,3 +3019,39 @@ def stock_sold_report(request, info):
         ],
         'stocksoldform': stocksoldform,
     })
+
+
+class TranslineSummaryReportForm(StockSoldReportForm):
+    department = SQLAModelChoiceField(
+        Department,
+        query_filter=lambda q: q.order_by(Department.id))
+
+    simplify = forms.BooleanField(
+        required=False, label="Attempt to simplify food descriptions "
+        "by removing all text after '. ' or '; '")
+
+
+@tillweb_view
+def transline_summary_report(request, info):
+    if request.method == 'POST' and "submit_transline_summary" in request.POST:
+        form = TranslineSummaryReportForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            return spreadsheets.translinesummary(
+                start=cd['startdate'],
+                end=cd['enddate'],
+                dates=cd['dates'],
+                department=cd['department'],
+                simplify=cd['simplify'],
+                tillname=info.tillname)
+    else:
+        form = TranslineSummaryReportForm()
+
+    return ('transline-summary-report.html', {
+        'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Transaction lines", info.reverse(
+                "tillweb-report-transline-summary")),
+        ],
+        'form': form,
+    })

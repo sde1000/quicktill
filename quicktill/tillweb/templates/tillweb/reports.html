@@ -10,6 +10,7 @@
   <li class="nav-item"><a class="nav-link" href="{% url 'tillweb-report-wasted-stock' pubname=pubname %}">Wasted stock</a></li>
   <li class="nav-item"><a class="nav-link" href="{% url 'tillweb-report-stock-sold' pubname=pubname %}">Stock sold</a></li>
   <li class="nav-item"><a class="nav-link" href="{% url 'tillweb-stockcheck' pubname=pubname %}">Buying list</a></li>
+  <li class="nav-item"><a class="nav-link" href="{% url "tillweb-report-transline-summary" pubname=pubname %}">Transaction lines</a></li>
 </ul>
 
 {% endblock %}

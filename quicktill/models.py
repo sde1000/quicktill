@@ -1175,11 +1175,11 @@ class Transline(Base, Logged):
             name="discount_name_constraint"),
     )
 
-    @property
+    @hybrid_property
     def original_amount(self):
         """The original amount of the transaction line before any discounts
         """
-        return self.amount + (self.discount or zero)
+        return self.amount + self.discount
 
     transaction = relationship(
         Transaction,

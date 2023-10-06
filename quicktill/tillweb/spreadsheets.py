@@ -11,6 +11,7 @@ from quicktill.models import (
     StockItem,
     Unit,
     Transaction,
+    zero,
 )
 import datetime
 from sqlalchemy.orm import undefer
@@ -753,6 +754,55 @@ def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
         sheet.cell(3, row, doc.textcell(st.department.description))
         sheet.cell(4, row, doc.numbercell(qty))
         sheet.cell(5, row, doc.textcell(st.unit.name))
+        row += 1
+
+    doc.add_table(sheet)
+    return doc.as_response()
+
+
+def translinesummary(start=None, end=None, dates="transaction",
+                     department=None, simplify=False, tillname="Till"):
+    what = Transline.text
+
+    if simplify:
+        what = func.regexp_replace(what, '[.;] .*', '')
+
+    tl = td.s.query(what, func.sum(Transline.items))\
+             .select_from(Transline)\
+             .filter(Transline.original_amount != zero)\
+             .group_by(what)\
+             .order_by(func.sum(Transline.items).desc())
+
+    if department:
+        tl = tl.filter(Transline.dept_id == department.id)
+
+    if dates == "transaction":
+        tl = tl.join(Transaction, Session)
+        if start:
+            tl = tl.filter(Session.date >= start)
+        if end:
+            tl = tl.filter(Session.date <= end)
+    else:
+        if start:
+            tl = tl.filter(Transline.time >= start)
+        if end:
+            tl = tl.filter(
+                Transline.time < (end + datetime.timedelta(days=1)))
+
+    filename = "{}-transline-summary.ods".format(tillname)
+    doc = Document(filename)
+
+    sheet = Sheet("Transaction line summary")
+    # Columns are:
+    # Text  Count
+    # Manufacturer  Name  ABV  Dept  qty  Unit
+    sheet.cell(0, 0, doc.headercell("Description"))
+    sheet.cell(1, 0, doc.headercell("Count"))
+
+    row = 1
+    for text, count in tl.all():
+        sheet.cell(0, row, doc.textcell(text))
+        sheet.cell(1, row, doc.numbercell(count))
         row += 1
 
     doc.add_table(sheet)

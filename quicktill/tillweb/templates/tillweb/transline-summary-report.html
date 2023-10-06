@@ -1,0 +1,47 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Transaction line summary{% endblock %}
+
+{% block tillcontent %}
+
+<h2 class="mt-3">Transaction line summary</h2>
+
+<p>This report shows transaction line descriptions in a department,
+  along with the number of times they occurred within the time
+  period. Voids are treated as negative occurrences, i.e. a unique
+  transaction line description that is sold and then voided will show
+  up with a count of zero.</p>
+
+<p>Transaction lines that have a price of zero are not included. These
+  are typically used as comments (eg. table number for food
+  sales). Transaction lines that have a price but have been discounted
+  to zero <em>are</em> included.</p>
+
+<p>There are two dates associated with transaction lines, and you can
+  choose either one when setting up this report:</p>
+<ol>
+  <li>Transaction Date: the date of the transaction in which the
+    transaction line occurs.  This can change if a transaction is
+    deferred from one session to the next.  Transactions that are
+    currently deferred (i.e. not attached to a session) are not
+    counted at all.</li>
+  <li>Date entered: the date on which the transaction line was
+    created.  This will not change even when the transaction is
+    deferred.</li>
+</ol>
+
+<form action="" method="post">{% csrf_token %}
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-secondary" type="submit" name="submit_transline_summary">Download</button>
+</form>
+
+<script type="text/javascript">
+var dtpicker_options = {firstDay: 1,
+  dateFormat: 'yy-mm-dd'};
+$(document).ready(function(){
+ $("#id_startdate").datepicker(dtpicker_options);
+ $("#id_enddate").datepicker(dtpicker_options);
+});
+</script>
+
+{% endblock %}

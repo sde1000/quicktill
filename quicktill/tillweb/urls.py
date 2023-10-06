@@ -124,6 +124,8 @@ tillurls = [
     path('reports/stock-sold/', views.stock_sold_report,
          name="tillweb-report-stock-sold"),
     path('reports/stockcheck/', views.stockcheck, name="tillweb-stockcheck"),
+    path('reports/translines/', views.transline_summary_report,
+         name="tillweb-report-transline-summary"),
 
     path('datatable/sessions.json', datatable.sessions,
          name="tillweb-datatable-sessions"),
