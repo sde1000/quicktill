@@ -8,15 +8,15 @@
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/tillweb-bootstrap.css" %}" />
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2/select2.min.css" %}" />
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/select2-bootstrap4.min.css" %}" />
-<link rel="stylesheet" type="text/css" href="{% static "tillweb/DataTables-1.12.1/css/dataTables.bootstrap4.css" %}"/>
+<link rel="stylesheet" type="text/css" href="{% static "tillweb/DataTables-1.13.8/css/dataTables.bootstrap4.css" %}"/>
 {% endblock %}
 {% block jquery %}
 {# We assume jquery and jquery-ui are already present #}
 {{ block.super }}
 <script type="text/javascript" src="{% static "tillweb/jquery.tablesorter.js" %}"></script>
 <script type="text/javascript" src="{% static "tillweb/select2/select2.min.js" %}"></script>
-<script type="text/javascript" src="{% static "tillweb/DataTables-1.12.1/js/jquery.dataTables.js" %}"></script>
-<script type="text/javascript" src="{% static "tillweb/DataTables-1.12.1/js/dataTables.bootstrap4.js" %}"></script>
+<script type="text/javascript" src="{% static "tillweb/DataTables-1.13.8/js/jquery.dataTables.js" %}"></script>
+<script type="text/javascript" src="{% static "tillweb/DataTables-1.13.8/js/dataTables.bootstrap4.js" %}"></script>
 <script type="text/javascript">
   $.extend(true, $.fn.dataTable.defaults, {
       "pageLength": 25,
