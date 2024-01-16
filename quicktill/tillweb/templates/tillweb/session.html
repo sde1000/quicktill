@@ -74,6 +74,11 @@
     </a>
   </li>
   <li class="nav-item">
+    <a class="nav-link" id="paymentsTab" href="#payments" data-toggle="tab" data-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
+      Payments
+    </a>
+  </li>
+  <li class="nav-item">
     <a class="nav-link" id="infoTab" href="#info" data-toggle="tab" data-target="#info" role="tab" aria-controls="info" aria-selected="false">
       Info
     </a>
@@ -144,6 +149,25 @@
   </div>
   <div class="tab-pane fade" id="transactions" aria-labelledby="transactionsTab">
   </div>
+  <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
+    <div class="mb-1"></div>
+    <table class="table table-sm table-striped" id="paymentsTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Method</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Amount</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Source</th>
+	  <th scope="col">Pending?</th>
+	  <th scope="col">User</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
   <div class="tab-pane fade" id="info" aria-labelledby="infoTab">
     <a class="btn btn-secondary mt-3 mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
     {% with logs=session.logs %}
@@ -193,6 +217,7 @@
 
   let depttotals_table = null;
   let usertotals_table = null;
+  let payments_table = null;
 
   function init_depttotals_table() {
       depttotals_table = $("#depttakings").DataTable({
@@ -324,6 +349,53 @@
       });
   };
 
+  function init_payments_table() {
+      payments_table = $("#paymentsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.sessionid = {{session.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'paytype_description',
+		render: render_link('paytype_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: render_link('url', DataTable.render.datetime()),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'pending',
+		render: render_yesno(),
+		searchable: false,
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
   $(document).ready(function(){
       $('[data-toggle="tabajax"]').on("click.tillweb", function (e) {
 	  const $this = $(this),
@@ -361,6 +433,16 @@
 	  } else {
 	      {% if not session.endtime %}
 	      usertotals_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#paymentsTab').on("click", function (e) {
+	  if (payments_table === null) {
+	      init_payments_table();
+	  } else {
+	      {% if not session.endtime %}
+	      payments_table.ajax.reload();
 	      {% endif %}
 	  }
       });

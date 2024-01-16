@@ -122,6 +122,7 @@ def payments(request, info):
     columns = {
         'id': Payment.id,
         'transid': Payment.transid,
+        'paytype_description': PayType.description,
         'time': Payment.time,
         'paytype': Payment.paytype_id,
         'text': Payment.text,
@@ -168,6 +169,7 @@ def payments(request, info):
             columns['text'].ilike(f'%{search_value}%'),
             columns['source'].ilike(f'{search_value}%'),
             columns['user'].ilike(f'%{search_value}%'),
+            columns['paytype_description'].ilike(f'%{search_value}%'),
         ]
         if intsearch:
             qs.append(columns['id'] == intsearch)
@@ -184,6 +186,7 @@ def payments(request, info):
             'trans_url': p.transaction.get_absolute_url(),
             'time': p.time,
             'paytype': p.paytype_id,
+            'paytype_description': p.paytype.description,
             'paytype_url': p.paytype.get_absolute_url(),
             'text': p.text,
             'source': p.source,
