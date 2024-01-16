@@ -17,6 +17,8 @@ from quicktill.models import (
     LogEntry,
     Transline,
     Department,
+    Delivery,
+    Supplier,
     zero,
 )
 
@@ -343,6 +345,57 @@ def sessiontotals(request, info):
             'amount': t.amount,
             'fees': t.fees,
             'payment_amount': t.payment_amount,
+        })
+
+
+@tillweb_view
+def deliveries(request, info):
+    columns = {
+        'id': Delivery.id,
+        'date': Delivery.date,
+        'supplier': Supplier.name,
+        'docnumber': Delivery.docnumber,
+        'checked': Delivery.checked,
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(Delivery)\
+            .join(Supplier)\
+            .options(contains_eager(Delivery.supplier))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        supplierid = int(request.GET.get('supplierid'))
+        q = q.filter(Supplier.id == supplierid)
+    except (ValueError, TypeError):
+        pass
+
+    # Apply filters from search value. The 'filtered' item count is
+    # after this filtering step.
+    fq = q
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        qs = [
+            columns['supplier'].ilike(f'%{search_value}%'),
+            columns['docnumber'].ilike(f'{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda d: {
+            'id': d.id,
+            'url': d.get_absolute_url(),
+            'date': d.date,
+            'supplier': d.supplier.name,
+            'supplier_url': d.supplier.get_absolute_url(),
+            'docnumber': d.docnumber,
+            'checked': d.checked,
+            'DT_RowClass': "table-warning" if not d.checked else None,
         })
 
 
