@@ -292,12 +292,6 @@ def tillweb_view(view):
                 'version': version,
                 'money': money,
             }
-            if t.endswith(".ajax"):
-                # AJAX content typically is not a fully-formed HTML document.
-                # If requested in a non-AJAX context, add a HTML container.
-                if not request.is_ajax():
-                    defaults['ajax_content'] = 'tillweb/' + t
-                    t = 'non-ajax-container.html'
             defaults.update(d)
             return render(request, 'tillweb/' + t, defaults)
         except OperationalError as oe:
@@ -2356,7 +2350,7 @@ def plu(request, info, pluid):
                 p.altprice3 = cd['altprice3']
                 td.s.commit()
                 messages.success(
-                    request, "Price lookup '{p.description}' updated.")
+                    request, f"Price lookup '{p.description}' updated.")
                 return HttpResponseRedirect(p.get_absolute_url())
         else:
             form = PLUForm(initial=initial)
