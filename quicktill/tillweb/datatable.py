@@ -413,6 +413,14 @@ def logs(request, info):
             .join(User, User.id == LogEntry.user_id)\
             .options(joinedload('loguser'))
 
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        supplierid = int(request.GET.get('supplierid'))
+        q = q.filter(LogEntry.suppliers_id == supplierid)
+    except (ValueError, TypeError):
+        pass
+
     # Apply filters - we filter on weekday name or session ID
     fq = q
     if search_value:

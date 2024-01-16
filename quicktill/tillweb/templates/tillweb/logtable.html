@@ -1,0 +1,51 @@
+<div class="mb-2">
+  <table class="table table-striped table-sm" id="logTable">
+    <thead class="thead-light">
+      <tr>
+	<th scope="col">ID</th>
+	<th scope="col">Time</th>
+	<th scope="col">Source</th>
+	<th scope="col">User</th>
+	<th scope="col">Description</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#logTable").DataTable({
+	ajax: {
+	    url: '{% url "tillweb-datatable-logs" pubname=pubname %}',
+	    dataSrc: 'data',
+	    data: function(d) {
+		{% if filter == "supplier" %}
+		d.supplierid = {{supplier.id}};
+		{% endif %}
+	    },
+	},
+	columns: [
+	    { data: 'id',
+	      render: render_link('url', DataTable.render.text()),
+	      searchable: true },
+	    { data: 'time',
+	      render: render_link('url', DataTable.render.datetime()),
+	      searchable: false },
+	    { data: 'source',
+	      render: DataTable.render.text(),
+	      searchable: true },
+	    { data: 'user',
+	      render: render_link('userlink', DataTable.render.text()),
+	      searchable: true },
+	    { data: 'description',
+	      render: DataTable.render.text(),
+	      searchable: true }
+	],
+	order: [ [0, 'desc'] ],
+	searching: true,
+	paging: true,
+	serverSide: true
+    });
+  });
+</script>

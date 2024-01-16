@@ -26,55 +26,68 @@
 <a class="btn btn-secondary float-right" href="{{supplier.accounts_url}}">View in accounts</a>
 {% endif %}
 
-<h2>Deliveries</h2>
+<ul class="nav nav-tabs mt-3 w-100" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="deliveriesTab" href="#deliveries" data-toggle="tab" data-target="#deliveries" role="tab" aria-controls="deliveries" aria-selected="true">
+      Deliveries
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="logsTab" href="#logs" data-toggle="tab" data-target="#logs" role="tab" aria-controls="logs" aria-selected="false">
+      Log entries
+    </a>
+  </li>
+</ul>
 
-<table class="table table-striped table-sm" id="deliveries">
-  <thead class="thead-light">
-    <tr>
-      <th scope="col">ID</th>
-      <th scope="col">Date</th>
-      <th scope="col">Document</th>
-      <th scope="col">Confirmed?</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="deliveries" aria-labelledby="deliveriesTab">
+    <div class="mb-1"></div>
+    <table class="table table-striped table-sm" id="deliveriesTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Date</th>
+	  <th scope="col">Document</th>
+	  <th scope="col">Confirmed?</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-<script type="text/javascript">
-  $(document).ready(function(){
-    $("#deliveries").DataTable({
-	ajax: {
-	    url: '{% url "tillweb-datatable-deliveries" pubname=pubname %}',
-	    dataSrc: 'data',
-	    data: function (d) {
-		d.supplierid = {{supplier.id}};
-	    },
-	},
-	columns: [
-	    { data: 'id',
-	      render: render_link('url', DataTable.render.text()) },
-	    { data: 'date',
-	      render: render_link('url', DataTable.render.date()),
-	      searchable: false },
-	    { data: 'docnumber',
-	      render: DataTable.render.text() },
-	    { data: 'checked',
-	      render: render_yesno(),
-	      searchable: false },
-	],
-	order: [ [0, 'desc'] ],
-	searching: true,
-	paging: true,
-	serverSide: true
-    });
-  });
-</script>
-
-{% if supplier.logs %}
-<h2>Log entries</h2>
-{% with logs=supplier.logs %}
-{% include "tillweb/loglist.html" %}
-{% endwith %}
-{% endif %}
+    <script type="text/javascript">
+      $(document).ready(function(){
+	  $("#deliveriesTable").DataTable({
+	      ajax: {
+		  url: '{% url "tillweb-datatable-deliveries" pubname=pubname %}',
+		  dataSrc: 'data',
+		  data: function (d) {
+		      d.supplierid = {{supplier.id}};
+		  },
+	      },
+	      columns: [
+		  { data: 'id',
+		    render: render_link('url', DataTable.render.text()) },
+		  { data: 'date',
+		    render: render_link('url', DataTable.render.date()),
+		    searchable: false },
+		  { data: 'docnumber',
+		    render: DataTable.render.text() },
+		  { data: 'checked',
+		    render: render_yesno(),
+		    searchable: false },
+	      ],
+	      order: [ [0, 'desc'] ],
+	      searching: true,
+	      paging: true,
+	      serverSide: true
+	  });
+      });
+    </script>
+  </div>
+  <div class="tab-pane fade" id="logs" aria-labelledby="logsTab">
+    <div class="mb-1"></div>
+    {% include "tillweb/logtable.html" with filter="supplier" %}
+  </div>
+</div>
 
 {% endblock %}

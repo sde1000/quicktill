@@ -4,6 +4,10 @@
 
 {% block tillcontent %}
 
+{% if may_create_supplier %}
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-supplier" pubname=pubname %}">Add new supplier</a>
+{% endif %}
+
 <table class="table table-sm table-striped" id="suppliers">
 <thead class="thead-light">
   <tr>
@@ -31,9 +35,5 @@ $(document).ready(function(){
   $("#suppliers").DataTable();
 });
 </script>
-
-{% if may_create_supplier %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-supplier" pubname=pubname %}">Add new supplier</a>
-{% endif %}
 
 {% endblock %}
