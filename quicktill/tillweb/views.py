@@ -1018,7 +1018,6 @@ def supplier(request, info, supplierid):
         raise Http404
 
     deliveries = td.s.query(Delivery)\
-                     .order_by(desc(Delivery.id))\
                      .filter(Delivery.supplier == s)
 
     form = None
@@ -1060,12 +1059,10 @@ def supplier(request, info, supplierid):
         else:
             form = SupplierForm(initial=initial)
 
-    pager = Pager(request, deliveries)
     return ('supplier.html', {
         'tillobject': s,
         'supplier': s,
         'form': form,
-        'pager': pager,
         'can_delete': can_delete,
     })
 

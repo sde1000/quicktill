@@ -28,13 +28,47 @@
 
 <h2>Deliveries</h2>
 
-{% with exclude_column="supplier" %}
-{% if pager.items %}
-{% include "tillweb/deliverylist.html" %}
-{% else %}
-<p>There have not been any deliveries from this supplier.</p>
-{% endif %}
-{% endwith %}
+<table class="table table-striped table-sm" id="deliveries">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Date</th>
+      <th scope="col">Document</th>
+      <th scope="col">Confirmed?</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#deliveries").DataTable({
+	ajax: {
+	    url: '{% url "tillweb-datatable-deliveries" pubname=pubname %}',
+	    dataSrc: 'data',
+	    data: function (d) {
+		d.supplierid = {{supplier.id}};
+	    },
+	},
+	columns: [
+	    { data: 'id',
+	      render: render_link('url', DataTable.render.text()) },
+	    { data: 'date',
+	      render: render_link('url', DataTable.render.date()),
+	      searchable: false },
+	    { data: 'docnumber',
+	      render: DataTable.render.text() },
+	    { data: 'checked',
+	      render: render_yesno(),
+	      searchable: false },
+	],
+	order: [ [0, 'desc'] ],
+	searching: true,
+	paging: true,
+	serverSide: true
+    });
+  });
+</script>
 
 {% if supplier.logs %}
 <h2>Log entries</h2>
