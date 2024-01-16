@@ -74,6 +74,11 @@
     </a>
   </li>
   <li class="nav-item">
+    <a class="nav-link" id="translinesTab" href="#translines" data-toggle="tab" data-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
+      Sales
+    </a>
+  </li>
+  <li class="nav-item">
     <a class="nav-link" id="paymentsTab" href="#payments" data-toggle="tab" data-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
       Payments
     </a>
@@ -149,6 +154,28 @@
   </div>
   <div class="tab-pane fade" id="transactions" aria-labelledby="transactionsTab">
   </div>
+  <div class="tab-pane fade" id="translines" aria-labelledby="translinesTab">
+    <div class="mb-1"></div>
+    <table class="table table-sm table-striped" id="translinesTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Department</th>
+	  <th scope="col">Items</th>
+	  <th scope="col">Price</th>
+	  <th scope="col">Discount</th>
+	  <th scope="col">Discount type</th>
+	  <th scope="col">Total</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Source</th>
+	  <th scope="col">User</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
   <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
     <div class="mb-1"></div>
     <table class="table table-sm table-striped" id="paymentsTable">
@@ -217,6 +244,7 @@
 
   let depttotals_table = null;
   let usertotals_table = null;
+  let translines_table = null;
   let payments_table = null;
 
   function init_depttotals_table() {
@@ -349,6 +377,61 @@
       });
   };
 
+  function init_translines_table() {
+      translines_table = $("#translinesTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.sessionid = {{session.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'department',
+		render: render_link('department_url', DataTable.render.text()),
+	      },
+	      { data: 'items',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'discount',
+		render: render_money(),
+	      },
+	      { data: 'discount_name',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
   function init_payments_table() {
       payments_table = $("#paymentsTable").DataTable({
 	  ajax: {
@@ -433,6 +516,16 @@
 	  } else {
 	      {% if not session.endtime %}
 	      usertotals_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#translinesTab').on("click", function (e) {
+	  if (translines_table === null) {
+	      init_translines_table();
+	  } else {
+	      {% if not session.endtime %}
+	      translines_table.ajax.reload();
 	      {% endif %}
 	  }
       });

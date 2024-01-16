@@ -118,6 +118,96 @@ def sessions(request, info):
 
 
 @tillweb_view
+def translines(request, info):
+    columns = {
+        'id': Transline.id,
+        'transid': Transline.transid,
+        'text': Transline.text,
+        'department': Transline.dept_id,
+        'code': Transline.transcode,
+        'items': Transline.items,
+        'time': Transline.time,
+        'amount': Transline.amount,
+        'discount': Transline.total_discount,
+        'discount_name': Transline.discount_name,
+        'total': Transline.total,
+        'source': Transline.source,
+        'user': User.fullname,
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(Transline)\
+        .join(Transline.department)\
+        .join(Transline.user, isouter=True)\
+        .join(Transline.transaction)\
+        .join(Session, isouter=True)\
+        .options(contains_eager(Transline.department),
+                 contains_eager(Transline.user),
+                 contains_eager(Transline.transaction))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        sessionid = int(request.GET.get('sessionid'))
+        q = q.filter(Session.id == sessionid)
+    except (ValueError, TypeError):
+        pass
+    try:
+        deptid = int(request.GET.get('deptid'))
+        q = q.filter(Department.id == deptid)
+    except (ValueError, TypeError):
+        pass
+
+    # Apply filters from search value. The 'filtered' item count is
+    # after this filtering step.
+    fq = q
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except Exception:
+            decsearch = None
+        qs = [
+            columns['text'].ilike(f'%{search_value}%'),
+            columns['source'].ilike(f'{search_value}%'),
+            columns['user'].ilike(f'%{search_value}%'),
+            columns['discount_name'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+            qs.append(columns['transid'] == intsearch)
+            qs.append(columns['items'] == intsearch)
+        if decsearch is not None:
+            qs.append(columns['amount'] == decsearch)
+            qs.append(columns['discount'] == decsearch)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda tl: {
+            'id': tl.id,
+            'url': tl.get_absolute_url(),
+            'transid': tl.transid,
+            'trans_url': tl.transaction.get_absolute_url(),
+            'time': tl.time,
+            'text': tl.text,
+            'department': tl.department.description,
+            'department_url': tl.department.get_absolute_url(),
+            'code': tl.transcode,
+            'items': tl.items,
+            'source': tl.source,
+            'amount': tl.amount,
+            'discount': tl.total_discount,
+            'discount_name': tl.discount_name,
+            'total': tl.total,
+            'user': tl.user.fullname if tl.user else '',
+            'user_url': tl.user.get_absolute_url() if tl.user else None,
+            'DT_RowClass': "table-warning" if tl.transcode == 'V' else None,
+        })
+
+
+@tillweb_view
 def payments(request, info):
     columns = {
         'id': Payment.id,
