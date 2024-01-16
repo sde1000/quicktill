@@ -25,7 +25,7 @@
 {% endif %}
 <form action="" method="post">{% csrf_token %}
   {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
+  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
     Update
   </button>
 </form>
@@ -50,122 +50,356 @@ selectionHeader: "<div>Selected groups</div>"});
 {% endif %}
 
 {% if tuser.superuser %}
-<p>This user can do anything that needs permissions without explicitly
-having the appropriate permission.  Any groups and permissions shown
-below are irrelevant until the user's "superuser" status is
-revoked.</p>  {% endif %}
+<div class="alert alert-info">
+  This user can do anything that needs permissions without explicitly
+  having the appropriate permission.  Any groups and permissions shown
+  below are irrelevant until the user's "superuser" status is
+  revoked.
+</div>
+{% endif %}
 
-<h2>Groups</h2>
+<ul class="nav nav-tabs mt-3 w-100" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="groupsTab" href="#groups" data-toggle="tab" data-target="#groups" role="tab" aria-controls="groups" aria-selected="true">
+      Groups
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="permissionsTab" href="#permissions" data-toggle="tab" data-target="#permissions" role="tab" aria-controls="permissions" aria-selected="false">
+      Permissions
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="tokensTab" href="#tokens" data-toggle="tab" data-target="#tokens" role="tab" aria-controls="tokens" aria-selected="false">
+      Access tokens
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="translinesTab" href="#translines" data-toggle="tab" data-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
+      Sales
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="paymentsTab" href="#payments" data-toggle="tab" data-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
+      Payments
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="annotationsTab" href="#annotations" data-toggle="tab" data-target="#annotations" role="tab" aria-controls="annotations" aria-selected="false">
+      Stock annotations
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="logsTab" href="#logs" data-toggle="tab" data-target="#logs" role="tab" aria-controls="logs" aria-selected="false">
+      Log entries
+    </a>
+  </li>
+</ul>
 
-{% if tuser.groups %}
-<table class="table table-striped table-hover table-sm w-auto" id="grouplist">
-<thead class="thead-light">
-  <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Description</th>
-  </tr>
-</thead>
-<tbody>
-{% for g in tuser.groups %}
-<tr><td><a href="{{g.get_absolute_url}}">{{g.id}}</a></td><td>{{g.description}}</td></tr>
-{% endfor %}
-</tbody>
-</table>
+<div class="mb-1"></div>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="groups" aria-labelledby="groupsTab">
+    {% if tuser.groups %}
+    <table class="table table-striped table-hover table-sm w-auto" id="grouplist">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">Name</th>
+	  <th scope="col">Description</th>
+	</tr>
+      </thead>
+      <tbody>
+	{% for g in tuser.groups %}
+	<tr><td><a href="{{g.get_absolute_url}}">{{g.id}}</a></td><td>{{g.description}}</td></tr>
+	{% endfor %}
+      </tbody>
+    </table>
+    <script type="text/javascript">
+      $(document).ready(function(){
+	  $("#grouplist").tablesorter();
+      });
+    </script>
+    {% else %}
+    <p>This user does not have any groups defined.</p>
+    {% endif %}
+  </div>
+  <div class="tab-pane fade" id="permissions" aria-labelledby="permissionsTab">
+    {% if tuser.permissions %}
+    <table class="table table-striped table-hover table-sm w-auto" id="permissionlist">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">Name</th>
+	  <th scope="col">Description</th>
+	</tr>
+      </thead>
+      <tbody>
+	{% for p in tuser.permissions %}
+	<tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
+	{% endfor %}
+      </tbody>
+    </table>
+    <script type="text/javascript">
+      $(document).ready(function(){
+	  $("#permissionlist").tablesorter();
+      });
+    </script>
+    {% else %}
+    <p>This user does not have any permissions defined.</p>
+    {% endif %}
+  </div>
+  <div class="tab-pane fade" id="tokens" aria-labelledby="tokensTab">
+    {% if tuser.tokens %}
+    <table class="table table-striped table-hover table-sm w-auto" id="tokenlist">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">Description</th>
+	  <th scope="col">Value</th>
+	  <th scope="col">Last used</th>
+	</tr>
+      </thead>
+      <tbody>
+	{% for t in tuser.tokens %}
+	<tr>
+	  <td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td>
+	</tr>
+	{% endfor %}
+      </tbody>
+    </table>
+    <script type="text/javascript">
+      $(document).ready(function(){
+	  $("#tokenlist").tablesorter();
+      });
+    </script>
+    {% else %}
+    <p>This user does not have any access tokens defined, so they cannot
+      use the till.  You can add tokens using the user management interface
+      on the till while signed in as any user with the "edit-user"
+      permission.</p>
+    {% endif %}
+  </div>
+  <div class="tab-pane fade" id="translines" aria-labelledby="tokensTab">
+    <table class="table table-sm table-striped" id="translinesTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Department</th>
+	  <th scope="col">Items</th>
+	  <th scope="col">Price</th>
+	  <th scope="col">Discount</th>
+	  <th scope="col">Discount type</th>
+	  <th scope="col">Total</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Source</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
+    <table class="table table-sm table-striped" id="paymentsTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">ID</th>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Method</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Amount</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Source</th>
+	  <th scope="col">Pending?</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="annotations" aria-labelledby="annotationsTab">
+    <table class="table table-sm table-striped" id="annotationsTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">Stock ID</th>
+	  <th scope="col">Description</th>
+	  <th scope="col">Time</th>
+	  <th scope="col">Type</th>
+	  <th scope="col">Details</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="logs" aria-labelledby="logsTab">
+    {# XXX we want to defer loading until the tab is viewed #}
+    {% include "tillweb/logtable.html" with filter="tuser" %}
+  </div>
+</div>
+
 <script type="text/javascript">
-$(document).ready(function(){
-  $("#grouplist").tablesorter();
-});
+  let translines_table = null;
+  let payments_table = null;
+  let annotations_table = null;
+
+  function init_translines_table() {
+      translines_table = $("#translinesTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.userid = {{tuser.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'department',
+		render: render_link('department_url', DataTable.render.text()),
+	      },
+	      { data: 'items',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'discount',
+		render: render_money(),
+	      },
+	      { data: 'discount_name',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
+  function init_payments_table() {
+      payments_table = $("#paymentsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.userid = {{tuser.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'paytype_description',
+		render: render_link('paytype_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: render_link('url', DataTable.render.datetime()),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'pending',
+		render: render_yesno(),
+		searchable: false,
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
+  function init_annotations_table() {
+      annotations_table = $("#annotationsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-annotations" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.userid = {{tuser.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'stockid',
+		render: render_link('stock_url', DataTable.render.text()),
+	      },
+	      { data: 'stock_description',
+		render: render_link('stock_url', DataTable.render.text()),
+	      },
+	      { data: 'time',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'type',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
+  $(document).ready(function(){
+      $('#translinesTab').on("click", function (e) {
+	  if (translines_table === null) {
+	      init_translines_table();
+	  } else {
+	      {% if not session.endtime %}
+	      translines_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#paymentsTab').on("click", function (e) {
+	  if (payments_table === null) {
+	      init_payments_table();
+	  } else {
+	      {% if not session.endtime %}
+	      payments_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#annotationsTab').on("click", function (e) {
+	  if (annotations_table === null) {
+	      init_annotations_table();
+	  } else {
+	      {% if not session.endtime %}
+	      annotations_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+  });
 </script>
-{% else %}
-<p>This user does not have any groups defined.</p>
-{% endif %}
-
-<h2>Permissions</h2>
-
-{% if tuser.permissions %}
-<table class="table table-striped table-hover table-sm w-auto" id="permissionlist">
-<thead class="thead-light">
-  <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Description</th>
-  </tr>
-</thead>
-<tbody>
-{% for p in tuser.permissions %}
-<tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
-{% endfor %}
-</tbody>
-</table>
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#permissionlist").tablesorter();
-});
-</script>
-{% else %}
-<p>This user does not have any permissions defined.</p>
-{% endif %}
-
-<h2>Access tokens</h2>
-
-{% if tuser.tokens %}
-<table class="table table-striped table-hover table-sm w-auto" id="tokenlist">
-<thead class="thead-light">
-  <tr>
-    <th scope="col">Description</th>
-    <th scope="col">Value</th>
-    <th scope="col">Last used</th>
-  </tr>
-</thead>
-<tbody>
-{% for t in tuser.tokens %}
-<tr>
-<td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#tokenlist").tablesorter();
-});
-</script>
-{% else %}
-<p>This user does not have any access tokens defined, so they cannot
-use the till.  You can add tokens using the user management interface
-on the till while signed in as any user with the "edit-user"
-permission.</p>
-{% endif %}
-
-<h2>Recent activity</h2>
-{% if sales %}
-<h3>Items sold</h3>
-{% with translines=sales exclude_column="user" %}
-{% include "tillweb/translinelist.html" %}
-{% endwith %}
-{% endif %}
-
-{% if payments %}
-<h3>Payments handled</h3>
-
-{% with excluded_column="user" %}
-{% include "tillweb/paymentlist.html" %}
-{% endwith %}
-{% endif %}
-
-{% if annotations %}
-<h3>Stock annotations</h3>
-
-{% with annotationlist=annotations excluded_column="user" %}
-{% include "tillweb/annotationlist.html" %}
-{% endwith %}
-{% endif %}
-
-{% if logs %}
-<h3>Log entries</h3>
-
-{% with excluded_column="user" %}
-{% include "tillweb/loglist.html" %}
-{% endwith %}
-{% endif %}
 
 {% endblock %}

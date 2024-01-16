@@ -19,6 +19,10 @@ from quicktill.models import (
     Department,
     Delivery,
     Supplier,
+    StockType,
+    StockItem,
+    StockAnnotation,
+    AnnotationType,
     zero,
 )
 
@@ -154,6 +158,11 @@ def translines(request, info):
     except (ValueError, TypeError):
         pass
     try:
+        userid = int(request.GET.get('userid'))
+        q = q.filter(User.id == userid)
+    except (ValueError, TypeError):
+        pass
+    try:
         deptid = int(request.GET.get('deptid'))
         q = q.filter(Department.id == deptid)
     except (ValueError, TypeError):
@@ -239,6 +248,11 @@ def payments(request, info):
     try:
         sessionid = int(request.GET.get('sessionid'))
         q = q.filter(Session.id == sessionid)
+    except (ValueError, TypeError):
+        pass
+    try:
+        userid = int(request.GET.get('userid'))
+        q = q.filter(User.id == userid)
     except (ValueError, TypeError):
         pass
     paytype = request.GET.get('paytype')
@@ -400,6 +414,69 @@ def deliveries(request, info):
 
 
 @tillweb_view
+def annotations(request, info):
+    columns = {
+        'id': StockAnnotation.id,
+        'stockid': StockAnnotation.stockid,
+        'stock_description': StockType.fullname,
+        'time': StockAnnotation.time,
+        'type': AnnotationType.description,
+        'text': StockAnnotation.text,
+        'user': User.fullname,
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(StockAnnotation)\
+            .join(StockAnnotation.stockitem)\
+            .join(StockItem.stocktype)\
+            .join(StockAnnotation.user, isouter=True)\
+            .join(StockAnnotation.type)\
+            .options(contains_eager(StockAnnotation.stockitem)
+                     .contains_eager(StockItem.stocktype),
+                     contains_eager(StockAnnotation.user),
+                     contains_eager(StockAnnotation.type))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        userid = int(request.GET.get('userid'))
+        q = q.filter(StockAnnotation.user_id == userid)
+    except (ValueError, TypeError):
+        pass
+
+    # Apply filters from search value. The 'filtered' item count is
+    # after this filtering step.
+    fq = q
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        qs = [
+            columns['stock_description'].ilike(f'%{search_value}%'),
+            columns['type'].ilike(f'{search_value}%'),
+            columns['text'].ilike(f'%{search_value}%'),
+            columns['user'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+            qs.append(columns['stockid'] == intsearch)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda a: {
+            'id': a.id,
+            'stockid': a.stockid,
+            'stock_url': a.stockitem.get_absolute_url(),
+            'stock_description': a.stockitem.stocktype.format(),
+            'time': a.time,
+            'type': a.type.description,
+            'text': a.text,
+            'user': a.user.fullname if a.user else None,
+            'user_url': a.user.get_absolute_url() if a.user else None,
+        })
+
+
+@tillweb_view
 def logs(request, info):
     columns = {
         'id': LogEntry.id,
@@ -420,8 +497,15 @@ def logs(request, info):
         q = q.filter(LogEntry.suppliers_id == supplierid)
     except (ValueError, TypeError):
         pass
+    try:
+        # We search for log entries by the user, as well as log
+        # entries about the user
+        userid = int(request.GET.get('userid'))
+        q = q.filter(or_(LogEntry.users_id == userid,
+                         LogEntry.user_id == userid))
+    except (ValueError, TypeError):
+        pass
 
-    # Apply filters - we filter on weekday name or session ID
     fq = q
     if search_value:
         try:

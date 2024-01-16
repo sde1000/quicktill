@@ -14,14 +14,19 @@
 </div>
 
 <script type="text/javascript">
+  let log_table = null;
+
   $(document).ready(function(){
-    $("#logTable").DataTable({
+    log_table = $("#logTable").DataTable({
 	ajax: {
 	    url: '{% url "tillweb-datatable-logs" pubname=pubname %}',
 	    dataSrc: 'data',
 	    data: function(d) {
 		{% if filter == "supplier" %}
 		d.supplierid = {{supplier.id}};
+		{% endif %}
+		{% if filter == "tuser" %}
+		d.userid = {{tuser.id}};
 		{% endif %}
 	    },
 	},

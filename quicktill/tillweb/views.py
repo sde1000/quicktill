@@ -2734,36 +2734,9 @@ def userdetail(request, info, userid):
         else:
             form = EditUserForm(initial=initial)
 
-    sales = td.s.query(Transline)\
-                .filter(Transline.user == u)\
-                .options(joinedload('transaction'),
-                         joinedload('stockref').joinedload('stockitem')
-                         .joinedload('stocktype').joinedload('unit'))\
-                .order_by(desc(Transline.time))[:50]
-
-    payments = td.s.query(Payment)\
-                   .filter(Payment.user == u)\
-                   .options(joinedload('transaction'),
-                            joinedload('paytype'))\
-                   .order_by(desc(Payment.time))[:50]
-
-    annotations = td.s.query(StockAnnotation)\
-                      .options(joinedload('stockitem').joinedload('stocktype'),
-                               joinedload('type'))\
-                      .filter(StockAnnotation.user == u)\
-                      .order_by(desc(StockAnnotation.time))[:50]
-
-    logs = td.s.query(LogEntry)\
-               .filter(LogEntry.loguser == u)\
-               .order_by(desc(LogEntry.id))[:50]
-
     return ('user.html', {
         'tillobject': u,
         'tuser': u,
-        'sales': sales,
-        'payments': payments,
-        'annotations': annotations,
-        'logs': logs,
         'form': form,
     })
 
