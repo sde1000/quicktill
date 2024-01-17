@@ -1,3 +1,11 @@
+quicktill (22.18) stable; urgency=low
+
+  * New release 22.18
+
+  * Fix Transline.original_amount attribute
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 17 Jan 2024 21:38:54 +0000
+
 quicktill (22.17) stable; urgency=low
 
   * New release 22.17
