@@ -949,6 +949,7 @@ class show_usertoken(cmdline.command):
 # in other components like the web interface
 action_descriptions['edit-config'] = "Modify the till configuration"
 action_descriptions['edit-department'] = "Create or alter departments"
+action_descriptions['edit-group'] = "Modify permission groups"
 
 
 class default_groups:
@@ -1006,6 +1007,7 @@ class default_groups:
         "session-summary",
         "list-users",
         "edit-user",
+        "edit-group",
         "manage-tokens",
         "override-price",
         "reprice-stock",

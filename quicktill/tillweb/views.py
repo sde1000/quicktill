@@ -2771,9 +2771,7 @@ def group(request, info, groupid):
 
     form = None
 
-    # XXX may want to introduce a permission for editing groups?
-    # edit-user is the closest I could find
-    if info.user_has_perm("edit-user"):
+    if info.user_has_perm("edit-group"):
         initial = {
             'name': g.id,
             'description': g.description,
@@ -2809,9 +2807,7 @@ def group(request, info, groupid):
 
 @tillweb_view
 def create_group(request, info):
-    # XXX may want to introduce a permission for editing groups?
-    # edit-user is the closest I could find
-    if not info.user_has_perm("edit-user"):
+    if not info.user_has_perm("edit-group"):
         return HttpResponseForbidden(
             "You don't have permission to create new groups")
 
