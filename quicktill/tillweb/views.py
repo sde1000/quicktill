@@ -2680,8 +2680,10 @@ def stockcheck(request, info):
 
 @tillweb_view
 def userlist(request, info):
+
     return ('userlist.html', {
         'nav': [("Users", info.reverse("tillweb-till-users"))],
+        'may_create_user': info.user_has_perm("edit-user"),
     })
 
 
@@ -2720,6 +2722,7 @@ def userdetail(request, info, userid):
                 u.webuser = cd['web_username'] if cd['web_username'] else None
                 u.enabled = cd['enabled']
                 u.groups = cd['groups']
+                user.log(f"Updated user {u.logref}.")
                 try:
                     td.s.commit()
                     messages.success(request, "User '{}' updated.".format(
@@ -2741,6 +2744,39 @@ def userdetail(request, info, userid):
     })
 
 
+class NewUserForm(forms.Form):
+    name = forms.CharField()
+
+
+@tillweb_view
+def create_user(request, info):
+    if not info.user_has_perm("edit-user"):
+        return HttpResponseForbidden(
+            "You don't have permission to create new users")
+
+    if request.method == "POST":
+        form = NewUserForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            u = User(fullname=cd['name'],
+                     shortname=cd['name'],
+                     enabled=True)
+            td.s.add(u)
+            td.s.flush()
+            user.log(f"Created user {u.logref}.")
+            td.s.commit()
+            messages.success(request, f"User '{u.fullname}' created.")
+            return HttpResponseRedirect(u.get_absolute_url())
+    else:
+        form = NewUserForm()
+
+    return ('new-user.html', {
+        'form': form,
+        'nav': [("Users", info.reverse("tillweb-till-users")),
+                ("New", info.reverse("tillweb-create-user"))],
+    })
+
+
 @tillweb_view
 def grouplist(request, info):
     groups = td.s.query(Group)\
@@ -2750,7 +2786,7 @@ def grouplist(request, info):
     return ('grouplist.html', {
         'nav': [("Groups", info.reverse("tillweb-till-groups"))],
         'groups': groups,
-        'may_create_group': info.user_has_perm("edit-user"),
+        'may_create_group': info.user_has_perm("edit-group"),
     })
 
 

@@ -106,6 +106,7 @@ tillurls = [
 
     path('user/', views.userlist, name="tillweb-till-users"),
     path('user/<int:userid>/', views.userdetail, name="tillweb-till-user"),
+    path('new/user/', views.create_user, name="tillweb-create-user"),
 
     path('group/', views.grouplist, name="tillweb-till-groups"),
     re_path(r'^group/(?P<groupid>[\w\- ]+)/$', views.group,

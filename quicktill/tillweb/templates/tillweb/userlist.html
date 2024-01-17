@@ -15,6 +15,10 @@ the keyboard that produces the "builtin:alice" user token is:</p>
 <pre>runtill adduser root root builtin:alice</pre>
 </div>
 
+{% if may_create_user %}
+<a class="btn btn-primary mb-2 disabled" id="add_new_user_button" href="{% url "tillweb-create-user" pubname=pubname %}">Add new user</a>
+{% endif %}
+
 <div class="form-group form-check">
   <input type="checkbox" class="form-check-input" id="show_disabled">
   <label class="form-check-label" for="show_disabled">
@@ -63,6 +67,7 @@ the keyboard that produces the "builtin:alice" user token is:</p>
       $("#show_disabled").change(function() {
 	  include_disabled = this.checked;
 	  userlist_api.ajax.reload(null, true);
+	  $("#add_new_user_button").toggleClass("disabled", !include_disabled);
       });
       userlist_api.on('draw', function () {
 	  if (userlist_api.page.info().recordsTotal == 0) {
