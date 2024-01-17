@@ -1175,11 +1175,20 @@ class Transline(Base, Logged):
             name="discount_name_constraint"),
     )
 
+    # The original_amount instance attribute may be accessed before
+    # the instance is committed to the database, and at this point
+    # self.discount may be None; treat this as zero
     @hybrid_property
     def original_amount(self):
         """The original amount of the transaction line before any discounts
         """
-        return self.amount + self.discount
+        return self.amount + (self.discount or zero)
+
+    # The original_amount class attribute relies on amount and
+    # discount having nullable=False
+    @original_amount.expression
+    def original_amount(cls):
+        return cls.amount + cls.discount
 
     transaction = relationship(
         Transaction,
