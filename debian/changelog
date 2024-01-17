@@ -1,3 +1,37 @@
+quicktill (22.17) stable; urgency=low
+
+  * New release 22.17
+
+  * Button and page for adding new users in the web interface
+
+  * Add a "edit-group" permission
+
+  * Add tabbed interface and datatables to user detail pages
+
+  * Add tabs for deliveries and log entries to supplier detail pages
+
+  * Use datatable for deliveries on supplier detail page
+
+  * Convert deliveries page to datatable
+
+  * Add a small bottom margin to the sessions page
+
+  * Add a 'Sales' tab to session detail pages
+
+  * Add a 'Payments' tab to session detail pages
+
+  * Add small amount of padding above log table
+
+  * Remove call to is_ajax() which is removed in Django 4
+
+  * Update to DataTables 1.13.8
+
+  * Add a transaction line summary report to the web interface
+
+  * Fix flake8 issue in delivery.py
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 17 Jan 2024 14:05:46 +0000
+
 quicktill (22.16) stable; urgency=low
 
   * New release 22.16
