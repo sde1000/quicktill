@@ -73,6 +73,15 @@
 	  return "No";
       };
   };
+
+  function render_closed() {
+      return function (data, type, row) {
+	  if (data) {
+	      return "Closed";
+	  }
+	  return "Open";
+      };
+  };
 </script>
 {% endblock %}
 {% block breadcrumbs %}

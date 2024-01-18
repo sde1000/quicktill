@@ -697,19 +697,6 @@ def session_stock_sold(request, info, sessionid):
 
 
 @tillweb_view
-def session_transactions(request, info, sessionid):
-    s = td.s.query(Session)\
-            .options(undefer('transactions.total'),
-                     undefer('transactions.discount_total'),
-                     joinedload('transactions.payments'))\
-            .get(sessionid)
-    if not s:
-        raise Http404
-
-    return ('session-transactions.ajax', {'session': s})
-
-
-@tillweb_view
 def sessiondept(request, info, sessionid, dept):
     s = td.s.query(Session).get(sessionid)
     if not s:

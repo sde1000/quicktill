@@ -69,7 +69,7 @@
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="transactionsTab" href="{% url "tillweb-session-transactions" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#transactions" role="tab" aria-controls="transactions" aria-selected="false">
+    <a class="nav-link" id="transactionsTab" href="#transactions" data-toggle="tab" data-target="#transactions" role="tab" aria-controls="transactions" aria-selected="false">
       Transactions
     </a>
   </li>
@@ -90,9 +90,11 @@
   </li>
 </ul>
 
+<div class="mb-1"></div>
+
 <div class="tab-content">
   <div class="tab-pane fade" id="deptTakings" aria-labelledby="deptTakingsTab">
-    <div class="row mt-2">
+    <div class="row">
       <div class="col-lg-5 col">
 	<p class="d-none" id="session_open_warning">
 	  This session is still open, and includes transactions that
@@ -130,7 +132,7 @@
     </div>
   </div>
   <div class="tab-pane fade" id="userTakings" aria-labelledby="userTakingsTab">
-    <div class="row mt-2">
+    <div class="row">
       <div class="col-md-5">
 	<table class="table table-striped table-sm" id="usertakings">
 	  <thead class="thead-light">
@@ -153,9 +155,20 @@
   <div class="tab-pane fade" id="stockSold" aria-labelledby="stockSoldTab">
   </div>
   <div class="tab-pane fade" id="transactions" aria-labelledby="transactionsTab">
+    <table class="table table-sm table-striped" id="transactionsTable">
+      <thead class="thead-light">
+	<tr>
+	  <th scope="col">Transaction</th>
+	  <th scope="col">Amount</th>
+	  <th scope="col">Discount</th>
+	  <th scope="col">Note</th>
+	  <th scope="col">State</th>
+	</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
   <div class="tab-pane fade" id="translines" aria-labelledby="translinesTab">
-    <div class="mb-1"></div>
     <table class="table table-sm table-striped" id="translinesTable">
       <thead class="thead-light">
 	<tr>
@@ -177,7 +190,6 @@
     </table>
   </div>
   <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
-    <div class="mb-1"></div>
     <table class="table table-sm table-striped" id="paymentsTable">
       <thead class="thead-light">
 	<tr>
@@ -196,7 +208,7 @@
     </table>
   </div>
   <div class="tab-pane fade" id="info" aria-labelledby="infoTab">
-    <a class="btn btn-secondary mt-3 mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
+    <a class="btn btn-secondary mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
     {% with logs=session.logs %}
     {% include "tillweb/loglist.html" %}
     {% endwith %}
@@ -244,6 +256,7 @@
 
   let depttotals_table = null;
   let usertotals_table = null;
+  let transactions_table = null;
   let translines_table = null;
   let payments_table = null;
 
@@ -374,6 +387,39 @@
 	      ds0.borderColor = bordercolours;
 	      usertotals_chart.update();
 	  },
+      });
+  };
+
+  function init_transactions_table() {
+      transactions_table = $("#transactionsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-transactions" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.sessionid = {{session.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'discount_total',
+		render: render_money(),
+	      },
+	      { data: 'notes',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'closed',
+		render: render_closed(),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
       });
   };
 
@@ -516,6 +562,16 @@
 	  } else {
 	      {% if not session.endtime %}
 	      usertotals_table.ajax.reload();
+	      {% endif %}
+	  }
+      });
+
+      $('#transactionsTab').on("click", function (e) {
+	  if (transactions_table === null) {
+	      init_transactions_table();
+	  } else {
+	      {% if not session.endtime %}
+	      transactions_table.ajax.reload();
 	      {% endif %}
 	  }
       });

@@ -124,6 +124,81 @@ def sessions(request, info):
 
 
 @tillweb_view
+def transactions(request, info):
+    columns = {
+        'id': Transaction.id,
+        'sessionid': Transaction.sessionid,
+        'total': Transaction.total,
+        'discount_total': Transaction.discount_total,
+        'notes': Transaction.notes,
+        'closed': Transaction.closed,
+        # There is a "discount policy" column that only applies to
+        # open transactions; it doesn't seem particularly useful to
+        # show it at the moment.
+    }
+
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(Transaction)\
+        .join(Transaction.session, isouter=True)\
+        .options(undefer('total'),
+                 undefer('discount_total'),
+                 contains_eager(Transaction.session))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.
+    try:
+        sessionid = int(request.GET.get('sessionid'))
+        q = q.filter(Session.id == sessionid)
+    except (ValueError, TypeError):
+        pass
+
+    # Apply filters from search value and other parameters. The
+    # 'filtered' item count is after this filtering step.
+    fq = q
+    state = request.GET.get('state', 'any')
+    if state == "closed":
+        q = q.filter(Transaction.closed == True)
+    elif state == "open":
+        q = q.filter(Transaction.closed == False)
+    elif state == "deferred":
+        q = q.filter(Transaction.sessionid == None)
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except Exception:
+            decsearch = None
+        qs = [
+            columns['notes'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+            qs.append(columns['sessionid'] == intsearch)
+        if decsearch is not None:
+            qs.append(columns['total'] == decsearch)
+            qs.append(columns['discount_total'] == decsearch)
+        fq = q.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda t: {
+            'id': t.id,
+            'url': t.get_absolute_url(),
+            'sessionid': t.session.id,
+            'session_url': t.session.get_absolute_url(),
+            'session_date': t.session.date,
+            'total': t.total,
+            'discount_total': t.discount_total,
+            'notes': t.notes,
+            'closed': t.closed,
+            'DT_RowClass': "table-warning" if t.sessionid and not t.closed
+            else None,
+        })
+
+
+@tillweb_view
 def translines(request, info):
     columns = {
         'id': Transline.id,
