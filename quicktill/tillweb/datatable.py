@@ -128,6 +128,7 @@ def transactions(request, info):
     columns = {
         'id': Transaction.id,
         'sessionid': Transaction.sessionid,
+        'session_date': Session.date,
         'total': Transaction.total,
         'discount_total': Transaction.discount_total,
         'notes': Transaction.notes,
@@ -144,11 +145,16 @@ def transactions(request, info):
                  undefer('discount_total'),
                  contains_eager(Transaction.session))
 
+    # Searching by amount is slow across the entire table. Disable
+    # this if we are not filtering the table first.
+    enable_amount_search = False
+
     # Apply filters from parameters. The 'unfiltered' item count for
     # this table is after this filtering step.
     try:
         sessionid = int(request.GET.get('sessionid'))
         q = q.filter(Session.id == sessionid)
+        enable_amount_search = True
     except (ValueError, TypeError):
         pass
 
@@ -157,11 +163,12 @@ def transactions(request, info):
     fq = q
     state = request.GET.get('state', 'any')
     if state == "closed":
-        q = q.filter(Transaction.closed == True)
+        fq = fq.filter(Transaction.closed == True)
     elif state == "open":
-        q = q.filter(Transaction.closed == False)
+        fq = fq.filter(Transaction.closed == False)\
+               .filter(Transaction.sessionid != None)
     elif state == "deferred":
-        q = q.filter(Transaction.sessionid == None)
+        fq = fq.filter(Transaction.sessionid == None)
     if search_value:
         try:
             intsearch = int(search_value)
@@ -177,7 +184,7 @@ def transactions(request, info):
         if intsearch:
             qs.append(columns['id'] == intsearch)
             qs.append(columns['sessionid'] == intsearch)
-        if decsearch is not None:
+        if enable_amount_search and decsearch is not None:
             qs.append(columns['total'] == decsearch)
             qs.append(columns['discount_total'] == decsearch)
         fq = q.filter(or_(*qs))
@@ -186,9 +193,9 @@ def transactions(request, info):
         request, q, fq, columns, lambda t: {
             'id': t.id,
             'url': t.get_absolute_url(),
-            'sessionid': t.session.id,
-            'session_url': t.session.get_absolute_url(),
-            'session_date': t.session.date,
+            'sessionid': t.session.id if t.session else None,
+            'session_url': t.session.get_absolute_url() if t.session else None,
+            'session_date': t.session.date if t.session else None,
             'total': t.total,
             'discount_total': t.discount_total,
             'notes': t.notes,

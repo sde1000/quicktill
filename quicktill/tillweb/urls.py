@@ -19,8 +19,7 @@ tillurls = [
              name="tillweb-session-department"),
     ])),
 
-    path('transaction/deferred/', views.transactions_deferred,
-         name="tillweb-deferred-transactions"),
+    path('transaction/', views.transactions, name="tillweb-transactions"),
     path('transaction/<int:transid>/', views.transaction,
          name="tillweb-transaction"),
 

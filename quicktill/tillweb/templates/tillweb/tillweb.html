@@ -79,7 +79,10 @@
 	  if (data) {
 	      return "Closed";
 	  }
-	  return "Open";
+	  if (row["sessionid"]) {
+	      return "Open";
+	  }
+	  return "Deferred";
       };
   };
 </script>
@@ -115,7 +118,12 @@
 	<div class="collapse navbar-collapse" id="tillwebNavbar">
 	  <ul class="navbar-nav flex-column w-100 justify-content-between">
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
-	    <li class="nav-item"><a class="nav-link "href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a></li>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Register</a>
+	      <div class="dropdown-menu">
+		<a class="dropdown-item" href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a>
+		<a class="dropdown-item" href="{% url "tillweb-transactions" pubname=pubname %}">Transactions</a>
+	      </div>
+	    </li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Stock management</a>
 	      <div class="dropdown-menu">

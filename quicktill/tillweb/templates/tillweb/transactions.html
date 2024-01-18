@@ -1,0 +1,85 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — transactions{% endblock %}
+
+{% block tillcontent %}
+
+<div class="form-group row">
+  <label for="stateSelect" class="col-3 col-form-label">Transaction state</label>
+  <div class="col-9">
+    <select class="form-control" id="stateSelect">
+      <option value="all">Any</option>
+      <option value="closed">Closed</option>
+      <option value="open">Open</option>
+      <option value="deferred">Deferred</option>
+    </select>
+  </div>
+</div>
+
+<table class="table table-sm table-striped" id="transactionsTable">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">Transaction</th>
+      <th scope="col">Session</th>
+      <th scope="col">Date</th>
+      <th scope="col">Amount</th>
+      <th scope="col">Discount</th>
+      <th scope="col">Note</th>
+      <th scope="col">State</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const state = urlParams.get('state') || 'all';
+      $("#stateSelect").val(state);
+      let transaction_state = state;
+      const transactions_table = $("#transactionsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-transactions" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.state = transaction_state;
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'sessionid',
+		render: render_link('session_url', DataTable.render.text()),
+	      },
+	      { data: 'session_date',
+		render: DataTable.render.date(),
+		searchable: false,
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'discount_total',
+		render: render_money(),
+	      },
+	      { data: 'notes',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'closed',
+		render: render_closed(),
+		searchable: false,
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+      $("#stateSelect").change(function() {
+	  transaction_state = this.value;
+	  transactions_table.ajax.reload(null, true);
+      });
+  });
+</script>
+
+{% endblock %}

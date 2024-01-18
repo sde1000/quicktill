@@ -738,17 +738,10 @@ def sessiondept(request, info, sessionid, dept):
 
 
 @tillweb_view
-def transactions_deferred(request, info):
-    """Page showing all deferred transactions"""
-    t = td.s.query(Transaction)\
-            .options(undefer('total'))\
-            .filter(Transaction.sessionid == None)\
-            .order_by(Transaction.id)\
-            .all()
-    return ('transactions-deferred.html', {
-        'transactions': t,
-        'nav': [("Deferred transactions",
-                 info.reverse('tillweb-deferred-transactions'))],
+def transactions(request, info):
+    return ('transactions.html', {
+        'nav': [("Transactions",
+                 info.reverse('tillweb-transactions'))],
     })
 
 
