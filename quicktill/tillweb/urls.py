@@ -21,9 +21,11 @@ tillurls = [
     path('transaction/<int:transid>/', views.transaction,
          name="tillweb-transaction"),
 
+    path('transline/', views.translines, name="tillweb-translines"),
     path('transline/<int:translineid>/', views.transline,
          name="tillweb-transline"),
 
+    path('payment/', views.payments, name="tillweb-payments"),
     path('payment/<int:paymentid>/', views.payment,
          name="tillweb-payment"),
 

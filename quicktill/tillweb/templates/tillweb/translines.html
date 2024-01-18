@@ -1,0 +1,108 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — sales{% endblock %}
+
+{% block tillcontent %}
+
+<div class="form-group row">
+  <label for="translineDeptSelect" class="col-sm-2 col-form-label">
+    Department
+  </label>
+  <div class="col-sm-10">
+    <select class="form-control" id="translineDeptSelect">
+      <option value="">All</option>
+      {% for d in departments %}
+      <option value="{{d.id}}">{{d.description}}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+<table class="table table-sm table-striped" id="translinesTable">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Transaction</th>
+      <th scope="col">Description</th>
+      <th scope="col">Department</th>
+      <th scope="col">Items</th>
+      <th scope="col">Price</th>
+      <th scope="col">Discount</th>
+      <th scope="col">Discount type</th>
+      <th scope="col">Total</th>
+      <th scope="col">Time</th>
+      <th scope="col">Source</th>
+      <th scope="col">User</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      let translines_dept_filter = $("#translineDeptSelect").val();
+
+      const translines_table = $("#translinesTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  if (translines_dept_filter != '') {
+		      d.filter_department = translines_dept_filter;
+		  }
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'department',
+		render: render_link('department_url', DataTable.render.text()),
+	      },
+	      { data: 'items',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'discount',
+		render: render_money(),
+	      },
+	      { data: 'discount_name',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+      $("#translineDeptSelect").change(function() {
+	  const prev = translines_dept_filter;
+	  translines_dept_filter = this.value;
+	  if (translines_dept_filter != prev) {
+	      translines_table.ajax.reload(null, true);
+	  }
+      });
+  });
+</script>
+
+{% endblock %}

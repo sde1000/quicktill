@@ -744,6 +744,17 @@ def transaction(request, info, transid):
 
 
 @tillweb_view
+def translines(request, info):
+    departments = td.s.query(Department).order_by(Department.id).all()
+
+    return ('translines.html', {
+        'departments': departments,
+        'nav': [("Sales",
+                 info.reverse('tillweb-translines'))],
+    })
+
+
+@tillweb_view
 def transline(request, info, translineid):
     tl = td.s.query(Transline)\
              .options(joinedload('stockref').joinedload('stockitem')
@@ -753,6 +764,14 @@ def transline(request, info, translineid):
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
+
+
+@tillweb_view
+def payments(request, info):
+    return ('payments.html', {
+        'nav': [("Payments",
+                 info.reverse('tillweb-payments'))],
+    })
 
 
 @tillweb_view

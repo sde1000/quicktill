@@ -1,0 +1,70 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — payments{% endblock %}
+
+{% block tillcontent %}
+
+<table class="table table-sm table-striped" id="paymentsTable">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Transaction</th>
+      <th scope="col">Method</th>
+      <th scope="col">Description</th>
+      <th scope="col">Amount</th>
+      <th scope="col">Time</th>
+      <th scope="col">Source</th>
+      <th scope="col">Pending?</th>
+      <th scope="col">User</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      const payments_table = $("#paymentsTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      dataSrc: 'data',
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'paytype_description',
+		render: render_link('paytype_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: render_link('url', DataTable.render.datetime()),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'pending',
+		render: render_yesno(),
+		searchable: false,
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  });
+</script>
+
+{% endblock %}
