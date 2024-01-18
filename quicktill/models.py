@@ -729,8 +729,8 @@ class Transaction(Base, Logged):
         if self.session:
             return self.session.tillweb_nav() \
                 + [(f"Transaction {self.id}", self.get_absolute_url())]
-        return [("Deferred transactions",
-                 self.get_view_url("tillweb-deferred-transactions")),
+        return [("Transactions",
+                 self.get_view_url("tillweb-transactions")),
                 (str(self), self.get_absolute_url())]
 
     # age is now a column property, defined below
