@@ -16,7 +16,7 @@
 	{% if x.d_info %}
 	<tr>
 	  <td>{{x.id}}</td>
-	  <td><a href="{% url "tillweb-session-department" pubname=pubname sessionid=session.id dept=x.id %}">{{x.description}}</a></td>
+	  <td><a href="#" onclick="showTranslinesDept({{x.id}});">{{x.description}}</a></td>
 	  {% for d in x.d_info %}
 	  <td class="money">{% if d %}{{money}}{{d}}{% endif %}</td>
 	  {% endfor %}

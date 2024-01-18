@@ -15,8 +15,6 @@ tillurls = [
              name="tillweb-session-discounts"),
         path('stock-sold.html', views.session_stock_sold,
              name="tillweb-session-stock-sold"),
-        path('dept<int:dept>/', views.sessiondept,
-             name="tillweb-session-department"),
     ])),
 
     path('transaction/', views.transactions, name="tillweb-transactions"),

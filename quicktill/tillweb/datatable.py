@@ -107,7 +107,7 @@ def sessions(request, info):
         qs = [columns['day'].ilike(search_value + '%')]
         if sessionid:
             qs.append(columns['id'] == sessionid)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda s: {
@@ -187,7 +187,7 @@ def transactions(request, info):
         if enable_amount_search and decsearch is not None:
             qs.append(columns['total'] == decsearch)
             qs.append(columns['discount_total'] == decsearch)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda t: {
@@ -253,6 +253,11 @@ def translines(request, info):
     # Apply filters from search value. The 'filtered' item count is
     # after this filtering step.
     fq = q
+    try:
+        filter_department = int(request.GET.get('filter_department'))
+        fq = fq.filter(Department.id == filter_department)
+    except (ValueError, TypeError):
+        pass
     if search_value:
         try:
             intsearch = int(search_value)
@@ -275,7 +280,7 @@ def translines(request, info):
         if decsearch is not None:
             qs.append(columns['amount'] == decsearch)
             qs.append(columns['discount'] == decsearch)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda tl: {
@@ -296,7 +301,9 @@ def translines(request, info):
             'total': tl.total,
             'user': tl.user.fullname if tl.user else '',
             'user_url': tl.user.get_absolute_url() if tl.user else None,
-            'DT_RowClass': "table-warning" if tl.transcode == 'V' else None,
+            'DT_RowClass': "table-warning" if tl.transcode == 'V'
+            else "table-danger" if tl.voided_by_id is not None
+            else None,
         })
 
 
@@ -364,7 +371,7 @@ def payments(request, info):
             qs.append(columns['transid'] == intsearch)
         if decsearch is not None:
             qs.append(columns['amount'] == decsearch)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda p: {
@@ -429,7 +436,7 @@ def sessiontotals(request, info):
             qs.append(columns['fees'] == decsearch)
             qs.append(columns['payment_amount'] == decsearch)
         if qs:
-            fq = q.filter(or_(*qs))
+            fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda t: {
@@ -480,7 +487,7 @@ def deliveries(request, info):
         ]
         if intsearch:
             qs.append(columns['id'] == intsearch)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda d: {
@@ -542,7 +549,7 @@ def annotations(request, info):
         if intsearch:
             qs.append(columns['id'] == intsearch)
             qs.append(columns['stockid'] == intsearch)
-        fq = q.filter(or_(*qs))
+        fq = fq.filter(or_(*qs))
 
     return _datatables_json(
         request, q, fq, columns, lambda a: {
@@ -694,13 +701,6 @@ def depttotals(request, info):
             {"id": d.id,
              "url": d.get_absolute_url(),
              "description": d.description,
-             # Bodge a link to the old department translines page until we
-             # can link to the new table. Only works if a single session
-             # is being requested.
-             "deptlines_url": info.reverse(
-                 "tillweb-session-department",
-                 kwargs={'sessionid': sessions[0],
-                         'dept': d.id}),
              "paid": paid or zero,
              "pending": pending or zero,
              "total": (paid or zero) + (pending or zero),

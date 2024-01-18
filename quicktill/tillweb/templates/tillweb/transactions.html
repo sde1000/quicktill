@@ -34,9 +34,8 @@
 <script type="text/javascript">
   $(document).ready(function() {
       const urlParams = new URLSearchParams(window.location.search);
-      const state = urlParams.get('state') || 'all';
-      $("#stateSelect").val(state);
-      let transaction_state = state;
+      $("#stateSelect").val(urlParams.get('state') || 'all');
+      let transaction_state = $("#stateSelect").val();
       const transactions_table = $("#transactionsTable").DataTable({
 	  ajax: {
 	      url: '{% url "tillweb-datatable-transactions" pubname=pubname %}',

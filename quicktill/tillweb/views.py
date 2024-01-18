@@ -624,12 +624,15 @@ def session(request, info, sessionid):
                  .filter(SessionTotal.sessionid == sessionid)\
                  .all()
 
+    departments = td.s.query(Department).order_by(Department.id).all()
+
     return ('session.html',
             {'tillobject': s,
              'session': s,
              'totals': totals,
              'nextlink': nextlink,
              'prevlink': prevlink,
+             'departments': departments,
              })
 
 
@@ -694,47 +697,6 @@ def session_stock_sold(request, info, sessionid):
         raise Http404
 
     return ('session-stock-sold.ajax', {'session': s})
-
-
-@tillweb_view
-def sessiondept(request, info, sessionid, dept):
-    s = td.s.query(Session).get(sessionid)
-    if not s:
-        raise Http404
-
-    dept = td.s.query(Department).get(dept)
-    if not dept:
-        raise Http404
-
-    nextlink = info.reverse("tillweb-session-department", kwargs={
-        'sessionid': s.next.id,
-        'dept': dept.id}) if s.next else None
-    prevlink = info.reverse("tillweb-session-department", kwargs={
-        'sessionid': s.previous.id,
-        'dept': dept.id}) if s.previous else None
-
-    translines = td.s.query(Transline)\
-                     .join(Transaction)\
-                     .options(joinedload('transaction'),
-                              joinedload('user'),
-                              joinedload('stockref').joinedload('stockitem')
-                              .joinedload('stocktype').joinedload('unit'))\
-                     .filter(Transaction.sessionid == s.id)\
-                     .filter(Transline.dept_id == dept.id)\
-                     .order_by(Transline.id)\
-                     .all()
-
-    return ('sessiondept.html', {
-        'nav': s.tillweb_nav() + [
-            (dept.description,
-             info.reverse("tillweb-session-department", kwargs={
-                 'sessionid': s.id,
-                 'dept': dept.id}))],
-        'session': s, 'department': dept,
-        'translines': translines,
-        'nextlink': nextlink,
-        'prevlink': prevlink,
-    })
 
 
 @tillweb_view

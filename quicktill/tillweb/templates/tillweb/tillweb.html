@@ -57,6 +57,19 @@
       };
   };
 
+  function render_function_link(linkdata, funcname, render_data) {
+      const render_inner = (typeof render_data === 'function') ?
+	    render_data : render_data.display;
+      return function (data, type, row) {
+	  if (row[linkdata] === null) {
+	      return render_inner(data, type, row);
+	  }
+	  return '<a href="#" onclick="' + funcname
+	      + '(' + row[linkdata] + ');">'
+	      + render_inner(data, type, row) + '</a>';
+      };
+  };
+
   function render_day() {
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
 		    'Friday', 'Saturday', 'Sunday'];

@@ -169,6 +169,19 @@
     </table>
   </div>
   <div class="tab-pane fade" id="translines" aria-labelledby="translinesTab">
+    <div class="form-group row">
+      <label for="translineDeptSelect" class="col-sm-2 col-form-label">
+	Department
+      </label>
+      <div class="col-sm-10">
+	<select class="form-control" id="translineDeptSelect">
+	  <option value="">All</option>
+	  {% for d in departments %}
+	  <option value="{{d.id}}">{{d.description}}</option>
+	  {% endfor %}
+	</select>
+      </div>
+    </div>
     <table class="table table-sm table-striped" id="translinesTable">
       <thead class="thead-light">
 	<tr>
@@ -260,6 +273,13 @@
   let translines_table = null;
   let payments_table = null;
 
+  function showTranslinesDept(deptid) {
+      $("#translineDeptSelect").val(deptid);
+      $("#translineDeptSelect").trigger('change');
+      $("#translinesTab").trigger('click');
+      return false;
+  };
+
   function init_depttotals_table() {
       depttotals_table = $("#depttakings").DataTable({
 	  ajax: {
@@ -275,10 +295,9 @@
 	      { data: 'id',
 		render: DataTable.render.text(),
 	      },
-	      /* XXX still need to add link to table of translines for this
-		 department in this session. We bodge it for now. */
 	      { data: 'description',
-		render: render_link('deptlines_url', DataTable.render.text()),
+		render: render_function_link(
+		    'id', 'showTranslinesDept', DataTable.render.text()),
 	      },
 	      { data: 'discount',
 		render: render_money(),
@@ -424,12 +443,17 @@
   };
 
   function init_translines_table() {
+      let translines_dept_filter = $("#translineDeptSelect").val();
+
       translines_table = $("#translinesTable").DataTable({
 	  ajax: {
 	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.sessionid = {{session.id}};
+		  if (translines_dept_filter != '') {
+		      d.filter_department = translines_dept_filter;
+		  }
 	      },
 	  },
 	  columns: [
@@ -475,6 +499,13 @@
 	  searching: true,
 	  paging: true,
 	  serverSide: true,
+      });
+      $("#translineDeptSelect").change(function() {
+	  const prev = translines_dept_filter;
+	  translines_dept_filter = this.value;
+	  if (translines_dept_filter != prev) {
+	      translines_table.ajax.reload(null, true);
+	  }
       });
   };
 
