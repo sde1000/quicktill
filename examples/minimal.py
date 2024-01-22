@@ -9,29 +9,13 @@
 
 import quicktill.pdrivers
 import quicktill.stockterminal
-import quicktill.cash
-import quicktill.card
 import quicktill.localutils
 from decimal import Decimal
 import datetime
 from contextlib import nullcontext
 from collections import defaultdict
 
-# Payment methods.
-cash = quicktill.cash.CashPayment(
-    'CASH', 'Cash', change_description="Change", drawers=3,
-    countup=[])
-card = quicktill.card.CardPayment(
-    'CARD', 'Card', machines=3, cashback_method=cash,
-    max_cashback=Decimal("100.00"), kickout=True,
-    rollover_guard_time=datetime.time(4, 0, 0),
-    ask_for_machine_id=True)
-all_payment_methods = [cash, card]  # Used for session totals entry
-payment_methods = all_payment_methods  # Used in register
-
 std = {
-    'all_payment_methods': all_payment_methods,
-    'payment_methods': payment_methods,
     'database': 'dbname=minimal',
 }
 
@@ -104,7 +88,7 @@ with cf("mainbar") as c:
         'keyboard': quicktill.localutils.keyboard(
             13, 7, line_base=1, maxwidth=16),
         'keyboard_right': quicktill.localutils.keyboard_rhpanel(
-            cash, card),
+            "CASH", "CARD"),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(
         register_hotkeys))
