@@ -481,7 +481,6 @@ def register_hotkeys(appsmenu=None):
         K_MANAGESTOCK: managestock.popup,
         K_USESTOCK: usestock.popup,
         K_WASTE: recordwaste.popup,
-        K_APPS: appsmenu,
         's': managestock.popup,
         'S': managestock.popup,
         'a': stock.annotate,
