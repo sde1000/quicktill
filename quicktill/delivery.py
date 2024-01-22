@@ -246,7 +246,7 @@ class delivery(ui.basicpopup):
             return
         menu = [(f"Print labels on {x}",
                  printer.label_print_delivery, (x, self.dn))
-                for x in printer.labelprinters]
+                for x in tillconfig.label_printers]
         ui.automenu(menu, title="Delivery print options",
                     colour=ui.colour_confirm)
 

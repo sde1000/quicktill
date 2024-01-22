@@ -570,17 +570,28 @@ def main():
     for opt, val in config.items():
         if opt == 'printer':
             if args.disable_printer:
-                printer.driver = pdrivers.nullprinter(name="disabled-printer")
+                tillconfig.receipt_printer = pdrivers.nullprinter(
+                    name="disabled-printer")
             else:
-                printer.driver = val
-                lockscreen.CheckPrinter("Receipt printer", printer.driver)
+                tillconfig.receipt_printer = val
+                lockscreen.CheckPrinter("Receipt printer", val)
+        elif opt == "cash_drawer":
+            if args.disable_printer:
+                tillconfig.cash_drawer = pdrivers.nullprinter(
+                    name="disabled-cash-drawer")
+            else:
+                tillconfig.cash_drawer = val
         elif opt == 'labelprinters':
-            printer.labelprinters = val
+            tillconfig.label_printers = val
         elif opt == 'database':
             tillconfig.database = val
         elif opt == 'all_payment_methods':
+            # This will be obsolete as of version 23 and should show
+            # a warning if present
             tillconfig.all_payment_methods = val
         elif opt == 'payment_methods':
+            # This will be obsolete as of version 23 and should show
+            # a warning if present
             tillconfig.payment_methods = val
         elif opt == 'keyboard_driver':
             tillconfig.keyboard_driver = val
@@ -609,9 +620,12 @@ def main():
         else:
             log.warning("Unknown configuration option '%s'", opt)
 
-    if printer.driver is None:
+    if tillconfig.receipt_printer is None:
         log.info("no printer configured: using nullprinter()")
-        printer.driver = pdrivers.nullprinter()
+        tillconfig.receipt_printer = pdrivers.nullprinter()
+
+    if tillconfig.cash_drawer is None:
+        tillconfig.cash_drawer = tillconfig.receipt_printer
 
     if args.database is not None:
         tillconfig.database = args.database

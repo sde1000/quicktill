@@ -8,10 +8,6 @@ from . import config
 import datetime
 now = datetime.datetime.now
 
-# XXX should be in tillconfig?
-driver = None
-labelprinters = []
-
 # Do we print check digits on stock labels?
 checkdigit_print = config.BooleanConfigItem(
     'core:checkdigit_print', False, display_name="Print check digits?",
@@ -28,7 +24,7 @@ def print_receipt(transid):
         return
     if not trans.lines:
         return
-    with driver as d:
+    with tillconfig.receipt_printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         for i in tillconfig.pubaddr().splitlines():
             d.printline(f"\t{i}", colour=1)
@@ -109,7 +105,7 @@ def print_receipt(transid):
 
 
 def print_sessioncountup(s):
-    with driver as d:
+    with tillconfig.receipt_printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline(f"\tSession {s.id}", colour=1)
         d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
@@ -155,7 +151,7 @@ def print_sessiontotals(session_id):
     till_totals = dict(s.payment_totals)
     actual_totals = dict((x.paytype, x.amount) for x in s.actual_totals)
 
-    with driver as d:
+    with tillconfig.receipt_printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline(f"\tSession {s.id}", colour=1)
         d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
@@ -209,7 +205,7 @@ def print_deferred_payment_wrapper(trans, paytype, amount, user_name):
     Print a wrapper for money (cash, etc.) to be set aside to use
     towards paying a part-paid transaction in a future session.
     """
-    with driver as d:
+    with tillconfig.receipt_printer as d:
         for i in range(4):
             d.printline(f"\t{tillconfig.pubname}", emph=1)
             d.printline(f"\tDeferred transaction {trans.id}", emph=1)
@@ -294,7 +290,7 @@ def print_restock_list(rl):
     We can't assume that any of these objects are in the current
     session.
     """
-    with driver as d:
+    with tillconfig.receipt_printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline("\tRe-stock list")
         d.printline(f"\tPrinted {ui.formattime(now())}")
@@ -325,7 +321,7 @@ def kickout():
     with ui.exception_guard("kicking out the cash drawer",
                             title="Printer error"):
         try:
-            driver.kickout()
+            tillconfig.cash_drawer.kickout()
         except pdrivers.PrinterError as e:
             ui.infopopup([f"Could not kick out the cash drawer: {e.desc}"],
                          title="Printer problem")

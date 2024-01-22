@@ -55,7 +55,7 @@ def print_stocklist_menu(sinfo, title):
     td.s.add_all(sinfo)
     menu = [(f"Print labels on {x}",
              printer.stocklabel_print, (x, sinfo))
-            for x in printer.labelprinters]
+            for x in tillconfig.label_printers]
     ui.automenu(menu, title="Stock print options", colour=ui.colour_confirm)
 
 
@@ -313,7 +313,7 @@ def correct_stocktype():
 @user.permission_required(
     'reprint-stocklabel', 'Re-print a single stock label')
 def reprint_stocklabel():
-    if not printer.labelprinters:
+    if not tillconfig.label_printers:
         ui.infopopup(["There are no label printers configured."],
                      title="Error")
         return
@@ -329,7 +329,7 @@ def reprint_stocklabel_choose_printer(item):
         text="Re-printed stock label"))
     menu = [(f"Print label on {x}",
              printer.stocklabel_print, (x, [item]))
-            for x in printer.labelprinters]
+            for x in tillconfig.label_printers]
     ui.automenu(menu, title="Choose where to print label",
                 colour=ui.colour_confirm)
 
@@ -451,7 +451,7 @@ def _finish_print_pricelist(dept_id, include_all):
         l = l.filter(StockItem.stocklineid != None)
     l = l.all()
 
-    with printer.driver as d:
+    with tillconfig.receipt_printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline()
         d.printline("\tPrice List", colour=1)

@@ -170,7 +170,7 @@ def debug_menu():
 
     def raise_print_exception():
         with ui.exception_guard("testing exception raised in printer driver"):
-            with printer.driver as d:
+            with tillconfig.receipt_printer as d:
                 d.printline("This line is printed before the exception")
                 raise Exception
 

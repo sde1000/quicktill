@@ -20,6 +20,10 @@ terminal_name = "default"
 keyboard = None
 keyboard_right = None
 
+receipt_printer = None
+label_printers = []
+cash_drawer = None
+
 pubname = config.ConfigItem(
     'core:sitename', "Default site name", display_name="Site name",
     description="Site name to be printed on receipts")

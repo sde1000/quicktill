@@ -5,7 +5,7 @@ import traceback
 import datetime
 import hashlib
 import logging
-from . import ui, keyboard, td, printer, tillconfig, user
+from . import ui, keyboard, td, tillconfig, user
 from . import lockscreen
 from . import register
 from .models import zero, penny
@@ -324,7 +324,7 @@ class popup(user.permission_checked, ui.basicpopup):
         self.h = 20
         self.w = 64
         kpprob = self._kitchenprinter_problem()
-        rpprob = printer.driver.offline()
+        rpprob = tillconfig.receipt_printer.offline()
         if kpprob and rpprob:
             ui.infopopup(
                 ["Both the kitchen printer and receipt printer report "
@@ -431,7 +431,7 @@ class popup(user.permission_checked, ui.basicpopup):
 
     def finish(self, tablenumber):
         # Check on the printer before we do any work...
-        rpprob = printer.driver.offline()
+        rpprob = tillconfig.receipt_printer.offline()
         if rpprob:
             ui.infopopup(
                 ["The receipt printer is reporting a problem.  Please fix it "
@@ -466,7 +466,7 @@ class popup(user.permission_checked, ui.basicpopup):
         if r == True:
             user = ui.current_user()
             with ui.exception_guard("printing the customer copy"):
-                print_food_order(printer.driver, number, self.ml,
+                print_food_order(tillconfig.receipt_printer, number, self.ml,
                                  verbose=True, tablenumber=tablenumber,
                                  footer=self.footer, transid=self.transid,
                                  print_total=self.print_total)
@@ -482,7 +482,7 @@ class popup(user.permission_checked, ui.basicpopup):
                     sys.exc_info()[0], sys.exc_info()[1])
                 try:
                     print_food_order(
-                        printer.driver, number, self.ml,
+                        tillconfig.receipt_printer, number, self.ml,
                         verbose=False, tablenumber=tablenumber,
                         footer=self.footer, transid=self.transid,
                         user=user.shortname if user else None)

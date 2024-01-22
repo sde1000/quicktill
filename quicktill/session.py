@@ -125,7 +125,7 @@ def confirmendsession():
     if not r:
         return
     # Check that the printer has paper before ending the session
-    pp = printer.driver.offline()
+    pp = tillconfig.receipt_printer.offline()
     if pp:
         ui.infopopup(["Could not end the session: there is a problem with "
                       f"the printer: {pp}"], title="Printer problem")
