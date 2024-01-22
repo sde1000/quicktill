@@ -413,6 +413,11 @@ class popup(user.permission_checked, ui.basicpopup):
                  message_department, allowable_departments,
                  ordernumberfunc=td.foodorder_ticket,
                  requests_session=None):
+        if not tillconfig.receipt_printer:
+            ui.infopopup(["This till doesn't have a receipt printer, and "
+                          "cannot be used to take food orders. Use a "
+                          "till with a printer instead."], title="Error")
+            return
         self.kitchenprinters = kitchenprinters
         self.message_department = message_department
         if not requests_session:

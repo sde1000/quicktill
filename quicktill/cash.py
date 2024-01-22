@@ -50,6 +50,7 @@ class Cash(payment.PaymentDriver):
         self._change_description = c.get('change_description', 'Change')
         self._drawers = c.get('drawers', 1)
         self._countup = c.get('countup', _default_countup)
+        self._require_cash_drawer = c.get('require-cash-drawer', True)
         self._total_fields = [
             (f"Tray {t + 1}", ui.validate_float, self._countup)
             for t in range(self._drawers)]
@@ -67,6 +68,11 @@ class Cash(payment.PaymentDriver):
         return payment.pline(p)
 
     def start_payment(self, reg, transid, amount, outstanding):
+        if self._require_cash_drawer and not tillconfig.cash_drawer:
+            ui.infopopup(["This till doesn't have a cash drawer. Use "
+                          "a till with a cash drawer to take a cash payment."],
+                         title="Error")
+            return
         trans = td.s.query(Transaction).get(transid)
         description = self.paytype.description
         if amount < zero:
@@ -93,7 +99,8 @@ class Cash(payment.PaymentDriver):
         r = [payment.pline(p)]
         if c:
             r.append(payment.pline(c))
-        printer.kickout()
+        if tillconfig.cash_drawer:
+            printer.kickout(tillconfig.cash_drawer)
         reg.add_payments(transid, r)
 
     @user.permission_required("cancel-cash-payment", "Cancel a cash payment")

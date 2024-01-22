@@ -1,6 +1,7 @@
 import logging
 from . import keyboard, ui, td, printer, user, linekeys, modifiers
 from . import stocktype
+from . import tillconfig
 from .models import Department, StockLine, KeyboardBinding
 from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
@@ -23,7 +24,12 @@ def restock_list(stockline_list):
         ui.infopopup(["There is no stock to be put on display."],
                      title="Stock movement")
         return
-    printer.print_restock_list(sl)
+    if not tillconfig.receipt_printer:
+        ui.infopopup(["This till does not have a receipt printer. "
+                      "Use a till with a receipt printer to print out "
+                      "the restock list."], title="Error")
+        return
+    printer.print_restock_list(tillconfig.receipt_printer, sl)
     user.log("Printed restock list")
     ui.infopopup(
         ["The list of stock to be put on display has been printed.", "",
@@ -135,7 +141,12 @@ def return_stock(stockline):
                       "this line."], title="Remove stock")
         return
     restock = [(stockline, rsl)]
-    printer.print_restock_list(restock)
+    if not tillconfig.receipt_printer:
+        ui.infopopup(["This till has no receipt printer. Use a till "
+                      "with a printer to print the list of stock to "
+                      "be taken off display."], title="Error")
+        return
+    printer.print_restock_list(tillconfig.receipt_printer, restock)
     ui.infopopup(
         ["The list of stock to be taken off display has been printed.",
          "", "Press Cash/Enter to "

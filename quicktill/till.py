@@ -22,7 +22,6 @@ from pathlib import Path
 from types import ModuleType
 from . import ui
 from . import td
-from . import printer
 from . import lockscreen
 from . import tillconfig
 from . import user
@@ -569,14 +568,15 @@ def main():
     # Process the configuration
     for opt, val in config.items():
         if opt == 'printer':
-            if args.disable_printer:
+            if val and args.disable_printer:
                 tillconfig.receipt_printer = pdrivers.nullprinter(
                     name="disabled-printer")
             else:
                 tillconfig.receipt_printer = val
-                lockscreen.CheckPrinter("Receipt printer", val)
+                if val:
+                    lockscreen.CheckPrinter("Receipt printer", val)
         elif opt == "cash_drawer":
-            if args.disable_printer:
+            if val and args.disable_printer:
                 tillconfig.cash_drawer = pdrivers.nullprinter(
                     name="disabled-cash-drawer")
             else:
@@ -620,9 +620,11 @@ def main():
         else:
             log.warning("Unknown configuration option '%s'", opt)
 
-    if tillconfig.receipt_printer is None:
-        log.info("no printer configured: using nullprinter()")
-        tillconfig.receipt_printer = pdrivers.nullprinter()
+    if tillconfig.receipt_printer:
+        # Check that the receipt printer driver is of an appropriate type
+        if tillconfig.receipt_printer.canvastype != "receipt":
+            print("Invalid receipt printer configuration")
+            sys.exit(1)
 
     if tillconfig.cash_drawer is None:
         tillconfig.cash_drawer = tillconfig.receipt_printer

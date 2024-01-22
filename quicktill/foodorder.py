@@ -280,6 +280,11 @@ class popup(user.permission_checked, ui.basicpopup):
 
     def __init__(self, func, transid, menuurl, kitchenprinters,
                  ordernumberfunc=td.foodorder_ticket):
+        if not tillconfig.receipt_printer:
+            ui.infopopup(["This till doesn't have a receipt printer, and "
+                          "cannot be used to take food orders. Use a "
+                          "till with a printer instead."], title="Error")
+            return
         self.kitchenprinters = kitchenprinters
         g = None
         with ui.exception_guard("reading the menu"):

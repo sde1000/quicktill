@@ -176,8 +176,8 @@ class _cardpopup(ui.dismisspopup):
             r.append(pt.driver._cashback_method.driver.add_payment(
                 trans, f"{pt.description} cashback",
                 zero - cashback))
-        if cashback > zero or pt.driver._kickout:
-            printer.kickout()
+        if (cashback > zero or pt.driver._kickout) and tillconfig.cash_drawer:
+            printer.kickout(tillconfig.cash_drawer)
         td.s.flush()
         self.reg.add_payments(self.transid, r)
 
@@ -366,6 +366,11 @@ class Card(payment.PaymentDriver):
                      f"the till later."],
                     title=f"{self.paytype} transactions not allowed")
                 return
+        if self._kickout and not tillconfig.cash_drawer:
+            ui.infopopup(["This till doesn't have a cash drawer for you "
+                          "to put the card receipt in. Use a different till "
+                          "to take the card payment."], title="Error")
+            return
         if amount < zero:
             if amount < outstanding:
                 ui.infopopup(

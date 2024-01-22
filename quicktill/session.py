@@ -19,6 +19,11 @@ sessiontotal_print = config.BooleanConfigItem(
     description="Should session totals be printed after they have been "
     "confirmed?")
 
+sessioncountup_print = config.BooleanConfigItem(
+    'core:sessioncountup_print', True, display_name="Print countup sheets?",
+    description="Should a counting-up sheet be printed when a session "
+    "is closed?")
+
 
 def trans_restore():
     """Restore deferred transactions
@@ -75,7 +80,8 @@ class ssdialog(ui.dismisspopup):
         log.info("Started session number %d", sc.id)
         user.log(f"Started session {sc.logref}")
         payment.notify_session_start(sc)
-        printer.kickout()
+        if tillconfig.cash_drawer:
+            printer.kickout(tillconfig.cash_drawer)
         if deferred:
             deferred = [
                 "",
@@ -103,6 +109,13 @@ def start():
 
 
 def checkendsession():
+    if sessioncountup_print() and not tillconfig.receipt_printer:
+        log.info("End session: no receipt printer")
+        ui.infopopup(["This till does not have a receipt printer. Use "
+                      "a different till to close the session and print "
+                      "the counting-up sheet."],
+                     title="Error")
+        return
     sc = Session.current(td.s)
     if sc is None:
         log.info("End session: no session in progress")
@@ -124,12 +137,13 @@ def confirmendsession():
     r = checkendsession()
     if not r:
         return
-    # Check that the printer has paper before ending the session
-    pp = tillconfig.receipt_printer.offline()
-    if pp:
-        ui.infopopup(["Could not end the session: there is a problem with "
-                      f"the printer: {pp}"], title="Printer problem")
-        return
+    if sessioncountup_print():
+        # Check that the printer has paper before ending the session
+        pp = tillconfig.receipt_printer.offline()
+        if pp:
+            ui.infopopup(["Could not end the session: there is a problem with "
+                          f"the printer: {pp}"], title="Printer problem")
+            return
     r.endtime = datetime.datetime.now()
     log.info("End of session %d confirmed.", r.id)
     user.log(f"Ended session {r.logref}")
@@ -139,11 +153,13 @@ def confirmendsession():
                   "actual amounts using management option 1, 3."],
                  title="Session Ended", colour=ui.colour_info,
                  dismiss=keyboard.K_CASH)
-    ui.toast("Printing the countup sheet.")
-    with ui.exception_guard("printing the session countup sheet",
-                            title="Printer error"):
-        printer.print_sessioncountup(r)
-    printer.kickout()
+    if sessioncountup_print():
+        ui.toast("Printing the countup sheet.")
+        with ui.exception_guard("printing the session countup sheet",
+                                title="Printer error"):
+            printer.print_sessioncountup(tillconfig.receipt_printer, r.id)
+        if tillconfig.cash_drawer:
+            printer.kickout(tillconfig.cash_drawer)
     managestock.stock_purge_internal(source="session end")
     payment.notify_session_end(r)
 
@@ -249,6 +265,12 @@ class record(ui.dismisspopup):
     ffw = 13
 
     def __init__(self, sessionid):
+        if sessiontotal_print() and not tillconfig.receipt_printer:
+            ui.infopopup(["This till does not have a receipt printer "
+                          "to print the session totals after they have "
+                          "been recorded. Use a till that has a printer."],
+                         title="Error")
+            return
         log.info("Record session takings popup: session %d", sessionid)
         self.sessionid = sessionid
         s = td.s.query(Session).get(sessionid)
@@ -429,17 +451,24 @@ class record(ui.dismisspopup):
         self.dismiss()
         for i in SessionHooks.instances:
             i.postRecordSessionTakings(session.id)
-        if sessiontotal_print():
+        if sessiontotal_print() and tillconfig.receipt_printer:
             ui.toast("Printing the confirmed session totals.")
             with ui.exception_guard("printing the confirmed session totals",
                                     title="Printer error"):
-                printer.print_sessiontotals(session.id)
+                printer.print_sessiontotals(
+                    tillconfig.receipt_printer, session.id)
         else:
             ui.toast(f"Totals for session {session.id} confirmed.")
 
 
 @user.permission_required('record-takings', "Record takings for a session")
 def recordtakings():
+    if sessiontotal_print() and not tillconfig.receipt_printer:
+        ui.infopopup(["This till does not have a receipt printer "
+                      "to print the session totals after they have "
+                      "been recorded. Use a till that has a printer."],
+                     title="Error")
+        return
     m = sessionlist(record, unpaidonly=True, closedonly=True)
     if len(m) == 0:
         log.info("Record takings: no sessions available")
@@ -505,11 +534,12 @@ def totalpopup(sessionid):
             dept.id, dept.description, tillconfig.fc(total)))
         dt = dt + total
     l.append(ui.tableformatter(" l pr ")("Total", tillconfig.fc(dt)))
-    l.append("")
-    l.append(" Press Print for a hard copy ")
-    keymap = {
-        keyboard.K_PRINT: (printer.print_sessiontotals, (s.id,), False),
-    }
+    keymap = {}
+    if tillconfig.receipt_printer:
+        l.append("")
+        l.append(" Press Print for a hard copy ")
+        keymap[keyboard.K_PRINT] = (printer.print_sessiontotals, (
+            tillconfig.receipt_printer, s.id), False)
     ui.listpopup(l,
                  title=f"Session number {s.id}",
                  colour=ui.colour_info, keymap=keymap,

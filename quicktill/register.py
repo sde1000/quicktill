@@ -1855,13 +1855,16 @@ class page(ui.basicpage):
                 if self.user.may('nosale'):
                     if self.hook("nosale"):
                         return
-                    if printer.kickout():
-                        ui.toast("No Sale has been recorded.")
-                        # Finally!  We're not lying any more!
-                        user.log("No Sale")
-                        if lock_after_nosale():
-                            self.locked = True
-                            self._redraw()
+                    if tillconfig.cash_drawer:
+                        if printer.kickout(tillconfig.cash_drawer):
+                            ui.toast("No Sale has been recorded.")
+                            # Finally!  We're not lying any more!
+                            user.log("No Sale")
+                    else:
+                        ui.toast("No Sale")
+                    if lock_after_nosale():
+                        self.locked = True
+                        self._redraw()
                 else:
                     ui.infopopup(["You don't have permission to use "
                                   "the No Sale function."], title="No Sale")
@@ -2185,12 +2188,16 @@ class page(ui.basicpage):
                           "if you have its number using the option under "
                           "'Manage Till'."], title="Error")
             return
+        if not tillconfig.receipt_printer:
+            ui.infopopup(["This till does not have a receipt printer."],
+                         title="Error")
+            return
         log.info("Register: printing transaction %d", trans.id)
         user.log(f"Printed {trans.state} transaction {trans.logref} "
                  f"from register")
         ui.toast("The receipt is being printed.")
         with ui.exception_guard("printing the receipt", title="Printer error"):
-            printer.print_receipt(trans.id)
+            printer.print_receipt(tillconfig.receipt_printer, trans.id)
 
     def cancelkey(self):
         """The cancel key was pressed.
@@ -2414,7 +2421,10 @@ class page(ui.basicpage):
             self.transid = None
             td.s.flush()
             if payments > zero:
-                printer.kickout()
+                # XXX this is looking at all payments, not just those that
+                # go in the cash drawer.
+                if tillconfig.cash_drawer:
+                    printer.kickout(tillconfig.cash_drawer)
                 refundtext = f"{tillconfig.fc(payments)} had already been "\
                     f"put in the cash drawer."
             else:
@@ -2761,6 +2771,17 @@ class page(ui.basicpage):
             # cash to use towards paying it
 
             if nds != zero:
+                if not tillconfig.receipt_printer:
+                    ui.infopopup(
+                        ["The till needs to print a ticket to wrap the "
+                         "money for this part-paid transaction, but it "
+                         "doesn't have a receipt printer.",
+                         "",
+                         "Use a till with a receipt printer to defer "
+                         "this transaction."],
+                        title="Error - no printer")
+                    td.s.rollback()
+                    return
                 user.log(f"Deferred transaction {trans.logref} which was "
                          f"part-paid by {tillconfig.fc(nds)}")
                 defer_pm.driver.add_payment(ptrans, "Deferred", zero - nds)
@@ -2774,8 +2795,9 @@ class page(ui.basicpage):
                     f"the customer.")
                 try:
                     printer.print_deferred_payment_wrapper(
+                        tillconfig.receipt_printer,
                         trans, defer_pm, nds, self.user.fullname)
-                    printer.kickout()
+                    printer.kickout(tillconfig.cash_drawer)
                 except Exception as e:
                     ui.infopopup(
                         ["There was an error printing the deferred payment "

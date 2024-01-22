@@ -19,6 +19,10 @@ class receiptprint(user.permission_checked, ui.dismisspopup):
                            'Print any receipt given the transaction number')
 
     def __init__(self):
+        if not tillconfig.receipt_printer:
+            ui.infopopup(["This till does not have a receipt printer."],
+                         title="Error")
+            return
         super().__init__(5, 30, title="Receipt print",
                          dismiss=keyboard.K_CLEAR,
                          colour=ui.colour_input)
@@ -46,7 +50,7 @@ class receiptprint(user.permission_checked, ui.dismisspopup):
         user.log(f"Printed {trans.state} transaction {trans.logref} "
                  f"from transaction number")
         with ui.exception_guard("printing the receipt", title="Printer error"):
-            printer.print_receipt(rn)
+            printer.print_receipt(tillconfig.receipt_printer, rn)
 
 
 @user.permission_required('version', 'See version information')

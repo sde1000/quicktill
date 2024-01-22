@@ -18,13 +18,13 @@ checkdigit_print = config.BooleanConfigItem(
 # This should be the case if called during a keypress!  If being used
 # in any other context, use with td.orm_session(): around the call.
 
-def print_receipt(transid):
+def print_receipt(printer, transid):
     trans = td.s.query(Transaction).get(transid)
     if trans is None:
         return
     if not trans.lines:
         return
-    with tillconfig.receipt_printer as d:
+    with printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         for i in tillconfig.pubaddr().splitlines():
             d.printline(f"\t{i}", colour=1)
@@ -104,8 +104,11 @@ def print_receipt(transid):
         d.printline(f"\t{ui.formatdate(trans.session.date)}")
 
 
-def print_sessioncountup(s):
-    with tillconfig.receipt_printer as d:
+def print_sessioncountup(printer, sessionid):
+    s = td.s.query(Session).get(sessionid)
+    if s is None:
+        return
+    with printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline(f"\tSession {s.id}", colour=1)
         d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
@@ -141,17 +144,19 @@ def print_sessioncountup(s):
         d.printline("management menu option 1,3.")
 
 
-def print_sessiontotals(session_id):
+def print_sessiontotals(printer, sessionid):
     """Print a session totals report given a Session id.
     """
-    s = td.s.query(Session).get(session_id)
+    s = td.s.query(Session).get(sessionid)
+    if s is None:
+        return
     printtime = ui.formattime(now())
     depts = s.dept_totals
     # Let's use the payment type as the dict key
     till_totals = dict(s.payment_totals)
     actual_totals = dict((x.paytype, x.amount) for x in s.actual_totals)
 
-    with tillconfig.receipt_printer as d:
+    with printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline(f"\tSession {s.id}", colour=1)
         d.printline(f"\t{ui.formatdate(s.date)}", colour=1)
@@ -199,13 +204,13 @@ def print_sessiontotals(session_id):
         d.printline(f"\tPrinted {printtime}")
 
 
-def print_deferred_payment_wrapper(trans, paytype, amount, user_name):
+def print_deferred_payment_wrapper(printer, trans, paytype, amount, user_name):
     """Print a wrapper for a deferred payment
 
     Print a wrapper for money (cash, etc.) to be set aside to use
     towards paying a part-paid transaction in a future session.
     """
-    with tillconfig.receipt_printer as d:
+    with printer as d:
         for i in range(4):
             d.printline(f"\t{tillconfig.pubname}", emph=1)
             d.printline(f"\tDeferred transaction {trans.id}", emph=1)
@@ -282,7 +287,7 @@ def stocklabel_print(p, sl):
             stock_label(d, sd)
 
 
-def print_restock_list(rl):
+def print_restock_list(printer, rl):
     """
     Print a list of (stockline,stockmovement) tuples.
     A stockmovement tuple is (stockitem,fetchqty,newdisplayqty,qtyremain).
@@ -290,7 +295,7 @@ def print_restock_list(rl):
     We can't assume that any of these objects are in the current
     session.
     """
-    with tillconfig.receipt_printer as d:
+    with printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         d.printline("\tRe-stock list")
         d.printline(f"\tPrinted {ui.formattime(now())}")
@@ -313,7 +318,7 @@ def print_restock_list(rl):
         d.printline("\tEnd of list")
 
 
-def kickout():
+def kickout(drawer):
     """Kick out the cash drawer.
 
     Returns True if successful.
@@ -321,7 +326,7 @@ def kickout():
     with ui.exception_guard("kicking out the cash drawer",
                             title="Printer error"):
         try:
-            tillconfig.cash_drawer.kickout()
+            drawer.kickout()
         except pdrivers.PrinterError as e:
             ui.infopopup([f"Could not kick out the cash drawer: {e.desc}"],
                          title="Printer problem")
