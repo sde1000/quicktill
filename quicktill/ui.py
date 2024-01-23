@@ -1316,7 +1316,7 @@ class keymenu(listpopup):
         self._colour = colour
         self._not_allowed_colour = colour_error
         lines = [_keymenuline(self, *x) for x in itemlist]
-        self.promptwidth = max(len(l.prompt) for l in lines)
+        self.promptwidth = max((len(l.prompt) for l in lines), default=0)
         for keycode, desc, func_, args in itemlist:
             km[keycode] = (func_, args, dismiss_on_select)
         self.menukeys = km
