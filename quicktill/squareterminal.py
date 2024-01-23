@@ -18,7 +18,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-api_version = "2022-08-23"
+api_version = "2024-01-18"
 
 minimum_charge = "1.00"
 
@@ -1074,16 +1074,14 @@ class _ManageTerminal(ui.dismisspopup):
     def update_disabled(self, new_disabled_state=None):
         driver = _load_driver(self.paytype)
         state = driver._read_state(lock=new_disabled_state is not None)
+        for t in state["devices"]:
+            if t["id"] == self.terminal["id"]:
+                self.terminal = t
+                break
         if new_disabled_state is not None:
-            if new_disabled_state:
-                if self.terminal["id"] not in state["disabled"]:
-                    state["disabled"].append(self.terminal["id"])
-            else:
-                if self.terminal["id"] in state["disabled"]:
-                    state["disabled"].remove(self.terminal["id"])
+            self.terminal["disabled"] = new_disabled_state
             driver._save_state(state)
-        self.disabled.set("Yes" if self.terminal["id"] in state["disabled"]
-                          else "No")
+        self.disabled.set("Yes" if self.terminal["disabled"] else "No")
 
 
 def _manage_terminals(paytype):
@@ -1098,13 +1096,12 @@ def _manage_terminals(paytype):
         return
     state = d._read_state()
     terminals = state["devices"]
-    disabled = state["disabled"]
     f = ui.tableformatter(" l l l l ")
     header = f("Name", "Code", "Device ID", "State")
     menu = [("Add new terminal", _NewTerminal, (d.paytype.paytype,))]
     menu.extend(
-        (f(t['name'], t['code'], t['device_id'],
-           "Disabled" if t['id'] in disabled else "Available"),
+        (f(t['name'], t['code'], t['device_id'][:18],
+           "Disabled" if t['disabled'] else "Available"),
          _ManageTerminal, (paytype, t))
         for t in terminals)
     ui.menu(menu, blurb=[header], title="Manage terminals")
@@ -1278,15 +1275,24 @@ class SquareTerminal(payment.PaymentDriver):
                     loc = s.get_location(self._location)
                     state['currency'] = loc.currency
                 if refresh or 'devices' not in state:
-                    devicecodes = s.list_device_codes(self._location)
-                    state['devices'] = [x.as_state() for x in devicecodes]
-                # 'disabled' is a list of device code IDs that are not
-                # to be offered to the user when starting
-                # payments. Ensure that all the device code IDs in the
-                # 'disabled' list still exist.
-                devicecode_ids = [x['id'] for x in state['devices']]
-                state['disabled'] = [i for i in state.get('disabled', [])
-                                     if i in devicecode_ids]
+                    prev_devices = {
+                        d['id']: d for d in state.get('devices', [])}
+                    devicecodes = [x.as_state() for x in s.list_device_codes(
+                        self._location)]
+                    if self._sandbox_mode:
+                        devicecodes = devicecodes + [
+                            {'id': key,
+                             'name': val,
+                             'code': 'TESTXX',
+                             'device_id': key,
+                             } for key, val in sandbox_devices.items()]
+                    # Migrate settings from previous version of device
+                    # list
+                    for d in devicecodes:
+                        pd = prev_devices.get(d['id'], {})
+                        d['disabled'] = pd.get('disabled', False)
+                    state['devices'] = devicecodes
+                state.pop("disabled", None)  # remove obsolete key
                 self._save_state(state)
         return state
 
@@ -1339,9 +1345,7 @@ class SquareTerminal(payment.PaymentDriver):
         state = self._check_state()
 
         devices = [(ds['device_id'], ds['name']) for ds in state['devices']
-                   if ds['id'] not in state['disabled']]
-        if self._sandbox_mode:
-            devices.extend(sandbox_devices.items())
+                   if not ds.get('disabled', False)]
         idk = idempotency_key()
         square_amount = Money.from_decimal(amount, state["currency"])
         menu = [
