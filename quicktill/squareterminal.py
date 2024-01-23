@@ -912,6 +912,18 @@ class _NewTerminal(ui.dismisspopup):
                      dismiss=K_CASH)
 
 
+def _terminal_availability(t):
+    if t.get('disabled', False):
+        return "Disabled"
+    if tillconfig.terminal_name in t.get('exclude', []):
+        return "Excluded"
+    if t.get('exclusive'):
+        if t['exclusive'] == tillconfig.terminal_name:
+            return "Available (exclusive)"
+        return f"Exclusive to {t['exclusive']}"
+    return "Available"
+
+
 class _ManageTerminal(ui.dismisspopup):
     """Popup window that fetches terminal details
 
@@ -943,10 +955,9 @@ class _ManageTerminal(ui.dismisspopup):
         self.win.drawstr(3, 17, 30, terminal["code"])
         self.win.drawstr(4, 2, 15, "Device ID: ", align=">")
         self.win.drawstr(4, 17, 30, terminal["device_id"])
-        self.win.drawstr(5, 2, 15, "Disabled? ", align=">")
-        self.win.drawstr(13, 2, 56, "Press 1 to enable the terminal or 0 to "
-                         "disable it.")
-        self.disabled = ui.label(5, 17, 10)
+        self.win.drawstr(5, 2, 15, "State: ", align=">")
+        self.win.drawstr(13, 2, 56, "Press 1 for terminal management options.")
+        self.state = ui.label(5, 17, 30)
         self.win.drawstr(7, 2, 24, "Fetching device status: ", align=">")
         self.status = ui.label(7, 26, 30, contents="Connecting to Square")
         self.session = driver.api_session()
@@ -957,7 +968,7 @@ class _ManageTerminal(ui.dismisspopup):
         self.timeout = tillconfig.mainloop.add_timeout(
             0.1, self.update, "square manageterminal init")
         self.timeout_length = self._timeout_policy()
-        self.update_disabled()
+        self.state.set(_terminal_availability(self.terminal))
 
     @staticmethod
     def _timeout_policy():
@@ -988,9 +999,7 @@ class _ManageTerminal(ui.dismisspopup):
 
     def keypress(self, k):
         if k == "1":
-            self.update_disabled(new_disabled_state=False)
-        elif k == "0":
-            self.update_disabled(new_disabled_state=True)
+            self.management_menu()
         else:
             super().keypress(k)
 
@@ -1071,17 +1080,44 @@ class _ManageTerminal(ui.dismisspopup):
         else:
             self.status.set("Unknown response status")
 
-    def update_disabled(self, new_disabled_state=None):
+    def management_menu(self):
+        menu = [
+            ("Enable the terminal generally" if self.terminal["disabled"]
+             else "Disable the terminal generally",
+             lambda: self.update_terminal(toggle_disable=True), None),
+            ("Release the terminal for general use"
+             if self.terminal["exclusive"] == tillconfig.terminal_name
+             else "Claim the terminal exclusively for this till",
+             lambda: self.update_terminal(toggle_exclusive=True), None),
+            ("Make the terminal available for use on this till"
+             if tillconfig.terminal_name in self.terminal["exclude"]
+             else "Hide the terminal from this till",
+             lambda: self.update_terminal(toggle_exclude=True), None),
+        ]
+        ui.automenu(menu, title="Terminal options", colour=ui.colour_confirm)
+
+    def update_terminal(self, toggle_disable=False, toggle_exclusive=False,
+                        toggle_exclude=False):
         driver = _load_driver(self.paytype)
-        state = driver._read_state(lock=new_disabled_state is not None)
+        state = driver._read_state(lock=True)
         for t in state["devices"]:
             if t["id"] == self.terminal["id"]:
                 self.terminal = t
                 break
-        if new_disabled_state is not None:
-            self.terminal["disabled"] = new_disabled_state
-            driver._save_state(state)
-        self.disabled.set("Yes" if self.terminal["disabled"] else "No")
+        if toggle_disable:
+            self.terminal["disabled"] = not self.terminal["disabled"]
+        if toggle_exclusive:
+            if self.terminal["exclusive"] == tillconfig.terminal_name:
+                self.terminal["exclusive"] = None
+            else:
+                self.terminal["exclusive"] = tillconfig.terminal_name
+        if toggle_exclude:
+            if tillconfig.terminal_name in self.terminal["exclude"]:
+                self.terminal["exclude"].remove(tillconfig.terminal_name)
+            else:
+                self.terminal["exclude"].append(tillconfig.terminal_name)
+        driver._save_state(state)
+        self.state.set(_terminal_availability(self.terminal))
 
 
 def _manage_terminals(paytype):
@@ -1101,7 +1137,7 @@ def _manage_terminals(paytype):
     menu = [("Add new terminal", _NewTerminal, (d.paytype.paytype,))]
     menu.extend(
         (f(t['name'], t['code'], t['device_id'][:18],
-           "Disabled" if t['disabled'] else "Available"),
+           _terminal_availability(t)),
          _ManageTerminal, (paytype, t))
         for t in terminals)
     ui.menu(menu, blurb=[header], title="Manage terminals")
@@ -1291,6 +1327,8 @@ class SquareTerminal(payment.PaymentDriver):
                     for d in devicecodes:
                         pd = prev_devices.get(d['id'], {})
                         d['disabled'] = pd.get('disabled', False)
+                        d['exclusive'] = pd.get('exclusive')
+                        d['exclude'] = pd.get('exclude', [])
                     state['devices'] = devicecodes
                 state.pop("disabled", None)  # remove obsolete key
                 self._save_state(state)
@@ -1345,7 +1383,7 @@ class SquareTerminal(payment.PaymentDriver):
         state = self._check_state()
 
         devices = [(ds['device_id'], ds['name']) for ds in state['devices']
-                   if not ds.get('disabled', False)]
+                   if _terminal_availability(ds).startswith("Available")]
         idk = idempotency_key()
         square_amount = Money.from_decimal(amount, state["currency"])
         menu = [
