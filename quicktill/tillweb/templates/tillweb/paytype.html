@@ -1,8 +1,19 @@
 {% extends "tillweb/tillweb.html" %}
+{% load static %}
 
 {% block title %}{{till}} — {{paytype.description}} payment method{% endblock %}
 
 {% block heading %}{{till}} — {{paytype.description}} payment method{% endblock %}
+
+{% block style %}
+{{ block.super }}
+<link rel="STYLESHEET" type="text/css" href="{% static "tillweb/json-viewer.css" %}" />
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script type="text/javascript" src="{% static "tillweb/json-viewer.js" %}"></script>
+{% endblock %}
 
 {% block tillcontent %}
 
@@ -33,7 +44,22 @@
 
 {% if paytype.state %}
 <h2>Internal state</h2>
-<p>{{paytype.state}}</p>
+<div class="json-state">{{paytype.state}}</div>
+
+<script type="text/javascript">
+  let elements = document.querySelectorAll('.json-state');
+
+  for (let elem of elements) {
+      try {
+	  jsonObj = JSON.parse(elem.innerText);
+	  elem.innerText = "";
+	  jsonViewer = new JSONViewer();
+	  elem.appendChild(jsonViewer.getContainer());
+	  jsonViewer.showJSON(jsonObj, null, 0);
+      } catch (err) {
+      }
+  }
+</script>
 {% endif %}
 
 <ul class="nav nav-tabs mb-2" id="tables" role="tablist">
