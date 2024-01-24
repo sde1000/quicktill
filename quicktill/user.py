@@ -1020,7 +1020,6 @@ class default_groups:
         "alter-stocktype",
         "add-custom-transline",
         "reprint-stocklabel",
-        "print-stocklist",
         "add-best-before",
         "create-stockline",
         "alter-stockline",
@@ -1055,3 +1054,4 @@ class default_groups:
 # that have been retired:
 
 # update-supplier - redundant, edit-supplier is used instead
+# print-stocklist - reprint-stocklabel is used instead

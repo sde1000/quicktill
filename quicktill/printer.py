@@ -235,13 +235,8 @@ def print_deferred_payment_wrapper(printer, trans, paytype, amount, user_name):
             d.printline()
 
 
-def label_print_delivery(p, delivery):
-    d = td.s.query(Delivery).get(delivery)
-    stocklabel_print(p, d.items)
-
-
 def stock_label(f, d):
-    """Draw a stock label (d) on a PDF canvas (f).
+    """Draw a stock label (d) on a PDF canvas (f). d is a Stock instance
     """
     width, height = f.getPageSize()
     fontsize = 12
@@ -277,14 +272,11 @@ def stock_label(f, d):
     f.showPage()
 
 
-def stocklabel_print(p, sl):
-    """Print stock labels for a list of stock numbers to the specified
-    printer.
-    """
-    td.s.add_all(sl)
-    with p as d:
-        for sd in sl:
-            stock_label(d, sd)
+def label_print_delivery(p, delivery):
+    d = td.s.query(Delivery).get(delivery)
+    with p as f:
+        for s in d.items:
+            stock_label(f, s)
 
 
 def print_restock_list(printer, rl):

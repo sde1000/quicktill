@@ -4,6 +4,7 @@
 
 import logging
 from . import ui, td, keyboard, tillconfig, linekeys, user
+from . import printer
 from .models import Department, StockType, StockItem, StockAnnotation
 from .models import AnnotationType, desc, StockLineTypeLog
 from . import config
@@ -14,6 +15,23 @@ log = logging.getLogger(__name__)
 checkdigit_on_usestock = config.BooleanConfigItem(
     'core:checkdigit_on_usestock', False, display_name="Require check digits?",
     description="Should check digits be enforced when putting stock on sale?")
+
+
+def _reprint_label(label_printer, stockid):
+    item = td.s.query(StockItem).get(stockid)
+    user.log(f"Re-printed stock label for {item.logref}")
+    with label_printer as f:
+        printer.stock_label(f, item)
+
+
+@user.permission_required(
+    'reprint-stocklabel', 'Re-print a single stock label')
+def reprint_stocklabel_choose_printer(stockid):
+    menu = [(f"Print label on {x}",
+             _reprint_label, (x, stockid))
+            for x in tillconfig.label_printers]
+    ui.automenu(menu, title="Choose where to print label",
+                colour=ui.colour_confirm)
 
 
 def stockinfo_linelist(sn):
@@ -46,11 +64,18 @@ def stockinfo_linelist(sn):
 
 
 def stockinfo_popup(sn):
-    ui.listpopup(stockinfo_linelist(sn),
+    km = {}
+    ll = stockinfo_linelist(sn)
+    if tillconfig.label_printers:
+        km[keyboard.K_PRINT] = (reprint_stocklabel_choose_printer, (sn,))
+        ll.append(f"Press {keyboard.K_PRINT.keycap} to re-print the "
+                  f"stock label")
+    ui.listpopup(ll,
                  title=f"Stock Item {sn}",
                  dismiss=keyboard.K_CASH,
                  show_cursor=False,
-                 colour=ui.colour_info)
+                 colour=ui.colour_info,
+                 keymap=km)
 
 
 class annotate(user.permission_checked, ui.dismisspopup):

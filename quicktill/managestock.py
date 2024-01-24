@@ -1,6 +1,6 @@
 """Implements the 'Manage Stock' menu."""
 
-from . import ui, td, keyboard, printer, user, usestock
+from . import ui, td, keyboard, user, usestock
 from . import stock, delivery, department, stocklines, stocktype
 from . import tillconfig
 from .models import Department, FinishCode, StockLine
@@ -49,16 +49,6 @@ def finishstock(dept=None):
                       check_checkdigits=False)
 
 
-@user.permission_required('print-stocklist',
-                          'Print a list of stock')
-def print_stocklist_menu(sinfo, title):
-    td.s.add_all(sinfo)
-    menu = [(f"Print labels on {x}",
-             printer.stocklabel_print, (x, sinfo))
-            for x in tillconfig.label_printers]
-    ui.automenu(menu, title="Stock print options", colour=ui.colour_confirm)
-
-
 def stockdetail(sinfo):
     # We are passed a list of StockItem objects
     td.s.add_all(sinfo)
@@ -69,10 +59,7 @@ def stockdetail(sinfo):
            stock.stockinfo_popup, (x.id,)) for x in sinfo]
     ui.menu(sl, title="Stock Detail", blurb="Select a stock item and press "
             "Cash/Enter for more information.",
-            dismiss_on_select=False, keymap={
-                keyboard.K_PRINT: (
-                    print_stocklist_menu, (sinfo, "Stock Check"), False)},
-            colour=ui.colour_confirm)
+            dismiss_on_select=False, colour=ui.colour_confirm)
 
 
 @user.permission_required('stock-check', 'List unfinished stock items')
@@ -118,9 +105,7 @@ def stockcheck(dept=None):
             else f"Stock Check department {dept}"
     ui.menu(sl, title=title, blurb="Select a stock type and press "
             "Cash/Enter for details on individual items.",
-            dismiss_on_select=False, keymap={
-                keyboard.K_PRINT:
-                (print_stocklist_menu, (sinfo, title), False)})
+            dismiss_on_select=False)
 
 
 @user.permission_required('stock-history', 'List finished stock')
@@ -310,28 +295,15 @@ def correct_stocktype():
         allownew=False)
 
 
-@user.permission_required(
-    'reprint-stocklabel', 'Re-print a single stock label')
 def reprint_stocklabel():
     if not tillconfig.label_printers:
         ui.infopopup(["There are no label printers configured."],
                      title="Error")
         return
-    stock.stockpicker(lambda x: reprint_stocklabel_choose_printer(x),
+    stock.stockpicker(lambda x: stock.reprint_stocklabel_choose_printer(x.id),
                       title="Re-print a single stock label",
                       filter=stock.stockfilter(),
                       check_checkdigits=False)
-
-
-def reprint_stocklabel_choose_printer(item):
-    td.s.add(StockAnnotation(
-        stockitem=item, atype="memo", user=user.current_dbuser(),
-        text="Re-printed stock label"))
-    menu = [(f"Print label on {x}",
-             printer.stocklabel_print, (x, [item]))
-            for x in tillconfig.label_printers]
-    ui.automenu(menu, title="Choose where to print label",
-                colour=ui.colour_confirm)
 
 
 @user.permission_required(
