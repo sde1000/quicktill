@@ -1,3 +1,41 @@
+quicktill (22.19) stable; urgency=low
+
+  * New release 22.19
+
+  * Optionally restrict stock label printing based on item unit
+
+  * Change stock label reprint options
+
+  * Add a datatable showing user tokens
+
+  * Add options to customise Square terminal availability per till
+
+  * Update how we store information about disabled Square terminals
+
+  * Add JSON viewer to payment method internal state in web interface
+
+  * Fix crash when keymenu has no items in it
+
+  * Support running without a receipt printer or cash drawer
+
+  * Move printer config from printer module to tillconfig
+
+  * Update example till configurations
+
+  * localutils: don't set K_APPS to None if no apps menu provided
+
+  * Add pages showing sales and payments independently of sessions
+
+  * Remove separate pages for sales per department per session
+
+  * Remove deferred-transactions view from transaction nav
+
+  * Add page showing all transactions in a datatable
+
+  * Datatable for transactions on session detail pages
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 24 Jan 2024 17:30:05 +0000
+
 quicktill (22.18) stable; urgency=low
 
   * New release 22.18
