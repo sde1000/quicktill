@@ -393,6 +393,9 @@ def maintenance():
 
 @user.permission_required("print-price-list", "Print a price list")
 def print_pricelist():
+    if not tillconfig.receipt_printer:
+        ui.infopopup(["This till does not have a printer."], title="Error")
+        return
     department.menu(_print_pricelist_options, "Print Price List",
                     allowall=True)
 
