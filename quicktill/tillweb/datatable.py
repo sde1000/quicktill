@@ -14,6 +14,7 @@ from quicktill.models import (
     Transaction,
     Payment,
     User,
+    UserToken,
     LogEntry,
     Transline,
     Department,
@@ -62,10 +63,14 @@ def _datatables_json(request, query, filtered_query, columns, rowfunc):
             if cexpr is not None:
                 order_columns.append(cexpr)
             else:
-                error = f'column {cname} not defined'
+                error = f'column {cname} not defined, valid columns are '\
+                    f'{list(columns.keys())}'
                 break
         else:
             break
+
+    if error:
+        return JsonResponse({'error': error})
 
     q = _datatables_order(filtered_query, order_columns, request.GET)
     q = _datatables_paginate(q, request.GET)
@@ -662,6 +667,39 @@ def users(request, info):
             'DT_RowClass': (
                 "table-warning" if not u.enabled else
                 "table-primary" if u.superuser else None),
+        })
+
+
+@tillweb_view
+def tokens(request, info):
+    columns = {
+        'token': UserToken.token,
+        'description': UserToken.description,
+        'last_seen': UserToken.last_seen,
+        'user': User.fullname,
+    }
+    q = td.s.query(UserToken)\
+            .join(User, isouter=True)\
+            .options(contains_eager(UserToken.user))
+
+    fq = q
+
+    search_value = request.GET.get("search[value]")
+    if search_value:
+        qs = [
+            columns['token'].ilike(f"%{search_value}%"),
+            columns['description'].ilike(f"%{search_value}%"),
+            columns['user'].ilike(f"%{search_value}%"),
+        ]
+        fq = fq.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda t: {
+            'token': t.token,
+            'description': t.description,
+            'last_seen': t.last_seen,
+            'user': t.user.fullname if t.user else None,
+            'user_url': t.user.get_absolute_url() if t.user else None,
         })
 
 

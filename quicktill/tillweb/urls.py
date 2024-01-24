@@ -110,6 +110,8 @@ tillurls = [
             name="tillweb-till-group"),
     path('new/group/', views.create_group, name="tillweb-create-till-group"),
 
+    path('token/', views.tokenlist, name="tillweb-tokens"),
+
     path('logs/', views.logsindex, name="tillweb-logs"),
     path('logs/<int:logid>', views.logdetail, name="tillweb-logentry"),
 
@@ -143,6 +145,8 @@ tillurls = [
          name="tillweb-datatable-logs"),
     path('datatable/users.json', datatable.users,
          name="tillweb-datatable-users"),
+    path('datatable/tokens.json', datatable.tokens,
+         name="tillweb-datatable-tokens"),
     path('datatable/depttotals.json', datatable.depttotals,
          name="tillweb-datatable-depttotals"),
     path('datatable/usertotals.json', datatable.usertotals,

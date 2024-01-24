@@ -2838,6 +2838,13 @@ def create_group(request, info):
 
 
 @tillweb_view
+def tokenlist(request, info):
+    return ('tokens.html', {
+        'nav': [("Tokens", info.reverse("tillweb-tokens"))],
+    })
+
+
+@tillweb_view
 def logsindex(request, info):
     return ('logs.html', {
         'nav': [("Logs", info.reverse("tillweb-logs"))],

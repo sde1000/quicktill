@@ -1,0 +1,55 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — User tokens{% endblock %}
+
+{% block tillcontent %}
+
+{% comment %}
+{% if may_create_token %}
+<a class="btn btn-primary mb-2" id="add_new_token_button" href="{% url "tillweb-create-token" pubname=pubname %}">Add new token</a>
+{% endif %}
+{% endcomment %}
+
+<table class="table table-sm table-striped" id="tokenlist">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">Token</th>
+      <th scope="col">Description</th>
+      <th scope="col">Last seen</th>
+      <th scope="col">Assigned user</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      const tokenlist_api = $("#tokenlist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-tokens" pubname=pubname %}',
+	      dataSrc: 'data',
+	  },
+	  columns: [
+	      { data: 'token',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'description',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'last_seen',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [2, 'asc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  });
+</script>
+
+{% endblock %}
