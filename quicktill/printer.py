@@ -235,6 +235,26 @@ def print_deferred_payment_wrapper(printer, trans, paytype, amount, user_name):
             d.printline()
 
 
+def print_delivery_checklist(printer, dn):
+    d = td.s.query(Delivery).get(dn)
+    if not d:
+        return
+    printtime = ui.formattime(now())
+    with printer as p:
+        p.printline(f"\tDelivery {dn} checklist")
+        p.printline(f"\tFrom {d.supplier.name}")
+        if d.docnumber:
+            p.printline(f"\tRef {d.docnumber}")
+        p.printline(f"\tPrinted {printtime}")
+        p.printline()
+        for item in d.items:
+            p.printline(f"{item.id}: {item.stocktype}")
+            p.printline(f"{item.description}\t\t[  ]")
+            p.printline()
+        p.printline()
+        p.printline()
+
+
 def stock_label(f, d):
     """Draw a stock label (d) on a PDF canvas (f). d is a Stock instance
     """
@@ -270,13 +290,6 @@ def stock_label(f, d):
     f.setFont(fontname, y - margin)
     f.drawCentredString(width / 2, margin, str(d.id))
     f.showPage()
-
-
-def label_print_delivery(p, delivery):
-    d = td.s.query(Delivery).get(delivery)
-    with p as f:
-        for s in d.items:
-            stock_label(f, s)
 
 
 def print_restock_list(printer, rl):

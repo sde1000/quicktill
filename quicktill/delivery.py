@@ -1,7 +1,9 @@
 from . import ui, stock, td, keyboard, printer, tillconfig, stocktype
 from . import user, usestock
+from . import config
 from decimal import Decimal
 from .models import Delivery, Supplier, StockUnit, StockItem
+from .models import StockType, Unit
 from .models import penny
 from .plugins import InstancePluginMount
 import datetime
@@ -10,6 +12,18 @@ from sqlalchemy.orm import joinedload
 
 import logging
 log = logging.getLogger(__name__)
+
+
+# Do we print stock labels for items where
+# StockItem.stocktype.unit.stocktake_by_items is False? (I.e. where
+# individual stock items will not be checked, only a total will be
+# entered.)
+label_everything = config.BooleanConfigItem(
+    'core:label_everything', False, display_name="Label all stock items?",
+    description="Should stock labels be printed for all items in a delivery, "
+    "including items that will not be checked individually during a stock "
+    "take? (I.e. where the Unit for the item's stock type has the stock take "
+    "method set to 'total quantity'.)")
 
 
 @user.permission_required('deliveries', "List deliveries")
@@ -241,13 +255,37 @@ class delivery(ui.basicpopup):
                 title="Confirm Delete",
                 keymap={keyboard.K_CASH: (self.reallydeleteline, None, True)})
 
+    def _label_query(self):
+        q = td.s.query(StockItem)\
+                .join(StockType)\
+                .join(Unit)\
+                .filter(StockItem.deliveryid == self.dn)\
+                .order_by(StockItem.id)
+        if not label_everything():
+            q = q.filter(Unit.stocktake_by_items == True)
+        return q
+
+    def _print_labels(self, label_printer):
+        labels = self._label_query().all()
+        with label_printer as f:
+            for l in labels:
+                printer.stock_label(f, l)
+
     def printout(self):
         if self.dn is None:
             return
-        menu = [(f"Print labels on {x}",
-                 printer.label_print_delivery, (x, self.dn))
-                for x in tillconfig.label_printers]
+        num_labels = self._label_query().count()
+        menu = []
+        if tillconfig.receipt_printer:
+            menu.append(("Print a delivery checklist",
+                         printer.print_delivery_checklist,
+                         (tillconfig.receipt_printer, self.dn)))
+
+        if num_labels > 0:
+            menu.extend((f"Print labels on {x}", self._print_labels, (x,))
+                        for x in tillconfig.label_printers)
         ui.automenu(menu, title="Delivery print options",
+                    blurb=[f"There are {num_labels} stock labels to print."],
                     colour=ui.colour_confirm)
 
     def reallyconfirm(self):
