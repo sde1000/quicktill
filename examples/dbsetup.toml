@@ -1,0 +1,129 @@
+# This is a database setup file for quicktill.  It is written in TOML
+# (see https://toml.io/)
+
+# Import this file into the till database using the 'dbsetup' command:
+# runtill dbsetup this-file
+
+# If you re-import this file, it will update rows in the database
+# based on the primary keys.
+
+
+# These are referred to in the register code, so should not be changed.
+TransCode = [
+  { code = "S", description = "Sale" },
+  { code = "V", description = "Void" },
+]
+
+# The 'sold' and 'pullthru' stock removal codes are the defaults for
+# config items 'register:sold_stock_removecode_id' and
+# 'register:pullthru_stock_removecode_id'.  All the other removal
+# reasons are optional.
+RemoveCode = [
+  { id = "sold",     reason = "Sold" },
+  { id = "pullthru", reason = "Pulled through" },
+  { id = "freebie",  reason = "Free drink" },
+  { id = "ood",      reason = "Out of date" },
+  { id = "taste",    reason = "Bad taste" },
+  { id = "taster",   reason = "Free taster" },
+  { id = "cellar",   reason = "Cellar work" },
+  { id = "damaged",  reason = "Damaged" },
+  { id = "missing",  reason = "Gone missing" },
+  { id = "driptray", reason = "Drip tray"},
+]
+
+# The 'empty' finishcode is used in the code, so must exist. (XXX
+# fixme!) All other codes are optional.
+FinishCode = [
+  { id = "empty",  description = "All gone" },
+  { id = "credit", description = "Returned for credit" },
+  { id = "turned", description = "Turned sour / off taste" },
+  { id = "ood",    description = "Out of date" },
+]
+
+# The 'location', 'start' and 'stop' annotation types are referred to
+# in the code, so must exist.  (XXX fixme!) Other types are optional.
+AnnotationType = [
+  { id = "location", description = "Location" },
+  { id = "start",    description = "Put on sale" },
+  { id = "stop",     description = "Removed from sale" },
+  { id = "vent",     description = "Vented" },
+  { id = "memo",     description = "Memo" },
+]
+
+
+# It's possible for multiple businesses to sell through the same till.
+# Business receipts are separated out by department (the relationship
+# is defined later through the VAT rate and department mechanism).
+
+[[Business]]
+id = 1
+name = "Individual Pubs Ltd"
+abbrev = "IPL"
+address = """
+Pegasus House
+Pembroke Avenue
+Waterbeach
+Cambridge CB25 9PY"""
+vatno = "783 9983 50"
+
+[[Business]]
+id = 2
+name = "A Chef"
+abbrev = "Chef"
+address = """
+A Chef's House
+Some Town
+ST1 2AB"""
+vatno = "xxx xxxx xx"
+
+
+# VAT bands are identified by single letters.  Each department has a
+# single VAT band associated with it.  VAT details for each band can
+# change over time; here we list the business (which can also change),
+# the rate and the effective date of that rate.
+
+# Historic VAT rate information is used when printing old receipts and
+# when reporting through the web interface.
+
+# The VatBand model sets defaults for each band which are used when
+# looking up a date not covered by any VatRate objects.
+
+[[VatBand]]
+band = "A"
+rate = 17.5
+businessid = 1
+description = "Standard rate"
+
+[[VatBand]]
+band = "B"
+rate = 0.0
+businessid = 2
+description = "External kitchen"
+
+[[VatRate]]
+band = "A"
+businessid = 1
+rate = 15.0
+active = 2008-12-01
+
+[[VatRate]]
+band = "A"
+businessid = "1"
+rate = 17.5
+active = 2010-01-01
+
+[[VatRate]]
+band = "A"
+businessid = 1
+rate = 20.0
+active = 2011-01-04
+
+[[VatRate]]
+band ="B"
+businessid = 2
+rate = 20.0
+active = 2013-08-01
+
+
+# You may add departments in this file if you wish, although they can
+# also be created through the till web interface.

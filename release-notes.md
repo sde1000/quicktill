@@ -1,6 +1,20 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v22.x to v23
+--------------------
+
+What's new:
+
+ * Python 3.8 is required; Python 3.7 is no longer supported.
+
+ * Database and logging configurations are now in TOML rather than YAML.
+   See the example database configuration in `examples/dbsetup.toml`
+
+ * The Twitter integration has been removed. A stub remains so that
+   till configurations that refer to it will still load.
+
+
 Upgrade v21.x to v22
 --------------------
 

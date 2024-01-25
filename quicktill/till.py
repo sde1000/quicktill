@@ -14,7 +14,7 @@ import logging
 import logging.config
 import warnings
 import argparse
-import yaml
+import tomli
 import socket
 import time
 import importlib
@@ -471,7 +471,7 @@ def main():
     loggroup = parser.add_mutually_exclusive_group()
     loggroup.add_argument("-y", "--log-config",
                           help="Logging configuration file "
-                          "in YAML", type=argparse.FileType('r'),
+                          "in TOML", type=argparse.FileType('rb'),
                           dest="logconfig")
     loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
                           dest="logfile", help="Simple logging output file")
@@ -500,7 +500,7 @@ def main():
     # import can be directed appropriately.
     rootlog = logging.getLogger()
     if args.logconfig:
-        logconfig = yaml.safe_load(args.logconfig)
+        logconfig = tomli.load(args.logconfig)
         args.logconfig.close()
         logging.config.dictConfig(logconfig)
     else:

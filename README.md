@@ -211,12 +211,12 @@ Create database tables:
 
 Copy the example database setup file and edit it:
 
-    cp examples/dbsetup.yml my-database-config.yml
-    (edit my-database-config.yml)
-    runtill dbsetup my-database-config.yml
+    cp examples/dbsetup.toml my-database-config.toml
+    (edit my-database-config.toml)
+    runtill dbsetup my-database-config.toml
 
 (There's an example edited database setup file at
-`examples/data/emfcamp2022-dbsetup.yaml`)
+`examples/data/emfcamp2022-dbsetup.toml`)
 
 Create an initial user; this will be a superuser that can do anything,
 you can use the user management interface once the till is running to
