@@ -331,7 +331,8 @@ def user_from_token(t):
     if not dbt:
         ui.toast(f"User token '{t.usertoken}' not recognised.")
         return
-    dbt.last_seen = datetime.datetime.now()
+    now = datetime.datetime.now()
+    dbt.last_seen = now
     u = dbt.user
     if not u:
         ui.toast(f"User token '{t.usertoken}' ({dbt.description}) is not "
@@ -340,6 +341,7 @@ def user_from_token(t):
     if not u.enabled:
         ui.toast(f"User '{u.fullname}' is not active.")
         return
+    u.last_seen = now
     return database_user(u)
 
 

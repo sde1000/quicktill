@@ -14,6 +14,19 @@ What's new:
  * The Twitter integration has been removed. A stub remains so that
    till configurations that refer to it will still load.
 
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE users
+	ADD COLUMN last_seen timestamp without time zone;
+
+COMMIT;
+```
+
 
 Upgrade v21.x to v22
 --------------------

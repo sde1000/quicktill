@@ -836,6 +836,7 @@ class User(Base, Logged):
                       doc="Terminal most recently used by this user")
     message = Column(String(), nullable=True,
                      doc="Message to present to user on their next keypress")
+    last_seen = Column(DateTime)
     groups = relationship("Group", secondary="group_grants", backref="users")
     permissions = relationship(
         "Permission",

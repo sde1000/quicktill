@@ -2,7 +2,7 @@ from .views import tillweb_view, colours
 from decimal import Decimal
 from itertools import cycle
 from django.http import JsonResponse
-from sqlalchemy.sql.expression import func, or_
+from sqlalchemy.sql.expression import func, or_, nullslast
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
@@ -38,6 +38,8 @@ def _datatables_order(query, columns, params):
         expr = columns[int(order_col)]
         if order_dir == "desc":
             expr = expr.desc()
+        if params.get(f"columns[{order_col}][nullslast]", False):
+            expr = nullslast(expr)
         query = query.order_by(expr)
 
     return query
@@ -632,6 +634,7 @@ def users(request, info):
     columns = {
         'name': User.fullname,
         'shortname': User.shortname,
+        'last_seen': User.last_seen,
         'webuser': User.webuser,
         'enabled': User.enabled,
         'superuser': User.superuser,
@@ -661,6 +664,7 @@ def users(request, info):
             'url': u.get_absolute_url(),
             'name': u.fullname,
             'shortname': u.shortname,
+            'last_seen': u.last_seen,
             'webuser': u.webuser,
             'enabled': u.enabled,
             'superuser': u.superuser,

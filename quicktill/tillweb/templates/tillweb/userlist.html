@@ -31,6 +31,7 @@ the keyboard that produces the "builtin:alice" user token is:</p>
     <tr>
       <th scope="col">Name</th>
       <th scope="col">Short name</th>
+      <th scope="col">Last seen</th>
       <th scope="col">Web username</th>
     </tr>
   </thead>
@@ -46,6 +47,9 @@ the keyboard that produces the "builtin:alice" user token is:</p>
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.include_disabled = include_disabled ? 'yes': 'no';
+		  /* It would be nice to include this directly in columns but
+		     datatables doesn't support that yet */
+		  d.columns[2].nullslast = true;
 	      },
 	  },
 	  columns: [
@@ -55,11 +59,15 @@ the keyboard that produces the "builtin:alice" user token is:</p>
 	      { data: 'shortname',
 		render: render_link('url', DataTable.render.text()),
 	      },
+	      { data: 'last_seen',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
 	      { data: 'webuser',
 		render: DataTable.render.text(),
 	      },
 	  ],
-	  order: [ [0, 'asc'] ],
+	  order: [ [2, 'desc'], [0, 'asc'] ],
 	  searching: true,
 	  paging: true,
 	  serverSide: true,
