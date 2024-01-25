@@ -66,7 +66,7 @@ component enabled by default.)
 In a terminal window, run the following to install packages the till
 software needs:
 
-    sudo apt install git postgresql python3-sqlalchemy python3-twython
+    sudo apt install git postgresql python3-sqlalchemy
     sudo apt install python3-dateutil python3-psycopg2
 
 ### Configuring postgres ###
