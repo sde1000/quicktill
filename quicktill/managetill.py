@@ -61,7 +61,7 @@ def versioninfo():
     pver = sys.version.replace('\n', '')
     ui.infopopup(
         [f"Quick till software {version}",
-         "© Copyright 2004–2023 Stephen Early",
+         "© Copyright 2004–2024 Stephen Early",
          f"Configuration URL: {tillconfig.configversion}",
          f"Configuration name: {tillconfig.configname}",
          f"Configuration description: {tillconfig.configdescription}",

@@ -4,7 +4,7 @@ quicktill — cash register software
 Copying
 -------
 
-quicktill is Copyright (C) 2004–2023 Stephen Early <steve@assorted.org.uk>
+quicktill is Copyright (C) 2004–2024 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3
@@ -39,8 +39,7 @@ Features
  * [Square Terminal](https://developer.squareup.com/docs/terminal-api/overview) integration
 
 It should be possible to run this software on any system that supports
-Python 3.7.  Usually it runs on Debian-derived Linux systems like
-Ubuntu.
+Python 3.8.  Usually it runs on Debian-derived Linux systems.
 
 Misfeatures
 -----------
@@ -49,7 +48,8 @@ Misfeatures
 
  * Only one developer at the moment
 
- * Arguably: Configuration is written in python
+ * Arguably: Configuration is written in python (although there is an
+   ongoing effort to move configuration into the database)
 
 Quick start
 -----------
