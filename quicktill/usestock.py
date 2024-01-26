@@ -2,6 +2,7 @@
 
 from . import ui, td, keyboard, stock, stocklines, user, linekeys
 from . import stocktype
+from . import config
 from .plugins import InstancePluginMount
 from .models import StockLine, FinishCode, StockItem, Delivery
 from .models import StockAnnotation
@@ -9,6 +10,12 @@ import datetime
 
 import logging
 log = logging.getLogger(__name__)
+
+clear_stockline_note_on_new_stock = config.BooleanConfigItem(
+    'core:clear_stockline_note_on_new_stock', False,
+    display_name="Clear stock line note when changing stock",
+    description="Should the note on a stock line be cleared automatically "
+    "when a new stock item is put on sale on that stock line?")
 
 
 # The "Use Stock" popup has several different functions:
@@ -189,6 +196,8 @@ def put_on_sale(line, si):
     si.stockline = line
     if line.linetype == "display":
         si.displayqty = si.used
+    if clear_stockline_note_on_new_stock() and line.linetype == "regular":
+        line.note = ''
     td.s.add(StockAnnotation(stockitem=si, atype='start', text=line.name,
                              user=user.current_dbuser()))
     td.s.flush()

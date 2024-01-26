@@ -38,21 +38,29 @@ class page(ui.basicpage):
         f = ui.tableformatter("pl l L r rp")
         header = f("Line", "StockID", "Stock", "Used", "Remaining")
 
+        # Format note. It should be possible to make better use of the
+        # available screen space, but we'd need ui.tableformatter to
+        # support multi-column spans first.
+        def ln(line, text):
+            if line.note:
+                return f"⚠ {line.note}; {text}"
+            return f"{text}"
+
         def fl(line):
             if line.linetype == "regular" and line.stockonsale:
                 sos = line.stockonsale[0]
-                return (line.name, sos.id, sos.stocktype.format(),
+                return (line.name, sos.id, ln(line, sos.stocktype),
                         sos.stocktype.unit.format_stock_qty(sos.used),
                         sos.stocktype.unit.format_stock_qty(sos.remaining))
             elif line.linetype == "continuous":
-                return (line.name, "", line.stocktype.format(), "",
+                return (line.name, "", ln(line, line.stocktype), "",
                         line.stocktype.unit.format_stock_qty(
                             line.stocktype.remaining))
             elif line.linetype == "display":
-                return (line.name, "", line.stocktype.format(), "",
-                        "{}+{} {}".format(line.ondisplay, line.instock,
-                                          line.stocktype.unit.name))
-            return (line.name, "", "", "", "")
+                return (line.name, "", ln(line, line.stocktype), "",
+                        f"{line.ondisplay}+{line.instock} "
+                        f"{line.stocktype.unit.name}")
+            return (line.name, "", line.note or "", "", "")
 
         ml = [header] + [f(*fl(line)) for line in sl]
         y = 0

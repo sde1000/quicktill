@@ -22,7 +22,10 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE users
-	ADD COLUMN last_seen timestamp without time zone;
+        ADD COLUMN last_seen timestamp without time zone;
+
+ALTER TABLE stocklines
+        ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
 
 COMMIT;
 ```

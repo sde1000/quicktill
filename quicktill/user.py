@@ -994,6 +994,7 @@ class default_groups:
         "auto-allocate",
         "manage-stockline-associations",
         "annotate",
+        "stockline-note",
         "cancel-cash-payment",
     ])
 

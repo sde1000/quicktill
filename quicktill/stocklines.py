@@ -563,6 +563,30 @@ class modify(user.permission_checked, ui.dismisspopup):
         self.kbs.set(kbl)
 
 
+class note(user.permission_checked, ui.dismisspopup):
+    permission_required = (
+        'stockline-note', 'Change the note on a stock line')
+
+    def __init__(self, stockline):
+        td.s.add(stockline)
+        self.stocklineid = stockline.id
+        super().__init__(7, 60, title=f"Set the note on {stockline.name}",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 6, "Note: ", align=">")
+        self.notefield = ui.editfield(2, 8, 47, f=stockline.note, keymap={
+            keyboard.K_CLEAR: (self.dismiss, None)})
+        self.b = ui.buttonfield(4, 26, 7, "Set", keymap={
+            keyboard.K_CASH: (self.enter, None)})
+        ui.map_fieldlist([self.notefield, self.b])
+        self.notefield.focus()
+
+    def enter(self):
+        stockline = td.s.query(StockLine).get(self.stocklineid)
+        if stockline:
+            stockline.note = self.notefield.f
+        self.dismiss()
+
+
 class listunbound(user.permission_checked, ui.listpopup):
     """Pop up a list of stock lines with no key bindings on any keyboard."""
     permission_required = ('list-unbound-stocklines',
@@ -671,6 +695,15 @@ def stocklinemenu():
         modify, blurb="Choose a stock line to modify from the list below, "
         "or press a line key that is already bound to the "
         "stock line.", create_new=True)
+
+
+def stocklinenotemenu():
+    """Menu allowing notes to be set on stocklines
+    """
+    selectline(
+        note, blurb="Choose a stock line from the list below, or press "
+        "a line key that is bound to the stock line.",
+        linetypes=["regular"], create_new=False)
 
 
 def selectlocation(func, title="Stock Locations", blurb="Choose a location",

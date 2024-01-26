@@ -1488,6 +1488,10 @@ class StockLine(Base, Logged):
     pullthru = Column(quantity, doc='If a "Regular" stockline, the amount '
                       'of stock that should be disposed of the first time the '
                       'stock is sold each day.')
+    note = Column(String(), nullable=False, server_default='',
+                  doc='Note about the status of this stock line. If stock '
+                  'is present, the note should be treated for display '
+                  'purposes as an abnormal condition.')
     stocktype_id = Column(
         'stocktype', Integer, ForeignKey('stocktypes.stocktype'),
         nullable=True)

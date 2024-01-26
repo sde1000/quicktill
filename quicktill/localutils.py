@@ -9,6 +9,7 @@ from . import managestock
 from . import usestock
 from . import recordwaste
 from . import stock
+from . import stocklines
 from . import register
 from . import ui
 from . import td
@@ -489,6 +490,8 @@ def register_hotkeys(appsmenu=None):
         'R': recordwaste.popup,
         'm': managetill.popup,
         'M': managetill.popup,
+        'n': stocklines.stocklinenotemenu,
+        'N': stocklines.stocklinenotemenu,
     }
     if appsmenu:
         hk[K_APPS] = appsmenu

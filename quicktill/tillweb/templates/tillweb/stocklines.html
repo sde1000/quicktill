@@ -21,7 +21,7 @@
     <th scope="col">Location</th>
     <th scope="col">Department</th>
     <th scope="col">Pullthru?</th>
-    <th scope="col">Stock</th>
+    <th scope="col">Stock / state</th>
   </tr>
 </thead>
 <tbody>
@@ -31,7 +31,8 @@
 <td><a href="{% url "tillweb-location" pubname=pubname location=line.location %}">{{line.location}}</a></td>
 <td>{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
 <td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
-<td>{% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}</td>
+<td>{% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}
+{% if line.note %}<span class="badge badge-{% if line.stockonsale %}warning{% else %}info{% endif %}">{{line.note}}</span>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
