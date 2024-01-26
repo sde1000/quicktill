@@ -276,14 +276,14 @@ class delivery(ui.basicpopup):
             return
         num_labels = self._label_query().count()
         menu = []
+        if num_labels > 0:
+            menu.extend((f"Print labels on {x}", self._print_labels, (x,))
+                        for x in tillconfig.label_printers)
         if tillconfig.receipt_printer:
             menu.append(("Print a delivery checklist",
                          printer.print_delivery_checklist,
                          (tillconfig.receipt_printer, self.dn)))
 
-        if num_labels > 0:
-            menu.extend((f"Print labels on {x}", self._print_labels, (x,))
-                        for x in tillconfig.label_printers)
         ui.automenu(menu, title="Delivery print options",
                     blurb=[f"There are {num_labels} stock labels to print."],
                     colour=ui.colour_confirm)
