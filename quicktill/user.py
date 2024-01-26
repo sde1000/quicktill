@@ -987,7 +987,6 @@ class default_groups:
         "void-from-closed-transaction",
         "stock-check",
         "stock-level-check",
-        "twitter",
         "use-stock",
         "restock",
         "return-stock",
@@ -1058,3 +1057,4 @@ class default_groups:
 
 # update-supplier - redundant, edit-supplier is used instead
 # print-stocklist - reprint-stocklabel is used instead
+# twitter - feature removed
