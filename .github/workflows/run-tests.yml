@@ -61,7 +61,7 @@ jobs:
         run: |
           createdb testdb
           ./runtill -d dbname=testdb syncdb
-          ./runtill -d dbname=testdb dbsetup examples/dbsetup.yml
+          ./runtill -d dbname=testdb dbsetup examples/dbsetup.toml
           ./runtill -d dbname=testdb adduser "Test User" Test builtin:alice
           ./runtill -d dbname=testdb listusers
           ./runtill -d dbname=testdb totals
