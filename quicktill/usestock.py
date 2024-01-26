@@ -46,7 +46,6 @@ class popup(user.permission_checked, ui.keymenu):
 
     def line_chosen(self, kb):
         self.dismiss()
-        td.s.add(kb)
         line_chosen(kb.stockline)
 
     def keypress(self, k):
@@ -57,7 +56,6 @@ class popup(user.permission_checked, ui.keymenu):
 
 
 def line_chosen(line):
-    td.s.add(line)
     sl = line.stockonsale
     if line.linetype == "regular":
         # We sell directly from a single stock item

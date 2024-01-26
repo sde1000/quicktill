@@ -38,7 +38,6 @@ class popup(user.permission_checked, ui.keymenu):
 
     def line_selected(self, kb):
         self.dismiss()
-        td.s.add(kb)
         stockline_chosen(kb.stockline)
 
     def keypress(self, k):
@@ -58,7 +57,6 @@ class popup(user.permission_checked, ui.keymenu):
 
 
 def stockline_chosen(stockline):
-    td.s.add(stockline)
     if stockline.linetype == "display" \
        or stockline.linetype == "continuous":
         record_line_waste(stockline)

@@ -134,7 +134,6 @@ class stockline_associations(user.permission_checked, ui.listpopup):
 @user.permission_required('return-stock',
                           "Return items on display stocklines to stock")
 def return_stock(stockline):
-    td.s.add(stockline)
     rsl = stockline.calculate_restock(target=0)
     if not rsl:
         ui.infopopup(["The till has no record of stock on display for "
@@ -185,17 +184,19 @@ def validate_location(s, c):
 
 
 @user.permission_required('create-stockline', "Create a new stock line")
-def create(func):
-    menu = [
-        ("1", ui.lrline(
+def create(func, linetypes=["regular", "display", "continuous"]):
+    menu = []
+    if "regular" in linetypes:
+        menu.append(("1", ui.lrline(
             "Regular.\n\nThese stock lines can have at most one stock item "
             "on sale at any one time.  Finishing that stock item and "
             "putting another item on sale are done explicitly using "
             "the 'Use Stock' button.  Typically used where it's obvious "
             "to the person serving when a stock item comes to an end: "
             "casks/kegs, bottles of spirits, snacks from cards or boxes, "
-            "and so on.\n"), _create_stockline_popup, ('regular', func)),
-        ("2", ui.lrline(
+            "and so on.\n"), _create_stockline_popup, ('regular', func)))
+    if "display" in linetypes:
+        menu.append(("2", ui.lrline(
             "Display.\n\nThese can have several stock items, all of the "
             "same type, on sale at once.  The number of items 'on display' "
             "and 'in stock' are tracked separately; stock is only sold "
@@ -206,16 +207,16 @@ def create(func):
             "fridges.  May also be used for snacks where the display "
             "space is small and the boxes the snacks are supplied in "
             "won't fit.  Can't be used where items are not sold in "
-            "whole numbers.\n"), _create_stockline_popup, ('display', func)),
-        ("3", ui.lrline(
+            "whole numbers.\n"), _create_stockline_popup, ('display', func)))
+    if "continuous" in linetypes:
+        menu.append(("3", ui.lrline(
             "Continuous.\n\nThese are used when selling variable sized "
             "measures where it's not obvious to the person serving where "
             "one stock item ends and another starts.  Typically used for "
             "wine from bottles and soft drinks from cartons: if a glass "
             "is filled from more than one bottle it won't be obvious "
             "whether the two bottles were originally in the same case."),
-            _create_stockline_popup, ('continuous', func)),
-    ]
+            _create_stockline_popup, ('continuous', func)))
     ui.keymenu(menu, blurb="Choose the type of stockline to create:",
                title="Create Stock Line", blank_line_between_items=True)
 
@@ -568,7 +569,6 @@ class note(user.permission_checked, ui.dismisspopup):
         'stockline-note', 'Change the note on a stock line')
 
     def __init__(self, stockline):
-        td.s.add(stockline)
         self.stocklineid = stockline.id
         super().__init__(7, 60, title=f"Set the note on {stockline.name}",
                          colour=ui.colour_input)
@@ -625,9 +625,13 @@ class listunbound(user.permission_checked, ui.listpopup):
 class selectline(ui.listpopup):
     """Pop-up menu of stocklines
 
-    A pop-up menu of stocklines, sorted by location and name.
-    Optionally can remove stocklines that have no capacities.
-    Stocklines with key bindings can be selected through that binding.
+    A pop-up menu of stocklines, sorted by location and name and
+    filtered by stockline type.  Stocklines with key or barcode
+    bindings can be selected through that binding if they match the
+    filter.
+
+    Calls func with the StockLine instance as the argument. The
+    instance is guaranteed to be in the current ORM session.
 
     Optional arguments:
       blurb - text for the top of the window
@@ -635,11 +639,13 @@ class selectline(ui.listpopup):
       create_new - allow a new stockline to be created
       select_none - a string for a menu item which will result in a call
         to func(None)
+
     """
     def __init__(self, func, title="Stock Lines", blurb=None,
                  linetypes=["regular", "display", "continuous"],
                  keymap={}, create_new=False, select_none=None):
         self.func = func
+        self.linetypes = tuple(linetypes)
         q = td.s.query(StockLine).order_by(StockLine.location,
                                            StockLine.name)
         q = q.filter(StockLine.linetype.in_(linetypes))
@@ -648,7 +654,7 @@ class selectline(ui.listpopup):
         self.sl = [f(x.name, x.location,
                      x.department if x.department else "Any",
                      x.typeinfo,
-                     userdata=x)
+                     userdata=x.id)
                    for x in stocklines]
         self.create_new = create_new
         if create_new:
@@ -661,9 +667,14 @@ class selectline(ui.listpopup):
         super().__init__(self.sl, title=title, header=hl, keymap=keymap)
 
     def line_selected(self, kb):
-        self.dismiss()
-        td.s.add(kb)
-        self.func(kb.stockline)
+        # kb is either a KeyboardBinding or a Barcode; both of these
+        # have stockline attributes
+
+        # kb is guaranteed to be in the current ORM session when we
+        # are called.
+        if kb.stockline.linetype in self.linetypes:
+            self.dismiss()
+            self.func(kb.stockline)
 
     def keypress(self, k):
         log.debug("selectline keypress %s", k)
@@ -678,10 +689,12 @@ class selectline(ui.listpopup):
             self.dismiss()
             line = self.sl[self.s.cursor]
             if line.userdata:
-                self.func(line.userdata)
+                stockline = td.s.query(StockLine).get(line.userdata)
+                if stockline:
+                    self.func(stockline)
             else:
                 if self.create_new:
-                    create(self.func)
+                    create(self.func, linetypes=self.linetypes)
                 else:
                     self.func(None)
         else:
