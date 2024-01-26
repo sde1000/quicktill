@@ -1,3 +1,13 @@
+quicktill (22.20) stable; urgency=low
+
+  * New release 22.20
+
+  * Swap order of options on delivery print menu
+
+  * Don't try to print price list when there is no printer
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 26 Jan 2024 11:30:26 +0000
+
 quicktill (22.19) stable; urgency=low
 
   * New release 22.19
