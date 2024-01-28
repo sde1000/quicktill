@@ -1043,9 +1043,9 @@ class PaymentMeta(Base):
     key can exist per payment: the primary key for this table is
     (paymentid,key).
 
-    If the transaction is deleted, all its metadata is deleted too.
+    If the payment is deleted, all its metadata is deleted too.
 
-    Transaction metadata is expected to be used by register plugins.
+    Payment metadata is expected to be used by payment methods.
     """
     __tablename__ = 'payment_meta'
     payment_id = Column('paymentid', Integer,
