@@ -13,6 +13,7 @@ import quicktill.stocktype
 import quicktill.usestock
 import quicktill.modifiers
 import quicktill.localutils
+import quicktill.tillconfig
 import quicktill.user
 from decimal import Decimal, ROUND_UP
 import logging
@@ -210,8 +211,10 @@ quicktill.register.PercentageDiscount("Free", 100, permission_required=(
 
 # This is a very simple 'sample' app
 def qr():
-    import quicktill.printer as printer
-    with printer.driver as p:
+    if not quicktill.tillconfig.receipt_printer:
+        ui.infopopup(["This till doesn't have a printer!"], title="Error")
+        return
+    with quicktill.tillconfig.receipt_printer as p:
         p.printline("\tWelcome to EMF!", colour=1)
         p.printline()
         p.printqrcode(bytes("https://bar.emfcamp.org/", "utf-8"))
