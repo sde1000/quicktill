@@ -562,6 +562,14 @@ class ModelTest(unittest.TestCase):
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
+    def test_stocktype_metadata(self):
+        self.template_setup()
+        st = self.template_stocktype_setup()
+        st.set_meta('foo', val=None, document=b'wibble',
+                    mimetype='rubbish')
+        self.s.commit()
+        self.assertIsNotNone(st.meta['foo'].document_hash)
+
 
 if __name__ == '__main__':
     unittest.main()

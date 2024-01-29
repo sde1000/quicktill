@@ -6,64 +6,107 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
-<tr><th>Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td></tr>
-<tr><th>Name</th><td>{{stocktype.name}}</td></tr>
-{% if stocktype.abv is not None %}
-<tr><th>ABV</th><td>{{stocktype.abv}}%</td></tr>
-{% endif %}
-<tr><th>Department</th><td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td></tr>
-<tr><th>Unit</th><td><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></td></tr>
-<tr><th>Sale price</th><td>{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
-<tr><th>Stock take method</th><td>{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</td></tr>
-</table>
-
-<div class="row">
-{% if alter_form %}
-<div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-alter-form">Fix mistakes</button>
-  <div class="dropdown-menu" style="width: 600px;">
-    <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
-      {% include "form-horizontal.html" with form=alter_form %}
-      <p><strong>N.B.</strong> If you change the Department of this
-      stock type, only future sales of stock will be counted under the
-      new department.  Past sales will remain in the previous
-      department.  Consider creating a new stock type instead.</p>
-      <button class="btn btn-primary" type="submit" name="submit_alter">
-	Alter stocktype to fix mistakes
-      </button>
-    </form>
+<div class="row mb-2">
+  <div class="col-8">
+    <table class="kvtable mb-2">
+      <tbody>
+	<tr>
+	  <th scope="row">Manufacturer</th>
+	  <td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td>
+	</tr>
+	<tr>
+	  <th scope="row">Name</th>
+	  <td>{{stocktype.name}}</td>
+	</tr>
+	{% if stocktype.abv is not None %}
+	<tr>
+	  <th scope="row">ABV</th>
+	  <td>{{stocktype.abv}}%</td>
+	</tr>
+	{% endif %}
+	<tr>
+	  <th scope="row">Department</th>
+	  <td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td>
+	</tr>
+	<tr>
+	  <th scope="row">Unit</th>
+	  <td><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></td>
+	</tr>
+	<tr>
+	  <th scope="row">Sale price</th>
+	  <td>{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</td>
+	</tr>
+	<tr>
+	  <th scope="row">Stock take method</th>
+	  <td>{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</td>
+	</tr>
+    </table>
+    {% if tasting_notes %}
+    <p>{{tasting_notes}}</p>
+    {% endif %}
+    <div class="row ml-1">
+      {% if alter_form %}
+      <div class="dropdown">
+	<button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-alter-form">Edit or fix mistakes</button>
+	<div class="dropdown-menu" style="width: 620px;">
+	  <form class="px-4 py-3" id="annotationForm" action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+	    {% include "form-horizontal.html" with form=alter_form %}
+	    <p><strong>N.B.</strong> If you change the Department of this
+	      stock type, only future sales of stock will be counted under
+	      the new department.  Past sales will remain in the previous
+	      department.  Consider creating a new stock type instead.</p>
+	    <p>Changes to this stock type affect all items of stock of this
+	      type, including those that have already been finished. If you
+	      have received new stock with different details (eg. different
+	      ABV) you should create a new stock type instead.</p>
+	    <button class="btn btn-primary" type="submit" name="submit_alter">
+	      Alter stocktype
+	    </button>
+	  </form>
+	</div>
+      </div>
+      {% if alter_form.errors %}
+      <script type="text/javascript">
+	$(document).ready(function() {
+	    $('#dropdown-alter-form').dropdown('show');
+	});
+      </script>
+      {% endif %}
+      {% endif %}
+      {% if reprice_form %}
+      <div class="dropdown">
+	<button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-reprice-form">Re-price stock</button>
+	<div class="dropdown-menu" style="width: 600px;">
+	  <form class="px-4 py-3" action="" method="post">{% csrf_token %}
+	    {% include "form.html" with form=reprice_form %}
+	    <button class="btn btn-primary" type="submit" name="submit_reprice">
+	      Set new sale price
+	    </button>
+	  </form>
+	</div>
+      </div>
+      {% endif %}
+      {% if reprice_form.errors %}
+      <script type="text/javascript">
+	$(document).ready(function() {
+	    $('#dropdown-reprice-form').dropdown('show');
+	});
+      </script>
+      {% endif %}
+    {% if may_delete %}
+      <form action="" method="post">{% csrf_token %}
+	<button class="btn btn-danger mr-2 mb-2" name="submit_delete">
+	  Delete this stock type
+	</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
-</div>
-{% if alter_form.errors %}
-<script type="text/javascript">
-  $(document).ready(function() {
-      $('#dropdown-alter-form').dropdown('show');
-  });
-</script>
-{% endif %}
-{% endif %}
-
-{% if reprice_form %}
-<div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-reprice-form">Re-price stock</button>
-  <div class="dropdown-menu" style="width: 600px;">
-    <form class="px-4 py-3" action="" method="post">{% csrf_token %}
-      {% include "form.html" with form=reprice_form %}
-      <button class="btn btn-primary" type="submit" name="submit_reprice">
-	Set new sale price
-      </button>
-    </form>
+  <div class="col-4 d-none d-lg-block">
+    {% if has_logo %}
+    <img src="{% url "tillweb-stocktype-logo" pubname=pubname stocktype_id=stocktype.id %}" alt="" class="img-fluid">
+    {% endif %}
   </div>
-</div>
-{% endif %}
-{% if reprice_form.errors %}
-<script type="text/javascript">
-  $(document).ready(function() {
-      $('#dropdown-reprice-form').dropdown('show');
-  });
-</script>
-{% endif %}
 </div>
 
 {% if stocktype.stocktake %}
@@ -72,13 +115,6 @@ for <a href="{{stocktype.stocktake.get_absolute_url}}">stock take
     {{stocktype.stocktake.id}} ({{stocktype.stocktake.description}})</a>.</p>
 {% endif %}
 
-{% if may_delete %}
-<form action="" method="post">{% csrf_token %}
-  <button class="btn btn-danger mt-2" name="submit_delete">
-    Delete this stock type
-  </button>
-</form>
-{% else %}
 <h2>Stock of this type</h2>
 {% if items %}
 {% with items as stocklist %}
@@ -90,7 +126,6 @@ for <a href="{{stocktype.stocktake.get_absolute_url}}">stock take
 
 {% if not include_finished %}
 <p><a href="?show_finished=on">Include finished items</a></p>
-{% endif %}
 {% endif %}
 
 {% if stocktype.logs %}

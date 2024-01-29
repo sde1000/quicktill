@@ -50,6 +50,8 @@ tillurls = [
     path('stocktype/', views.stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', views.stocktype,
          name="tillweb-stocktype"),
+    path('stocktype/<int:stocktype_id>/logo.png', views.stocktype_logo,
+         name="tillweb-stocktype-logo"),
     path('new/stocktype/', views.create_stocktype,
          name="tillweb-create-stocktype"),
     path('stocktype/search.json', views.stocktype_search_json,

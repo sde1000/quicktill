@@ -16,6 +16,8 @@ What's new:
 
 To upgrade the database:
 
+ - run "runtill syncdb" to create the new stocktype metadata table
+
  - run psql and give the following commands to the database:
 
 ```

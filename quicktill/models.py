@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
 from sqlalchemy.orm import undefer_group
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import deferred
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select, func, desc, and_
@@ -2182,10 +2183,30 @@ class StockType(Base, Logged):
     # Currently in scope for this stock take
     stocktake = relationship(StockTake, back_populates="scope")
 
+    meta = relationship("StockTypeMeta",
+                        collection_class=attribute_mapped_collection('key'),
+                        back_populates="stocktype",
+                        passive_deletes=True,
+                        cascade="all,delete-orphan")
+
     __table_args__ = (
         UniqueConstraint('dept', 'manufacturer', 'name', 'abv', 'unit_id',
                          name="stocktypes_ambiguity_key"),
     )
+
+    def set_meta(self, key, val=None, document=None, mimetype=None):
+        val = str(val)
+        if key in self.meta:
+            o = self.meta[key]
+            o.value = val
+            o.document = document
+            o.document_mimetype = mimetype
+        else:
+            self.meta[key] = StockTypeMeta(
+                key=key,
+                value=val,
+                document=document,
+                document_mimetype=mimetype)
 
     @hybrid_property
     def fullname(self):
@@ -2326,6 +2347,62 @@ class FinishCode(Base):
 
     def __str__(self):
         return self.description
+
+
+class StockTypeMeta(Base):
+    """Metadata on a stock type
+
+    Acts as a key/value store per stocktype.  Only one instance of a
+    key can exist per stock type: the primary key for this table is
+    (id,key).
+
+    If the stock type is deleted, all its metadata is deleted too.
+
+    Stock type metadata is expected to be used by the web interface.
+
+    At least one of "value" or "document" must be supplied, and if
+    "document" is supplied then "document_mimetype" must be supplied
+    as well.
+
+    document_hash will be calculated. (Implementation note: for now it
+    is calculated client-side because we are targetting Postgresql
+    10. In the future (from Postgresql 12 onwards) this can be
+    calculated automatically using a database trigger.
+    """
+    __tablename__ = 'stocktype_meta'
+    stocktype_id = Column('stocktype', Integer,
+                          ForeignKey('stocktypes.stocktype',
+                                     ondelete='CASCADE'),
+                          primary_key=True, nullable=False)
+    key = Column(String(), nullable=False, primary_key=True)
+    value = Column(String(), nullable=True)
+    _document = deferred(Column('document', LargeBinary(), nullable=True))
+    document_hash = Column(LargeBinary(), nullable=True)
+    document_mimetype = Column(String(), nullable=True)
+
+    stocktype = relationship(StockType, back_populates='meta')
+
+    @hybrid_property
+    def document(self):
+        return self._document
+
+    @document.setter
+    def document(self, contents):
+        self._document = contents
+        self.document_hash = None if contents is None else \
+            hashlib.sha256(contents).digest()
+
+    __table_args__ = (
+        CheckConstraint(
+            "value IS NOT NULL OR document IS NOT NULL",
+            name="be_useful_constraint"),
+        CheckConstraint(
+            "(document is null)=(document_hash is null)",
+            name="document_and_hash_null_together"),
+        CheckConstraint(
+            "(document is null)=(document_mimetype is null)",
+            name="document_and_mimetype_null_together"),
+    )
 
 
 stock_seq = Sequence('stock_seq')

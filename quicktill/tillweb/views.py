@@ -73,6 +73,12 @@ from .forms import Select2, Select2Ajax
 
 log = logging.getLogger(__name__)
 
+# Metadata keys
+stocktype_tasting_notes_key = "tillweb:tasting-notes"
+stocktype_product_logo_key = "tillweb:product-logo"
+stocktype_product_image_key = "tillweb:product-image"
+
+
 # We use this date format in templates - defined here so we don't have
 # to keep repeating it.  It's available in templates as 'dtf'
 dtf = "Y-m-d H:i"
@@ -1459,6 +1465,18 @@ class EditStockTypeForm(ValidateStockTypeABV, forms.Form):
         Department,
         query_filter=lambda q: q.order_by(Department.id),
         required=True)
+    tasting_notes = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={'rows': '5', 'cols': '80'}))
+    product_logo = forms.FileField(
+        required=False, help_text="Must be a high resolution PNG file "
+        "with alpha layer, if provided",
+        widget=forms.FileInput(
+            attrs={'accept': 'image/png'}))
+    product_image = forms.FileField(
+        required=False, help_text="PNG or JPEG", widget=forms.FileInput(
+            attrs={'accept': 'image/png,image/jpeg'}))
+    clear_images = forms.BooleanField(
+        required=False, help_text="Tick to remove both images")
 
 
 class RepriceStockTypeForm(forms.Form):
@@ -1471,6 +1489,7 @@ class RepriceStockTypeForm(forms.Form):
 @tillweb_view
 def stocktype(request, info, stocktype_id):
     s = td.s.query(StockType)\
+            .options(joinedload('meta'))\
             .get(stocktype_id)
     if not s:
         raise Http404
@@ -1480,9 +1499,12 @@ def stocktype(request, info, stocktype_id):
     alter_form = None
     reprice_form = None
 
+    tasting_notes = s.meta[stocktype_tasting_notes_key].value \
+        if stocktype_tasting_notes_key in s.meta else ''
+
     if may_alter:
         if request.method == 'POST' and 'submit_alter' in request.POST:
-            alter_form = EditStockTypeForm(request.POST)
+            alter_form = EditStockTypeForm(request.POST, request.FILES)
             if alter_form.is_valid():
                 cd = alter_form.cleaned_data
                 try:
@@ -1491,6 +1513,23 @@ def stocktype(request, info, stocktype_id):
                     s.abv = cd['abv']
                     s.department = cd['department']
                     user.log(f"Updated stock type {s.logref}")
+                    if cd['tasting_notes']:
+                        s.set_meta(stocktype_tasting_notes_key,
+                                   cd['tasting_notes'])
+                    else:
+                        s.meta.pop(stocktype_tasting_notes_key, None)
+                    print(repr(cd['product_logo']))
+                    if cd['product_logo']:
+                        s.set_meta(stocktype_product_logo_key,
+                                   document=cd['product_logo'].read(),
+                                   mimetype=cd['product_logo'].content_type)
+                    if cd['product_image']:
+                        s.set_meta(stocktype_product_image_key,
+                                   document=cd['product_image'].read(),
+                                   mimetype=cd['product_image'].content_type)
+                    if cd['clear_images']:
+                        s.meta.pop(stocktype_product_logo_key, None)
+                        s.meta.pop(stocktype_product_image_key, None)
                     td.s.commit()
                     messages.success(request, "Stock type updated")
                     return HttpResponseRedirect(s.get_absolute_url())
@@ -1507,6 +1546,7 @@ def stocktype(request, info, stocktype_id):
                 'name': s.name.strip(),
                 'abv': s.abv,
                 'department': s.department,
+                'tasting_notes': tasting_notes,
             })
 
     if may_reprice:
@@ -1552,12 +1592,32 @@ def stocktype(request, info, stocktype_id):
     return ('stocktype.html', {
         'tillobject': s,
         'stocktype': s,
+        'tasting_notes': tasting_notes,
         'alter_form': alter_form,
         'reprice_form': reprice_form,
+        'may_alter': may_alter,
+        'may_reprice': may_reprice,
         'may_delete': may_delete,
+        'has_logo': stocktype_product_logo_key in s.meta,
+        'has_product_image': stocktype_product_image_key in s.meta,
         'items': items,
         'include_finished': include_finished,
     })
+
+
+@tillweb_view
+def stocktype_logo(request, info, stocktype_id):
+    s = td.s.query(StockType)\
+            .options(joinedload('meta'))\
+            .get(stocktype_id)
+    if not s:
+        raise Http404
+    if stocktype_product_logo_key not in s.meta:
+        raise Http404
+    m = s.meta[stocktype_product_logo_key]
+    r = HttpResponse(content_type=m.document_mimetype)
+    r.write(m.document)
+    return r
 
 
 class StockSearchForm(StockTypeSearchForm):
