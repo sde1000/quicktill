@@ -49,20 +49,39 @@
 </table>
 
 {% if may_edit %}
-<div class="dropdown mb-2">
-  <button class="btn btn-secondary dropdown-toggle mr-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Change details</button>
-  <div class="dropdown-menu" style="width: 700px;">
-    <form class="px-4 py-3" id="changeForm" action="" method="post">{% csrf_token %}
-      {% include "form-horizontal.html" %}
-      <p><strong>N.B.</strong> If you change the VAT band of this
-	department, the new band will apply to <strong>all sales in
-	the past</strong> as well as future sales. Please ensure the
-	new band is compatible with the previous band up to the date
-	of the change.</p>
-      <button class="btn btn-primary" type="submit" name="submit_update">
-	Update department details
-      </button>
-    </form>
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+  Change details
+</button>
+<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Edit department</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form id="changeForm" action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  <div class="container-fluid">
+	    {% include "form-horizontal.html" %}
+	    <p><strong>N.B.</strong> If you change the VAT band of this
+	      department, the new band will apply to <strong>all sales in
+		the past</strong> as well as future sales. Please ensure the
+	      new band is compatible with the previous band up to the date
+	      of the change.</p>
+	  </div>
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	    </button>
+	  <button class="btn btn-primary" type="submit" name="submit_update">
+	    Update department details
+	  </button>
+	</div>
+      </form>
+    </div>
   </div>
 </div>
 {% endif %}
