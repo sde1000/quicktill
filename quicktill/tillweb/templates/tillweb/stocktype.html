@@ -41,15 +41,46 @@
 	  <td>{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</td>
 	</tr>
     </table>
+
     {% if tasting_notes %}
     <p>{{tasting_notes}}</p>
     {% endif %}
-    <div class="row ml-1">
-      {% if alter_form %}
-      <div class="dropdown">
-	<button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-alter-form">Edit or fix mistakes</button>
-	<div class="dropdown-menu" style="width: 620px;">
-	  <form class="px-4 py-3" id="annotationForm" action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+
+    {% if alter_form %}
+    <button class="btn btn-secondary mr-2 mb-2" type="button" data-toggle="modal" data-target="#alterModal">Edit or fix mistakes</button>
+    {% endif %}
+    {% if reprice_form %}
+    <button class="btn btn-secondary mr-2 mb-2" type="button" data-toggle="modal" data-target="#repriceModal">Re-price stock</button>
+    {% endif %}
+    {% if may_delete %}
+    <form action="" method="post">{% csrf_token %}
+      <button class="btn btn-danger mr-2 mb-2" name="submit_delete">
+	Delete this stock type
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="col-4 d-none d-lg-block">
+    {% if has_logo %}
+    <img src="{% url "tillweb-stocktype-logo" pubname=pubname stocktype_id=stocktype.id %}" alt="" class="img-fluid">
+    {% endif %}
+  </div>
+</div>
+
+{% if alter_form %}
+<div class="modal fade" id="alterModal" tabindex="-1" aria-labelledby="alterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="alterModalLabel">Edit stock type</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post" enctype="multipart/form-data">
+	{% csrf_token %}
+	<div class="modal-body">
+	  <div class="container-fluid">
 	    {% include "form-horizontal.html" with form=alter_form %}
 	    <p><strong>N.B.</strong> If you change the Department of this
 	      stock type, only future sales of stock will be counted under
@@ -59,55 +90,65 @@
 	      type, including those that have already been finished. If you
 	      have received new stock with different details (eg. different
 	      ABV) you should create a new stock type instead.</p>
-	    <button class="btn btn-primary" type="submit" name="submit_alter">
-	      Alter stocktype
-	    </button>
-	  </form>
+	  </div>
 	</div>
-      </div>
-      {% if alter_form.errors %}
-      <script type="text/javascript">
-	$(document).ready(function() {
-	    $('#dropdown-alter-form').dropdown('show');
-	});
-      </script>
-      {% endif %}
-      {% endif %}
-      {% if reprice_form %}
-      <div class="dropdown">
-	<button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="dropdown-reprice-form">Re-price stock</button>
-	<div class="dropdown-menu" style="width: 600px;">
-	  <form class="px-4 py-3" action="" method="post">{% csrf_token %}
-	    {% include "form.html" with form=reprice_form %}
-	    <button class="btn btn-primary" type="submit" name="submit_reprice">
-	      Set new sale price
-	    </button>
-	  </form>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  <button class="btn btn-primary" type="submit" name="submit_alter">
+	    Alter stocktype
+	  </button>
 	</div>
-      </div>
-      {% endif %}
-      {% if reprice_form.errors %}
-      <script type="text/javascript">
-	$(document).ready(function() {
-	    $('#dropdown-reprice-form').dropdown('show');
-	});
-      </script>
-      {% endif %}
-    {% if may_delete %}
-      <form action="" method="post">{% csrf_token %}
-	<button class="btn btn-danger mr-2 mb-2" name="submit_delete">
-	  Delete this stock type
-	</button>
       </form>
-      {% endif %}
     </div>
   </div>
-  <div class="col-4 d-none d-lg-block">
-    {% if has_logo %}
-    <img src="{% url "tillweb-stocktype-logo" pubname=pubname stocktype_id=stocktype.id %}" alt="" class="img-fluid">
-    {% endif %}
+</div>
+{% if alter_form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#dropdown-alter-form').modal('show');
+  });
+</script>
+{% endif %}
+{% endif %}
+
+{% if reprice_form %}
+<div class="modal fade" id="repriceModal" tabindex="-1" aria-labelledby="repriceModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="repriceModalLabel">Re-price stock</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  <div class="container-fluid">
+	    {% include "form.html" with form=reprice_form %}
+	  </div>
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  <button class="btn btn-primary" type="submit" name="submit_reprice">
+	    Set new sale price
+	  </button>
+	</div>
+      </form>
+    </div>
   </div>
 </div>
+{% endif %}
+{% if reprice_form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#dropdown-reprice-form').dropdown('show');
+  });
+</script>
+{% endif %}
 
 {% if stocktype.stocktake %}
 <p>This stock type is currently in scope
