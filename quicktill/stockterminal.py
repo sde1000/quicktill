@@ -112,6 +112,7 @@ class page(ui.basicpage):
                   "Press U to use stock.  Press R to record waste.  "
                   "Press Enter to refresh display.  "
                   "Press A to add a stock annotation.  "
+                  "Press N to set the note on a stock line.  "
                   "Press L to choose another location.")
         promptheight = self.win.wrapstr(0, 0, self.w, prompt, display=False)
         self.win.wrapstr(self.h - promptheight, 0, self.w, prompt)
