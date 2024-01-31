@@ -28,6 +28,9 @@
 	  ajax: {
 	      url: '{% url "tillweb-datatable-tokens" pubname=pubname %}',
 	      dataSrc: 'data',
+	      data: function (d) {
+		  d.columns[2].nullslast = true;
+	      },
 	  },
 	  columns: [
 	      { data: 'token',
@@ -44,7 +47,7 @@
 		render: render_link('user_url', DataTable.render.text()),
 	      },
 	  ],
-	  order: [ [2, 'asc'] ],
+	  order: [ [2, 'desc'] ],
 	  searching: true,
 	  paging: true,
 	  serverSide: true,
