@@ -552,6 +552,8 @@ class cupsprinter(printer):
             return f"'{self._printername}' is not accepting jobs at the moment"
         except cups.IPPError as e:
             return str(e)
+        except RuntimeError as e:
+            return str(e)
 
     def print_canvas(self, canvas):
         f = io.BytesIO()
