@@ -14,6 +14,10 @@ What's new:
  * The Twitter integration has been removed. A stub remains so that
    till configurations that refer to it will still load.
 
+ * When a user moves to another terminal their session on the terminal
+   they left closes immediately, rather than waiting for a timeout or
+   a keypress.
+
 To upgrade the database:
 
  - run "runtill syncdb" to create the new stocktype metadata table
@@ -28,6 +32,24 @@ ALTER TABLE users
 
 ALTER TABLE stocklines
         ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
+
+CREATE OR REPLACE FUNCTION notify_user_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF NEW.transid IS DISTINCT FROM OLD.transid
+    OR NEW.register IS DISTINCT FROM OLD.register THEN
+    PERFORM pg_notify('user_register', CAST(NEW.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_changed
+	AFTER UPDATE ON users
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.notify_user_change();
 
 COMMIT;
 ```

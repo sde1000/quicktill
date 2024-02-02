@@ -334,8 +334,14 @@ class basicpage(basicwin):
     def pagename(self):
         return "Basic page"
 
+    @property
+    def selected(self):
+        """Is this the current page?
+        """
+        return self._basepage == self
+
     def select(self):
-        if basicpage._basepage == self:
+        if self.selected:
             return  # Nothing to do
         # Tell the current page we're switching away
         if basicpage._basepage:

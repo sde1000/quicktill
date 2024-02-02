@@ -863,6 +863,31 @@ class User(Base, Logged):
         return self.fullname
 
 
+# When the 'transid' or 'register' column of a user is changed, send
+# notification 'user_register' with the user ID as payload. This
+# enables registers to detect the user arriving at a different
+# register, or the user's transaction being taken over by another
+# user.
+add_ddl(User.__table__, """
+CREATE OR REPLACE FUNCTION notify_user_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF NEW.transid IS DISTINCT FROM OLD.transid
+    OR NEW.register IS DISTINCT FROM OLD.register THEN
+    PERFORM pg_notify('user_register', CAST(NEW.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER user_changed
+  AFTER UPDATE ON users
+  FOR EACH ROW EXECUTE PROCEDURE notify_user_change();
+""", """
+DROP TRIGGER user_changed ON users;
+DROP FUNCTION notify_user_change();
+""")
+
+
 class UserToken(Base, Logged):
     """A token used by a till user to identify themselves
 

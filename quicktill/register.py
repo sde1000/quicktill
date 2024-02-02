@@ -37,6 +37,7 @@ from . import payment
 from . import user
 from . import plugins
 from . import config
+from . import listen
 import logging
 import datetime
 from .models import Transline, Transaction, Session, StockOut, penny
@@ -823,6 +824,8 @@ class page(ui.basicpage):
                 self.user.dbuser.message = None
         td.s.flush()
         self._redraw()
+        self._notify_user_register_listener = listen.listener.listen_for(
+            "user_register", self._notify_user_register)
         self.hook("new_page")
         self._resume_pending_payment()
 
@@ -3178,6 +3181,7 @@ class page(ui.basicpage):
             ui.infopopup([self.user.dbuser.message],
                          title="Transaction information")
             self._clear()
+            self._redraw()
             self.user.dbuser.message = None
             td.s.flush()
             return False
@@ -3188,6 +3192,7 @@ class page(ui.basicpage):
             ui.infopopup(["Your transaction has gone away."],
                          title="Transaction gone")
             self._clear()
+            self._redraw()
             td.s.flush()
             return False
 
@@ -3217,10 +3222,29 @@ class page(ui.basicpage):
         if self.transid and not self.user.dbuser.transaction:
             # Transaction has been taken by another user
             return False
-        if self.transid != self.user.dbuser.transaction.id:
+        if self.transid and self.transid != self.user.dbuser.transaction.id:
             # This _should_ never happen but would be very bad if it did!
             return False
         return True
+
+    def _notify_user_register(self, userid_string):
+        # This is called whenever a user_register notification is sent
+        # by the database, which will happen whenever a user's transid
+        # or register column is changed. If the userid_string
+        # corresponds to our user, run entry_noninteractive() to check
+        # that the user hasn't moved to another register and that
+        # their transaction hasn't been taken over by someone else.
+        if not self.selected:
+            return
+        log.debug(f"{self=} got user_register for {userid_string}")
+        try:
+            userid = int(userid_string)
+        except Exception:
+            return
+        if userid == self.user.userid:
+            with td.orm_session():
+                if not self.entry_noninteractive():
+                    self.deselect()
 
     def hook(self, action, *args, **kwargs):
         """Check with plugins before performing an action
@@ -3352,6 +3376,9 @@ class page(ui.basicpage):
         if self._timeout_handle:
             self._timeout_handle.cancel()
             self._timeout_handle = None
+        if self._notify_user_register_listener:
+            self._notify_user_register_listener.cancel()
+            self._notify_user_register_listener = None
 
     def alarm(self):
         # The timeout has passed.  If the scrollable has the input
