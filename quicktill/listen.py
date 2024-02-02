@@ -13,6 +13,10 @@ class db_listener:
     notifications are received on those channels.  Deals with
     disconnection from the database.  If unable to reconnect
     immediately, tries again later.
+
+    NB functions are called directly from the event loop, without
+    starting an ORM session. Functions that need to access the
+    database should start their own ORM session.
     """
     def __init__(self, mainloop, engine):
         self.connection = None
@@ -40,6 +44,7 @@ class db_listener:
         wrapper = self._listener(self, func, channel)
         self._listeners[wrapper] = channel
         self.update_listening_channels()
+        return wrapper
 
     def update_listening_channels(self):
         wanted = set(self._listeners.values())
@@ -95,9 +100,9 @@ class db_listener:
             return
         while self.connection.connection.notifies:
             notify = self.connection.connection.notifies.pop()
-            for listener, channel in self._listeners.items():
-                if channel == notify.channel:
-                    listener._func(notify.payload)
+            for f in [listener for listener, channel in self._listeners.items()
+                      if channel == notify.channel]:
+                f._func(notify.payload)
 
 
 # listener is set to an instance of db_listener during quicktill
