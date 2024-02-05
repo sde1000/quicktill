@@ -2,20 +2,13 @@
 """
 
 
-class CommandTracker(type):
-    """
-    Metaclass keeping track of all the types of command we understand.
-
-    """
-    def __init__(cls, name, bases, attrs):
-        if not hasattr(cls, '_commands'):
-            cls._commands = []
-        else:
-            cls._commands.append(cls)
-
-
-class command(metaclass=CommandTracker):
+class command:
     database_required = True
+    _commands = []
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        cls._commands.append(cls)
 
     @classmethod
     def add_subparsers(cls, parser):
