@@ -1,3 +1,61 @@
+quicktill (23.0) stable; urgency=low
+
+  * New release 23.0
+
+  * Update Debian packaging for release 23
+
+  * Update release notes
+
+  * Add a register instances table
+
+  * Version string no longer needs to be u""
+
+  * Database notifications on stock changes
+
+  * Remove obsolete payment method configuration migration code
+
+  * Simplify subcommand class
+
+  * React immediately when a user moves to a new terminal
+
+  * Fix listen module
+
+  * Add 'N' to prompt on stock terminal page
+
+  * Cope better when a remote CUPS server is offline
+
+  * Add 'nullslast' to Last seen column of usertokens
+
+  * Use modal instead of dropdown for department form
+
+  * Use modals instead of dropdowns for forms on stock type detail page
+
+  * Stock type metadata
+
+  * Fix docstring on models.PaymentMeta
+
+  * Update EMF example for current receipt printer config location
+
+  * Remove 'twitter' permission
+
+  * Use toml version of dbsetup in github tests
+
+  * Ensure stocklines.selectline passes instance in current ORM session
+
+  * Add a "note" column to the stocklines table
+
+  * Add "last seen" column for users
+
+  * Bring emfcamp example config up to date
+
+  * Replace yaml with toml
+
+  * Remove Twitter support
+
+  * Start of development for release 23
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 09 Feb 2024 13:13:00 +0000
+
 quicktill (22.20) stable; urgency=low
 
   * New release 22.20
