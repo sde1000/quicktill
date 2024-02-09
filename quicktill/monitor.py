@@ -54,11 +54,17 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            user = td.s.query(User).get(id)
+            user = td.s.query(User)\
+                       .options(joinedload('register'))\
+                       .get(id)
             if not user:
                 return
-            print(f"user_register: {user.fullname} now at register "
-                  f"{user.register} with transaction {user.trans_id}")
+            if user.register:
+                print(f"user_register: {user.fullname} now at register "
+                      f"{user.register_id} ({user.register.terminal_name}) "
+                      f"with transaction {user.trans_id}")
+            else:
+                print(f"user_register: {user.fullname} now not at a register")
 
     @staticmethod
     def notify_group_membership_changed(blank):

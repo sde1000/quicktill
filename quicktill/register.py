@@ -49,7 +49,6 @@ from decimal import Decimal
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
-import uuid
 
 log = logging.getLogger(__name__)
 
@@ -177,12 +176,6 @@ user.action_descriptions['void-from-closed-transaction'] = \
     "Create a transaction voiding lines from a closed transaction"
 user.action_descriptions['sell-dept'] = \
     "Sell items using a department key"
-
-# Whenever the register is started it generates a new unique ID for
-# itself.  This is used to distinguish register instances that are
-# running at the same time, so they can coordinate moving transactions
-# and users between registers.
-register_instance = str(uuid.uuid4())
 
 
 class RegisterPlugin(metaclass=plugins.InstancePluginMount):
@@ -798,7 +791,7 @@ class page(ui.basicpage):
         self.hotkeys = hotkeys
         self.defaultprompt = "Ready"
         # Set user's current register to be us
-        self.user.dbuser.register = register_instance
+        self.user.dbuser.register_id = tillconfig.register_id
         # Save user's current transaction because it is unset by clear()
         candidate_trans = self.user.dbuser.transaction
         self._clear()
@@ -3158,7 +3151,7 @@ class page(ui.basicpage):
         # repeat it here because it is possible we may not have been
         # entered in response to a keypress - a timer event, for
         # example.
-        if self.user.dbuser.register != register_instance:
+        if self.user.dbuser.register_id != tillconfig.register_id:
             # If the register in the database isn't us, lock immediately
             self.deselect()
             return False
@@ -3204,7 +3197,7 @@ class page(ui.basicpage):
         call the deselect() method.
         """
         self.user.dbuser = td.s.query(User).get(self.user.userid)
-        if self.user.dbuser.register != register_instance:
+        if self.user.dbuser.register_id != tillconfig.register_id:
             # User has logged in somewhere else
             return False
         if self.transid and not self.user.dbuser.transaction:
@@ -3315,7 +3308,7 @@ class page(ui.basicpage):
 
         # Check that the user hasn't moved to another terminal.  If
         # they have, lock immediately.
-        if self.user.dbuser.register != register_instance:
+        if self.user.dbuser.register_id != tillconfig.register_id:
             self.deselect()
             return super().hotkeypress(k)
 
@@ -3331,7 +3324,7 @@ class page(ui.basicpage):
     def select(self, u):
         # Called when the appropriate user token is presented
         self.user = u  # Permissions might have changed!
-        self.user.dbuser.register = register_instance
+        self.user.dbuser.register_id = tillconfig.register_id
         td.s.flush()
         if self.locked:
             self.locked = False

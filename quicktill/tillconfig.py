@@ -17,6 +17,11 @@ configdescription = "default"
 
 terminal_name = "default"
 
+# A new register_id is generated each time the register is started. It
+# is used by the register to ensure each user is only active on one
+# register at a time.
+register_id = None
+
 keyboard = None
 keyboard_right = None
 

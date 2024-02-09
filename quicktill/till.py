@@ -33,7 +33,7 @@ from . import config
 from . import listen
 from . import barcode
 from .version import version
-from .models import Session, PayType, Business, zero
+from .models import Session, PayType, Business, Register, zero
 import subprocess
 from sqlalchemy.orm import joinedload
 
@@ -260,10 +260,17 @@ class runtill(cmdline.command):
             listen.listener.listen_for("update", runtill.update_notified)
 
         # Load config from database, update database with new config items,
-        # initialise config change listener
+        # initialise config change listener, and generate a new register ID
         with td.orm_session():
             config.ConfigItem.listen_for_changes(listen.listener)
             config.ConfigItem.preload()
+            reg = Register(version=version,
+                           config_name=tillconfig.configname,
+                           terminal_name=tillconfig.terminal_name)
+            td.s.add(reg)
+            td.s.flush()
+            tillconfig.register_id = reg.id
+            td.s.commit()
 
         dbg_kbd = None
         try:

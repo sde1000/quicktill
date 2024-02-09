@@ -21,6 +21,7 @@ What's new:
 To upgrade the database:
 
  - run "runtill syncdb" to create the new stocktype metadata table
+   and registers table
 
  - run psql and give the following commands to the database:
 
@@ -28,7 +29,12 @@ To upgrade the database:
 BEGIN;
 
 ALTER TABLE users
+	DROP COLUMN register,
+	ADD COLUMN register_id integer,
         ADD COLUMN last_seen timestamp without time zone;
+
+ALTER TABLE users
+	ADD CONSTRAINT users_register_id_fkey FOREIGN KEY (register_id) REFERENCES public.registers(id);
 
 ALTER TABLE stocklines
         ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
@@ -39,7 +45,7 @@ CREATE OR REPLACE FUNCTION notify_user_change() RETURNS trigger
 DECLARE
 BEGIN
   IF NEW.transid IS DISTINCT FROM OLD.transid
-    OR NEW.register IS DISTINCT FROM OLD.register THEN
+    OR NEW.register_id IS DISTINCT FROM OLD.register_id THEN
     PERFORM pg_notify('user_register', CAST(NEW.id AS text));
   END IF;
   RETURN NEW;

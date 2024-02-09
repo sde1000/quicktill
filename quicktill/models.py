@@ -810,6 +810,28 @@ DROP FUNCTION check_no_pending_payments();
 """)
 
 
+register_seq = Sequence('register_seq')
+
+
+class Register(Base):
+    """A register instance
+
+    An entry is made in this table each time the register starts
+    up. References to this table are then used to ensure a user is
+    only active on at most one register at a time.
+    """
+    __tablename__ = 'registers'
+    id = Column(Integer, register_seq, nullable=False, primary_key=True)
+    version = Column(
+        String(), nullable=False, doc="Software version of the register")
+    startup_time = Column(DateTime(), nullable=False,
+                          server_default=func.current_timestamp())
+    config_name = Column(String(), nullable=False)
+    terminal_name = Column(String(), nullable=False)
+
+    users = relationship('User', back_populates='register')
+
+
 user_seq = Sequence('user_seq')
 
 
@@ -833,8 +855,7 @@ class User(Base, Logged):
                                                      ondelete='SET NULL'),
                       nullable=True, unique=True,
                       doc="Transaction being worked on by this user")
-    register = Column(String(), nullable=True,
-                      doc="Terminal most recently used by this user")
+    register_id = Column(Integer, ForeignKey('registers.id'), nullable=True)
     message = Column(String(), nullable=True,
                      doc="Message to present to user on their next keypress")
     last_seen = Column(DateTime)
@@ -847,6 +868,7 @@ class User(Base, Logged):
         viewonly=True)
     transaction = relationship(Transaction, backref=backref(
         'user', uselist=False))
+    register = relationship(Register)
 
     tillweb_viewname = "tillweb-till-user"
     tillweb_argname = "userid"
@@ -873,7 +895,7 @@ CREATE OR REPLACE FUNCTION notify_user_change() RETURNS trigger AS $$
 DECLARE
 BEGIN
   IF NEW.transid IS DISTINCT FROM OLD.transid
-    OR NEW.register IS DISTINCT FROM OLD.register THEN
+    OR NEW.register_id IS DISTINCT FROM OLD.register_id THEN
     PERFORM pg_notify('user_register', CAST(NEW.id AS text));
   END IF;
   RETURN NEW;
