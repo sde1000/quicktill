@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH RUNTILL 1 "2015-07-22"
+.TH RUNTILL 1 "2024-02-09"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -61,7 +61,7 @@ User ID to use when no other user information is available (use 'listusers'
 command to check IDs)
 .TP
 .B \-y, \-\-log\-config LOGCONFIG
-Specify a YAML log configuration file.
+Specify a TOML log configuration file.
 .TP
 .B \-l, \-\-logfile=LOGFILE
 Specify a log filename for simple logging.
@@ -93,9 +93,8 @@ Remove tables from the database.  If the database contains more than
 two sessions of data then this command will refuse to run unless you
 supply the \-\-really option.
 .TP
-.B dbsetup [ dbfile ]
-With no positional argument, outputs a template database setup file on
-STDOUT.  With one argument, reads and processes a database setup file.
+.B dbsetup dbfile
+Reads and processes a TOML database setup file.
 .TP
 .B checkdb
 Compare the current database schema with one created from "syncdb" on
@@ -114,9 +113,6 @@ List active users.
 Display a table of session totals, by default for the last 40 days.
 Override this with the \-\-days option.
 .TP
-.B twitter-auth [ \-\-consumer-key KEY ] [ \-\-consumer-secret SECRET ] secretstore
-Twitter login; stores credentials in the named secret store in the database.
-.TP
 .B payment-config code
 Interactively configure the payment method specified by "code", if applicable.
 .TP
@@ -127,6 +123,11 @@ View or modify configuration keys.
 Listen for user tokens; output the first received token and then
 exit. Helpful during initial setup to view a token to use with
 the 'adduser' command.
+.TP
+.B passwd [ \-\-password PASSWORD ] key-name secret-name
+Store a password (optionally supplied on the command line; if absent
+will be prompted for) in SecretStore key-name with secret name
+secret-name.
 
 .SH AUTHOR
 .B quicktill
