@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.12 (Ubuntu 12.12-0ubuntu0.20.04.1)
--- Dumped by pg_dump version 12.12 (Ubuntu 12.12-0ubuntu0.20.04.1)
+-- Dumped from database version 10.12 (Ubuntu 10.12-0ubuntu0.18.04.1)
+-- Dumped by pg_dump version 10.12 (Ubuntu 10.12-0ubuntu0.18.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15,6 +15,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
 
 --
 -- Name: check_max_one_session_open(); Type: FUNCTION; Schema: public; Owner: -
@@ -192,9 +206,122 @@ END;
 $$;
 
 
+--
+-- Name: notify_stockitem_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_stockitem_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: notify_stockline_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_stockline_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+  ELSE
+    PERFORM pg_notify('stockline_change', CAST(NEW.stocklineid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: notify_stockout_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_stockout_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: notify_stocktype_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_stocktype_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stocktype_change', CAST(OLD.stocktype AS text));
+  ELSE
+    PERFORM pg_notify('stocktype_change', CAST(NEW.stocktype AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: notify_stocktype_meta_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_stocktype_meta_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stocktype_change', CAST(OLD.stocktype AS text));
+  ELSE
+    PERFORM pg_notify('stocktype_change', CAST(NEW.stocktype AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: notify_user_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_user_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF NEW.transid IS DISTINCT FROM OLD.transid
+    OR NEW.register_id IS DISTINCT FROM OLD.register_id THEN
+    PERFORM pg_notify('user_register', CAST(NEW.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
-SET default_table_access_method = heap;
+SET default_with_oids = false;
 
 --
 -- Name: annotation_types; Type: TABLE; Schema: public; Owner: -
@@ -538,6 +665,31 @@ CREATE SEQUENCE public.refusals_log_seq
 
 
 --
+-- Name: register_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.register_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: registers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.registers (
+    id integer NOT NULL,
+    version character varying NOT NULL,
+    startup_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    config_name character varying NOT NULL,
+    terminal_name character varying NOT NULL
+);
+
+
+--
 -- Name: secrets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -693,6 +845,7 @@ CREATE TABLE public.stocklines (
     dept integer,
     pullthru numeric(8,1),
     stocktype integer,
+    note character varying DEFAULT ''::character varying NOT NULL,
     CONSTRAINT capacity_constraint CHECK (((NOT ((linetype)::text <> 'display'::text)) OR (capacity IS NULL))),
     CONSTRAINT capacity_greater_than_zero_constraint CHECK (((capacity IS NULL) OR (capacity > 0))),
     CONSTRAINT linetype_continuous_constraint CHECK (((NOT ((linetype)::text = 'continuous'::text)) OR (stocktype IS NOT NULL))),
@@ -808,6 +961,23 @@ CREATE TABLE public.stocktakes (
     CONSTRAINT commit_time_and_user_null_together CHECK (((commit_time IS NULL) = (commit_user_id IS NULL))),
     CONSTRAINT commit_time_null_if_no_start_time CHECK (((NOT (start_time IS NULL)) OR (commit_time IS NULL))),
     CONSTRAINT commit_user_null_if_no_start_time CHECK (((NOT (start_time IS NULL)) OR (commit_user_id IS NULL)))
+);
+
+
+--
+-- Name: stocktype_meta; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stocktype_meta (
+    stocktype integer NOT NULL,
+    key character varying NOT NULL,
+    value character varying,
+    document bytea,
+    document_hash bytea,
+    document_mimetype character varying,
+    CONSTRAINT be_useful_constraint CHECK (((value IS NOT NULL) OR (document IS NOT NULL))),
+    CONSTRAINT document_and_hash_null_together CHECK (((document IS NULL) = (document_hash IS NULL))),
+    CONSTRAINT document_and_mimetype_null_together CHECK (((document IS NULL) = (document_mimetype IS NULL)))
 );
 
 
@@ -1039,8 +1209,9 @@ CREATE TABLE public.users (
     enabled boolean NOT NULL,
     superuser boolean NOT NULL,
     transid integer,
-    register character varying,
-    message character varying
+    message character varying,
+    register_id integer,
+    last_seen timestamp without time zone
 );
 
 
@@ -13822,6 +13993,14 @@ COPY public.refusals_log (id, "user", "time", terminal, details) FROM stdin;
 
 
 --
+-- Data for Name: registers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.registers (id, version, startup_time, config_name, terminal_name) FROM stdin;
+\.
+
+
+--
 -- Data for Name: secrets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -14458,70 +14637,70 @@ COPY public.stockline_stocktype_log (stocklineid, stocktype) FROM stdin;
 -- Data for Name: stocklines; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.stocklines (stocklineid, name, location, linetype, capacity, dept, pullthru, stocktype) FROM stdin;
-100	Pump 1	Bar	regular	\N	10	\N	\N
-101	Pump 2	Bar	regular	\N	10	\N	\N
-102	Pump 3	Bar	regular	\N	10	\N	\N
-103	Pump 4	Bar	regular	\N	10	\N	\N
-110	Club Mate Regular	Fridge	continuous	\N	\N	\N	31
-111	Club Mate Granat	Fridge	continuous	\N	\N	\N	32
-112	ChariTea Mate Tea	Fridge	continuous	\N	\N	\N	48
-113	Orange Juice	Fridge	continuous	\N	\N	\N	10
-114	Cranberry Juice	Fridge	continuous	\N	\N	\N	7
-115	Pinot Grigio	Fridge	continuous	\N	\N	\N	12
-116	Sauvignon Blanc	Fridge	continuous	\N	\N	\N	17
-117	White Zinfandel (Rose)	Fridge	continuous	\N	\N	\N	11
-118	Malbec	Back bar	continuous	\N	\N	\N	20
-119	Coca-Cola Regular	Fridge	continuous	\N	\N	\N	5
-120	Coca-Cola Diet	Fridge	continuous	\N	\N	\N	6
-121	Regular Tonic	Fridge	continuous	\N	\N	\N	4
-122	Diet Tonic	Fridge	continuous	\N	\N	\N	3
-123	Fanta Orange	Fridge	continuous	\N	\N	\N	8
-124	Fanta Lemonade	Fridge	continuous	\N	\N	\N	9
-125	Cider 1	Bar	regular	\N	30	\N	\N
-126	Cider 2	Bar	regular	\N	30	\N	\N
-127	Cider 3	Bar	regular	\N	30	\N	\N
-128	Amaretto	Back bar	regular	\N	\N	\N	14
-129	Old J Spiced	Back bar	regular	\N	\N	\N	19
-130	Old J Silver	Back bar	regular	\N	\N	\N	16
-131	Bacardi	Back bar	regular	\N	\N	\N	22
-132	Jack Daniels	Back bar	regular	\N	\N	\N	13
-133	Whisky	Back bar	regular	\N	\N	\N	18
-134	Vodka	Back bar	regular	\N	\N	\N	21
-135	Gin	Back bar	regular	\N	\N	\N	15
-136	Copper Crew Sauvignon Blanc	Fridge	continuous	\N	\N	\N	30
-137	Copper Crew Chenin Blanc	Fridge	continuous	\N	\N	\N	27
-138	Copper Crew Rose	Fridge	continuous	\N	\N	\N	29
-139	Copper Crew Merlot	Back bar	continuous	\N	\N	\N	28
-140	Arbor Citrus Maxima	Fridge	continuous	\N	\N	\N	59
-141	Arbor Pocket Rocket	Fridge	continuous	\N	\N	\N	60
-142	Arbor Space Hardware	Fridge	continuous	\N	\N	\N	61
-143	Ascension Pilot (Cider)	Fridge	continuous	\N	\N	\N	54
-144	Brass Castle Session	Fridge	continuous	\N	\N	\N	52
-145	Brick Peckham Rye	Fridge	continuous	\N	\N	\N	62
-146	Brick Watermelon & Lime Gose	Fridge	continuous	\N	\N	\N	63
-147	Burnt Mill Astral Mist	Fridge	continuous	\N	\N	\N	53
-148	Cloudwater And Relax	Fridge	continuous	\N	\N	\N	68
-149	Cloudwater Crystallography	Fridge	continuous	\N	\N	\N	57
-150	Cloudwater How Wonderful!	Fridge	continuous	\N	\N	\N	56
-151	Cloudwater Int Life Ext World	Fridge	continuous	\N	\N	\N	55
-152	Cloudwater Somewhere Within	Fridge	continuous	\N	\N	\N	58
-153	Big Drop Pine Trail	Fridge	continuous	\N	\N	\N	70
-154	Big Drop Uptime	Fridge	continuous	\N	\N	\N	69
-155	Duration Bet The Farm	Fridge	continuous	\N	\N	\N	66
-156	Duration Cuttin Grass	Fridge	continuous	\N	\N	\N	67
-157	Good Karma Culture Shock	Fridge	continuous	\N	\N	\N	49
-158	Good Karma Shanti	Fridge	continuous	\N	\N	\N	51
-159	Good Karma What's Your Mantra	Fridge	continuous	\N	\N	\N	50
-160	Newtown Park Maybe Tomorrow	Fridge	continuous	\N	\N	\N	64
-161	Queer Brewing Tiny Dots	Fridge	continuous	\N	\N	\N	65
-104	Lager	Bar	regular	\N	25	\N	\N
-105	Stowford Press	Bar	regular	\N	35	\N	\N
-106	Tap 7	Bar	regular	\N	20	\N	\N
-107	Tap 8	Bar	regular	\N	20	\N	\N
-108	Tap 9	Bar	regular	\N	20	\N	\N
-109	Tap 10	Bar	regular	\N	20	\N	\N
-162	CyBAR (PERRY) CYDER	Bar	regular	\N	\N	\N	\N
+COPY public.stocklines (stocklineid, name, location, linetype, capacity, dept, pullthru, stocktype, note) FROM stdin;
+100	Pump 1	Bar	regular	\N	10	\N	\N	
+101	Pump 2	Bar	regular	\N	10	\N	\N	
+102	Pump 3	Bar	regular	\N	10	\N	\N	
+103	Pump 4	Bar	regular	\N	10	\N	\N	
+110	Club Mate Regular	Fridge	continuous	\N	\N	\N	31	
+111	Club Mate Granat	Fridge	continuous	\N	\N	\N	32	
+112	ChariTea Mate Tea	Fridge	continuous	\N	\N	\N	48	
+113	Orange Juice	Fridge	continuous	\N	\N	\N	10	
+114	Cranberry Juice	Fridge	continuous	\N	\N	\N	7	
+115	Pinot Grigio	Fridge	continuous	\N	\N	\N	12	
+116	Sauvignon Blanc	Fridge	continuous	\N	\N	\N	17	
+117	White Zinfandel (Rose)	Fridge	continuous	\N	\N	\N	11	
+118	Malbec	Back bar	continuous	\N	\N	\N	20	
+119	Coca-Cola Regular	Fridge	continuous	\N	\N	\N	5	
+120	Coca-Cola Diet	Fridge	continuous	\N	\N	\N	6	
+121	Regular Tonic	Fridge	continuous	\N	\N	\N	4	
+122	Diet Tonic	Fridge	continuous	\N	\N	\N	3	
+123	Fanta Orange	Fridge	continuous	\N	\N	\N	8	
+124	Fanta Lemonade	Fridge	continuous	\N	\N	\N	9	
+125	Cider 1	Bar	regular	\N	30	\N	\N	
+126	Cider 2	Bar	regular	\N	30	\N	\N	
+127	Cider 3	Bar	regular	\N	30	\N	\N	
+128	Amaretto	Back bar	regular	\N	\N	\N	14	
+129	Old J Spiced	Back bar	regular	\N	\N	\N	19	
+130	Old J Silver	Back bar	regular	\N	\N	\N	16	
+131	Bacardi	Back bar	regular	\N	\N	\N	22	
+132	Jack Daniels	Back bar	regular	\N	\N	\N	13	
+133	Whisky	Back bar	regular	\N	\N	\N	18	
+134	Vodka	Back bar	regular	\N	\N	\N	21	
+135	Gin	Back bar	regular	\N	\N	\N	15	
+136	Copper Crew Sauvignon Blanc	Fridge	continuous	\N	\N	\N	30	
+137	Copper Crew Chenin Blanc	Fridge	continuous	\N	\N	\N	27	
+138	Copper Crew Rose	Fridge	continuous	\N	\N	\N	29	
+139	Copper Crew Merlot	Back bar	continuous	\N	\N	\N	28	
+140	Arbor Citrus Maxima	Fridge	continuous	\N	\N	\N	59	
+141	Arbor Pocket Rocket	Fridge	continuous	\N	\N	\N	60	
+142	Arbor Space Hardware	Fridge	continuous	\N	\N	\N	61	
+143	Ascension Pilot (Cider)	Fridge	continuous	\N	\N	\N	54	
+144	Brass Castle Session	Fridge	continuous	\N	\N	\N	52	
+145	Brick Peckham Rye	Fridge	continuous	\N	\N	\N	62	
+146	Brick Watermelon & Lime Gose	Fridge	continuous	\N	\N	\N	63	
+147	Burnt Mill Astral Mist	Fridge	continuous	\N	\N	\N	53	
+148	Cloudwater And Relax	Fridge	continuous	\N	\N	\N	68	
+149	Cloudwater Crystallography	Fridge	continuous	\N	\N	\N	57	
+150	Cloudwater How Wonderful!	Fridge	continuous	\N	\N	\N	56	
+151	Cloudwater Int Life Ext World	Fridge	continuous	\N	\N	\N	55	
+152	Cloudwater Somewhere Within	Fridge	continuous	\N	\N	\N	58	
+153	Big Drop Pine Trail	Fridge	continuous	\N	\N	\N	70	
+154	Big Drop Uptime	Fridge	continuous	\N	\N	\N	69	
+155	Duration Bet The Farm	Fridge	continuous	\N	\N	\N	66	
+156	Duration Cuttin Grass	Fridge	continuous	\N	\N	\N	67	
+157	Good Karma Culture Shock	Fridge	continuous	\N	\N	\N	49	
+158	Good Karma Shanti	Fridge	continuous	\N	\N	\N	51	
+159	Good Karma What's Your Mantra	Fridge	continuous	\N	\N	\N	50	
+160	Newtown Park Maybe Tomorrow	Fridge	continuous	\N	\N	\N	64	
+161	Queer Brewing Tiny Dots	Fridge	continuous	\N	\N	\N	65	
+104	Lager	Bar	regular	\N	25	\N	\N	
+105	Stowford Press	Bar	regular	\N	35	\N	\N	
+106	Tap 7	Bar	regular	\N	20	\N	\N	
+107	Tap 8	Bar	regular	\N	20	\N	\N	
+108	Tap 9	Bar	regular	\N	20	\N	\N	
+109	Tap 10	Bar	regular	\N	20	\N	\N	
+162	CyBAR (PERRY) CYDER	Bar	regular	\N	\N	\N	\N	
 \.
 
 
@@ -25502,6 +25681,14 @@ COPY public.stocktake_snapshots (stocktake_id, stock_id, qty, displayqty, newdis
 --
 
 COPY public.stocktakes (id, description, create_time, create_user_id, start_time, commit_time, commit_user_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: stocktype_meta; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.stocktype_meta (stocktype, key, value, document, document_hash, document_mimetype) FROM stdin;
 \.
 
 
@@ -46152,116 +46339,116 @@ COPY public.unittypes (id, description, name, sale_unit_name, sale_unit_name_plu
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid, register, message) FROM stdin;
-1	Lucy Reilly	Lucy	steve	t	t	\N	277c0a9a-ae00-4a9c-baee-670e51990c66	\N
-2	Maddison Mcdonald	Maddison	laurence	t	f	8663	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-3	Muhammad Gray	Muhammad	tom	t	f	7103	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-4	Evelyn Ritchie	Evelyn	luke	t	f	48	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-5	Albert Macdonald	Albert	\N	t	f	\N	\N	\N
-6	Francesca Walker	Francesca	russss	t	f	47	bda1732c-6114-4873-8572-773a070359f3	\N
-7	Elsie Reid	Elsie	shop	t	f	\N	3e09cdda-98a4-4cb9-9c06-a97f6f239e5f	\N
-8	David Green	David	\N	t	f	278	f522864c-fc70-4aa3-a87c-27e9ca889486	\N
-9	Elijah White	Elijah	\N	t	f	8636	bda1732c-6114-4873-8572-773a070359f3	\N
-10	Jude Mckenzie	Jude	\N	t	f	8662	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-11	Sarah Paterson	Sarah	\N	t	f	4658	4dea7014-54a1-450b-838f-c29379988d86	\N
-12	Caleb Stevenson	Caleb	\N	t	f	7069	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-13	Noah Cunningham	Noah	\N	t	f	1338	f522864c-fc70-4aa3-a87c-27e9ca889486	\N
-14	Harley Mcmillan	Harley	\N	t	f	\N	cf7b8c61-f7c5-4d6a-9930-946cc0599fd5	\N
-15	Arthur Stevenson	Arthur	\N	t	f	5910	4dea7014-54a1-450b-838f-c29379988d86	\N
-16	Megan Jackson	Megan	\N	t	f	8622	277c0a9a-ae00-4a9c-baee-670e51990c66	\N
-17	Zara Wood	Zara	\N	t	f	776	f522864c-fc70-4aa3-a87c-27e9ca889486	\N
-18	Elizabeth Davies	Elizabeth	\N	t	f	5943	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-19	Michael White	Michael	\N	t	f	1437	629316d8-3f36-4823-94e7-5aa95f2cc6dc	\N
-20	Mila Docherty	Mila	\N	t	f	985	629316d8-3f36-4823-94e7-5aa95f2cc6dc	\N
-21	Dylan Walker	Dylan	\N	t	f	940	f522864c-fc70-4aa3-a87c-27e9ca889486	\N
-22	Joshua Richardson	Joshua	\N	t	f	2413	3ed34608-6f5d-4c39-9f67-d8b9c0afd2de	\N
-23	Mila Hunter	Mila	\N	t	f	8615	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-24	Bobby Jamieson	Bobby	\N	t	f	8624	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-25	Mohammed Currie	Mohammed	\N	t	f	6364	4dea7014-54a1-450b-838f-c29379988d86	\N
-26	Charles Docherty	Charles	\N	t	f	1402	629316d8-3f36-4823-94e7-5aa95f2cc6dc	\N
-27	Robyn Sinclair	Robyn	\N	t	f	\N	3a2dcec2-baa4-4d1a-a942-16a4fecf2351	\N
-28	Maya Wilson	Maya	\N	t	f	1382	ee10211d-2545-4880-94ce-21c0dd4c72bc	\N
-29	Lexi Mckenzie	Lexi	\N	t	f	7097	4dea7014-54a1-450b-838f-c29379988d86	\N
-30	Martha Cooper	Martha	\N	t	f	\N	\N	\N
-31	Aisha Christie	Aisha	\N	t	f	\N	629cba24-bfa9-46c4-a2da-eb91ff1ad1b5	\N
-32	Elsie Mackenzie	Elsie	\N	t	f	7073	ac761900-a3ad-42e7-982e-7181ec260235	\N
-33	Summer Cooper	Summer	\N	t	f	5408	24444844-def4-455b-b017-1e09324573bf	\N
-34	Sophia Millar	Sophia	\N	t	f	7389	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-35	Stanley Robertson	Stanley	\N	t	f	\N	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-36	Isabelle Maclean	Isabelle	\N	t	f	6920	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-37	Ethan Davies	Ethan	\N	t	f	7214	4dea7014-54a1-450b-838f-c29379988d86	\N
-38	Ruby Maclean	Ruby	\N	t	f	2208	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-39	Hugo Ward	Hugo	\N	t	f	5808	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-40	Reuben Young	Reuben	\N	t	f	7101	4dea7014-54a1-450b-838f-c29379988d86	\N
-41	Heidi Crawford	Heidi	\N	t	f	2411	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-42	Logan Mitchell	Logan	\N	t	f	5034	4dea7014-54a1-450b-838f-c29379988d86	\N
-43	Oliver Allan	Oliver	\N	t	f	2663	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-44	Theo Douglas	Theo	\N	t	f	6974	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-45	Lilly Marshall	Lilly	\N	t	f	4713	b1ae1792-e10e-476e-8f6f-bb2cc7ff19fa	\N
-46	Mila Marshall	Mila	\N	t	f	7899	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-47	Ivy Jones	Ivy	\N	t	f	5213	24444844-def4-455b-b017-1e09324573bf	\N
-48	Bobby Scott	Bobby	\N	t	f	8109	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-49	Bella Miller	Bella	\N	t	f	7494	bda1732c-6114-4873-8572-773a070359f3	\N
-50	Erin Johnston	Erin	bonzi	t	f	3150	75b335df-0bff-4b08-8b37-5ea5df6ce32a	\N
-51	Nancy Wallace	Nancy	\N	t	f	3264	75b335df-0bff-4b08-8b37-5ea5df6ce32a	\N
-52	Olivia Stevenson	Olivia	\N	t	f	4935	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-53	Lola Martin	Lola	\N	t	f	8634	bda1732c-6114-4873-8572-773a070359f3	\N
-54	Poppy Stewart	Poppy	\N	t	f	3931	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-55	Scarlett Munro	Scarlett	\N	t	f	4254	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-56	Gabriel Wilson	Gabriel	\N	t	f	3499	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-57	Summer Watson	Summer	\N	t	f	6657	24444844-def4-455b-b017-1e09324573bf	\N
-58	Lacey Hill	Lacey	\N	t	f	3725	75b335df-0bff-4b08-8b37-5ea5df6ce32a	\N
-59	Alfie Fleming	Alfie	\N	t	f	3651	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-60	Frederick Clark	Frederick	\N	t	f	8626	bda1732c-6114-4873-8572-773a070359f3	\N
-61	Toby Moore	Toby	\N	t	f	4021	3ed34608-6f5d-4c39-9f67-d8b9c0afd2de	\N
-62	Toby Cooper	Toby	\N	t	f	\N	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-63	James Maclean	James	\N	t	f	\N	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-64	Caleb Wilson	Caleb	\N	t	f	4279	477af44b-92e9-4d14-a9cd-af19bb4bac9d	\N
-65	Aria Morrison	Aria	\N	t	f	5470	24444844-def4-455b-b017-1e09324573bf	\N
-66	Sophia Watson	Sophia	\N	t	f	4276	75b335df-0bff-4b08-8b37-5ea5df6ce32a	\N
-67	Isla Watt	Isla	\N	t	f	4346	b1ae1792-e10e-476e-8f6f-bb2cc7ff19fa	\N
-68	Eva Bell	Eva	\N	t	f	4442	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-69	Amber Thompson	Amber	\N	t	f	4851	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-70	Kai Williamson	Kai	\N	t	f	5027	24444844-def4-455b-b017-1e09324573bf	\N
-71	Alfie Mcmillan	Alfie	\N	t	f	5022	24444844-def4-455b-b017-1e09324573bf	\N
-72	Daisy Docherty	Daisy	\N	t	f	4984	6098c789-12e9-4ce9-97a9-7ac04ac37d96	\N
-73	Zoe Mcmillan	Zoe	\N	t	f	8434	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-74	Summer Gray	Summer	\N	t	f	5214	4dea7014-54a1-450b-838f-c29379988d86	\N
-75	George Mcmillan	George	\N	t	f	8007	fc95e9c8-f9eb-43a5-a165-b49046ae2872	\N
-76	Francesca Duncan	Francesca	\N	t	f	5595	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-77	David Mclaughlin	David	\N	t	f	5799	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-78	Louis Morrison	Louis	\N	t	f	5742	ac761900-a3ad-42e7-982e-7181ec260235	\N
-79	Edward Muir	Edward	\N	t	f	7601	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-80	Frankie Morrison	Frankie	\N	t	f	5984	24444844-def4-455b-b017-1e09324573bf	\N
-81	Charlotte Mitchell	Charlotte	\N	t	f	6175	24444844-def4-455b-b017-1e09324573bf	\N
-82	Harry Hamilton	Harry	\N	t	f	6195	4dea7014-54a1-450b-838f-c29379988d86	\N
-83	Theodore Hughes	Theodore	\N	t	f	6475	24444844-def4-455b-b017-1e09324573bf	\N
-84	Freddie Duncan	Freddie	\N	t	f	8621	277c0a9a-ae00-4a9c-baee-670e51990c66	\N
-85	Amber Mclaughlin	Amber	\N	t	f	6561	ac761900-a3ad-42e7-982e-7181ec260235	\N
-86	Reuben Green	Reuben	\N	t	f	8431	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-87	Lucas Jackson	Lucas	\N	t	f	8428	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-88	Sonny Anderson	Sonny	\N	t	f	6711	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-89	Zachary Fraser	Zachary	\N	t	f	6889	4dea7014-54a1-450b-838f-c29379988d86	\N
-90	Lily Simpson	Lily	\N	t	f	7869	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-91	Beatrice Young	Beatrice	\N	t	f	7090	fc68b483-8dd3-465b-abc8-56554a303ad6	\N
-92	Scarlett Walker	Scarlett	\N	t	f	7070	ac761900-a3ad-42e7-982e-7181ec260235	\N
-93	Emily Bruce	Emily	\N	t	f	8122	bda1732c-6114-4873-8572-773a070359f3	\N
-94	Charlotte Wallace	Charlotte	\N	t	f	8661	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-95	Esme Anderson	Esme	\N	t	f	7279	4dea7014-54a1-450b-838f-c29379988d86	\N
-96	Alex Christie	Alex	\N	t	f	7280	4dea7014-54a1-450b-838f-c29379988d86	\N
-97	Lacey Murray	Lacey	\N	t	f	7395	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-98	Callum Green	Callum	\N	t	f	7419	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-99	Elizabeth Christie	Elizabeth	\N	t	f	\N	\N	\N
-100	Charlie Millar	Charlie	\N	t	f	\N	\N	\N
-101	Anna Campbell	Anna	\N	t	f	7486	0807df11-841d-4e05-835f-f86fc0754344	\N
-102	Gabriel Ward	Gabriel	\N	t	f	7602	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-103	Ruby Douglas	Ruby	\N	t	f	7604	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-104	Alfie Kelly	Alfie	\N	t	f	7712	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-105	Lewis Maclean	Lewis	\N	t	f	7825	fc95e9c8-f9eb-43a5-a165-b49046ae2872	\N
-106	Joshua Boyle	Joshua	\N	t	f	8658	f494b9c9-a46c-4e23-867d-f441b0dd4c9f	\N
-107	Maria Wood	Maria	\N	t	f	8026	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-108	Sonny Ferguson	Sonny	\N	t	f	8286	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
-109	Eva Jamieson	Eva	\N	t	f	8270	fd78a833-931d-4a24-828b-8a4dd8a1f588	\N
+COPY public.users (id, fullname, shortname, webuser, enabled, superuser, transid, message, register_id, last_seen) FROM stdin;
+1	Lucy Reilly	Lucy	steve	t	t	\N	\N	\N	\N
+2	Maddison Mcdonald	Maddison	laurence	t	f	8663	\N	\N	\N
+3	Muhammad Gray	Muhammad	tom	t	f	7103	\N	\N	\N
+4	Evelyn Ritchie	Evelyn	luke	t	f	48	\N	\N	\N
+5	Albert Macdonald	Albert	\N	t	f	\N	\N	\N	\N
+6	Francesca Walker	Francesca	russss	t	f	47	\N	\N	\N
+7	Elsie Reid	Elsie	shop	t	f	\N	\N	\N	\N
+8	David Green	David	\N	t	f	278	\N	\N	\N
+9	Elijah White	Elijah	\N	t	f	8636	\N	\N	\N
+10	Jude Mckenzie	Jude	\N	t	f	8662	\N	\N	\N
+11	Sarah Paterson	Sarah	\N	t	f	4658	\N	\N	\N
+12	Caleb Stevenson	Caleb	\N	t	f	7069	\N	\N	\N
+13	Noah Cunningham	Noah	\N	t	f	1338	\N	\N	\N
+14	Harley Mcmillan	Harley	\N	t	f	\N	\N	\N	\N
+15	Arthur Stevenson	Arthur	\N	t	f	5910	\N	\N	\N
+16	Megan Jackson	Megan	\N	t	f	8622	\N	\N	\N
+17	Zara Wood	Zara	\N	t	f	776	\N	\N	\N
+18	Elizabeth Davies	Elizabeth	\N	t	f	5943	\N	\N	\N
+19	Michael White	Michael	\N	t	f	1437	\N	\N	\N
+20	Mila Docherty	Mila	\N	t	f	985	\N	\N	\N
+21	Dylan Walker	Dylan	\N	t	f	940	\N	\N	\N
+22	Joshua Richardson	Joshua	\N	t	f	2413	\N	\N	\N
+23	Mila Hunter	Mila	\N	t	f	8615	\N	\N	\N
+24	Bobby Jamieson	Bobby	\N	t	f	8624	\N	\N	\N
+25	Mohammed Currie	Mohammed	\N	t	f	6364	\N	\N	\N
+26	Charles Docherty	Charles	\N	t	f	1402	\N	\N	\N
+27	Robyn Sinclair	Robyn	\N	t	f	\N	\N	\N	\N
+28	Maya Wilson	Maya	\N	t	f	1382	\N	\N	\N
+29	Lexi Mckenzie	Lexi	\N	t	f	7097	\N	\N	\N
+30	Martha Cooper	Martha	\N	t	f	\N	\N	\N	\N
+31	Aisha Christie	Aisha	\N	t	f	\N	\N	\N	\N
+32	Elsie Mackenzie	Elsie	\N	t	f	7073	\N	\N	\N
+33	Summer Cooper	Summer	\N	t	f	5408	\N	\N	\N
+34	Sophia Millar	Sophia	\N	t	f	7389	\N	\N	\N
+35	Stanley Robertson	Stanley	\N	t	f	\N	\N	\N	\N
+36	Isabelle Maclean	Isabelle	\N	t	f	6920	\N	\N	\N
+37	Ethan Davies	Ethan	\N	t	f	7214	\N	\N	\N
+38	Ruby Maclean	Ruby	\N	t	f	2208	\N	\N	\N
+39	Hugo Ward	Hugo	\N	t	f	5808	\N	\N	\N
+40	Reuben Young	Reuben	\N	t	f	7101	\N	\N	\N
+41	Heidi Crawford	Heidi	\N	t	f	2411	\N	\N	\N
+42	Logan Mitchell	Logan	\N	t	f	5034	\N	\N	\N
+43	Oliver Allan	Oliver	\N	t	f	2663	\N	\N	\N
+44	Theo Douglas	Theo	\N	t	f	6974	\N	\N	\N
+45	Lilly Marshall	Lilly	\N	t	f	4713	\N	\N	\N
+46	Mila Marshall	Mila	\N	t	f	7899	\N	\N	\N
+47	Ivy Jones	Ivy	\N	t	f	5213	\N	\N	\N
+48	Bobby Scott	Bobby	\N	t	f	8109	\N	\N	\N
+49	Bella Miller	Bella	\N	t	f	7494	\N	\N	\N
+50	Erin Johnston	Erin	bonzi	t	f	3150	\N	\N	\N
+51	Nancy Wallace	Nancy	\N	t	f	3264	\N	\N	\N
+52	Olivia Stevenson	Olivia	\N	t	f	4935	\N	\N	\N
+53	Lola Martin	Lola	\N	t	f	8634	\N	\N	\N
+54	Poppy Stewart	Poppy	\N	t	f	3931	\N	\N	\N
+55	Scarlett Munro	Scarlett	\N	t	f	4254	\N	\N	\N
+56	Gabriel Wilson	Gabriel	\N	t	f	3499	\N	\N	\N
+57	Summer Watson	Summer	\N	t	f	6657	\N	\N	\N
+58	Lacey Hill	Lacey	\N	t	f	3725	\N	\N	\N
+59	Alfie Fleming	Alfie	\N	t	f	3651	\N	\N	\N
+60	Frederick Clark	Frederick	\N	t	f	8626	\N	\N	\N
+61	Toby Moore	Toby	\N	t	f	4021	\N	\N	\N
+62	Toby Cooper	Toby	\N	t	f	\N	\N	\N	\N
+63	James Maclean	James	\N	t	f	\N	\N	\N	\N
+64	Caleb Wilson	Caleb	\N	t	f	4279	\N	\N	\N
+65	Aria Morrison	Aria	\N	t	f	5470	\N	\N	\N
+66	Sophia Watson	Sophia	\N	t	f	4276	\N	\N	\N
+67	Isla Watt	Isla	\N	t	f	4346	\N	\N	\N
+68	Eva Bell	Eva	\N	t	f	4442	\N	\N	\N
+69	Amber Thompson	Amber	\N	t	f	4851	\N	\N	\N
+70	Kai Williamson	Kai	\N	t	f	5027	\N	\N	\N
+71	Alfie Mcmillan	Alfie	\N	t	f	5022	\N	\N	\N
+72	Daisy Docherty	Daisy	\N	t	f	4984	\N	\N	\N
+73	Zoe Mcmillan	Zoe	\N	t	f	8434	\N	\N	\N
+74	Summer Gray	Summer	\N	t	f	5214	\N	\N	\N
+75	George Mcmillan	George	\N	t	f	8007	\N	\N	\N
+76	Francesca Duncan	Francesca	\N	t	f	5595	\N	\N	\N
+77	David Mclaughlin	David	\N	t	f	5799	\N	\N	\N
+78	Louis Morrison	Louis	\N	t	f	5742	\N	\N	\N
+79	Edward Muir	Edward	\N	t	f	7601	\N	\N	\N
+80	Frankie Morrison	Frankie	\N	t	f	5984	\N	\N	\N
+81	Charlotte Mitchell	Charlotte	\N	t	f	6175	\N	\N	\N
+82	Harry Hamilton	Harry	\N	t	f	6195	\N	\N	\N
+83	Theodore Hughes	Theodore	\N	t	f	6475	\N	\N	\N
+84	Freddie Duncan	Freddie	\N	t	f	8621	\N	\N	\N
+85	Amber Mclaughlin	Amber	\N	t	f	6561	\N	\N	\N
+86	Reuben Green	Reuben	\N	t	f	8431	\N	\N	\N
+87	Lucas Jackson	Lucas	\N	t	f	8428	\N	\N	\N
+88	Sonny Anderson	Sonny	\N	t	f	6711	\N	\N	\N
+89	Zachary Fraser	Zachary	\N	t	f	6889	\N	\N	\N
+90	Lily Simpson	Lily	\N	t	f	7869	\N	\N	\N
+91	Beatrice Young	Beatrice	\N	t	f	7090	\N	\N	\N
+92	Scarlett Walker	Scarlett	\N	t	f	7070	\N	\N	\N
+93	Emily Bruce	Emily	\N	t	f	8122	\N	\N	\N
+94	Charlotte Wallace	Charlotte	\N	t	f	8661	\N	\N	\N
+95	Esme Anderson	Esme	\N	t	f	7279	\N	\N	\N
+96	Alex Christie	Alex	\N	t	f	7280	\N	\N	\N
+97	Lacey Murray	Lacey	\N	t	f	7395	\N	\N	\N
+98	Callum Green	Callum	\N	t	f	7419	\N	\N	\N
+99	Elizabeth Christie	Elizabeth	\N	t	f	\N	\N	\N	\N
+100	Charlie Millar	Charlie	\N	t	f	\N	\N	\N	\N
+101	Anna Campbell	Anna	\N	t	f	7486	\N	\N	\N
+102	Gabriel Ward	Gabriel	\N	t	f	7602	\N	\N	\N
+103	Ruby Douglas	Ruby	\N	t	f	7604	\N	\N	\N
+104	Alfie Kelly	Alfie	\N	t	f	7712	\N	\N	\N
+105	Lewis Maclean	Lewis	\N	t	f	7825	\N	\N	\N
+106	Joshua Boyle	Joshua	\N	t	f	8658	\N	\N	\N
+107	Maria Wood	Maria	\N	t	f	8026	\N	\N	\N
+108	Sonny Ferguson	Sonny	\N	t	f	8286	\N	\N	\N
+109	Eva Jamieson	Eva	\N	t	f	8270	\N	\N	\N
 \.
 
 
@@ -46404,6 +46591,13 @@ SELECT pg_catalog.setval('public.plu_seq', 123, true);
 --
 
 SELECT pg_catalog.setval('public.refusals_log_seq', 65, true);
+
+
+--
+-- Name: register_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.register_seq', 1, false);
 
 
 --
@@ -46650,6 +46844,14 @@ ALTER TABLE ONLY public.refusals_log
 
 
 --
+-- Name: registers registers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.registers
+    ADD CONSTRAINT registers_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: secrets secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -46767,6 +46969,14 @@ ALTER TABLE ONLY public.stocktake_snapshots
 
 ALTER TABLE ONLY public.stocktakes
     ADD CONSTRAINT stocktakes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stocktype_meta stocktype_meta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stocktype_meta
+    ADD CONSTRAINT stocktype_meta_pkey PRIMARY KEY (stocktype, key);
 
 
 --
@@ -46991,73 +47201,80 @@ CREATE RULE log_stocktype AS
 
 
 --
--- Name: transactions close_only_if_balanced; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE CONSTRAINT TRIGGER close_only_if_balanced AFTER INSERT OR UPDATE ON public.transactions NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.check_transaction_balances();
-
-
---
--- Name: transactions close_only_if_no_pending_payments; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE CONSTRAINT TRIGGER close_only_if_no_pending_payments AFTER INSERT OR UPDATE ON public.transactions NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.check_no_pending_payments();
-
-
---
 -- Name: config config_change; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER config_change AFTER UPDATE ON public.config FOR EACH ROW EXECUTE FUNCTION public.notify_config_change();
+CREATE TRIGGER config_change AFTER UPDATE ON public.config FOR EACH ROW EXECUTE PROCEDURE public.notify_config_change();
 
 
 --
 -- Name: group_grants group_grants_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER group_grants_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_grants FOR EACH STATEMENT EXECUTE FUNCTION public.notify_group_grants_change();
+CREATE TRIGGER group_grants_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_grants FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_grants_change();
 
 
 --
 -- Name: group_membership group_membership_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER group_membership_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_membership FOR EACH STATEMENT EXECUTE FUNCTION public.notify_group_membership_change();
+CREATE TRIGGER group_membership_changed AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.group_membership FOR EACH STATEMENT EXECUTE PROCEDURE public.notify_group_membership_change();
 
 
 --
 -- Name: keycaps keycap_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER keycap_changed AFTER INSERT OR UPDATE ON public.keycaps FOR EACH ROW EXECUTE FUNCTION public.notify_keycap_change();
+CREATE TRIGGER keycap_changed AFTER INSERT OR UPDATE ON public.keycaps FOR EACH ROW EXECUTE PROCEDURE public.notify_keycap_change();
 
 
 --
 -- Name: log log_entry; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER log_entry AFTER INSERT OR UPDATE ON public.log FOR EACH ROW EXECUTE FUNCTION public.notify_log_entry();
+CREATE TRIGGER log_entry AFTER INSERT OR UPDATE ON public.log FOR EACH ROW EXECUTE PROCEDURE public.notify_log_entry();
 
 
 --
--- Name: sessions max_one_session_open; Type: TRIGGER; Schema: public; Owner: -
+-- Name: stock stockitem_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE CONSTRAINT TRIGGER max_one_session_open AFTER INSERT OR UPDATE ON public.sessions NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.check_max_one_session_open();
-
-
---
--- Name: payments no_modify_closed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE CONSTRAINT TRIGGER no_modify_closed AFTER INSERT OR UPDATE ON public.payments NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.check_modify_closed_trans_payment();
+CREATE TRIGGER stockitem_changed AFTER INSERT OR DELETE OR UPDATE ON public.stock FOR EACH ROW EXECUTE PROCEDURE public.notify_stockitem_change();
 
 
 --
--- Name: translines no_modify_closed; Type: TRIGGER; Schema: public; Owner: -
+-- Name: stocklines stockline_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE CONSTRAINT TRIGGER no_modify_closed AFTER INSERT OR UPDATE ON public.translines NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.check_modify_closed_trans_line();
+CREATE TRIGGER stockline_changed AFTER INSERT OR DELETE OR UPDATE ON public.stocklines FOR EACH ROW EXECUTE PROCEDURE public.notify_stockline_change();
+
+
+--
+-- Name: stockout stockout_changed; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER stockout_changed AFTER INSERT OR DELETE OR UPDATE ON public.stockout FOR EACH ROW EXECUTE PROCEDURE public.notify_stockout_change();
+
+
+--
+-- Name: stocktypes stocktype_changed; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER stocktype_changed AFTER INSERT OR DELETE OR UPDATE ON public.stocktypes FOR EACH ROW EXECUTE PROCEDURE public.notify_stocktype_change();
+
+
+--
+-- Name: stocktype_meta stocktype_meta_changed; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER stocktype_meta_changed AFTER INSERT OR DELETE OR UPDATE ON public.stocktype_meta FOR EACH ROW EXECUTE PROCEDURE public.notify_stocktype_meta_change();
+
+
+--
+-- Name: users user_changed; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER user_changed AFTER UPDATE ON public.users FOR EACH ROW EXECUTE PROCEDURE public.notify_user_change();
 
 
 --
@@ -47557,11 +47774,11 @@ ALTER TABLE ONLY public.stocktake_adjustments
 
 
 --
--- Name: stocktake_adjustments stocktake_adjustments_stocktake_id_stock_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stocktake_adjustments stocktake_adjustments_stocktake_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stocktake_adjustments
-    ADD CONSTRAINT stocktake_adjustments_stocktake_id_stock_id_fkey FOREIGN KEY (stocktake_id, stock_id) REFERENCES public.stocktake_snapshots(stocktake_id, stock_id) ON DELETE CASCADE;
+    ADD CONSTRAINT stocktake_adjustments_stocktake_id_fkey FOREIGN KEY (stocktake_id, stock_id) REFERENCES public.stocktake_snapshots(stocktake_id, stock_id) ON DELETE CASCADE;
 
 
 --
@@ -47602,6 +47819,14 @@ ALTER TABLE ONLY public.stocktakes
 
 ALTER TABLE ONLY public.stocktakes
     ADD CONSTRAINT stocktakes_create_user_id_fkey FOREIGN KEY (create_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: stocktype_meta stocktype_meta_stocktype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stocktype_meta
+    ADD CONSTRAINT stocktype_meta_stocktype_fkey FOREIGN KEY (stocktype) REFERENCES public.stocktypes(stocktype) ON DELETE CASCADE;
 
 
 --
@@ -47698,6 +47923,14 @@ ALTER TABLE ONLY public.translines
 
 ALTER TABLE ONLY public.translines
     ADD CONSTRAINT translines_voided_by_fkey FOREIGN KEY (voided_by) REFERENCES public.translines(translineid) ON DELETE SET NULL;
+
+
+--
+-- Name: users users_register_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_register_id_fkey FOREIGN KEY (register_id) REFERENCES public.registers(id);
 
 
 --
