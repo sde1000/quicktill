@@ -14,9 +14,21 @@ What's new:
  * The Twitter integration has been removed. A stub remains so that
    till configurations that refer to it will still load.
 
+ * "Last seen" information is stored for each user (as opposed to each
+   user token as before), and is shown in the web interface.
+
  * When a user moves to another terminal their session on the terminal
    they left closes immediately, rather than waiting for a timeout or
    a keypress.
+
+ * Stock type metadata is supported, and the till web interface now
+   uses this for tasting notes, product logos and product images.
+
+ * Stock lines now support a "note" field, which is shown on the stock
+   terminal and in the web interface
+
+ * Database notifications are sent when stock levels change, which can
+   be used to drive a real-time display
 
 To upgrade the database:
 
@@ -52,10 +64,86 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION notify_stockitem_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION notify_stockline_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+  ELSE
+    PERFORM pg_notify('stockline_change', CAST(NEW.stocklineid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION notify_stockout_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION notify_stocktype_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stocktype_change', CAST(OLD.stocktype AS text));
+  ELSE
+    PERFORM pg_notify('stocktype_change', CAST(NEW.stocktype AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
 CREATE TRIGGER user_changed
 	AFTER UPDATE ON users
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.notify_user_change();
+
+CREATE TRIGGER stockitem_changed
+	AFTER INSERT OR UPDATE OR DELETE ON stock
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.notify_stockitem_change();
+
+CREATE TRIGGER stockline_changed
+	AFTER INSERT OR UPDATE OR DELETE ON stocklines
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.notify_stockline_change();
+
+CREATE TRIGGER stockout_changed
+	AFTER INSERT OR UPDATE OR DELETE ON stockout
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.notify_stockout_change();
+
+CREATE TRIGGER stocktype_changed
+	AFTER INSERT OR UPDATE OR DELETE ON stocktypes
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.notify_stocktype_change();
 
 COMMIT;
 ```
