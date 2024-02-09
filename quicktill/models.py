@@ -1744,6 +1744,27 @@ class StockLine(Base, Logged):
                 .order_by(cls.location).all()]
 
 
+add_ddl(StockLine.__table__, """
+CREATE OR REPLACE FUNCTION notify_stockline_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+  ELSE
+    PERFORM pg_notify('stockline_change', CAST(NEW.stocklineid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER stockline_changed
+  AFTER INSERT OR UPDATE OR DELETE ON stocklines
+  FOR EACH ROW EXECUTE PROCEDURE notify_stockline_change();
+""", """
+DROP TRIGGER stockline_changed ON stocklines;
+DROP FUNCTION notify_stockline_change();
+""")
+
+
 plu_seq = Sequence('plu_seq')
 
 
@@ -2365,6 +2386,27 @@ class StockType(Base, Logged):
         return (sell, unallocated, remaining)
 
 
+add_ddl(StockType.__table__, """
+CREATE OR REPLACE FUNCTION notify_stocktype_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stocktype_change', CAST(OLD.stocktype AS text));
+  ELSE
+    PERFORM pg_notify('stocktype_change', CAST(NEW.stocktype AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER stocktype_changed
+  AFTER INSERT OR UPDATE OR DELETE ON stocktypes
+  FOR EACH ROW EXECUTE PROCEDURE notify_stocktype_change();
+""", """
+DROP TRIGGER stocktype_changed ON stocktypes;
+DROP FUNCTION notify_stocktype_change();
+""")
+
+
 class FinishCode(Base):
     __tablename__ = 'stockfinish'
     id = Column('finishcode', String(8), nullable=False, primary_key=True)
@@ -2428,6 +2470,27 @@ class StockTypeMeta(Base):
             "(document is null)=(document_mimetype is null)",
             name="document_and_mimetype_null_together"),
     )
+
+
+add_ddl(StockTypeMeta.__table__, """
+CREATE OR REPLACE FUNCTION notify_stocktype_meta_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stocktype_change', CAST(OLD.stocktype AS text));
+  ELSE
+    PERFORM pg_notify('stocktype_change', CAST(NEW.stocktype AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER stocktype_meta_changed
+  AFTER INSERT OR UPDATE OR DELETE ON stocktype_meta
+  FOR EACH ROW EXECUTE PROCEDURE notify_stocktype_meta_change();
+""", """
+DROP TRIGGER stocktype_meta_changed ON stocktype_meta;
+DROP FUNCTION notify_stocktype_meta_change();
+""")
 
 
 stock_seq = Sequence('stock_seq')
@@ -2620,6 +2683,27 @@ class StockItem(Base, Logged):
              f"{self.stocktype.name})", self.get_absolute_url())]
 
 
+add_ddl(StockItem.__table__, """
+CREATE OR REPLACE FUNCTION notify_stockitem_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER stockitem_changed
+  AFTER INSERT OR UPDATE OR DELETE ON stock
+  FOR EACH ROW EXECUTE PROCEDURE notify_stockitem_change();
+""", """
+DROP TRIGGER stockitem_changed ON stock;
+DROP FUNCTION notify_stockitem_change();
+""")
+
+
 StockItem.checked = column_property(
     select([
         func.coalesce(
@@ -2722,6 +2806,27 @@ class StockOut(Base, Logged):
             "translineid IS NULL OR stocktake_id IS NULL",
             name="be_unambiguous_constraint"),
     )
+
+
+add_ddl(StockOut.__table__, """
+CREATE OR REPLACE FUNCTION notify_stockout_change() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+  ELSE
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER stockout_changed
+  AFTER INSERT OR UPDATE OR DELETE ON stockout
+  FOR EACH ROW EXECUTE PROCEDURE notify_stockout_change();
+""", """
+DROP TRIGGER stockout_changed ON stockout;
+DROP FUNCTION notify_stockout_change();
+""")
 
 
 # These are added to the StockItem class here because they refer

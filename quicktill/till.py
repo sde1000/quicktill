@@ -43,6 +43,7 @@ from . import dbsetup  # noqa: F401
 from . import dbutils  # noqa: F401
 from . import foodcheck  # noqa: F401
 from . import secretstore  # noqa: F401
+from . import monitor  # noqa: F401
 # End of subcommand imports
 
 log = logging.getLogger(__name__)
