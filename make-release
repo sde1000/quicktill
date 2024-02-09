@@ -53,7 +53,7 @@ releasedate="$(date -R)"
 version="${newversion} (${releasedate})"
 
 # Put the version number in the version.py file
-echo "version=u\"${version}\"" >${pkgdir}/quicktill/version.py
+echo "version=\"${version}\"" >${pkgdir}/quicktill/version.py
 # Put the version number in the version check template
 cat >${pkgdir}/quicktill/tillweb/templates/tillweb/versioncheck.html <<EOF
 {% if version != "${version}" %}
