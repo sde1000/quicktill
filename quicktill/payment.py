@@ -1,46 +1,8 @@
 from . import ui, tillconfig, td, user, keyboard
 from .models import PayType, Payment, Transaction, Session, zero
 from .cmdline import command
-from sqlalchemy.sql.expression import literal
 import datetime
 from decimal import Decimal
-
-
-class PaymentConfig:
-    """Base class for migrating payment configuration to the database
-    """
-    def __init__(self, paytype, description):
-        self.paytype = paytype
-        self.description = description
-
-    def configure(self, paytype):
-        pass
-
-
-def migrate_payment_method_config():
-    # If any payment methods are active, exit immediately because
-    # migration has already been done
-    if td.s.query(literal(True))\
-           .filter(
-               td.s.query(PayType).filter(PayType.mode == "active").exists())\
-           .scalar():
-        return
-    order = iter(range(10, 100000, 10))
-    pts = set()
-    for pm in tillconfig.all_payment_methods:
-        pts.add(pm.paytype)
-        pt = td.s.query(PayType).get(pm.paytype)
-        pt.description = pm.description
-        pm.configure(pt)
-        pt.order = next(order)
-        pt.mode = "active" if pm in tillconfig.payment_methods else "total_only"
-    td.s.flush()
-    for pt in td.s.query(PayType)\
-                  .order_by(PayType.order, PayType.paytype)\
-                  .all():
-        if pt.paytype not in pts:
-            pt.mode = "disabled"
-            pt.order = next(order)
 
 
 # PayType.payment_date_policy -> payment date policy function

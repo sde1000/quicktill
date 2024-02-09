@@ -14,26 +14,6 @@ _default_countup = [
 ]
 
 
-class CashPayment(payment.PaymentConfig):
-    def __init__(self, paytype, description, change_description, drawers=1,
-                 countup=_default_countup,
-                 account_code=""):
-        super().__init__(paytype, description)
-        self.change_description = change_description
-        self.drawers = drawers
-        self.countup = countup
-        self.account_code = account_code
-
-    def configure(self, pt):
-        pt.driver_name = Cash.__name__
-        pt.payments_account = self.account_code
-        pt.config = json.dumps({
-            'change_description': self.change_description,
-            'drawers': self.drawers,
-            'countup': self.countup,
-        })
-
-
 class Cash(payment.PaymentDriver):
     add_payment_supported = True
     change_given = True

@@ -1933,19 +1933,7 @@ class page(ui.basicpage):
         Deal with a keypress that might be a payment key.  We might be
         entered directly rather than through our keypress method, so
         refresh the transaction first.
-
-        For release 22, paytype_id may be a PayType.paytype
-        (preferred) or a payment.PaymentConfig object. After release
-        22, paytype_id must be a PayType.paytype.
         """
-        if isinstance(paytype_id, payment.PaymentConfig):
-            log.warning(
-                f"configuration file should be updated so that "
-                f"the {paytype_id.description} payment key has its "
-                f"method set to the string '{paytype_id.paytype}' "
-                f"instead of a PaymentConfig object instance.")
-            paytype_id = paytype_id.paytype
-
         # UI sanity checks first
         if self.qty is not None:
             log.info("Register: paymentkey: payment with quantity not allowed")

@@ -32,7 +32,6 @@ from . import keyboard
 from . import config
 from . import listen
 from . import barcode
-from . import payment
 from .version import version
 from .models import Session, PayType, Business, zero
 import subprocess
@@ -218,12 +217,6 @@ class runtill(cmdline.command):
     @staticmethod
     def run(args):
         log.info("Starting version %s", version)
-
-        # If any payment methods are defined in the config file,
-        # migrate payments configuration
-        if tillconfig.all_payment_methods:
-            with td.orm_session():
-                payment.migrate_payment_method_config()
 
         if tillconfig.keyboard and tillconfig.keyboard_driver \
            and args.hwkeyboard:
@@ -585,14 +578,6 @@ def main():
             tillconfig.label_printers = val
         elif opt == 'database':
             tillconfig.database = val
-        elif opt == 'all_payment_methods':
-            # This will be obsolete as of version 23 and should show
-            # a warning if present
-            tillconfig.all_payment_methods = val
-        elif opt == 'payment_methods':
-            # This will be obsolete as of version 23 and should show
-            # a warning if present
-            tillconfig.payment_methods = val
         elif opt == 'keyboard_driver':
             tillconfig.keyboard_driver = val
         elif opt == 'keyboard':

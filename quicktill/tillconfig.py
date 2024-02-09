@@ -41,11 +41,6 @@ currency = config.ConfigItem(
 
 hotkeys = {}
 
-# XXX these are now only used for payment method config migration, and
-# will be removed in release 23
-all_payment_methods = []
-payment_methods = []
-
 
 def fc(a):
     """Format currency, using the configured currency symbol."""

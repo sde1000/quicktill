@@ -9,39 +9,6 @@ import json
 log = logging.getLogger(__name__)
 
 
-class CardPayment(payment.PaymentConfig):
-    def __init__(self, paytype, description, machines=1, cashback_method=None,
-                 max_cashback=zero, kickout=False,
-                 rollover_guard_time=None,
-                 account_code="", account_date_policy=None,
-                 ask_for_machine_id=False,
-                 ref_required=True):
-        super().__init__(paytype, description)
-        self.machines = machines
-        self.ask_for_machine_id = ask_for_machine_id if machines > 1 else False
-        self.ref_required = ref_required
-        self.cashback_method = cashback_method.paytype if cashback_method \
-            else None
-        self.max_cashback = max_cashback
-        self.kickout = kickout
-        self.rollover_guard_time = rollover_guard_time
-        self.account_code = account_code
-        # We can't make use of account_date_policy, unfortunately
-
-    def configure(self, pt):
-        pt.driver_name = Card.__name__
-        pt.payments_account = self.account_code
-        pt.config = json.dumps({
-            'machines': self.machines,
-            'ask_for_machine_id': self.ask_for_machine_id,
-            'ref_required': self.ref_required,
-            'cashback_method': self.cashback_method,
-            'max_cashback': str(self.max_cashback),
-            'kickout': self.kickout,
-            'rollover_guard_time': str(self.rollover_guard_time),
-        })
-
-
 class _cardpopup(ui.dismisspopup):
     """Ask for card payment details
 
