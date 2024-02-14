@@ -127,6 +127,8 @@ def line_chosen(line):
 def finish_disconnect(line, sn):
     td.s.add(line)
     log.info("Use Stock: disconnected item %d from %s", sn, line.name)
+    if clear_stockline_note_on_new_stock() and line.linetype == "regular":
+        line.note = ''
     item = td.s.query(StockItem).get(sn)
     td.s.add(StockAnnotation(stockitem=item, atype="stop",
                              text=f"{line.name} (Use Stock disconnect)",
@@ -142,6 +144,8 @@ def finish_disconnect(line, sn):
 
 def finish_reason(line, sn, reason):
     td.s.add(line)
+    if clear_stockline_note_on_new_stock() and line.linetype == "regular":
+        line.note = ''
     stockitem = td.s.query(StockItem).get(sn)
     td.s.add(StockAnnotation(
         stockitem=stockitem, atype="stop",
