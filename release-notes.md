@@ -71,8 +71,21 @@ DECLARE
 BEGIN
   IF (TG_OP = 'DELETE') THEN
     PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+    IF (OLD.stocklineid IS NOT NULL) THEN
+      PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+    END IF;
+  ELSIF (TG_OP = 'INSERT') THEN
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
   ELSE
     PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+    IF (OLD.stocklineid IS DISTINCT FROM NEW.stocklineid) THEN
+      IF (OLD.stocklineid IS NOT NULL) THEN
+        PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+      END IF;
+      IF (NEW.stocklineid IS NOT NULL) THEN
+        PERFORM pg_notify('stockline_change', CAST(NEW.stocklineid AS text));
+      END IF;
+    END IF;
   END IF;
   RETURN NULL;
 END;

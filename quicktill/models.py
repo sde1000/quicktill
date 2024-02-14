@@ -2705,14 +2705,29 @@ class StockItem(Base, Logged):
              f"{self.stocktype.name})", self.get_absolute_url())]
 
 
+# This trigger notifies changes in a stock item, and also notifies a
+# change to a stockline when the item is added to or removed from it.
 add_ddl(StockItem.__table__, """
 CREATE OR REPLACE FUNCTION notify_stockitem_change() RETURNS trigger AS $$
 DECLARE
 BEGIN
   IF (TG_OP = 'DELETE') THEN
     PERFORM pg_notify('stockitem_change', CAST(OLD.stockid AS text));
+    IF (OLD.stocklineid IS NOT NULL) THEN
+      PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+    END IF;
+  ELSIF (TG_OP = 'INSERT') THEN
+    PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
   ELSE
     PERFORM pg_notify('stockitem_change', CAST(NEW.stockid AS text));
+    IF (OLD.stocklineid IS DISTINCT FROM NEW.stocklineid) THEN
+      IF (OLD.stocklineid IS NOT NULL) THEN
+        PERFORM pg_notify('stockline_change', CAST(OLD.stocklineid AS text));
+      END IF;
+      IF (NEW.stocklineid IS NOT NULL) THEN
+        PERFORM pg_notify('stockline_change', CAST(NEW.stocklineid AS text));
+      END IF;
+    END IF;
   END IF;
   RETURN NULL;
 END;
