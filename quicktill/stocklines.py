@@ -573,8 +573,9 @@ class note(user.permission_checked, ui.dismisspopup):
         super().__init__(7, 60, title=f"Set the note on {stockline.name}",
                          colour=ui.colour_input)
         self.win.drawstr(2, 2, 6, "Note: ", align=">")
-        self.notefield = ui.editfield(2, 8, 47, f=stockline.note, keymap={
-            keyboard.K_CLEAR: (self.dismiss, None)})
+        self.notefield = ui.editfield(
+            2, 8, 47, f=stockline.note, flen=200,
+            keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.b = ui.buttonfield(4, 26, 7, "Set", keymap={
             keyboard.K_CASH: (self.enter, None)})
         ui.map_fieldlist([self.notefield, self.b])
