@@ -112,17 +112,18 @@ class gtk_root(Gtk.DrawingArea):
 
     def __init__(self, monospace_font, font,
                  preferred_height=24, preferred_width=80,
-                 minimum_height=14, minimum_width=80):
+                 minimum_height=14, minimum_width=80, pitch_adjust=0):
         super().__init__()
         self.monospace = monospace_font
         self.font = font if font else monospace_font
+        self._pitch_adjust = pitch_adjust
         fontmap = PangoCairo.font_map_get_default()
         pangoctx = fontmap.create_context()
         metrics = pangoctx.get_metrics(self.monospace)
         self.fontwidth = metrics.get_approximate_digit_width() // Pango.SCALE
         self.ascent = metrics.get_ascent() // Pango.SCALE
         self.descent = metrics.get_descent() // Pango.SCALE
-        self.fontheight = self.ascent + self.descent
+        self.fontheight = self.ascent + self.descent + self._pitch_adjust
 
         self._preferred_height = preferred_height
         self._minimum_height = minimum_height
@@ -195,7 +196,8 @@ class gtk_root(Gtk.DrawingArea):
             x = x * self.fontwidth
         new = text_window(
             self, height, width, y, x, colour,
-            monospace_font=self.monospace, font=self.font)
+            monospace_font=self.monospace, font=self.font,
+            pitch_adjust=self._pitch_adjust)
         if always_on_top:
             self._ontop.append(new)
         else:
@@ -332,7 +334,7 @@ class text_window(window):
     """
     def __init__(self, drawable, height, width, y, x,
                  colour=ui.colour_default,
-                 monospace_font=None, font=None):
+                 monospace_font=None, font=None, pitch_adjust=0):
         # y and x are in pixels, height and width are in characters
         self.monospace = monospace_font
         self.font = font if font else monospace_font
@@ -342,7 +344,7 @@ class text_window(window):
         self.fontwidth = metrics.get_approximate_digit_width() // Pango.SCALE
         self.ascent = metrics.get_ascent() // Pango.SCALE
         self.descent = metrics.get_descent() // Pango.SCALE
-        self.fontheight = self.ascent + self.descent
+        self.fontheight = self.ascent + self.descent + pitch_adjust
         super().__init__(
             drawable, height * self.fontheight, width * self.fontwidth,
             y, x)
@@ -580,7 +582,7 @@ def _x_unblank_screen():
 
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard=False, geometry=None):
+        keyboard=False, geometry=None, pitch_adjust=0):
     """Start running with the GTK display system
     """
     if os.getenv('DISPLAY'):
@@ -591,7 +593,7 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
     font = Pango.FontDescription(font)
     ui.rootwin = gtk_root(monospace_font, font,
                           preferred_height=20 if keyboard else 24,
-                          minimum_width=60)
+                          minimum_width=60, pitch_adjust=pitch_adjust)
     ui.beep = Gdk.beep
     if keyboard and tillconfig.keyboard:
         keyboard_gtk.init_css()

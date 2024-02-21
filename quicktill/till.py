@@ -181,6 +181,10 @@ class runtill(cmdline.command):
             "--monospace-font", dest="monospace", default="monospace 20",
             action="store", type=str, metavar="FONT_DESCRIPTION",
             help="Set the font to be used for monospace text")
+        gtkp.add_argument(
+            "--pitch-adjust", dest="pitch_adjust", default=0,
+            action="store", type=int, metavar="PIXELS",
+            help="Adjust the row height for text")
         parser.set_defaults(command=runtill, nolisten=False)
         gtkp.add_argument(
             "--geometry", dest="geometry", default=None,
@@ -293,7 +297,8 @@ class runtill(cmdline.command):
                     font=args.font,
                     monospace_font=args.monospace,
                     keyboard=args.keyboard,
-                    geometry=args.geometry)
+                    geometry=args.geometry,
+                    pitch_adjust=args.pitch_adjust)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
