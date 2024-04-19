@@ -210,6 +210,8 @@ class RegisterPlugin(metaclass=plugins.InstancePluginMount):
          transaction
      - canceltrans(trans) - trans may be open or closed
      - cancelempty(trans) - cash/enter on an empty transaction
+     - sell_plu(trans, plu, items, current_transline) - add or update PLU
+           on open transaction
      - cancelline(l)
      - cancelpayment(p)
      - markkey()
@@ -1181,7 +1183,10 @@ class page(ui.basicpage):
         if may_repeat and len(self.dl) > 0 and \
            self.dl[-1].age() < max_transline_modify_age():
             otl = td.s.query(Transline).get(self.dl[-1].transline)
-            otl.items = otl.items + 1
+            new_items = otl.items + 1 if otl.items >= 0 else otl.items - 1
+            if self.hook("sell_plu", trans, plu, new_items, otl):
+                return
+            otl.items = new_items
             self.dl[-1].update()
             td.s.flush()
             td.s.expire(trans, ['total'])
@@ -1244,6 +1249,15 @@ class page(ui.basicpage):
         # If the transaction is locked, we can't continue
         if self.transaction_locked:
             self.transaction_lock_popup()
+            return
+
+        # If sale.price is negative, make it positive and make the
+        # number of items be negative instead
+        if sale.price < zero:
+            sale.price = -sale.price
+            items = -items
+
+        if self.hook("sell_plu", trans, plu, items, None):
             return
 
         tl = Transline(transaction=trans, items=items, amount=sale.price,
