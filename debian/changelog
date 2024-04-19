@@ -1,3 +1,15 @@
+quicktill (23.3) stable; urgency=low
+
+  * New release 23.3
+
+  * Sort Square terminals by pairing time
+
+  * Prevent crash when stocktype has a negative sale price
+
+  * Enable negative price PLUs to sell negative number of items
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 19 Apr 2024 16:17:25 +0100
+
 quicktill (23.2) stable; urgency=low
 
   * New release 23.2
