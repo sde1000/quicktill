@@ -1347,6 +1347,14 @@ class page(ui.basicpage):
         if explicitprice:
             sale.price = explicitprice
 
+        if sale.price < zero:
+            log.info("_sell_stocktype: negative price for %s", st.format())
+            ui.infopopup(
+                [f"{st} has a negative sale price, which is not "
+                 f"currently supported."],
+                title=f"{st} has negative price")
+            return
+
         total_qty = items * sale.qty
         sell, unallocated, remaining = st.calculate_sale(total_qty)
 
@@ -1534,6 +1542,15 @@ class page(ui.basicpage):
 
         if explicitprice:
             sale.price = explicitprice
+
+        if sale.price < zero:
+            log.info("_sell_stockline: negative price for %s",
+                     sale.stocktype.format())
+            ui.infopopup(
+                [f"{sale.stocktype} has a negative sale price, which is not "
+                 f"currently supported."],
+                title=f"{sale.stocktype} has negative price")
+            return
 
         total_qty = items * sale.qty
         sell, unallocated, remaining = stockline.calculate_sale(
