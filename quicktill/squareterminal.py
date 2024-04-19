@@ -97,6 +97,7 @@ class DeviceCode:
         self.location_id = d.get("location_id")
         self.status = d.get("status")
         self.device_id = d.get("device_id")
+        self.paired_at = d.get("paired_at")
 
     def as_state(self):
         return {
@@ -1313,8 +1314,9 @@ class SquareTerminal(payment.PaymentDriver):
                 if refresh or 'devices' not in state:
                     prev_devices = {
                         d['id']: d for d in state.get('devices', [])}
-                    devicecodes = [x.as_state() for x in s.list_device_codes(
-                        self._location)]
+                    devicecodes = [
+                        x.as_state() for x in sorted(s.list_device_codes(
+                            self._location), key=lambda d: d.paired_at)]
                     if self._sandbox_mode:
                         devicecodes = devicecodes + [
                             {'id': key,
