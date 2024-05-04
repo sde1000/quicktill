@@ -698,7 +698,7 @@ class escpos:
                             left, ' ' * padl, center, ' ' * padr, right))
                         .encode(self.coding))
             elif hasattr(i, 'image_data'):
-                assert len(i.image_data * 8) == i.image_width * i.image_height
+                assert 8 * len(i.image_data) == i.image_width * i.image_height
                 self._image(i.image_data, i.image_width, i.image_height, f)
             elif hasattr(i, 'qrcode_data'):
                 self._qrcode(i.qrcode_data, f)
