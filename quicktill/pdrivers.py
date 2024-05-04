@@ -116,7 +116,7 @@ class ImageElement(ReceiptElement):
         data_lines = [
             line
             for line in image.splitlines()
-            if not line.startswith("#")
+            if not line.startswith(b"#")
         ]
         assert data_lines[0] == b"P4"
         assert data_lines[1] == f"{width} {height}".encode("ascii")
