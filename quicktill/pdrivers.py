@@ -109,8 +109,10 @@ class QRCodeElement(ReceiptElement):
 
 
 class ImageElement(ReceiptElement):
-    def __init__(self, image):
+    def __init__(self, image, width, height):
         self.image_data = image
+        self.image_width = width
+        self.image_height = height
 
     def __str__(self):
         return "Image"
@@ -134,7 +136,9 @@ class ReceiptCanvas:
         self.story.append(QRCodeElement(data))
 
     def printimage(self, image):
-        self.story.append(ImageElement(image))
+        assert image.startswith(b"P4")  # only B&W PBM format currently supported
+        width, height = int(image[3:5]), int(image[6:8])
+        self.story.append(ImageElement(image[9:], width, height))
 
     def add_story(self, story):
         self.story += story
@@ -689,6 +693,9 @@ class escpos:
                         ("%s%s%s%s%s\n" % (
                             left, ' ' * padl, center, ' ' * padr, right))
                         .encode(self.coding))
+            elif hasattr(i, 'image_data'):
+                assert len(i.image_data * 8) == i.image_width * i.image_height
+                self._image(i.image_data, i.image_width, i.image_height, f)
             elif hasattr(i, 'qrcode_data'):
                 self._qrcode(i.qrcode_data, f)
             else:
@@ -700,6 +707,38 @@ class escpos:
                 f.write(b'\n' * self.lines_before_cut + escpos.ep_left)
                 f.write(escpos.ep_fullcut)
             f.flush()
+
+    def _image(self, data, width, height, f):
+        # Print a PBM bit-image
+        if width > self.dpl:
+            # Image too wide for paper
+            return
+
+        # Partition the bitmap into rows
+        rows = []
+        for line in range(height):
+            start = line * (width // 8)
+            end = start + (width // 8)
+            rows.append(data[start:end])
+
+        # Calculate padding required to center the image
+        padding = (self.dpl - width) // 2
+        padchars = bytes([False]) * padding
+
+        # Write the commands to render the padded image
+        f.write(escpos.ep_unidirectional_on)
+        for row in rows:
+            bits = []
+            for byte in row:
+                for bit in f"{int(byte):08b}":
+                    bits.extend([bool(int(bit))] * 3)
+            header = escpos.ep_bitimage_sd + bytes([len(bits), 1])
+            f.write(header + padchars + bytes(bits))
+            f.write(escpos.ep_half_dot_feed)
+        f.write(escpos.ep_unidirectional_off)
+
+        # Clear the line for subsequent content
+        f.write(escpos.ep_short_feed)
 
     def _qrcode_native(self, data, f):
         # Set the size of a "module", in dots.  The default is apparently
