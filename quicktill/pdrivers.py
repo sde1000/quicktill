@@ -13,6 +13,7 @@ try:
     _qrcode_supported = True
 except ImportError:
     _qrcode_supported = False
+import imagesize
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
@@ -109,8 +110,13 @@ class QRCodeElement(ReceiptElement):
 
 
 class ImageElement(ReceiptElement):
-    def __init__(self, image, width, height):
-        self.image_data = image
+    def __init__(self, image):
+        assert image.startswith(b"P4")  # only B&W PBM format currently supported
+        width, height = imagesize.get(io.BytesIO(image))
+        data_lines = [line for line in image.splitlines() if not line.startswith("#")]
+        assert data_lines[0] == b"P4"
+        assert data_lines[1] == b"{width} {height}"
+        self.image_data = bytes().join(data_lines[2:])
         self.image_width = width
         self.image_height = height
 
@@ -136,9 +142,7 @@ class ReceiptCanvas:
         self.story.append(QRCodeElement(data))
 
     def printimage(self, image):
-        assert image.startswith(b"P4")  # only B&W PBM format currently supported
-        width, height = int(image[3:5]), int(image[6:8])
-        self.story.append(ImageElement(image[9:], width, height))
+        self.story.append(ImageElement(image))
 
     def add_story(self, story):
         self.story += story
