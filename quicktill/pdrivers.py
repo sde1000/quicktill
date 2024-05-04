@@ -111,9 +111,13 @@ class QRCodeElement(ReceiptElement):
 
 class ImageElement(ReceiptElement):
     def __init__(self, image):
-        assert image.startswith(b"P4")  # only B&W PBM format currently supported
+        assert image.startswith(b"P4")  # only B&W PBM format supported
         width, height = imagesize.get(io.BytesIO(image))
-        data_lines = [line for line in image.splitlines() if not line.startswith("#")]
+        data_lines = [
+            line
+            for line in image.splitlines()
+            if not line.startswith("#")
+        ]
         assert data_lines[0] == b"P4"
         assert data_lines[1] == b"{width} {height}"
         self.image_data = bytes().join(data_lines[2:])
