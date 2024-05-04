@@ -119,7 +119,7 @@ class ImageElement(ReceiptElement):
             if not line.startswith("#")
         ]
         assert data_lines[0] == b"P4"
-        assert data_lines[1] == b"{width} {height}"
+        assert data_lines[1] == f"{width} {height}".encode("ascii")
         self.image_data = bytes().join(data_lines[2:])
         self.image_width = width
         self.image_height = height
