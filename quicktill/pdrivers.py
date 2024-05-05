@@ -731,18 +731,18 @@ class escpos:
 
         # Calculate padding required to center the image
         padding = (self.dpl - width) // 2
-        padchars = bytes([False]) * padding
+        padchars = [False] * padding
 
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
-            line = []
+            line = padchars.copy()
             for byte in row:
                 for bit in f"{int(byte):08b}":
                     line.extend([bool(int(bit))] * 3)
             width_info = len(line) & 0xff, (len(line) >> 8) & 0xff
             header = escpos.ep_bitimage_sd + bytes(width_info)
-            f.write(header + padchars + bytes(line))
+            f.write(header + bytes(line))
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
