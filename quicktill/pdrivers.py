@@ -736,13 +736,13 @@ class escpos:
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
-            bits = []
+            line = []
             for byte in row:
                 for bit in f"{int(byte):08b}":
-                    bits.extend([bool(int(bit))] * 3)
-            width_info = len(bits) & 0xff, (len(bits) >> 8) & 0xff
+                    line.extend([bool(int(bit))] * 3)
+            width_info = len(line) & 0xff, (len(line) >> 8) & 0xff
             header = escpos.ep_bitimage_sd + bytes(width_info)
-            f.write(header + padchars + bytes(bits))
+            f.write(header + padchars + bytes(line))
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
