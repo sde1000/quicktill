@@ -742,7 +742,6 @@ class escpos:
                     bits.extend([bool(int(bit))] * 3)
             header = escpos.ep_bitimage_sd + bytes([len(bits), 1])
             f.write(header + padchars + bytes(bits))
-            f.write(escpos.ep_half_dot_feed)
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
