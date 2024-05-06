@@ -734,17 +734,25 @@ class escpos:
             line = padchars.copy()
             for byte in data[start:end]:
                 for bit in f"{int(byte):08b}":
-                    line.extend([bool(int(bit))] * 3)
-            lines.append(bytes(line))
+                    line.append(bool(int(bit)))
+            lines.append(line)
 
-        rows = lines
+        # Compact up to eight bit-lines into a byte-row each
+        rows = []
+        for chunk in range(height // 8):
+            group_start = chunk * 8
+            group_end = group_start + 8
+            row = []
+            for column in zip(*lines[group_start:group_end]):
+                record = int(str().join("1" if bit else "0" for bit in column), base=2)
+                row.append(record)
+            rows.append(bytes(row))
 
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
             width_info = len(row).to_bytes(length=2, byteorder="little")
-            header = escpos.ep_bitimage_sd + width_info
-            f.write(header + row)
+            f.write(escpos.ep_bitimage_sd + width_info + row)
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
