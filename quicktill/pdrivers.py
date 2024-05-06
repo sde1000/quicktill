@@ -740,8 +740,8 @@ class escpos:
             for byte in row:
                 for bit in f"{int(byte):08b}":
                     line.extend([bool(int(bit))] * 3)
-            width_info = len(line) & 0xff, (len(line) >> 8) & 0xff
-            header = escpos.ep_bitimage_sd + bytes(width_info)
+            width_info = len(line).to_bytes(length=2, byteorder="little")
+            header = escpos.ep_bitimage_sd + width_info
             f.write(header + bytes(line))
         f.write(escpos.ep_unidirectional_off)
 
