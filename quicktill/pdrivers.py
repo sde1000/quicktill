@@ -726,16 +726,18 @@ class escpos:
         padding = (self.dpl - width) // 2
         padchars = [False] * padding
 
-        # Partition the bitmap into rows
-        rows = []
+        # Partition the bitmap into lines
+        lines = []
         for line in range(height):
             start = line * (width // 8)
             end = start + (width // 8)
-            row = padchars.copy()
+            line = padchars.copy()
             for byte in data[start:end]:
                 for bit in f"{int(byte):08b}":
-                    row.extend([bool(int(bit))] * 3)
-            rows.append(bytes(row))
+                    line.extend([bool(int(bit))] * 3)
+            lines.append(bytes(line))
+
+        rows = lines
 
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
