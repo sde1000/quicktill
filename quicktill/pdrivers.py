@@ -722,27 +722,27 @@ class escpos:
             # Image too wide for paper
             return
 
+        # Calculate padding required to center the image
+        padding = (self.dpl - width) // 2
+        padchars = [False] * padding
+
         # Partition the bitmap into rows
         rows = []
         for line in range(height):
             start = line * (width // 8)
             end = start + (width // 8)
-            rows.append(data[start:end])
-
-        # Calculate padding required to center the image
-        padding = (self.dpl - width) // 2
-        padchars = [False] * padding
+            row = padchars.copy()
+            for byte in data[start:end]:
+                for bit in f"{int(byte):08b}":
+                    row.extend([bool(int(bit))] * 3)
+            rows.append(bytes(row))
 
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
-            line = padchars.copy()
-            for byte in row:
-                for bit in f"{int(byte):08b}":
-                    line.extend([bool(int(bit))] * 3)
-            width_info = len(line).to_bytes(length=2, byteorder="little")
+            width_info = len(row).to_bytes(length=2, byteorder="little")
             header = escpos.ep_bitimage_sd + width_info
-            f.write(header + bytes(line))
+            f.write(header + row)
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
