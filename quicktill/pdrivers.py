@@ -724,7 +724,7 @@ class escpos:
 
         # Calculate padding required to center the image
         padding = (self.dpl - width) // 2
-        padchars = [False] * padding
+        padchars = [False] * padding * 8
 
         # Partition the bitmap into lines
         lines = []
