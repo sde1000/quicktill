@@ -27,8 +27,8 @@ def print_receipt(printer, transid):
     if not trans.lines:
         return
     with printer as d:
-        if tillconfig.publogo:
-            image = base64.b64decode(f"{tillconfig.publogo}")
+        if tillconfig.publogo():
+            image = base64.b64decode(tillconfig.publogo())
             d.printimage(image)
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         for i in tillconfig.pubaddr().splitlines():
