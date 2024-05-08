@@ -763,7 +763,7 @@ class escpos:
         f.write(escpos.ep_line_spacing_default)
 
         # Clear the line for subsequent content
-        f.write(escpos.ep_short_feed)
+        f.write(b'\r\n')
 
     def _qrcode_native(self, data, f):
         # Set the size of a "module", in dots.  The default is apparently
