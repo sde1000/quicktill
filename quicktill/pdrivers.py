@@ -14,7 +14,6 @@ try:
 except ImportError:
     _qrcode_supported = False
 import imagesize
-from more_itertools import batched
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
@@ -307,6 +306,18 @@ def _lpgetstatus(f):
         return "off-line"  # LP_PSELECD
     if ~status & 0x08:
         return "error light is on"  # LP_PERRORP
+
+
+def _chunks(iterable, chunk_size):
+    """Produce chunks of up-to a parameterised size from an iterable input."""
+    chunk = []
+    for item in iter(iterable):
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 class linux_lpprinter(fileprinter):
@@ -732,7 +743,7 @@ class escpos:
 
         # Partition the bitmap into lines
         lines = []
-        for chunk in batched(data, width // 8):
+        for chunk in _chunks(data, width // 8):
             line = padchars.copy()
             for byte in chunk:
                 for bit in f"{int(byte):08b}":
@@ -741,10 +752,10 @@ class escpos:
 
         # Compact up to twenty-four bit-lines into each row
         rows = []
-        for linerange in batched(lines, 24):
+        for linerange in _chunks(lines, 24):
             row = []
             for column in zip(*linerange):
-                for segment in batched(column, 8):
+                for segment in _chunks(column, 8):
                     binary = str().join("1" if bit else "0" for bit in segment)
                     row.append(int(binary or "0", base=2))
             rows.append(bytes(row))
