@@ -112,11 +112,13 @@ class gtk_root(Gtk.DrawingArea):
 
     def __init__(self, monospace_font, font,
                  preferred_height=24, preferred_width=80,
-                 minimum_height=14, minimum_width=80, pitch_adjust=0):
+                 minimum_height=14, minimum_width=80, pitch_adjust=0,
+                 baseline_adjust=0):
         super().__init__()
         self.monospace = monospace_font
         self.font = font if font else monospace_font
         self._pitch_adjust = pitch_adjust
+        self._baseline_adjust = baseline_adjust
         fontmap = PangoCairo.font_map_get_default()
         pangoctx = fontmap.create_context()
         metrics = pangoctx.get_metrics(self.monospace)
@@ -197,7 +199,8 @@ class gtk_root(Gtk.DrawingArea):
         new = text_window(
             self, height, width, y, x, colour,
             monospace_font=self.monospace, font=self.font,
-            pitch_adjust=self._pitch_adjust)
+            pitch_adjust=self._pitch_adjust,
+            baseline_adjust=self._baseline_adjust)
         if always_on_top:
             self._ontop.append(new)
         else:
@@ -334,8 +337,10 @@ class text_window(window):
     """
     def __init__(self, drawable, height, width, y, x,
                  colour=ui.colour_default,
-                 monospace_font=None, font=None, pitch_adjust=0):
+                 monospace_font=None, font=None, pitch_adjust=0,
+                 baseline_adjust=0):
         # y and x are in pixels, height and width are in characters
+        self._baseline_adjust = baseline_adjust
         self.monospace = monospace_font
         self.font = font if font else monospace_font
         fontmap = PangoCairo.font_map_get_default()
@@ -428,7 +433,8 @@ class text_window(window):
         layout.set_text(text, -1)
         layout.set_font_description(self.monospace)
         ctx.set_source_rgb(*colours[colour.foreground])
-        ctx.move_to(x * self.fontwidth, y * self.fontheight)
+        ctx.move_to(x * self.fontwidth,
+                    y * self.fontheight - self._baseline_adjust)
         PangoCairo.show_layout(ctx, layout)
 
     def wrapstr(self, y, x, width, s, colour=None, display=True):
@@ -449,7 +455,8 @@ class text_window(window):
         width, height = layout.get_pixel_size()
         lines = height // self.fontheight
         if display:
-            ctx.move_to(x * self.fontwidth, y * self.fontheight)
+            ctx.move_to(x * self.fontwidth,
+                        y * self.fontheight - self._baseline_adjust)
             PangoCairo.show_layout(ctx, layout)
             self.damage(y * self.fontheight, x * self.fontwidth,
                         height, width)
@@ -485,7 +492,7 @@ class text_window(window):
                 left = (x + width / 2) * self.fontwidth - (lwidth / 2)
             else:
                 left = (x + width) * self.fontwidth - lwidth
-            ctx.move_to(left, y * self.fontheight)
+            ctx.move_to(left, y * self.fontheight - self._baseline_adjust)
             PangoCairo.show_layout(ctx, layout)
             self.damage(y * self.fontheight, left,
                         lheight, lwidth)
@@ -582,7 +589,7 @@ def _x_unblank_screen():
 
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard=False, geometry=None, pitch_adjust=0):
+        keyboard=False, geometry=None, pitch_adjust=0, baseline_adjust=0):
     """Start running with the GTK display system
     """
     if os.getenv('DISPLAY'):
@@ -593,7 +600,8 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
     font = Pango.FontDescription(font)
     ui.rootwin = gtk_root(monospace_font, font,
                           preferred_height=20 if keyboard else 24,
-                          minimum_width=60, pitch_adjust=pitch_adjust)
+                          minimum_width=60, pitch_adjust=pitch_adjust,
+                          baseline_adjust=baseline_adjust)
     ui.beep = Gdk.beep
     if keyboard and tillconfig.keyboard:
         keyboard_gtk.init_css()
