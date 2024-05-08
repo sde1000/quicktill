@@ -185,6 +185,10 @@ class runtill(cmdline.command):
             "--pitch-adjust", dest="pitch_adjust", default=0,
             action="store", type=int, metavar="PIXELS",
             help="Adjust the row height for text")
+        gtkp.add_argument(
+            "--baseline-adjust", dest="baseline_adjust", default=0,
+            action="store", type=int, metavar="PIXELS",
+            help="Adjust the baseline for text")
         parser.set_defaults(command=runtill, nolisten=False)
         gtkp.add_argument(
             "--geometry", dest="geometry", default=None,
@@ -298,7 +302,8 @@ class runtill(cmdline.command):
                     monospace_font=args.monospace,
                     keyboard=args.keyboard,
                     geometry=args.geometry,
-                    pitch_adjust=args.pitch_adjust)
+                    pitch_adjust=args.pitch_adjust,
+                    baseline_adjust=args.baseline_adjust)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
