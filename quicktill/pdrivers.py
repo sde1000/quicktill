@@ -732,11 +732,9 @@ class escpos:
 
         # Partition the bitmap into lines
         lines = []
-        for line in range(height):
-            start = line * (width // 8)
-            end = start + (width // 8)
+        for chunk in batched(data, width // 8):
             line = padchars.copy()
-            for byte in data[start:end]:
+            for byte in chunk:
                 for bit in f"{int(byte):08b}":
                     line.append(bool(int(bit)))
             lines.append(line)
