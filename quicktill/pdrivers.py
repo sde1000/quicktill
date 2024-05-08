@@ -604,6 +604,7 @@ class escpos:
     ep_unidirectional_off = bytes([27, 85, 0])
     # follow ep_bitimage_sd with 16-bit little-endian data length
     ep_bitimage_sd = bytes([27, 42, 0])
+    ep_bitimage_dd_v24 = bytes([27, 42, 33])  # double-density, 24-dot vertical
     ep_short_feed = bytes([27, 74, 5])
     ep_half_dot_feed = bytes([27, 74, 1])
 
@@ -737,22 +738,24 @@ class escpos:
                     line.append(bool(int(bit)))
             lines.append(line)
 
-        # Compact up to eight bit-lines into a byte-row each
+        # Compact up to twenty-four bit-lines into each row
         rows = []
-        for chunk in range(height // 8):
-            group_start = chunk * 8
-            group_end = group_start + 8
+        for chunk in range(height // 24):
+            group_start = chunk * 24
+            group_end = group_start + 24
             row = []
             for column in zip(*lines[group_start:group_end]):
-                record = int(str().join("1" if bit else "0" for bit in column), base=2)
-                row.append(record)
+                segments = column[0:8], column[8:16], column[16:24]
+                for segment in segments:
+                    binary = str().join("1" if bit else "0" for bit in segment)
+                    row.append(int(binary, base=2))
             rows.append(bytes(row))
 
         # Write the commands to render the padded image
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
-            width_info = len(row).to_bytes(length=2, byteorder="little")
-            f.write(escpos.ep_bitimage_sd + width_info + row)
+            width_info = (len(row) // 3).to_bytes(length=2, byteorder="little")
+            f.write(escpos.ep_bitimage_dd_v24 + width_info + row)
         f.write(escpos.ep_unidirectional_off)
 
         # Clear the line for subsequent content
