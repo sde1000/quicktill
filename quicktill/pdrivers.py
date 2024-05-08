@@ -311,7 +311,7 @@ def _lpgetstatus(f):
 def _chunks(iterable, chunk_size):
     """Produce chunks of up-to a parameterised size from an iterable input."""
     chunk = []
-    for item in iter(iterable):
+    for item in iterable:
         chunk.append(item)
         if len(chunk) == chunk_size:
             yield chunk
