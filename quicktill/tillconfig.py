@@ -31,7 +31,11 @@ cash_drawer = None
 
 publogo = config.ConfigItem(
     'core:sitelogo', None, display_name="Site logo",
-    description="Logo image to be printed on receipts.  To update it, use 'base64 logo.pbm | runtill config -s core:sitelogo'")
+    description=(
+        "Logo image to be printed on receipts.  "
+        "To update it, use 'base64 logo.pbm | runtill config -s core:sitelogo'"
+    )
+)
 pubname = config.ConfigItem(
     'core:sitename', "Default site name", display_name="Site name",
     description="Site name to be printed on receipts")
