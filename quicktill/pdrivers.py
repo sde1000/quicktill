@@ -605,6 +605,8 @@ class escpos:
     # follow ep_bitimage_sd with 16-bit little-endian data length
     ep_bitimage_sd = bytes([27, 42, 0])
     ep_bitimage_dd_v24 = bytes([27, 42, 33])  # double-density, 24-dot vertical
+    ep_line_spacing_none = bytes([27, 51, 0])
+    ep_line_spacing_default = bytes([27, 50])
     ep_short_feed = bytes([27, 74, 5])
     ep_half_dot_feed = bytes([27, 74, 1])
 
@@ -752,11 +754,13 @@ class escpos:
             rows.append(bytes(row))
 
         # Write the commands to render the padded image
+        f.write(escpos.ep_line_spacing_none)
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
             width_info = (len(row) // 3).to_bytes(length=2, byteorder="little")
             f.write(escpos.ep_bitimage_dd_v24 + width_info + row)
         f.write(escpos.ep_unidirectional_off)
+        f.write(escpos.ep_line_spacing_default)
 
         # Clear the line for subsequent content
         f.write(escpos.ep_short_feed)
