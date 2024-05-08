@@ -758,7 +758,7 @@ class escpos:
         f.write(escpos.ep_unidirectional_on)
         for row in rows:
             width_info = (len(row) // 3).to_bytes(length=2, byteorder="little")
-            f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\r')
+            f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\n')
         f.write(escpos.ep_unidirectional_off)
         f.write(escpos.ep_line_spacing_default)
 
