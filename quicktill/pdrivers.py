@@ -14,6 +14,7 @@ try:
 except ImportError:
     _qrcode_supported = False
 import imagesize
+from more_itertools import batched
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
@@ -742,13 +743,10 @@ class escpos:
 
         # Compact up to twenty-four bit-lines into each row
         rows = []
-        for chunk in range(round(height / 24)):
-            group_start = chunk * 24
-            group_end = group_start + 24
+        for linerange in batched(lines, 24):
             row = []
-            for column in zip(*lines[group_start:group_end]):
-                segments = column[0:8], column[8:16], column[16:24]
-                for segment in segments:
+            for column in zip(*linerange):
+                for segment in batched(column, 8):
                     binary = str().join("1" if bit else "0" for bit in segment)
                     row.append(int(binary or "0", base=2))
             rows.append(bytes(row))
