@@ -740,7 +740,7 @@ class escpos:
 
         # Compact up to twenty-four bit-lines into each row
         rows = []
-        for chunk in range(height // 24):
+        for chunk in range(round(height / 24)):
             group_start = chunk * 24
             group_end = group_start + 24
             row = []
@@ -748,7 +748,7 @@ class escpos:
                 segments = column[0:8], column[8:16], column[16:24]
                 for segment in segments:
                     binary = str().join("1" if bit else "0" for bit in segment)
-                    row.append(int(binary, base=2))
+                    row.append(int(binary or "0", base=2))
             rows.append(bytes(row))
 
         # Write the commands to render the padded image
