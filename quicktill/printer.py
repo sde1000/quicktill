@@ -1,3 +1,5 @@
+import base64
+
 from . import td, ui, tillconfig, payment
 from decimal import Decimal
 from .models import Delivery, VatBand, Business, Transaction, PayType
@@ -25,6 +27,9 @@ def print_receipt(printer, transid):
     if not trans.lines:
         return
     with printer as d:
+        if tillconfig.publogo():
+            image = base64.b64decode(tillconfig.publogo())
+            d.printimage(image)
         d.printline(f"\t{tillconfig.pubname}", emph=1)
         for i in tillconfig.pubaddr().splitlines():
             d.printline(f"\t{i}", colour=1)

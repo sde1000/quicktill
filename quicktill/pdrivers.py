@@ -13,6 +13,7 @@ try:
     _qrcode_supported = True
 except ImportError:
     _qrcode_supported = False
+import imagesize
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
@@ -110,7 +111,18 @@ class QRCodeElement(ReceiptElement):
 
 class ImageElement(ReceiptElement):
     def __init__(self, image):
-        self.image_data = image
+        assert image.startswith(b"P4")  # only B&W PBM format supported
+        width, height = imagesize.get(io.BytesIO(image))
+        data_lines = [
+            line
+            for line in image.splitlines()
+            if not line.startswith(b"#")
+        ]
+        assert data_lines[0] == b"P4"
+        assert data_lines[1] == f"{width} {height}".encode("ascii")
+        self.image_data = bytes().join(data_lines[2:])
+        self.image_width = width
+        self.image_height = height
 
     def __str__(self):
         return "Image"
@@ -294,6 +306,18 @@ def _lpgetstatus(f):
         return "off-line"  # LP_PSELECD
     if ~status & 0x08:
         return "error light is on"  # LP_PERRORP
+
+
+def _chunks(iterable, chunk_size):
+    """Produce chunks of up-to a parameterised size from an iterable input."""
+    chunk = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 class linux_lpprinter(fileprinter):
@@ -592,6 +616,9 @@ class escpos:
     ep_unidirectional_off = bytes([27, 85, 0])
     # follow ep_bitimage_sd with 16-bit little-endian data length
     ep_bitimage_sd = bytes([27, 42, 0])
+    ep_bitimage_dd_v24 = bytes([27, 42, 33])  # double-density, 24-dot vertical
+    ep_line_spacing_none = bytes([27, 51, 0])
+    ep_line_spacing_default = bytes([27, 50])
     ep_short_feed = bytes([27, 74, 5])
     ep_half_dot_feed = bytes([27, 74, 1])
 
@@ -689,6 +716,9 @@ class escpos:
                         ("%s%s%s%s%s\n" % (
                             left, ' ' * padl, center, ' ' * padr, right))
                         .encode(self.coding))
+            elif hasattr(i, 'image_data'):
+                assert 8 * len(i.image_data) == i.image_width * i.image_height
+                self._image(i.image_data, i.image_width, i.image_height, f)
             elif hasattr(i, 'qrcode_data'):
                 self._qrcode(i.qrcode_data, f)
             else:
@@ -700,6 +730,47 @@ class escpos:
                 f.write(b'\n' * self.lines_before_cut + escpos.ep_left)
                 f.write(escpos.ep_fullcut)
             f.flush()
+
+    def _image(self, data, width, height, f):
+        # Print a PBM bit-image
+        if width > self.dpl:
+            # Image too wide for paper
+            return
+
+        # Calculate padding required to center the image
+        padding = (self.dpl - width) // 2
+        padchars = [False] * padding
+
+        # Partition the bitmap into lines
+        lines = []
+        for chunk in _chunks(data, width // 8):
+            line = padchars.copy()
+            for byte in chunk:
+                for bit in f"{int(byte):08b}":
+                    line.append(bool(int(bit)))
+            lines.append(line)
+
+        # Compact up to twenty-four bit-lines into each row
+        rows = []
+        for linerange in _chunks(lines, 24):
+            row = []
+            for column in zip(*linerange):
+                for segment in _chunks(column, 8):
+                    binary = str().join("1" if bit else "0" for bit in segment)
+                    row.append(int(binary or "0", base=2))
+            rows.append(bytes(row))
+
+        # Write the commands to render the padded image
+        f.write(escpos.ep_line_spacing_none)
+        f.write(escpos.ep_unidirectional_on)
+        for row in rows:
+            width_info = (len(row) // 3).to_bytes(length=2, byteorder="little")
+            f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\n')
+        f.write(escpos.ep_unidirectional_off)
+        f.write(escpos.ep_line_spacing_default)
+
+        # Clear the line for subsequent content
+        f.write(b'\r\n')
 
     def _qrcode_native(self, data, f):
         # Set the size of a "module", in dots.  The default is apparently
