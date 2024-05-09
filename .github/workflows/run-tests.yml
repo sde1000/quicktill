@@ -30,7 +30,6 @@ jobs:
           python3-cups \
           python3-dateutil \
           python3-httplib2 \
-          python3-imagesize \
           python3-odf \
           python3-psycopg2 \
           python3-qrcode \

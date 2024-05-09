@@ -13,7 +13,6 @@ try:
     _qrcode_supported = True
 except ImportError:
     _qrcode_supported = False
-import imagesize
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import toLength
@@ -23,6 +22,7 @@ from reportlab.platypus import Flowable
 from reportlab.platypus import Frame
 from reportlab.platypus import BaseDocTemplate
 from reportlab.platypus import PageTemplate
+from PIL import Image, ImageOps
 
 import logging
 log = logging.getLogger(__name__)
@@ -111,18 +111,10 @@ class QRCodeElement(ReceiptElement):
 
 class ImageElement(ReceiptElement):
     def __init__(self, image):
-        assert image.startswith(b"P4")  # only B&W PBM format supported
-        width, height = imagesize.get(io.BytesIO(image))
-        data_lines = [
-            line
-            for line in image.splitlines()
-            if not line.startswith(b"#")
-        ]
-        assert data_lines[0] == b"P4"
-        assert data_lines[1] == f"{width} {height}".encode("ascii")
-        self.image_data = bytes().join(data_lines[2:])
-        self.image_width = width
-        self.image_height = height
+        try:
+            self.image_data = Image.open(io.BytesIO(image))
+        except Exception as e:
+            self.left = f"Image error: {e}"
 
     def __str__(self):
         return "Image"
@@ -717,8 +709,7 @@ class escpos:
                             left, ' ' * padl, center, ' ' * padr, right))
                         .encode(self.coding))
             elif hasattr(i, 'image_data'):
-                assert 8 * len(i.image_data) == i.image_width * i.image_height
-                self._image(i.image_data, i.image_width, i.image_height, f)
+                self._image(i.image_data, f)
             elif hasattr(i, 'qrcode_data'):
                 self._qrcode(i.qrcode_data, f)
             else:
@@ -731,24 +722,49 @@ class escpos:
                 f.write(escpos.ep_fullcut)
             f.flush()
 
-    def _image(self, data, width, height, f):
-        # Print a PBM bit-image
-        if width > self.dpl:
-            # Image too wide for paper
-            return
+    def _image(self, image, f):
+        # If image is too wide, resize it
+        if image.size[0] > self.dpl:
+            image = image.resize(
+                (self.dpl, int(image.size[1] * self.dpl / image.size[0])))
 
-        # Calculate padding required to center the image
-        padding = (self.dpl - width) // 2
-        padchars = [False] * padding
+        image = image.convert("RGBA")
+
+        width, height = image.size
+
+        # Pad height to a multiple of 24 rows
+        heightpad = 24 - (height % 24) if height % 24 else 0
+        # Pad width to center the image
+        widthpad = (self.dpl - width) // 2
+
+        # Create a new, completely white image of an appropriate size
+        primg = Image.new("RGB", (width + widthpad, height + heightpad),
+                          (255, 255, 255))
+
+        # Paste the original image onto the new image in the appropriate place
+        primg.paste(image, box=(widthpad, heightpad // 2),
+                    mask=image.getchannel("A"))
+
+        # Remove colour
+        primg = primg.convert("L")
+
+        # Convert to black and white
+        primg = ImageOps.invert(primg).convert("1")
+
+        # Update width and height from padded image
+        width, height = primg.size
+
+        # data is an iterator yielding pixel values, 0 for white and
+        # 255 for black
+        data = iter(primg.getdata())
 
         # Partition the bitmap into lines
         lines = []
-        for chunk in _chunks(data, width // 8):
-            line = padchars.copy()
-            for byte in chunk:
-                for bit in f"{int(byte):08b}":
-                    line.append(bool(int(bit)))
-            lines.append(line)
+        try:
+            while True:
+                lines.append([bool(next(data)) for _ in range(width)])
+        except StopIteration:
+            pass
 
         # Compact up to twenty-four bit-lines into each row
         rows = []
@@ -763,8 +779,8 @@ class escpos:
         # Write the commands to render the padded image
         f.write(escpos.ep_line_spacing_none)
         f.write(escpos.ep_unidirectional_on)
+        width_info = width.to_bytes(length=2, byteorder="little")
         for row in rows:
-            width_info = (len(row) // 3).to_bytes(length=2, byteorder="little")
             f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\n')
         f.write(escpos.ep_unidirectional_off)
         f.write(escpos.ep_line_spacing_default)
