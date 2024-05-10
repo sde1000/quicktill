@@ -1,3 +1,15 @@
+quicktill (23.5) stable; urgency=low
+
+  * New release 23.5
+
+  * Support images on PDF receipts
+
+  * Remove imagesize dependency, use Pillow to load images
+
+  * Receipt logos: add support for black-and-white binary netpbm images. (#282)
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 10 May 2024 11:49:05 +0100
+
 quicktill (23.4) stable; urgency=low
 
   * New release 23.4
