@@ -22,6 +22,7 @@ from reportlab.platypus import Flowable
 from reportlab.platypus import Frame
 from reportlab.platypus import BaseDocTemplate
 from reportlab.platypus import PageTemplate
+from reportlab.platypus import Image as FlowableImage
 from PIL import Image, ImageOps
 
 import logging
@@ -111,10 +112,7 @@ class QRCodeElement(ReceiptElement):
 
 class ImageElement(ReceiptElement):
     def __init__(self, image):
-        try:
-            self.image_data = Image.open(io.BytesIO(image))
-        except Exception as e:
-            self.left = f"Image error: {e}"
+        self.image_data = io.BytesIO(image)
 
     def __str__(self):
         return "Image"
@@ -298,18 +296,6 @@ def _lpgetstatus(f):
         return "off-line"  # LP_PSELECD
     if ~status & 0x08:
         return "error light is on"  # LP_PERRORP
-
-
-def _chunks(iterable, chunk_size):
-    """Produce chunks of up-to a parameterised size from an iterable input."""
-    chunk = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == chunk_size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
 
 
 class linux_lpprinter(fileprinter):
@@ -723,6 +709,11 @@ class escpos:
             f.flush()
 
     def _image(self, image, f):
+        try:
+            image = Image.open(image)
+        except Exception:
+            return
+
         # If image is too wide, resize it
         if image.size[0] > self.dpl:
             image = image.resize(
@@ -758,34 +749,28 @@ class escpos:
         # 255 for black
         data = iter(primg.getdata())
 
-        # Partition the bitmap into lines
-        lines = []
-        try:
-            while True:
-                lines.append([bool(next(data)) for _ in range(width)])
-        except StopIteration:
-            pass
-
-        # Compact up to twenty-four bit-lines into each row
-        rows = []
-        for linerange in _chunks(lines, 24):
-            row = []
-            for column in zip(*linerange):
-                for segment in _chunks(column, 8):
-                    binary = str().join("1" if bit else "0" for bit in segment)
-                    row.append(int(binary or "0", base=2))
-            rows.append(bytes(row))
-
-        # Write the commands to render the padded image
+        # Set up printer for image output
         f.write(escpos.ep_line_spacing_none)
         f.write(escpos.ep_unidirectional_on)
         width_info = width.to_bytes(length=2, byteorder="little")
-        for row in rows:
-            f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\n')
+
+        # Process image as rows of 24 lines each
+        def _readline():
+            return [bool(next(data)) for _ in range(width)]
+        try:
+            while True:
+                lines = [_readline() for _ in range(24)]
+                row = b''.join(
+                    int(''.join("1" if bit else "0" for bit in column),
+                        base=2).to_bytes(length=3, byteorder="big")
+                    for column in zip(*lines))
+                f.write(escpos.ep_bitimage_dd_v24 + width_info + row + b'\n')
+        except StopIteration:
+            pass
+
+        # Restore regular output settings and make a small gap
         f.write(escpos.ep_unidirectional_off)
         f.write(escpos.ep_line_spacing_default)
-
-        # Clear the line for subsequent content
         f.write(b'\r\n')
 
     def _qrcode_native(self, data, f):
@@ -1080,6 +1065,9 @@ class pdf_driver:
                     story.append(LRLine(left, right, font, fontsize, pitch))
                 elif center:
                     story.append(CenterLine(center, font, fontsize, pitch))
+            elif hasattr(i, 'image_data'):
+                story.append(FlowableImage(i.image_data, width=colwidth,
+                                           height=colheight, kind="bound"))
             else:
                 pass
 
