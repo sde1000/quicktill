@@ -87,8 +87,7 @@ tillurls = [
     path('barcode/<barcode>/', views.barcode, name="tillweb-barcode"),
 
     path('location/', views.locationlist, name="tillweb-locations"),
-    re_path(r'^location/(?P<location>[\w\- ]+)/$', views.location,
-            name="tillweb-location"),
+    path('location/<location>/', views.location, name="tillweb-location"),
 
     path('department/', views.departmentlist, name="tillweb-departments"),
     path('department/<int:departmentid>/', views.department,
@@ -108,8 +107,7 @@ tillurls = [
     path('new/user/', views.create_user, name="tillweb-create-user"),
 
     path('group/', views.grouplist, name="tillweb-till-groups"),
-    re_path(r'^group/(?P<groupid>[\w\- ]+)/$', views.group,
-            name="tillweb-till-group"),
+    path('group/<groupid>/', views.group, name="tillweb-till-group"),
     path('new/group/', views.create_group, name="tillweb-create-till-group"),
 
     path('token/', views.tokenlist, name="tillweb-tokens"),
