@@ -455,8 +455,7 @@ class text_window(window):
         width, height = layout.get_pixel_size()
         lines = height // self.fontheight
         if display:
-            ctx.move_to(x * self.fontwidth,
-                        y * self.fontheight - self._baseline_adjust)
+            ctx.move_to(x * self.fontwidth, y * self.fontheight)
             PangoCairo.show_layout(ctx, layout)
             self.damage(y * self.fontheight, x * self.fontwidth,
                         height, width)
@@ -492,7 +491,7 @@ class text_window(window):
                 left = (x + width / 2) * self.fontwidth - (lwidth / 2)
             else:
                 left = (x + width) * self.fontwidth - lwidth
-            ctx.move_to(left, y * self.fontheight - self._baseline_adjust)
+            ctx.move_to(left, y * self.fontheight)
             PangoCairo.show_layout(ctx, layout)
             self.damage(y * self.fontheight, left,
                         lheight, lwidth)
