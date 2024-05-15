@@ -1,3 +1,11 @@
+quicktill (23.6) stable; urgency=low
+
+  * New release 23.6
+
+  * Experiment: only apply baseline-adjust to fixed-width text
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 15 May 2024 17:21:35 +0100
+
 quicktill (23.5) stable; urgency=low
 
   * New release 23.5
