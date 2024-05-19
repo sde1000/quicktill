@@ -1,3 +1,13 @@
+quicktill (23.7) stable; urgency=low
+
+  * New release 23.7
+
+  * Speculative fix for prompt being truncated on stockterminal display
+
+  * Permit more characters in URLs for locations and groups
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 19 May 2024 11:05:09 +0100
+
 quicktill (23.6) stable; urgency=low
 
   * New release 23.6
