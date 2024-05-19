@@ -349,6 +349,7 @@ class text_window(window):
         self.fontwidth = metrics.get_approximate_digit_width() // Pango.SCALE
         self.ascent = metrics.get_ascent() // Pango.SCALE
         self.descent = metrics.get_descent() // Pango.SCALE
+        self.pitch_adjust = pitch_adjust
         self.fontheight = self.ascent + self.descent + pitch_adjust
         super().__init__(
             drawable, height * self.fontheight, width * self.fontwidth,
@@ -453,7 +454,7 @@ class text_window(window):
         layout.set_font_description(self.font)
         layout.set_width(width * self.fontwidth * Pango.SCALE)
         width, height = layout.get_pixel_size()
-        lines = height // self.fontheight
+        lines = height // (self.fontheight - self.pitch_adjust)
         if display:
             ctx.move_to(x * self.fontwidth, y * self.fontheight)
             PangoCairo.show_layout(ctx, layout)
