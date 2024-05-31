@@ -1036,7 +1036,7 @@ class page(ui.basicpage):
             if kb.modifier not in modifiers.all:
                 log.error("Missing modifier '%s'", kb.modifier)
                 ui.infopopup(
-                    [f"The modifer '{kb.modifier}' can't be found.  This is "
+                    [f"The modifier '{kb.modifier}' can't be found.  This is "
                      f"a till configuration error."],
                     title="Missing modifier")
                 return

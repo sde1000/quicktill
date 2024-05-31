@@ -200,8 +200,8 @@ class XeroIntegration:
             "and bill lines")
         self.department_tracking_category_name = config.ConfigItem(
             f"{config_prefix}:department_tracking_category_name", '',
-            display_name="Xero deparment tracking category name",
-            description="Name of a tracking cagegory to use for invoice and "
+            display_name="Xero department tracking category name",
+            description="Name of a tracking category to use for invoice and "
             "bill lines relating to departments.  The value will be read from "
             "the department sales_account and purchases_account fields; "
             "it is separated from the account number by a '/' character.")

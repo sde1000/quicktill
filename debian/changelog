@@ -1144,7 +1144,7 @@ quicktill (16.0) stable; urgency=low
 
   * Update migration script to cope with more wine sizes
 
-  * Add note about updating modifers to release notes
+  * Add note about updating modifiers to release notes
 
   * Update emf2018 data for new schema
 
@@ -1420,7 +1420,7 @@ quicktill (0.13.0) stable; urgency=low
 
   * Bump package name to quicktill4, version to 0.13
 
-  * Allowe UserToken.user_id field to be nullable
+  * Allow UserToken.user_id field to be nullable
 
   * Add an 'autodetect' printer connection driver
 

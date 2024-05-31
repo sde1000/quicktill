@@ -2454,7 +2454,7 @@ class StockTypeMeta(Base):
     as well.
 
     document_hash will be calculated. (Implementation note: for now it
-    is calculated client-side because we are targetting Postgresql
+    is calculated client-side because we are targeting Postgresql
     10. In the future (from Postgresql 12 onwards) this can be
     calculated automatically using a database trigger.
     """
@@ -3113,7 +3113,7 @@ class KeyboardBinding(Base):
         """Look up the name of this binding
 
         Since the binding doesn't have an explicit name, we use the
-        stockline name, PLU name, or modifer name as appropriate.
+        stockline name, PLU name, or modifier name as appropriate.
         """
         if self.stockline:
             return self.stockline.name

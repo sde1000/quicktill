@@ -853,7 +853,7 @@ class escpos:
         # feed the paper through by one row.  This means that each
         # part of the code should be printed twice.  We're also
         # printing each pair of rows twice, advancing the paper by
-        # half a dot inbetween.  We only use 6 of the 8 pins of the
+        # half a dot in between.  We only use 6 of the 8 pins of the
         # printer to keep this code simple.
         lt = {
             (False, False): bytes([0x00]),

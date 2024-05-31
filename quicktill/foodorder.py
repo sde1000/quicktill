@@ -308,12 +308,12 @@ class popup(user.permission_checked, ui.basicpopup):
                 return
         foodmenu = self.menu_module
         if "menu" not in foodmenu.__dict__:
-            ui.infopopup(["The menu file was read succesfully, but did not "
+            ui.infopopup(["The menu file was read successfully, but did not "
                           "contain a menu definition."],
                          title="No menu defined")
             return
         if "footer" not in foodmenu.__dict__:
-            ui.infopopup(["The recipt footer definition is missing from "
+            ui.infopopup(["The receipt footer definition is missing from "
                           "the menu file."], title="Footer missing")
             return
         if "dept" not in foodmenu.__dict__:

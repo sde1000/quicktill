@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 
 class db_listener:
-    """Listen for notifictions delivered via the database
+    """Listen for notifications delivered via the database
 
     Manages a list of channels and functions to be called when
     notifications are received on those channels.  Deals with
