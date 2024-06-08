@@ -6,6 +6,7 @@ from . import cmdline
 from . import td
 from . import models
 from . import tillconfig
+from sqlalchemy import or_
 import random
 
 
@@ -178,16 +179,27 @@ class anonymise(cmdline.command):
                 lastname = random.choice(anonymise.surnames)
                 u.fullname = f"{firstname} {lastname}"
                 u.shortname = firstname
+                u.webuser = None
                 u.message = None
             transactions = td.s.query(models.Transaction).all()
             for t in transactions:
                 t.notes = ""
             td.s.query(models.RefusalsLog).delete()
             # Log entries that reference a User may contain their real
-            # name. Delete them.
+            # name; log entries about setting transaction notes may
+            # also contain real names. Delete them.
             td.s.query(models.LogEntry)\
-                .filter(models.LogEntry.user != None)\
-                .delete()
+                .filter(or_(
+                    models.LogEntry.user != None,
+                    models.LogEntry.description.like('Set the note on %')
+                ))\
+                .delete(synchronize_session=False)
+
+            # Delete all payment metadata — contains (obscured) card details
+            td.s.query(models.PaymentMeta).delete()
+
+            # Delete all stocktype metadata — may contain copyright images
+            td.s.query(models.StockTypeMeta).delete()
         print("Finished.")
 
 
