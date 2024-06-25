@@ -6,37 +6,59 @@
 
 {% block tillcontent %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
-    Update stock line
-  </button>
-  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
-    Delete stock line
-  </button>
-  <datalist id="locations">
-    {% for l in locations %}<option value="{{l}}">{% endfor %}
-  </datalist>
-</form>
-{% else %}
-<table class="kvtable">
+<table class="kvtable mb-2">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
 <tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
 <tr><th>Stock type</th><td>{% if stockline.stocktype %}<a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a>{% else %}Unrestricted{% endif %}</td></tr>
 <tr><th>Department</th><td>{% if stockline.department %}<a href="{{stockline.department.get_absolute_url}}">{{stockline.department}}</a>{% else %}Unrestricted{% endif %}</td></tr>
-<tr><th>Pullthru</th><td>{{stockline.pullthru}}</td></tr>
+<tr><th>Pull through qty</th><td>{{stockline.pullthru}}</td></tr>
 </table>
-{% endif %}
 
-<p class="mt-2">This is a "regular" stock line.  Regular stock lines
-  can have at most one stock item on sale at any one time.  Finishing
-  that stock item and putting another item on sale are done explicitly
-  by the staff.  They are typically used where units are dispensed
-  directly from the stock item to the customer and it's obvious to the
-  member of staff when the stock item is empty, for example casks/kegs
+<p>This is a "regular" stock line.  Regular stock lines can have at
+  most one stock item on sale at any one time.  Finishing that stock
+  item and putting another item on sale are done explicitly by the
+  staff.  They are typically used where units are dispensed directly
+  from the stock item to the customer and it's obvious to the member
+  of staff when the stock item is empty, for example casks/kegs
   through a pump, bottles of spirits, cards or boxes of snacks, and so
   on.</p>
+
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+  Change details
+</button>
+<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  {% include "form-horizontal.html" %}
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+	    Delete stock line
+	  </button>
+	  <button class="btn btn-primary" type="submit" name="submit_update">
+	    Update stock line
+	  </button>
+	</div>
+	<datalist id="locations">
+	  {% for l in locations %}<option value="{{l}}">{% endfor %}
+	</datalist>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% if not stockline.stockonsale %}
 <p>There is nothing currently on sale on this stock line.</p>

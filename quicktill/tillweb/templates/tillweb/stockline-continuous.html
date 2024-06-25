@@ -6,39 +6,62 @@
 
 {% block tillcontent %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
-    Update stock line
-  </button>
-  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
-    Delete stock line
-  </button>
-  <datalist id="locations">
-    {% for l in locations %}<option value="{{l}}">{% endfor %}
-  </datalist>
-</form>
-{% else %}
-<table class="kvtable">
+<table class="kvtable mb-2">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
 <tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
 <tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
 <tr><th>Amount remaining</th><td>{{stockline.remaining_str}}</td></tr>
 </table>
-{% endif %}
 
-<p class="mt-2">This is a "continuous" stock line.  Continuous stock
-  lines never have any stock items explicitly on sale.  Instead, when
-  a sale is made the till searches for stock of the specified type
-  that is not already on sale on another stock line, and uses that.
-  If a particular stock item doesn't have enough stock left for the
-  whole sale, multiple stock items are used.  Continuous stock lines
-  are typically used where a single sale (for example of a glass of
-  wine) can come from multiple stock items (eg. where a wine bottle
+<p>This is a "continuous" stock line.  Continuous stock lines never
+  have any stock items explicitly on sale.  Instead, when a sale is
+  made the till searches for stock of the specified type that is not
+  already on sale on another stock line, and uses that.  If a
+  particular stock item doesn't have enough stock left for the whole
+  sale, multiple stock items are used.  Continuous stock lines are
+  typically used where a single sale (for example of a glass of wine)
+  can come from multiple stock items (eg. where a wine bottle
   finishes, and the next bottle is from a different case or even a
   different delivery).</p>
 
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+  Change details
+</button>
+<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  {% include "form-horizontal.html" %}
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+	    Delete stock line
+	  </button>
+	  <button class="btn btn-primary" type="submit" name="submit_update">
+	    Update stock line
+	  </button>
+	</div>
+	<datalist id="locations">
+	  {% for l in locations %}<option value="{{l}}">{% endfor %}
+	</datalist>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if stockline.stocktype.stockonsale %}
 <h2>Items on sale</h2>
 
 <p>(The total amount remaining in these items is
@@ -46,6 +69,9 @@
 {% with stocklist=stockline.stocktype.stockonsale exclude_column="stockline" %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
+{% endif %}
+
+<div class="mb-2"></div>
 
 {% include "tillweb/bindings.html" %}
 

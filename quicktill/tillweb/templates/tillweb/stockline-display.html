@@ -6,39 +6,61 @@
 
 {% block tillcontent %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
-    Update stock line
-  </button>
-  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
-    Delete stock line
-  </button>
-  <datalist id="locations">
-    {% for l in locations %}<option value="{{l}}">{% endfor %}
-  </datalist>
-</form>
-{% else %}
-<table class="kvtable">
+<table class="kvtable mb-2">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
 <tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
 <tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
 <tr><th>Capacity</th><td>{{stockline.capacity}}</td></tr>
 </table>
-{% endif %}
 
-<p class="mt-2">This is a "display" stock line.  Display stock lines
-  can have several stock items on sale at once.  Moving from one stock
-  item to the next is automatic; when one item is empty the next is
-  used.  These stock lines have a "capacity", and the system keeps
-  track of how many units of each stock item are "on display" and
-  available to be sold; the "capacity" is the number of units that can
-  be on display at any one time (for example, in a fridge).  Display
-  stock lines are typically used where it isn't obvious to the member
-  of staff where one stock item finishes and another one starts; for
+<p>This is a "display" stock line.  Display stock lines can have
+  several stock items on sale at once.  Moving from one stock item to
+  the next is automatic; when one item is empty the next is used.
+  These stock lines have a "capacity", and the system keeps track of
+  how many units of each stock item are "on display" and available to
+  be sold; the "capacity" is the number of units that can be on
+  display at any one time (for example, in a fridge).  Display stock
+  lines are typically used where it isn't obvious to the member of
+  staff where one stock item finishes and another one starts; for
   example, the bottles on display in a fridge may come from several
   different stock items.</p>
+
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+  Change details
+</button>
+<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  {% include "form-horizontal.html" %}
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+	    Delete stock line
+	  </button>
+	  <button class="btn btn-primary" type="submit" name="submit_update">
+	    Update stock line
+	  </button>
+	</div>
+	<datalist id="locations">
+	  {% for l in locations %}<option value="{{l}}">{% endfor %}
+	</datalist>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% if stockline.stockonsale %}
 <h2>Items on sale</h2>
