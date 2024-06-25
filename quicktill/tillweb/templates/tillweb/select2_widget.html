@@ -4,6 +4,13 @@
 </select>
 <script type="text/javascript">
   $(document).ready(function(){
-    $("#{{widget.attrs.id}}").select2({{widget.select2_args|safe}});
+      const s2w = $("#{{widget.attrs.id}}");
+      const args = {{widget.select2_args|safe}};
+      var dropdownParent = $(document.body);
+      if (s2w.parents('.modal:first').length !== 0) {
+          dropdownParent = s2w.parents('.modal:first');
+      }
+      args['dropdownParent'] = dropdownParent;
+      s2w.select2(args);
   });
 </script>
