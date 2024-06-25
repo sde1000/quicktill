@@ -302,7 +302,7 @@ def reprint_stocklabel():
         return
     stock.stockpicker(lambda x: stock.reprint_stocklabel_choose_printer(x.id),
                       title="Re-print a single stock label",
-                      filter=stock.stockfilter(),
+                      filter=stock.stockfilter(allow_in_stocktake=True),
                       check_checkdigits=False)
 
 
