@@ -29,33 +29,70 @@
 <button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
   Change details
 </button>
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeLineTypeModal">
+  Change line type
+</button>
 <div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-	<h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+        <h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  {% include "form-horizontal.html" %}
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
-	    Cancel
-	  </button>
-	  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
-	    Delete stock line
-	  </button>
-	  <button class="btn btn-primary" type="submit" name="submit_update">
-	    Update stock line
-	  </button>
-	</div>
-	<datalist id="locations">
-	  {% for l in locations %}<option value="{{l}}">{% endfor %}
-	</datalist>
+        <div class="modal-body">
+          {% include "form-horizontal.html" %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            Cancel
+          </button>
+          <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+            Delete stock line
+          </button>
+          <button class="btn btn-primary" type="submit" name="submit_update">
+            Update stock line
+          </button>
+        </div>
+        <datalist id="locations">
+          {% for l in locations %}<option value="{{l}}">{% endfor %}
+        </datalist>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="changeLineTypeModal" tabindex="-1" aria-labelledby="changeLineTypeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changeLineTypeModalLabel">Change line type</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+        <div class="modal-body">
+          <p>This is currently a display stock line — multiple stock
+            items of a particular type are on sale, and the till keeps
+            track of how many are in storage and how many are on
+            display and ready to sell.</p>
+          <p>You can choose to change this to a continuous stock line
+            — all items of that type will be available for use and the
+            till will switch from one to the next when the first is
+            used up. The till won't keep track of how many items are
+            on display and ready to sell, it will assume that all
+            items are ready for sale.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            Cancel
+          </button>
+          <button class="btn btn-primary" type="submit" name="submit_conv_continuous">
+            Change to continuous stock line
+          </button>
+        </div>
       </form>
     </div>
   </div>

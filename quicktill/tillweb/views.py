@@ -3,7 +3,7 @@ from django.http import HttpResponseForbidden
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
 from django.conf import settings
 from django import forms
@@ -2118,6 +2118,7 @@ def stockline_regular(request, info, s):
                 s.stocktype = cd['stocktype']
                 s.department = cd['department']
                 s.pullthru = cd['pullthru']
+                user.log(f"Updated stock line {s.logref}")
                 try:
                     td.s.commit()
                     messages.success(request, "Stock line updated")
@@ -2133,6 +2134,22 @@ def stockline_regular(request, info, s):
             td.s.commit()
             messages.success(request, "Stock line deleted")
             return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        elif request.method == 'POST' \
+             and 'submit_conv_continuous' in request.POST:  # noqa: E127
+            if not s.stockonsale and not s.stocktype:
+                messages.error(request, "Could not change line type")
+                return redirect(s)
+            for si in list(s.stockonsale):
+                si.stockline = None
+                s.pullthru = None
+                s.department = None
+                s.stocktype = si.stocktype
+            messages.success(request, "Stock line converted to Continuous")
+            user.log(f"Converted stock line {s.logref} from Regular to "
+                     f"Continuous, selling {s.stocktype.logref}")
+            s.linetype = "continuous"
+            td.s.commit()
+            return redirect(s)
         else:
             form = RegularStockLineForm(info, initial={
                 "name": s.name,
@@ -2212,6 +2229,18 @@ def stockline_display(request, info, s):
             td.s.commit()
             messages.success(request, "Stock line deleted")
             return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        elif request.method == 'POST' \
+             and 'submit_conv_continuous' in request.POST:  # noqa: E127
+            for si in list(s.stockonsale):
+                si.stockline = None
+                si.displayqty = None
+            s.capacity = None
+            s.linetype = "continuous"
+            messages.success(request, "Stock line converted to Continuous")
+            user.log(f"Converted stock line {s.logref} from Display to "
+                     f"Continuous, selling {s.stocktype.logref}")
+            td.s.commit()
+            return redirect(s)
         else:
             form = DisplayStockLineForm(info, initial={
                 "name": s.name,
@@ -2279,6 +2308,13 @@ def stockline_continuous(request, info, s):
             td.s.commit()
             messages.success(request, "Stock line deleted")
             return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+        elif request.method == 'POST' and 'submit_conv_regular' in request.POST:
+            s.linetype = "regular"
+            messages.success(request, "Stock line converted to Regular")
+            user.log(f"Converted stock line {s.logref} from Continuous to "
+                     f"Regular, selling only {s.stocktype.logref}")
+            td.s.commit()
+            return redirect(s)
         else:
             form = ContinuousStockLineForm(info, initial={
                 "name": s.name,
