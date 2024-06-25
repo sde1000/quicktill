@@ -2150,6 +2150,8 @@ class Unit(Base, Logged):
         if abs(qty) < self.base_units_per_stock_unit and qty != 0:
             return f"{self._fq(qty)} {self.name}"
         single = abs(qty) - self.base_units_per_stock_unit < 0.05
+        if qty == 0.0:
+            single = False
         n = self.stock_unit_name if single else self.stock_unit_name_plural
         return f"{self._fq(qty / self.base_units_per_stock_unit)} {n}"
 
