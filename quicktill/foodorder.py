@@ -360,7 +360,7 @@ class popup(user.permission_checked, ui.basicpopup):
             key = possible_keys.pop(0)
             label = str(key)
             ls = f"{label}: {i[0]}"
-            trial = f"{tlm[-1]}{('','  ')[len(tlm[-1]) > 0]}{ls}"
+            trial = f"{tlm[-1]}{('', '  ')[len(tlm[-1]) > 0]}{ls}"
             if len(trial) > self.w - 4:
                 tlm.append(ls)
             else:

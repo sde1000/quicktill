@@ -95,7 +95,7 @@ class Cash(payment.PaymentDriver):
         else:
             title = "Cancel refund"
             message = [f"Press Cash/Enter to cancel this {p.text} "
-                       f"payment of {tillconfig.fc(zero-p.amount)}.", "",
+                       f"payment of {tillconfig.fc(zero - p.amount)}.", "",
                        "If you have already removed the payment from "
                        "the drawer, you should put it back when the "
                        "drawer opens."]
