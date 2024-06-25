@@ -29,6 +29,7 @@
 
 from . import tillconfig
 import math
+import time
 from . import td, ui, keyboard, printer
 import quicktill.stocktype
 from . import linekeys
@@ -778,6 +779,7 @@ class page(ui.basicpage):
         # trans and user are needed for "pagename" which is called in
         # basicpage.__init__()
         # transid is now a transaction ID, not a models.Transaction object
+        self._start_time = time.time()
         self.transid = None
         self.user = user
         log.info("Page created for %s", self.user.fullname)
@@ -1017,7 +1019,9 @@ class page(ui.basicpage):
             self.balance = zero
             td.s.flush()
             self._clear_marks()
-            if self._autolock:
+            # Check how long it has been since the register was
+            # created — if it's under a few seconds, do not lock
+            if self._autolock and time.time() - self._start_time >= 3.0:
                 self.locked = True
 
     def linekey(self, kb):
