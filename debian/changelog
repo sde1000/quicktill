@@ -1,3 +1,27 @@
+quicktill (23.8) stable; urgency=low
+
+  * New release 23.8
+
+  * Don't lock the register if a transaction closes within 3 seconds
+
+  * Enable stock line type to be changed through web interface
+
+  * Use modal popups for "change stock line details" forms
+
+  * Fix select2 widget so it works inside a Bootstrap modal
+
+  * Format stock quantity of zero using plural form of unit name
+
+  * Whitespace fixes
+
+  * Allow stock items in scope for a stocktake to have their labels reprinted
+
+  * Anonymised data from EMF 2024
+
+  * Correct spelling mistakes
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 26 Jun 2024 15:58:59 +0100
+
 quicktill (23.7) stable; urgency=low
 
   * New release 23.7
