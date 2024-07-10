@@ -2,26 +2,26 @@ import logging
 from . import keyboard, ui, td, printer, user, linekeys, modifiers
 from . import stocktype
 from . import tillconfig
-from .models import Department, StockLine, KeyboardBinding
+from .models import Department, StockLine, StockItem, KeyboardBinding
 from .models import StockType, StockLineTypeLog
 from sqlalchemy.sql import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from decimal import Decimal
 log = logging.getLogger(__name__)
 
 
-def restock_list(stockline_list):
+def restock_list(stockline_list, remove=False):
     # Print out list of things to fetch and put on display
     # Display prompt: have you fetched them all?
     # If yes, update records.  If no, don't.
     sl = []
     for i in stockline_list:
-        td.s.add(i)
-        r = i.calculate_restock()
+        r = i.calculate_restock(target=0 if remove else None)
         if len(r) > 0:
             sl.append((i, r))
     if sl == []:
-        ui.infopopup(["There is no stock to be put on display."],
+        ui.infopopup(["There is no stock to be moved."],
                      title="Stock movement")
         return
     if not tillconfig.receipt_printer:
@@ -29,31 +29,49 @@ def restock_list(stockline_list):
                       "Use a till with a receipt printer to print out "
                       "the restock list."], title="Error")
         return
-    printer.print_restock_list(tillconfig.receipt_printer, sl)
+    try:
+        with ui.exception_guard(
+                "printing the list", title="Printer error",
+                suppress_exception=False):
+            printer.print_restock_list(tillconfig.receipt_printer, sl)
+    except Exception:
+        return
     user.log("Printed restock list")
+    # Convert stocklines and stockitems in the restock list to their IDs
+    sl = [(stockline.id,
+           [(stockitem.id, move, newdisplayqty, stockqty_after_move)
+            for stockitem, move, newdisplayqty, stockqty_after_move
+            in stockmovement])
+          for stockline, stockmovement in sl]
     ui.infopopup(
-        ["The list of stock to be put on display has been printed.", "",
+        ["The list of stock to be moved has been printed.", "",
          "Please choose one of the following options:", "",
          "1. I have finished moving the stock on the printed list.",
          "2. I have not moved any stock and I have thrown the list away."],
         title="Confirm stock movement",
         keymap={"1": (finish_restock, (sl,), True),
-                "2": (abandon_restock, (sl,), True)},
+                "2": (abandon_restock, None, True)},
         colour=ui.colour_confirm, dismiss=None)\
       .unsaved_data = "confirm stock movements"
 
 
-def abandon_restock(sl):
+def abandon_restock():
     user.log("Abandoned restock")
     ui.infopopup(["The stock movements in the list HAVE NOT been recorded."],
                  title="Stock movement abandoned")
 
 
 def finish_restock(rsl):
-    for stockline, stockmovement in rsl:
-        td.s.add(stockline)
-        for sos, move, newdisplayqty, instock_after_move in stockmovement:
-            td.s.add(sos)
+    # Batch fetch stocklines and relevant stock items
+    stockline_ids = [id for id, movement in rsl]
+    td.s.query(StockLine)\
+        .filter(StockLine.linetype == "display")\
+        .filter(StockLine.id.in_(stockline_ids))\
+        .options(joinedload('stockonsale'))\
+        .all()
+    for stocklineid, stockmovement in rsl:
+        for sid, move, newdisplayqty, instock_after_move in stockmovement:
+            sos = td.s.query(StockItem).get(sid)
             sos.displayqty = newdisplayqty
     user.log("Finished restock")
     td.s.flush()
@@ -62,8 +80,10 @@ def finish_restock(rsl):
                  colour=ui.colour_info, dismiss=keyboard.K_CASH)
 
 
-def restock_item(stockline):
-    return restock_list([stockline])
+def restock_item(stocklineid):
+    stockline = td.s.query(StockLine).get(stocklineid)
+    if stockline and stockline.linetype == "display":
+        return restock_list([stockline])
 
 
 @user.permission_required('restock', "Re-stock items on display stocklines")
@@ -98,7 +118,7 @@ class stockline_associations(user.permission_checked, ui.listpopup):
                  blurb="To create a new association, use the 'Use Stock' "
                  "button to assign stock to a line."):
         """
-        If a list of stocklines is passed, restrict the editor to just
+        If a list of stockline IDs is passed, restrict the editor to just
         those; otherwise list all of them.
 
         """
@@ -113,7 +133,8 @@ class stockline_associations(user.permission_checked, ui.listpopup):
         stllist = stllist.all()
         f = ui.tableformatter(' l l ')
         headerline = f("Stock line", "Stock type")
-        lines = [f(stl.stockline.name, stl.stocktype.fullname, userdata=stl)
+        lines = [f(stl.stockline.name, stl.stocktype.fullname,
+                   userdata=(stl.stockline.id, stl.stocktype.id))
                  for stl in stllist]
         super().__init__(
             lines, title="Stockline / Stock type associations",
@@ -124,8 +145,9 @@ class stockline_associations(user.permission_checked, ui.listpopup):
         if k == keyboard.K_CANCEL and self.s and self.s.cursor is not None:
             line = self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            td.s.add(line.userdata)
-            td.s.delete(line.userdata)
+            stl = td.s.query(StockLineTypeLog).get(line.userdata)
+            if stl:
+                td.s.delete(stl)
             td.s.flush()
         else:
             super().keypress(k)
@@ -134,28 +156,8 @@ class stockline_associations(user.permission_checked, ui.listpopup):
 @user.permission_required('return-stock',
                           "Return items on display stocklines to stock")
 def return_stock(stockline):
-    rsl = stockline.calculate_restock(target=0)
-    if not rsl:
-        ui.infopopup(["The till has no record of stock on display for "
-                      "this line."], title="Remove stock")
-        return
-    restock = [(stockline, rsl)]
-    if not tillconfig.receipt_printer:
-        ui.infopopup(["This till has no receipt printer. Use a till "
-                      "with a printer to print the list of stock to "
-                      "be taken off display."], title="Error")
-        return
-    printer.print_restock_list(tillconfig.receipt_printer, restock)
-    ui.infopopup(
-        ["The list of stock to be taken off display has been printed.",
-         "", "Press Cash/Enter to "
-         "confirm that you've removed all the items on the list and "
-         "allow the till to update its records.  Pressing Clear "
-         "at this point will completely cancel the operation."],
-        title="Confirm stock movement",
-        keymap={keyboard.K_CASH: (finish_restock, (restock,), True)},
-        colour=ui.colour_confirm)\
-      .unsaved_data = "confirm removal of stock from sale"
+    # Stockline must be in the current ORM session
+    restock_list([stockline], remove=True)
 
 
 def completelocation(m):
@@ -298,7 +300,7 @@ class _create_stockline_popup(user.permission_checked, ui.dismisspopup):
             ui.handle_keyboard_input(keyboard.K_USESTOCK)
         if sl.linetype == "display":
             from . import usestock
-            usestock.add_display_line_stock(sl)
+            usestock.add_display_line_stock(sl.id)
 
 
 class modify(user.permission_checked, ui.dismisspopup):
@@ -325,13 +327,12 @@ class modify(user.permission_checked, ui.dismisspopup):
                          title="Screen height problem")
             return
         h = mh
-        td.s.add(stockline)
+        self.stocklineid = stockline.id
+        self.linetype = stockline.linetype
         sanity_check_stock_on_sale(stockline)
-        self.stockline = stockline
-        self.sid = stockline.id
         super().__init__(
             h, 77,
-            title=f"Modify {self.stockline.linetype} stock line",
+            title=f"Modify {stockline.linetype} stock line",
             colour=ui.colour_input,
             dismiss=keyboard.K_CLEAR)
         self.win.drawstr(2, 2, 21, "Stock line name: ", align=">")
@@ -400,7 +401,8 @@ class modify(user.permission_checked, ui.dismisspopup):
             y, 25 if stockline.linetype == "continuous" else 40, 16,
             "Associations", keymap={
                 keyboard.K_CASH: (
-                    lambda: stockline_associations(stocklines=[self.sid]),
+                    lambda: stockline_associations(
+                        stocklines=[self.stocklineid]),
                     None)}))
         y += 2
         y += self.win.wrapstr(
@@ -423,11 +425,15 @@ class modify(user.permission_checked, ui.dismisspopup):
         # Handle keypresses that the fields pass up to the main popup
         if k == keyboard.K_USESTOCK:
             from . import usestock
-            usestock.line_chosen(self.stockline)
+            stockline = td.s.query(StockLine).get(self.stocklineid)
+            if stockline:
+                usestock.line_chosen(stockline)
         elif hasattr(k, 'line'):
-            linekeys.addbinding(self.stockline, k,
-                                self.reload_bindings,
-                                modifiers.defined_modifiers())
+            stockline = td.s.query(StockLine).get(self.stocklineid)
+            if stockline:
+                linekeys.addbinding(
+                    stockline, k, self.reload_bindings,
+                    modifiers.defined_modifiers())
 
     def save(self):
         if self.namefield.f == '' or self.locfield.f == '':
@@ -435,41 +441,49 @@ class modify(user.permission_checked, ui.dismisspopup):
                 ["You may not make the name or location fields blank."],
                 title="Error")
             return
-        td.s.add(self.stockline)
-        if self.stockline.linetype == "display":
+        stockline = td.s.query(StockLine).get(self.stocklineid)
+        if not stockline:
+            self.dismiss()
+            ui.infopopup(["The stock line was deleted."], title="Error")
+            return
+        if stockline.linetype != self.linetype:
+            self.dismiss()
+            ui.infopopup(["The stock line type was changed."], title="Error")
+            return
+        if stockline.linetype == "display":
             if self.capacityfield.f == '':
                 ui.infopopup(["You may not make the capacity field blank.",
                               "",
                               "If you want to change this stock line to be "
-                              "a different type, you should delete it and "
-                              "create it again."],
+                              "a different type, you can do so through the "
+                              "web interface."],
                              title="Error")
                 return
-        if self.stockline.linetype == "display" \
-           or self.stockline.linetype == "continuous":
+        if stockline.linetype == "display" \
+           or stockline.linetype == "continuous":
             if self.stocktypefield.read() is None:
                 ui.infopopup(["You may not make the stock type field blank."],
                              title="Error")
                 return
 
-        if self.stockline.linetype == "regular":
-            self.stockline.pullthru = Decimal(self.pullthrufield.f) \
+        if stockline.linetype == "regular":
+            stockline.pullthru = Decimal(self.pullthrufield.f) \
                 if self.pullthrufield.f != '' else None
         additional = []
-        if self.stockline.linetype == "display":
+        if stockline.linetype == "display":
             newcap = int(self.capacityfield.f)
-            if newcap != self.stockline.capacity:
+            if newcap != stockline.capacity:
                 additional.append(
                     "The change in display capacity will take effect next "
                     "time the line is re-stocked.")
-                self.stockline.capacity = newcap
+                stockline.capacity = newcap
 
-        oldstocktype = self.stockline.stocktype
-        self.stockline.stocktype = self.stocktypefield.read()
-        if self.stockline.linetype == 'display':
-            if self.stockline.stocktype != oldstocktype \
-               and self.stockline.stockonsale:
-                for si in list(self.stockline.stockonsale):
+        oldstocktype = stockline.stocktype
+        stockline.stocktype = self.stocktypefield.read()
+        if stockline.linetype == 'display':
+            if stockline.stocktype != oldstocktype \
+               and stockline.stockonsale:
+                for si in list(stockline.stockonsale):
                     si.displayqty = None
                     si.stockline = None
                 additional.append(
@@ -479,7 +493,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                 # XXX call auto-allocate to add new items
 
         try:
-            self.stockline.name = self.namefield.f
+            stockline.name = self.namefield.f
             td.s.flush()
         except IntegrityError:
             ui.infopopup(
@@ -488,31 +502,33 @@ class modify(user.permission_checked, ui.dismisspopup):
                  f"the same name."])
             td.s.rollback()
             return
-        self.stockline.location = self.locfield.f
-        if self.stockline.linetype == "regular":
-            self.stockline.department = self.deptfield.read()
+        stockline.location = self.locfield.f
+        if stockline.linetype == "regular":
+            stockline.department = self.deptfield.read()
         try:
             td.s.flush()
         except Exception:
             ui.infopopup(
-                [f"Could not update stock line '{self.stockline.name}'."],
+                [f"Could not update stock line '{stockline.name}'."],
                 title="Error")
             return
         self.dismiss()
-        user.log(f"Updated stock line '{self.stockline.logref}'")
-        ui.infopopup([f"Updated stock line '{self.stockline.name}'.",
+        user.log(f"Updated stock line '{stockline.logref}'")
+        ui.infopopup([f"Updated stock line '{stockline.name}'.",
                       ""] + additional,
                      colour=ui.colour_info, dismiss=keyboard.K_CASH,
                      title="Confirmation")
 
     def delete(self):
         self.dismiss()
-        td.s.add(self.stockline)
-        if len(self.stockline.stockonsale) > 0:
+        stockline = td.s.query(StockLine).get(self.stocklineid)
+        if not stockline:
+            return
+        if len(stockline.stockonsale) > 0:
             # Set displayqtys to none - if we don't do this explicitly here
             # then setting the stockline field to null will violate the
             # displayqty_null_if_no_stockline constraint
-            for si in self.stockline.stockonsale:
+            for si in stockline.stockonsale:
                 si.displayqty = None
             message = [
                 "The stock line has been deleted.  Note that it still "
@@ -523,11 +539,11 @@ class modify(user.permission_checked, ui.dismisspopup):
             ]
             message = message + [
                 f"  {x.id} {x.stocktype}"
-                for x in self.stockline.stockonsale]
+                for x in stockline.stockonsale]
         else:
             message = ["The stock line has been deleted."]
-        user.log(f"Deleted stockline '{self.stockline.logref}'")
-        td.s.delete(self.stockline)
+        user.log(f"Deleted stockline '{stockline.logref}'")
+        td.s.delete(stockline)
         # Any StockItems that point to this stockline should have their
         # stocklineid set to null by the database.
         td.s.flush()
@@ -552,10 +568,12 @@ class modify(user.permission_checked, ui.dismisspopup):
         td.s.flush()
 
     def reload_bindings(self):
-        td.s.add(self.stockline)
+        stockline = td.s.query(StockLine).get(self.stocklineid)
+        if not stockline:
+            return
         f = ui.tableformatter(' l   c   l ')
         kbl = linekeys.keyboard_bindings_table(
-            self.stockline.keyboard_bindings, f)
+            stockline.keyboard_bindings, f)
         self.win.addstr(self.bindings_header_y, 1, " " * 75)
         self.win.addstr(
             self.bindings_header_y, 1, f(
@@ -726,19 +744,28 @@ def selectlocation(func, title="Stock Locations", blurb="Choose a location",
 
     Calls func with a list of stocklines for the selected location.
     """
-    stocklines = td.s.query(StockLine)
+    stocklines = td.s.query(StockLine.location)
     if linetypes:
         stocklines = stocklines.filter(
             StockLine.linetype.in_(linetypes))
-    stocklines = stocklines.all()
-    l = {}
-    for sl in stocklines:
-        if sl.location in l:
-            l[sl.location].append(sl)
-        else:
-            l[sl.location] = [sl]
-    ml = [(x, func, (l[x],)) for x in list(l.keys())]
+    locations = list(x[0] for x in stocklines.distinct())
+
+    if not locations:
+        ui.infopopup(["There are no stock lines that match."],
+                     title="Error")
+        return
+
+    ml = [(x, _finish_selectlocation, (func, linetypes, x)) for x in locations]
     ui.menu(ml, title=title, blurb=blurb)
+
+
+def _finish_selectlocation(func, linetypes, location):
+    stocklines = td.s.query(StockLine)\
+                     .filter(StockLine.location == location)
+    if linetypes:
+        stocklines = stocklines.filter(
+            StockLine.linetype.in_(linetypes))
+    func(stocklines.all())
 
 
 def sanity_check_stock_on_sale(stockline):

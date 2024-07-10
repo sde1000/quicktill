@@ -116,8 +116,8 @@ def line_chosen(line):
                 line.name, line.location, line.capacity),
             blurb=blurb,
             keymap={
-                "1": (stocklines.restock_item, (line,), True),
-                "2": (add_display_line_stock, (line, ), True)})
+                "1": (stocklines.restock_item, (line.id,), True),
+                "2": (add_display_line_stock, (line.id, ), True)})
     elif line.linetype == "continuous":
         change_continuous_stockline(line.id)
     else:
@@ -215,7 +215,7 @@ def put_on_sale(line, si):
                 i.regular_usestock(si, line)
 
 
-def add_display_line_stock(line):
+def add_display_line_stock(stocklineid):
     """Add stock to a display stock line.
 
     Given a stock line, find stock to put on it.  (See also
@@ -225,7 +225,11 @@ def add_display_line_stock(line):
     Entered from the Use Stock popup for the line or the Modify Stock
     Line popup for the line.
     """
-    td.s.add(line)
+    line = td.s.query(StockLine).get(stocklineid)
+    if not line:
+        return
+    if line.linetype != "display":
+        return
     if line.stocktype.stocktake:
         ui.infopopup(["You can't add stock to this stock line at the moment "
                       f"because {line.stocktype} is currently in scope for "

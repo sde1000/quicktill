@@ -298,12 +298,11 @@ def stock_label(f, d):
 
 
 def print_restock_list(printer, rl):
-    """
-    Print a list of (stockline,stockmovement) tuples.
+    """Print a list of (stockline,stockmovement) tuples
+
     A stockmovement tuple is (stockitem,fetchqty,newdisplayqty,qtyremain).
 
-    We can't assume that any of these objects are in the current
-    session.
+    All ORM objects must be attached to the current database session.
     """
     with printer as d:
         d.printline(f"\t{tillconfig.pubname}", emph=1)
@@ -311,11 +310,9 @@ def print_restock_list(printer, rl):
         d.printline(f"\tPrinted {ui.formattime(now())}")
         d.printline()
         for sl, sm in rl:
-            td.s.add(sl)
             d.printline(f"{sl.name}:")
             d.printline(f"{sl.ondisplay}/{sl.capacity} displayed")
             for item, move, newdisplayqty, stockqty_after_move in sm:
-                td.s.add(item)
                 if move > 0:
                     d.printline(f" {move} from item {item.id} "
                                 f"leaving {stockqty_after_move}")

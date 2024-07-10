@@ -118,7 +118,6 @@ class slmenu(ui.keymenu):
 
     def line_selected(self, kb):
         self.dismiss()
-        td.s.add(kb)
         if kb.stockline:
             stocklines.modify(kb.stockline)
         elif kb.plu:
