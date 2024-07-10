@@ -7,23 +7,21 @@ jobs:
     name: Test quicktill
     strategy:
       matrix:
-        # Unfortunately the ubuntu-20.04 image already has
-        # postgresql-14 installed, not the native postgresql-12.
         runs-on:
-          - 'ubuntu-20.04'
           - 'ubuntu-22.04'
+          - 'ubuntu-24.04'
     runs-on: ${{ matrix.runs-on }}
 
     steps:
       - name: Check out project
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Update OS package list
         run: |
           sudo apt-get update
       - name: Install OS-level dependencies
         run: |
           sudo apt-get install \
-          python3-pip \
+          flake8 \
           python3-pytest \
           python3-setuptools \
           python3-cryptography \
@@ -37,13 +35,7 @@ jobs:
           python3-requests \
           python3-requests-oauthlib \
           python3-sqlalchemy \
-          python3-twython \
-          python3-yaml
-      - name: Install python dependencies
-        # We need the latest flake8, we can't use the one packaged in
-        # ubuntu-20.04
-        run: |
-          pip3 install flake8
+          python3-tomli
       - name: Lint with flake8
         run: |
           flake8 quicktill
