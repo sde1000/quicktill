@@ -18,7 +18,7 @@ from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import undefer, undefer_group
 from sqlalchemy.sql import select, desc
-from sqlalchemy.sql.expression import tuple_, func, null
+from sqlalchemy.sql.expression import tuple_, func, null, and_, or_
 from sqlalchemy import distinct
 from quicktill.models import (
     StockType,
@@ -1148,7 +1148,7 @@ class EditDeliveryForm(DeliveryForm):
         label_function=stocktype_widget_label,
         query_filter=lambda x: x.order_by(StockType.manufacturer,
                                           StockType.name),
-        widget=Select2Ajax(min_input_length=2))
+        widget=Select2Ajax(min_input_length=3))
     itemsize = SQLAModelChoiceField(StockUnit, required=False,
                                     empty_label='Choose an item size')
     quantity = forms.IntegerField(min_value=1, required=False, initial=1)
@@ -1416,18 +1416,23 @@ def _stocktype_to_dict(x, include_stockunits):
 def stocktype_search_json(request, info, include_stockunits=False):
     if 'q' not in request.GET:
         return JsonResponse({'results': []})
-    words = request.GET['q'].split()
+    query = request.GET['q'].strip()
+    words = query.split()
     if not words:
         return JsonResponse({'results': []})
     q = td.s.query(StockType)\
             .order_by(StockType.dept_id, StockType.manufacturer,
                       StockType.name)
-    if len(words) == 1:
-        q = q.filter((StockType.manufacturer.ilike(f"%{words[0]}%"))
-                     | (StockType.name.ilike(f"%{words[0]}%")))
-    else:
-        q = q.filter(StockType.manufacturer.ilike(f"%{words[0]}%"))\
-             .filter(StockType.name.ilike(f"%{words[1]}%"))
+    # We always search for the query entered in the full name of the
+    # product formed from joining the manufacturer and name. If the
+    # query consists of exactly two words, we also search for the
+    # first word in the manufacturer and the second word in the name.
+    qf = or_(StockType.fullname.ilike(f"%{query}%"),
+             StockType.fullname.ilike(f"%{' '.join(words)}%"))
+    if len(words) == 2:
+        qf = qf | and_(StockType.manufacturer.ilike(f"%{words[0]}%"),
+                       StockType.name.ilike(f"%{words[1]}%"))
+    q = q.filter(qf)
     if include_stockunits:
         q = q.options(joinedload('unit').joinedload('stockunits'))
     results = q.all()
@@ -1688,7 +1693,7 @@ class EditStockForm(forms.Form):
         label_function=stocktype_widget_label,
         query_filter=lambda x: x.order_by(StockType.manufacturer,
                                           StockType.name),
-        widget=Select2Ajax(min_input_length=2))
+        widget=Select2Ajax(min_input_length=3))
     description = forms.CharField()
     size = forms.DecimalField(
         min_value=min_quantity, max_digits=qty_max_digits,
@@ -2093,7 +2098,7 @@ class RegularStockLineForm(forms.Form):
         label_function=stocktype_widget_label,
         query_filter=lambda x: x.order_by(StockType.manufacturer,
                                           StockType.name),
-        widget=Select2Ajax(min_input_length=2))
+        widget=Select2Ajax(min_input_length=3))
     department = SQLAModelChoiceField(
         Department,
         label="Restrict new stock to this department",
@@ -2190,7 +2195,7 @@ class DisplayStockLineForm(forms.Form):
         label_function=stocktype_widget_label,
         query_filter=lambda x: x.order_by(StockType.manufacturer,
                                           StockType.name),
-        widget=Select2Ajax(min_input_length=2))
+        widget=Select2Ajax(min_input_length=3))
     capacity = forms.IntegerField(
         label="Maximum number of items on display", min_value=1)
 
@@ -2280,7 +2285,7 @@ class ContinuousStockLineForm(forms.Form):
         label_function=stocktype_widget_label,
         query_filter=lambda x: x.order_by(StockType.manufacturer,
                                           StockType.name),
-        widget=Select2Ajax(min_input_length=2))
+        widget=Select2Ajax(min_input_length=3))
 
 
 def stockline_continuous(request, info, s):
