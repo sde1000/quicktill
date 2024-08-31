@@ -1,3 +1,13 @@
+quicktill (23.10) stable; urgency=low
+
+  * New release 23.10
+
+  * Add "refund_guard" configuration option to Card payment driver
+
+  * Improve searching for stock types by name in the web interface
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 31 Aug 2024 11:56:44 +0100
+
 quicktill (23.9) stable; urgency=low
 
   * New release 23.9
