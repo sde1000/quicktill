@@ -204,6 +204,13 @@ class Card(payment.PaymentDriver):
       entries for machine ID (if present) and reference will be
       permitted.
 
+    - refund_guard (boolean, default False) determines whether refunds
+      can be created when there is no payment of this type in the
+      transaction's history. It is intended to prevent refunds being
+      recorded with the wrong payment type by accident; it's possible
+      to circumvent if you are determined (by recording a payment of
+      this type, and then a larger refund).
+
     Payment service providers that send payouts net of fees are
     supported by the following parameters:
 
@@ -251,6 +258,8 @@ class Card(payment.PaymentDriver):
             'ref_prompt',
             "Please enter the receipt number from the merchant receipt.")
         self._ref_required = c.get('ref_required', False)
+
+        self._refund_guard = c.get('refund_guard', False)
 
         self._cashback_method = None
         cashback_paytype_id = c.get('cashback_method', None)
@@ -344,6 +353,30 @@ class Card(payment.PaymentDriver):
                     ["You can't refund more than the amount due back."],
                     title="Refund too large")
                 return
+            if self._refund_guard:
+                # Check whether there are any payments of this type in
+                # the transaction history
+                trans = td.s.query(Transaction).get(transid)
+                if not trans:
+                    ui.infopopup(
+                        ["Transaction does not exist; cannot refund."],
+                        title="Error")
+                    return
+                related_transids = trans.related_transaction_ids()
+                payments = td.s.query(Payment)\
+                               .filter(Payment.paytype == self.paytype)\
+                               .filter(Payment.transid.in_(related_transids))\
+                               .filter(Payment.amount > zero)\
+                               .all()
+                if len(payments) == 0:
+                    ui.infopopup(
+                        [f"There are no {self.paytype.description} payments "
+                         f"related to this transaction, so you cannot refund "
+                         f"via {self.paytype.description}.",
+                         "",
+                         "Have you chosen the correct payment type for this "
+                         "refund?"], title="Error")
+                    return
             _cardpopup(self.paytype.paytype, reg, transid, amount, refund=True)
             return
         if amount > outstanding:
