@@ -640,6 +640,11 @@ class _SquarePaymentProgress(ui.basicpopup):
                 try:
                     square_payment = self.session.get_payment(square_payment_id)
                 except _SquareAPIError as e:
+                    # XXX temporary fix while Square is returning pairs
+                    # of payments in checkouts, one of which does not exist
+                    # 11 Nov 2024 around 10pm
+                    if len(checkout.payment_ids) == 2:
+                        continue
                     self.status.set("API error fetching payment; retrying...")
                     log.error("Square API error fetching payment: %s", e)
                     self.timeout = tillconfig.mainloop.add_timeout(
