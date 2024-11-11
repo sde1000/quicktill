@@ -1,3 +1,11 @@
+quicktill (23.11) stable; urgency=low
+
+  * New release 23.11
+
+  * Temporary, untested fix for Square API problem
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 11 Nov 2024 22:20:10 +0000
+
 quicktill (23.10) stable; urgency=low
 
   * New release 23.10
