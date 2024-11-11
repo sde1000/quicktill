@@ -1,3 +1,11 @@
+quicktill (23.12) stable; urgency=low
+
+  * New release 23.12
+
+  * Another attempt at fixing the Square issue
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 11 Nov 2024 22:41:02 +0000
+
 quicktill (23.11) stable; urgency=low
 
   * New release 23.11
