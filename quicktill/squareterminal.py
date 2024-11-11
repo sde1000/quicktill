@@ -665,7 +665,7 @@ class _SquarePaymentProgress(ui.basicpopup):
                     log.warning("payment %s in state %s", square_payment_id,
                                 square_payment.status)
                     value = zero
-                if idx == 0:
+                if idx == 0 or len(checkout.payment_ids) == 2:
                     payment = p
                 else:
                     payment = Payment(
