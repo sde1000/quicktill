@@ -1692,6 +1692,10 @@ class page(ui.basicpage):
                 f"{unit.format_stock_qty(stockitem.remaining)} "\
                 f"of {stockitem.stocktype} remaining"
             if stockitem.remaining < Decimal("0.0"):
+                user.log(f"Negative stock level on {stockline.logref}: "
+                         f"Item {stockitem.logref} has "
+                         f"{unit.format_stock_qty(stockitem.remaining)} "
+                         f"remaining")
                 ui.infopopup(
                     ["There appears to be {} of {} left!  Please "
                      "check that you're still using stock item {}; if you've "
@@ -1714,6 +1718,10 @@ class page(ui.basicpage):
                     remaining),
                 stockline.stocktype)
             if remaining < Decimal("0.0"):
+                user.log(
+                    f"Negative stock level on {stockline.logref}: "
+                    f"{stockline.stocktype.unit.format_stock_qty(remaining)} "
+                    f"of {stockline.stocktype.logref} remaining")
                 ui.infopopup(
                     ["There appears to be {} of {} left!  Please "
                      "check that you're still using {}; if you've "
