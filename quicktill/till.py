@@ -620,6 +620,10 @@ def main():
             tillconfig.usertoken_listen_v6 = val
         elif opt == 'description':
             tillconfig.configdescription = val
+        elif opt == 'token_password_timeout':
+            tillconfig.token_password_timeout = val
+        elif opt == 'force_password_registration':
+            tillconfig.force_password_registration = val
         else:
             log.warning("Unknown configuration option '%s'", opt)
 
