@@ -369,6 +369,18 @@ def should_prompt_for_password(dbt):
         > token_password_timeout
 
 
+def should_force_set_password(uid):
+    """Determine whether the user should be forced to set a password.
+
+    If true, the user should be prompted to set a password.
+    """
+    if not force_password_registration:
+        return False
+
+    u = td.s.query(User).get(uid)
+    return not u.password
+
+
 def user_from_token(t):
     _check_permissions()
     dbt = td.s.query(UserToken)\
@@ -449,6 +461,9 @@ def token_login(t, cb):
 
     if should_prompt_for_password(dbt):
         password_prompt(u.userid, dbt.token, cb)
+    elif should_force_set_password(u.userid):
+        
+        change_current_user_password(u.userid)
     else:
         cb(u)
 
@@ -572,14 +587,18 @@ class change_user_password(permission_checked, ui.dismisspopup):
 
     A user can change their own password with the change_current_user_password
     function.
+
+    If dismissable is False, it will not be possible to dismiss the popup
+    without changing the password.
     """
     permission_required = ('edit-user-password', 'Edit a user\'s password')
 
-    def __init__(self, userid):
+    def __init__(self, userid, dismissable=True):
         self.userid = userid
+        self.dismissable = dismissable
         user = td.s.query(User).get(userid)
         super().__init__(8, 60, title=f"Change password for {user.fullname}",
-                         colour=ui.colour_input)
+                         colour=ui.colour_input, dismiss=self.get_dismiss_key())
         self.win.drawstr(2, 2, 80, ('Key in the new password for the user then '
                                     'press CASH / ENTER.'))
 
@@ -600,14 +619,26 @@ class change_user_password(permission_checked, ui.dismisspopup):
         ui.toast(f'Password for user "{user.fullname}" changed.')
         log(f"Changed password for user {user}")
         self.dismiss()
+    
+    def get_dismiss_key(self):
+        if self.dismissable:
+            return keyboard.K_CLEAR
+        return None
 
 
 class change_current_user_password(change_user_password):
+    """Change the password of the current user.
+
+    This actually just calls change_user_password, but with the user forced
+    to be the current user, and with a different permission requirement.
+
+    If dismissable is False, it will not be possible to dismiss the popup.
+    """
     permission_required = ('edit-current-user-password',
                            'Edit the password of the current user')
 
-    def __init__(self):
-        super().__init__(ui.current_user().userid)
+    def __init__(self, dismissable=True):
+        super().__init__(ui.current_user().userid, dismissable)
 
 
 class manage_user_tokens(ui.dismisspopup):
