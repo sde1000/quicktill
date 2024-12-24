@@ -1492,7 +1492,7 @@ class editfield(valuefield):
                        colour=self.win.colour.reversed)
         
         if self.hidden:
-            self.win.addstr(self.y, self.x, '*' * self.w,
+            self.win.addstr(self.y, self.x, '*' * (self.c - self.i),
                         self.win.colour.reversed)
         else:
             self.win.addstr(self.y, self.x, self._f[self.i:self.i + self.w],
