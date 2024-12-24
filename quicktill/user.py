@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 import socket
 import logging
 import datetime
+import hashlib
 
 # We declare 'log' later on for writing log entries to the database
 debug_log = logging.getLogger(__name__)
@@ -183,6 +184,14 @@ def current_dbuser():
     user = ui.current_user()
     if user and hasattr(user, 'dbuser'):
         return user.dbuser
+
+
+def compute_sha256_hash(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def check_password(password, hash):
+    return compute_sha256_hash(password) == hash
 
 
 class built_in_user:
@@ -459,6 +468,46 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             super().keypress(k)
 
 
+class change_user_password(permission_checked, ui.dismisspopup):
+    """Change a user's password.
+
+    A user can change their own password with the change_current_user_password function.
+    """
+    permission_required = ('edit-user-password', 'Edit a user\'s password')
+
+    def __init__(self, userid):
+        self.userid = userid
+        user = td.s.query(User).get(userid)
+        super().__init__(8, 60, title=f"Change password for {user.fullname}",
+                         colour=ui.colour_input)
+        self.win.drawstr(2, 2, 80, 'Key in the new password for the user then press CASH / ENTER.')
+
+        self.win.drawstr(5, 2, 14, 'Password: ', align=">")
+        self.password = ui.editfield(5, 16, 40, keymap={
+            keyboard.K_CASH: (self.save, None)})
+        
+        self.password.focus()
+    
+    def save(self):
+        if not self.password.f or len(self.password.f) < 1:
+            ui.infopopup(["You must provide a password."], title="Error")
+            return
+
+        user = td.s.query(User).get(self.userid)
+        user.password = compute_sha256_hash(self.password.f)
+        td.s.commit()
+        ui.toast(f'Password for user "{user.fullname}" changed.')
+        log(f"Changed password for user {user}")
+        self.dismiss()
+
+
+class change_current_user_password(change_user_password):
+    permission_required = ('edit-current-user-password', 'Edit the password of the current user')
+
+    def __init__(self):
+        super().__init__(ui.current_user().userid)
+
+
 class manage_user_tokens(ui.dismisspopup):
     """Manage the tokens assigned to a user
     """
@@ -582,7 +631,7 @@ class edituser(permission_checked, ui.basicpopup):
                 [f"You can't edit {u.fullname} because that user has the "
                  "superuser bit set and you do not."], title="Not allowed")
             return
-        super().__init__(12, 60, title="Edit user", colour=ui.colour_input)
+        super().__init__(15, 60, title="Edit user", colour=ui.colour_input)
         self.win.drawstr(2, 2, 14, 'Full name: ', align=">")
         self.win.drawstr(3, 2, 14, 'Short name: ', align=">")
         self.win.drawstr(4, 2, 14, 'Web username: ', align=">")
@@ -591,17 +640,19 @@ class edituser(permission_checked, ui.basicpopup):
         self.snfield = ui.editfield(3, 16, 30, f=u.shortname)
         self.wnfield = ui.editfield(4, 16, 30, f=u.webuser)
         self.actfield = ui.booleanfield(5, 16, f=u.enabled, allow_blank=False)
-        self.tokenfield = ui.buttonfield(7, 7, 15, "Edit tokens", keymap={
+        self.tokenfield = ui.buttonfield(7, 7, 20, "Edit tokens", keymap={
             keyboard.K_CASH: (manage_user_tokens, (self.userid,))})
         self.permfield = ui.buttonfield(7, 30, 20, "Edit permissions", keymap={
             keyboard.K_CASH: (self.editpermissions, None)})
-        self.savefield = ui.buttonfield(9, 6, 17, "Save and exit", keymap={
+        self.passfield = ui.buttonfield(9, 18, 20, "Reset password", keymap={
+            keyboard.K_CASH: (change_user_password, (self.userid,))})
+        self.savefield = ui.buttonfield(12, 7, 20, "Save and exit", keymap={
             keyboard.K_CASH: (self.save, None)})
         self.exitfield = ui.buttonfield(
-            9, 29, 23, "Exit without saving", keymap={
+            12, 30, 20, "Exit without saving", keymap={
                 keyboard.K_CASH: (self.dismiss, None)})
         fl = [self.fnfield, self.snfield, self.wnfield, self.actfield,
-              self.tokenfield, self.permfield, self.savefield, self.exitfield]
+              self.tokenfield, self.permfield, self.passfield, self.savefield, self.exitfield]
         if u.superuser and ui.current_user().is_superuser:
             fl.append(ui.buttonfield(
                 5, 25, 30, "Remove superuser privilege", keymap={
@@ -673,6 +724,7 @@ def usersmenu():
         [("1", "Users", manageusers, None),
          ("2", "Tokens", managetokens, None),
          ("3", "Current user information", display_info, None),
+         ("4", "Change my password", change_current_user_password, None),
          ], title="Manage Users")
 
 
@@ -977,6 +1029,7 @@ class default_groups:
         "kitchen-order",
         "edit-transaction-note",
         "price-check",
+        "edit-current-user-password",
     ])
 
     skilled_user = set([
@@ -1009,6 +1062,7 @@ class default_groups:
         "session-summary",
         "list-users",
         "edit-user",
+        "edit-user-password",
         "edit-group",
         "manage-tokens",
         "override-price",
