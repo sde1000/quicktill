@@ -13,7 +13,7 @@ function decorator (permission_required) for other modules to use to
 indicate restricted functionality.
 """
 
-from . import ui, td, keyboard, tillconfig, cmdline
+from . import ui, td, keyboard, tillconfig, cmdline, config
 from .models import User, UserToken, Permission, Group, LogEntry
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +21,27 @@ import socket
 import logging
 import datetime
 import hashlib
+
+
+token_password_timeout = config.IntConfigItem(
+    'user:token_password_timeout', -1,
+    display_name='Prompt for password after (seconds)',
+    description=('How long (in seconds) after a token is last used before a '
+                 'password is required to log on. Values less than 0 will '
+                 'disable checks. A value of 0 will require a password for '
+                 'every login attempt.')
+)
+
+force_password_registration = config.BooleanConfigItem(
+    'user:force_password_registration', False,
+    display_name='Force password registration',
+    description=('Require users without a password to set one when they next '
+                 'log in. This will trigger an un-dismissable dialog at the '
+                 'next authentication attempt. Till users must have the '
+                 'edit-current-user-password permission to edit their own '
+                 'passwords.')
+)
+
 
 # We declare 'log' later on for writing log entries to the database
 debug_log = logging.getLogger(__name__)
@@ -335,16 +356,16 @@ def should_prompt_for_password(dbt):
 
     If true, the user should be prompted to enter their password (if they have one).
     """
-    if tillconfig.token_password_timeout < 0:
+    if token_password_timeout < 0:
         return False
     
-    if tillconfig.token_password_timeout == 0:
+    if token_password_timeout == 0:
         return True
 
     if not dbt.last_seen:
         return True
     
-    return (datetime.datetime.now() - dbt.last_seen).total_seconds() > tillconfig.token_password_timeout
+    return (datetime.datetime.now() - dbt.last_seen).total_seconds() > token_password_timeout
 
 
 def user_from_token(t):
@@ -376,7 +397,7 @@ class password_prompt(ui.dismisspopup):
         if is_password_prompt_displayed:
             return
 
-        super().__init__(8, 40, title="Password required",
+        super().__init__(8, 40, title="Enter password",
                          colour=ui.colour_input)
         is_password_prompt_displayed = True
         self.uid = uid
