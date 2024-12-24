@@ -665,10 +665,14 @@ class change_current_user_password_login_initial(ui.infopopup):
         super().__init__([('The system is configured to require users to set '
                            'a password to log in. You must set a password '
                            'now.'),
+                          '',
                           ('If you would not like to set a password now, you '
                            'can press CANCEL to cancel this log on attempt.'),
+                          '',
                           ('Press CASH / ENTER to continue to set a '
-                           'password.')], dismiss=keyboard.K_CANCEL)
+                           'password.')],
+                         dismiss=keyboard.K_CANCEL,
+                         cleartext=None)
 
     def keypress(self, k):
         if k == keyboard.K_CASH:
