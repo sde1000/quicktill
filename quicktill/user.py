@@ -672,7 +672,7 @@ class change_current_user_password_login_initial(ui.infopopup):
                           ('Press CASH / ENTER to continue to set a '
                            'password.')],
                          dismiss=keyboard.K_CANCEL,
-                         cleartext=None,
+                         cleartext='Press CANCEL or CASH / ENTER',
                          colour=ui.colour_info)
 
     def keypress(self, k):
