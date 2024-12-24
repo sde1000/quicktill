@@ -544,6 +544,13 @@ class password_login_prompt(ui.dismisspopup):
         self.dismiss()
         self.cb(database_user(dbu))
 
+    def hotkeypress(self, k):
+        """Dismiss ourself if the user hits LOGON again.
+        """
+        if k == keyboard.K_PASS_LOGON:
+            self.dismiss()
+        super().hotkeypress(k)
+
 
 class LogError(Exception):
     """Tried to make an entry in the user activity log with no current user
