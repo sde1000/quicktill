@@ -382,17 +382,17 @@ def should_prompt_for_password(dbt):
     If true, the user should be prompted to enter their password (if they have
     one).
     """
-    if token_password_timeout < 0:
+    if token_password_timeout() < 0:
         return False
 
-    if token_password_timeout == 0:
+    if token_password_timeout() == 0:
         return True
 
     if not dbt.last_seen:
         return True
 
     return (datetime.datetime.now() - dbt.last_seen).total_seconds() \
-        > token_password_timeout
+        > token_password_timeout()
 
 
 def should_force_set_password(uid):
@@ -400,7 +400,7 @@ def should_force_set_password(uid):
 
     If true, the user should be prompted to set a password.
     """
-    if not force_password_registration:
+    if not force_password_registration():
         return False
 
     u = td.s.query(User).get(uid)
@@ -506,8 +506,8 @@ def token_login(t, cb):
 def password_login(cb):
     """Log in a user prompting them for their password.
     """
-    if not allow_password_only_login:
-        ui.toast("Password-only login is not enabled.")
+    if not allow_password_only_login():
+        ui.toast("Password-only login is not enabled. Use a token to log in.")
         return
 
     password_login_prompt(cb)
@@ -691,7 +691,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
             ui.infopopup(["You must provide a password."], title="Error")
             return
 
-        if require_unique_passwords:
+        if require_unique_passwords():
             existing = td.s.query(User)\
                 .where(User.password == compute_sha256_hash(self.password.f))\
                 .first()
