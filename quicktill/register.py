@@ -3419,7 +3419,8 @@ def handle_usertoken(t, *args, **kwargs):
     Used in the configuration file to specify what happens when a user
     token is handled by the default hotkey handler.
     """
-    user.token_login(t, lambda u: _finalize_handle_usertoken(u, *args, **kwargs))
+    user.token_login(t,
+                     lambda u: _finalize_handle_usertoken(u, *args, **kwargs))
 
     def _finalize_handle_usertoken(u, *args, **kwargs):
         if u is None:
@@ -3428,4 +3429,4 @@ def handle_usertoken(t, *args, **kwargs):
             if isinstance(p, page) and p.user.userid == u.userid:
                 p.select(u)
                 return p
-        return page(u, *args, **kwargs) 
+        return page(u, *args, **kwargs)
