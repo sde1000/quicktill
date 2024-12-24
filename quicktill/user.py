@@ -450,7 +450,7 @@ def token_login(t, cb):
     if should_prompt_for_password(dbt):
         password_prompt(u.userid, dbt.token, cb)
     else:
-        cb(database_user(u))
+        cb(u)
 
 
 class LogError(Exception):
