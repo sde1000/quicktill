@@ -99,8 +99,8 @@ minimum_lock_screen_time = 300
 # The time at which this instance of the till was started
 start_time = 0.0
 
-# The interval in seconds after which a password will be required to use a token, or 0 if this
-# functionality is disabled
+# The interval in seconds after which a password will be required to use a token. 0 will always
+# require a password, values < 0 or None will never require a password.
 token_password_timeout = 0
 
 # Whether to require users without a password to set one when they next login
