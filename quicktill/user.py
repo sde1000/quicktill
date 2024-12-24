@@ -329,7 +329,7 @@ class tokenlistener:
                 ui.handle_keyboard_input(token(d))
 
 
-def has_token_password_timeout_lapsed(dbt):
+def should_prompt_for_password(dbt):
     """Determine whether the token password timeout has lapsed.
 
     If true, the user should be prompted to enter their password (if they have one).
@@ -346,14 +346,7 @@ def has_token_password_timeout_lapsed(dbt):
     return (datetime.datetime.now() - dbt.last_seen).total_seconds() > tillconfig.token_password_timeout
 
 
-def user_from_token(t, check_password=True):
-    """Find a user given a token object.
-
-    If check_password is specified, then the user will be prompted to enter their password if they
-    have one. If this function is being used somewhere other than login (i.e. if you wanted to use
-    it to recall a user's details from a token outside of the login flow), you should set this
-    to False.
-    """
+def user_from_token(t):
     _check_permissions()
     dbt = td.s.query(UserToken)\
               .options(joinedload('user'),
@@ -372,25 +365,19 @@ def user_from_token(t, check_password=True):
     if not u.enabled:
         ui.toast(f"User '{u.fullname}' is not active.")
         return
-    
-    if u.password and has_token_password_timeout_lapsed(dbt):
-        prompt = password_prompt(u)
-
-        if not prompt.got_password_correct:
-            return
-
     u.last_seen = now
     return database_user(u)
 
 
 class password_prompt(ui.dismisspopup):
-    def __init__(self, user):
-        super().__init__(8, 60, title="Enter password",
+    def __init__(self, uid, cb):
+        super().__init__(8, 40, title="Password required",
                          colour=ui.colour_input)
-        self.user = user
-        self.got_password_correct = False
-        self.win.drawstr(2, 2, 80, 'Enter your password then press CASH / ENTER to log on.')
-        self.password = ui.editfield(5, 2, 56, keymap={
+        self.uid = uid
+        self.cb = cb
+        self.got_password_correct = None
+        self.win.drawstr(2, 2, 60, 'Enter your password then press CASH / ENTER.')
+        self.password = ui.editfield(5, 2, 36, keymap={
             keyboard.K_CASH: (self.check_password, None)}, hidden=True)
         self.password.focus()
 
@@ -398,10 +385,34 @@ class password_prompt(ui.dismisspopup):
         if not self.password.f:
             ui.infopopup(["You must provide a password."], title="Error")
             return
-        if not check_password(self.password.f, self.user.password):
+        
+        u = td.s.query(User).get(self.uid)
+
+        if not check_password(self.password.f, u.password):
             ui.infopopup(["Incorrect password."], title="Error")
+            self.password.clear()
             return
+        
         self.dismiss()
+        self.cb(database_user(u))
+
+
+def token_login(t, cb):
+    """Log in a user from a token.
+    
+    cb: callback function to call after successful login with the database_user object
+    """
+    u = user_from_token(t)
+    dbt = td.s.query(UserToken).get(t.usertoken)
+
+    if not u:
+        return
+    
+    if should_prompt_for_password(dbt):
+        password_prompt(u.userid, cb)
+    else:
+        cb(database_user(u))
+
 
 class LogError(Exception):
     """Tried to make an entry in the user activity log with no current user
