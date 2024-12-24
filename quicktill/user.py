@@ -78,6 +78,13 @@ class _permission_checked_metaclass(type):
     def __call__(cls, *args, **kwargs):
         # Called when a permission_checked class is about to be
         # instantiated
+
+        if cls.permission_required is None:
+            # allow permission_required to be set to None, if subclasses
+            # want to override the permission_required of their parent and
+            # remove the permission check entirely
+            return type.__call__(cls, *args, **kwargs)
+
         u = ui.current_user()
         if cls.allowed(u):
             return type.__call__(cls, *args, **kwargs)
@@ -406,9 +413,16 @@ def user_from_token(t):
 
 class password_prompt(ui.dismisspopup):
     def __init__(self, uid, t, cb):
+        self.uid = uid
+        dbu = td.s.query(User).get(uid)
+
+        if not dbu.password:
+            change_current_user_password_login_initial(
+                uid, lambda: self.do_callback(uid, cb))
+            return
+
         super().__init__(8, 40, title="Enter password",
                          colour=ui.colour_input)
-        self.uid = uid
         self.t = t
         self.cb = cb
         self.got_password_correct = None
@@ -435,7 +449,7 @@ class password_prompt(ui.dismisspopup):
         td.s.commit()
 
         self.dismiss()
-        self.cb(database_user(u))
+        self.do_callback(self.uid, self.cb)
 
     def hotkeypress(self, k):
         """If another user token is presented, dismiss this popup.
@@ -445,6 +459,11 @@ class password_prompt(ui.dismisspopup):
         if hasattr(k, 'usertoken'):
             self.dismiss()
         super().hotkeypress(k)
+
+    @staticmethod
+    def do_callback(uid, cb):
+        dbu = td.s.query(User).get(uid)
+        cb(database_user(dbu))
 
 
 def token_login(t, cb):
@@ -459,11 +478,8 @@ def token_login(t, cb):
     if not u:
         return
 
-    if should_prompt_for_password(dbt):
+    if should_prompt_for_password(dbt) or should_force_set_password(u.userid):
         password_prompt(u.userid, dbt.token, cb)
-    elif should_force_set_password(u.userid):
-        
-        change_current_user_password(u.userid)
     else:
         cb(u)
 
@@ -593,9 +609,10 @@ class change_user_password(permission_checked, ui.dismisspopup):
     """
     permission_required = ('edit-user-password', 'Edit a user\'s password')
 
-    def __init__(self, userid, dismissable=True):
+    def __init__(self, userid, dismissable=True, cb=None):
         self.userid = userid
         self.dismissable = dismissable
+        self.cb = cb
         user = td.s.query(User).get(userid)
         super().__init__(8, 60, title=f"Change password for {user.fullname}",
                          colour=ui.colour_input, dismiss=self.get_dismiss_key())
@@ -619,7 +636,9 @@ class change_user_password(permission_checked, ui.dismisspopup):
         ui.toast(f'Password for user "{user.fullname}" changed.')
         log(f"Changed password for user {user}")
         self.dismiss()
-    
+        if self.cb:
+            self.cb()
+
     def get_dismiss_key(self):
         if self.dismissable:
             return keyboard.K_CLEAR
@@ -631,14 +650,57 @@ class change_current_user_password(change_user_password):
 
     This actually just calls change_user_password, but with the user forced
     to be the current user, and with a different permission requirement.
-
-    If dismissable is False, it will not be possible to dismiss the popup.
     """
     permission_required = ('edit-current-user-password',
                            'Edit the password of the current user')
 
-    def __init__(self, dismissable=True):
-        super().__init__(ui.current_user().userid, dismissable)
+    def __init__(self):
+        super().__init__(ui.current_user().userid)
+
+
+class change_current_user_password_login_initial(ui.infopopup):
+    def __init__(self, userid, cb):
+        self.userid = userid
+        self.cb = cb
+        super().__init__([('The system is configured to require users to set '
+                           'a password to log in. You must set a password '
+                           'now.'),
+                          ('If you would not like to set a password now, you '
+                           'can press CANCEL to cancel this log on attempt.'),
+                          ('Press CASH / ENTER to continue to set a '
+                           'password.')], dismiss=keyboard.K_CANCEL)
+
+    def keypress(self, k):
+        if k == keyboard.K_CASH:
+            self.dismiss()
+            change_current_user_password_login(self.userid, self.cb)
+            return
+        else:
+            super().keypress(k)
+
+
+class change_current_user_password_login(change_user_password):
+    """Initialise a password for a user that is logging in without a password,
+    but where one is required by the system configuration.
+
+    This is functionally equivalent to change_current_user_password, but
+    no permission is required (and it is not dismissable).
+
+    If the user already has a password set, an error will be displayed instead,
+    although this should never happen if this is implemented correctly...
+
+    cb is the login callback.
+    """
+    permission_required = None
+
+    def __init__(self, userid, cb):
+        dbu = td.s.query(User).get(userid)
+        if dbu.password:
+            ui.infopopup([f"User '{dbu.fullname}' already has a password set."],
+                         title="Error")
+            return
+
+        super().__init__(userid, dismissable=False, cb=cb)
 
 
 class manage_user_tokens(ui.dismisspopup):
