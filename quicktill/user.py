@@ -48,6 +48,7 @@ debug_log = logging.getLogger(__name__)
 
 is_password_prompt_displayed = False
 
+
 class ActionDescriptionRegistry(dict):
     def __getitem__(self, key):
         if key in self:
@@ -354,18 +355,20 @@ class tokenlistener:
 def should_prompt_for_password(dbt):
     """Determine whether the token password timeout has lapsed.
 
-    If true, the user should be prompted to enter their password (if they have one).
+    If true, the user should be prompted to enter their password (if they have
+    one).
     """
     if token_password_timeout < 0:
         return False
-    
+
     if token_password_timeout == 0:
         return True
 
     if not dbt.last_seen:
         return True
-    
-    return (datetime.datetime.now() - dbt.last_seen).total_seconds() > token_password_timeout
+
+    return (datetime.datetime.now() - dbt.last_seen).total_seconds() \
+        > token_password_timeout
 
 
 def user_from_token(t):
@@ -404,7 +407,8 @@ class password_prompt(ui.dismisspopup):
         self.t = t
         self.cb = cb
         self.got_password_correct = None
-        self.win.drawstr(2, 2, 60, 'Enter your password then press CASH / ENTER.')
+        self.win.drawstr(2, 2, 60,
+                         'Enter your password then press CASH / ENTER.')
         self.password = ui.editfield(5, 2, 36, keymap={
             keyboard.K_CASH: (self.check_password, None)}, hidden=True)
         self.password.focus()
@@ -413,21 +417,21 @@ class password_prompt(ui.dismisspopup):
         if not self.password.f:
             ui.infopopup(["You must provide a password."], title="Error")
             return
-        
+
         u = td.s.query(User).get(self.uid)
 
         if not check_password(self.password.f, u.password):
             ui.infopopup(["Incorrect password."], title="Error")
             self.password.clear()
             return
-        
+
         dbt = td.s.query(UserToken).get(self.t)
         dbt.last_successful_login = datetime.datetime.now()
         td.s.commit()
 
         self.dismiss()
         self.cb(database_user(u))
-    
+
     def dismiss(self):
         global is_password_prompt_displayed
         is_password_prompt_displayed = False
@@ -436,15 +440,16 @@ class password_prompt(ui.dismisspopup):
 
 def token_login(t, cb):
     """Log in a user from a token.
-    
-    cb: callback function to call after successful login with the database_user object
+
+    cb: callback function to call after successful login with the database_user
+        object
     """
     u = user_from_token(t)
     dbt = td.s.query(UserToken).get(t.usertoken)
 
     if not u:
         return
-    
+
     if should_prompt_for_password(dbt):
         password_prompt(u.userid, dbt.token, cb)
     else:
@@ -568,7 +573,8 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
 class change_user_password(permission_checked, ui.dismisspopup):
     """Change a user's password.
 
-    A user can change their own password with the change_current_user_password function.
+    A user can change their own password with the change_current_user_password
+    function.
     """
     permission_required = ('edit-user-password', 'Edit a user\'s password')
 
@@ -577,14 +583,15 @@ class change_user_password(permission_checked, ui.dismisspopup):
         user = td.s.query(User).get(userid)
         super().__init__(8, 60, title=f"Change password for {user.fullname}",
                          colour=ui.colour_input)
-        self.win.drawstr(2, 2, 80, 'Key in the new password for the user then press CASH / ENTER.')
+        self.win.drawstr(2, 2, 80, ('Key in the new password for the user then '
+                                    'press CASH / ENTER.'))
 
         self.win.drawstr(5, 2, 14, 'Password: ', align=">")
         self.password = ui.editfield(5, 16, 40, keymap={
             keyboard.K_CASH: (self.save, None)}, hidden=True)
-        
+
         self.password.focus()
-    
+
     def save(self):
         if not self.password.f or len(self.password.f) < 1:
             ui.infopopup(["You must provide a password."], title="Error")
@@ -599,7 +606,8 @@ class change_user_password(permission_checked, ui.dismisspopup):
 
 
 class change_current_user_password(change_user_password):
-    permission_required = ('edit-current-user-password', 'Edit the password of the current user')
+    permission_required = ('edit-current-user-password',
+                           'Edit the password of the current user')
 
     def __init__(self):
         super().__init__(ui.current_user().userid)
@@ -749,7 +757,8 @@ class edituser(permission_checked, ui.basicpopup):
             12, 30, 20, "Exit without saving", keymap={
                 keyboard.K_CASH: (self.dismiss, None)})
         fl = [self.fnfield, self.snfield, self.wnfield, self.actfield,
-              self.tokenfield, self.permfield, self.passfield, self.savefield, self.exitfield]
+              self.tokenfield, self.permfield, self.passfield, self.savefield,
+              self.exitfield]
         if u.superuser and ui.current_user().is_superuser:
             fl.append(ui.buttonfield(
                 5, 25, 30, "Remove superuser privilege", keymap={
