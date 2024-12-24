@@ -329,8 +329,30 @@ class tokenlistener:
                 ui.handle_keyboard_input(token(d))
 
 
-def user_from_token(t):
+def has_token_password_timeout_lapsed(dbt):
+    """Determine whether the token password timeout has lapsed.
+
+    If true, the user should be prompted to enter their password (if they have one).
+    """
+    if tillconfig.token_password_timeout < 0:
+        return False
+    
+    if tillconfig.token_password_timeout == 0:
+        return True
+
+    if not dbt.last_seen:
+        return True
+    
+    return (datetime.datetime.now() - dbt.last_seen).total_seconds() > tillconfig.token_password_timeout
+
+
+def user_from_token(t, check_password=True):
     """Find a user given a token object.
+
+    If check_password is specified, then the user will be prompted to enter their password if they
+    have one. If this function is being used somewhere other than login (i.e. if you wanted to use
+    it to recall a user's details from a token outside of the login flow), you should set this
+    to False.
     """
     _check_permissions()
     dbt = td.s.query(UserToken)\
@@ -350,9 +372,36 @@ def user_from_token(t):
     if not u.enabled:
         ui.toast(f"User '{u.fullname}' is not active.")
         return
+    
+    if u.password and has_token_password_timeout_lapsed(dbt):
+        prompt = password_prompt(u)
+
+        if not prompt.got_password_correct:
+            return
+
     u.last_seen = now
     return database_user(u)
 
+
+class password_prompt(ui.dismisspopup):
+    def __init__(self, user):
+        super().__init__(8, 60, title="Enter password",
+                         colour=ui.colour_input)
+        self.user = user
+        self.got_password_correct = False
+        self.win.drawstr(2, 2, 80, 'Enter your password then press CASH / ENTER to log on.')
+        self.password = ui.editfield(5, 2, 56, keymap={
+            keyboard.K_CASH: (self.check_password, None)}, hidden=True)
+        self.password.focus()
+
+    def check_password(self):
+        if not self.password.f:
+            ui.infopopup(["You must provide a password."], title="Error")
+            return
+        if not check_password(self.password.f, self.user.password):
+            ui.infopopup(["Incorrect password."], title="Error")
+            return
+        self.dismiss()
 
 class LogError(Exception):
     """Tried to make an entry in the user activity log with no current user
@@ -484,7 +533,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
 
         self.win.drawstr(5, 2, 14, 'Password: ', align=">")
         self.password = ui.editfield(5, 16, 40, keymap={
-            keyboard.K_CASH: (self.save, None)})
+            keyboard.K_CASH: (self.save, None)}, hidden=True)
         
         self.password.focus()
     
