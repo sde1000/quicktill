@@ -690,7 +690,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
         if not self.password.f or len(self.password.f) < 1:
             ui.infopopup(["You must provide a password."], title="Error")
             return
-        
+
         if require_unique_passwords:
             existing = td.s.query(User)\
                 .where(User.password == compute_sha256_hash(self.password.f))\
