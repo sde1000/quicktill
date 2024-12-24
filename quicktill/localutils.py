@@ -507,7 +507,7 @@ def register_hotkeys(appsmenu=None):
 def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
     return {
         K_STOCKTERMINAL: lambda: stockterminal.page(
-            register_hotkeys, stockterminal_location),
+            register_hotkeys, stockterminal_location, user=ui.current_user()),
         K_LOCK: lockscreen.lockpage,
         K_PASS_LOGON: lambda: tillconfig.passlogon_handler(),
     }
