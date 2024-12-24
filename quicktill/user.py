@@ -370,10 +370,11 @@ def user_from_token(t):
 
 
 class password_prompt(ui.dismisspopup):
-    def __init__(self, uid, cb):
+    def __init__(self, uid, t, cb):
         super().__init__(8, 40, title="Password required",
                          colour=ui.colour_input)
         self.uid = uid
+        self.t = t
         self.cb = cb
         self.got_password_correct = None
         self.win.drawstr(2, 2, 60, 'Enter your password then press CASH / ENTER.')
@@ -393,6 +394,10 @@ class password_prompt(ui.dismisspopup):
             self.password.clear()
             return
         
+        dbt = td.s.query(UserToken).get(self.t)
+        dbt.last_successful_login = datetime.datetime.now()
+        td.s.commit()
+
         self.dismiss()
         self.cb(database_user(u))
 
@@ -409,7 +414,7 @@ def token_login(t, cb):
         return
     
     if should_prompt_for_password(dbt):
-        password_prompt(u.userid, cb)
+        password_prompt(u.userid, dbt.token, cb)
     else:
         cb(database_user(u))
 
