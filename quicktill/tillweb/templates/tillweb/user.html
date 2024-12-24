@@ -155,12 +155,13 @@ selectionHeader: "<div>Selected groups</div>"});
 	  <th scope="col">Description</th>
 	  <th scope="col">Value</th>
 	  <th scope="col">Last used</th>
+	  <th scope="col">Last successful login</th>
 	</tr>
       </thead>
       <tbody>
 	{% for t in tuser.tokens %}
 	<tr>
-	  <td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td>
+	  <td>{{t.description}}</td><td>{{t.token}}</td><td>{{t.last_seen|date:dtf}}</td><td>{{t.last_successful_login|date:dtf}}</td>
 	</tr>
 	{% endfor %}
       </tbody>
