@@ -186,7 +186,10 @@ def handle_usertoken(t, *args, **kwargs):
     handler.
 
     """
-    u = user.user_from_token(t)
+    user.token_login(t, lambda u: finalize_handle_usertoken(u, *args, **kwargs))
+
+
+def finalize_handle_usertoken(u, *args, **kwargs):
     if u is None:
-        return  # Should already have toasted
+        return
     return page(*args, user=u, **kwargs)
