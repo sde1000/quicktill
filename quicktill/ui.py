@@ -1490,13 +1490,13 @@ class editfield(valuefield):
             self.i = self.c
         self.win.clear(self.y, self.x, 1, self.w,
                        colour=self.win.colour.reversed)
-        
+
         if self.hidden:
             self.win.addstr(self.y, self.x, '*' * (self.c - self.i),
-                        self.win.colour.reversed)
+                            self.win.colour.reversed)
         else:
             self.win.addstr(self.y, self.x, self._f[self.i:self.i + self.w],
-                        self.win.colour.reversed)
+                            self.win.colour.reversed)
 
         if self.focused:
             self.win.move(self.y, self.x + self.c - self.i)
