@@ -40,6 +40,7 @@ from .keyboard import (
     K_LOCK,
     K_QUANTITY,
     K_DRINKIN,
+    K_PASS_LOGON,
     Key,
     notekey,
     paymentkey,
@@ -455,6 +456,7 @@ def keyboard_rhpanel(cash_payment_method,
         (5, 0): Key(K_LEFT, css_class="cursor"),
         (5, 1): Key(K_DOWN, css_class="cursor"),
         (5, 2): Key(K_RIGHT, css_class="cursor"),
+        (6, 0): Key(K_PASS_LOGON, css_class="management"),
         (6, 1): Key(K_LOCK, width=2, css_class="lock"),
         (7, 0): Key(notekey('K_TWENTY', '£20', cash_payment_method,
                             Decimal("20.00")),
@@ -507,6 +509,7 @@ def global_hotkeys(register_hotkeys, stockterminal_location=["Bar"]):
         K_STOCKTERMINAL: lambda: stockterminal.page(
             register_hotkeys, stockterminal_location),
         K_LOCK: lockscreen.lockpage,
+        K_PASS_LOGON: lambda: tillconfig.passlogon_handler(),
     }
 
 
@@ -523,6 +526,13 @@ def activate_register_with_usertoken(register_hotkeys, timeout=300):
     }
 
 
+def activate_register_with_password(register_hotkeys, timeout=300):
+    return {
+        'passlogon_handler': lambda: register.handle_passlogon(
+            register_hotkeys, autolock=K_LOCK, timeout=timeout),
+    }
+
+
 def activate_stockterminal_with_usertoken(
         register_hotkeys,
         stockterminal_location=["Bar"],
@@ -536,6 +546,16 @@ def activate_stockterminal_with_usertoken(
         'usertoken_listen_v6': ('::1', 8455),
         'barcode_listen': ('127.0.0.1', 8456),
         'barcode_listen_v6': ('::1', 8456),
+    }
+
+
+def activate_stockterminal_with_password(register_hotkeys,
+                                         stockterminal_location=["Bar"],
+                                         max_unattended_updates=5):
+    return {
+        'passlogon_handler': lambda: stockterminal.handle_passlogon(
+            register_hotkeys, stockterminal_location,
+            max_unattended_updates=max_unattended_updates),
     }
 
 

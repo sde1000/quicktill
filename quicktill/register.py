@@ -3420,10 +3420,16 @@ def handle_usertoken(t, *args, **kwargs):
     token is handled by the default hotkey handler.
     """
     user.token_login(t,
-                     lambda u: finalize_handle_usertoken(u, *args, **kwargs))
+                     lambda u: finalize_logon(u, *args, **kwargs))
 
 
-def finalize_handle_usertoken(u, *args, **kwargs):
+def handle_passlogon(*args, **kwargs):
+    """Password logon handler for the register.
+    """
+    user.password_login(lambda u: finalize_logon(u, *args, **kwargs))
+
+
+def finalize_logon(u, *args, **kwargs):
     """The other half of handle_usertoken.
 
     This allows this function to be used as a callback, where, for example,

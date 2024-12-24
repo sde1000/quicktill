@@ -42,6 +42,25 @@ force_password_registration = config.BooleanConfigItem(
                  'passwords.')
 )
 
+require_unique_passwords = config.BooleanConfigItem(
+    'user:require_unique_passwords', False,
+    display_name='Passwords must be unique',
+    description=('Require that no two users have the same password. This is '
+                 'recommended if, for example, your users log in with a '
+                 'password alone. It is recommended to set this to True if '
+                 'you have enabled "Users can log in with only passwords". '
+                 'This setting only applies to new passwords.')
+)
+
+allow_password_only_login = config.BooleanConfigItem(
+    'user:allow_password_only_login', False,
+    display_name='Users can log in with only passwords',
+    description=('Allow users to log in with only a password. If this is '
+                 'enabled, you should also enable the "Passwords must be '
+                 'unique" setting. Once enabled, you can place the '
+                 'K_PASS_LOGON key on the keyboard.')
+)
+
 
 # We declare 'log' later on for writing log entries to the database
 debug_log = logging.getLogger(__name__)
@@ -484,6 +503,48 @@ def token_login(t, cb):
         cb(u)
 
 
+def password_login(cb):
+    """Log in a user prompting them for their password.
+    """
+    if not allow_password_only_login:
+        ui.toast("Password-only login is not enabled.")
+        return
+
+    password_login_prompt(cb)
+
+
+class password_login_prompt(ui.dismisspopup):
+    """Prompt for a password to log in a user.
+
+    This has slightly different comparison logic to the password_prompt class.
+    """
+    def __init__(self, cb):
+        super().__init__(8, 40, title="Log On",
+                         colour=ui.colour_input)
+        self.cb = cb
+        self.win.drawstr(2, 2, 60,
+                         'Enter your password then press CASH / ENTER.')
+        self.password = ui.editfield(5, 2, 36, keymap={
+            keyboard.K_CASH: (self.check_password, None)}, hidden=True)
+        self.password.focus()
+
+    def check_password(self):
+        if not self.password.f:
+            ui.infopopup(["You must provide a password."], title="Error")
+            return
+
+        dbu = td.s.query(User)\
+            .where(User.password == compute_sha256_hash(self.password.f))\
+            .first()
+        if not dbu:
+            ui.infopopup(["Incorrect password."], title="Error")
+            self.password.clear()
+            return
+
+        self.dismiss()
+        self.cb(database_user(dbu))
+
+
 class LogError(Exception):
     """Tried to make an entry in the user activity log with no current user
     """
@@ -629,12 +690,26 @@ class change_user_password(permission_checked, ui.dismisspopup):
         if not self.password.f or len(self.password.f) < 1:
             ui.infopopup(["You must provide a password."], title="Error")
             return
+        
+        if require_unique_passwords:
+            existing = td.s.query(User)\
+                .where(User.password == compute_sha256_hash(self.password.f))\
+                .first()
+            if existing:
+                ui.infopopup(
+                    ["This password is already in use by another user."],
+                    title="Error")
+                self.password.clear()
+                return
 
         user = td.s.query(User).get(self.userid)
         user.password = compute_sha256_hash(self.password.f)
         td.s.commit()
         ui.toast(f'Password for user "{user.fullname}" changed.')
-        log(f"Changed password for user {user}")
+
+        if user.id != ui.current_user().userid:
+            log(f'Changed password for {user.logref}')
+
         self.dismiss()
         if self.cb:
             self.cb()
