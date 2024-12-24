@@ -1435,9 +1435,11 @@ class editfield(valuefield):
     is passed the proposed new contents and the cursor index, and
     should return either a (potentially updated) string or None if the
     input is not allowed
+
+    hidden: mask value with * characters
     """
     def __init__(self, y, x, w, keymap={}, f=None, flen=None, validate=None,
-                 readonly=False):
+                 readonly=False, hidden=False):
         self.y = y
         self.x = x
         self.w = w
@@ -1450,6 +1452,7 @@ class editfield(valuefield):
         self.flen = flen
         self.validate = validate
         self.readonly = readonly
+        self.hidden = hidden
         super().__init__(keymap, f)
 
     # Internal attributes:
@@ -1487,8 +1490,14 @@ class editfield(valuefield):
             self.i = self.c
         self.win.clear(self.y, self.x, 1, self.w,
                        colour=self.win.colour.reversed)
-        self.win.addstr(self.y, self.x, self._f[self.i:self.i + self.w],
+        
+        if self.hidden:
+            self.win.addstr(self.y, self.x, '*' * self.w,
                         self.win.colour.reversed)
+        else:
+            self.win.addstr(self.y, self.x, self._f[self.i:self.i + self.w],
+                        self.win.colour.reversed)
+
         if self.focused:
             self.win.move(self.y, self.x + self.c - self.i)
         else:
