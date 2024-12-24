@@ -3420,13 +3420,19 @@ def handle_usertoken(t, *args, **kwargs):
     token is handled by the default hotkey handler.
     """
     user.token_login(t,
-                     lambda u: _finalize_handle_usertoken(u, *args, **kwargs))
+                     lambda u: finalize_handle_usertoken(u, *args, **kwargs))
 
-    def _finalize_handle_usertoken(u, *args, **kwargs):
-        if u is None:
-            return
-        for p in ui.basicpage._pagelist:
-            if isinstance(p, page) and p.user.userid == u.userid:
-                p.select(u)
-                return p
-        return page(u, *args, **kwargs)
+
+def finalize_handle_usertoken(u, *args, **kwargs):
+    """The other half of handle_usertoken.
+
+    This allows this function to be used as a callback, where, for example,
+    logging in requires some asynchronous user input (like a password).
+    """
+    if u is None:
+        return
+    for p in ui.basicpage._pagelist:
+        if isinstance(p, page) and p.user.userid == u.userid:
+            p.select(u)
+            return p
+    return page(u, *args, **kwargs)
