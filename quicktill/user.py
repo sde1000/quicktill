@@ -25,6 +25,7 @@ import hashlib
 # We declare 'log' later on for writing log entries to the database
 debug_log = logging.getLogger(__name__)
 
+is_password_prompt_displayed = False
 
 class ActionDescriptionRegistry(dict):
     def __getitem__(self, key):
@@ -371,8 +372,13 @@ def user_from_token(t):
 
 class password_prompt(ui.dismisspopup):
     def __init__(self, uid, t, cb):
+        global is_password_prompt_displayed
+        if is_password_prompt_displayed:
+            return
+
         super().__init__(8, 40, title="Password required",
                          colour=ui.colour_input)
+        is_password_prompt_displayed = True
         self.uid = uid
         self.t = t
         self.cb = cb
@@ -400,6 +406,11 @@ class password_prompt(ui.dismisspopup):
 
         self.dismiss()
         self.cb(database_user(u))
+    
+    def dismiss(self):
+        global is_password_prompt_displayed
+        is_password_prompt_displayed = False
+        super().dismiss()
 
 
 def token_login(t, cb):
