@@ -123,6 +123,12 @@ class IntConfigItem(ConfigItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="integer", **kwargs)
 
+    def __lt__(self, other):
+        return self.value < other
+
+    def __gt__(self, other):
+        return self.value > other
+
     @classmethod
     def from_db(cls, s):
         try:
