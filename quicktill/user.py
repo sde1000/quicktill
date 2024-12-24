@@ -542,6 +542,7 @@ class password_login_prompt(ui.dismisspopup):
             return
 
         self.dismiss()
+        dbu.last_seen = datetime.datetime.now()
         self.cb(database_user(dbu))
 
     def hotkeypress(self, k):
