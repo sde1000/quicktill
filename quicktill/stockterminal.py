@@ -186,10 +186,9 @@ def handle_usertoken(t, *args, **kwargs):
     handler.
 
     """
-    user.token_login(t, lambda u: finalize_handle_usertoken(u, *args, **kwargs))
+    user.token_login(t, lambda u: _finalize_handle_usertoken(u, *args, **kwargs))
 
-
-def finalize_handle_usertoken(u, *args, **kwargs):
-    if u is None:
-        return
-    return page(*args, user=u, **kwargs)
+    def _finalize_handle_usertoken(u, *args, **kwargs):
+        if u is None:
+            return
+        return page(*args, user=u, **kwargs)
