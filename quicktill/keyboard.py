@@ -66,7 +66,7 @@ class linekey(keycode):
     @property
     def keycap(self):
         from . import td, models
-        cap = td.s.query(models.KeyCap).get(self.name)
+        cap = td.s.get(models.KeyCap, self.name)
         if cap:
             return cap.keycap
         return ""
@@ -74,7 +74,7 @@ class linekey(keycode):
     @property
     def css_class(self):
         from . import td, models
-        cap = td.s.query(models.KeyCap).get(self.name)
+        cap = td.s.get(models.KeyCap, self.name)
         if cap:
             return cap.css_class
 
