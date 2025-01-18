@@ -1,4 +1,4 @@
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, DateTime, Date
 from sqlalchemy import LargeBinary
 from sqlalchemy.dialects import postgresql
