@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 def _complete_class(m):
     result = td.s.execute(
-        select([KeyCap.css_class]).where(KeyCap.css_class.ilike(m + '%'))
+        select(KeyCap.css_class).where(KeyCap.css_class.ilike(m + '%'))
     )
     return [x[0] for x in result]
 

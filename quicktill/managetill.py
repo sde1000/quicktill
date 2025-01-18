@@ -40,7 +40,7 @@ class receiptprint(user.permission_checked, ui.dismisspopup):
         if rn is None:
             return
         self.dismiss()
-        trans = td.s.query(Transaction).get(rn)
+        trans = td.s.get(Transaction, rn)
         if not trans:
             ui.infopopup([f"Transaction {rn} does not exist."],
                          title="Error")

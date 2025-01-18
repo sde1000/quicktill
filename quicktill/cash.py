@@ -53,7 +53,7 @@ class Cash(payment.PaymentDriver):
                           "a till with a cash drawer to take a cash payment."],
                          title="Error")
             return
-        trans = td.s.query(Transaction).get(transid)
+        trans = td.s.get(Transaction, transid)
         description = self.paytype.description
         if amount < zero:
             if amount < outstanding:
@@ -85,7 +85,7 @@ class Cash(payment.PaymentDriver):
 
     @user.permission_required("cancel-cash-payment", "Cancel a cash payment")
     def cancel_payment(self, register, pline_instance):
-        p = td.s.query(Payment).get(pline_instance.payment_id)
+        p = td.s.get(Payment, pline_instance.payment_id)
         if p.amount >= zero:
             title = "Cancel payment"
             message = [f"Press Cash/Enter to cancel this {p.text} "

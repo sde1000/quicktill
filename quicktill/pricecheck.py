@@ -80,7 +80,7 @@ class pricecheck_continuous_stockline(pricecheck_keypress, ui.menu):
                   .filter(StockItem.checked == True)\
                   .filter(StockItem.stocktype == st)\
                   .filter(StockItem.finished == None)\
-                  .options(undefer('remaining'))\
+                  .options(undefer(StockItem.remaining))\
                   .order_by(StockItem.id)\
                   .all()
         f = ui.tableformatter(' r r ')
@@ -131,7 +131,7 @@ class pricecheck_stocktype(pricecheck_keypress, ui.menu):
                   .filter(StockItem.checked == True)\
                   .filter(StockItem.stocktype == st)\
                   .filter(StockItem.finished == None)\
-                  .options(undefer('remaining'))\
+                  .options(undefer(StockItem.remaining))\
                   .order_by(StockItem.id)\
                   .all()
         f = ui.tableformatter(' r r ')
@@ -175,7 +175,7 @@ class pricecheck_stocktype(pricecheck_keypress, ui.menu):
 class pricecheck_stockitem(pricecheck_keypress, ui.listpopup):
     """A particular stock item on a line."""
     def __init__(self, stockitem_id):
-        stockitem = td.s.query(StockItem).get(stockitem_id)
+        stockitem = td.s.get(StockItem, stockitem_id)
         super().__init__(
             stock.stockinfo_linelist(stockitem.id),
             title=f"Stock item {stockitem.id}",

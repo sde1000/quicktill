@@ -18,7 +18,7 @@ checkdigit_on_usestock = config.BooleanConfigItem(
 
 
 def _reprint_label(label_printer, stockid):
-    item = td.s.query(StockItem).get(stockid)
+    item = td.s.get(StockItem, stockid)
     user.log(f"Re-printed stock label for {item.logref}")
     with label_printer as f:
         printer.stock_label(f, item)
@@ -35,7 +35,7 @@ def reprint_stocklabel_choose_printer(stockid):
 
 
 def stockinfo_linelist(sn):
-    s = td.s.query(StockItem).get(sn)
+    s = td.s.get(StockItem, sn)
     l = []
     l.append(ui.lrline(f"{s.stocktype} - {s.id} - {s.description}"))
     l.append("Sells for {}{}.  "
@@ -294,9 +294,8 @@ class stockpicker(ui.dismisspopup):
         self.problem_label.set("")
         if self.numfield.f:
             stockid = int(self.numfield.f)
-            item = td.s.query(StockItem)\
-                       .options(joinedload('stocktype'))\
-                       .get(stockid)
+            item = td.s.get(StockItem, stockid,
+                            options=[joinedload(StockItem.stocktype)])
             if item:
                 self.stocktype_label.set(f"{item.stocktype}")
                 not_ok = self.filter.item_problem(item)
@@ -308,7 +307,7 @@ class stockpicker(ui.dismisspopup):
         if len(self.checkfield.f) != 3:
             return
         stockid = int(self.numfield.f)
-        item = td.s.query(StockItem).get(stockid)
+        item = td.s.get(StockItem, stockid)
         self.checkfield_status.set(
             "(OK)" if item and item.checkdigits == self.checkfield.f
             else "(wrong)")
@@ -338,8 +337,8 @@ class stockpicker(ui.dismisspopup):
 
     def popup_menu(self, department_id):
         items = self.filter.query_items(department_id)\
-                           .options(joinedload('stocktype'))\
-                           .options(undefer('remaining'))[:100]
+                           .options(joinedload(StockItem.stocktype))\
+                           .options(undefer(StockItem.remaining))[:100]
         f = ui.tableformatter(' r l c ')
         sl = [(f(s.id, s.stocktype.format(),
                  s.stocktype.unit.format_stock_qty(s.remaining)),
@@ -355,7 +354,7 @@ class stockpicker(ui.dismisspopup):
 
     def checkfield_enter(self):
         stockid = int(self.numfield.f)
-        item = td.s.query(StockItem).get(stockid)
+        item = td.s.get(StockItem, stockid)
         if self.checkfield.f == item.checkdigits:
             self.dismiss()
             self.func(item)

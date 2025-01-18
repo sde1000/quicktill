@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 class barcode:
     def __init__(self, code):
         self.code = code
-        self.binding = td.s.query(Barcode).get(code)
+        self.binding = td.s.get(Barcode, code)
 
     def feedback(self, valid: bool) -> None:
         """Feedback to scanner user

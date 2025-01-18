@@ -43,7 +43,8 @@ import logging
 import datetime
 from .models import Transline, Transaction, Session, StockOut, penny
 from .models import PayType, Payment, zero, User, Department, desc
-from .models import StockType
+from .models import StockType, StockLine, StockItem
+from .models import KeyboardBinding
 from .models import max_quantity
 from sqlalchemy.sql import func
 from decimal import Decimal
@@ -406,7 +407,7 @@ class tline(ui.lrline):
 
     def update(self):
         super().update()
-        tl = td.s.query(Transline).get(self.transline)
+        tl = td.s.get(Transline, self.transline)
         self.transtime = tl.time
         if tl.voided_by_id:
             self.voided = True
@@ -445,7 +446,7 @@ class edittransnotes(user.permission_checked, ui.dismisspopup):
     def __init__(self, transid, func):
         self.transid = transid
         self.func = func
-        trans = td.s.query(Transaction).get(transid)
+        trans = td.s.get(Transaction, transid)
         super().__init__(
             5, 60, title=f"Notes for transaction {trans.id}",
             colour=ui.colour_input)
@@ -836,9 +837,8 @@ class page(ui.basicpage):
         referenced transaction doesn't exist) returns None.
         """
         if self.transid:
-            return td.s.query(Transaction)\
-                       .options(joinedload('meta'))\
-                       .get(self.transid)
+            return td.s.get(Transaction, self.transid,
+                            options=[joinedload(Transaction.meta)])
 
     def gettrans(self):
         """Obtain the Transaction object for the current transaction
@@ -917,10 +917,11 @@ class page(ui.basicpage):
         # Reload the transaction and its related objects
         trans = td.s.query(Transaction)\
                     .filter_by(id=transid)\
-                    .options(subqueryload('payments'))\
-                    .options(joinedload('lines.user'))\
-                    .options(joinedload('meta'))\
-                    .options(undefer('total'))\
+                    .options(subqueryload(Transaction.payments))\
+                    .options(joinedload(Transaction.lines)
+                             .joinedload(Transline.user))\
+                    .options(joinedload(Transaction.meta))\
+                    .options(undefer(Transaction.total))\
                     .one()
         self.transid = trans.id
         if trans.user:
@@ -1186,7 +1187,7 @@ class page(ui.basicpage):
         # all the remaining checks and just increase the number of items
         if may_repeat and len(self.dl) > 0 and \
            self.dl[-1].age() < max_transline_modify_age():
-            otl = td.s.query(Transline).get(self.dl[-1].transline)
+            otl = td.s.get(Transline, self.dl[-1].transline)
             new_items = otl.items + 1 if otl.items >= 0 else otl.items - 1
             if self.hook("sell_plu", trans, plu, new_items, otl):
                 return
@@ -1392,7 +1393,7 @@ class page(ui.basicpage):
         if may_repeat and len(self.dl) > 0 \
            and self.dl[-1].age() < max_transline_modify_age() \
            and len(sell) == 1:
-            otl = td.s.query(Transline).get(self.dl[-1].transline)
+            otl = td.s.get(Transline, self.dl[-1].transline)
             # If the stockref has more than one item, we don't repeat
             # because we are probably at the changeover between two
             # stockitems
@@ -1601,7 +1602,7 @@ class page(ui.basicpage):
         if may_repeat and len(self.dl) > 0 \
            and self.dl[-1].age() < max_transline_modify_age() \
            and len(sell) == 1:
-            otl = td.s.query(Transline).get(self.dl[-1].transline)
+            otl = td.s.get(Transline, self.dl[-1].transline)
             # If the stockref has more than one item, we don't repeat
             # because we are probably at the changeover between two
             # stockitems
@@ -1767,7 +1768,7 @@ class page(ui.basicpage):
 
         for dept, text, items, amount in lines:
             tl = Transline(transaction=trans,
-                           department=td.s.query(Department).get(dept),
+                           department=td.s.get(Department, dept),
                            items=items, amount=amount,
                            transcode='S', text=text, user=self.user.dbuser,
                            source=tillconfig.terminal_name)
@@ -1848,7 +1849,7 @@ class page(ui.basicpage):
         if self.hook("drinkin", trans, amount):
             return
 
-        pm = td.s.query(PayType).get(drinkin_payment_method())
+        pm = td.s.get(PayType, drinkin_payment_method())
 
         if not pm:
             self._redraw()
@@ -1935,7 +1936,7 @@ class page(ui.basicpage):
             return
 
         # We now consider using the configured default payment method.
-        pm = td.s.query(PayType).get(default_payment_method())
+        pm = td.s.get(PayType, default_payment_method())
         if pm and not pm.active:
             pm = None
 
@@ -1995,7 +1996,7 @@ class page(ui.basicpage):
             self.clearbuffer()
             self._redraw()
             return
-        paytype = td.s.query(PayType).get(paytype_id)
+        paytype = td.s.get(PayType, paytype_id)
         if not paytype:
             log.info("Register: paymentkey: missing payment method")
             ui.infopopup(["This payment method does not exist."], title="Error")
@@ -2107,9 +2108,8 @@ class page(ui.basicpage):
         pending_payments = [p for p in self.dl if isinstance(p, payment.pline)
                             and p.pending]
         if pending_payments:
-            p = td.s.query(Payment)\
-                    .options(joinedload('meta'))\
-                    .get(pending_payments[0].payment_id)
+            p = td.s.get(Payment, pending_payments[0].payment_id,
+                         options=[joinedload(Payment.meta)])
             p.paytype.driver.resume_payment(self, p)
             return True
         return False
@@ -2343,7 +2343,7 @@ class page(ui.basicpage):
             # method; if it fails, we assume an error box will have
             # been popped up.)
             log.info("Register: cancelline: cancel payment")
-            p = td.s.query(Payment).get(l.payment_id)
+            p = td.s.get(Payment, l.payment_id)
             if p.paytype.driver.cancel_supported:
                 p.paytype.driver.cancel_payment(self, l)
                 self.cursor_off()
@@ -2485,7 +2485,7 @@ class page(ui.basicpage):
 
         l is a tline object"""
         trans = self._gettrans()
-        tl = td.s.query(Transline).get(l.transline)
+        tl = td.s.get(Transline, l.transline)
         assert tl.transaction == trans
         voided_line = tl.voids
         td.s.delete(tl)
@@ -2514,7 +2514,7 @@ class page(ui.basicpage):
         if not ll:
             return
         trans = self._gettrans()
-        tll = [td.s.query(Transline).get(l.transline) for l in ll]
+        tll = [td.s.get(Transline, l.transline) for l in ll]
         voidlines = [
             transline.void(trans, self.user.dbuser, tillconfig.terminal_name)
             for transline in tll]
@@ -2534,7 +2534,7 @@ class page(ui.basicpage):
         if self.hook("cancelpayment", p):
             return
         trans = self._gettrans()
-        payment = td.s.query(Payment).get(p.payment_id)
+        payment = td.s.get(Payment, p.payment_id)
         assert payment.transaction == trans
         td.s.delete(payment)
         td.s.flush()
@@ -2611,7 +2611,7 @@ class page(ui.basicpage):
         # We set the user's current transaction to None and dismiss
         # the current register page, most likely returning to the lock
         # screen on the next time around the event loop.
-        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        self.user.dbuser = td.s.get(User, self.user.userid)
         self.user.dbuser.transaction = None
         td.s.flush()
         self.deselect()
@@ -2620,12 +2620,12 @@ class page(ui.basicpage):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
         # transaction anyway!
-        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        self.user.dbuser = td.s.get(User, self.user.userid)
         self._clear()
         self._redraw()
         if transid:
             log.info("Register: recalltrans %d", transid)
-            trans = td.s.query(Transaction).get(transid)
+            trans = td.s.get(Transaction, transid)
             if not trans:
                 ui.infopopup([f"Transaction {transid} does not exist."],
                              title="Error")
@@ -2688,9 +2688,9 @@ class page(ui.basicpage):
             return
         transactions = td.s.query(Transaction)\
                            .filter(Transaction.session == sc)\
-                           .options(undefer('age'))\
-                           .options(undefer('total'))\
-                           .options(joinedload('user'))\
+                           .options(undefer(Transaction.age))\
+                           .options(undefer(Transaction.total))\
+                           .options(joinedload(Transaction.user))\
                            .order_by(Transaction.closed == True)\
                            .order_by(desc(Transaction.id))\
                            .all()
@@ -2755,7 +2755,7 @@ class page(ui.basicpage):
         # 2. If non-deferrable payments sum to anything other than
         # zero, check that there is a payment method configured that
         # supports both change and refunds; we will need it later.
-        defer_pm = td.s.query(PayType).get(defer_payment_method())
+        defer_pm = td.s.get(PayType, defer_payment_method())
         if not defer_pm or not defer_pm.active:
             defer_pm = None
 
@@ -2902,9 +2902,9 @@ class page(ui.basicpage):
         tl = td.s.query(Transaction)\
                  .filter(Transaction.session == sc)\
                  .filter(Transaction.closed == False)\
-                 .options(undefer('age'))\
-                 .options(undefer('total'))\
-                 .options(joinedload('user'))\
+                 .options(undefer(Transaction.age))\
+                 .options(undefer(Transaction.total))\
+                 .options(joinedload(Transaction.user))\
                  .order_by(Transaction.id)\
                  .all()
         f = ui.tableformatter(' r r l l ')
@@ -2922,7 +2922,7 @@ class page(ui.basicpage):
         sc, trans = self._check_session_and_open_transaction()
         if not sc:
             return
-        othertrans = td.s.query(Transaction).get(othertransid)
+        othertrans = td.s.get(Transaction, othertransid)
         if len(trans.payments) > 0 and not allow_mergetrans_with_payments():
             ui.infopopup(
                 ["Some payments have already been entered against "
@@ -2994,7 +2994,7 @@ class page(ui.basicpage):
             # thus immutable.
             tlid = l.transline
             while tlid:
-                t = td.s.query(Transline).get(tlid)
+                t = td.s.get(Transline, tlid)
                 if t.transaction != trans:
                     break
                 t.transaction = nt
@@ -3099,7 +3099,7 @@ class page(ui.basicpage):
         ui.automenu(menu, title="Apply Discount")
 
     def _start_payment_search(self, paytype_id):
-        paytype = td.s.query(PayType).get(paytype_id)
+        paytype = td.s.get(PayType, paytype_id)
         paytype.driver.search(self.recalltrans)
 
     def _payment_search_menu(self):
@@ -3188,7 +3188,7 @@ class page(ui.basicpage):
         # register fields.  The fetch from the database has probably
         # already been done in hotkeypress() - here we are fetching
         # from the sqlalchemy session's map
-        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        self.user.dbuser = td.s.get(User, self.user.userid)
 
         # This check has already been done in hotkeypress().  We
         # repeat it here because it is possible we may not have been
@@ -3239,7 +3239,7 @@ class page(ui.basicpage):
         If this returns False, the caller should clean up and then
         call the deselect() method.
         """
-        self.user.dbuser = td.s.query(User).get(self.user.userid)
+        self.user.dbuser = td.s.get(User, self.user.userid)
         if self.user.dbuser.register_id != tillconfig.register_id:
             # User has logged in somewhere else
             return False
@@ -3283,13 +3283,17 @@ class page(ui.basicpage):
 
     @staticmethod
     def _add_linemenu_query_options(q):
-        return q.options(joinedload('stockline'))\
-                .options(joinedload('stockline.stockonsale'))\
-                .options(joinedload('stockline.stockonsale.stocktype'))\
-                .options(joinedload('stockline.stocktype'))\
-                .options(joinedload('plu'))\
-                .options(undefer('stockline.stockonsale.used'))\
-                .options(undefer('stockline.stockonsale.remaining'))
+        return q.options(joinedload(KeyboardBinding.stockline))\
+                .options(joinedload(KeyboardBinding.stockline)
+                         .joinedload(StockLine.stockonsale)
+                         .undefer(StockItem.used)
+                         .undefer(StockItem.remaining))\
+                .options(joinedload(KeyboardBinding.stockline)
+                         .joinedload(StockLine.stockonsale)
+                         .joinedload(StockItem.stocktype))\
+                .options(joinedload(KeyboardBinding.stockline)
+                         .joinedload(StockLine.stocktype))\
+                .options(joinedload(KeyboardBinding.plu))
 
     def keypress(self, k):
         # This is our main entry point.  We will have a new database session.
@@ -3345,9 +3349,9 @@ class page(ui.basicpage):
         # the user.database_user object because that's unlikely to
         # change often; we're just interested in the transaction and
         # register fields.
-        self.user.dbuser = td.s.query(User)\
-                               .options(joinedload('transaction'))\
-                               .get(self.user.userid)
+        self.user.dbuser = td.s.get(
+            User, self.user.userid,
+            options=[joinedload(User.transaction)])
 
         # Check that the user hasn't moved to another terminal.  If
         # they have, lock immediately.

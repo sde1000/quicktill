@@ -100,9 +100,9 @@ def sessions(request, info):
     }
     search_value = request.GET.get("search[value]")
     q = td.s.query(Session)\
-            .options(undefer('total'),
-                     undefer('actual_total'),
-                     undefer('discount_total'))
+            .options(undefer(Session.total),
+                     undefer(Session.actual_total),
+                     undefer(Session.discount_total))
 
     # Apply filters - we filter on weekday name or session ID
     fq = q
@@ -148,8 +148,8 @@ def transactions(request, info):
     search_value = request.GET.get("search[value]")
     q = td.s.query(Transaction)\
         .join(Transaction.session, isouter=True)\
-        .options(undefer('total'),
-                 undefer('discount_total'),
+        .options(undefer(Transaction.total),
+                 undefer(Transaction.discount_total),
                  contains_eager(Transaction.session))
 
     # Searching by amount is slow across the entire table. Disable
@@ -584,7 +584,7 @@ def logs(request, info):
     search_value = request.GET.get("search[value]")
     q = td.s.query(LogEntry)\
             .join(User, User.id == LogEntry.user_id)\
-            .options(joinedload('loguser'))
+            .options(joinedload(LogEntry.loguser))
 
     # Apply filters from parameters. The 'unfiltered' item count for
     # this table is after this filtering step.
@@ -766,7 +766,8 @@ def usertotals(request, info):
     r = td.s.query(User,
                    func.sum(Transline.items),
                    func.sum(Transline.items * Transline.amount))\
-            .join(Transline, Transaction)\
+            .join(Transline)\
+            .join(Transaction)\
             .filter(Transaction.sessionid.in_(sessions))\
             .order_by(User.id)\
             .group_by(User).all()

@@ -364,7 +364,7 @@ class totals(cmdline.command):
         with td.orm_session():
             sessions = td.s.query(Session)\
                            .filter(Session.endtime != None)\
-                           .options(joinedload('actual_totals'))\
+                           .options(joinedload(Session.actual_totals))\
                            .order_by(Session.id)[-args.days:]
             businesses = td.s.query(Business).order_by(Business.id).all()
             paytypes = td.s.query(PayType)\

@@ -99,7 +99,7 @@ class orm_session:
 
 def stocktype_completemanufacturer(m):
     result = s.execute(
-        select([StockType.manufacturer])
+        select(StockType.manufacturer)
         .where(StockType.manufacturer.ilike(m + '%'))
         .group_by(StockType.manufacturer)
         .order_by(func.length(StockType.manufacturer), StockType.manufacturer)
@@ -109,7 +109,7 @@ def stocktype_completemanufacturer(m):
 
 def stocktype_completename(m, n):
     result = s.execute(
-        select([StockType.name])
+        select(StockType.name)
         .where(StockType.manufacturer == m)
         .where(StockType.name.ilike(n + '%'))
         .group_by(StockType.name)
@@ -123,7 +123,7 @@ def stocktype_completename(m, n):
 def stock_checkpullthru(stockid, maxtime):
     """Did this stock item require pulling through?"""
     return s.execute(
-        select([func.now() - func.max(StockOut.time) > maxtime])
+        select(func.now() - func.max(StockOut.time) > maxtime)
         .where(StockOut.stockid == stockid)
         .where(StockOut.removecode_id.in_(['sold', 'pullthru']))
     ).scalar()
@@ -136,7 +136,7 @@ def foodorder_reset():
 
 
 def foodorder_ticket():
-    return s.execute(select([foodorder_seq.next_value()])).scalar()
+    return s.execute(select(foodorder_seq.next_value())).scalar()
 
 
 def db_version():

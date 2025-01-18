@@ -79,7 +79,7 @@ class ConfigItem:
             ci._read()
 
     def _read(self):
-        d = td.s.query(Config).get(self.key)
+        d = td.s.get(Config, self.key)
         if d is None:
             # The config option doesn't exist in the database. Initialise it
             # with the default.
@@ -257,7 +257,7 @@ class config_cmd(cmdline.command):
                 for ci in td.s.query(Config).order_by(Config.key).all():
                     print(f"{ci.key}: {ci.display_name}: {ci.value}")
                 return
-            ci = td.s.query(Config).get(args.key)
+            ci = td.s.get(Config, args.key)
             if not ci:
                 print(f"Config key {args.key} does not exist")
                 return 1

@@ -194,7 +194,7 @@ class record_line_waste(ui.dismisspopup):
         self.wastedescfield.focus()
 
     def finish(self):
-        stockline = td.s.query(StockLine).get(self.stocklineid)
+        stockline = td.s.get(StockLine, self.stocklineid)
         waste = self.wastedescfield.read()
         if not waste:
             ui.infopopup(["You must enter a waste description!"], title="Error")
@@ -273,7 +273,7 @@ class record_stocktype_waste(ui.dismisspopup):
         self.wastedescfield.focus()
 
     def finish(self):
-        stocktype = td.s.query(StockType).get(self.stocktypeid)
+        stocktype = td.s.get(StockType, self.stocktypeid)
         waste = self.wastedescfield.read()
         if not waste:
             ui.infopopup(["You must enter a waste description!"], title="Error")
