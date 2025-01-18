@@ -16,7 +16,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import select, func, desc, and_
+from sqlalchemy.sql import select, func, desc
 from sqlalchemy import event
 from sqlalchemy import distinct
 from sqlalchemy import inspect
