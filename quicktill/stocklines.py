@@ -67,11 +67,11 @@ def finish_restock(rsl):
     td.s.query(StockLine)\
         .filter(StockLine.linetype == "display")\
         .filter(StockLine.id.in_(stockline_ids))\
-        .options(joinedload('stockonsale'))\
+        .options(joinedload(StockLine.stockonsale))\
         .all()
     for stocklineid, stockmovement in rsl:
         for sid, move, newdisplayqty, instock_after_move in stockmovement:
-            sos = td.s.query(StockItem).get(sid)
+            sos = td.s.get(StockItem, sid)
             sos.displayqty = newdisplayqty
     user.log("Finished restock")
     td.s.flush()
@@ -81,7 +81,7 @@ def finish_restock(rsl):
 
 
 def restock_item(stocklineid):
-    stockline = td.s.query(StockLine).get(stocklineid)
+    stockline = td.s.get(StockLine, stocklineid)
     if stockline and stockline.linetype == "display":
         return restock_list([stockline])
 
@@ -145,7 +145,7 @@ class stockline_associations(user.permission_checked, ui.listpopup):
         if k == keyboard.K_CANCEL and self.s and self.s.cursor is not None:
             line = self.s.dl.pop(self.s.cursor)
             self.s.redraw()
-            stl = td.s.query(StockLineTypeLog).get(line.userdata)
+            stl = td.s.get(StockLineTypeLog, line.userdata)
             if stl:
                 td.s.delete(stl)
             td.s.flush()
@@ -425,11 +425,11 @@ class modify(user.permission_checked, ui.dismisspopup):
         # Handle keypresses that the fields pass up to the main popup
         if k == keyboard.K_USESTOCK:
             from . import usestock
-            stockline = td.s.query(StockLine).get(self.stocklineid)
+            stockline = td.s.get(StockLine, self.stocklineid)
             if stockline:
                 usestock.line_chosen(stockline)
         elif hasattr(k, 'line'):
-            stockline = td.s.query(StockLine).get(self.stocklineid)
+            stockline = td.s.get(StockLine, self.stocklineid)
             if stockline:
                 linekeys.addbinding(
                     stockline, k, self.reload_bindings,
@@ -441,7 +441,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                 ["You may not make the name or location fields blank."],
                 title="Error")
             return
-        stockline = td.s.query(StockLine).get(self.stocklineid)
+        stockline = td.s.get(StockLine, self.stocklineid)
         if not stockline:
             self.dismiss()
             ui.infopopup(["The stock line was deleted."], title="Error")
@@ -521,7 +521,7 @@ class modify(user.permission_checked, ui.dismisspopup):
 
     def delete(self):
         self.dismiss()
-        stockline = td.s.query(StockLine).get(self.stocklineid)
+        stockline = td.s.get(StockLine, self.stocklineid)
         if not stockline:
             return
         if len(stockline.stockonsale) > 0:
@@ -568,7 +568,7 @@ class modify(user.permission_checked, ui.dismisspopup):
         td.s.flush()
 
     def reload_bindings(self):
-        stockline = td.s.query(StockLine).get(self.stocklineid)
+        stockline = td.s.get(StockLine, self.stocklineid)
         if not stockline:
             return
         f = ui.tableformatter(' l   c   l ')
@@ -600,7 +600,7 @@ class note(user.permission_checked, ui.dismisspopup):
         self.notefield.focus()
 
     def enter(self):
-        stockline = td.s.query(StockLine).get(self.stocklineid)
+        stockline = td.s.get(StockLine, self.stocklineid)
         if stockline:
             stockline.note = self.notefield.f
         self.dismiss()
@@ -708,7 +708,7 @@ class selectline(ui.listpopup):
             self.dismiss()
             line = self.sl[self.s.cursor]
             if line.userdata:
-                stockline = td.s.query(StockLine).get(line.userdata)
+                stockline = td.s.get(StockLine, line.userdata)
                 if stockline:
                     self.func(stockline)
             else:

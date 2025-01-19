@@ -129,7 +129,7 @@ def finish_disconnect(line, sn):
     log.info("Use Stock: disconnected item %d from %s", sn, line.name)
     if clear_stockline_note_on_new_stock() and line.linetype == "regular":
         line.note = ''
-    item = td.s.query(StockItem).get(sn)
+    item = td.s.get(StockItem, sn)
     td.s.add(StockAnnotation(stockitem=item, atype="stop",
                              text=f"{line.name} (Use Stock disconnect)",
                              user=user.current_dbuser()))
@@ -146,7 +146,7 @@ def finish_reason(line, sn, reason):
     td.s.add(line)
     if clear_stockline_note_on_new_stock() and line.linetype == "regular":
         line.note = ''
-    stockitem = td.s.query(StockItem).get(sn)
+    stockitem = td.s.get(StockItem, sn)
     td.s.add(StockAnnotation(
         stockitem=stockitem, atype="stop",
         text=f"{line.name} (Use Stock reason {reason})",
@@ -225,7 +225,7 @@ def add_display_line_stock(stocklineid):
     Entered from the Use Stock popup for the line or the Modify Stock
     Line popup for the line.
     """
-    line = td.s.query(StockLine).get(stocklineid)
+    line = td.s.get(StockLine, stocklineid)
     if not line:
         return
     if line.linetype != "display":
@@ -324,7 +324,7 @@ def remove_display_line_stockitem(line, item):
 
 class change_continuous_stockline(ui.dismisspopup):
     def __init__(self, stocklineid):
-        stockline = td.s.query(StockLine).get(stocklineid)
+        stockline = td.s.get(StockLine, stocklineid)
         if stockline.linetype != "continuous":
             log.error("change_continuous_stockline called on non-continous "
                       "stockline id %s", stocklineid)
@@ -350,7 +350,7 @@ class change_continuous_stockline(ui.dismisspopup):
                           "a stock type, even if we don't currently have "
                           "any of it in stock."], title="Error")
             return
-        stockline = td.s.query(StockLine).get(self._stocklineid)
+        stockline = td.s.get(StockLine, self._stocklineid)
         stockline.stocktype = new_stocktype
         self.dismiss()
         ui.infopopup(

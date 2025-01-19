@@ -89,7 +89,7 @@ class delivery(ui.basicpopup):
                          title="Screen width problem")
             return
         if dn:
-            d = td.s.query(Delivery).get(dn)
+            d = td.s.get(Delivery, dn)
         else:
             d = None
         if d:
@@ -169,7 +169,7 @@ class delivery(ui.basicpopup):
 
     def update_costfield(self):
         if self.dn:
-            d = td.s.query(Delivery).get(self.dn)
+            d = td.s.get(Delivery, self.dn)
             self.costfield.set(
                 f"Total cost ex-VAT: {tillconfig.fc(d.costprice)}"
                 if d.costprice is not None else "Total cost unknown")
@@ -190,7 +190,7 @@ class delivery(ui.basicpopup):
             return
         if not self.dn:
             return
-        d = td.s.query(Delivery).get(self.dn)
+        d = td.s.get(Delivery, self.dn)
         d.supplier = self.supfield.read()
         d.date = date
         d.docnumber = self.docnumfield.f
@@ -291,10 +291,9 @@ class delivery(ui.basicpopup):
     def reallyconfirm(self):
         if not self.dn:
             return
-        d = td.s.query(Delivery)\
-                .options(joinedload("items").joinedload("stocktype")
-                         .joinedload("stocktake"))\
-                .get(self.dn)
+        d = td.s.get(Delivery, self.dn, options=[
+            joinedload(Delivery.items).joinedload(StockItem.stocktype)
+            .joinedload(StockType.stocktake)])
         for si in d.items:
             if si.stocktype.stocktake:
                 ui.infopopup(["You can't confirm this delivery at the moment "
@@ -380,7 +379,7 @@ class delivery(ui.basicpopup):
         if self.dn is None:
             self.dismiss()
             return
-        d = td.s.query(Delivery).get(self.dn)
+        d = td.s.get(Delivery, self.dn)
         for i in d.items:
             td.s.delete(i)
         user.log(f"Deleted delivery {d.logref}")
@@ -512,7 +511,7 @@ class new_stockitem(ui.basicpopup):
         stocktype = self.typefield.read()
         stockunit = self.unitfield.read()
         bestbefore = self.bestbeforefield.read()
-        delivery = td.s.query(Delivery).get(self.deliveryid)
+        delivery = td.s.get(Delivery, self.deliveryid)
         if stocktype.saleprice != saleprice:
             user.log(
                 f"Changed sale price of {stocktype.logref} from "
@@ -727,7 +726,7 @@ class editsupplier(user.permission_checked, ui.basicpopup):
 
     def confirmed(self):
         if self.sn:
-            supplier = td.s.query(Supplier).get(self.sn)
+            supplier = td.s.get(Supplier, self.sn)
         else:
             supplier = Supplier()
             td.s.add(supplier)

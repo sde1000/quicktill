@@ -183,7 +183,7 @@ def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
     """
     q = td.s.query(Session)\
             .order_by(desc(Session.id))\
-            .options(undefer('total'))
+            .options(undefer(Session.total))
     if paidonly:
         q = q.filter(select([func.count(SessionTotal.sessionid)],
                             whereclause=SessionTotal.sessionid == Session.id)
@@ -208,7 +208,7 @@ class _PMWrapper:
     """
     def __init__(self, paytype_id, till_total, popup):
         self.paytype_id = paytype_id
-        pt = td.s.query(PayType).get(paytype_id)
+        pt = td.s.get(PayType, paytype_id)
         self.description = pt.description
         self.total_fields = pt.driver.total_fields
         self.lines = 1 if len(self.total_fields) <= 1 \
@@ -236,7 +236,7 @@ class _PMWrapper:
             self.fees_label.set("Error", colour=ui.colour_error)
 
     def update_total(self):
-        pt = td.s.query(PayType).get(self.paytype_id)
+        pt = td.s.get(PayType, self.paytype_id)
         try:
             self.actual_total, self.fees = pt.driver.total(
                 self.popup.sessionid, [f.f for f in self.fields])
@@ -273,7 +273,7 @@ class record(ui.dismisspopup):
             return
         log.info("Record session takings popup: session %d", sessionid)
         self.sessionid = sessionid
-        s = td.s.query(Session).get(sessionid)
+        s = td.s.get(Session, sessionid)
         if not self.session_valid(s):
             return
         for i in SessionHooks.instances:
@@ -419,7 +419,7 @@ class record(ui.dismisspopup):
         return True
 
     def finish(self):
-        session = td.s.query(Session).get(self.sessionid)
+        session = td.s.get(Session, self.sessionid)
         if not self.session_valid(session):
             return
         for pm in self.pms:
@@ -432,14 +432,14 @@ class record(ui.dismisspopup):
                     title="Payment method error")
                 return
         for pm in self.pms:
-            pt = td.s.query(PayType).get(pm.paytype_id)
+            pt = td.s.get(PayType, pm.paytype_id)
             td.s.add(SessionTotal(
                 session=session, paytype=pt, amount=pm.actual_total,
                 fees=pm.fees))
         td.s.flush()
         user.log(f"Recorded totals for session {session.logref}")
         for pm in self.pms:
-            pt = td.s.query(PayType).get(pm.paytype_id)
+            pt = td.s.get(PayType, pm.paytype_id)
             r = pt.driver.commit_total(self.sessionid, pm.actual_total, pm.fees)
             if r is not None:
                 td.s.rollback()
@@ -486,7 +486,7 @@ def recordtakings():
 def totalpopup(sessionid):
     """Display popup session totals given a Session ID.
     """
-    s = td.s.query(Session).get(sessionid)
+    s = td.s.get(Session, sessionid)
     log.info("Totals popup for session %d", s.id)
 
     # All PayTypes

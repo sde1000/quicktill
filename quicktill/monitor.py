@@ -41,7 +41,7 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            logentry = td.s.query(LogEntry).get(id)
+            logentry = td.s.get(LogEntry, id)
             if not logentry:
                 return
             print(f"log: {logentry.id} {logentry.time} "
@@ -54,9 +54,7 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            user = td.s.query(User)\
-                       .options(joinedload('register'))\
-                       .get(id)
+            user = td.s.get(User, id, options=[joinedload(User.register)])
             if not user:
                 return
             if user.register:
@@ -83,7 +81,7 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            stockline = td.s.query(StockLine).get(id)
+            stockline = td.s.get(StockLine, id)
             if not stockline:
                 print(f"stockline: id {id} deleted")
                 return
@@ -96,9 +94,8 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            stocktype = td.s.query(StockType)\
-                            .options(joinedload('meta'))\
-                            .get(id)
+            stocktype = td.s.get(
+                StockType, id, options=[joinedload(StockType.meta)])
             if not stocktype:
                 print(f"stocktype: id {id} deleted")
                 return
@@ -114,11 +111,11 @@ class monitor(command):
         except Exception:
             return
         with td.orm_session():
-            stock = td.s.query(StockItem)\
-                        .options(undefer('remaining'))\
-                        .options(joinedload('stocktype'),
-                                 joinedload('stocktype.unit'))\
-                        .get(id)
+            stock = td.s.get(StockItem, id, options=[
+                undefer(StockItem.remaining),
+                joinedload(StockItem.stocktype),
+                joinedload(StockItem.stocktype).joinedload(StockType.unit),
+            ])
             if not stock:
                 print(f"stock: id {id} deleted")
                 return
@@ -130,7 +127,7 @@ class monitor(command):
     @staticmethod
     def notify_keycaps(keycode):
         with td.orm_session():
-            keycap = td.s.query(KeyCap).get(keycode)
+            keycap = td.s.get(KeyCap, keycode)
             if not keycap:
                 return
             print(f"keycap: {keycap.keycode} => '{keycap.keycap}' "
@@ -139,7 +136,7 @@ class monitor(command):
     @staticmethod
     def notify_config(key):
         with td.orm_session():
-            config = td.s.query(Config).get(key)
+            config = td.s.get(Config, key)
             if not config:
                 return
             print(f"config: {config.key} = {config.value}")

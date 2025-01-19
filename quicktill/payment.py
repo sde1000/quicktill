@@ -53,7 +53,7 @@ class pline(ui.line):
 
     def update(self):
         super().update()
-        payment = td.s.query(Payment).get(self.payment_id)
+        payment = td.s.get(Payment, self.payment_id)
         self.amount = payment.amount
         self.transtime = payment.time
         self.pending = payment.pending
@@ -274,7 +274,7 @@ class payment_search_popup(ui.dismisspopup):
 
     def enter(self):
         self.dismiss()
-        paytype = td.s.query(PayType).get(self._paytype_id)
+        paytype = td.s.get(PayType, self._paytype_id)
         try:
             days = int(self.daysfield.f)
         except Exception:
@@ -307,7 +307,7 @@ class payment_search_popup(ui.dismisspopup):
     "manage-payment-methods", "Manage payment methods on the till")
 def manage():
     ui.automenu([(x.description,
-                  lambda p: td.s.query(PayType).get(p).driver.manage(),
+                  lambda p: td.s.get(PayType, p).driver.manage(),
                   (x.paytype,))
                  for x in td.s.query(PayType)
                  .order_by(PayType.order, PayType.paytype)
@@ -363,7 +363,7 @@ class PaymentConfigCommand(command):
     def run(args):
         code = args.code[0]
         with td.orm_session():
-            pm = td.s.query(PayType).get(code)
+            pm = td.s.get(PayType, code)
             if not pm:
                 print(f"Payment method '{code}' not found. Valid payment "
                       f"methods are:")

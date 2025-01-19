@@ -2361,8 +2361,8 @@ class StockType(Base, Logged):
             .filter(StockItem.finished == None)\
             .filter(StockItem.stockline == None)\
             .options(undefer_group('qtys'),
-                     joinedload('delivery'),
-                     joinedload('finishcode'))\
+                     joinedload(StockItem.delivery),
+                     joinedload(StockItem.finishcode))\
             .order_by(StockItem.id)\
             .all()
 
@@ -3397,8 +3397,7 @@ class LogEntry(Base):
         if len(keys) != len(pk_types):
             return model, None
         obj = None
-        obj = session.query(model).get(
-            c(k) for c, k in zip(pk_types, keys))
+        obj = session.get(model, tuple(c(k) for c, k in zip(pk_types, keys)))
         return model, obj
 
     def update_refs(self, session):

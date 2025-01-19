@@ -73,7 +73,7 @@ def stockcheck(dept=None):
              .filter(Delivery.checked == True)\
              .options(contains_eager(StockItem.stocktype))\
              .options(contains_eager(StockItem.delivery))\
-             .options(undefer('remaining'))\
+             .options(undefer(StockItem.remaining))\
              .order_by(StockItem.id)
     if dept:
         sq = sq.filter(StockType.dept_id == dept)
@@ -115,7 +115,8 @@ def stockhistory(dept=None):
              .join(StockItem.stocktype)\
              .filter(StockItem.finished != None)\
              .options(undefer(StockItem.remaining))\
-             .options(joinedload('stocktype').joinedload('unit'))\
+             .options(joinedload(StockItem.stocktype)
+                      .joinedload(StockType.unit))\
              .order_by(StockItem.id.desc())
     if dept:
         sq = sq.filter(StockType.dept_id == dept)
@@ -223,7 +224,7 @@ def stock_purge_internal(source):
     finished = td.s.query(StockItem)\
                    .join(StockItem.stockline)\
                    .options(contains_eager(StockItem.stockline))\
-                   .options(joinedload('stocktype'))\
+                   .options(joinedload(StockItem.stocktype))\
                    .filter(StockItem.finished == None)\
                    .filter(StockLine.linetype == "display")\
                    .filter(StockItem.remaining == Decimal("0.0"))\
@@ -235,8 +236,9 @@ def stock_purge_internal(source):
     cfinished = td.s.query(StockItem)\
                     .join(StockLine,
                           StockItem.stocktype_id == StockLine.stocktype_id)\
-                    .options(joinedload('stocktype'))\
-                    .options(contains_eager('stocktype.stocklines'))\
+                    .options(joinedload(StockItem.stocktype))\
+                    .options(joinedload(StockItem.stocktype)
+                             .contains_eager(StockType.stocklines))\
                     .filter(StockItem.finished == None)\
                     .filter(StockLine.linetype == "continuous")\
                     .filter(StockItem.remaining <= Decimal("0.0"))\
@@ -331,7 +333,7 @@ class add_bestbefore_dialog(ui.dismisspopup):
     def finish(self):
         bb = self.bbfield.read()
         if bb:
-            item = td.s.query(StockItem).get(self.stockid)
+            item = td.s.get(StockItem, self.stockid)
             if not item:
                 ui.infopopup(["Error: item has gone away!"], title="Error")
                 return

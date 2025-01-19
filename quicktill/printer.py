@@ -21,7 +21,7 @@ checkdigit_print = config.BooleanConfigItem(
 # in any other context, use with td.orm_session(): around the call.
 
 def print_receipt(printer, transid):
-    trans = td.s.query(Transaction).get(transid)
+    trans = td.s.get(Transaction, transid)
     if trans is None:
         return
     if not trans.lines:
@@ -70,10 +70,10 @@ def print_receipt(printer, transid):
             # Keys are business IDs, values are (band,rate) tuples
             businesses = {}
             for i in list(bandtotals.keys()):
-                vr = td.s.query(VatBand).get(i).at(trans.session.date)
+                vr = td.s.get(VatBand, i).at(trans.session.date)
                 businesses.setdefault(vr.business.id, []).append((i, vr.rate))
             for i in list(businesses.keys()):
-                business = td.s.query(Business).get(i)
+                business = td.s.get(Business, i)
                 bands = businesses[i]
                 # Print the business info
                 d.printline(f"\t{business.name}")
@@ -110,7 +110,7 @@ def print_receipt(printer, transid):
 
 
 def print_sessioncountup(printer, sessionid):
-    s = td.s.query(Session).get(sessionid)
+    s = td.s.get(Session, sessionid)
     if s is None:
         return
     with printer as d:
@@ -152,7 +152,7 @@ def print_sessioncountup(printer, sessionid):
 def print_sessiontotals(printer, sessionid):
     """Print a session totals report given a Session id.
     """
-    s = td.s.query(Session).get(sessionid)
+    s = td.s.get(Session, sessionid)
     if s is None:
         return
     printtime = ui.formattime(now())
@@ -241,7 +241,7 @@ def print_deferred_payment_wrapper(printer, trans, paytype, amount, user_name):
 
 
 def print_delivery_checklist(printer, dn):
-    d = td.s.query(Delivery).get(dn)
+    d = td.s.get(Delivery, dn)
     if not d:
         return
     printtime = ui.formattime(now())
