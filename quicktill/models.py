@@ -434,7 +434,8 @@ class Session(Base, Logged):
             .query(User, func.sum(Transline.items), func.sum(
                 Transline.items * Transline.amount))\
             .filter(Transaction.sessionid == self.id)\
-            .join(Transline, Transaction)\
+            .join(Transline)\
+            .join(Transaction)\
             .order_by(desc(func.sum(
                 Transline.items * Transline.amount)))\
             .group_by(User).all()
@@ -476,7 +477,10 @@ class Session(Base, Logged):
             .query(VatBand, func.sum(Transline.items * Transline.amount))\
             .select_from(Session)\
             .filter(Session.id == self.id)\
-            .join(Transaction, Transline, Department, VatBand)\
+            .join(Transaction)\
+            .join(Transline)\
+            .join(Department)\
+            .join(VatBand)\
             .order_by(VatBand.band)\
             .group_by(VatBand)\
             .all()
@@ -3123,7 +3127,7 @@ class KeyboardBinding(Base):
         keys can be removed from the keyboard definition if they are
         repurposed.)
         """
-        return object_session(self).query(KeyCap).get(self.keycode)
+        return object_session(self).get(KeyCap, self.keycode)
 
 
 class KeyCap(Base):

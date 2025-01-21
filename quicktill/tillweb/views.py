@@ -31,6 +31,7 @@ from quicktill.models import (
     Session,
     SessionTotal,
     StockLine,
+    StockLineTypeLog,
     StockAnnotation,
     StockItem,
     Transaction,
@@ -38,6 +39,8 @@ from quicktill.models import (
     Supplier,
     StockUnit,
     StockTake,
+    StockTakeSnapshot,
+    StockTakeAdjustment,
     Unit,
     AnnotationType,
     RemoveCode,
@@ -254,7 +257,7 @@ def tillweb_view(view):
         tilluser = None
         if request.user.is_authenticated:
             tilluser = session.query(User)\
-                              .options(joinedload('permissions'))\
+                              .options(joinedload(User.permissions))\
                               .filter(User.webuser == request.user.username)\
                               .one_or_none()
 
@@ -334,9 +337,9 @@ def undefer_qtys(entity):
     """Return options to undefer the qtys group on a related entity"""
     if sqlalchemy.__version__ < "1.1.14":
         return defaultload(entity)\
-            .undefer("used")\
-            .undefer("sold")\
-            .undefer("remaining")
+            .undefer(StockItem.used)\
+            .undefer(StockItem.sold)\
+            .undefer(StockItem.remaining)
     return defaultload(entity).undefer_group("qtys")
 
 
@@ -511,17 +514,17 @@ def pubroot(request, info):
     # currentsession = Session.current(session)
     currentsession = td.s.query(Session)\
                          .filter_by(endtime=None)\
-                         .options(undefer('total'),
-                                  undefer('closed_total'))\
+                         .options(undefer(Session.total),
+                                  undefer(Session.closed_total))\
                          .first()
 
     barsummary = td.s.query(StockLine)\
                      .filter(StockLine.location == "Bar")\
                      .order_by(StockLine.dept_id, StockLine.name)\
-                     .options(joinedload('stockonsale')
-                              .joinedload('stocktype')
-                              .joinedload('unit'))\
-                     .options(undefer_qtys("stockonsale"))\
+                     .options(joinedload(StockLine.stockonsale)
+                              .joinedload(StockItem.stocktype)
+                              .joinedload(StockType.unit))\
+                     .options(undefer_qtys(StockLine.stockonsale))\
                      .all()
 
     stillage = td.s.query(StockAnnotation)\
@@ -529,17 +532,18 @@ def pubroot(request, info):
                    .outerjoin(StockLine)\
                    .filter(
                        tuple_(StockAnnotation.text, StockAnnotation.time).in_(
-                           select([StockAnnotation.text,
-                                   func.max(StockAnnotation.time)],
-                                  StockAnnotation.atype == 'location')
+                           select(StockAnnotation.text,
+                                  func.max(StockAnnotation.time))
+                           .where(StockAnnotation.atype == 'location')
                            .group_by(StockAnnotation.text)))\
                    .filter(StockItem.finished == None)\
                    .order_by(StockLine.name != null(), StockAnnotation.time)\
-                   .options(joinedload('stockitem')
-                            .joinedload('stocktype')
-                            .joinedload('unit'),
-                            joinedload('stockitem').joinedload('stockline'),
-                            undefer_qtys('stockitem'))\
+                   .options(joinedload(StockAnnotation.stockitem)
+                            .joinedload(StockItem.stocktype)
+                            .joinedload(StockType.unit),
+                            joinedload(StockAnnotation.stockitem)
+                            .joinedload(StockItem.stockline),
+                            undefer_qtys(StockAnnotation.stockitem))\
                    .all()
 
     deferred = td.s.query(func.sum(Transline.items * Transline.amount))\
@@ -570,9 +574,10 @@ def location(request, info, location):
     lines = td.s.query(StockLine)\
                 .filter(StockLine.location == location)\
                 .order_by(StockLine.dept_id, StockLine.name)\
-                .options(joinedload('stockonsale'),
-                         joinedload('stockonsale.stocktype'),
-                         undefer_qtys('stockonsale'))\
+                .options(joinedload(StockLine.stockonsale),
+                         joinedload(StockLine.stockonsale)
+                         .joinedload(StockItem.stocktype),
+                         undefer_qtys(StockLine.stockonsale))\
                 .all()
     return ('location.html', {
         'nav': [("Locations", info.reverse('tillweb-locations')),
@@ -613,11 +618,10 @@ def sessions(request, info):
 
 @tillweb_view
 def session(request, info, sessionid):
-    s = td.s.query(Session)\
-            .options(undefer('total'),
-                     undefer('closed_total'),
-                     undefer('actual_total'))\
-            .get(sessionid)
+    s = td.s.get(Session, sessionid, options=[
+        undefer(Session.total),
+        undefer(Session.closed_total),
+        undefer(Session.actual_total)])
     if not s:
         raise Http404
 
@@ -644,10 +648,9 @@ def session(request, info, sessionid):
 
 @tillweb_view
 def session_spreadsheet(request, info, sessionid):
-    s = td.s.query(Session)\
-            .options(undefer('transactions.total'),
-                     joinedload('transactions.payments'))\
-            .get(sessionid)
+    s = td.s.get(Session, sessionid, options=[
+        joinedload(Session.transactions).undefer(Transaction.total),
+        joinedload(Session.transactions).joinedload(Transaction.payments)])
     if not s:
         raise Http404
     return spreadsheets.session(s, info.tillname)
@@ -655,7 +658,7 @@ def session_spreadsheet(request, info, sessionid):
 
 @tillweb_view
 def session_discounts(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
+    s = td.s.get(Session, sessionid)
     if not s:
         raise Http404
 
@@ -666,7 +669,8 @@ def session_discounts(request, info, sessionid):
                            func.sum(Transline.items * Transline.discount)
                            .label("discount"))\
                     .select_from(Transaction)\
-                    .join(Transline, Department)\
+                    .join(Transline)\
+                    .join(Department)\
                     .filter(Transaction.sessionid == sessionid)\
                     .filter(Transline.discount_name != None)\
                     .group_by(Department, Transline.discount_name)\
@@ -698,7 +702,7 @@ def session_discounts(request, info, sessionid):
 
 @tillweb_view
 def session_stock_sold(request, info, sessionid):
-    s = td.s.query(Session).get(sessionid)
+    s = td.s.get(Session, sessionid)
     if not s:
         raise Http404
 
@@ -720,11 +724,13 @@ class TransactionNotesForm(forms.Form):
 @tillweb_view
 def transaction(request, info, transid):
     t = td.s.query(Transaction)\
-            .options(subqueryload('payments'),
-                     joinedload('lines.department'),
-                     joinedload('lines.user'),
-                     undefer('total'),
-                     undefer('discount_total'))\
+            .options(subqueryload(Transaction.payments),
+                     joinedload(Transaction.lines)
+                     .joinedload(Transline.department),
+                     joinedload(Transaction.lines)
+                     .joinedload(Transline.user),
+                     undefer(Transaction.total),
+                     undefer(Transaction.discount_total))\
             .get(transid)
     if not t:
         raise Http404
@@ -762,11 +768,11 @@ def translines(request, info):
 
 @tillweb_view
 def transline(request, info, translineid):
-    tl = td.s.query(Transline)\
-             .options(joinedload('stockref').joinedload('stockitem')
-                      .joinedload('stocktype'),
-                      joinedload('user'))\
-             .get(translineid)
+    tl = td.s.get(Transline, translineid, options=[
+        joinedload(Transline.stockref)
+        .joinedload(StockOut.stockitem)
+        .joinedload(StockItem.stocktype),
+        joinedload(Transline.user)])
     if not tl:
         raise Http404
     return ('transline.html', {'tl': tl, 'tillobject': tl})
@@ -782,10 +788,9 @@ def payments(request, info):
 
 @tillweb_view
 def payment(request, info, paymentid):
-    payment = td.s.query(Payment)\
-                  .options(joinedload('paytype'),
-                           joinedload('user'))\
-                  .get(paymentid)
+    payment = td.s.get(Payment, paymentid, options=[
+        joinedload(Payment.paytype),
+        joinedload(Payment.user)])
     if not payment:
         raise Http404
     return ('payment.html', {'payment': payment, 'tillobject': payment})
@@ -1075,9 +1080,10 @@ def create_supplier(request, info):
 
 @tillweb_view
 def deliverylist(request, info):
+    # This is redundant, the template uses a datatable with ajax
     dl = td.s.query(Delivery)\
              .order_by(desc(Delivery.id))\
-             .options(joinedload('supplier'))
+             .options(joinedload(Delivery.supplier))
 
     pager = Pager(request, dl)
 
@@ -1179,12 +1185,11 @@ class EditDeliveryForm(DeliveryForm):
 
 @tillweb_view
 def delivery(request, info, deliveryid):
-    d = td.s.query(Delivery)\
-            .options(joinedload('items').joinedload('stocktype')
-                     .joinedload('unit'),
-                     joinedload('items').joinedload('stockline'),
-                     undefer_qtys('items'))\
-            .get(deliveryid)
+    d = td.s.get(Delivery, deliveryid, options=[
+        joinedload(Delivery.items).joinedload(StockItem.stocktype)
+        .joinedload(StockType.unit),
+        joinedload(Delivery.items).joinedload(StockItem.stockline),
+        undefer_qtys(Delivery.items)])
     if not d:
         raise Http404
 
@@ -1434,7 +1439,7 @@ def stocktype_search_json(request, info, include_stockunits=False):
                        StockType.name.ilike(f"%{words[1]}%"))
     q = q.filter(qf)
     if include_stockunits:
-        q = q.options(joinedload('unit').joinedload('stockunits'))
+        q = q.options(joinedload(StockType.unit).joinedload(Unit.stockunits))
     results = q.all()
     return JsonResponse(
         {'results': [_stocktype_to_dict(x, include_stockunits)
@@ -1449,9 +1454,8 @@ def stocktype_info_json(request, info):
         id = int(request.GET['id'])
     except Exception:
         raise Http404
-    st = td.s.query(StockType)\
-             .options(joinedload('unit').joinedload('stockunits'))\
-             .get(id)
+    st = td.s.get(StockType, id, options=[
+        joinedload(StockType.unit).joinedload(Unit.stockunits)])
     if not st:
         raise Http404
     return JsonResponse(_stocktype_to_dict(st, True))
@@ -1493,9 +1497,7 @@ class RepriceStockTypeForm(forms.Form):
 
 @tillweb_view
 def stocktype(request, info, stocktype_id):
-    s = td.s.query(StockType)\
-            .options(joinedload('meta'))\
-            .get(stocktype_id)
+    s = td.s.get(StockType, stocktype_id, options=[joinedload(StockType.meta)])
     if not s:
         raise Http404
     may_alter = info.user_has_perm("alter-stocktype")
@@ -1577,7 +1579,7 @@ def stocktype(request, info, stocktype_id):
     items = td.s.query(StockItem)\
                 .filter(StockItem.stocktype == s)\
                 .options(undefer_group('qtys'),
-                         joinedload('delivery'))\
+                         joinedload(StockItem.delivery))\
                 .order_by(desc(StockItem.id))
     stocklines = td.s.query(StockLine)\
                      .filter(StockLine.stocktype == s)\
@@ -1612,9 +1614,7 @@ def stocktype(request, info, stocktype_id):
 
 @tillweb_view
 def stocktype_logo(request, info, stocktype_id):
-    s = td.s.query(StockType)\
-            .options(joinedload('meta'))\
-            .get(stocktype_id)
+    s = td.s.get(StockType, stocktype_id, options=[joinedload(StockType.meta)])
     if not s:
         raise Http404
     if stocktype_product_logo_key not in s.meta:
@@ -1638,9 +1638,10 @@ def stocksearch(request, info):
         q = td.s.query(StockItem)\
                 .join(StockType)\
                 .order_by(StockItem.id)\
-                .options(joinedload('stocktype').joinedload('unit'),
-                         joinedload('stockline'),
-                         joinedload('delivery'),
+                .options(joinedload(StockItem.stocktype)
+                         .joinedload(StockType.unit),
+                         joinedload(StockItem.stockline),
+                         joinedload(StockItem.delivery),
                          undefer_group('qtys'))
         q = form.filter(q)
         if not form.cleaned_data['include_finished']:
@@ -1708,27 +1709,28 @@ class EditStockForm(forms.Form):
 
 @tillweb_view
 def stock(request, info, stockid):
-    s = td.s.query(StockItem)\
-            .options(undefer('checked'),
-                     joinedload('stocktype').joinedload('department'),
-                     joinedload('stocktype').joinedload('stockline_log')
-                     .joinedload('stockline'),
-                     joinedload('stocktype').joinedload('unit'),
-                     joinedload('delivery').joinedload('supplier'),
-                     joinedload('stocktake'),
-                     subqueryload('annotations').joinedload('type'),
-                     subqueryload('annotations').joinedload('user'),
-                     subqueryload('out').joinedload('transline')
-                     .joinedload('transaction'),
-                     subqueryload('out').joinedload('removecode'),
-                     subqueryload('out').joinedload('stocktake'),
-                     subqueryload('snapshots').joinedload('adjustments')
-                     .joinedload('removecode'),
-                     subqueryload('snapshots').undefer('newqty'),
-                     subqueryload('snapshots').joinedload('stocktake'),
-                     subqueryload('logs').joinedload('user'),
-                     undefer_group('qtys'))\
-            .get(stockid)
+    s = td.s.get(StockItem, stockid, options=[
+        undefer(StockItem.checked),
+        joinedload(StockItem.stocktype).joinedload(StockType.department),
+        joinedload(StockItem.stocktype).joinedload(StockType.stockline_log)
+        .joinedload(StockLineTypeLog.stockline),
+        joinedload(StockItem.stocktype).joinedload(StockType.unit),
+        joinedload(StockItem.delivery).joinedload(Delivery.supplier),
+        joinedload(StockItem.stocktake),
+        subqueryload(StockItem.annotations).joinedload(StockAnnotation.type),
+        subqueryload(StockItem.annotations).joinedload(StockAnnotation.user),
+        subqueryload(StockItem.out).joinedload(StockOut.transline)
+        .joinedload(Transline.transaction),
+        subqueryload(StockItem.out).joinedload(StockOut.removecode),
+        subqueryload(StockItem.out).joinedload(StockOut.stocktake),
+        subqueryload(StockItem.snapshots)
+        .joinedload(StockTakeSnapshot.adjustments)
+        .joinedload(StockTakeAdjustment.removecode),
+        subqueryload(StockItem.snapshots).undefer(StockTakeSnapshot.newqty),
+        subqueryload(StockItem.snapshots)
+        .joinedload(StockTakeSnapshot.stocktake),
+        subqueryload(StockItem.logs).joinedload(LogEntry.loguser),
+        undefer_group('qtys')])
     if not s:
         raise Http404
 
@@ -2032,19 +2034,22 @@ def stocklinelist(request, info):
     regular = td.s.query(StockLine)\
                   .order_by(StockLine.dept_id, StockLine.name)\
                   .filter(StockLine.linetype == "regular")\
-                  .options(joinedload("stockonsale"))\
-                  .options(joinedload("stockonsale.stocktype"))\
+                  .options(joinedload(StockLine.stockonsale),
+                           joinedload(StockLine.stockonsale)
+                           .joinedload(StockItem.stocktype))\
                   .all()
     display = td.s.query(StockLine)\
                   .filter(StockLine.linetype == "display")\
                   .order_by(StockLine.name)\
-                  .options(joinedload("stockonsale"))\
-                  .options(undefer("stockonsale.used"))\
+                  .options(joinedload(StockLine.stockonsale))\
+                  .options(joinedload(StockLine.stockonsale)
+                           .undefer(StockItem.used))\
                   .all()
     continuous = td.s.query(StockLine)\
                      .filter(StockLine.linetype == "continuous")\
                      .order_by(StockLine.name)\
-                     .options(undefer("stocktype.remaining"))\
+                     .options(joinedload(StockLine.stocktype)
+                              .undefer(StockType.remaining))\
                      .all()
     return ('stocklines.html', {
         'nav': [("Stock lines", info.reverse("tillweb-stocklines"))],
@@ -2056,12 +2061,11 @@ def stocklinelist(request, info):
 
 @tillweb_view
 def stockline(request, info, stocklineid):
-    s = td.s.query(StockLine)\
-            .options(joinedload('stockonsale').joinedload('stocktype')
-                     .joinedload('unit'),
-                     joinedload('stockonsale').joinedload('delivery'),
-                     undefer_qtys('stockonsale'))\
-            .get(stocklineid)
+    s = td.s.get(StockLine, stocklineid, options=[
+        joinedload(StockLine.stockonsale).joinedload(StockItem.stocktype)
+        .joinedload(StockType.unit),
+        joinedload(StockLine.stockonsale).joinedload(StockItem.delivery),
+        undefer_qtys(StockLine.stockonsale)])
     if not s:
         raise Http404
     if s.linetype == "regular":
@@ -2375,7 +2379,7 @@ class PLUForm(forms.Form):
 
 @tillweb_view
 def plu(request, info, pluid):
-    p = td.s.query(PriceLookup).get(pluid)
+    p = td.s.get(PriceLookup, pluid)
     if not p:
         raise Http404
 
@@ -2474,9 +2478,9 @@ def barcodelist(request, info):
         form = BarcodeSearchForm()
 
     barcodes = td.s.query(Barcode)\
-                   .options(joinedload('stocktype'),
-                            joinedload('stockline'),
-                            joinedload('plu'))\
+                   .options(joinedload(Barcode.stocktype),
+                            joinedload(Barcode.stockline),
+                            joinedload(Barcode.plu))\
                    .order_by(Barcode.id)
 
     pager = Pager(request, barcodes)
@@ -2495,7 +2499,7 @@ def barcodelist(request, info):
 
 @tillweb_view
 def barcode(request, info, barcode):
-    b = td.s.query(Barcode).get(barcode)
+    b = td.s.get(Barcode, barcode)
 
     return ('barcode.html', {
         'barcode': b,
@@ -2506,7 +2510,7 @@ def barcode(request, info, barcode):
 @tillweb_view
 def departmentlist(request, info):
     depts = td.s.query(Department)\
-                .options(joinedload('vat'))\
+                .options(joinedload(Department.vat))\
                 .order_by(Department.id)\
                 .all()
     return ('departmentlist.html', {
@@ -2606,8 +2610,7 @@ def create_department(request, info):
 
 @tillweb_view
 def department(request, info, departmentid, as_spreadsheet=False):
-    d = td.s.query(Department)\
-            .get(departmentid)
+    d = td.s.get(Department, departmentid)
     if d is None:
         raise Http404
 
@@ -2656,11 +2659,12 @@ def department(request, info, departmentid, as_spreadsheet=False):
                 .join(StockType)\
                 .filter(StockType.department == d)\
                 .order_by(desc(StockItem.id))\
-                .options(joinedload('stocktype').joinedload('unit'),
+                .options(joinedload(StockItem.stocktype)
+                         .joinedload(StockType.unit),
                          undefer_group('qtys'),
-                         joinedload('stockline'),
-                         joinedload('delivery'),
-                         joinedload('finishcode'))
+                         joinedload(StockItem.stockline),
+                         joinedload(StockItem.delivery),
+                         joinedload(StockItem.finishcode))
     if not include_finished:
         items = items.filter(StockItem.finished == None)
 
@@ -2742,7 +2746,6 @@ def stockcheck(request, info):
 
 @tillweb_view
 def userlist(request, info):
-
     return ('userlist.html', {
         'nav': [("Users", info.reverse("tillweb-till-users"))],
         'may_create_user': info.user_has_perm("edit-user"),
@@ -2762,7 +2765,7 @@ class EditUserForm(forms.Form):
 
 @tillweb_view
 def userdetail(request, info, userid):
-    u = td.s.query(User).get(userid)
+    u = td.s.get(User, userid)
     if not u:
         raise Http404
 
@@ -2863,7 +2866,7 @@ class EditGroupForm(forms.Form):
 
 @tillweb_view
 def group(request, info, groupid):
-    g = td.s.query(Group).get(groupid)
+    g = td.s.get(Group, groupid)
     if not g:
         raise Http404
 
@@ -2954,8 +2957,7 @@ def logsindex(request, info):
 
 @tillweb_view
 def logdetail(request, info, logid):
-    l = td.s.query(LogEntry)\
-            .get(logid)
+    l = td.s.get(LogEntry, logid)
     if not l:
         raise Http404
     return ('logentry.html', {
@@ -2984,7 +2986,7 @@ class ConfigItemUpdateForm(forms.Form):
 
 @tillweb_view
 def configitem(request, info, key):
-    c = td.s.query(Config).get(key)
+    c = td.s.get(Config, key)
     if not c:
         raise Http404
     may_edit = info.user_has_perm("edit-config")
