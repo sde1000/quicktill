@@ -520,6 +520,8 @@ class new_stockitem(ui.basicpopup):
                 f"{delivery.logref}")
             stocktype.saleprice = saleprice
         qty = int(self.qtyfield.f)
+        # add_items() creates the StockItem instances and leaves them
+        # pending in the current ORM session
         items = delivery.add_items(stocktype, stockunit, qty, cost, bestbefore)
         td.s.flush()
         for item in items:
