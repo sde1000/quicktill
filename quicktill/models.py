@@ -388,14 +388,17 @@ class Session(Base, Logged):
 
         Returns list of (Department, total) keyed tuples.
         """
-        return object_session(self).\
-            query(Department, func.sum(
-                Transline.items * Transline.amount).label("total")).\
-            select_from(Session).\
-            filter(Session.id == self.id).\
-            join(Transaction, Transline, Department).\
-            order_by(Department.id).\
-            group_by(Department).all()
+        return object_session(self)\
+            .query(Department, func.sum(
+                Transline.items * Transline.amount).label("total"))\
+            .select_from(Session)\
+            .filter(Session.id == self.id)\
+            .join(Transaction)\
+            .join(Transline)\
+            .join(Department)\
+            .order_by(Department.id)\
+            .group_by(Department)\
+            .all()
 
     @property
     def dept_totals_closed(self):
@@ -443,12 +446,15 @@ class Session(Base, Logged):
     @property
     def payment_totals(self):
         "Transactions broken down by payment type."
-        return object_session(self).\
-            query(PayType, func.sum(Payment.amount)).\
-            select_from(Session).\
-            filter(Session.id == self.id).\
-            join(Transaction, Payment, PayType).\
-            group_by(PayType).all()
+        return object_session(self)\
+            .query(PayType, func.sum(Payment.amount))\
+            .select_from(Session)\
+            .filter(Session.id == self.id)\
+            .join(Transaction)\
+            .join(Payment)\
+            .join(PayType)\
+            .group_by(PayType)\
+            .all()
 
     # total and closed_total are declared after Transline
     # actual_total is declared after SessionTotal
