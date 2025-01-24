@@ -2039,9 +2039,9 @@ class StockTake(Base, Logged):
         exc = (StockTakeSnapshot.__table__.insert()
                .from_select(
                    ['stocktake_id', 'stock_id', 'qty'],
-                   select([StockType.stocktake_id,
-                           StockItem.id,
-                           StockItem.remaining])
+                   select(StockType.stocktake_id,
+                          StockItem.id,
+                          StockItem.remaining)
                    .select_from(StockItem.__table__.join(StockType.__table__))
                    .where(StockItem.checked == True)
                    .where(StockType.stocktake_id == self.id)

@@ -185,13 +185,13 @@ def sessionlist(cont, paidonly=False, unpaidonly=False, closedonly=False,
             .order_by(desc(Session.id))\
             .options(undefer(Session.total))
     if paidonly:
-        q = q.filter(select([func.count(SessionTotal.sessionid)],
-                            whereclause=SessionTotal.sessionid == Session.id)
-                     .correlate(Session.__table__).as_scalar() != 0)
+        q = q.filter(select(func.count(SessionTotal.sessionid))
+                     .where(SessionTotal.sessionid == Session.id)
+                     .correlate(Session.__table__).scalar_subquery() != 0)
     if unpaidonly:
-        q = q.filter(select([func.count(SessionTotal.sessionid)],
-                            whereclause=SessionTotal.sessionid == Session.id)
-                     .correlate(Session.__table__).as_scalar() == 0)
+        q = q.filter(select(func.count(SessionTotal.sessionid))
+                     .where(SessionTotal.sessionid == Session.id)
+                     .correlate(Session.__table__).scalar_subquery() == 0)
     if closedonly:
         q = q.filter(Session.endtime != None)
     if maxlen:
