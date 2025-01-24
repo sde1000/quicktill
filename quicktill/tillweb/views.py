@@ -144,7 +144,7 @@ class DatePeriodForm(forms.Form):
 
 # Format a StockType model as a string for Select widgets
 def stocktype_widget_label(x):
-    return f"{x.format()} ({x.department}, sold in {x.unit.item_name_plural})"
+    return f"{x} ({x.department}, sold in {x.unit.sale_unit_name_plural})"
 
 
 # This view is only used when the tillweb is integrated into another
