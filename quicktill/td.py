@@ -195,8 +195,8 @@ def init(database):
     log.info("init database \'%s\'", database)
     database = parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'", database)
-    engine = create_engine(database)
-    session_factory = sessionmaker(bind=engine, future=False)
+    engine = create_engine(database, future=True)
+    session_factory = sessionmaker(bind=engine, future=True)
     s = scoped_session(session_factory)
 
 

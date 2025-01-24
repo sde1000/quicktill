@@ -13,14 +13,14 @@ class ModelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create the test database
-        engine = create_engine("postgresql+psycopg2:///postgres")
+        engine = create_engine("postgresql+psycopg2:///postgres", future=True)
         raw_connection = engine.raw_connection()
         with raw_connection.cursor() as cursor:
             cursor.execute('commit')
             cursor.execute(f'create database "{TEST_DATABASE_NAME}"')
         raw_connection.close()
         cls._engine = create_engine(
-            f"postgresql+psycopg2:///{TEST_DATABASE_NAME}")
+            f"postgresql+psycopg2:///{TEST_DATABASE_NAME}", future=True)
         models.metadata.create_all(cls._engine)
         cls._sm = sessionmaker(cls._engine, future=True)
 
@@ -29,7 +29,7 @@ class ModelTest(unittest.TestCase):
         # Dispose of the connection pool, closing all checked-in connections
         cls._engine.dispose()
         del cls._engine
-        engine = create_engine("postgresql+psycopg2:///postgres")
+        engine = create_engine("postgresql+psycopg2:///postgres", future=True)
         raw_connection = engine.raw_connection()
         with raw_connection.cursor() as cursor:
             cursor.execute('commit')

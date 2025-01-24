@@ -1303,6 +1303,9 @@ class Transline(Base, Logged):
         (not necessarily the same as this line's transaction) that
         voids this line and return it.
 
+        The new transaction line is not automatically placed in the
+        ORM session; the caller must do this if desired.
+
         If this transaction line has already been voided, returns
         None.
         """
@@ -1925,22 +1928,17 @@ class Delivery(Base, Logged):
         costper = (cost / qty).quantize(penny) if cost else None
         remaining_cost = cost
         items = []
-        # It's necessary to disable autoflush here, otherwise some of
-        # the new StockItem rows may be autoflushed with deliveryid
-        # still set to None if sqlalchemy has to issue a query to load
-        # stocktype
-        with object_session(self).no_autoflush:
-            while qty > 0:
-                thiscost = remaining_cost if qty == 1 else costper
-                remaining_cost = remaining_cost - thiscost if cost else None
-                item = StockItem(stocktype=stocktype,
-                                 description=description,
-                                 size=size,
-                                 costprice=thiscost,
-                                 bestbefore=bestbefore)
-                self.items.append(item)
-                items.append(item)
-                qty -= 1
+        while qty > 0:
+            thiscost = remaining_cost if qty == 1 else costper
+            remaining_cost = remaining_cost - thiscost if cost else None
+            item = StockItem(stocktype=stocktype,
+                             description=description,
+                             size=size,
+                             costprice=thiscost,
+                             bestbefore=bestbefore)
+            self.items.append(item)  # adds item to object_session(self)
+            items.append(item)
+            qty -= 1
         return items
 
 

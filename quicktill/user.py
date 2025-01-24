@@ -519,7 +519,8 @@ class manage_user_tokens(ui.dismisspopup):
         if not token:
             token = UserToken(token=t)
         token.last_seen = None
-        user.tokens.append(token)
+        user.tokens.append(token)  # adds token to ORM session if not present
+        td.s.flush()
         self.tokenfield.set(None)
         self.description.set("")
         self.reload_tokens()
