@@ -501,19 +501,19 @@ class Session(Base, Logged):
     @property
     def stock_sold(self):
         "Returns a list of (StockType, quantity) tuples."
-        return object_session(self).\
-            query(StockType, func.sum(StockOut.qty)).\
-            join(Unit).\
-            join(StockItem).\
-            join(StockOut).\
-            join(Transline).\
-            join(Transaction).\
-            filter(Transaction.sessionid == self.id).\
-            options(lazyload(StockType.department)).\
-            options(contains_eager(StockType.unit)).\
-            group_by(StockType, Unit).\
-            order_by(StockType.dept_id, desc(func.sum(StockOut.qty))).\
-            all()
+        return object_session(self)\
+            .query(StockType, func.sum(StockOut.qty))\
+            .join(Unit)\
+            .join(StockItem)\
+            .join(StockOut)\
+            .join(Transline)\
+            .join(Transaction)\
+            .filter(Transaction.sessionid == self.id)\
+            .options(lazyload(StockType.department))\
+            .options(contains_eager(StockType.unit))\
+            .group_by(StockType, Unit)\
+            .order_by(StockType.dept_id, desc(func.sum(StockOut.qty)))\
+            .all()
 
     @classmethod
     def current(cls, session):
@@ -2668,14 +2668,14 @@ class StockItem(Base, Logged):
 
         Returns a list of (RemoveCode, qty) tuples.
         """
-        return object_session(self).\
-            query(RemoveCode, func.sum(StockOut.qty)).\
-            select_from(StockOut.__table__).\
-            join(RemoveCode).\
-            filter(StockOut.stockid == self.id).\
-            group_by(RemoveCode).\
-            order_by(desc(func.sum(StockOut.qty))).\
-            all()
+        return object_session(self)\
+            .query(RemoveCode, func.sum(StockOut.qty))\
+            .select_from(StockOut.__table__)\
+            .join(RemoveCode)\
+            .filter(StockOut.stockid == self.id)\
+            .group_by(RemoveCode)\
+            .order_by(desc(func.sum(StockOut.qty)))\
+            .all()
 
     @property
     def used_units(self):
