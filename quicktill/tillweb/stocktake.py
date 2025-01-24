@@ -250,7 +250,7 @@ def stocktake_in_progress(request, info, stocktake):
         if form.is_valid():
             new_stockid = form.cleaned_data['stockid']
             if new_stockid:
-                si = td.s.query(StockItem).get(new_stockid)
+                si = td.s.get(StockItem, new_stockid)
                 if si:
                     if si.stocktype.stocktake == stocktake:
                         # Take snapshot of item
@@ -334,9 +334,9 @@ def stocktake_in_progress(request, info, stocktake):
                     st_adjusting = True
                     with td.s.no_autoflush:
                         adjustment = (
-                            td.s.query(StockTakeAdjustment)
-                            .get((stocktake.id, ss.stock_id,
-                                  st_adjustreason.id))
+                            td.s.get(StockTakeAdjustment,
+                                     (stocktake.id, ss.stock_id,
+                                      st_adjustreason.id))
                             or StockTakeAdjustment(
                                 snapshot=ss, removecode=st_adjustreason,
                                 qty=Decimal(0))
@@ -368,9 +368,9 @@ def stocktake_in_progress(request, info, stocktake):
                     ss.checked = True
                     with td.s.no_autoflush:
                         adjustment = (
-                            td.s.query(StockTakeAdjustment)
-                            .get((stocktake.id, ss.stock_id,
-                                  ss_adjustreason.id))
+                            td.s.get(StockTakeAdjustment,
+                                     (stocktake.id, ss.stock_id,
+                                      ss_adjustreason.id))
                             or StockTakeAdjustment(
                                 snapshot=ss, removecode=ss_adjustreason,
                                 qty=Decimal(0))

@@ -723,15 +723,12 @@ class TransactionNotesForm(forms.Form):
 
 @tillweb_view
 def transaction(request, info, transid):
-    t = td.s.query(Transaction)\
-            .options(subqueryload(Transaction.payments),
-                     joinedload(Transaction.lines)
-                     .joinedload(Transline.department),
-                     joinedload(Transaction.lines)
-                     .joinedload(Transline.user),
-                     undefer(Transaction.total),
-                     undefer(Transaction.discount_total))\
-            .get(transid)
+    t = td.s.get(Transaction, transid, options=[
+        subqueryload(Transaction.payments),
+        joinedload(Transaction.lines).joinedload(Transline.department),
+        joinedload(Transaction.lines).joinedload(Transline.user),
+        undefer(Transaction.total),
+        undefer(Transaction.discount_total)])
     if not t:
         raise Http404
 
@@ -856,7 +853,7 @@ class PayTypeForm(forms.Form):
 
 @tillweb_view
 def paytype(request, info, paytype):
-    pt = td.s.query(PayType).get(paytype)
+    pt = td.s.get(PayType, paytype)
     if not pt:
         raise Http404
 
@@ -985,7 +982,7 @@ class SupplierForm(forms.Form):
 
 @tillweb_view
 def supplier(request, info, supplierid):
-    s = td.s.query(Supplier).get(supplierid)
+    s = td.s.get(Supplier, supplierid)
     if not s:
         raise Http404
 
@@ -1842,7 +1839,7 @@ class UnitForm(forms.Form):
 
 @tillweb_view
 def unit(request, info, unit_id):
-    u = td.s.query(Unit).get(unit_id)
+    u = td.s.get(Unit, unit_id)
     if not u:
         raise Http404
 
@@ -1962,7 +1959,7 @@ class StockUnitForm(forms.Form):
 
 @tillweb_view
 def stockunit(request, info, stockunit_id):
-    su = td.s.query(StockUnit).get(stockunit_id)
+    su = td.s.get(StockUnit, stockunit_id)
     if not su:
         raise Http404
 
@@ -2469,7 +2466,7 @@ def barcodelist(request, info):
 
         if form.is_valid():
             cd = form.cleaned_data
-            barcode = td.s.query(Barcode).get(cd['barcode'])
+            barcode = td.s.get(Barcode, cd['barcode'])
             if barcode:
                 return HttpResponseRedirect(barcode.get_absolute_url())
             messages.error(request, f"Barcode {cd['barcode']} is not known")
@@ -2563,7 +2560,7 @@ class DepartmentNumberForm(forms.Form):
 
     def clean_number(self):
         n = self.cleaned_data['number']
-        d = td.s.query(Department).get(n)
+        d = td.s.get(Department, n)
         if d:
             raise ValidationError(f"Department {n} already exists")
         return n
