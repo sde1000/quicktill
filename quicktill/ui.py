@@ -1828,7 +1828,7 @@ class modelpopupfield(valuefield):
     def read(self):
         if self._f is None:
             return None
-        return td.s.query(self.model).get(self._f)
+        return td.s.get(self.model, self._f)
 
     def draw(self):
         pos = self.win.getyx()

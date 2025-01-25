@@ -18,7 +18,7 @@ class _cardpopup(ui.dismisspopup):
     """
     def __init__(self, paytype_id, reg, transid, amount, refund=False):
         self.paytype_id = paytype_id
-        pt = td.s.query(PayType).get(paytype_id)
+        pt = td.s.get(PayType, paytype_id)
         self.reg = reg
         self.transid = transid
         self.amount = amount
@@ -87,7 +87,7 @@ class _cardpopup(ui.dismisspopup):
                 f"Total card payment: {tillconfig.fc(self.amount + cashback)}")
 
     def enter(self):
-        pt = td.s.query(PayType).get(self.paytype_id)
+        pt = td.s.get(PayType, self.paytype_id)
         if self.cashback_in_use:
             try:
                 cashback = Decimal(self.cbfield.f).quantize(penny)
@@ -122,7 +122,7 @@ class _cardpopup(ui.dismisspopup):
 
         self.dismiss()
 
-        trans = td.s.query(Transaction).get(self.transid)
+        trans = td.s.get(Transaction, self.transid)
         user = ui.current_user().dbuser
         td.s.add(user)
         if not trans or trans.closed:
@@ -264,7 +264,7 @@ class Card(payment.PaymentDriver):
         self._cashback_method = None
         cashback_paytype_id = c.get('cashback_method', None)
         if cashback_paytype_id:
-            cashback_pt = td.s.query(PayType).get(cashback_paytype_id)
+            cashback_pt = td.s.get(PayType, cashback_paytype_id)
             if not cashback_pt:
                 problem = "Cashback method does not exist"
             elif not cashback_pt.active:
@@ -356,7 +356,7 @@ class Card(payment.PaymentDriver):
             if self._refund_guard:
                 # Check whether there are any payments of this type in
                 # the transaction history
-                trans = td.s.query(Transaction).get(transid)
+                trans = td.s.get(Transaction, transid)
                 if not trans:
                     ui.infopopup(
                         ["Transaction does not exist; cannot refund."],
@@ -407,7 +407,7 @@ class Card(payment.PaymentDriver):
                     "One or more of the total fields has something "
                     "other than a number in it.")
         else:
-            session = td.s.query(Session).get(sessionid)
+            session = td.s.get(Session, sessionid)
             total = zero
             for paytype, amount in session.payment_totals:
                 if paytype == self.paytype:

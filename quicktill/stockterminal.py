@@ -31,8 +31,9 @@ class page(ui.basicpage):
         sl = td.s.query(StockLine)\
                  .filter(StockLine.location.in_(self.locations))\
                  .order_by(StockLine.name)\
-                 .options(joinedload('stockonsale'))\
-                 .options(joinedload('stockonsale.stocktype'))\
+                 .options(joinedload(StockLine.stockonsale))\
+                 .options(joinedload(StockLine.stockonsale)
+                          .joinedload(StockItem.stocktype))\
                  .options(undefer_group('qtys'))\
                  .all()
         f = ui.tableformatter("pl l L r rp")
@@ -77,15 +78,17 @@ class page(ui.basicpage):
                  .outerjoin(StockLine)\
                  .filter(
                      tuple_(StockAnnotation.text, StockAnnotation.time).in_(
-                         select([StockAnnotation.text,
-                                 func.max(StockAnnotation.time)],
-                                StockAnnotation.atype == 'location')
+                         select(StockAnnotation.text,
+                                func.max(StockAnnotation.time))
+                         .where(StockAnnotation.atype == 'location')
                          .group_by(StockAnnotation.text)))\
                  .filter(StockItem.finished == None)\
                  .order_by(StockLine.name != null(), StockAnnotation.time)\
-                 .options(joinedload('stockitem'))\
-                 .options(joinedload('stockitem.stocktype'))\
-                 .options(joinedload('stockitem.stockline'))\
+                 .options(joinedload(StockAnnotation.stockitem))\
+                 .options(joinedload(StockAnnotation.stockitem)
+                          .joinedload(StockItem.stocktype))\
+                 .options(joinedload(StockAnnotation.stockitem)
+                          .joinedload(StockItem.stockline))\
                  .all()
         if not sl:
             return self.drawlines(h)

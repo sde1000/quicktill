@@ -1,4 +1,4 @@
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, DateTime, Date
 from sqlalchemy import LargeBinary
 from sqlalchemy.dialects import postgresql
@@ -16,7 +16,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import select, func, desc, and_
+from sqlalchemy.sql import select, func, desc
 from sqlalchemy import event
 from sqlalchemy import distinct
 from sqlalchemy import inspect
@@ -388,14 +388,17 @@ class Session(Base, Logged):
 
         Returns list of (Department, total) keyed tuples.
         """
-        return object_session(self).\
-            query(Department, func.sum(
-                Transline.items * Transline.amount).label("total")).\
-            select_from(Session).\
-            filter(Session.id == self.id).\
-            join(Transaction, Transline, Department).\
-            order_by(Department.id).\
-            group_by(Department).all()
+        return object_session(self)\
+            .query(Department, func.sum(
+                Transline.items * Transline.amount).label("total"))\
+            .select_from(Session)\
+            .filter(Session.id == self.id)\
+            .join(Transaction)\
+            .join(Transline)\
+            .join(Department)\
+            .order_by(Department.id)\
+            .group_by(Department)\
+            .all()
 
     @property
     def dept_totals_closed(self):
@@ -434,7 +437,8 @@ class Session(Base, Logged):
             .query(User, func.sum(Transline.items), func.sum(
                 Transline.items * Transline.amount))\
             .filter(Transaction.sessionid == self.id)\
-            .join(Transline, Transaction)\
+            .join(Transline)\
+            .join(Transaction)\
             .order_by(desc(func.sum(
                 Transline.items * Transline.amount)))\
             .group_by(User).all()
@@ -442,12 +446,15 @@ class Session(Base, Logged):
     @property
     def payment_totals(self):
         "Transactions broken down by payment type."
-        return object_session(self).\
-            query(PayType, func.sum(Payment.amount)).\
-            select_from(Session).\
-            filter(Session.id == self.id).\
-            join(Transaction, Payment, PayType).\
-            group_by(PayType).all()
+        return object_session(self)\
+            .query(PayType, func.sum(Payment.amount))\
+            .select_from(Session)\
+            .filter(Session.id == self.id)\
+            .join(Transaction)\
+            .join(Payment)\
+            .join(PayType)\
+            .group_by(PayType)\
+            .all()
 
     # total and closed_total are declared after Transline
     # actual_total is declared after SessionTotal
@@ -476,7 +483,10 @@ class Session(Base, Logged):
             .query(VatBand, func.sum(Transline.items * Transline.amount))\
             .select_from(Session)\
             .filter(Session.id == self.id)\
-            .join(Transaction, Transline, Department, VatBand)\
+            .join(Transaction)\
+            .join(Transline)\
+            .join(Department)\
+            .join(VatBand)\
             .order_by(VatBand.band)\
             .group_by(VatBand)\
             .all()
@@ -491,19 +501,19 @@ class Session(Base, Logged):
     @property
     def stock_sold(self):
         "Returns a list of (StockType, quantity) tuples."
-        return object_session(self).\
-            query(StockType, func.sum(StockOut.qty)).\
-            join(Unit).\
-            join(StockItem).\
-            join(StockOut).\
-            join(Transline).\
-            join(Transaction).\
-            filter(Transaction.sessionid == self.id).\
-            options(lazyload(StockType.department)).\
-            options(contains_eager(StockType.unit)).\
-            group_by(StockType, Unit).\
-            order_by(StockType.dept_id, desc(func.sum(StockOut.qty))).\
-            all()
+        return object_session(self)\
+            .query(StockType, func.sum(StockOut.qty))\
+            .join(Unit)\
+            .join(StockItem)\
+            .join(StockOut)\
+            .join(Transline)\
+            .join(Transaction)\
+            .filter(Transaction.sessionid == self.id)\
+            .options(lazyload(StockType.department))\
+            .options(contains_eager(StockType.unit))\
+            .group_by(StockType, Unit)\
+            .order_by(StockType.dept_id, desc(func.sum(StockOut.qty)))\
+            .all()
 
     @classmethod
     def current(cls, session):
@@ -619,8 +629,8 @@ class SessionTotal(Base):
 
 
 Session.actual_total = column_property(
-    select([func.sum(SessionTotal.amount)],
-           whereclause=and_(SessionTotal.sessionid == Session.id))
+    select(func.sum(SessionTotal.amount))
+    .where(SessionTotal.sessionid == Session.id)
     .correlate(Session.__table__)
     .label('actual_total'),
     deferred=True,
@@ -1301,6 +1311,9 @@ class Transline(Base, Logged):
         (not necessarily the same as this line's transaction) that
         voids this line and return it.
 
+        The new transaction line is not automatically placed in the
+        ORM session; the caller must do this if desired.
+
         If this transaction line has already been voided, returns
         None.
         """
@@ -1393,31 +1406,28 @@ DROP FUNCTION check_modify_closed_trans_line();
 # Add "total" column property to the Session class now that
 # transactions and translines are defined
 Session.total = column_property(
-    select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          zero)],
-           whereclause=and_(Transline.transid == Transaction.id,
-                            Transaction.sessionid == Session.id))
+    select(func.coalesce(func.sum(Transline.items * Transline.amount), zero))
+    .where(Transline.transid == Transaction.id,
+           Transaction.sessionid == Session.id)
     .correlate(Session.__table__)
     .label('total'),
     deferred=True,
     doc="Transaction lines total")
 
 Session.closed_total = column_property(
-    select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          zero)],
-           whereclause=and_(Transline.transid == Transaction.id,
-                            Transaction.closed,
-                            Transaction.sessionid == Session.id))
+    select(func.coalesce(func.sum(Transline.items * Transline.amount), zero))
+    .where(Transline.transid == Transaction.id,
+           Transaction.closed,
+           Transaction.sessionid == Session.id)
     .correlate(Session.__table__)
     .label('closed_total'),
     deferred=True,
     doc="Transaction lines total, closed transactions only")
 
 Session.discount_total = column_property(
-    select([func.coalesce(func.sum(Transline.items * Transline.discount),
-                          zero)],
-           whereclause=and_(Transline.transid == Transaction.id,
-                            Transaction.sessionid == Session.id))
+    select(func.coalesce(func.sum(Transline.items * Transline.discount), zero))
+    .where(Transline.transid == Transaction.id,
+           Transaction.sessionid == Session.id)
     .correlate(Session.__table__)
     .label('discount_total'),
     deferred=True,
@@ -1427,36 +1437,34 @@ Session.discount_total = column_property(
 # Add Transline-related column properties to the Transaction class now
 # that transactions and translines are both defined
 Transaction.total = column_property(
-    select([func.coalesce(func.sum(Transline.items * Transline.amount),
-                          zero)],
-           whereclause=and_(Transline.transid == Transaction.id))
+    select(func.coalesce(func.sum(Transline.items * Transline.amount), zero))
+    .where(Transline.transid == Transaction.id)
     .correlate(Transaction.__table__)
     .label('total'),
     deferred=True,
     doc="Transaction lines total")
 
 Transaction.discount_total = column_property(
-    select([func.coalesce(func.sum(Transline.items * Transline.discount),
-                          zero)],
-           whereclause=and_(Transline.transid == Transaction.id))
+    select(func.coalesce(func.sum(Transline.items * Transline.discount), zero))
+    .where(Transline.transid == Transaction.id)
     .correlate(Transaction.__table__)
     .label('discount_total'),
     deferred=True,
     doc="Transaction lines discount total")
 
 Transaction.age = column_property(
-    select([func.coalesce(
+    select(func.coalesce(
         func.current_timestamp() - func.min(Transline.time),
-        func.cast("0", Interval))],
-           whereclause=and_(Transline.transid == Transaction.id))  # noqa: E126
+        func.cast("0", Interval)))
+    .where(Transline.transid == Transaction.id)
     .correlate(Transaction.__table__)
     .label('age'),
     deferred=True,
     doc="Transaction age")
 
 Transaction.payments_total = column_property(
-    select([func.coalesce(func.sum(Payment.amount), zero)],
-           whereclause=and_(Payment.transid == Transaction.id))
+    select(func.coalesce(func.sum(Payment.amount), zero))
+    .where(Payment.transid == Transaction.id)
     .correlate(Transaction.__table__)
     .label('payments_total'),
     deferred=True,
@@ -1928,22 +1936,17 @@ class Delivery(Base, Logged):
         costper = (cost / qty).quantize(penny) if cost else None
         remaining_cost = cost
         items = []
-        # It's necessary to disable autoflush here, otherwise some of
-        # the new StockItem rows may be autoflushed with deliveryid
-        # still set to None if sqlalchemy has to issue a query to load
-        # stocktype
-        with object_session(self).no_autoflush:
-            while qty > 0:
-                thiscost = remaining_cost if qty == 1 else costper
-                remaining_cost = remaining_cost - thiscost if cost else None
-                item = StockItem(stocktype=stocktype,
-                                 description=description,
-                                 size=size,
-                                 costprice=thiscost,
-                                 bestbefore=bestbefore)
-                self.items.append(item)
-                items.append(item)
-                qty -= 1
+        while qty > 0:
+            thiscost = remaining_cost if qty == 1 else costper
+            remaining_cost = remaining_cost - thiscost if cost else None
+            item = StockItem(stocktype=stocktype,
+                             description=description,
+                             size=size,
+                             costprice=thiscost,
+                             bestbefore=bestbefore)
+            self.items.append(item)  # adds item to object_session(self)
+            items.append(item)
+            qty -= 1
         return items
 
 
@@ -2044,9 +2047,9 @@ class StockTake(Base, Logged):
         exc = (StockTakeSnapshot.__table__.insert()
                .from_select(
                    ['stocktake_id', 'stock_id', 'qty'],
-                   select([StockType.stocktake_id,
-                           StockItem.id,
-                           StockItem.remaining])
+                   select(StockType.stocktake_id,
+                          StockItem.id,
+                          StockItem.remaining)
                    .select_from(StockItem.__table__.join(StockType.__table__))
                    .where(StockItem.checked == True)
                    .where(StockType.stocktake_id == self.id)
@@ -2368,8 +2371,8 @@ class StockType(Base, Logged):
             .filter(StockItem.finished == None)\
             .filter(StockItem.stockline == None)\
             .options(undefer_group('qtys'),
-                     joinedload('delivery'),
-                     joinedload('finishcode'))\
+                     joinedload(StockItem.delivery),
+                     joinedload(StockItem.finishcode))\
             .order_by(StockItem.id)\
             .all()
 
@@ -2667,14 +2670,14 @@ class StockItem(Base, Logged):
 
         Returns a list of (RemoveCode, qty) tuples.
         """
-        return object_session(self).\
-            query(RemoveCode, func.sum(StockOut.qty)).\
-            select_from(StockOut.__table__).\
-            join(RemoveCode).\
-            filter(StockOut.stockid == self.id).\
-            group_by(RemoveCode).\
-            order_by(desc(func.sum(StockOut.qty))).\
-            all()
+        return object_session(self)\
+            .query(RemoveCode, func.sum(StockOut.qty))\
+            .select_from(StockOut.__table__)\
+            .join(RemoveCode)\
+            .filter(StockOut.stockid == self.id)\
+            .group_by(RemoveCode)\
+            .order_by(desc(func.sum(StockOut.qty)))\
+            .all()
 
     @property
     def used_units(self):
@@ -2746,28 +2749,25 @@ DROP FUNCTION notify_stockitem_change();
 
 
 StockItem.checked = column_property(
-    select([
+    select(
         func.coalesce(
-            select([Delivery.checked])
+            select(Delivery.checked)
             .correlate(StockItem.__table__)
             .where(Delivery.id == StockItem.deliveryid)
             .label("delivered"),
-            select([StockTake.commit_time != None])
+            select(StockTake.commit_time != None)
             .correlate(StockItem.__table__)
             .where(StockTake.id == StockItem.stocktake_id)
-            .label("found_in_stocktake"))])
+            .label("found_in_stocktake")))
     .label("checked"),
     deferred=True,
     doc="Is this item available for use?")
 
 Delivery.costprice = column_property(
-    select([
-        case(
-            [
-                (func.count(StockItem.costprice) != func.count('*'), None),
-            ],
-            else_=func.sum(StockItem.costprice))
-    ])
+    select(
+        case((func.count(StockItem.costprice) != func.count('*'), None),
+             else_=func.sum(StockItem.costprice))
+    )
     .correlate(Delivery.__table__)
     .where(StockItem.deliveryid == Delivery.id)
     .label('costprice'),
@@ -2873,7 +2873,7 @@ DROP FUNCTION notify_stockout_change();
 # These are added to the StockItem class here because they refer
 # directly to the StockOut class, defined just above.
 StockItem.used = column_property(
-    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    select(func.coalesce(func.sum(StockOut.qty), text("0.0")))
     .correlate(StockItem.__table__)
     .where(StockOut.stockid == StockItem.id)
     .label('used'),
@@ -2882,7 +2882,7 @@ StockItem.used = column_property(
     doc="Amount of this item that has been used for any reason")
 
 StockItem.sold = column_property(
-    select([func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    select(func.coalesce(func.sum(StockOut.qty), text("0.0")))
     .correlate(StockItem.__table__)
     .where(StockOut.stockid == StockItem.id)
     .where(StockOut.removecode_id == "sold")
@@ -2892,8 +2892,7 @@ StockItem.sold = column_property(
     doc="Amount of this item that has been used by being sold")
 
 StockItem.remaining = column_property(
-    select([StockItem.size
-            - func.coalesce(func.sum(StockOut.qty), text("0.0"))])
+    select(StockItem.size - func.coalesce(func.sum(StockOut.qty), text("0.0")))
     .where(StockOut.stockid == StockItem.id)
     .label('remaining'),
     deferred=True,
@@ -2901,7 +2900,7 @@ StockItem.remaining = column_property(
     doc="Amount of this item remaining")
 
 StockItem.firstsale = column_property(
-    select([func.min(StockOut.time)])
+    select(func.min(StockOut.time))
     .correlate(StockItem.__table__)
     .where(StockOut.stockid == StockItem.id)
     .where(StockOut.removecode_id == 'sold')
@@ -2910,7 +2909,7 @@ StockItem.firstsale = column_property(
     doc="Time of first sale of this item")
 
 StockItem.lastsale = column_property(
-    select([func.max(StockOut.time)])
+    select(func.max(StockOut.time))
     .correlate(StockItem.__table__)
     .where(StockOut.stockid == StockItem.id)
     .where(StockOut.removecode_id == 'sold')
@@ -2927,17 +2926,17 @@ StockItem.lastsale = column_property(
 # continuous stock line or the stock type.
 StockType.instock = column_property(
     select(
-        [func.coalesce(
+        func.coalesce(
             func.sum(
                 StockItem.size - select(
-                    [func.coalesce(func.sum(StockOut.qty), text("0.0"))],
-                    StockOut.stockid == StockItem.id,
-                ).as_scalar()),
-            text("0.0"))],
-        and_(StockItem.stocktype_id == StockType.id,
-             StockItem.finished == None,
-             StockItem.stocklineid == None,
-             StockItem.checked == True))
+                    func.coalesce(func.sum(StockOut.qty), text("0.0")))
+                .where(StockOut.stockid == StockItem.id)
+                .scalar_subquery()),
+            text("0.0")))
+    .where(StockItem.stocktype_id == StockType.id,
+           StockItem.finished == None,
+           StockItem.stocklineid == None,
+           StockItem.checked == True)
     .correlate(StockType.__table__)
     .label('instock'),
     deferred=True,
@@ -2950,26 +2949,26 @@ StockType.remaining = StockType.instock
 # on the premises.
 StockType.all_instock = column_property(
     select(
-        [func.coalesce(
+        func.coalesce(
             func.sum(
                 StockItem.size - select(
-                    [func.coalesce(func.sum(StockOut.qty), text("0.0"))],
-                    StockOut.stockid == StockItem.id,
-                ).as_scalar()),
-            text("0.0"))],
-        and_(StockItem.stocktype_id == StockType.id,
-             StockItem.finished == None,
-             StockItem.checked == True))
+                    func.coalesce(func.sum(StockOut.qty), text("0.0")))
+                .where(StockOut.stockid == StockItem.id)
+                .scalar_subquery()),
+            text("0.0")))
+    .where(StockItem.stocktype_id == StockType.id,
+           StockItem.finished == None,
+           StockItem.checked == True)
     .correlate(StockType.__table__)
     .label('all_instock'),
     deferred=True,
     doc="Total amount remaining in stock")
 
 StockType.lastsale = column_property(
-    select([func.max(StockOut.time)],
-           and_(StockItem.stocktype_id == StockType.id,
-                StockOut.stockid == StockItem.id,
-                StockItem.checked == True))
+    select(func.max(StockOut.time))
+    .where(StockItem.stocktype_id == StockType.id,
+           StockOut.stockid == StockItem.id,
+           StockItem.checked == True)
     .correlate(StockType.__table__)
     .label('lastsale'),
     deferred=True,
@@ -3067,12 +3066,10 @@ class StockTakeAdjustment(Base):
 
 
 StockTakeSnapshot.newqty = column_property(
-    select(
-        [StockTakeSnapshot.qty - func.coalesce(
-            func.sum(StockTakeAdjustment.qty),
-            text("0.0"))],
-        and_(StockTakeAdjustment.stocktake_id == StockTakeSnapshot.stocktake_id,
-             StockTakeAdjustment.stock_id == StockTakeSnapshot.stock_id))
+    select(StockTakeSnapshot.qty - func.coalesce(
+        func.sum(StockTakeAdjustment.qty), text("0.0")))
+    .where(StockTakeAdjustment.stocktake_id == StockTakeSnapshot.stocktake_id,
+           StockTakeAdjustment.stock_id == StockTakeSnapshot.stock_id)
     .correlate(StockTakeSnapshot.__table__)
     .label('newqty'),
     deferred=True,
@@ -3136,7 +3133,7 @@ class KeyboardBinding(Base):
         keys can be removed from the keyboard definition if they are
         repurposed.)
         """
-        return object_session(self).query(KeyCap).get(self.keycode)
+        return object_session(self).get(KeyCap, self.keycode)
 
 
 class KeyCap(Base):
@@ -3410,8 +3407,7 @@ class LogEntry(Base):
         if len(keys) != len(pk_types):
             return model, None
         obj = None
-        obj = session.query(model).get(
-            c(k) for c, k in zip(pk_types, keys))
+        obj = session.get(model, tuple(c(k) for c, k in zip(pk_types, keys)))
         return model, obj
 
     def update_refs(self, session):

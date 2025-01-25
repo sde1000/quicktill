@@ -13,36 +13,38 @@ class ModelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create the test database
-        engine = create_engine("postgresql+psycopg2:///postgres")
-        conn = engine.connect()
-        conn.execute('commit')
-        conn.execute(f'create database "{TEST_DATABASE_NAME}"')
-        conn.close()
+        engine = create_engine("postgresql+psycopg2:///postgres", future=True)
+        raw_connection = engine.raw_connection()
+        with raw_connection.cursor() as cursor:
+            cursor.execute('commit')
+            cursor.execute(f'create database "{TEST_DATABASE_NAME}"')
+        raw_connection.close()
         cls._engine = create_engine(
-            f"postgresql+psycopg2:///{TEST_DATABASE_NAME}")
-        models.metadata.bind = cls._engine
-        models.metadata.create_all()
-        cls._sm = sessionmaker()
+            f"postgresql+psycopg2:///{TEST_DATABASE_NAME}", future=True)
+        models.metadata.create_all(cls._engine)
+        cls._sm = sessionmaker(cls._engine, future=True)
 
     @classmethod
     def tearDownClass(cls):
         # Dispose of the connection pool, closing all checked-in connections
         cls._engine.dispose()
         del cls._engine
-        engine = create_engine("postgresql+psycopg2:///postgres")
-        conn = engine.connect()
-        conn.execute('commit')
-        conn.execute(f'drop database "{TEST_DATABASE_NAME}"')
-        conn.close()
+        engine = create_engine("postgresql+psycopg2:///postgres", future=True)
+        raw_connection = engine.raw_connection()
+        with raw_connection.cursor() as cursor:
+            cursor.execute('commit')
+            cursor.execute(f'drop database "{TEST_DATABASE_NAME}"')
+        raw_connection.close()
 
     def setUp(self):
         self.connection = self._engine.connect()
-        self.trans = self.connection.begin()
+        # Start a transaction that will be rolled back by
+        # self.s.close() in tearDown()
+        self.connection.begin()
         self.s = self._sm(bind=self.connection)
 
     def tearDown(self):
         self.s.close()
-        # self.trans.rollback()
         self.connection.close()
 
     def test_add_business(self):
@@ -398,9 +400,9 @@ class ModelTest(unittest.TestCase):
 
     def test_user_permissions(self):
         user = self.template_user_setup()
-        pa = self.s.query(models.Permission).get('frob')
+        pa = self.s.get(models.Permission, 'frob')
         self.assertIsNotNone(pa)
-        pb = self.s.query(models.Permission).get('wibble')
+        pb = self.s.get(models.Permission, 'wibble')
         self.assertIsNotNone(pb)
         permissions = user.permissions
         self.assertEqual(len(permissions), 1)
@@ -409,7 +411,7 @@ class ModelTest(unittest.TestCase):
 
     def test_group_rename(self):
         user = self.template_user_setup()
-        group = self.s.query(models.Group).get('basic-users')
+        group = self.s.get(models.Group, 'basic-users')
         self.assertIsNotNone(group)
         group.id = 'all-users'
         self.s.flush()
@@ -417,7 +419,7 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0].id, 'all-users')
         self.s.flush()
-        pa = self.s.query(models.Permission).get('frob')
+        pa = self.s.get(models.Permission, 'frob')
         self.assertIsNotNone(pa)
         self.assertEqual(pa.groups[0].id, 'all-users')
 
@@ -427,7 +429,7 @@ class ModelTest(unittest.TestCase):
         session.set_meta('test', 'testval')
         self.s.flush()
         # SessionMeta row should exist
-        sm = self.s.query(models.SessionMeta).get((session.id, 'test'))
+        sm = self.s.get(models.SessionMeta, (session.id, 'test'))
         self.assertIsNotNone(sm)
         self.assertEqual(sm.value, 'testval')
         # SessionMeta should be accessible through the collection
@@ -437,7 +439,7 @@ class ModelTest(unittest.TestCase):
         self.s.delete(session)
         self.s.flush()
         # SessionMeta row should not exist
-        sm = self.s.query(models.SessionMeta).get((sid, 'test'))
+        sm = self.s.get(models.SessionMeta, (sid, 'test'))
         self.assertIsNone(sm)
 
     def test_transaction_meta(self):
@@ -450,7 +452,7 @@ class ModelTest(unittest.TestCase):
         self.s.add(trans)
         self.s.flush()
         # TransactionMeta row should exist
-        tm = self.s.query(models.TransactionMeta).get((trans.id, 'test'))
+        tm = self.s.get(models.TransactionMeta, (trans.id, 'test'))
         self.assertIsNotNone(tm)
         self.assertEqual(tm.value, 'testval')
         # TransactionMeta should be accessible through the collection
@@ -459,7 +461,7 @@ class ModelTest(unittest.TestCase):
         self.s.delete(trans)
         self.s.flush()
         # TransactionMeta row should not exist
-        tm = self.s.query(models.TransactionMeta).get((trans.id, 'test'))
+        tm = self.s.get(models.TransactionMeta, (trans.id, 'test'))
         self.assertIsNone(tm)
 
     def test_transline_meta(self):
@@ -475,7 +477,7 @@ class ModelTest(unittest.TestCase):
         self.s.flush()
         tlid = transline.id
         # TranslineMeta row should exist
-        tm = self.s.query(models.TranslineMeta).get((tlid, 'test'))
+        tm = self.s.get(models.TranslineMeta, (tlid, 'test'))
         self.assertIsNotNone(tm)
         self.assertEqual(tm.value, 'testval')
         # TranslineMeta should be accessible through the collection
@@ -484,10 +486,10 @@ class ModelTest(unittest.TestCase):
         self.s.delete(trans)
         self.s.commit()
         # Transline row should not exist
-        tl = self.s.query(models.Transline).get(tlid)
+        tl = self.s.get(models.Transline, tlid)
         self.assertIsNone(tl)
         # TranslineMeta row should not exist
-        tm = self.s.query(models.TranslineMeta).get((tlid, 'test'))
+        tm = self.s.get(models.TranslineMeta, (tlid, 'test'))
         self.assertIsNone(tm)
 
     def test_payment_meta(self):
@@ -503,7 +505,7 @@ class ModelTest(unittest.TestCase):
         payment.set_meta('test', 'testval')
         pid = payment.id
         # PaymentMeta row should exist
-        pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
+        pm = self.s.get(models.PaymentMeta, (pid, 'test'))
         self.assertIsNotNone(pm)
         self.assertEqual(pm.value, 'testval')
         # PaymentMeta should be accessible through the collection
@@ -512,7 +514,7 @@ class ModelTest(unittest.TestCase):
         self.s.delete(trans)
         self.s.commit()
         # PaymentMeta row should not exist
-        pm = self.s.query(models.PaymentMeta).get((pid, 'test'))
+        pm = self.s.get(models.PaymentMeta, (pid, 'test'))
         self.assertIsNone(pm)
 
     def test_nonzero_pending_payment(self):
@@ -523,7 +525,7 @@ class ModelTest(unittest.TestCase):
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"), pending=True,
             paytype=card, text="Pending")
-        self.s.add(payment)
+        self.s.add_all([card, session, trans, payment])
         with self.assertRaises(IntegrityError):
             self.s.commit()
 
@@ -539,7 +541,7 @@ class ModelTest(unittest.TestCase):
         payment2 = models.Payment(
             transaction=trans, amount=Decimal("0.00"), pending=True,
             paytype=card, text="Card")
-        self.s.add_all([payment1, payment2])
+        self.s.add_all([card, session, trans, payment1, payment2])
         self.s.commit()
         # It should not be possible to close the transaction with the
         # pending payment present
@@ -556,7 +558,7 @@ class ModelTest(unittest.TestCase):
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"),
             paytype=card, text="Card")
-        self.s.add(payment)
+        self.s.add_all([card, session, trans, payment])
         self.s.flush()
         trans.closed = True
         with self.assertRaises(IntegrityError):

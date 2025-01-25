@@ -51,7 +51,7 @@ class Secrets:
                                   .with_for_update()\
                                   .one_or_none()
         else:
-            s = td.s.query(Secret).get((self._key_name, secret_name))
+            s = td.s.get(Secret, (self._key_name, secret_name))
         if not s:
             raise SecretDoesNotExist
         if not self._fernet:
@@ -66,7 +66,7 @@ class Secrets:
             raise TypeError("Secret value must be a str()")
         if not self._fernet:
             raise SecretNotAvailable
-        s = td.s.query(Secret).get((self._key_name, secret_name))
+        s = td.s.get(Secret, (self._key_name, secret_name))
         if not s:
             if not create:
                 raise SecretDoesNotExist

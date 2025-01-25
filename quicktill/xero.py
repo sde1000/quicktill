@@ -85,7 +85,7 @@ class XeroSessionHooks(session.SessionHooks):
             return True
 
     def postRecordSessionTakings(self, sessionid):
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         if self.xero.start_date() and self.xero.start_date() > session.date:
             return
         # Commit at this point to ensure the totals are recorded in
@@ -119,7 +119,7 @@ class XeroDeliveryHooks(delivery.DeliveryHooks):
         self.xero = xero
 
     def preConfirm(self, deliveryid):
-        d = td.s.query(Delivery).get(deliveryid)
+        d = td.s.get(Delivery, deliveryid)
         if self.xero.start_date() and self.xero.start_date() > d.date:
             return
         if not d.supplier.accinfo:
@@ -129,7 +129,7 @@ class XeroDeliveryHooks(delivery.DeliveryHooks):
             return True
 
     def confirmed(self, deliveryid):
-        d = td.s.query(Delivery).get(deliveryid)
+        d = td.s.get(Delivery, deliveryid)
         if self.xero.start_date() and self.xero.start_date() > d.date:
             ui.toast("Not sending this delivery to Xero - delivery is dated "
                      "before the Xero start date")
@@ -425,7 +425,7 @@ class XeroIntegration:
         log.info("Sending invoice and payments for %d", sessionid)
         iid, negative_totals = self._create_invoice_for_session(
             sessionid, approve=self.auto_approve_invoice())
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         session.accinfo = iid
         td.s.commit()
         if self.auto_approve_invoice() and not negative_totals:
@@ -441,7 +441,7 @@ class XeroIntegration:
         ui.infopopup([f"Invoice ID is {iid}"])
 
     def _debug_send_payments(self, sessionid):
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         if session.accinfo:
             ui.toast(f"Sending payments for session {sessionid}")
             self._add_payments_for_session(sessionid, session.accinfo)
@@ -480,7 +480,7 @@ class XeroIntegration:
         whether the invoice has already been created, or record the
         GUID against the session.
         """
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         if not session:
             raise XeroError(f"Session {sessionid} does not exist")
         if not session.endtime:
@@ -605,7 +605,7 @@ class XeroIntegration:
         not check the invoice state, or whether payments have already
         been added.
         """
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         if not session:
             raise XeroError(f"Session {sessionid} does not exist")
         if not session.endtime:
@@ -650,7 +650,7 @@ class XeroIntegration:
                 f"Response root tag '{root.tag}' was not 'Response'")
 
     def _create_bill_for_delivery(self, deliveryid):
-        d = td.s.query(Delivery).get(deliveryid)
+        d = td.s.get(Delivery, deliveryid)
         if not d:
             raise XeroError(f"Delivery {deliveryid} does not exist")
         if not d.supplier.accinfo:
@@ -724,7 +724,7 @@ class XeroIntegration:
         return invid
 
     def _send_delivery(self, deliveryid):
-        d = td.s.query(Delivery).get(deliveryid)
+        d = td.s.get(Delivery, deliveryid)
         if not d.supplier.accinfo:
             ui.infopopup(
                 [f"Couldn't send delivery {deliveryid} to Xero; supplier "
@@ -738,7 +738,7 @@ class XeroIntegration:
             ui.toast("Delivery sent to Xero as draft bill")
 
     def _link_supplier_with_contact(self, supplierid):
-        s = td.s.query(Supplier).get(supplierid)
+        s = td.s.get(Supplier, supplierid)
         # Fetch possible contacts
         w = f"Name.ToLower().Contains(\"{s.name.lower()}\")"
         r = self.xero_session().get(
@@ -778,7 +778,7 @@ class XeroIntegration:
             f"'{s.name}'")
 
     def _finish_link_supplier_with_contact(self, supplierid, name, contactid):
-        s = td.s.query(Supplier).get(supplierid)
+        s = td.s.get(Supplier, supplierid)
         if not s:
             ui.infopopup([f"Supplier {supplierid} not found."],
                          title="Error")
@@ -796,7 +796,7 @@ class XeroIntegration:
                      dismiss=keyboard.K_CASH)
 
     def _unlink_supplier(self, supplierid):
-        s = td.s.query(Supplier).get(supplierid)
+        s = td.s.get(Supplier, supplierid)
         s.accinfo = None
         ui.infopopup([f"{s.name} unlinked from Xero"],
                      title="Unlink supplier from Xero contact",

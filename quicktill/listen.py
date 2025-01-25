@@ -66,18 +66,19 @@ class db_listener:
 
         to_add = wanted - self._db_listening
         to_remove = self._db_listening - wanted
-        for channel in to_add:
-            log.debug("listen for %s", channel)
-            self.connection.execute(
-                text(f"LISTEN {channel};")
-                .execution_options(autocommit=True))
-            self._db_listening.add(channel)
-        for channel in to_remove:
-            log.debug("stop listening for %s", channel)
-            self.connection.execute(
-                text(f"UNLISTEN {channel};")
-                .execution_options(autocommit=True))
-            self._db_listening.discard(channel)
+        with self.connection.begin():
+            for channel in to_add:
+                log.debug("listen for %s", channel)
+                self.connection.execute(
+                    text(f"LISTEN {channel};")
+                    .execution_options(autocommit=True))
+                self._db_listening.add(channel)
+            for channel in to_remove:
+                log.debug("stop listening for %s", channel)
+                self.connection.execute(
+                    text(f"UNLISTEN {channel};")
+                    .execution_options(autocommit=True))
+                self._db_listening.discard(channel)
         if not self._db_listening:
             # We're not listening for anything any more - close the connection
             log.debug("close database connection")

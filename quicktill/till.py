@@ -35,6 +35,8 @@ from . import barcode
 from .version import version
 from .models import Session, PayType, Business, Register, zero
 import subprocess
+from sqlalchemy import Date
+from sqlalchemy.sql.expression import func, cast
 from sqlalchemy.orm import joinedload
 
 # The following imports are to ensure subcommands are loaded
@@ -362,10 +364,13 @@ class totals(cmdline.command):
     @staticmethod
     def run(args):
         with td.orm_session():
-            sessions = td.s.query(Session)\
-                           .filter(Session.endtime != None)\
-                           .options(joinedload('actual_totals'))\
-                           .order_by(Session.id)[-args.days:]
+            sessions = \
+                td.s.query(Session)\
+                    .filter(Session.endtime != None)\
+                    .filter(cast(func.now(), Date) - Session.date <= args.days)\
+                    .options(joinedload(Session.actual_totals))\
+                    .order_by(Session.id)\
+                    .all()
             businesses = td.s.query(Business).order_by(Business.id).all()
             paytypes = td.s.query(PayType)\
                            .order_by(PayType.order, PayType.paytype)\

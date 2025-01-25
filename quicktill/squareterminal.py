@@ -535,9 +535,8 @@ class _SquarePaymentProgress(ui.basicpopup):
         if not self.register.entry_noninteractive():
             self.dismiss()
             return
-        p = td.s.query(Payment)\
-                .options(joinedload('meta'))\
-                .get(self.payment_id)
+        p = td.s.get(Payment, self.payment_id,
+                     options=[joinedload(Payment.meta)])
         details = json.loads(p.meta[checkout_details_key].value)
         if checkout_id_key in p.meta:
             # The checkout has been created; we need to read it for
@@ -741,14 +740,12 @@ class _SquareRefundProgress(ui.basicpopup):
         if not self.register.entry_noninteractive():
             self.dismiss()
             return
-        p = td.s.query(Payment)\
-                .options(joinedload('meta'))\
-                .get(self.payment_id)
+        p = td.s.get(Payment, self.payment_id,
+                     options=[joinedload(Payment.meta)])
         failed = f"{p.paytype.description} refund failed"
         details = json.loads(p.meta[refund_details_key].value)
-        op = td.s.query(Payment)\
-                 .options(joinedload('meta'))\
-                 .get(details["till_payment_id"])
+        op = td.s.get(Payment, details["till_payment_id"],
+                      options=[joinedload(Payment.meta)])
         # Sanity checks
         if not op or op.paytype != p.paytype \
            or payment_id_key not in op.meta \
@@ -838,7 +835,7 @@ class _SquareRefundProgress(ui.basicpopup):
 
 
 def _load_driver(paytype):
-    d = td.s.query(PayType).get(paytype)
+    d = td.s.get(PayType, paytype)
     if not d:
         ui.infopopup([f"Payment type '{paytype}' not found"],
                      title="Error")
@@ -1423,7 +1420,7 @@ class SquareTerminal(payment.PaymentDriver):
                 title="Refund too large")
             return
 
-        trans = td.s.query(Transaction).get(transid)
+        trans = td.s.get(Transaction, transid)
         related = trans.related_transaction_ids()
 
         # Filter payments by age: if over a year old they can't be
@@ -1431,7 +1428,7 @@ class SquareTerminal(payment.PaymentDriver):
         oldest_refundable = datetime.date.today()\
             - datetime.timedelta(days=364)
         payments = td.s.query(Payment)\
-                       .options(joinedload('meta'))\
+                       .options(joinedload(Payment.meta))\
                        .filter(Payment.paytype == self.paytype)\
                        .filter(Payment.transid.in_(related))\
                        .filter(Payment.amount > zero)\
@@ -1541,7 +1538,7 @@ class SquareTerminal(payment.PaymentDriver):
     def _create_pending_payment(
             paytype, register, transid, outstanding, metadata):
         # Load the payment method and driver
-        pm = td.s.query(PayType).get(paytype)
+        pm = td.s.get(PayType, paytype)
         if not pm:
             ui.infopopup([f"Payment method {paytype} has been deleted!"],
                          title="Error")
@@ -1591,7 +1588,7 @@ class SquareTerminal(payment.PaymentDriver):
                          title="Error")
 
     def cancel_payment(self, register, pline_instance):
-        p = td.s.query(Payment).get(pline_instance.payment_id)
+        p = td.s.get(Payment, pline_instance.payment_id)
         if p.pending is False and p.amount == zero:
             register.cancelpayment(pline_instance)
         else:
@@ -1644,7 +1641,7 @@ class SquareTerminal(payment.PaymentDriver):
         # We start by bulk fetching payments and refunds for the time
         # frame covered by the session. Any payments that happen to
         # fall outside this time frame can be fetched by ID.
-        session = td.s.query(Session).get(sessionid)
+        session = td.s.get(Session, sessionid)
         with closing(self.api_session()) as s:
             sqpayments = {
                 sp.id: sp for sp in s.list_payments(
@@ -1657,7 +1654,7 @@ class SquareTerminal(payment.PaymentDriver):
                            .join(Transaction)\
                            .filter(Transaction.sessionid == sessionid)\
                            .filter(Payment.paytype == self.paytype)\
-                           .options(joinedload('meta'))\
+                           .options(joinedload(Payment.meta))\
                            .all()
             amount = zero
             fees = zero
@@ -1894,7 +1891,7 @@ class square_search_popup(ui.dismisspopup):
                              title="Error")
                 return
         self.dismiss()
-        paytype = td.s.query(PayType).get(self._paytype_id)
+        paytype = td.s.get(PayType, self._paytype_id)
         try:
             days = int(self.daysfield.f)
         except Exception:
@@ -1902,7 +1899,7 @@ class square_search_popup(ui.dismisspopup):
         after = datetime.date.today() - datetime.timedelta(days=days)
 
         q = td.s.query(Payment)\
-                .options(joinedload('meta'))\
+                .options(joinedload(Payment.meta))\
                 .join(Transaction)\
                 .join(Session)\
                 .filter(Payment.paytype == paytype)\

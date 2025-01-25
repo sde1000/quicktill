@@ -8,6 +8,7 @@ from sqlalchemy import inspect
 from sqlalchemy.sql import desc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import undefer
+from quicktill.models import StockType
 from quicktill.models import StockTake
 from quicktill.models import StockItem
 from quicktill.models import StockTakeSnapshot
@@ -31,21 +32,21 @@ def stocktakelist(request, info):
     pending = td.s.query(StockTake)\
                   .filter(StockTake.start_time == None)\
                   .order_by(StockTake.id)\
-                  .options(joinedload('scope'))\
+                  .options(joinedload(StockTake.scope))\
                   .all()
 
     in_progress = td.s.query(StockTake)\
                       .filter(StockTake.start_time != None)\
                       .filter(StockTake.commit_time == None)\
                       .order_by(StockTake.start_time)\
-                      .options(joinedload('scope'))\
+                      .options(joinedload(StockTake.scope))\
                       .all()
 
     # XXX going to need a pager on this
     completed = td.s.query(StockTake)\
                     .filter(StockTake.commit_time != None)\
                     .order_by(desc(StockTake.commit_time))\
-                    .options(joinedload('snapshots'))\
+                    .options(joinedload(StockTake.snapshots))\
                     .all()
 
     return ('stocktakes.html', {
@@ -87,7 +88,7 @@ def create_stocktake(request, info):
 
 @tillweb_view
 def stocktake(request, info, stocktake_id):
-    stocktake = td.s.query(StockTake).get(stocktake_id)
+    stocktake = td.s.get(StockTake, stocktake_id)
     if not stocktake:
         raise Http404
     if stocktake.state == "pending":
@@ -97,9 +98,11 @@ def stocktake(request, info, stocktake_id):
 
     snapshots = td.s.query(StockTakeSnapshot)\
         .filter(StockTakeSnapshot.stocktake == stocktake)\
-        .options(undefer('newqty'))\
-        .options(joinedload('adjustments').joinedload('removecode'))\
-        .options(joinedload('stockitem').joinedload('stocktype'))\
+        .options(undefer(StockTakeSnapshot.newqty))\
+        .options(joinedload(StockTakeSnapshot.adjustments)
+                 .joinedload(StockTakeAdjustment.removecode))\
+        .options(joinedload(StockTakeSnapshot.stockitem)
+                 .joinedload(StockItem.stocktype))\
         .order_by(StockTakeSnapshot.stock_id)\
         .all()
 
@@ -217,11 +220,13 @@ def stocktake_in_progress(request, info, stocktake):
 
     snapshots = td.s.query(StockTakeSnapshot)\
         .filter(StockTakeSnapshot.stocktake == stocktake)\
-        .options(undefer('newqty'),
-                 joinedload('adjustments'),
-                 joinedload('stockitem').joinedload('stocktype')
-                 .joinedload('unit'),
-                 joinedload('stockitem').joinedload('stockline'))\
+        .options(undefer(StockTakeSnapshot.newqty),
+                 joinedload(StockTakeSnapshot.adjustments),
+                 joinedload(StockTakeSnapshot.stockitem)
+                 .joinedload(StockItem.stocktype)
+                 .joinedload(StockType.unit),
+                 joinedload(StockTakeSnapshot.stockitem)
+                 .joinedload(StockItem.stockline))\
         .order_by(StockTakeSnapshot.stock_id)\
         .all()
 
@@ -245,7 +250,7 @@ def stocktake_in_progress(request, info, stocktake):
         if form.is_valid():
             new_stockid = form.cleaned_data['stockid']
             if new_stockid:
-                si = td.s.query(StockItem).get(new_stockid)
+                si = td.s.get(StockItem, new_stockid)
                 if si:
                     if si.stocktype.stocktake == stocktake:
                         # Take snapshot of item
@@ -329,9 +334,9 @@ def stocktake_in_progress(request, info, stocktake):
                     st_adjusting = True
                     with td.s.no_autoflush:
                         adjustment = (
-                            td.s.query(StockTakeAdjustment)
-                            .get((stocktake.id, ss.stock_id,
-                                  st_adjustreason.id))
+                            td.s.get(StockTakeAdjustment,
+                                     (stocktake.id, ss.stock_id,
+                                      st_adjustreason.id))
                             or StockTakeAdjustment(
                                 snapshot=ss, removecode=st_adjustreason,
                                 qty=Decimal(0))
@@ -363,9 +368,9 @@ def stocktake_in_progress(request, info, stocktake):
                     ss.checked = True
                     with td.s.no_autoflush:
                         adjustment = (
-                            td.s.query(StockTakeAdjustment)
-                            .get((stocktake.id, ss.stock_id,
-                                  ss_adjustreason.id))
+                            td.s.get(StockTakeAdjustment,
+                                     (stocktake.id, ss.stock_id,
+                                      ss_adjustreason.id))
                             or StockTakeAdjustment(
                                 snapshot=ss, removecode=ss_adjustreason,
                                 qty=Decimal(0))

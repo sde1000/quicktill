@@ -207,7 +207,7 @@ def _check_permissions():
     # new permission.
     td.s.query(Permission).all()
     for p, d in action_descriptions.items():
-        dbperm = td.s.query(Permission).get(p)
+        dbperm = td.s.get(Permission, p)
         if dbperm:
             if dbperm.description != d:
                 dbperm.description = d
@@ -217,7 +217,7 @@ def _check_permissions():
         accumulated_permissions = set()
         for group, description, permissions in default_groups.groups:
             accumulated_permissions.update(permissions)
-            dbgroup = td.s.query(Group).get(group)
+            dbgroup = td.s.get(Group, group)
             if not dbgroup:
                 dbgroup = Group(id=group, description=description)
                 td.s.add(dbgroup)
@@ -321,7 +321,7 @@ def load_user(userid):
     if not userid:
         return
     _check_permissions()
-    dbuser = td.s.query(User).get(userid)
+    dbuser = td.s.get(User, userid)
     if not dbuser or not dbuser.enabled:
         return
     return database_user(dbuser)
@@ -409,10 +409,9 @@ def should_force_set_password(uid):
 
 def user_from_token(t):
     _check_permissions()
-    dbt = td.s.query(UserToken)\
-              .options(joinedload('user'),
-                       joinedload('user.permissions'))\
-              .get(t.usertoken)
+    dbt = td.s.get(UserToken, t.usertoken, options=[
+        joinedload(UserToken.user),
+        joinedload(UserToken.user).joinedload(User.permissions)])
     if not dbt:
         ui.toast(f"User token '{t.usertoken}' not recognised.")
         return
@@ -623,7 +622,7 @@ class tokenfield(ui.ignore_hotkeys, ui.valuefield):
             self.f = None
             self.message = self.emptymessage
         else:
-            dbt = td.s.query(UserToken).get(t)
+            dbt = td.s.get(UserToken, t)
             if dbt and dbt.user and not self._allow_inuse:
                 self.message = f"In use by {dbt.user.fullname}"
                 self.f = None
@@ -796,7 +795,7 @@ class manage_user_tokens(ui.dismisspopup):
     """
     def __init__(self, userid):
         self.userid = userid
-        user = td.s.query(User).get(userid)
+        user = td.s.get(User, userid)
         super().__init__(15, 60, title=f"Manage tokens for {user.fullname}",
                          colour=ui.colour_input)
         self.win.drawstr(2, 2, 13, "Token: ", align=">")
@@ -821,7 +820,7 @@ class manage_user_tokens(ui.dismisspopup):
         self.tokenfield.focus()
 
     def reload_tokens(self):
-        user = td.s.query(User).get(self.userid)
+        user = td.s.get(User, self.userid)
         f = ui.tableformatter(' l l l ')
         h = f("Token", "Description", "Last used")
         tl = [f(x.token, x.description, ui.formattime(x.last_seen) or "Never",
@@ -836,7 +835,7 @@ class manage_user_tokens(ui.dismisspopup):
             return
         line = self.tokens.dl.pop(self.tokens.cursor)
         self.tokens.redraw()
-        token = td.s.query(UserToken).get(line.userdata)
+        token = td.s.get(UserToken, line.userdata)
         token.user = None
         td.s.flush()
 
@@ -847,12 +846,13 @@ class manage_user_tokens(ui.dismisspopup):
                           "before pressing the Add Token button."],
                          title="Error")
             return
-        user = td.s.query(User).get(self.userid)
-        token = td.s.query(UserToken).get(t)
+        user = td.s.get(User, self.userid)
+        token = td.s.get(UserToken, t)
         if not token:
             token = UserToken(token=t)
         token.last_seen = None
-        user.tokens.append(token)
+        user.tokens.append(token)  # adds token to ORM session if not present
+        td.s.flush()
         self.tokenfield.set(None)
         self.description.set("")
         self.reload_tokens()
@@ -861,7 +861,7 @@ class manage_user_tokens(ui.dismisspopup):
     def tokenfield_set(self):
         t = self.tokenfield.f
         if t:
-            dbt = td.s.query(UserToken).get(t)
+            dbt = td.s.get(UserToken, t)
             if dbt:
                 self.description.set(dbt.description)
             else:
@@ -871,7 +871,7 @@ class manage_user_tokens(ui.dismisspopup):
 
     def description_set(self):
         if self.tokenfield.f:
-            dbt = td.s.query(UserToken).get(self.tokenfield.f)
+            dbt = td.s.get(UserToken, self.tokenfield.f)
             if not dbt:
                 dbt = UserToken(token=self.tokenfield.f)
                 td.s.add(dbt)
@@ -879,8 +879,8 @@ class manage_user_tokens(ui.dismisspopup):
 
 
 def do_add_group(userid, group):
-    u = td.s.query(User).get(userid)
-    g = td.s.query(Group).get(group)
+    u = td.s.get(User, userid)
+    g = td.s.get(Group, group)
     u.groups.append(g)
     log(f"Granted permission group {g.logref} to {u.logref}")
     td.s.flush()
@@ -893,7 +893,7 @@ def addgroup(userid):
     """
     gl = td.s.query(Group).order_by(Group.id).all()
     # Remove permissions the user already has
-    u = td.s.query(User).get(userid)
+    u = td.s.get(User, userid)
     existing = [g.id for g in u.groups]
     gl = [g for g in gl if g not in existing]
     f = ui.tableformatter(' l l ')
@@ -908,7 +908,7 @@ class edituser(permission_checked, ui.basicpopup):
 
     def __init__(self, userid):
         self.userid = userid
-        u = td.s.query(User).get(userid)
+        u = td.s.get(User, userid)
         if u.superuser and not ui.current_user().is_superuser:
             ui.infopopup(
                 [f"You can't edit {u.fullname} because that user has the "
@@ -946,18 +946,18 @@ class edituser(permission_checked, ui.basicpopup):
 
     def remove_superuser(self):
         self.dismiss()
-        u = td.s.query(User).get(self.userid)
+        u = td.s.get(User, self.userid)
         u.superuser = False
         log(f"Removed superuser status from {u.logref}")
 
     def removepermission(self, group):
-        u = td.s.query(User).get(self.userid)
-        g = td.s.query(Group).get(group)
+        u = td.s.get(User, self.userid)
+        g = td.s.get(Group, group)
         u.groups.remove(g)
         log(f"Removed permission group {g.logref} from {u.logref}")
 
     def editpermissions(self):
-        u = td.s.query(User).get(self.userid)
+        u = td.s.get(User, self.userid)
         f = ui.tableformatter(' l l ')
         pl = [(f(g.id, g.description),
                self.removepermission, (g.id,)) for g in u.groups]
@@ -975,7 +975,7 @@ class edituser(permission_checked, ui.basicpopup):
                 ["You can't leave the full name or short name blank."],
                 title="Error")
             return
-        u = td.s.query(User).get(self.userid)
+        u = td.s.get(User, self.userid)
         u.fullname = fn
         u.shortname = sn
         u.webuser = wn if len(wn) > 0 else None
@@ -984,7 +984,7 @@ class edituser(permission_checked, ui.basicpopup):
         # Update current_user().dbuser to ensure it is in the database
         # session; it may be a detached instance in some circumstances
         cu = ui.current_user()
-        cu.dbuser = td.s.query(User).get(cu.userid)
+        cu.dbuser = td.s.get(User, cu.userid)
         log(f"Updated details for user {u.logref}")
 
 
@@ -997,7 +997,7 @@ def display_info(userid=None):
             ui.infopopup(["There is no current user."], title="User info",
                          colour=ui.colour_info)
     else:
-        u = database_user(td.s.query(User).get(userid))
+        u = database_user(td.s.get(User, userid))
         u.display_info()
 
 
@@ -1013,7 +1013,7 @@ def usersmenu():
 
 
 def reactivate_user(userid):
-    u = td.s.query(User).get(userid)
+    u = td.s.get(User, userid)
     u.enabled = True
     td.s.commit()
     ui.toast(f'User "{u.fullname}" reactivated.')
@@ -1100,7 +1100,7 @@ class managetokens(permission_checked, ui.dismisspopup):
     def tokenfield_set(self):
         t = self.tokenfield.f
         if t:
-            dbt = td.s.query(UserToken).get(t)
+            dbt = td.s.get(UserToken, t)
             if dbt and dbt.user:
                 self.description.set(dbt.description)
                 self.user.set(dbt.user.fullname)
@@ -1132,7 +1132,7 @@ class managetokens(permission_checked, ui.dismisspopup):
 
     def description_set(self):
         if self.tokenfield.f:
-            dbt = td.s.query(UserToken).get(self.tokenfield.f)
+            dbt = td.s.get(UserToken, self.tokenfield.f)
             if not dbt:
                 dbt = UserToken(token=self.tokenfield.f)
                 td.s.add(dbt)
@@ -1148,7 +1148,7 @@ class managetokens(permission_checked, ui.dismisspopup):
                 self.forget()
 
     def assign(self):
-        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        dbt = td.s.get(UserToken, self.tokenfield.f)
         users = td.s.query(User)\
                     .filter(User.enabled == True)
         if dbt:
@@ -1160,23 +1160,23 @@ class managetokens(permission_checked, ui.dismisspopup):
                 "to assign this token to")
 
     def unassign(self):
-        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        dbt = td.s.get(UserToken, self.tokenfield.f)
         if dbt:
             dbt.user = None
         self.tokenfield_set()
 
     def forget(self):
-        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        dbt = td.s.get(UserToken, self.tokenfield.f)
         if dbt:
             td.s.delete(dbt)
         self.tokenfield.set("")
 
     def finish_assign(self, userid):
-        dbt = td.s.query(UserToken).get(self.tokenfield.f)
+        dbt = td.s.get(UserToken, self.tokenfield.f)
         if not dbt:
             dbt = UserToken(token=self.tokenfield.f,
                             description=self.description.f)
-        user = td.s.query(User).get(userid)
+        user = td.s.get(User, userid)
         dbt.user = user
         td.s.add(dbt)
         self.tokenfield_set()

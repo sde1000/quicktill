@@ -191,7 +191,7 @@ class choose_stocktype(ui.dismisspopup):
         ui.menu(lines, blurb=header, title="Choose existing stock type")
 
     def existing_stocktype_chosen(self, stocktype):
-        st = td.s.query(StockType).get(stocktype)
+        st = td.s.get(StockType, stocktype)
         self.fill_fields(st)
         self.confirmbutton.focus()
 
@@ -253,7 +253,7 @@ class choose_stocktype(ui.dismisspopup):
             ui.infopopup([problem], title="Error")
         else:
             self.dismiss()
-            st = td.s.query(StockType).get(self.st)
+            st = td.s.get(StockType, self.st)
             self.update_model(st)
             user.log(f"Updated stock type {st.logref}")
 
@@ -323,7 +323,7 @@ class reprice_stocktype(user.permission_checked, ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        st = td.s.query(StockType).get(self.st_id)
+        st = td.s.get(StockType, self.st_id)
         oldprice = st.saleprice
         st.saleprice = Decimal(self.salefield.f).quantize(penny)
         if st.saleprice != oldprice:

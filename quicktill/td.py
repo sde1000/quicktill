@@ -99,7 +99,7 @@ class orm_session:
 
 def stocktype_completemanufacturer(m):
     result = s.execute(
-        select([StockType.manufacturer])
+        select(StockType.manufacturer)
         .where(StockType.manufacturer.ilike(m + '%'))
         .group_by(StockType.manufacturer)
         .order_by(func.length(StockType.manufacturer), StockType.manufacturer)
@@ -109,7 +109,7 @@ def stocktype_completemanufacturer(m):
 
 def stocktype_completename(m, n):
     result = s.execute(
-        select([StockType.name])
+        select(StockType.name)
         .where(StockType.manufacturer == m)
         .where(StockType.name.ilike(n + '%'))
         .group_by(StockType.name)
@@ -123,25 +123,23 @@ def stocktype_completename(m, n):
 def stock_checkpullthru(stockid, maxtime):
     """Did this stock item require pulling through?"""
     return s.execute(
-        select([func.now() - func.max(StockOut.time) > maxtime])
+        select(func.now() - func.max(StockOut.time) > maxtime)
         .where(StockOut.stockid == stockid)
         .where(StockOut.removecode_id.in_(['sold', 'pullthru']))
     ).scalar()
 
 
 def foodorder_reset():
-    # XXX SQLAlchemy 2.0 will require engine to be passed explicitly
-    foodorder_seq.drop()
-    foodorder_seq.create()
+    foodorder_seq.drop(engine)
+    foodorder_seq.create(engine)
 
 
 def foodorder_ticket():
-    return s.execute(select([foodorder_seq.next_value()])).scalar()
+    return s.execute(select(foodorder_seq.next_value())).scalar()
 
 
 def db_version():
-    # XXX needs update for SQLAlchemy 2.0
-    return s.execute("select version()").scalar()
+    return s.execute(select(func.version())).scalar()
 
 
 # This is "pessimistic disconnect handling" as described in the
@@ -197,11 +195,8 @@ def init(database):
     log.info("init database \'%s\'", database)
     database = parse_database_name(database)
     log.info("sqlalchemy engine URL \'%s\'", database)
-    engine = create_engine(database)
-    # XXX no longer supported in SQLAlchemy 2.0; pass engine to
-    # create_all() etc. instead
-    models.metadata.bind = engine  # for DDL, eg. to recreate foodorder_seq
-    session_factory = sessionmaker(bind=engine)
+    engine = create_engine(database, future=True)
+    session_factory = sessionmaker(bind=engine, future=True)
     s = scoped_session(session_factory)
 
 
@@ -210,10 +205,10 @@ def create_tables():
 
     NB does not update tables that don't match our model!
     """
-    models.metadata.create_all()
+    models.metadata.create_all(engine)
 
 
 def remove_tables():
     """Removes all our database tables.
     """
-    models.metadata.drop_all()
+    models.metadata.drop_all(engine)
