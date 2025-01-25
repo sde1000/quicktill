@@ -566,9 +566,13 @@ class password_login_prompt(ui.dismisspopup):
         self.win.drawstr(6, 2, 12, "Password: ", align='>')
         self.win.drawstr(5, 19, 6, "Name: ", align=">")
         self.uname = ui.editfield(5, 25, 9, readonly=True)
+        uid_keymap = {
+            keyboard.K_CASH: (self.check_uid, None),
+            keyboard.K_DOWN: (self.check_uid, None),
+            keyboard.K_TAB: (self.check_uid, None),
+        }
         self.uid = ui.editfield(5, 14, 5, validate=ui.validate_positive_int,
-                                keymap={keyboard.K_CASH:
-                                        (self.check_uid, None)})
+                                keymap=uid_keymap)
         password_keymap = {
             keyboard.K_CASH: (self.check_password, None),
             keyboard.K_UP: (self.clear, None),
@@ -577,7 +581,6 @@ class password_login_prompt(ui.dismisspopup):
         }
         self.password = ui.editfield(6, 14, 20, keymap=password_keymap,
                                      hidden=True)
-        ui.map_fieldlist([self.uid, self.password])
         self.uid.focus()
 
     def check_uid(self):
