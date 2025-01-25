@@ -535,8 +535,9 @@ class password_login_prompt(ui.dismisspopup):
                                         (self.check_uid, None)})
         password_keymap = {
             keyboard.K_CASH: (self.check_password, None),
-            keyboard.K_UP: (self.clear_uid, None),
-            keyboard.K_CLEAR: (self.clear_uid, None),
+            keyboard.K_UP: (self.clear, None),
+            keyboard.K_CLEAR: (self.clear, None),
+            keyboard.K_TAB: (self.clear, None),
         }
         self.password = ui.editfield(6, 14, 20, keymap=password_keymap,
                                      hidden=True)
@@ -560,10 +561,11 @@ class password_login_prompt(ui.dismisspopup):
         self.uname.set(self.dbu.shortname)
         self.password.focus()
 
-    def clear_uid(self):
+    def clear(self):
         self.dbu = None
         self.uname.clear()
         self.uid.clear()
+        self.password.clear()
         self.uid.focus()
 
     def check_password(self):
