@@ -518,14 +518,53 @@ class password_login_prompt(ui.dismisspopup):
     This has slightly different comparison logic to the password_prompt class.
     """
     def __init__(self, cb):
-        super().__init__(8, 40, title="Log On",
-                         colour=ui.colour_input)
+        super().__init__(10, 40, title="Log On",
+                         colour=ui.colour_input,
+                         dismiss=keyboard.K_CANCEL)
         self.cb = cb
         self.win.drawstr(2, 2, 60,
-                         'Enter your password then press CASH / ENTER.')
-        self.password = ui.editfield(5, 2, 36, keymap={
-            keyboard.K_CASH: (self.check_password, None)}, hidden=True)
+                         'Enter your user ID and password then press')
+        self.win.drawstr(3, 2, 60,
+                         'CASH / ENTER.')
+        self.win.drawstr(5, 2, 12, "User ID: ", align='>')
+        self.win.drawstr(6, 2, 12, "Password: ", align='>')
+        self.win.drawstr(5, 19, 6, "Name: ", align=">")
+        self.uname = ui.editfield(5, 25, 9, readonly=True)
+        self.uid = ui.editfield(5, 14, 5, validate=ui.validate_positive_int,
+                                keymap={keyboard.K_CASH:
+                                        (self.check_uid, None)})
+        password_keymap = {
+            keyboard.K_CASH: (self.check_password, None),
+            keyboard.K_UP: (self.clear_uid, None),
+            keyboard.K_CLEAR: (self.clear_uid, None),
+        }
+        self.password = ui.editfield(6, 14, 20, keymap=password_keymap,
+                                     hidden=True)
+        ui.map_fieldlist([self.uid, self.password])
+        self.uid.focus()
+        self.dbu = None
+
+    def check_uid(self):
+        if not self.uid.f:
+            ui.infopopup(["You must provide a user ID."], title="Error")
+            return
+
+        self.dbu = td.s.query(User).where(User.id == self.uid.f).first()
+
+        if not self.dbu:
+            ui.infopopup([f"The user with ID {self.uid.f} does not exist."],
+                         title="Error")
+            self.uid.clear()
+            return
+
+        self.uname.set(self.dbu.shortname)
         self.password.focus()
+
+    def clear_uid(self):
+        self.dbu = None
+        self.uname.clear()
+        self.uid.clear()
+        self.uid.focus()
 
     def check_password(self):
         if not self.password.f:
