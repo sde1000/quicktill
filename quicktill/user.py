@@ -52,13 +52,12 @@ require_unique_passwords = config.BooleanConfigItem(
                  'This setting only applies to new passwords.')
 )
 
-allow_password_only_login = config.BooleanConfigItem(
-    'user:allow_password_only_login', False,
-    display_name='Users can log in with only passwords',
-    description=('Allow users to log in with only a password. If this is '
-                 'enabled, you should also enable the "Passwords must be '
-                 'unique" setting. Once enabled, you can place the '
-                 'K_PASS_LOGON key on the keyboard.')
+allow_password_login = config.BooleanConfigItem(
+    'user:allow_password_login', False,
+    display_name='Users can log in with passwords',
+    description=('Allow users to log in with their user ID and password. '
+                 'Once enabled, you can place the K_PASS_LOGON key on the '
+                 'keyboard.')
 )
 
 
@@ -505,7 +504,7 @@ def token_login(t, cb):
 def password_login(cb):
     """Log in a user prompting them for their password.
     """
-    if not allow_password_only_login():
+    if not allow_password_login():
         ui.toast("Password-only login is not enabled. Use a token to log in.")
         return
 
