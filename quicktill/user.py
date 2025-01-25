@@ -284,7 +284,8 @@ class built_in_user:
                 return [f"  {x} ({action_descriptions[x]})" for x in pl]
             else:
                 return ["  (None)"]
-        info = [f"Full name: {self.fullname}",
+        info = [f"User ID: {self.userid}",
+                f"Full name: {self.fullname}",
                 f"Short name: {self.shortname}", ""]
         if self.is_superuser:
             info.append("Has all permissions.")
