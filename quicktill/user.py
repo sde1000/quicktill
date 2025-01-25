@@ -914,32 +914,34 @@ class edituser(permission_checked, ui.basicpopup):
                 [f"You can't edit {u.fullname} because that user has the "
                  "superuser bit set and you do not."], title="Not allowed")
             return
-        super().__init__(15, 60, title="Edit user", colour=ui.colour_input)
-        self.win.drawstr(2, 2, 14, 'Full name: ', align=">")
-        self.win.drawstr(3, 2, 14, 'Short name: ', align=">")
-        self.win.drawstr(4, 2, 14, 'Web username: ', align=">")
-        self.win.drawstr(5, 2, 14, 'Active: ', align=">")
-        self.fnfield = ui.editfield(2, 16, 40, f=u.fullname)
-        self.snfield = ui.editfield(3, 16, 30, f=u.shortname)
-        self.wnfield = ui.editfield(4, 16, 30, f=u.webuser)
-        self.actfield = ui.booleanfield(5, 16, f=u.enabled, allow_blank=False)
-        self.tokenfield = ui.buttonfield(7, 7, 20, "Edit tokens", keymap={
+        super().__init__(16, 60, title="Edit user", colour=ui.colour_input)
+        self.win.drawstr(2, 2, 14, 'User ID: ', align='>')
+        self.win.drawstr(3, 2, 14, 'Full name: ', align=">")
+        self.win.drawstr(4, 2, 14, 'Short name: ', align=">")
+        self.win.drawstr(5, 2, 14, 'Web username: ', align=">")
+        self.win.drawstr(6, 2, 14, 'Active: ', align=">")
+        self.idfield = ui.editfield(2, 16, 5, f=u.id, readonly=True)
+        self.fnfield = ui.editfield(3, 16, 40, f=u.fullname)
+        self.snfield = ui.editfield(4, 16, 30, f=u.shortname)
+        self.wnfield = ui.editfield(5, 16, 30, f=u.webuser)
+        self.actfield = ui.booleanfield(6, 16, f=u.enabled, allow_blank=False)
+        self.tokenfield = ui.buttonfield(8, 7, 20, "Edit tokens", keymap={
             keyboard.K_CASH: (manage_user_tokens, (self.userid,))})
-        self.permfield = ui.buttonfield(7, 30, 20, "Edit permissions", keymap={
+        self.permfield = ui.buttonfield(8, 30, 20, "Edit permissions", keymap={
             keyboard.K_CASH: (self.editpermissions, None)})
-        self.passfield = ui.buttonfield(9, 18, 20, "Reset password", keymap={
+        self.passfield = ui.buttonfield(10, 18, 20, "Reset password", keymap={
             keyboard.K_CASH: (change_user_password, (self.userid,))})
-        self.savefield = ui.buttonfield(12, 7, 20, "Save and exit", keymap={
+        self.savefield = ui.buttonfield(13, 7, 20, "Save and exit", keymap={
             keyboard.K_CASH: (self.save, None)})
         self.exitfield = ui.buttonfield(
-            12, 30, 20, "Exit without saving", keymap={
+            13, 30, 20, "Exit without saving", keymap={
                 keyboard.K_CASH: (self.dismiss, None)})
         fl = [self.fnfield, self.snfield, self.wnfield, self.actfield,
               self.tokenfield, self.permfield, self.passfield, self.savefield,
               self.exitfield]
         if u.superuser and ui.current_user().is_superuser:
             fl.append(ui.buttonfield(
-                5, 25, 30, "Remove superuser privilege", keymap={
+                6, 25, 30, "Remove superuser privilege", keymap={
                     keyboard.K_CASH: (self.remove_superuser, None)}))
         ui.map_fieldlist(fl)
         self.tokenfield.focus()
@@ -1060,8 +1062,8 @@ def manageusers(include_inactive=False):
     # permission_required() check will have passed to get here
     u = ui.current_user()
     may_edit = u.may('edit-user')
-    f = ui.tableformatter(' l l l ')
-    lines = [(f(x.fullname, x.shortname,
+    f = ui.tableformatter(' l l l l ')
+    lines = [(f(x.id, x.fullname, x.shortname,
                 "(Active)" if x.enabled else "(Inactive)"),
               edituser if may_edit else display_info, (x.id,)) for x in ul]
     if not include_inactive:
