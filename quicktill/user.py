@@ -923,6 +923,7 @@ class manage_user_tokens(ui.dismisspopup):
         if not token:
             token = UserToken(token=t)
         token.last_seen = None
+        token.last_successful_login = None
         user.tokens.append(token)  # adds token to ORM session if not present
         td.s.flush()
         self.tokenfield.set(None)
@@ -1252,6 +1253,7 @@ class managetokens(permission_checked, ui.dismisspopup):
                             description=self.description.f)
         user = td.s.get(User, userid)
         dbt.user = user
+        dbt.last_successful_login = None
         td.s.add(dbt)
         self.tokenfield_set()
 
