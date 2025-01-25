@@ -1384,16 +1384,31 @@ def create_stocktype(request, info):
         form = NewStockTypeForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            s = StockType(
-                department=cd['department'],
-                manufacturer=cd['manufacturer'],
-                name=cd['name'],
-                abv=cd['abv'],
-                unit=cd['unit'],
-                saleprice=cd['saleprice'],
-            )
-            td.s.add(s)
-            td.s.flush()
+            try:
+                s = StockType(
+                    department=cd['department'],
+                    manufacturer=cd['manufacturer'],
+                    name=cd['name'],
+                    abv=cd['abv'],
+                    unit=cd['unit'],
+                    saleprice=cd['saleprice'],
+                )
+                td.s.add(s)
+                td.s.commit()
+            except sqlalchemy.exc.IntegrityError:
+                td.s.rollback()
+                messages.error(
+                    request, "Could not create a new stock type: there is "
+                    "another stock type that's an exact match for the new "
+                    "details. This stock type is shown below.")
+                s = td.s.query(StockType)\
+                        .filter(StockType.department == cd['department'])\
+                        .filter(StockType.manufacturer == cd['manufacturer'])\
+                        .filter(StockType.name == cd['name'])\
+                        .filter(StockType.abv == cd['abv'])\
+                        .filter(StockType.unit == cd['unit'])\
+                        .one()
+            return HttpResponseRedirect(s.get_absolute_url())
             user.log(f"Created stock type {s.logref}")
             td.s.commit()
             messages.success(request, "New stock type created")
