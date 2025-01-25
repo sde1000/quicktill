@@ -43,16 +43,6 @@ force_password_registration = config.BooleanConfigItem(
                  'passwords.')
 )
 
-require_unique_passwords = config.BooleanConfigItem(
-    'user:require_unique_passwords', False,
-    display_name='Passwords must be unique',
-    description=('Require that no two users have the same password. This is '
-                 'recommended if, for example, your users log in with a '
-                 'password alone. It is recommended to set this to True if '
-                 'you have enabled "Users can log in with only passwords". '
-                 'This setting only applies to new passwords.')
-)
-
 allow_password_login = config.BooleanConfigItem(
     'user:allow_password_login', False,
     display_name='Users can log in with passwords',
