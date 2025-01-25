@@ -458,7 +458,9 @@ class password_prompt(ui.dismisspopup):
         u = td.s.query(User).get(self.uid)
 
         if not check_password(self.password.f, u.password):
-            ui.infopopup(["Incorrect password."], title="Error")
+            ui.infopopup(["Incorrect password. If you have forgotten your "
+                          "password, call your manager for help resetting it."],
+                         title="Error")
             self.password.clear()
             return
 
@@ -577,7 +579,9 @@ class password_login_prompt(ui.dismisspopup):
             .where(User.password == compute_sha256_hash(self.password.f))\
             .first()
         if not dbu:
-            ui.infopopup(["Incorrect password."], title="Error")
+            ui.infopopup(["Incorrect password. If you have forgotten your "
+                          "password, call your manager for help resetting it."],
+                         title="Error")
             self.password.clear()
             return
 
