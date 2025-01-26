@@ -23,7 +23,7 @@ import datetime
 
 
 password_check_after = config.IntervalConfigItem(
-    'user:password_check_after', 0,
+    'user:password_check_after', datetime.timedelta(0),
     display_name='Prompt for password after (seconds)',
     description=('How long (in seconds) after a token is last used before a '
                  'password is required to log on. The blank value, or the '
@@ -544,6 +544,14 @@ class password_login_prompt(ui.dismisspopup):
             self.uid.clear()
             return
 
+        if not dbu.password:
+            ui.infopopup([f"The user with ID {self.uid.f} does not have a "
+                          "password. Call your manager for help setting "
+                          "one."],
+                         title="Error")
+            self.uid.clear()
+            return
+
         self.uname.set(dbu.shortname)
         self.password.focus()
 
@@ -721,6 +729,10 @@ class change_user_password(permission_checked, ui.dismisspopup):
         self.win.drawstr(2, 2, 80, ('Key in the new password for the user then '
                                     'press CASH / ENTER.'))
 
+        if not force_password_registration():
+            self.win.drawstr(3, 2, 80, ('To clear the password, leave the '
+                                        'field blank and press CASH / ENTER.'))
+
         self.win.drawstr(5, 2, 14, 'Password: ', align=">")
         self.password = ui.editfield(5, 16, 40, keymap={
             keyboard.K_CASH: (self.save, None)}, hidden=True)
@@ -728,17 +740,27 @@ class change_user_password(permission_checked, ui.dismisspopup):
         self.password.focus()
 
     def save(self):
-        if not self.password.f or len(self.password.f) < 1:
+        if force_password_registration() and \
+                (not self.password.f or len(self.password.f) < 1):
             ui.infopopup(["You must provide a password."], title="Error")
             return
 
         user = td.s.get(User, self.userid)
-        user.password = passwords.compute_password_tuple(self.password.f)
-        td.s.commit()
-        ui.toast(f'Password for user "{user.fullname}" changed.')
 
-        if user.id != ui.current_user().userid:
-            log(f'Changed password for {user.logref}')
+        if not self.password.f:
+            user.password = None
+            ui.toast(f'Password for user "{user.fullname}" removed.')
+
+            if user.id != ui.current_user().userid:
+                log(f'Cleared password for {user.logref}')
+        else:
+            user.password = passwords.compute_password_tuple(self.password.f)
+            ui.toast(f'Password for user "{user.fullname}" changed.')
+
+            if user.id != ui.current_user().userid:
+                log(f'Changed password for {user.logref}')
+
+        td.s.commit()
 
         self.dismiss()
         if self.cb:
