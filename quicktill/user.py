@@ -22,13 +22,12 @@ import logging
 import datetime
 
 
-token_password_timeout = config.IntConfigItem(
-    'user:token_password_timeout', -1,
+password_check_after = config.IntervalConfigItem(
+    'user:password_check_after', 0,
     display_name='Prompt for password after (seconds)',
     description=('How long (in seconds) after a token is last used before a '
-                 'password is required to log on. Values less than 0 will '
-                 'disable checks. A value of 0 will require a password for '
-                 'every login attempt.')
+                 'password is required to log on. The blank value, or the '
+                 'value 0 will disable this check.')
 )
 
 force_password_registration = config.BooleanConfigItem(
@@ -38,7 +37,8 @@ force_password_registration = config.BooleanConfigItem(
                  'log in. This will trigger an un-dismissable dialog at the '
                  'next authentication attempt. Till users must have the '
                  'edit-current-user-password permission to edit their own '
-                 'passwords.')
+                 'passwords. If this value is False, users will also be able '
+                 'to clear their own passwords.')
 )
 
 allow_password_login = config.BooleanConfigItem(
@@ -363,17 +363,17 @@ def should_prompt_for_password(dbt):
     If true, the user should be prompted to enter their password (if they have
     one).
     """
-    if token_password_timeout() < 0:
+    if not password_check_after():
         return False
 
-    if token_password_timeout() == 0:
+    if password_check_after() == datetime.timedelta(0):
         return True
 
     if not dbt.last_seen:
         return True
 
-    return (datetime.datetime.now() - dbt.last_seen).total_seconds() \
-        > token_password_timeout()
+    return (datetime.datetime.now() - dbt.last_seen) \
+        > password_check_after()
 
 
 def should_force_set_password(uid):
