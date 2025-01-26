@@ -46,6 +46,10 @@ jobs:
       - name: Configure postgresql
         run: |
           sudo -u postgres createuser --echo -d $(whoami)
+      - name: Set python environment
+        run: |
+          echo "SQLALCHEMY_WARN_20=1" >>$GITHUB_ENV
+          echo "PYTHONWARNINGS=always::DeprecationWarning" >>$GITHUB_ENV
       - name: Test with pytest
         run: |
           pytest-3 quicktill
