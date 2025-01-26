@@ -561,7 +561,8 @@ class password_login_prompt(ui.dismisspopup):
             keyboard.K_DOWN: (self.check_uid, None),
             keyboard.K_TAB: (self.check_uid, None),
         }
-        self.uid = ui.editfield(5, 14, 5, validate=ui.validate_positive_int,
+        self.uid = ui.editfield(5, 14, 5,
+                                validate=ui.validate_positive_nonzero_int,
                                 keymap=uid_keymap)
         password_keymap = {
             keyboard.K_CASH: (self.check_password, None),

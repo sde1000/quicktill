@@ -636,16 +636,6 @@ def validate_int(s, c):
     return s
 
 
-def validate_positive_int(s, c):
-    try:
-        x = int(s)
-        if x < 0:
-            return None
-    except Exception:
-        return None
-    return s
-
-
 def validate_positive_nonzero_int(s, c):
     try:
         x = int(s)
