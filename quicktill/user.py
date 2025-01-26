@@ -13,15 +13,13 @@ function decorator (permission_required) for other modules to use to
 indicate restricted functionality.
 """
 
-from . import ui, td, keyboard, tillconfig, cmdline, config
+from . import ui, td, keyboard, tillconfig, cmdline, config, passwords
 from .models import User, UserToken, Permission, Group, LogEntry
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 import socket
 import logging
 import datetime
-import hashlib
-import secrets
 
 
 token_password_timeout = config.IntConfigItem(
@@ -221,47 +219,6 @@ def current_dbuser():
     user = ui.current_user()
     if user and hasattr(user, 'dbuser'):
         return user.dbuser
-
-
-def compute_password_tuple(password):
-    """Computes the password tuple for storage in the database.
-
-    Returns a string in the format `ALGORITHM$ITERATIONS$SALT$HASH`.
-    """
-    iterations = 500_000
-    salt = secrets.token_hex(16)
-    hash = compute_pbkdf2(password, salt, iterations)
-    return f"pbkdf2${iterations}${salt}${hash}"
-
-
-def compute_pbkdf2(value, salt, iterations):
-    """Computes t he PBKDF2 hash for a value given a salt and number of
-    iterations.
-    """
-    hash = hashlib.pbkdf2_hmac("sha256", bytes(value, "utf-8"),
-                               bytes(salt, "utf-8"), iterations)
-    return hash.hex()
-
-
-def check_password(password, tuple):
-    """Checks a password against a tuple.
-
-    The tuple must be in the format `ALGORITHM$ITERATIONS$SALT$HASH`. Malformed
-    values will raise an exception.
-    """
-    elems = tuple.split("$")
-    if len(elems) != 4:
-        raise Exception("Invalid password tuple presented (len(elems) != 4).")
-
-    algo = elems[0]
-    iterations = int(elems[1])
-    salt = elems[2]
-    hash = elems[3]
-
-    if algo == 'pbkdf2':
-        return compute_pbkdf2(password, salt, iterations) == hash
-    else:
-        raise Exception("Unsupported password algorithm: " + algo)
 
 
 class built_in_user:
@@ -481,7 +438,7 @@ class password_prompt(ui.dismisspopup):
 
         u = td.s.query(User).get(self.uid)
 
-        if not check_password(self.password.f, u.password):
+        if not passwords.check_password(self.password.f, u.password):
             ui.infopopup(["Incorrect password. If you have forgotten your "
                           "password, call your manager for help resetting it."],
                          title="Error")
@@ -609,7 +566,7 @@ class password_login_prompt(ui.dismisspopup):
             self.uid.clear()
             return
 
-        if not check_password(self.password.f, dbu.password):
+        if not passwords.check_password(self.password.f, dbu.password):
             ui.infopopup(["Incorrect password. If you have forgotten your "
                           "password, call your manager for help resetting it."],
                          title="Error")
@@ -776,7 +733,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
             return
 
         user = td.s.query(User).get(self.userid)
-        user.password = compute_password_tuple(self.password.f)
+        user.password = passwords.compute_password_tuple(self.password.f)
         td.s.commit()
         ui.toast(f'Password for user "{user.fullname}" changed.')
 
