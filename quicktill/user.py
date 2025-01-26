@@ -369,10 +369,10 @@ def should_prompt_for_password(dbt):
     if password_check_after() == datetime.timedelta(0):
         return True
 
-    if not dbt.last_successful_login:
+    if not dbt.last_seen:
         return True
 
-    return (datetime.datetime.now() - dbt.last_successful_login) \
+    return (datetime.datetime.now() - dbt.last_seen) \
         > password_check_after()
 
 
@@ -397,7 +397,6 @@ def user_from_token(t):
         ui.toast(f"User token '{t.usertoken}' not recognised.")
         return
     now = datetime.datetime.now()
-    dbt.last_seen = now
     u = dbt.user
     if not u:
         ui.toast(f"User token '{t.usertoken}' ({dbt.description}) is not "
@@ -447,6 +446,7 @@ class password_prompt(ui.dismisspopup):
 
         dbt = td.s.get(UserToken, self.t)
         dbt.last_successful_login = datetime.datetime.now()
+        dbt.last_seen = datetime.datetime.now()
         td.s.commit()
 
         self.dismiss()
@@ -482,6 +482,8 @@ def token_login(t, cb):
     if should_prompt_for_password(dbt) or should_force_set_password(u.userid):
         password_prompt(u.userid, dbt.token, cb)
     else:
+        dbt.last_seen = datetime.datetime.now()
+        td.s.commit()
         cb(u)
 
 
