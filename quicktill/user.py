@@ -369,10 +369,10 @@ def should_prompt_for_password(dbt):
     if password_check_after() == datetime.timedelta(0):
         return True
 
-    if not dbt.last_seen:
+    if not dbt.last_successful_login:
         return True
 
-    return (datetime.datetime.now() - dbt.last_seen) \
+    return (datetime.datetime.now() - dbt.last_successful_login) \
         > password_check_after()
 
 
