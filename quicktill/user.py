@@ -384,7 +384,7 @@ def should_force_set_password(uid):
     if not force_password_registration():
         return False
 
-    u = td.s.query(User).get(uid)
+    u = td.s.get(User, uid)
     return not u.password
 
 
@@ -413,7 +413,7 @@ def user_from_token(t):
 class password_prompt(ui.dismisspopup):
     def __init__(self, uid, t, cb):
         self.uid = uid
-        dbu = td.s.query(User).get(uid)
+        dbu = td.s.get(User, uid)
 
         if not dbu.password:
             change_current_user_password_login_initial(
@@ -436,7 +436,7 @@ class password_prompt(ui.dismisspopup):
             ui.infopopup(["You must provide a password."], title="Error")
             return
 
-        u = td.s.query(User).get(self.uid)
+        u = td.s.get(User, self.uid)
 
         if not passwords.check_password(self.password.f, u.password):
             ui.infopopup(["Incorrect password. If you have forgotten your "
@@ -445,7 +445,7 @@ class password_prompt(ui.dismisspopup):
             self.password.clear()
             return
 
-        dbt = td.s.query(UserToken).get(self.t)
+        dbt = td.s.get(UserToken, self.t)
         dbt.last_successful_login = datetime.datetime.now()
         td.s.commit()
 
@@ -463,7 +463,7 @@ class password_prompt(ui.dismisspopup):
 
     @staticmethod
     def do_callback(uid, cb):
-        dbu = td.s.query(User).get(uid)
+        dbu = td.s.get(User, uid)
         cb(database_user(dbu))
 
 
@@ -474,7 +474,7 @@ def token_login(t, cb):
         object
     """
     u = user_from_token(t)
-    dbt = td.s.query(UserToken).get(t.usertoken)
+    dbt = td.s.get(UserToken, t.usertoken)
 
     if not u:
         return
@@ -536,7 +536,7 @@ class password_login_prompt(ui.dismisspopup):
             ui.infopopup(["You must provide a user ID."], title="Error")
             return
 
-        dbu = td.s.query(User).where(User.id == self.uid.f).first()
+        dbu = td.s.get(User, self.uid.f)
 
         if not dbu:
             ui.infopopup([f"The user with ID {self.uid.f} does not exist."],
@@ -558,7 +558,7 @@ class password_login_prompt(ui.dismisspopup):
             ui.infopopup(["You must provide a password."], title="Error")
             return
 
-        dbu = td.s.query(User).where(User.id == self.uid.f).first()
+        dbu = td.s.get(User, self.uid.f)
 
         if not dbu:
             ui.infopopup([f"The user with ID {self.uid.f} does not exist."],
@@ -715,7 +715,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
         self.userid = userid
         self.dismissable = dismissable
         self.cb = cb
-        user = td.s.query(User).get(userid)
+        user = td.s.get(User, userid)
         super().__init__(8, 60, title=f"Change password for {user.fullname}",
                          colour=ui.colour_input, dismiss=self.get_dismiss_key())
         self.win.drawstr(2, 2, 80, ('Key in the new password for the user then '
@@ -732,7 +732,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
             ui.infopopup(["You must provide a password."], title="Error")
             return
 
-        user = td.s.query(User).get(self.userid)
+        user = td.s.get(User, self.userid)
         user.password = passwords.compute_password_tuple(self.password.f)
         td.s.commit()
         ui.toast(f'Password for user "{user.fullname}" changed.')
@@ -804,7 +804,7 @@ class change_current_user_password_login(change_user_password):
     permission_required = None
 
     def __init__(self, userid, cb):
-        dbu = td.s.query(User).get(userid)
+        dbu = td.s.get(User, userid)
         if dbu.password:
             ui.infopopup([f"User '{dbu.fullname}' already has a password set."],
                          title="Error")
