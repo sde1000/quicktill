@@ -966,7 +966,7 @@ class edituser(permission_checked, ui.basicpopup):
         self.win.drawstr(4, 2, 14, 'Short name: ', align=">")
         self.win.drawstr(5, 2, 14, 'Web username: ', align=">")
         self.win.drawstr(6, 2, 14, 'Active: ', align=">")
-        self.idfield = ui.editfield(2, 16, 5, f=u.id, readonly=True)
+        self.win.drawstr(2, 16, 5, str(u.id))
         self.fnfield = ui.editfield(3, 16, 40, f=u.fullname)
         self.snfield = ui.editfield(4, 16, 30, f=u.shortname)
         self.wnfield = ui.editfield(5, 16, 30, f=u.webuser)
