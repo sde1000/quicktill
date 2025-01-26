@@ -24,7 +24,7 @@ import datetime
 
 password_check_after = config.IntervalConfigItem(
     'user:password_check_after', datetime.timedelta(0),
-    display_name='Prompt for password after (seconds)',
+    display_name='Prompt for password after',
     description=('How long (in seconds) after a token is last used before a '
                  'password is required to log on. The blank value, or the '
                  'value 0 will disable this check.')
