@@ -369,14 +369,14 @@ def should_prompt_for_password(dbt):
     if password_check_after() == datetime.timedelta(0):
         return True
 
-    if not dbt.last_seen:
+    if not dbt.last_successful_login:
         return True
 
-    return (datetime.datetime.now() - dbt.last_seen) \
+    return (datetime.datetime.now() - dbt.last_successful_login) \
         > password_check_after()
 
 
-def should_force_set_password(uid):
+def should_force_set_password(user):
     """Determine whether the user should be forced to set a password.
 
     If true, the user should be prompted to set a password.
@@ -384,29 +384,7 @@ def should_force_set_password(uid):
     if not force_password_registration():
         return False
 
-    u = td.s.get(User, uid)
-    return not u.password
-
-
-def user_from_token(t):
-    _check_permissions()
-    dbt = td.s.get(UserToken, t.usertoken, options=[
-        joinedload(UserToken.user),
-        joinedload(UserToken.user).joinedload(User.permissions)])
-    if not dbt:
-        ui.toast(f"User token '{t.usertoken}' not recognised.")
-        return
-    now = datetime.datetime.now()
-    u = dbt.user
-    if not u:
-        ui.toast(f"User token '{t.usertoken}' ({dbt.description}) is not "
-                 f"assigned to a user")
-        return
-    if not u.enabled:
-        ui.toast(f"User '{u.fullname}' is not active.")
-        return
-    u.last_seen = now
-    return database_user(u)
+    return not user.password
 
 
 class password_prompt(ui.dismisspopup):
@@ -446,8 +424,6 @@ class password_prompt(ui.dismisspopup):
 
         dbt = td.s.get(UserToken, self.t)
         dbt.last_successful_login = datetime.datetime.now()
-        dbt.last_seen = datetime.datetime.now()
-        td.s.commit()
 
         self.dismiss()
         self.do_callback(self.uid, self.cb)
@@ -464,7 +440,7 @@ class password_prompt(ui.dismisspopup):
     @staticmethod
     def do_callback(uid, cb):
         dbu = td.s.get(User, uid)
-        cb(database_user(dbu))
+        _finish_login(dbu, cb)
 
 
 def token_login(t, cb):
@@ -473,18 +449,35 @@ def token_login(t, cb):
     cb: callback function to call after successful login with the database_user
         object
     """
-    u = user_from_token(t)
-    dbt = td.s.get(UserToken, t.usertoken)
+    _check_permissions()
+
+    dbt = td.s.get(UserToken, t.usertoken, options=[
+        joinedload(UserToken.user),
+        joinedload(UserToken.user).joinedload(User.permissions)])
+    if not dbt:
+        ui.toast(f"User token '{t.usertoken}' not recognised.")
+        return
+
+    u = dbt.user
+    if not u:
+        ui.toast(f"User token '{t.usertoken}' ({dbt.description}) is not "
+                 f"assigned to a user")
+        return
+    if not u.enabled:
+        ui.toast(f"User '{u.fullname}' is not active.")
+        return
+
+    dbt.last_seen = datetime.datetime.now()
 
     if not u:
         return
 
-    if should_prompt_for_password(dbt) or should_force_set_password(u.userid):
-        password_prompt(u.userid, dbt.token, cb)
+    if should_prompt_for_password(dbt) or should_force_set_password(u):
+        password_prompt(u.id, dbt.token, cb)
     else:
-        dbt.last_seen = datetime.datetime.now()
-        td.s.commit()
-        cb(u)
+        if u.password:
+            dbt.last_successful_login = datetime.datetime.now()
+        _finish_login(u, cb)
 
 
 def password_login(cb):
@@ -495,6 +488,15 @@ def password_login(cb):
         return
 
     password_login_prompt(cb)
+
+
+def _finish_login(u, cb):
+    """Complete the user module side of the login and return to the till or
+    stock terminal.
+    """
+
+    u.last_seen = datetime.datetime.now()
+    cb(database_user(u))
 
 
 class password_login_prompt(ui.dismisspopup):
@@ -584,9 +586,7 @@ class password_login_prompt(ui.dismisspopup):
             return
 
         self.dismiss()
-        dbu.last_seen = datetime.datetime.now()
-        td.s.commit()
-        self.cb(database_user(dbu))
+        _finish_login(dbu, self.cb)
 
     def hotkeypress(self, k):
         """Dismiss ourself if the user hits LOGON again.
@@ -761,8 +761,6 @@ class change_user_password(permission_checked, ui.dismisspopup):
 
             if user.id != ui.current_user().userid:
                 log(f'Changed password for {user.logref}')
-
-        td.s.commit()
 
         self.dismiss()
         if self.cb:
