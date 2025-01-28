@@ -280,7 +280,6 @@ class runtill(cmdline.command):
             td.s.add(reg)
             td.s.flush()
             tillconfig.register_id = reg.id
-            td.s.commit()
 
         dbg_kbd = None
         try:

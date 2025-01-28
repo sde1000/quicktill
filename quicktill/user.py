@@ -679,7 +679,6 @@ def usersmenu():
 def reactivate_user(userid):
     u = td.s.get(User, userid)
     u.enabled = True
-    td.s.commit()
     ui.toast(f'User "{u.fullname}" reactivated.')
     log(f"Reactivated user {u.logref}")
     edituser(userid)

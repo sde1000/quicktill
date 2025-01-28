@@ -171,7 +171,6 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
     def _finish_stockline(self, code, stockline):
         binding = self._clear_binding(code)
         binding.stockline = stockline
-        td.s.commit()
         _barcode_change_confirmed(
             [f'Barcode {code} is now assigned to stock line "{stockline}".'])
 
@@ -183,7 +182,6 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
     def _finish_plu(self, code, plu):
         binding = self._clear_binding(code)
         binding.plu = plu
-        td.s.commit()
         _barcode_change_confirmed(
             [f'Barcode {code} is now assigned to price lookup "{plu}".'])
 
@@ -194,7 +192,6 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
     def _finish_stocktype(self, code, st):
         binding = self._clear_binding(code)
         binding.stocktype = st
-        td.s.commit()
         _barcode_change_confirmed(
             [f'Barcode {code} is now assigned to stock type "{st}".'])
 
@@ -204,7 +201,6 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
     def _finish_modifier(self, code, m):
         binding = self._clear_binding(code)
         binding.modifier = m
-        td.s.commit()
         _barcode_change_confirmed(
             [f'Barcode {code} is now assigned to modifier "{m}".'])
 
@@ -217,7 +213,6 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
         binding = b.binding
         if binding:
             binding.modifier = m
-            td.s.commit()
             _barcode_change_confirmed(
                 [f'Barcode {code} now has default modifier "{m}".'])
         else:
@@ -228,5 +223,4 @@ class edit_barcode(user.permission_checked, _new_barcode_mixin, ui.keymenu):
         b = barcode(code)
         if b.binding:
             td.s.delete(b.binding)
-            td.s.commit()
         _barcode_change_confirmed([f"Barcode {code} has been removed."])
