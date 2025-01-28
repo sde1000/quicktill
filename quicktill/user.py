@@ -469,9 +469,6 @@ def token_login(t, cb):
 
     dbt.last_seen = datetime.datetime.now()
 
-    if not u:
-        return
-
     if should_prompt_for_password(dbt) or should_force_set_password(u):
         password_prompt(u.id, dbt.token, cb)
     else:
