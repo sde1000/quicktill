@@ -718,20 +718,24 @@ class change_user_password(permission_checked, ui.dismisspopup):
 
     If dismissable is False, it will not be possible to dismiss the popup
     without changing the password.
+
+    If can_clear is True, it will be possible to clear the password for the
+    user.
     """
     permission_required = ('edit-user-password', 'Edit a user\'s password')
 
-    def __init__(self, userid, dismissable=True, cb=None):
+    def __init__(self, userid, dismissable=True, can_clear=True, cb=None):
         self.userid = userid
         self.dismissable = dismissable
         self.cb = cb
+        self.can_clear = can_clear
         user = td.s.get(User, userid)
         super().__init__(8, 60, title=f"Change password for {user.fullname}",
                          colour=ui.colour_input, dismiss=self.get_dismiss_key())
         self.win.drawstr(2, 2, 80, ('Key in the new password for the user then '
                                     'press CASH / ENTER.'))
 
-        if not force_password_registration():
+        if self.can_clear:
             self.win.drawstr(3, 2, 80, ('To clear the password, leave the '
                                         'field blank and press CASH / ENTER.'))
 
@@ -742,7 +746,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
         self.password.focus()
 
     def save(self):
-        if force_password_registration() and \
+        if not self.can_clear and \
                 (not self.password.f or len(self.password.f) < 1):
             ui.infopopup(["You must provide a password."], title="Error")
             return
@@ -782,7 +786,8 @@ class change_current_user_password(change_user_password):
                            'Edit the password of the current user')
 
     def __init__(self):
-        super().__init__(ui.current_user().userid)
+        super().__init__(ui.current_user().userid,
+                         can_clear=(not force_password_registration()))
 
 
 class change_current_user_password_login_initial(ui.infopopup):
@@ -832,7 +837,7 @@ class change_current_user_password_login(change_user_password):
                          title="Error")
             return
 
-        super().__init__(userid, dismissable=False, cb=cb)
+        super().__init__(userid, dismissable=False, can_clear=False, cb=cb)
 
 
 class manage_user_tokens(ui.dismisspopup):
@@ -975,7 +980,7 @@ class edituser(permission_checked, ui.basicpopup):
             keyboard.K_CASH: (manage_user_tokens, (self.userid,))})
         self.permfield = ui.buttonfield(8, 30, 20, "Edit permissions", keymap={
             keyboard.K_CASH: (self.editpermissions, None)})
-        self.passfield = ui.buttonfield(10, 18, 20, "Reset password", keymap={
+        self.passfield = ui.buttonfield(10, 18, 20, "Change password", keymap={
             keyboard.K_CASH: (change_user_password, (self.userid,))})
         self.savefield = ui.buttonfield(13, 7, 20, "Save and exit", keymap={
             keyboard.K_CASH: (self.save, None)})
