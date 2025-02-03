@@ -29,6 +29,7 @@ RemoveCode = [
   { id = "damaged",  reason = "Damaged" },
   { id = "missing",  reason = "Gone missing" },
   { id = "driptray", reason = "Drip tray"},
+  { id = "food",     reason = "Kitchen stock"},
 ]
 
 # The 'empty' finishcode is used in the code, so must exist. (XXX
