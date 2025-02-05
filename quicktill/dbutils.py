@@ -271,19 +271,19 @@ class checkdb(cmdline.command):
             return 1
         if args.createdb:
             engine = sqlalchemy.create_engine("postgresql+psycopg2:///postgres")
-            conn = engine.connect()
-            conn.execute('commit')
-            conn.execute(f'create database "{args.tempdb}"')
-            conn.close()
+            raw_connection = engine.raw_connection()
+            with raw_connection.cursor() as cursor:
+                cursor.execute('commit')
+                cursor.execute(f'create database "{args.tempdb}"')
+            raw_connection.close()
         try:
             engine = sqlalchemy.create_engine(
                 f"postgresql+psycopg2:///{args.tempdb}")
-            models.metadata.bind = engine
             try:
-                models.metadata.create_all()
+                models.metadata.create_all(engine)
                 pristine_schema = subprocess.check_output(
                     ["pg_dump", "-s", "-O", args.tempdb])
-                models.metadata.drop_all()
+                models.metadata.drop_all(engine)
             finally:
                 # If we don't explicitly close the connection to the
                 # database here, we won't be able to drop it
@@ -292,10 +292,11 @@ class checkdb(cmdline.command):
             if args.createdb:
                 engine = sqlalchemy.create_engine(
                     "postgresql+psycopg2:///postgres")
-                conn = engine.connect()
-                conn.execute('commit')
-                conn.execute(f'drop database "{args.tempdb}"')
-                conn.close()
+                raw_connection = engine.raw_connection()
+                with raw_connection.cursor() as cursor:
+                    cursor.execute('commit')
+                    cursor.execute(f'drop database "{args.tempdb}"')
+                raw_connection.close()
         current = tempfile.NamedTemporaryFile(delete=False)
         current.write(current_schema)
         current.close()
