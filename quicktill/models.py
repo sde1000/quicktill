@@ -1941,8 +1941,9 @@ class Delivery(Base, Logged):
                              description=description,
                              size=size,
                              costprice=thiscost,
-                             bestbefore=bestbefore)
-            self.items.append(item)  # adds item to object_session(self)
+                             bestbefore=bestbefore,
+                             delivery=self)
+            object_session(self).add(item)
             items.append(item)
             qty -= 1
         return items
