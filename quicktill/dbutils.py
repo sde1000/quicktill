@@ -6,7 +6,10 @@ from . import cmdline
 from . import td
 from . import models
 from . import tillconfig
-from sqlalchemy import or_
+from .models import Session, PayType, Business, zero
+from sqlalchemy import Date, or_
+from sqlalchemy.sql.expression import func, cast
+from sqlalchemy.orm import joinedload
 import random
 
 
@@ -317,3 +320,72 @@ class checkdb(cmdline.command):
             else:
                 os.unlink(current.name)
                 os.unlink(pristine.name)
+
+
+class totals(cmdline.command):
+    """Display a table of session totals.
+
+    """
+    help = "display table of session totals"
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument("-d", "--days", type=int, dest="days",
+                            help="number of days to display", default=40)
+
+    @staticmethod
+    def run(args):
+        with td.orm_session():
+            sessions = \
+                td.s.query(Session)\
+                    .filter(Session.endtime != None)\
+                    .filter(cast(func.now(), Date) - Session.date <= args.days)\
+                    .options(joinedload(Session.actual_totals))\
+                    .order_by(Session.id)\
+                    .all()
+            businesses = td.s.query(Business).order_by(Business.id).all()
+            paytypes = td.s.query(PayType)\
+                           .order_by(PayType.order, PayType.paytype)\
+                           .filter(PayType.paytype.in_({
+                               st.paytype.paytype
+                               for s in sessions
+                               for st in s.actual_totals}))\
+                           .all()
+            f = "{s.id:>5} | {s.date} | "
+            h = "  ID  |    Date    | "
+            ptl = max([len(pt.description) for pt in paytypes] + [8])
+            for x in paytypes:
+                f = f + "{p[%s]:>%d} | " % (x.paytype, ptl)
+                h = h + ("{x.description:^%s} | " % ptl).format(x=x)
+            f = f + "{error:>7} | "
+            h = h + " Error  | "
+            for b in businesses:
+                if b.show_vat_breakdown:
+                    f = f + "{b[%s][1]:>10} | {b[%s][2]:>8} | " % (b.id, b.id)
+                    h = h + "{:^10} | {:^8} | ".format(
+                        b.abbrev + " ex-VAT", b.abbrev + " VAT")
+                else:
+                    f = f + "{b[%s][0]:>8} | " % b.id
+                    h = h + "{:^8} | ".format(b.abbrev)
+            f = f[:-2]
+            h = h[:-2]
+            print(h)
+            for s in sessions:
+                # Sessions with no total recorded will report actual_total
+                # of None
+                if s.actual_total is None:
+                    continue
+                vbt = s.vatband_totals
+                p = {}
+                for x in paytypes:
+                    p[x.paytype] = ""
+                for t in s.actual_totals:
+                    p[t.paytype_id] = t.amount
+                b = {}
+                for x in businesses:
+                    b[x.id] = (zero, zero, zero)
+                for x in vbt:
+                    o = b[x[0].businessid]
+                    o = (o[0] + x[1], o[1] + x[2], o[2] + x[3])
+                    b[x[0].businessid] = o
+                print(f.format(s=s, p=p, error=s.actual_total - s.total, b=b))
