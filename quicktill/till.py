@@ -1,25 +1,15 @@
+"""Entry point for the till, when run as an application.
+
+In normal use the application will be started by the "runtill" script
+calling main() from this module.
 """
-Entry point for the till application.  In normal use the application
-will be started by the "runtill" script calling main() from this
-module.
 
-"""
-
-# As the main entry point, any modules that define their own
-# subcommands must be imported here otherwise they will be ignored.
-
-import urllib.request
 import sys
 import logging
-import logging.config
-import warnings
 import argparse
-import tomli
 import socket
 import time
-import importlib
-from pathlib import Path
-from types import ModuleType
+from . import startup
 from . import ui
 from . import td
 from . import lockscreen
@@ -37,29 +27,10 @@ from .models import Register
 import subprocess
 
 # The following imports are to ensure subcommands are loaded
-from . import extras  # noqa: F401
-from . import dbsetup  # noqa: F401
-from . import dbutils  # noqa: F401
 from . import foodcheck  # noqa: F401
-from . import secretstore  # noqa: F401
-from . import monitor  # noqa: F401
 # End of subcommand imports
 
 log = logging.getLogger(__name__)
-
-configurlfile = Path("/etc/quicktill/configurl")
-
-importsfile = Path("/etc/quicktill/default-imports")
-
-importsdir = Path("/etc/quicktill/default-imports.d")
-
-default_config = """
-configurations = {
-  'default': {
-    'description': 'Built-in default configuration',
-  }
-}
-"""
 
 
 class intropage(ui.basicpage):
@@ -351,17 +322,6 @@ class ToastHandler(logging.Handler):
         ui.toast(self.format(record))
 
 
-def _process_importsfile(path):
-    try:
-        with path.open() as f:
-            for l in f.readlines():
-                for i in l.partition('#')[0].split():
-                    importlib.import_module(i)
-    except Exception:
-        print(f"Exception raised while working on {path}")
-        raise
-
-
 def main():
     """Usual main entry point for the till software.
 
@@ -370,32 +330,13 @@ def main():
     configuration, and starts the program.
     """
 
-    try:
-        with configurlfile.open() as f:
-            configurl = f.readline().strip()
-    except FileNotFoundError:
-        configurl = None
-
-    if importsdir.is_dir():
-        for path in importsdir.iterdir():
-            if path.suffixes:
-                continue
-            if path.name[-1] == "~":
-                continue
-            if not path.is_file():
-                continue
-            _process_importsfile(path)
-
-    if importsfile.is_file():
-        _process_importsfile(importsfile)
+    configurl = startup.process_etc_files()
 
     parser = argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
-    parser.add_argument("--version", action="version", version=version)
-    parser.add_argument("-u", "--config-url", action="store",
-                        dest="configurl", default=configurl,
-                        help="URL of global till configuration file; "
-                        f"overrides contents of {configurlfile}")
+
+    startup.add_common_arguments(parser, configurl)
+
     parser.add_argument("-c", "--config-name", action="store",
                         dest="configname", default="default",
                         help="Till type to use from configuration file")
@@ -403,32 +344,19 @@ def main():
                         dest="terminalname", default=None,
                         help="Terminal name to store for transaction lines "
                         "and payments created by this till instance")
-    parser.add_argument("-d", "--database", action="store",
-                        dest="database",
-                        help="Database connection string; overrides "
-                        "database specified in configuration file")
     parser.add_argument("-f", "--user", action="store",
                         dest="user", type=int, default=None,
                         help="User ID to use when no other user information "
                         "is available (use 'listusers' command to check IDs)")
-    loggroup = parser.add_mutually_exclusive_group()
-    loggroup.add_argument("-y", "--log-config",
-                          help="Logging configuration file "
-                          "in TOML", type=argparse.FileType('rb'),
-                          dest="logconfig")
-    loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
-                          dest="logfile", help="Simple logging output file")
-    parser.add_argument("--debug", action="store_true", dest="debug",
-                        help="Include debug output in log")
-    parser.add_argument("--log-sql", action="store_true", dest="logsql",
-                        help="Include SQL queries in logfile")
     parser.add_argument("--disable-printer", action="store_true",
                         dest="disable_printer", help="Use the null printer "
                         "instead of the configured printer")
+
     cmdline.command.add_subparsers(parser)
+
     parser.set_defaults(configurl=configurl, configname="default",
                         database=None, logfile=None, debug=False,
-                        interactive=False, disable_printer=False)
+                        disable_printer=False)
     args = parser.parse_args()
 
     if not hasattr(args, 'command'):
@@ -437,33 +365,8 @@ def main():
     if args.debug:
         tillconfig.debug = True
 
-    # Logging configuration.  If we have a log configuration file,
-    # read it and apply it.  This is done before the main
-    # configuration file is imported so that log output from the
-    # import can be directed appropriately.
-    rootlog = logging.getLogger()
-    if args.logconfig:
-        logconfig = tomli.load(args.logconfig)
-        args.logconfig.close()
-        logging.config.dictConfig(logconfig)
-    else:
-        formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s %(name)s\n  %(message)s')
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        handler.setLevel(logging.ERROR)
-        rootlog.addHandler(handler)
-    if args.logfile:
-        loglevel = logging.DEBUG if args.debug else logging.INFO
-        loghandler = logging.StreamHandler(args.logfile)
-        loghandler.setFormatter(formatter)
-        loghandler.setLevel(logging.DEBUG if args.debug else logging.INFO)
-        rootlog.addHandler(loghandler)
-        rootlog.setLevel(loglevel)
-    if args.debug:
-        rootlog.setLevel(logging.DEBUG)
-    if args.logsql:
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    rootlog = startup.configure_logging(args)
+
     # Set up handler to direct warnings to toaster UI
     toasthandler = ToastHandler()
     toastformatter = logging.Formatter('%(levelname)s: %(message)s')
@@ -471,27 +374,10 @@ def main():
     toasthandler.setLevel(logging.WARNING)
     rootlog.addHandler(toasthandler)
 
-    if args.configurl:
-        log.info("reading configuration %s", args.configurl)
-        tillconfig.configversion = args.configurl
-        f = urllib.request.urlopen(args.configurl)
-        globalconfig = f.read()
-        f.close()
-    else:
-        log.warning("running with no configuration file")
-        globalconfig = default_config
-
     tillconfig.configname = args.configname
     tillconfig.terminal_name = args.terminalname or args.configname
 
-    g = ModuleType("globalconfig")
-    g.configname = args.configname
-    exec(globalconfig, g.__dict__)
-
-    # Take note of deprecation warnings from the config file
-    warnings.filterwarnings("default", category=DeprecationWarning,
-                            module=g.__name__)
-    logging.captureWarnings(True)
+    g = startup.read_config(args)
 
     config = g.configurations.get(args.configname)
     if config is None:
