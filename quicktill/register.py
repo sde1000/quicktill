@@ -1935,6 +1935,21 @@ class page(ui.basicpage):
         if self._resume_pending_payment():
             return
 
+        # If the balance is zero, there are no marked lines, and the
+        # input buffer is empty, then just close the transaction — the
+        # most likely case is that all the transaction lines have
+        # matching void lines, and payments have matching
+        # refunds. This saves us from potentially popping up the
+        # payment methods menu, only for the user to have to make a
+        # redundant choice.
+        if self.balance == zero and not self.buf and not self.ml:
+            log.info("Register: cashkey: transaction already balanced, closing")
+            self.close_if_balanced()
+            self.cursor_off()
+            self._redraw()
+            ui.toast("Transaction closed: nothing to pay")
+            return
+
         # We now consider using the configured default payment method.
         pm = td.s.get(PayType, default_payment_method())
         if pm and not pm.active:
