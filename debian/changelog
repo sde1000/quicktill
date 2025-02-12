@@ -1,3 +1,47 @@
+quicktill (23.15) stable; urgency=low
+
+  * New release 23.15
+
+  * Shortcut when Cash/Enter is pressed on an open zero-balance transaction
+
+  * Break startup code into "common" and "application-specific" parts
+
+  * Move the "totals" subcommand from till.py to dbutils.py
+
+  * Restrict the code path that can remove completed payments
+
+  * Deal with another warning from sqlalchemy-2.0
+
+  * Update checkdb subcommand to work with sqlalchemy-2.0
+
+  * Remove unnecessary explicit commits to the database
+
+  * Update required versions of sqlalchemy and psycopg2
+
+  * Set SQLALCHEMY_WARN_20=1 when running CI tests
+
+  * Deal with creating a duplicate stock type through the web interface
+
+  * Format chained methods more consistently in model
+
+  * Stop using deprecated Unit.item_name_plural
+
+  * Use engine and session in future=True mode in till client
+
+  * sqlalchemy-2.0: don't bind engine to the metadata
+
+  * Remove use of negative slice index in ORM query
+
+  * sqlalchemy-2.0 updates to models test suite
+
+  * Update for sqlalchemy-2.0
+
+  * Use an explicit transaction when registering listeners
+
+  * declarative_base and declared_attr have moved
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 12 Feb 2025 14:32:59 +0000
+
 quicktill (23.14) stable; urgency=low
 
   * New release 23.14
