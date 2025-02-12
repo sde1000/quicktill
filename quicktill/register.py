@@ -2301,6 +2301,16 @@ class page(ui.basicpage):
                      "one go.  Cancel each line separately instead."],
                     title="Cancel Transaction")
                 return
+            # If there are any pending or non-zero payments, the
+            # transaction can't be cancelled.
+            if not closed and any(
+                    p.pending or p.amount != zero for p in trans.payments):
+                ui.infopopup(
+                    ["This transaction has (possibly pending) payments, and "
+                     "so can't be cancelled. Void lines and then issue a "
+                     "refund as required."],
+                    title="Cancel Transaction")
+                return
             log.info("Register: cancelkey confirm kill "
                      "transaction %d", trans.id)
             ui.infopopup(
@@ -2440,26 +2450,21 @@ class page(ui.basicpage):
         else:
             # Delete this transaction and everything to do with it
             tn = trans.id
+            if any(p.pending or p.amount != zero for p in trans.payments):
+                ui.infopopup(["Cannot delete transaction with pending "
+                              "or non-zero payments."],
+                             title="Error")
+                return
             log.info("Register: cancel open transaction %d" % tn)
-            payments = trans.payments_total
             # Payment, Transline and StockOut objects should be deleted
             # implicitly in cascade
             td.s.delete(trans)
             self.transid = None
             td.s.flush()
-            if payments > zero:
-                # XXX this is looking at all payments, not just those that
-                # go in the cash drawer.
-                if tillconfig.cash_drawer:
-                    printer.kickout(tillconfig.cash_drawer)
-                refundtext = f"{tillconfig.fc(payments)} had already been "\
-                    f"put in the cash drawer."
-            else:
-                refundtext = ""
             self._clear()
             self._redraw()
             ui.infopopup(
-                [f"Transaction number {tn} has been cancelled.  {refundtext}"],
+                [f"Transaction number {tn} has been cancelled."],
                 title="Transaction Cancelled",
                 dismiss=keyboard.K_CASH)
 
