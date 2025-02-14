@@ -339,12 +339,6 @@ std = {
     'database': 'dbname=haymakers',
 }
 
-global_hotkeys = {
-    keyboard.K_STOCKTERMINAL: lambda: quicktill.stockterminal.page(
-        register_hotkeys, ["Bar"]),
-    keyboard.K_LOCK: quicktill.lockscreen.lockpage,
-}
-
 try:
     from contextlib import nullcontext
 except ImportError:
@@ -379,6 +373,9 @@ with nullcontext(configurations["mainbar"]) as c:
         'hotkeys': global_hotkeys,
         'keyboard': quicktill.localutils.stdkeyboard_16by8(
             cash_payment_method="CASH", card_payment_method="SQDEV",
+            overrides={(0, 5): quicktill.keyboard.Key(
+                quicktill.keyboard.K_PASS_LOGIN, css_class="management"),
+                       }
         ),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(
