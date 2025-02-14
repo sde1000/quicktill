@@ -718,7 +718,9 @@ class change_user_password(permission_checked, ui.dismisspopup):
             user.password = passwords.compute_password_tuple(self.password.f)
             ui.toast(f'Password for user "{user.fullname}" changed.')
 
-            if user.id != ui.current_user().userid:
+            # If this popup is over the lock screen or anonymous stock
+            # terminal, there may be no current user to use for logging
+            if ui.current_user() and user.id != ui.current_user().userid:
                 log(f'Changed password for {user.logref}')
 
         self.dismiss()
