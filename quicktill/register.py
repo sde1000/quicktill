@@ -3437,30 +3437,12 @@ class page(ui.basicpage):
             self.deselect()
 
 
-def handle_usertoken(t, *args, **kwargs):
-    """User token handler for the register.
+def handle_login(u, *args, **kwargs):
+    """Login handler for the register.
 
     Used in the configuration file to specify what happens when a user
-    token is handled by the default hotkey handler.
+    logs in.
     """
-    user.token_login(t,
-                     lambda u: finalize_logon(u, *args, **kwargs))
-
-
-def handle_passlogon(*args, **kwargs):
-    """Password logon handler for the register.
-    """
-    user.password_login(lambda u: finalize_logon(u, *args, **kwargs))
-
-
-def finalize_logon(u, *args, **kwargs):
-    """The other half of handle_usertoken.
-
-    This allows this function to be used as a callback, where, for example,
-    logging in requires some asynchronous user input (like a password).
-    """
-    if u is None:
-        return
     for p in ui.basicpage._pagelist:
         if isinstance(p, page) and p.user.userid == u.userid:
             p.select(u)

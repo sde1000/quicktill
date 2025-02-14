@@ -75,8 +75,8 @@ def usertoken_handler(t):
     pass
 
 
-# Called by UI code whenever the password logon key is pressed
-def passlogon_handler():
+# Called by the user login code whenever a user successfully logs in
+def login_handler(u):
     pass
 
 

@@ -1,7 +1,7 @@
 """Stock Terminal page"""
 
 import logging
-from . import ui, td, keyboard, usestock, stocklines, user, tillconfig
+from . import ui, td, keyboard, usestock, stocklines, tillconfig
 from .user import load_user
 from .models import StockLine, StockAnnotation, StockItem
 from sqlalchemy.sql.expression import tuple_, func, null
@@ -183,23 +183,10 @@ class page(ui.basicpage):
         self.alarm(called_by_timer=False)
 
 
-def handle_usertoken(t, *args, **kwargs):
-    """Called when a usertoken has been handled by the default hotkey
-    handler.
+def handle_login(u, *args, **kwargs):
+    """Login handler for the stock terminal.
+
+    Used in the configuration file to specify what happens when a user
+    logs in.
     """
-    user.token_login(t,
-                     lambda u: finalize_logon(u, *args, **kwargs))
-
-
-def handle_passlogon(*args, **kwargs):
-    """Password logon handler for the register.
-    """
-    user.password_login(lambda u: finalize_logon(u, *args, **kwargs))
-
-
-def finalize_logon(u, *args, **kwargs):
-    """a la register.finalize_handle_usertoken
-    """
-    if u is None:
-        return
     return page(*args, user=u, **kwargs)
