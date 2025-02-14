@@ -438,6 +438,8 @@ def main():
             tillconfig.usertoken_listen_v6 = val
         elif opt == 'description':
             tillconfig.configdescription = val
+        elif opt == 'passlogon_handler':
+            tillconfig.passlogon_handler = val
         else:
             log.warning("Unknown configuration option '%s'", opt)
 

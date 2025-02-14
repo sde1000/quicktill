@@ -184,12 +184,22 @@ class page(ui.basicpage):
 
 
 def handle_usertoken(t, *args, **kwargs):
-    """
-    Called when a usertoken has been handled by the default hotkey
+    """Called when a usertoken has been handled by the default hotkey
     handler.
-
     """
-    u = user.user_from_token(t)
+    user.token_login(t,
+                     lambda u: finalize_logon(u, *args, **kwargs))
+
+
+def handle_passlogon(*args, **kwargs):
+    """Password logon handler for the register.
+    """
+    user.password_login(lambda u: finalize_logon(u, *args, **kwargs))
+
+
+def finalize_logon(u, *args, **kwargs):
+    """a la register.finalize_handle_usertoken
+    """
     if u is None:
-        return  # Should already have toasted
+        return
     return page(*args, user=u, **kwargs)

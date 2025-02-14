@@ -3443,7 +3443,22 @@ def handle_usertoken(t, *args, **kwargs):
     Used in the configuration file to specify what happens when a user
     token is handled by the default hotkey handler.
     """
-    u = user.user_from_token(t)
+    user.token_login(t,
+                     lambda u: finalize_logon(u, *args, **kwargs))
+
+
+def handle_passlogon(*args, **kwargs):
+    """Password logon handler for the register.
+    """
+    user.password_login(lambda u: finalize_logon(u, *args, **kwargs))
+
+
+def finalize_logon(u, *args, **kwargs):
+    """The other half of handle_usertoken.
+
+    This allows this function to be used as a callback, where, for example,
+    logging in requires some asynchronous user input (like a password).
+    """
     if u is None:
         return
     for p in ui.basicpage._pagelist:

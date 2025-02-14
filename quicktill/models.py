@@ -869,6 +869,7 @@ class User(Base, Logged):
     message = Column(String(), nullable=True,
                      doc="Message to present to user on their next keypress")
     last_seen = Column(DateTime)
+    password = Column(String(), nullable=True)
     groups = relationship("Group", secondary="group_grants", backref="users")
     permissions = relationship(
         "Permission",
@@ -932,6 +933,7 @@ class UserToken(Base, Logged):
     description = Column(String())
     user_id = Column('user', Integer, ForeignKey('users.id'))
     last_seen = Column(DateTime)
+    last_successful_login = Column(DateTime, nullable=True)
     user = relationship(User, backref='tokens')
 
 

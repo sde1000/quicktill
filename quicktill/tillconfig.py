@@ -75,6 +75,11 @@ def usertoken_handler(t):
     pass
 
 
+# Called by UI code whenever the password logon key is pressed
+def passlogon_handler():
+    pass
+
+
 usertoken_listen = None
 usertoken_listen_v6 = None
 
