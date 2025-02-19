@@ -439,32 +439,34 @@ class _password_prompt(_dismiss_on_token_or_login_key, ui.dismisspopup):
                          colour=ui.colour_input)
         self.t = dbt.token
         self.win.wrapstr(2, 2, 36,
-                         'Enter your password then press Cash/Enter.')
+                         'Please enter your password.')
         self.password = ui.editfield(5, 2, 36, keymap={
-            keyboard.K_CASH: (self.check_password, None)}, hidden=True)
+            keyboard.K_CASH: (self.wrong_password, None)}, hidden=True)
+        self.password.sethook = self.check_password
         self.password.focus()
 
     def check_password(self):
         if not self.password.f:
-            ui.infopopup(["You must provide a password."], title="Error")
             return
 
         dbt = td.s.get(UserToken, self.t, options=[
             joinedload(UserToken.user),
             joinedload(UserToken.user).joinedload(User.permissions)])
 
-        if not passwords.check_password(self.password.f, dbt.user.password):
-            ui.infopopup(["Incorrect password. If you have forgotten your "
-                          "password, call your manager for help resetting it."],
-                         title="Error")
-            self.password.clear()
+        if passwords.check_password(self.password.f, dbt.user.password):
+            dbt.last_successful_login = datetime.datetime.now()
+            self.dismiss()
+            _finish_login(dbt.user)
+
+    def wrong_password(self):
+        if not self.password.f:
+            ui.infopopup(["You must provide a password."], title="Error")
             return
 
-        dbt.last_successful_login = datetime.datetime.now()
-
-        self.dismiss()
-
-        _finish_login(dbt.user)
+        ui.infopopup(["Incorrect password. If you have forgotten your "
+                      "password, call your manager for help resetting it."],
+                     title="Error")
+        self.password.clear()
 
 
 class _password_login_prompt(_dismiss_on_token_or_login_key, ui.dismisspopup):
