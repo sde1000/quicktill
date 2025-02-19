@@ -1390,8 +1390,8 @@ class booleanfield(valuefield):
         self._f = l
         if not self.allow_blank:
             self._f = not not self._f
-        self.sethook()
         self.draw()
+        self.sethook()
 
     def draw(self):
         if self._f is None:
@@ -1479,8 +1479,8 @@ class editfield(valuefield):
         self._f = l
         self.c = len(self._f)
         self.i = 0  # will be updated by draw() if necessary
-        self.sethook()
         self.draw()
+        self.sethook()
 
     def draw(self):
         pos = self.win.getyx()
@@ -1514,8 +1514,8 @@ class editfield(valuefield):
             self.c = self.c + len(s)
             if self.c > len(self._f):
                 self.c = len(self._f)
-            self.sethook()
             self.draw()
+            self.sethook()
         else:
             beep()
 
@@ -1524,8 +1524,8 @@ class editfield(valuefield):
         if self.c > 0 and not self.readonly:
             self._f = self._f[:self.c - 1] + self._f[self.c:]
             self.move_left()
-            self.sethook()
             self.draw()
+            self.sethook()
         else:
             beep()
 
@@ -1533,8 +1533,8 @@ class editfield(valuefield):
         "Delete the character under the cursor"
         if self.c < len(self._f) and not self.readonly:
             self._f = self._f[:self.c] + self._f[self.c + 1:]
-            self.sethook()
             self.draw()
+            self.sethook()
         else:
             beep()
 
@@ -1566,8 +1566,8 @@ class editfield(valuefield):
             beep()
             return
         self._f = self._f[:self.c]
-        self.sethook()
         self.draw()
+        self.sethook()
 
     def keypress(self, k):
         if isinstance(k, str):
@@ -1819,8 +1819,8 @@ class modelpopupfield(valuefield):
     def set(self, value):
         self._f = sqlalchemy.inspection.inspect(value).identity \
             if value else None
-        self.sethook()
         self.draw()
+        self.sethook()
 
     def read(self):
         if self._f is None:
