@@ -393,12 +393,18 @@ def token_login(t):
         ui.toast(f"User '{u.fullname}' is not active.")
         return
 
+    different_user = ui.current_user() and ui.current_user().dbuser != u
+
     if require_user_passwords() and not u.password:
+        if different_user:
+            tillconfig.firstpage()
         _change_current_user_password_login_initial(u.id)
         return
 
     if u.password:
         if _should_prompt_for_password(dbt):
+            if different_user:
+                tillconfig.firstpage()
             _password_prompt(dbt)
             return
         dbt.last_successful_login = datetime.datetime.now()
@@ -687,22 +693,30 @@ class change_user_password(permission_checked, ui.dismisspopup):
         self.userid = userid
         self.can_clear = can_clear
         user = td.s.get(User, userid)
-        super().__init__(8, 60, title=f"Change password for {user.fullname}",
+        super().__init__(11, 60, title=f"Change password for {user.fullname}",
                          colour=ui.colour_input)
-        self.win.drawstr(2, 2, 56, ('Type in the new password then '
-                                    'press Cash/Enter.'))
-
+        self.win.drawstr(2, 2, 56, 'Please enter the new password twice.')
         if self.can_clear:
-            self.win.drawstr(3, 2, 56, ('To clear the password, leave the '
-                                        'field blank.'))
+            self.win.drawstr(
+                3, 2, 56, 'To clear the password, leave both fields blank.')
 
-        self.win.drawstr(5, 2, 14, 'Password: ', align=">")
-        self.password = ui.editfield(5, 16, 40, keymap={
-            keyboard.K_CASH: (self.save, None)}, hidden=True)
+        self.win.drawstr(5, 2, 16, 'Password: ', align=">")
+        self.win.drawstr(6, 2, 16, 'Password again: ', align=">")
+        self.password = ui.editfield(5, 18, 40, hidden=True, keymap={
+            keyboard.K_CLEAR: (self.dismiss, None)})
+        self.password_again = ui.editfield(6, 18, 40, hidden=True)
+        self.button = ui.buttonfield(8, 20, 20, "Set password", keymap={
+            keyboard.K_CASH: (self.save, None)})
+
+        ui.map_fieldlist([self.password, self.password_again, self.button])
 
         self.password.focus()
 
     def save(self):
+        if self.password.f != self.password_again.f:
+            ui.infopopup(["Those passwords don't match."], title="Error")
+            return
+
         if not self.can_clear and \
                 (not self.password.f or len(self.password.f) < 1):
             ui.infopopup(["You must provide a password."], title="Error")
@@ -714,7 +728,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
             user.password = None
             ui.toast(f'Password for user "{user.fullname}" removed.')
 
-            if user.id != ui.current_user().userid:
+            if ui.current_user() and user.id != ui.current_user().userid:
                 log(f'Cleared password for {user.logref}')
         else:
             user.password = passwords.compute_password_tuple(self.password.f)
@@ -746,22 +760,28 @@ class change_current_user_password(change_user_password):
         super().__init__(ui.current_user().userid,
                          can_clear=(not require_user_passwords()))
 
+    def after_change(self, user):
+        if user.password:
+            log("Changed own password")
+        else:
+            log("Removed own password")
+
 
 class _change_current_user_password_login_initial(
         _dismiss_on_token_or_login_key, ui.infopopup):
     def __init__(self, userid):
         self.userid = userid
-        super().__init__([('The system is configured to require users to set '
-                           'a password to log in. You must set a password '
-                           'now.'),
-                          '',
-                          ('If you do not want to set a password now, you '
-                           'can press Cancel to cancel this log on attempt.'),
-                          '',
-                          ('Press Cash/Enter to continue to set a '
-                           'password.')],
-                         dismiss=keyboard.K_CANCEL,
-                         colour=ui.colour_info)
+        super().__init__(
+            ['The system is configured to require users to have '
+             'a password to log in. You don\'t have a password set, so '
+             'to log in you must set a password now.',
+             '',
+             'If you do not want to set a password now, you '
+             'can press Clear to go back.',
+             '',
+             'Press Cash/Enter to continue to set your password.'],
+            title="Password setup",
+            colour=ui.colour_info)
 
     def keypress(self, k):
         if k == keyboard.K_CASH:
@@ -779,18 +799,12 @@ class _change_current_user_password_login(
     This is functionally equivalent to change_current_user_password, but
     no permission is required.
 
-    If the user already has a password set, an error will be displayed instead,
-    although this should never happen if this is implemented correctly...
+    No log entry is made, because the current user may not exist, or
+    may be an unrelated user.
     """
     permission_required = None
 
     def __init__(self, userid):
-        dbu = td.s.get(User, userid)
-        if dbu.password:
-            ui.infopopup([f"User '{dbu.fullname}' already has a password set."],
-                         title="Error")
-            return
-
         super().__init__(userid, can_clear=False)
 
     def after_change(self, dbu):
