@@ -1,6 +1,33 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v23.x to v24
+--------------------
+
+What's new:
+
+ * Users can now set passwords, so that both a user token and password
+   are required to log in to the till
+
+ * The till can be configured to allow users to log in with a numeric
+   ID and their password
+
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE users
+	ADD COLUMN password character varying;
+
+ALTER TABLE usertokens
+	ADD COLUMN last_successful_login timestamp without time zone;
+
+COMMIT;
+```
+
 Upgrade v22.x to v23
 --------------------
 
