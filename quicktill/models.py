@@ -891,6 +891,10 @@ class User(Base, Logged):
     def __str__(self):
         return self.fullname
 
+    def log_out(self):
+        for token in self.tokens:
+            token.last_successful_login = None
+
     @property
     def logtext(self):
         return self.fullname

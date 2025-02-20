@@ -234,6 +234,7 @@ class built_in_user:
         self.permissions = permissions
         self.is_superuser = is_superuser
         self._flat_permissions = set(permissions)
+        self.password_set = None
 
     def may(self, action):
         """May this user perform the specified action?
@@ -264,7 +265,11 @@ class built_in_user:
                 return ["  (None)"]
         info = [f"User ID: {self.userid}",
                 f"Full name: {self.fullname}",
-                f"Short name: {self.shortname}", ""]
+                f"Short name: {self.shortname}"]
+        if self.password_set is not None:
+            info.append(
+                f"Password: {'[Set]' if self.password_set else '[Not set]'}")
+        info.append("")
         if self.is_superuser:
             info.append("Has all permissions.")
         else:
@@ -287,6 +292,7 @@ class database_user(built_in_user):
             user.fullname, user.shortname,
             permissions=[p.id for p in user.permissions],
             is_superuser=user.superuser)
+        self.password_set = (user.password is not None)
 
 
 def load_user(userid):
@@ -1025,6 +1031,14 @@ def display_info(userid=None):
         u.display_info()
 
 
+def log_out():
+    u = ui.current_user()
+    if u and u.dbuser:
+        u.dbuser.log_out()
+        ui.toast("You are now logged out. If you have a password set, it "
+                 "will be requested next time you log in.")
+
+
 def usersmenu():
     """Create and edit users and tokens
     """
@@ -1033,6 +1047,7 @@ def usersmenu():
          ("2", "Tokens", managetokens, None),
          ("3", "Current user information", display_info, None),
          ("4", "Change my password", change_current_user_password, None),
+         ("5", "Log out", log_out, None),
          ], title="Manage Users")
 
 
