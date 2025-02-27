@@ -15,38 +15,18 @@
 
 {% block tillcontent %}
 
-{% if form %}
-{% if tuser.webuser == user.username %}
-<div class="alert alert-danger">
-  Warning: this is you! If you make a change here that removes your
-  access to the web interface or your ability to edit users, you won't
-  be able to reverse it.
-</div>
-{% endif %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update
-  </button>
-</form>
-<script type="text/javascript">
-$(document).ready(function(){
-$("#id_groups").multiSelect({
-selectableHeader: "<div>Available groups</div>",
-selectionHeader: "<div>Selected groups</div>"});
-});
-</script>
-{% else %}
-<table class="kvtable">
+<table class="kvtable mb-2">
+<tr><th scope="row">User ID:</td><td>{{tuser.id}}</td></tr>
 <tr><th scope="row">Full name:</th><td>{{tuser.fullname}}</td></tr>
 <tr><th scope="row">Short name:</th><td>{{tuser.shortname}}</td></tr>
 {% if user.webuser %}
 <tr><th scope="row">Web username:</th><td>{{tuser.webuser}}</td></tr>
 {% endif %}
+<tr><th scope="row">Till password:</th><td>{% if tuser.password %}(Has been set){% else %}Not set{% endif %}</td></tr>
+<tr><th scope="row">Last seen:</th><td>{{tuser.last_seen}}</td></tr>
 </table>
 {% if not tuser.enabled %}
 <p>This user is marked as inactive and cannot use the till.</p>
-{% endif %}
 {% endif %}
 
 {% if tuser.superuser %}
@@ -56,6 +36,53 @@ selectionHeader: "<div>Selected groups</div>"});
   below are irrelevant until the user's "superuser" status is
   revoked.
 </div>
+{% endif %}
+
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+  Change details
+</button>
+<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Edit user</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form id="changeForm" action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  {% if tuser.webuser == user.username %}
+	  <div class="alert alert-danger">
+	    Warning: this is you! If you make a change here that
+	    removes your access to the web interface or your ability
+	    to edit users, you won't be able to reverse it.
+	  </div>
+	  {% endif %}
+	  <div class="container-fluid">
+	    {% include "form-horizontal.html" %}
+	  </div>
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	    </button>
+	  <button class="btn btn-primary" type="submit" name="submit_update">
+	    Update user details
+	  </button>
+	</div>
+      </form>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+  $(document).ready(function(){
+      $("#id_groups").multiSelect({
+	  selectableHeader: "<div>Available groups</div>",
+	  selectionHeader: "<div>Selected groups</div>"});
+  });
+</script>
 {% endif %}
 
 <ul class="nav nav-tabs mt-3 w-100" role="tablist">
