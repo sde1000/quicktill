@@ -1,3 +1,35 @@
+quicktill (24.0) stable; urgency=low
+
+  * New release 24.0
+
+  * Enable passwords feature by default, with one hour timeout
+
+  * Allow passwords to be removed from web interface
+
+  * Add plugin mechanism and unit tests for password hashers
+
+  * Add user ID and presence of password to tillweb user page
+
+  * Add release notes and update year
+
+  * Add a "log out" option, and show whether password is set in user info
+
+  * More password-related fixes
+
+  * Log the user in as soon as they have entered their password
+
+  * ui: finish redrawing field before calling the "set" hook
+
+  * Don't try to log password changes when there is no current user
+
+  * Fix the Haymakers example config
+
+  * Fixes to the new user passwords feature
+
+  * Add user passwords (#301) (#308)
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 02 Mar 2025 21:52:29 +0000
+
 quicktill (23.15) stable; urgency=low
 
   * New release 23.15
