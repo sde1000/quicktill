@@ -23,7 +23,7 @@ import datetime
 
 
 password_check_after = config.IntervalConfigItem(
-    'user:password_check_after', None,
+    'user:password_check_after', datetime.timedelta(hours=1),
     display_name='Prompt for password after',
     description=('How long to allow a user token to be unused before a '
                  'password is required to log in. A blank value will disable '
@@ -744,6 +744,8 @@ class change_user_password(permission_checked, ui.dismisspopup):
             # terminal, there may be no current user to use for logging
             if ui.current_user() and user.id != ui.current_user().userid:
                 log(f'Changed password for {user.logref}')
+
+        user.log_out()  # Prompt for password on next login
 
         self.dismiss()
 
