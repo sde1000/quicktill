@@ -737,7 +737,7 @@ class change_user_password(permission_checked, ui.dismisspopup):
             if ui.current_user() and user.id != ui.current_user().userid:
                 log(f'Cleared password for {user.logref}')
         else:
-            user.password = passwords.compute_password_tuple(self.password.f)
+            user.password = passwords.encode_password(self.password.f)
             ui.toast(f'Password for user "{user.fullname}" changed.')
 
             # If this popup is over the lock screen or anonymous stock
