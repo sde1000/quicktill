@@ -85,6 +85,44 @@
 </script>
 {% endif %}
 
+{% if may_clear_password %}
+<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#clearPasswordModal"{% if not tuser.password %} disabled{% endif %}>
+  Remove password
+</button>
+<div class="modal fade" id="clearPasswordModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="changeModalLabel">Remove password</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form id="removePasswordForm" action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  <p>When you press "Remove password", the password for
+	    {{tuser.fullname}} will be removed.</p>
+	  <p>Next time they visit the till, they will not be asked for
+	    a password.</p>
+	  <p>If the configuration option that requires all till users
+	    to have passwords is turned on, they will be asked to choose
+	    a new password before they log in. Otherwise, they can set a
+	    new password using Manage Till option 7 then option 4.</p>
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	    </button>
+	  <button class="btn btn-primary" type="submit" name="submit_clearpass">
+	    Remove password
+	  </button>
+	</div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <ul class="nav nav-tabs mt-3 w-100" role="tablist">
   <li class="nav-item">
     <a class="nav-link active" id="groupsTab" href="#groups" data-toggle="tab" data-target="#groups" role="tab" aria-controls="groups" aria-selected="true">

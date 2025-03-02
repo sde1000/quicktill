@@ -2768,8 +2768,8 @@ def userlist(request, info):
 
 
 class EditUserForm(forms.Form):
-    fullname = forms.CharField()
-    shortname = forms.CharField()
+    fullname = forms.CharField(label="Full name")
+    shortname = forms.CharField(label="Short name")
     web_username = forms.CharField(required=False)
     enabled = forms.BooleanField(required=False)
     groups = StringIDMultipleChoiceField(
@@ -2784,6 +2784,9 @@ def userdetail(request, info, userid):
     if not u:
         raise Http404
 
+    may_clear_password = info.user_has_perm("edit-user-password") \
+        or (u == info.user and info.user_has_perm("edit-current-user-password"))
+
     form = None
     if (u == info.user or not u.superuser) and info.user_has_perm("edit-user"):
         initial = {
@@ -2793,7 +2796,7 @@ def userdetail(request, info, userid):
             'enabled': u.enabled,
             'groups': u.groups,
         }
-        if request.method == "POST":
+        if request.method == "POST" and "submit_update" in request.POST:
             form = EditUserForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -2805,8 +2808,7 @@ def userdetail(request, info, userid):
                 user.log(f"Updated user {u.logref}.")
                 try:
                     td.s.commit()
-                    messages.success(request, "User '{}' updated.".format(
-                        u.fullname))
+                    messages.success(request, f"User '{u.fullname}' updated.")
                     return HttpResponseRedirect(u.get_absolute_url())
                 except sqlalchemy.exc.IntegrityError:
                     td.s.rollback()
@@ -2817,10 +2819,22 @@ def userdetail(request, info, userid):
         else:
             form = EditUserForm(initial=initial)
 
+    if may_clear_password and request.method == "POST" \
+            and "submit_clearpass" in request.POST:
+        if u.password:
+            u.password = None
+            u.log_out()
+            user.log(f"Removed password for {u.logref}")
+            td.s.commit()
+            messages.success(
+                request, f"Password for user '{u.fullname}' removed.")
+        return HttpResponseRedirect(u.get_absolute_url())
+
     return ('user.html', {
         'tillobject': u,
         'tuser': u,
         'form': form,
+        'may_clear_password': may_clear_password,
     })
 
 
