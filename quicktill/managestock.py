@@ -248,19 +248,18 @@ def stock_purge_internal(source):
 
     # Mark all these stockitems as finished, removing them from being
     # on sale as we go
-    user = ui.current_user()
-    user = user.dbuser if user and hasattr(user, 'dbuser') else None
+    dbu = user.current_dbuser()
     for item in finished:
         if item.stockline:
             # Directly connected to a stockline
             td.s.add(StockAnnotation(
-                stockitem=item, atype="stop", user=user,
+                stockitem=item, atype="stop", user=dbu,
                 text=f"{item.stockline.name} (display stockline, {source})"))
         else:
             # Indirectly connected via a continuous stockline
             for sl in item.stocktype.stocklines:
                 td.s.add(StockAnnotation(
-                    stockitem=item, atype="stop", user=user,
+                    stockitem=item, atype="stop", user=dbu,
                     text=f"{sl.name} (continuous stockline, {source})"))
         item.finished = datetime.datetime.now()
         item.finishcode_id = 'empty'  # guaranteed to exist

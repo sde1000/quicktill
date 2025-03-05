@@ -124,10 +124,8 @@ class annotate(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["You can't add a blank annotation!"], title="Error")
             return
         annotation = self.annfield.f or ""
-        cu = ui.current_user()
-        user = cu.dbuser if cu and hasattr(cu, "dbuser") else None
         td.s.add(StockAnnotation(stockitem=item, type=anntype, text=annotation,
-                                 user=user))
+                                 user=user.current_dbuser()))
         td.s.flush()
         self.dismiss()
         ui.infopopup(

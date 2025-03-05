@@ -2631,7 +2631,6 @@ class page(ui.basicpage):
         # We set the user's current transaction to None and dismiss
         # the current register page, most likely returning to the lock
         # screen on the next time around the event loop.
-        self.user.dbuser = td.s.get(User, self.user.userid)
         self.user.dbuser.transaction = None
         td.s.flush()
         self.deselect()
@@ -2640,7 +2639,6 @@ class page(ui.basicpage):
         # We refresh the user object as if in enter() here, but don't
         # bother with the full works because we're replacing the current
         # transaction anyway!
-        self.user.dbuser = td.s.get(User, self.user.userid)
         self._clear()
         self._redraw()
         if transid:
@@ -3202,14 +3200,6 @@ class page(ui.basicpage):
         it isn't.  If False is returned, this function may have popped
         up a dialog box.
         """
-        # Fetch the current user database object.  We don't recreate
-        # the user.database_user object because that's unlikely to
-        # change often; we're just interested in the transaction and
-        # register fields.  The fetch from the database has probably
-        # already been done in hotkeypress() - here we are fetching
-        # from the sqlalchemy session's map
-        self.user.dbuser = td.s.get(User, self.user.userid)
-
         # This check has already been done in hotkeypress().  We
         # repeat it here because it is possible we may not have been
         # entered in response to a keypress - a timer event, for
@@ -3259,7 +3249,6 @@ class page(ui.basicpage):
         If this returns False, the caller should clean up and then
         call the deselect() method.
         """
-        self.user.dbuser = td.s.get(User, self.user.userid)
         if self.user.dbuser.register_id != tillconfig.register_id:
             # User has logged in somewhere else
             return False
@@ -3369,13 +3358,13 @@ class page(ui.basicpage):
         # the user.database_user object because that's unlikely to
         # change often; we're just interested in the transaction and
         # register fields.
-        self.user.dbuser = td.s.get(
+        dbuser = td.s.get(
             User, self.user.userid,
             options=[joinedload(User.transaction)])
 
         # Check that the user hasn't moved to another terminal.  If
         # they have, lock immediately.
-        if self.user.dbuser.register_id != tillconfig.register_id:
+        if dbuser.register_id != tillconfig.register_id:
             self.deselect()
             return super().hotkeypress(k)
 

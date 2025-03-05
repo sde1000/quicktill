@@ -1563,7 +1563,6 @@ class SquareTerminal(payment.PaymentDriver):
                           "payment was started."], title="Error")
             return
         user = ui.current_user().dbuser
-        td.s.add(user)  # hack! See github issue #220
         p = Payment(transaction=reg_trans, amount=zero, paytype=pm,
                     text=pm.description, user=user,
                     source=tillconfig.terminal_name, pending=True)

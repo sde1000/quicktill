@@ -39,7 +39,6 @@ class Cash(payment.PaymentDriver):
         # Typically used by other payment drivers for cashback, or by
         # the register when deferring part-paid transactions
         user = ui.current_user().dbuser
-        td.s.add(user)
         p = Payment(transaction=transaction, paytype=self.paytype,
                     text=description, amount=amount, user=user,
                     source=tillconfig.terminal_name)

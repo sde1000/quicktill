@@ -287,12 +287,15 @@ class database_user(built_in_user):
     """
     def __init__(self, user):
         self.userid = user.id
-        self.dbuser = user
         super().__init__(
             user.fullname, user.shortname,
             permissions=[p.id for p in user.permissions],
             is_superuser=user.superuser)
         self.password_set = (user.password is not None)
+
+    @property
+    def dbuser(self):
+        return td.s.get(User, self.userid)
 
 
 def load_user(userid):
@@ -399,7 +402,7 @@ def token_login(t):
         ui.toast(f"User '{u.fullname}' is not active.")
         return
 
-    different_user = ui.current_user() and ui.current_user().dbuser != u
+    different_user = current_dbuser() != u
 
     if require_user_passwords() and not u.password:
         if different_user:
@@ -1013,10 +1016,6 @@ class edituser(permission_checked, ui.basicpopup):
         u.webuser = wn if len(wn) > 0 else None
         u.enabled = self.actfield.read()
         self.dismiss()
-        # Update current_user().dbuser to ensure it is in the database
-        # session; it may be a detached instance in some circumstances
-        cu = ui.current_user()
-        cu.dbuser = td.s.get(User, cu.userid)
         log(f"Updated details for user {u.logref}")
 
 

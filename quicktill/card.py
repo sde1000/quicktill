@@ -124,7 +124,6 @@ class _cardpopup(ui.dismisspopup):
 
         trans = td.s.get(Transaction, self.transid)
         user = ui.current_user().dbuser
-        td.s.add(user)
         if not trans or trans.closed:
             ui.infopopup(["The transaction was closed before the payment "
                           "could be recorded.  The payment has been "
