@@ -589,7 +589,8 @@ def _x_unblank_screen():
 
 
 def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
-        keyboard=False, geometry=None, pitch_adjust=0, baseline_adjust=0):
+        keyboard=False, geometry=None, pitch_adjust=0, baseline_adjust=0,
+        hide_pointer=False):
     """Start running with the GTK display system
     """
     if os.getenv('DISPLAY'):
@@ -630,6 +631,11 @@ def run(fullscreen=False, font="sans 20", monospace_font="monospace 20",
     if fullscreen:
         window.fullscreen()
     ui.toaster.notify_display_initialised()
+
+    if hide_pointer:
+        blank_cursor = Gdk.Cursor(Gdk.CursorType.BLANK_CURSOR)
+        window.get_window().set_cursor(blank_cursor)
+
     for i in ui.run_after_init:
         i()
     while tillconfig.mainloop.exit_code is None:

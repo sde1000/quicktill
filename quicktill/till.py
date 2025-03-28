@@ -159,6 +159,10 @@ class runtill(cmdline.command):
             "--baseline-adjust", dest="baseline_adjust", default=0,
             action="store", type=int, metavar="PIXELS",
             help="Adjust the baseline for text")
+        gtkp.add_argument(
+            "--hide-pointer", dest="hide_pointer", default=False,
+            action="store_true", help="Hide the pointer when over the "
+            "till window")
         parser.set_defaults(command=runtill, nolisten=False)
         gtkp.add_argument(
             "--geometry", dest="geometry", default=None,
@@ -272,7 +276,8 @@ class runtill(cmdline.command):
                     keyboard=args.keyboard,
                     geometry=args.geometry,
                     pitch_adjust=args.pitch_adjust,
-                    baseline_adjust=args.baseline_adjust)
+                    baseline_adjust=args.baseline_adjust,
+                    hide_pointer=args.hide_pointer)
             else:
                 from . import ui_ncurses
                 ui_ncurses.run()
