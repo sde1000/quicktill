@@ -1,3 +1,11 @@
+quicktill (24.3) stable; urgency=low
+
+  * New release 24.3
+
+  * Add a "--hide-pointer" command line argument
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 28 Mar 2025 12:47:04 +0000
+
 quicktill (24.2) stable; urgency=low
 
   * New release 24.2
