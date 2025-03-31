@@ -201,11 +201,10 @@ class stockfilter:
             q = q.filter(StockItem.bestbefore == None)
         if self.stockline_affinity_id:
             q = q.order_by(desc(StockItem.stocktype_id.in_(
-                td.select([StockLineTypeLog.stocktype_id],
-                          whereclause=(
-                              StockLineTypeLog.stocklineid
-                              == self.stockline_affinity_id),
-                          correlate=True))))
+                td.select(StockLineTypeLog.stocktype_id)
+                .where(StockLineTypeLog.stocklineid
+                       == self.stockline_affinity_id)
+                .correlate())))
         if self.sort_descending_stockid:
             q = q.order_by(desc(StockItem.id))
         else:
