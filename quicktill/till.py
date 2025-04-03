@@ -372,6 +372,12 @@ def main():
 
     rootlog = startup.configure_logging(args)
 
+    # A postgresql restart causes sqlalchemy to log an error during
+    # cleanup of the connection used by the "listen" module, which
+    # ends up being displayed in a popup after the till has
+    # exited. Hide this here.
+    logging.getLogger('sqlalchemy.pool.impl.QueuePool').setLevel(logging.FATAL)
+
     # Set up handler to direct warnings to toaster UI
     toasthandler = ToastHandler()
     toastformatter = logging.Formatter('%(levelname)s: %(message)s')
