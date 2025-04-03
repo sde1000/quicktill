@@ -1,3 +1,11 @@
+quicktill (24.5) stable; urgency=low
+
+  * New release 24.5
+
+  * Hide a non-fatal sqlalchemy log message
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 03 Apr 2025 16:03:00 +0100
+
 quicktill (24.4) stable; urgency=low
 
   * New release 24.4
