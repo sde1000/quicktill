@@ -166,7 +166,7 @@ def completelocation(m):
 
     """
     result = td.s.execute(
-        select([StockLine.location]).where(StockLine.location.ilike(m + '%'))
+        select(StockLine.location).where(StockLine.location.ilike(m + '%'))
     )
     return [x[0] for x in result]
 
