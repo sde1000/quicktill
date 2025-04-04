@@ -1,3 +1,11 @@
+quicktill (24.6) stable; urgency=low
+
+  * New release 24.6
+
+  * Replace the last select([column]) with select(column)
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 04 Apr 2025 17:12:03 +0100
+
 quicktill (24.5) stable; urgency=low
 
   * New release 24.5
