@@ -160,6 +160,8 @@ class IntConfigItem(ConfigItem):
 
     @classmethod
     def to_db(cls, v):
+        if v is None:
+            return ""
         return str(v)
 
 
@@ -181,6 +183,8 @@ class PositiveIntConfigItem(ConfigItem):
 
     @classmethod
     def to_db(cls, v):
+        if v is None:
+            return ""
         return str(v)
 
 
