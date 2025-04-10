@@ -188,12 +188,20 @@ def debug_menu():
         ui.menu(lines, title="User tokens",
                 blurb="Choose a user token and press Cash/Enter.")
 
+    def defer_all_open_transactions():
+        for t in td.s.query(Transaction)\
+                     .filter(Transaction.closed == False).all():
+            t.session = None
+        ui.toast("All open transactions deferred; payments may be invalid")
+
     menu = [
         ("1", "Raise uncaught exception", raise_test_exception, None),
         ("2", "Series of toasts", several_toasts, None),
         ("3", "Toast covering a long operation", long_toast, None),
         ("4", "Raise exception while printing", raise_print_exception, None),
         ("5", "Fake a usertoken", send_usertoken, None),
+        ("6", "Defer all open transactions (dangerous!)",
+         defer_all_open_transactions, None),
     ]
     ui.keymenu(menu, title="Debug")
 
