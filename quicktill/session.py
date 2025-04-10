@@ -31,6 +31,14 @@ session_date_rollover_time = config.TimeConfigItem(
     description="When a new session is started after this time of day, "
     "the date defaults to the next day instead of today.")
 
+session_max_unconfirmed = config.PositiveIntConfigItem(
+    'session:max_unconfirmed_sessions', None,
+    display_name="Maximum number of unconfirmed sessions",
+    description="If there are more than this number of sessions that "
+    "do not yet have their totals confirmed, prevent a new session "
+    "from being started. Leave blank to disable this feature.",
+    allow_none=True)
+
 
 def trans_restore():
     """Restore deferred transactions
@@ -112,8 +120,21 @@ def start():
             [f"There is already a session in progress (number {sc.id}, "
              f"started {sc.starttime:%H:%M on %A})."],
             title="Error")
-    else:
-        ssdialog()
+        return
+    if session_max_unconfirmed() is not None:
+        unconfirmed_count = len(
+            sessionlist(None, unpaidonly=True, closedonly=True))
+        log.debug("unconfirmed sessions count %d", unconfirmed_count)
+        if unconfirmed_count > session_max_unconfirmed():
+            ui.infopopup(
+                ["You cannot start a new session yet, because there "
+                 "are sessions that have not yet had their totals confirmed.",
+                 "",
+                 'You can confirm session totals using Manage Till option 1 '
+                 'then option 3 ("Record session takings").'],
+                title="Session totals missing")
+            return
+    ssdialog()
 
 
 def checkendsession():
