@@ -1,3 +1,19 @@
+quicktill (24.7) stable; urgency=low
+
+  * New release 24.7
+
+  * Add option to require session total entry before starting a new session
+
+  * Store default of "None" as empty string for integer configuration items
+
+  * Add configuration setting for "session date suggestion rollover time"
+
+  * Add quick and dirty debug option to defer all open transactions
+
+  * Be more explicit about how we handle "None" in configuration settings
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 10 Apr 2025 18:34:08 +0100
+
 quicktill (24.6) stable; urgency=low
 
   * New release 24.6
