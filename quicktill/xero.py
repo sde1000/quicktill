@@ -211,7 +211,7 @@ class XeroIntegration:
             description="Template for the reference that will be added to "
             "each invoice generated. You can refer to aspects of the relevant "
             "session using, for example, {session.id} or {session.date}.")
-        self.due_days = config.IntConfigItem(
+        self.due_days = config.PositiveIntConfigItem(
             f"{config_prefix}:due_days", 7,
             display_name="Xero invoice due days",
             description="Invoices created for sessions will be listed as "
@@ -251,7 +251,8 @@ class XeroIntegration:
             f"{config_prefix}:start_date", None,
             display_name="Xero start date",
             description="If set, sessions and deliveries will only be sent "
-            "to Xero if they are on or after this date.")
+            "to Xero if they are on or after this date.",
+            allow_none=True)
 
         XeroSessionHooks(self)
         XeroDeliveryHooks(self)

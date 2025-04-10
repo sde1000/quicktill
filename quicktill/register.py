@@ -69,14 +69,14 @@ open_transaction_warn_after = config.IntervalConfigItem(
     'register:open_transaction_warn_after', datetime.timedelta(days=2),
     display_name="Warn about open transactions after",
     description="When recalling an open transaction, warn the user if it "
-    "is older than this.  If blank, never warn.")
+    "is older than this.  If blank, never warn.", allow_none=True)
 
 # Prohibit adding lines to a transaction if it is older than this
 open_transaction_lock_after = config.IntervalConfigItem(
     'register:open_transaction_lock_after', None,
     display_name="Lock open transactions after",
     description="Prohibit adding lines to an open transaction when it is "
-    "older than this.  If blank, never lock.")
+    "older than this.  If blank, never lock.", allow_none=True)
 
 # Message to give to the user when a transaction is locked
 open_transaction_lock_message = config.ConfigItem(

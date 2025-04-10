@@ -11,21 +11,28 @@ log = logging.getLogger(__name__)
 # Do we want config items to be able to have no value?  No.  They
 # should always have a valid value.
 
-# What do we do when the value in the database is invalid for the
-# type?  Read it as "None".  If we can't return None, return the
-# default.
+# Should "None" be included as a valid value? This should be optional,
+# defined per ConfigItem instance.
 
-# What do we do when there's no database available?  Just use the defaults
+# How is "None" represented in the database? It is represented as a
+# value that is invalid for the type of config item (eg. the empty
+# string, for most types). Some types of config item (eg. "text")
+# don't have an invalid value so can never take the value None.
+
+# When the value in the database is invalid for the type and None
+# isn't a valid value, we can't return None so return the default. If
+# the default is None then this is a programmer error!
 
 
 class ConfigItem:
-    """A configuration setting
+    """A text configuration setting
     """
     _keys = {}
     _listener = None
+    none_supported = False
 
     def __init__(self, key, default, type="text",
-                 display_name=None, description=None):
+                 display_name=None, description=None, allow_none=False):
         # NB 'default' may be changed after init simply by setting the
         # attribute
         self.key = key
@@ -33,10 +40,22 @@ class ConfigItem:
         self.type = type
         self.display_name = display_name or key
         self.description = description or self.display_name
+        self._allow_none = allow_none
         self._value = None
         self._current = False
         self._keys[self.key] = self
         self._notify = []
+
+        if allow_none and not self.none_supported:
+            raise Exception("ConfigItem has allow_none set, but None is not "
+                            "a supported config value")
+
+        rt = self.from_db(self.to_db(self.default))
+        if rt is None and not allow_none:
+            raise Exception("ConfigItem default round-trips to None, but "
+                            "allow_none is not set")
+        if rt != self.default:
+            raise Exception("ConfigItem default does not survive db round-trip")
 
     @classmethod
     def from_db(cls, s):
@@ -99,11 +118,18 @@ class ConfigItem:
                 d.description = self.description
         self._current = True
 
-    def __call__(self, allow_none=False):
+    def _test_set(self, dbvalue):
+        """Used by tests to fake reading a value from the database
+        """
+        assert isinstance(dbvalue, str)
+        self._value = self.from_db(dbvalue)
+        self._current = True
+
+    def __call__(self):
         if not self._current:
             self._read()
         if self._value is None:
-            return None if allow_none else self.default
+            return None if self._allow_none else self.default
         return self._value
 
     @property
@@ -120,6 +146,8 @@ class MultiLineConfigItem(ConfigItem):
 
 
 class IntConfigItem(ConfigItem):
+    none_supported = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="integer", **kwargs)
 
@@ -135,25 +163,47 @@ class IntConfigItem(ConfigItem):
         return str(v)
 
 
+class PositiveIntConfigItem(ConfigItem):
+    none_supported = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, type="positive integer", **kwargs)
+
+    @classmethod
+    def from_db(cls, s):
+        try:
+            r = int(s)
+            if r < 0:
+                raise ValueError("Unexpected negative integer")
+            return r
+        except Exception:
+            return
+
+    @classmethod
+    def to_db(cls, v):
+        return str(v)
+
+
 class BooleanConfigItem(ConfigItem):
+    none_supported = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="boolean", **kwargs)
 
     @classmethod
     def from_db(cls, s):
         if not s:
-            # Empty, non-null string
-            return False
-        if s[0] in ('y', 'Y', 't', 'T'):
-            return True
-        return False
+            return
+        return s[0] in ('y', 'Y', 't', 'T')
 
     @classmethod
     def to_db(cls, v):
-        return "Yes" if v else "No"
+        return "Yes" if v else "" if v is None else "No"
 
 
 class DateConfigItem(ConfigItem):
+    none_supported = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="date", **kwargs)
 
@@ -169,7 +219,28 @@ class DateConfigItem(ConfigItem):
         return str(v)
 
 
+class TimeConfigItem(ConfigItem):
+    none_supported = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, type="time", **kwargs)
+
+    @classmethod
+    def from_db(cls, s):
+        try:
+            return datetime.time(*(int(x) for x in s.split(':')))
+        except Exception:
+            return
+
+    @classmethod
+    def to_db(cls, v):
+        if v is None:
+            return ""
+        return str(v)
+
+
 class IntervalConfigItem(ConfigItem):
+    none_supported = True
     _units = {
         'w': 'weeks',
         'week': 'weeks',
@@ -216,6 +287,8 @@ class IntervalConfigItem(ConfigItem):
 
 
 class MoneyConfigItem(ConfigItem):
+    none_supported = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, type="money", **kwargs)
 

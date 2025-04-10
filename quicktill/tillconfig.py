@@ -30,7 +30,7 @@ label_printers = []
 cash_drawer = None
 
 publogo = config.ConfigItem(
-    'core:sitelogo', None, display_name="Site logo",
+    'core:sitelogo', '', display_name="Site logo",
     description=(
         "Logo image to be printed on receipts.  "
         "To update it, use 'base64 filename | runtill config -s core:sitelogo'"

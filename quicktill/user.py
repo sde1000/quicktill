@@ -27,7 +27,8 @@ password_check_after = config.IntervalConfigItem(
     display_name='Prompt for password after',
     description=('How long to allow a user token to be unused before a '
                  'password is required to log in. A blank value will disable '
-                 'password checking at login.')
+                 'password checking at login.'),
+    allow_none=True,
 )
 
 require_user_passwords = config.BooleanConfigItem(
@@ -35,7 +36,7 @@ require_user_passwords = config.BooleanConfigItem(
     display_name='Require users to have passwords',
     description=('When set, require users without a password to set one when '
                  'they next try to use the till. When not set, users will '
-                 'be allowed to clear their own passwords.')
+                 'be allowed to clear their own passwords.'),
 )
 
 allow_password_only_login = config.BooleanConfigItem(
@@ -43,7 +44,7 @@ allow_password_only_login = config.BooleanConfigItem(
     display_name='Allow users to log in with user ID and password',
     description=('Allow users to log in with only their user ID and password, '
                  'without using a user token. Requires the K_PASS_LOGIN key '
-                 'to be present on the keyboard.')
+                 'to be present on the keyboard.'),
 )
 
 
