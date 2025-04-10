@@ -13,7 +13,8 @@ import datetime
 import logging
 log = logging.getLogger(__name__)
 
-
+# Arguably these two config items should be "session:xxx" rather than
+# "core:xxx" — but there's no good way to rename them at the moment
 sessiontotal_print = config.BooleanConfigItem(
     'core:sessiontotal_print', True, display_name="Print session totals?",
     description="Should session totals be printed after they have been "
@@ -23,6 +24,12 @@ sessioncountup_print = config.BooleanConfigItem(
     'core:sessioncountup_print', True, display_name="Print countup sheets?",
     description="Should a counting-up sheet be printed when a session "
     "is closed?")
+
+session_date_rollover_time = config.TimeConfigItem(
+    'session:date_rollover_time', datetime.time(23, 0),
+    display_name="Session date rollover time",
+    description="When a new session is started after this time of day, "
+    "the date defaults to the next day instead of today.")
 
 
 def trans_restore():
@@ -55,10 +62,11 @@ class ssdialog(ui.dismisspopup):
         self.win.drawstr(
             4, 2, 59, "Press Cash/Enter to continue and start the session.")
         self.win.drawstr(6, 2, 14, "Session date: ", align=">")
-        date = datetime.datetime.now()
-        if date.hour >= 23:
-            date = date + datetime.timedelta(days=1)
-        self.datefield = ui.datefield(6, 16, f=date, keymap={
+        now = datetime.datetime.now()
+        if session_date_rollover_time():
+            if now.time() >= session_date_rollover_time():
+                now = now + datetime.timedelta(days=1)
+        self.datefield = ui.datefield(6, 16, f=now.date(), keymap={
             keyboard.K_CASH: (self.key_enter, None)})
         self.datefield.focus()
 
