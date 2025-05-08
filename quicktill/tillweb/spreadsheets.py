@@ -264,18 +264,20 @@ def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
         depttotals = \
             td.s.query(Session, Department.id, tf)\
                 .select_from(Session)\
-                .options(undefer('actual_total'))\
+                .options(undefer(Session.actual_total))\
                 .order_by(Session.id, Department.id)\
                 .group_by(Session.id, Department.id)\
                 .filter(
-                    select([func.count(SessionTotal.sessionid)],
-                           whereclause=SessionTotal.sessionid == Session.id)
+                    select(func.count(SessionTotal.sessionid))
+                    .filter(SessionTotal.sessionid == Session.id)
                     .correlate(Session.__table__)
                     .as_scalar() != 0)\
                 .filter(Session.endtime != None)\
                 .filter(Session.date >= start)\
                 .filter(Session.date <= end)\
-                .join(Transaction, Transline, Department)
+                .join(Transaction)\
+                .join(Transline)\
+                .join(Department)
     else:
         dateranges = td.s.query(func.min(Session.date).label("start"),
                                 func.max(Session.date).label("end"))\
@@ -307,7 +309,7 @@ def sessionrange(start=None, end=None, rows="Sessions", tillname="Till"):
                          .order_by(dateranges.c.start, Transline.dept_id)
 
         acttotals = td.s.query(dateranges.c.start, dateranges.c.end,
-                               select([func.sum(SessionTotal.amount)])
+                               select(func.sum(SessionTotal.amount))
                                .correlate(dateranges)
                                .where(and_(
                                    Session.date >= dateranges.c.start,
@@ -619,7 +621,8 @@ def waste(start=None, end=None, cols="depts", tillname="Till"):
                       StockOut.removecode_id,
                       func.sum(StockOut.qty))\
                .select_from(StockOut)\
-               .join(StockItem, StockType)
+               .join(StockItem)\
+               .join(StockType)
     if start:
         data = data.filter(date >= start)
     else:
@@ -713,13 +716,14 @@ def stocksold(start=None, end=None, dates="transaction", tillname="Till"):
                .join(Department)\
                .options(contains_eager(StockType.unit))\
                .join(Unit)\
-               .join(StockItem, StockOut)\
+               .join(StockItem)\
+               .join(StockOut)\
                .group_by(StockType, Department, Unit)\
                .order_by(StockType.dept_id,
                          func.sum(StockOut.qty).desc())
 
     if dates == "transaction":
-        sold = sold.join(Transline, Transaction, Session)
+        sold = sold.join(Transline).join(Transaction).join(Session)
         if start:
             sold = sold.filter(Session.date >= start)
         if end:
@@ -777,7 +781,7 @@ def translinesummary(start=None, end=None, dates="transaction",
         tl = tl.filter(Transline.dept_id == department.id)
 
     if dates == "transaction":
-        tl = tl.join(Transaction, Session)
+        tl = tl.join(Transaction).join(Session)
         if start:
             tl = tl.filter(Session.date >= start)
         if end:
