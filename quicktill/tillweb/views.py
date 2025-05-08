@@ -2172,6 +2172,7 @@ def stockline_regular(request, info, s):
             user.log(f"Converted stock line {s.logref} from Regular to "
                      f"Continuous, selling {s.stocktype.logref}")
             s.linetype = "continuous"
+            s.department = None
             td.s.commit()
             return redirect(s)
         else:
