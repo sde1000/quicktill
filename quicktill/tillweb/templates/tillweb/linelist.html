@@ -12,7 +12,17 @@
   </tr>
 </thead>
 <tbody>
-{% for line in lines %}
+  {% for line in lines %}
+  {% if line.linetype == "continuous" %}
+  <tr>
+    <td colspan="2"><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+    <td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.fullname}}</a></td>
+    <td>{{line.stocktype.abvstr}}</td>
+    <td>{{money}}{{line.stocktype.pricestr}}</td>
+    <td></td>
+    <td colspan="2">{{line.stocktype.remaining_str}} remaining</td>
+  </tr>
+  {% else %}
 {% for item in line.stockonsale %}
 <tr>
 <td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
@@ -36,6 +46,7 @@
 {{line.name}}</a></td><td></td><td></td><td></td><td></td><td></td>
 <td colspan="2"></td></tr>
 {% endfor %}
+{% endif %}
 {% endfor %}
 </tbody>
 </table>

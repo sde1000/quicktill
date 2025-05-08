@@ -2158,7 +2158,7 @@ class Unit(Base, Logged):
 
     def format_stock_qty(self, qty):
         if abs(qty) < self.base_units_per_stock_unit and qty != 0:
-            return f"{self._fq(qty)} {self.name}"
+            return self.format_sale_qty(qty)
         single = abs(qty) - self.base_units_per_stock_unit < 0.05
         if qty == 0.0:
             single = False

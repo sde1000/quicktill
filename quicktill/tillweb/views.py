@@ -577,7 +577,9 @@ def location(request, info, location):
                 .options(joinedload(StockLine.stockonsale),
                          joinedload(StockLine.stockonsale)
                          .joinedload(StockItem.stocktype),
-                         undefer_qtys(StockLine.stockonsale))\
+                         undefer_qtys(StockLine.stockonsale),
+                         joinedload(StockLine.stocktype)
+                         .undefer(StockType.instock))\
                 .all()
     return ('location.html', {
         'nav': [("Locations", info.reverse('tillweb-locations')),
