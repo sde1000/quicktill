@@ -126,6 +126,7 @@ tillurls = [
     path('reports/stockcheck/', views.stockcheck, name="tillweb-stockcheck"),
     path('reports/translines/', views.transline_summary_report,
          name="tillweb-report-transline-summary"),
+    path('reports/refusals/', views.refusals, name="tillweb-refusals"),
 
     path('datatable/sessions.json', datatable.sessions,
          name="tillweb-datatable-sessions"),
@@ -151,6 +152,8 @@ tillurls = [
          name="tillweb-datatable-depttotals"),
     path('datatable/usertotals.json', datatable.usertotals,
          name="tillweb-datatable-usertotals"),
+    path('datatable/refusals-log.json', datatable.refusals,
+         name="tillweb-datatable-refusals"),
 ]
 
 urls = [

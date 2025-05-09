@@ -280,6 +280,7 @@ quicktill.register.PercentageDiscount("Free", 100, permission_required=(
 
 def appsmenu():
     menu = [
+        ("1", "Refusals log", quicktill.extras.refusals, ()),
     ]
     quicktill.ui.keymenu(menu, title="Apps")
 

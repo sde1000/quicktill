@@ -24,6 +24,7 @@ from quicktill.models import (
     StockItem,
     StockAnnotation,
     AnnotationType,
+    RefusalsLog,
     zero,
 )
 
@@ -783,3 +784,37 @@ def usertotals(request, info):
              "colour": colour,
              } for (u, items, amount), colour in zip(r, c)],
     })
+
+
+@tillweb_view
+def refusals(request, info):
+    columns = {
+        'id': RefusalsLog.id,
+        'user': User.fullname,
+        'time': RefusalsLog.time,
+        'source': RefusalsLog.terminal,
+        'details': RefusalsLog.details,
+    }
+    q = td.s.query(RefusalsLog)\
+            .join(User)\
+            .options(contains_eager(RefusalsLog.user))
+
+    fq = q
+
+    search_value = request.GET.get("search[value]")
+    if search_value:
+        qs = [
+            columns['details'].ilike(f"%{search_value}%"),
+            columns['user'].ilike(f"%{search_value}%"),
+        ]
+        fq = fq.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda r: {
+            'id': r.id,
+            'user': r.user.fullname,
+            'user_url': r.user.get_absolute_url(),
+            'time': r.time,
+            'source': r.terminal,
+            'details': r.details,
+        })

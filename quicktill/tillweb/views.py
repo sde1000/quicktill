@@ -3154,3 +3154,13 @@ def transline_summary_report(request, info):
         ],
         'form': form,
     })
+
+
+@tillweb_view
+def refusals(request, info):
+    return ('refusals-log.html', {
+        'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Refusals", info.reverse("tillweb-refusals")),
+        ],
+    })

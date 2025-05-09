@@ -1,4 +1,4 @@
-from . import ui, keyboard, tillconfig
+from . import ui, keyboard, tillconfig, config
 import time
 import datetime
 from . import td
@@ -58,14 +58,25 @@ def twitter_client(tapi):
     ui.infopopup(["Twitter support has been removed."], title="Notice")
 
 
+_default_refusal_reasons = [
+    "ID requested but no ID provided",
+    "ID requested but was not valid",
+    "Purchaser appeared drunk",
+    "Other",
+    "(Training: not a real refusal)",
+]
+
+refusal_reasons = config.MultiLineConfigItem(
+    "extras:refusal-reasons", "\n".join(_default_refusal_reasons),
+    display_name="Refusals log menu options",
+    description="Each line of this option will be used as a possible reason "
+    "for refusing service in the refusals log menu.")
+
+
 def refusals():
-    reasons = [
-        "ID requested but no ID provided",
-        "ID requested but was not valid",
-        "Purchaser appeared drunk",
-        "Other",
-        "(Training: not a real refusal)",
-    ]
+    reasons = refusal_reasons().splitlines()
+    if not reasons:
+        reasons = _default_refusal_reasons
     ui.automenu([(x, _finish_refusal, (x,)) for x in reasons],
                 title="Reason for refusing sale")
 
@@ -87,7 +98,7 @@ class _finish_refusal(ui.dismisspopup):
     def enter(self):
         td.s.add(RefusalsLog(
             user_id=ui.current_user().userid,
-            terminal=tillconfig.configname,
+            terminal=tillconfig.terminal_name,
             details=f"{self.reason} - {self.text.f}"))
         self.dismiss()
         ui.toast("Refusals log entry added")
