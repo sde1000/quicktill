@@ -1,3 +1,17 @@
+quicktill (24.8) stable; urgency=low
+
+  * New release 24.8
+
+  * Refusals log improvements
+
+  * sqlalchemy fixes to spreadsheet report generator
+
+  * Better display of continuous stock lines in tillweb
+
+  * When converting regular stockline to continuous, ensure dept is null
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 09 May 2025 14:26:23 +0100
+
 quicktill (24.7) stable; urgency=low
 
   * New release 24.7
