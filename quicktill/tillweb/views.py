@@ -52,6 +52,7 @@ from quicktill.models import (
     Config,
     Payment,
     PayType,
+    money,
     money_max_digits,
     money_decimal_places,
     qty_max_digits,
@@ -3117,6 +3118,66 @@ def stock_sold_report(request, info):
             ("Stock sold", info.reverse("tillweb-report-stock-sold")),
         ],
         'stocksoldform': stocksoldform,
+    })
+
+
+class StockValueForm(forms.Form):
+    time = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={
+            'type': 'datetime-local',
+        }))
+
+
+@tillweb_view
+def stock_value_report(request, info):
+    depts = None
+    total = None
+
+    if request.method == 'POST':
+        form = StockValueForm(request.POST)
+        if form.is_valid():
+            time = form.cleaned_data['time'] or datetime.datetime.now()
+
+            used = func.coalesce(
+                (select(func.sum(StockOut.qty))
+                 .correlate(StockItem.__table__)
+                 .where(StockOut.time < time)
+                 .where(StockOut.stockid == StockItem.id)
+                 .as_scalar()), "0.0")
+            # XXX consider what happens for stock items discovered
+            # during a stock take — although their cost price will
+            # generally be null so will not affect this query.  The
+            # correct appropach would probably be to add a column
+            # property to StockItem for "delivery date" which can pull
+            # from the Delivery or StockTake as appropriate.
+            depts = td.s.query(Department, func.sum(
+                func.cast(
+                    StockItem.costprice * ("1.0" - (used / StockItem.size)),
+                    money
+                )))\
+                .select_from(StockItem)\
+                .join(Delivery)\
+                .join(StockType)\
+                .join(Department)\
+                .filter(Delivery.date < time)\
+                .group_by(Department)\
+                .order_by(Department.id)\
+                .filter(or_(StockItem.finished == None,
+                            StockItem.finished >= time))\
+                .all()
+            total = sum(b for _, b in depts)
+    else:
+        form = StockValueForm()
+
+    return ('stock-value-report.html', {
+        'nav': [
+            ("Reports", info.reverse("tillweb-reports")),
+            ("Stock value", info.reverse("tillweb-report-stock-value")),
+        ],
+        'form': form,
+        'departments': depts,
+        'total': total,
     })
 
 

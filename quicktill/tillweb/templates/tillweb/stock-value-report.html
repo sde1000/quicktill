@@ -1,0 +1,44 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Stock value{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Value of unsold stock</h2>
+
+<form action="" method="post" class="mb-2">{% csrf_token %}
+  <p>This report shows the total cost price of remaining stock at a
+    particular point in time. Partly-sold stock items have their cost
+    price reduced pro-rata.</p>
+  <p>If you do not specify a date/time, the current value will be
+    reported.</p>
+
+  {% include "form-horizontal.html" %}
+  <button class="btn btn-primary" type="submit" name="submit_stockvalue">
+    Calculate
+  </button>
+</form>
+
+{% if departments %}
+<table class="table table-sm table-striped w-50">
+  <thead>
+    <tr>
+      <th scope="col">Department</th>
+      <th Scope="col">Cost price</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for dept, value in departments %}
+    <tr>
+      <td><a href="{{dept.get_absolute_url}}">{{dept}}</a></td>
+      <td>{{money}}{{value}}</td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <th scope="row">Total:</th>
+      <td>{{money}}{{total}}</td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
