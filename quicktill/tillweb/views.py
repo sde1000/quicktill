@@ -3166,7 +3166,7 @@ def stock_value_report(request, info):
                 .filter(or_(StockItem.finished == None,
                             StockItem.finished >= time))\
                 .all()
-            total = sum(b for _, b in depts)
+            total = sum((b for _, b in depts), start=zero)
     else:
         form = StockValueForm()
 
