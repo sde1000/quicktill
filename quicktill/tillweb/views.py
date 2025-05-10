@@ -3153,7 +3153,8 @@ def stock_value_report(request, info):
             # from the Delivery or StockTake as appropriate.
             depts = td.s.query(Department, func.sum(
                 func.cast(
-                    StockItem.costprice * ("1.0" - (used / StockItem.size)),
+                    func.coalesce(StockItem.costprice, zero)
+                    * ("1.0" - (used / StockItem.size)),
                     money
                 )))\
                 .select_from(StockItem)\
