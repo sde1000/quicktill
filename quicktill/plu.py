@@ -68,8 +68,7 @@ class modify(user.permission_checked, ui.dismisspopup):
                            'Modify or delete an existing price lookup')
 
     def __init__(self, p, focus_on_price=False):
-        td.s.add(p)
-        self.plu = p
+        self.pluid = p.id
         super().__init__(24, 58, title="Price Lookup",
                          colour=ui.colour_input,
                          dismiss=keyboard.K_CLEAR)
@@ -82,26 +81,26 @@ class modify(user.permission_checked, ui.dismisspopup):
         self.win.addstr(7, 2, "       1: {c}         2: {c}         3: {c}"
                         .format(c=tillconfig.currency))
         self.descfield = ui.editfield(
-            2, 15, 30, flen=160, f=self.plu.description,
+            2, 15, 30, flen=160, f=p.description,
             keymap={keyboard.K_CLEAR: (self.dismiss, None)})
         self.notefield = ui.editfield(
-            3, 15, 30, flen=160, f=self.plu.note)
+            3, 15, 30, flen=160, f=p.note)
         self.deptfield = ui.modellistfield(
             4, 15, 20, Department, lambda q: q.order_by(Department.id),
             d=lambda x: x.description,
-            f=self.plu.department)
+            f=p.department)
         self.pricefield = ui.editfield(
             5, 15 + len(tillconfig.currency()), 8,
-            f=self.plu.price, validate=ui.validate_float)
+            f=p.price, validate=ui.validate_float)
         self.altprice1 = ui.editfield(
             7, 12 + len(tillconfig.currency()), 8,
-            f=self.plu.altprice1, validate=ui.validate_float)
+            f=p.altprice1, validate=ui.validate_float)
         self.altprice2 = ui.editfield(
             7, 24 + len(tillconfig.currency()) * 2, 8,
-            f=self.plu.altprice2, validate=ui.validate_float)
+            f=p.altprice2, validate=ui.validate_float)
         self.altprice3 = ui.editfield(
             7, 36 + len(tillconfig.currency()) * 3, 8,
-            f=self.plu.altprice3, validate=ui.validate_float)
+            f=p.altprice3, validate=ui.validate_float)
         self.savebutton = ui.buttonfield(9, 2, 8, "Save", keymap={
             keyboard.K_CASH: (self.save, None)})
         self.deletebutton = ui.buttonfield(9, 14, 10, "Delete", keymap={
@@ -128,11 +127,12 @@ class modify(user.permission_checked, ui.dismisspopup):
     def keypress(self, k):
         # Handle keypresses that the fields pass up to the main popup
         if hasattr(k, 'line'):
-            linekeys.addbinding(self.plu, k, self.reload_bindings,
+            plu = td.s.get(PriceLookup, self.pluid)
+            linekeys.addbinding(plu, k, self.reload_bindings,
                                 modifiers.defined_modifiers())
 
     def save(self):
-        td.s.add(self.plu)
+        plu = td.s.get(PriceLookup, self.pluid)
         if self.descfield.f == '':
             ui.infopopup(["You may not make the description blank."],
                          title="Error")
@@ -141,31 +141,31 @@ class modify(user.permission_checked, ui.dismisspopup):
             ui.infopopup(["You must specify a department."],
                          title="Error")
             return
-        self.plu.description = self.descfield.f
-        self.plu.note = self.notefield.f
-        self.plu.department = self.deptfield.read()
-        self.plu.price = _decimal_or_none(self.pricefield.f)
-        self.plu.altprice1 = _decimal_or_none(self.altprice1.f)
-        self.plu.altprice2 = _decimal_or_none(self.altprice2.f)
-        self.plu.altprice3 = _decimal_or_none(self.altprice3.f)
+        plu.description = self.descfield.f
+        plu.note = self.notefield.f
+        plu.department = self.deptfield.read()
+        plu.price = _decimal_or_none(self.pricefield.f)
+        plu.altprice1 = _decimal_or_none(self.altprice1.f)
+        plu.altprice2 = _decimal_or_none(self.altprice2.f)
+        plu.altprice3 = _decimal_or_none(self.altprice3.f)
         try:
             td.s.flush()
-            user.log(f"Updated price lookup {self.plu.logref}")
+            user.log(f"Updated price lookup {plu.logref}")
         except IntegrityError:
             ui.infopopup(["You may not rename a price lookup to have the "
                           "same description as another price lookup."],
                          title="Duplicate price lookup error")
             return
         self.dismiss()
-        ui.infopopup([f"Updated price lookup '{self.plu.description}'."],
+        ui.infopopup([f"Updated price lookup '{plu.description}'."],
                      colour=ui.colour_info,
                      dismiss=keyboard.K_CASH, title="Confirmation")
 
     def delete(self):
         self.dismiss()
-        td.s.add(self.plu)
-        user.log(f"Deleted price lookup {self.plu.logref}")
-        td.s.delete(self.plu)
+        plu = td.s.get(PriceLookup, self.pluid)
+        user.log(f"Deleted price lookup {plu.logref}")
+        td.s.delete(plu)
         td.s.flush()
         ui.infopopup(["The price lookup has been deleted."],
                      title="Price Lookup deleted", colour=ui.colour_info,
@@ -188,10 +188,10 @@ class modify(user.permission_checked, ui.dismisspopup):
         td.s.flush()
 
     def reload_bindings(self):
-        td.s.add(self.plu)
+        plu = td.s.get(PriceLookup, self.pluid)
         f = ui.tableformatter(' l   c   l ')
         kbl = linekeys.keyboard_bindings_table(
-            self.plu.keyboard_bindings, f)
+            plu.keyboard_bindings, f)
         self.win.addstr(18, 1, " " * 56)
         self.win.addstr(18, 1, f("Line key", "Menu key", "Default modifier")
                         .display(56)[0])
@@ -219,14 +219,16 @@ class listunbound(user.permission_checked, ui.listpopup):
             return
         f = ui.tableformatter(' l l ')
         headerline = f("Description", "Note")
-        self.ll = [f(x.description, x.note, userdata=x) for x in l]
+        self.ll = [f(x.description, x.note, userdata=x.id) for x in l]
         super().__init__(self.ll, title="Unbound price lookups",
                          colour=ui.colour_info, header=[headerline])
 
     def keypress(self, k):
         if k == keyboard.K_CASH:
             self.dismiss()
-            modify(self.ll[self.s.cursor].userdata)
+            plu = td.s.get(PriceLookup, self.ll[self.s.cursor].userdata)
+            if plu:
+                modify(plu)
         else:
             super().keypress(k)
 
@@ -252,7 +254,7 @@ class selectplu(ui.listpopup):
                    .all()
         f = ui.tableformatter(' l l r l ')
         self.ml = [f(x.description, x.note, tillconfig.fc(x.price),
-                     x.department, userdata=x) for x in plus]
+                     x.department, userdata=x.id) for x in plus]
         self.create_new = create_new
         if create_new:
             self.ml.insert(0, ui.line(" New price lookup"))
@@ -277,7 +279,9 @@ class selectplu(ui.listpopup):
             self.dismiss()
             line = self.ml[self.s.cursor]
             if line.userdata:
-                self.func(line.userdata)
+                plu = td.s.get(PriceLookup, line.userdata)
+                if plu:
+                    self.func(plu)
             else:
                 if self.create_new:
                     create(self.func)

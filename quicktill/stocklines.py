@@ -629,14 +629,16 @@ class listunbound(user.permission_checked, ui.listpopup):
         self.ll = [f(x.name, x.location,
                      x.department.description if x.department else "",
                      "Yes" if len(x.stockonsale) > 0 else "No",
-                     userdata=x) for x in l]
+                     userdata=x.id) for x in l]
         super().__init__(self.ll, title="Unbound stock lines",
                          colour=ui.colour_info, header=[headerline])
 
     def keypress(self, k):
         if k == keyboard.K_CASH:
             self.dismiss()
-            modify(self.ll[self.s.cursor].userdata)
+            sl = td.s.get(StockLine, self.ll[self.s.cursor].userdata)
+            if sl:
+                modify(sl)
         else:
             super().keypress(k)
 
