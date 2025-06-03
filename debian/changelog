@@ -1,3 +1,19 @@
+quicktill (24.9) stable; urgency=low
+
+  * New release 24.9
+
+  * Wrap postgres notify statement in sqlalchemy text() for direct execution
+
+  * Remove some uses of detached instances in stockline and plu modules
+
+  * Cope with departments where costprice is entirely null
+
+  * Allow for stock value report to be empty
+
+  * Add a report showing cost price of unsold stock
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 03 Jun 2025 18:12:56 +0100
+
 quicktill (24.8) stable; urgency=low
 
   * New release 24.8
