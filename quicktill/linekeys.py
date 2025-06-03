@@ -1,5 +1,6 @@
 from . import keyboard, ui, td, user
 from .models import KeyCap, KeyboardBinding, StockLine, PriceLookup
+from sqlalchemy import text
 from sqlalchemy.sql import select, update
 
 import logging
@@ -267,8 +268,8 @@ class move_keys(user.permission_checked, ui.dismisspopup):
             .values(keycode=k.name))
         # Ensure that BOTH keycaps have been notified, even if there's no
         # database keycap record for one or the other of them
-        td.s.execute(f"notify keycaps, '{self.key.name}'")
-        td.s.execute(f"notify keycaps, '{k.name}'")
+        td.s.execute(text(f"notify keycaps, '{self.key.name}'"))
+        td.s.execute(text(f"notify keycaps, '{k.name}'"))
         self.reset()
 
     def keypress(self, k):
