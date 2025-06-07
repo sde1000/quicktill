@@ -1,3 +1,25 @@
+quicktill (24.10) stable; urgency=low
+
+  * New release 24.10
+
+  * Add a new configuration system for startup
+
+  * Include examples and man page in Debian package
+
+  * Add subcommand description for "monitor"
+
+  * Minor speedup to totals output
+
+  * Bump minimum required python version to 3.9
+
+  * PEP8 on a couple of example site config files
+
+  * PEP8 on a couple of very old example files
+
+  * Add a "next banking day" payment date policy
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 07 Jun 2025 19:21:43 +0100
+
 quicktill (24.9) stable; urgency=low
 
   * New release 24.9
