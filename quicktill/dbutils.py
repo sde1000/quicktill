@@ -9,7 +9,7 @@ from . import tillconfig
 from .models import Session, PayType, Business, zero
 from sqlalchemy import Date, or_
 from sqlalchemy.sql.expression import func, cast
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, undefer
 import random
 
 
@@ -341,6 +341,8 @@ class totals(cmdline.command):
                     .filter(Session.endtime != None)\
                     .filter(cast(func.now(), Date) - Session.date <= args.days)\
                     .options(joinedload(Session.actual_totals))\
+                    .options(undefer(Session.actual_total))\
+                    .options(undefer(Session.total))\
                     .order_by(Session.id)\
                     .all()
             businesses = td.s.query(Business).order_by(Business.id).all()
