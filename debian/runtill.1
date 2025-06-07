@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH RUNTILL 1 "2024-02-09"
+.TH RUNTILL 1 "2025-06-07"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -42,11 +42,11 @@ Show summary of options.
 Show version of program.
 .TP
 .B \-u, \-\-config\-url CONFIGURL
-Provide the URL of the till configuration file; overrides the default
-configured in /etc/quicktill/configurl
+Provide the URL of the till site configuration file; overrides the default
+configured in $XDG_CONFIG_DIRS/quicktill.toml
 .TP
 .B \-c, \-\-config\-name CONFIGNAME
-Indicate which configuration to use from the global configuration file.
+Indicate which configuration to use from the site configuration file.
 The default is 'default'.
 .TP
 .B \-t, \-\-terminal\-name TERMINALNAME
@@ -54,7 +54,8 @@ Terminal name to store for transaction lines and payments created
 by this till instance. Defaults to CONFIGNAME.
 .TP
 .B \-d, \-\-database DATABASE
-Override the database connection indicated in the configuration file.
+Specify a database connection string, or the name of a database listed
+in the configuration file.
 .TP
 .B \-f, \-\-user USER
 User ID to use when no other user information is available (use 'listusers'
@@ -128,6 +129,9 @@ the 'adduser' command.
 Store a password (optionally supplied on the command line; if absent
 will be prompted for) in SecretStore key-name with secret name
 secret-name.
+.TP
+.B monitor
+Output till events to stdout in real time.
 
 .SH AUTHOR
 .B quicktill

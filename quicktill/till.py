@@ -119,19 +119,23 @@ class runtill(cmdline.command):
             "before considering the till to be idle")
         parser.add_argument(
             "-k", "--keyboard", dest="keyboard", default=False,
-            action="store_true", help="Show an on-screen keyboard if possible")
+            action=argparse.BooleanOptionalAction,
+            help="Show an on-screen keyboard if possible")
         parser.add_argument(
-            "--no-hardware-keyboard", dest="hwkeyboard", default=True,
-            action="store_false", help="Disable support for hardware keyboard")
+            "--hardware-keyboard", dest="hwkeyboard", default=True,
+            action=argparse.BooleanOptionalAction,
+            help="Enable or disable support for hardware keyboard")
         debugp = parser.add_argument_group(
             title="debug / development arguments",
             description="These arguments may be useful during development "
             "and testing")
         debugp.add_argument(
-            "--nolisten", action="store_true", dest="nolisten",
+            "--nolisten", action=argparse.BooleanOptionalAction,
+            default=False, dest="nolisten",
             help="Disable listening sockets for user tokens and barcodes")
         debugp.add_argument(
-            "--glib-mainloop", action="store_true", dest="glibmainloop",
+            "--glib-mainloop", action=argparse.BooleanOptionalAction,
+            default=False, dest="glibmainloop",
             help="Use GLib mainloop")
         gtkp = parser.add_argument_group(
             title="display system arguments",
@@ -139,10 +143,12 @@ class runtill(cmdline.command):
             "default ncurses display system")
         gtkp.add_argument(
             "--gtk", dest="gtk", default=False,
-            action="store_true", help="Use Gtk display system")
+            action=argparse.BooleanOptionalAction,
+            help="Use Gtk display system")
         gtkp.add_argument(
             "--fullscreen", dest="fullscreen", default=False,
-            action="store_true", help="Use the full screen if possible")
+            action=argparse.BooleanOptionalAction,
+            help="Use the full screen if possible")
         gtkp.add_argument(
             "--font", dest="font", default="sans 20",
             action="store", type=str, metavar="FONT_DESCRIPTION",
@@ -161,9 +167,8 @@ class runtill(cmdline.command):
             help="Adjust the baseline for text")
         gtkp.add_argument(
             "--hide-pointer", dest="hide_pointer", default=False,
-            action="store_true", help="Hide the pointer when over the "
-            "till window")
-        parser.set_defaults(command=runtill, nolisten=False)
+            action=argparse.BooleanOptionalAction,
+            help="Hide the pointer when over the till window")
         gtkp.add_argument(
             "--geometry", dest="geometry", default=None,
             action="store", type=window_geometry, metavar="WIDTHxHEIGHT",
@@ -335,12 +340,12 @@ def main():
     configuration, and starts the program.
     """
 
-    configurl = startup.process_etc_files()
+    configfile, config = startup.process_initial_config()
 
     parser = argparse.ArgumentParser(
         description="Figure out where all the money and stock went")
 
-    startup.add_common_arguments(parser, configurl)
+    startup.add_common_arguments(parser)
 
     parser.add_argument("-c", "--config-name", action="store",
                         dest="configname", default="default",
@@ -353,15 +358,16 @@ def main():
                         dest="user", type=int, default=None,
                         help="User ID to use when no other user information "
                         "is available (use 'listusers' command to check IDs)")
-    parser.add_argument("--disable-printer", action="store_true",
+    parser.add_argument("--disable-printer",
+                        action=argparse.BooleanOptionalAction,
+                        default=False,
                         dest="disable_printer", help="Use the null printer "
                         "instead of the configured printer")
 
-    cmdline.command.add_subparsers(parser)
+    cmdline.command.add_subparsers(
+        parser, configfile, config.get("client-defaults", {}))
 
-    parser.set_defaults(configurl=configurl, configname="default",
-                        database=None, logfile=None, debug=False,
-                        disable_printer=False)
+    parser.set_defaults(**config.get("client-defaults", {}))
     args = parser.parse_args()
 
     if not hasattr(args, 'command'):

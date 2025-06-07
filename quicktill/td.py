@@ -4,6 +4,7 @@
 # accessing it are declared in the models module.
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.pool import Pool
 from sqlalchemy import event, exc
 from sqlalchemy.orm import sessionmaker
@@ -11,6 +12,7 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql import select
 import threading
+import sys
 from . import models
 from .models import (
     StockType,
@@ -22,6 +24,7 @@ import logging
 log = logging.getLogger(__name__)
 
 engine = None
+_configured_databases = {}
 
 
 class NoDatabase(Exception):
@@ -157,32 +160,66 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
     cursor.close()
 
 
-def libpq_to_sqlalchemy(database):
+def dict_to_sqlalchemy(csdict, source):
+    allowable_keys = ('user', 'password', 'host', 'port', 'dbname')
+    bad_keys = set(csdict.keys()) - set(allowable_keys)
+    if bad_keys:
+        print(f"Unrecognised database connection details in {source}:",
+              file=sys.stderr)
+        for k in bad_keys:
+            print(f"  - {k} = {csdict[k]}", file=sys.stderr)
+        print(f"Allowable keys are: {', '.join(allowable_keys)}",
+              file=sys.stderr)
+        print("Or supply a sqlalchemy engine URL")
+        sys.exit(1)
+
+    return URL.create(
+        "postgresql+psycopg2",
+        username=csdict.get('user'),
+        password=csdict.get('password'),
+        host=csdict.get('host'),
+        port=int(csdict.get('port')) if 'port' in csdict else None,
+        database=csdict.get('dbname'))
+
+
+def libpq_to_sqlalchemy(database, source):
     """Create a sqlalchemy engine URL from a libpq connection string
     """
-    csdict = dict([x.split('=', 1) for x in database.split(' ')])
-    estring = "postgresql+psycopg2://"
-    if 'user' in csdict:
-        estring += csdict['user']
-        if 'password' in csdict:
-            estring += f":{csdict['password']}"
-        estring += '@'
-    if 'host' in csdict:
-        estring += csdict['host']
-    if 'port' in csdict:
-        estring += f":{csdict['port']}"
-    estring += f"/{csdict['dbname']}"
-    return estring
+    return dict_to_sqlalchemy(
+        dict([x.split('=', 1) for x in database.split(' ')]), source)
 
 
 def parse_database_name(database):
+    """Parse database connection details
+
+    Output a sqlalchemy engine URL for the database. The input can be
+    a sqlalchemy engine url, libpq connection string, or the name of
+    a database defined in the global configuration file.
+    """
     if database[0] == ":":
         database = f"dbname={database[1:]}"
     if '://' not in database:
-        if '=' not in database:
-            database = f"dbname={database}"
-        database = libpq_to_sqlalchemy(database)
+        if '=' in database:
+            database = libpq_to_sqlalchemy(
+                database, "site config or on command line")
+        else:
+            # Look up in configuration file
+            if database in _configured_databases:
+                database = _configured_databases[database]
+            else:
+                print(f"Database '{database}' not defined in configuration",
+                      file=sys.stderr)
+                sys.exit(1)
     return database
+
+
+def register_databases(configfile, databases):
+    for name, details in databases.items():
+        if 'sqlalchemy_url' in details:
+            conf = details['sqlalchemy_url']
+        else:
+            conf = dict_to_sqlalchemy(details, configfile)
+        _configured_databases[name] = conf
 
 
 def init(database):

@@ -9,10 +9,13 @@ import logging.config
 import warnings
 import argparse
 import tomli
+import json
 import importlib
+import os
+import sys
 from pathlib import Path
 from types import ModuleType
-from . import tillconfig
+from . import tillconfig, td
 from .version import version
 
 # The following imports are to ensure subcommands are loaded
@@ -25,12 +28,13 @@ from . import monitor  # noqa: F401
 
 log = logging.getLogger(__name__)
 
+
+# Legacy configuration file locations
 configurlfile = Path("/etc/quicktill/configurl")
-
 importsfile = Path("/etc/quicktill/default-imports")
-
 importsdir = Path("/etc/quicktill/default-imports.d")
 
+# Configuration to use when no site configuration file is specified
 default_config = """
 configurations = {
   'default': {
@@ -41,22 +45,20 @@ configurations = {
 
 
 def _process_importsfile(path):
-    try:
-        with path.open() as f:
-            for l in f.readlines():
-                for i in l.partition('#')[0].split():
-                    importlib.import_module(i)
-    except Exception:
-        print(f"Exception raised while working on {path}")
-        raise
+    with path.open() as f:
+        for l in f.readlines():
+            for i in l.partition('#')[0].split():
+                yield i
 
 
-def process_etc_files():
+def _process_etc_files():
     try:
         with configurlfile.open() as f:
             configurl = f.readline().strip()
     except FileNotFoundError:
         configurl = None
+
+    imports = []
 
     if importsdir.is_dir():
         for path in importsdir.iterdir():
@@ -66,24 +68,81 @@ def process_etc_files():
                 continue
             if not path.is_file():
                 continue
-            _process_importsfile(path)
+            imports.extend(_process_importsfile(path))
 
     if importsfile.is_file():
-        _process_importsfile(importsfile)
+        imports.extend(_process_importsfile(importsfile))
 
-    return configurl
+    config = {}
+    if configurl:
+        config['client-defaults'] = {'configurl': configurl}
+    if imports:
+        config['imports'] = imports
+    return config
 
 
-def add_common_arguments(parser, configurl):
+def _config_locations():
+    xdg_config_home = os.getenv("XDG_CONFIG_HOME")
+    home = os.getenv("HOME")
+    xdg_config_dirs = os.getenv("XDG_CONFIG_DIRS", default="/etc/xdg")
+
+    if xdg_config_home:
+        yield Path(xdg_config_home)
+    elif home:
+        yield Path(home) / ".config"
+
+    for part in xdg_config_dirs.split(":"):
+        yield Path(part)
+
+
+def _find_initial_config():
+    for loc in _config_locations():
+        if loc.is_dir():
+            cf = loc / "quicktill.toml"
+            if cf.exists():
+                try:
+                    with open(cf, "rb") as f:
+                        return (cf, tomli.load(f))
+                except tomli.TOMLDecodeError as e:
+                    print(f"{cf}: {e}", file=sys.stderr)
+                    sys.exit(1)
+            cf = loc / "quicktill.json"
+            if cf.exists():
+                try:
+                    with open(cf, "r") as f:
+                        return (cf, json.load(f))
+                except json.JSONDecodeError as e:
+                    print(f"{cf}: {e}", file=sys.stderr)
+                    sys.exit(1)
+    return (configurlfile, _process_etc_files())
+
+
+def process_initial_config():
+    configfile, config = _find_initial_config()
+
+    if 'imports' in config:
+        for i in config['imports']:
+            try:
+                importlib.import_module(i)
+            except ModuleNotFoundError as e:
+                print(f"{configfile}: {e} (mentioned in imports)",
+                      file=sys.stderr)
+                sys.exit(1)
+
+    td.register_databases(configfile, config.get('database', {}))
+
+    return configfile, config
+
+
+def add_common_arguments(parser):
     parser.add_argument("--version", action="version", version=version)
     parser.add_argument("-u", "--config-url", action="store",
-                        dest="configurl", default=configurl,
-                        help="URL of global till configuration file; "
-                        f"overrides contents of {configurlfile}")
+                        dest="configurl",
+                        help="URL of site configuration file")
     parser.add_argument("-d", "--database", action="store",
                         dest="database",
-                        help="Database connection string; overrides "
-                        "database specified in configuration file")
+                        help="Database name or connection string; overrides "
+                        "database specified in site configuration file")
     loggroup = parser.add_mutually_exclusive_group()
     loggroup.add_argument("-y", "--log-config",
                           help="Logging configuration file "
@@ -91,9 +150,11 @@ def add_common_arguments(parser, configurl):
                           dest="logconfig")
     loggroup.add_argument("-l", "--logfile", type=argparse.FileType('a'),
                           dest="logfile", help="Simple logging output file")
-    parser.add_argument("--debug", action="store_true", dest="debug",
+    parser.add_argument("--debug", action=argparse.BooleanOptionalAction,
+                        dest="debug", default=False,
                         help="Include debug output in log")
-    parser.add_argument("--log-sql", action="store_true", dest="logsql",
+    parser.add_argument("--log-sql", action=argparse.BooleanOptionalAction,
+                        dest="logsql", default=False,
                         help="Include SQL queries in logfile")
 
 
@@ -131,13 +192,13 @@ def configure_logging(args, stderr_level=logging.ERROR):
 
 def read_config(args):
     if args.configurl:
-        log.info("reading configuration %s", args.configurl)
+        log.info("reading site configuration %s", args.configurl)
         tillconfig.configversion = args.configurl
         f = urllib.request.urlopen(args.configurl)
         globalconfig = f.read()
         f.close()
     else:
-        log.warning("running with no configuration file")
+        log.warning("running with no site configuration file")
         globalconfig = default_config
 
     g = ModuleType("globalconfig")

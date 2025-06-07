@@ -1,0 +1,139 @@
+# quicktill configuration file
+
+# This file is read from $XDG_CONFIG_DIRS/quicktill.toml (See
+# https://specifications.freedesktop.org/basedir-spec/latest/ for how
+# to interpret this location on your system; in practice, for most
+# installations this will be $HOME/.config/quicktill.toml)
+
+# This file is read at startup, before the command-line arguments are
+# parsed. Some entries in this file are used as defaults for these
+# arguments.
+
+## Every module in this list will be imported
+# imports = [
+#   "quicktill.xero",
+# ]
+
+## Defaults for command-line arguments in client mode
+[client-defaults]
+
+## URL of site configuration file
+# configurl = "file:///home/till/configweb/haymakers.py"
+
+## Database name or connection string; if name, refers to the named
+## databases below.
+# database = "haymakers"
+
+## Name of logging configuration file - OR - name of logging output file
+## (You can't specify both)
+# logconfig = "logconfig.toml"
+# logfile = "till.log"
+
+## Include debug output in log?
+debug = false
+
+## Include SQL queries in log?
+logsql = false
+
+## Till type to use from site configuration file
+configname = "default"
+
+## Terminal name to store for transaction lines and payments created by
+## this till instance
+terminalname = "default"
+
+## User ID to use when no other user information is available
+# user = 1
+
+## Use the null printer instead of the configured printer from the site
+## configuration file?
+disable_printer = false
+
+## Defaults for the "start" subcommand in client mode
+[client-defaults.start]
+
+## Show an on-screen keyboard if possible?
+keyboard = true
+
+## Enable support for a hardware keyboard?
+hwkeyboard = true
+
+## Use the Gtk display system?
+gtk = false
+
+## Use the full screen if possible?
+fullscreen = false
+
+## The font to be used for proportional text
+font = "sans 20"
+
+## The font to be used for monospace text
+monospace = "monospace 20"
+
+## Adjust the row height for text
+pitch_adjust = 0
+
+## Adjust the baseline for text
+baseline_adjust = 0
+
+## Hide the pointer when over the till window?
+hide_pointer = false
+
+## Set the initial window size (WIDTHxHEIGHT)
+# geometry = "800x800"
+
+# DEBUG options for the "start" subcommand in client mode:
+
+## Disable listening sockets for usertokens and barcodes
+nolisten = false
+
+## Always use the glib main loop instead of the selectors-based main loop
+glibmainloop = false
+
+## Defaults for the "totals" subcommand in client mode
+[client-defaults.totals]
+
+# Number of days totals to show
+days = 40
+
+## Defaults for command-line arguments in server mode
+[server-defaults]
+
+## URL of site configuration file
+# configurl = "file:///home/till/configweb/haymakers.py"
+
+## Database name or connection string; if name, refers to the named
+## databases below.
+# database = "haymakers"
+
+## Name of logging configuration file - OR - name of logging output file
+## (You can't specify both)
+# logconfig = "logconfig.toml"
+# logfile = "till.log"
+
+## Include debug output in log?
+debug = false
+
+## Include SQL queries in log?
+logsql = false
+
+## Named database connection details. These can be referred to from
+## the site configuration file (as the "database" setting) or from the
+## command-line "--database" or "-d" argument (command-line default
+## set as "database" in the client and server configuration sections)
+
+## You can supply a sqlalchemy engine URL as sqlalchemy_url, or
+## specify keys dbname, user, password, host, port
+[database]
+
+[database.haymakers]
+dbname = "haymakers"
+
+[database.devonshire]
+dbname = "devonshire"
+
+[database.emfcamp]
+dbname = "emfcamp"
+
+[database.test]
+sqlalchemy_url = "postgresql+psycopg2:///test"
