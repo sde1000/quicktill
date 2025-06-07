@@ -1,6 +1,6 @@
 Source: quicktill
 Section: python
-X-Python3-Version: >= 3.8
+X-Python3-Version: >= 3.9
 Priority: optional
 Maintainer: Stephen Early <steve@assorted.org.uk>
 Homepage: https://github.com/sde1000/quicktill

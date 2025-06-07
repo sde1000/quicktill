@@ -39,7 +39,7 @@ Features
  * [Square Terminal](https://developer.squareup.com/docs/terminal-api/overview) integration
 
 It should be possible to run this software on any system that supports
-Python 3.8.  Usually it runs on Debian-derived Linux systems.
+Python 3.9.  Usually it runs on Debian-derived Linux systems.
 
 Misfeatures
 -----------
@@ -55,9 +55,9 @@ Quick start
 -----------
 
 The till software includes an anonymised copy of the database from
-[EMFcamp 2022](https://www.emfcamp.org/) which can be used for
+[EMFcamp 2024](https://www.emfcamp.org/) which can be used for
 testing.  This guide assumes you have a fresh installation of Ubuntu
-20.04 Desktop.  (You will need a graphical user interface for the
+24.04 Desktop.  (You will need a graphical user interface for the
 on-screen keyboard, and the Desktop version has the "universe"
 component enabled by default.)
 
@@ -98,7 +98,7 @@ now on we'll assume that this is your current working directory:
 To create a database and install the test data in it:
 
     createdb emfcamp
-    psql emfcamp <examples/data/emfcamp2022-anonymised.sql
+    psql emfcamp <examples/data/emfcamp2024-anonymised.sql
 
 If in the future you need to go back to the original version of the
 test data, you can delete the database using "dropdb emfcamp" and
@@ -185,8 +185,8 @@ cash drawer).  The software has generic support for all ESC/POS
 receipt printers, and explicit support for the Epson TM-T20 (thermal),
 TM-U220 (dot-matrix), and Aures ODP 333.  Label printers are supported
 for stock label printing.  I use the DYMO LabelWriter-450 (cheap,
-works well) but anything with [CUPS](https://www.cups.org/) support
-will work.
+works well, but unfortunately discontinued) but anything with
+[CUPS](https://www.cups.org/) support will work.
 
 Barcode scanners can be used to identify products as they are sold.
 You need [some simple driver
@@ -216,7 +216,7 @@ Copy the example database setup file and edit it:
     runtill dbsetup my-database-config.toml
 
 (There's an example edited database setup file at
-`examples/data/emfcamp2022-dbsetup.toml`)
+`examples/data/emfcamp2024-dbsetup.toml`)
 
 Create an initial user; this will be a superuser that can do anything,
 you can use the user management interface once the till is running to
