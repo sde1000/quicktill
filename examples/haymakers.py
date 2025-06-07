@@ -237,12 +237,12 @@ def gp(stocktype, stockunit, cost, gp):
 
 
 def markup(stocktype, stockunit, cost, markup):
-    return stocktype.department\
-                    .vat.current.exc_to_inc(
-                        cost * markup * stocktype.unit.base_units_per_sale_unit
-                        / stockunit.size)\
-                                .quantize(Decimal("0.1"), rounding=ROUND_UP)\
-                                .quantize(Decimal("0.01"))
+    return stocktype\
+        .department.vat.current.exc_to_inc(
+            cost * markup * stocktype.unit.base_units_per_sale_unit
+            / stockunit.size)\
+        .quantize(Decimal("0.1"), rounding=ROUND_UP)\
+        .quantize(Decimal("0.01"))
 
 
 # We are passed a StockType (from which we can get manufacturer, name,
@@ -337,7 +337,7 @@ labelprinter = {
 }
 
 std = {
-    'database': 'dbname=haymakers',
+    'database': 'haymakers',
 }
 
 try:
@@ -375,8 +375,7 @@ with nullcontext(configurations["mainbar"]) as c:
         'keyboard': quicktill.localutils.stdkeyboard_16by8(
             cash_payment_method="CASH", card_payment_method="SQDEV",
             overrides={(0, 5): quicktill.keyboard.Key(
-                quicktill.keyboard.K_PASS_LOGIN, css_class="management"),
-                       }
+                quicktill.keyboard.K_PASS_LOGIN, css_class="management")},
         ),
     })
     c.update(quicktill.localutils.activate_register_with_usertoken(

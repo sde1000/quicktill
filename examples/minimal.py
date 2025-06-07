@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-# This is a minimal example till configuration. You can use it when
-# setting up a new instance of the till software.
+# This is a minimal example till site configuration. You can use it
+# when setting up a new instance of the till software.
 
 # When this module is loaded, 'configname' is set to the configuration
 # name requested on the command line.  The module should define
@@ -10,13 +10,11 @@
 import quicktill.pdrivers
 import quicktill.stockterminal
 import quicktill.localutils
-from decimal import Decimal
-import datetime
 from contextlib import nullcontext
 from collections import defaultdict
 
 std = {
-    'database': 'dbname=minimal',
+    # Add any settings that apply to all configuration names here
 }
 
 # Print to a locally-attached receipt printer
