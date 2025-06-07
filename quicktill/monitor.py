@@ -12,6 +12,8 @@ from sqlalchemy.orm import undefer
 
 
 class monitor(command):
+    help = "send till events to stdout in real time"
+
     @staticmethod
     def run(args):
         mainloop = event.SelectorsMainLoop()
