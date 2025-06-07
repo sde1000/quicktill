@@ -185,8 +185,13 @@ def _uk_amex_expected_payment_date(sessiondate):
     return delta_england_banking_days(sessiondate, 2)
 
 
+def _uk_banking_day_after_payment_date(sessiondate):
+    return delta_england_banking_days(sessiondate, 1)
+
+
 payment.date_policy["uk-barclaycard"] = _uk_barclaycard_expected_payment_date
 payment.date_policy["uk-amex"] = _uk_amex_expected_payment_date
+payment.date_policy["uk-banking-day-after"] = _uk_banking_day_after_payment_date
 
 
 def stdkeyboard_16by8(line_base=1, cash_payment_method=None,
