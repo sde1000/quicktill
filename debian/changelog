@@ -1,3 +1,17 @@
+quicktill (24.11) stable; urgency=low
+
+  * New release 24.11
+
+  * Prevent some ways of creating multiple pending payments
+
+  * Add a popup that shows the support contact information
+
+  * Support "Cancel" on a pending Square payment line
+
+  * Show support details if multiple pending payments are discovered
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 13 Jul 2025 16:44:18 +0100
+
 quicktill (24.10) stable; urgency=low
 
   * New release 24.10
