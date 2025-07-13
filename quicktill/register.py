@@ -2030,6 +2030,18 @@ class page(ui.basicpage):
             self.clearbuffer()
             self._redraw()
             return
+        # If there are any pending payments in the transaction, we must not
+        # start a new payment. Pending payments must be resolved first.
+        if any(p.pending for p in trans.payments):
+            log.info("Register: paymentkey: pending payments exist")
+            ui.infopopup(["This transaction already has a pending payment.",
+                          "",
+                          "The pending payment must be completed or cancelled "
+                          "before any other payments can be processed."],
+                         title="Error")
+            self.clearbuffer()
+            self._redraw()
+            return
         if self.hook("paymentkey", paytype, trans):
             return
         self.prompt = self.defaultprompt
@@ -2954,6 +2966,21 @@ class page(ui.basicpage):
         if not sc:
             return
         othertrans = td.s.get(Transaction, othertransid)
+        # If either of the transactions has pending payments, merging
+        # cannot go ahead
+        if any(p.pending for p in trans.payments):
+            ui.infopopup([
+                f"Transaction {trans.id} (this one) has a pending payment. "
+                f"It can't be merged with another transaction until this "
+                f"payment is resolved."], title="Error")
+            return
+        if any(p.pending for p in othertrans.payments):
+            ui.infopopup([
+                f"Transaction {othertrans.id} (the one to be merged into) "
+                f"has a pending payment. This transaction can't be merged "
+                f"into it until the pending payment is resolved."
+            ], title="Error")
+            return
         if len(trans.payments) > 0 and not allow_mergetrans_with_payments():
             ui.infopopup(
                 ["Some payments have already been entered against "
