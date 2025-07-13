@@ -135,6 +135,12 @@ def netinfo():
                  title="Network information", colour=ui.colour_info)
 
 
+def support():
+    log.info("Support contact popup")
+    ui.infopopup([f"For support, contact {tillconfig.support_contact}."],
+                 title="Support", colour=ui.colour_info)
+
+
 @user.permission_required('fullscreen', 'Enter / leave fullscreen mode')
 def fullscreen(setting):
     ui.rootwin.set_fullscreen(setting)
@@ -146,10 +152,13 @@ def sys_menu():
         ("1", "Software versions", versioninfo, None),
         ("2", "Network status", netinfo, None),
     ]
+    if tillconfig.support_contact():
+        menu.append(
+            ("3", "Show support contact", support, None))
     if ui.rootwin.supports_fullscreen:
         menu += [
-            ("3", "Enter fullscreen mode", fullscreen, (True,)),
-            ("4", "Leave fullscreen mode", fullscreen, (False,)),
+            ("4", "Enter fullscreen mode", fullscreen, (True,)),
+            ("5", "Leave fullscreen mode", fullscreen, (False,)),
         ]
     ui.keymenu(menu, title="System information and settings")
 
