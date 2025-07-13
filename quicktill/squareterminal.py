@@ -1590,6 +1590,10 @@ class SquareTerminal(payment.PaymentDriver):
         p = td.s.get(Payment, pline_instance.payment_id)
         if p.pending is False and p.amount == zero:
             register.cancelpayment(pline_instance)
+        elif p.pending:
+            # Resume the payment — the user may be able to cancel it from
+            # the payment in progress dialogue box
+            self.resume_payment(register, p)
         else:
             ui.infopopup(
                 ["You can't cancel completed Square payments. You should "
