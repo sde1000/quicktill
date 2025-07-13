@@ -51,6 +51,12 @@ currency = config.ConfigItem(
     'core:currency', "", display_name="Currency symbol",
     description="Currency symbol used throughout the system")
 
+support_contact = config.ConfigItem(
+    'core:support_contact', "", display_name="Support contact",
+    description="Contact details for technical support; will be included in "
+    "pop-up boxes after the word 'contact' when a situation arises that "
+    "requires technical support to resolve.")
+
 hotkeys = {}
 
 

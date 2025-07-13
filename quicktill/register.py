@@ -2114,7 +2114,7 @@ class page(ui.basicpage):
     def _resume_pending_payment(self):
         """Check for any pending payments and resume one of them if present
 
-        Returns True if a payment was resumed
+        Returns True if a payment was resumed or if an error was displayed
         """
         trans = self._gettrans()
         if not trans or trans.closed:
@@ -2122,6 +2122,19 @@ class page(ui.basicpage):
 
         pending_payments = [p for p in self.dl if isinstance(p, payment.pline)
                             and p.pending]
+        if len(pending_payments) > 1:
+            sc = tillconfig.support_contact()
+            if sc:
+                support = f"To resolve this, contact {sc}."
+            else:
+                support = "This can only be resolved using the database "\
+                    "command line."
+            ui.infopopup([
+                "This transaction has multiple pending payments. This is "
+                "not supposed to happen and needs to be fixed manually.",
+                "",
+                support], title="Pending payments error")
+            return True
         if pending_payments:
             p = td.s.get(Payment, pending_payments[0].payment_id,
                          options=[joinedload(Payment.meta)])
