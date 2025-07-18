@@ -39,7 +39,7 @@ Features
  * [Square Terminal](https://developer.squareup.com/docs/terminal-api/overview) integration
 
 It should be possible to run this software on any system that supports
-Python 3.9.  Usually it runs on Debian-derived Linux systems.
+Python 3.10.  Usually it runs on Debian-derived Linux systems.
 
 Misfeatures
 -----------
