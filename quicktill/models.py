@@ -3494,6 +3494,7 @@ Index('stock_annotations_stockid_key', StockAnnotation.stockid)
 Index('stockout_stockid_key', StockOut.stockid)
 Index('stockout_translineid_key', StockOut.translineid)
 Index('translines_time_key', Transline.time)
+Index('stock_stocktype_key', StockItem.stocktype_id)
 
 # The "find free drinks on this day" function is speeded up
 # considerably by an index on stockout.time::date.

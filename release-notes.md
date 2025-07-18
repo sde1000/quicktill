@@ -1,6 +1,26 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v24.x to v25
+--------------------
+
+What's new:
+
+ * Sales on continuous stock lines are now faster on systems that have
+   many stock items in the database
+
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+CREATE INDEX stock_stocktype_key ON stock USING btree (stocktype);
+
+COMMIT;
+```
+
 Upgrade v23.x to v24
 --------------------
 
