@@ -41,7 +41,7 @@
 </thead>
 <tbody>
 {% for t in stocktypes %}
-<tr>
+<tr{% if t.archived %} class="table-danger"{% endif %}>
 <td><a href="?manufacturer={{t.manufacturer|urlencode}}">{{t.manufacturer}}</a></td>
 <td><a href="{{t.get_absolute_url}}">{{t.name}}</a></td>
 <td>{{t.abvstr}}</td>

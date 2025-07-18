@@ -9,6 +9,11 @@ What's new:
  * Sales on continuous stock lines are now faster on systems that have
    many stock items in the database
 
+ * Stock types can now be marked as "archived", meaning that they will
+   no longer show up in search results or autocompletions and it will
+   not be possible to create any more stock of that type. A note field
+   is supported to explain why the stock type has been archived.
+
 To upgrade the database:
 
  - run psql and give the following commands to the database:
@@ -17,6 +22,10 @@ To upgrade the database:
 BEGIN;
 
 CREATE INDEX stock_stocktype_key ON stock USING btree (stocktype);
+
+ALTER TABLE stocktypes
+	ADD COLUMN archived boolean DEFAULT false NOT NULL,
+	ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
 
 COMMIT;
 ```

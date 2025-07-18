@@ -28,11 +28,16 @@ class choose_stocktype(ui.dismisspopup):
        if possible, but can still be edited.)  If, when form is
        completed, there is no match with an existing stock type, a new
        stock type will be created, provided "allownew" is set.  (This
-       is the only way to create stock types.)
+       is the only way to create stock types through the till
+       client. It is also possible to create stock types through the
+       web interface.)
 
     2) Modify a stock type.  Allows all details of an existing stock
        type to be changed.  Has major warnings - should only be used
        for correcting minor typos!
+
+    If an archived stock type is matched, the stock type note will be
+    displayed and the stock type will not be returned.
     """
     def __init__(self, func, default=None, mode=1, allownew=True):
         """default, if present, is a models.StockType object.
@@ -243,6 +248,17 @@ class choose_stocktype(ui.dismisspopup):
                      "details you have entered."],
                     title="No Match")
                 return
+        elif st.archived:
+            ui.infopopup(
+                [f"{st} has been archived, and "
+                 f"is not available for use. The reason recorded for this is:",
+                 "",
+                 st.note or "(blank)",
+                 "",
+                 "If you need to restore this stock type, you can do so "
+                 "through the web interface."],
+                title="Stock type archived")
+            return
         else:
             self.dismiss()
             self.func(st)

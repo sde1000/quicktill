@@ -8,6 +8,13 @@
 
 <div class="row mb-2">
   <div class="col-8">
+    {% if stocktype.archived %}
+    <div class="alert alert-danger">
+      This stock type has been archived. It is no longer available to
+      use for new stock items.{% if stocktype.note %} See the note for
+      an explanation.{% endif %}
+    </div>
+    {% endif %}
     <table class="kvtable mb-2">
       <tbody>
 	<tr>
@@ -40,6 +47,10 @@
 	  <th scope="row">Stock take method</th>
 	  <td>{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</td>
 	</tr>
+	<tr>
+	  <th scope="row">Note</th>
+	  <td>{{stocktype.note}}</td>
+	</tr>
     </table>
 
     {% if tasting_notes %}
@@ -58,6 +69,9 @@
 	Delete this stock type
       </button>
     </form>
+    {% endif %}
+    {% if archive_form %}
+    <button class="btn btn-{% if stocktype.archived %}secondary{% else %}danger{% endif %} mr-2 mb-2" type="button" data-toggle="modal" data-target="#archiveModal">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</button>
     {% endif %}
   </div>
   <div class="col-4 d-none d-lg-block">
@@ -148,6 +162,58 @@
       $('#dropdown-reprice-form').dropdown('show');
   });
 </script>
+{% endif %}
+
+{% if archive_form %}
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+	<h5 class="modal-title" id="archiveModalLabel">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</h5>
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+      </div>
+      <form action="" method="post">{% csrf_token %}
+	<div class="modal-body">
+	  {% if stocktype.archived %}
+	  <p>When you restore a stock type, it is available again for
+	    new stock items to be created. If the note is no longer
+	    relevant, please remove or alter it.</p>
+	  {% else %}
+	  <p>When you archive a stock type, it is no longer available
+	    for new stock items to be created. It won't show up in the
+	    list of stock types when you are entering new stock, and
+	    it will only be shown when you search for stock types if
+	    you select the "Include archived?" option.</p>
+	  <p>Existing stock of this type is unaffected and can still
+	    be sold.</p>
+	  <p>Please explain in the note why you are archiving this
+	    stock type. This note will be shown to anyone who tries to
+	    use it. If there is an alternative stock type that should
+	    be used instead, please mention it.</p>  {% endif %}
+	  <div class="container-fluid">
+	    {% include "form.html" with form=archive_form %}
+	  </div>
+	</div>
+	<div class="modal-footer">
+	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	    Cancel
+	  </button>
+	  {% if stocktype.archived %}
+	  <button class="btn btn-primary" type="submit" name="submit_restore">
+	    Restore stock type
+	  </button>
+	  {% else %}
+	  <button class="btn btn-danger" type="submit" name="submit_archive">
+	    Archive stock type
+	  </button>
+	  {% endif %}
+	</div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endif %}
 
 {% if stocktype.stocktake %}

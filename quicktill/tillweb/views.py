@@ -1282,9 +1282,21 @@ class StockTypeSearchForm(forms.Form):
         return q
 
 
+class StockTypeArchiveSearchForm(StockTypeSearchForm):
+    include_archived = forms.BooleanField(
+        required=False, label="Include archived?")
+
+    def filter(self, q):
+        cd = self.cleaned_data
+        q = super().filter(q)
+        if not cd['include_archived']:
+            q = q.filter(StockType.archived == False)
+        return q
+
+
 @tillweb_view
 def stocktypesearch(request, info):
-    form = StockTypeSearchForm(request.GET)
+    form = StockTypeArchiveSearchForm(request.GET)
     result = []
     if form.is_valid() and form.is_filled_in():
         q = form.filter(td.s.query(StockType))
@@ -1370,6 +1382,7 @@ class NewStockTypeForm(ValidateStockTypeABV, forms.Form):
         label="Sale price inc. VAT",
         required=False, decimal_places=money_decimal_places,
         min_value=zero, max_digits=money_max_digits)
+    note = forms.CharField(required=False)
 
 
 @tillweb_view
@@ -1395,6 +1408,7 @@ def create_stocktype(request, info):
                     abv=cd['abv'],
                     unit=cd['unit'],
                     saleprice=cd['saleprice'],
+                    note=cd['note'],
                 )
                 td.s.add(s)
                 td.s.commit()
@@ -1430,6 +1444,8 @@ def create_stocktype(request, info):
 def _stocktype_to_dict(x, include_stockunits):
     return {'id': str(x.id), 'text': stocktype_widget_label(x),
             'saleprice': x.saleprice,
+            'archived': x.archived,
+            'note': x.note,
             'stockunits': [{'id': str(su.id), 'text': str(su.name)}
                            for su in x.unit.stockunits]
             if include_stockunits else []}
@@ -1445,7 +1461,8 @@ def stocktype_search_json(request, info, include_stockunits=False):
         return JsonResponse({'results': []})
     q = td.s.query(StockType)\
             .order_by(StockType.dept_id, StockType.manufacturer,
-                      StockType.name)
+                      StockType.name)\
+            .filter(StockType.archived == False)
     # We always search for the query entered in the full name of the
     # product formed from joining the manufacturer and name. If the
     # query consists of exactly two words, we also search for the
@@ -1492,6 +1509,7 @@ class EditStockTypeForm(ValidateStockTypeABV, forms.Form):
         Department,
         query_filter=lambda q: q.order_by(Department.id),
         required=True)
+    note = forms.CharField(required=False)
     tasting_notes = forms.CharField(required=False, widget=forms.Textarea(
         attrs={'rows': '5', 'cols': '80'}))
     product_logo = forms.FileField(
@@ -1513,6 +1531,10 @@ class RepriceStockTypeForm(forms.Form):
         min_value=zero, max_digits=money_max_digits)
 
 
+class ArchiveStockTypeForm(forms.Form):
+    note = forms.CharField(required=False)
+
+
 @tillweb_view
 def stocktype(request, info, stocktype_id):
     s = td.s.get(StockType, stocktype_id, options=[joinedload(StockType.meta)])
@@ -1523,6 +1545,7 @@ def stocktype(request, info, stocktype_id):
 
     alter_form = None
     reprice_form = None
+    archive_form = None
 
     tasting_notes = s.meta[stocktype_tasting_notes_key].value \
         if stocktype_tasting_notes_key in s.meta else ''
@@ -1537,13 +1560,13 @@ def stocktype(request, info, stocktype_id):
                     s.name = cd['name']
                     s.abv = cd['abv']
                     s.department = cd['department']
+                    s.note = cd['note']
                     user.log(f"Updated stock type {s.logref}")
                     if cd['tasting_notes']:
                         s.set_meta(stocktype_tasting_notes_key,
                                    cd['tasting_notes'])
                     else:
                         s.meta.pop(stocktype_tasting_notes_key, None)
-                    print(repr(cd['product_logo']))
                     if cd['product_logo']:
                         s.set_meta(stocktype_product_logo_key,
                                    document=cd['product_logo'].read(),
@@ -1571,7 +1594,30 @@ def stocktype(request, info, stocktype_id):
                 'name': s.name.strip(),
                 'abv': s.abv,
                 'department': s.department,
+                'note': s.note,
                 'tasting_notes': tasting_notes,
+            })
+
+        if request.method == 'POST' and (
+                'submit_archive' in request.POST
+                or 'submit_restore' in request.POST):
+            archive_form = ArchiveStockTypeForm(request.POST)
+            if archive_form.is_valid():
+                cd = archive_form.cleaned_data
+                s.note = cd['note']
+                if 'submit_archive' in request.POST:
+                    user.log(
+                        f'Archived stock type {s.logref} with note "{s.note}"')
+                    s.archived = True
+                else:
+                    user.log(
+                        f"Restored stock type {s.logref}")
+                    s.archived = False
+                td.s.commit()
+                return HttpResponseRedirect(s.get_absolute_url())
+        else:
+            archive_form = ArchiveStockTypeForm(initial={
+                'note': s.note,
             })
 
     if may_reprice:
@@ -1614,12 +1660,14 @@ def stocktype(request, info, stocktype_id):
     if not include_finished:
         items = items.filter(StockItem.finished == None)
     items = items.all()
+
     return ('stocktype.html', {
         'tillobject': s,
         'stocktype': s,
         'tasting_notes': tasting_notes,
         'alter_form': alter_form,
         'reprice_form': reprice_form,
+        'archive_form': archive_form,
         'may_alter': may_alter,
         'may_reprice': may_reprice,
         'may_delete': may_delete,

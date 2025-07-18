@@ -104,6 +104,7 @@ def stocktype_completemanufacturer(m):
     result = s.execute(
         select(StockType.manufacturer)
         .where(StockType.manufacturer.ilike(m + '%'))
+        .where(StockType.archived == False)
         .group_by(StockType.manufacturer)
         .order_by(func.length(StockType.manufacturer), StockType.manufacturer)
     )
@@ -115,6 +116,7 @@ def stocktype_completename(m, n):
         select(StockType.name)
         .where(StockType.manufacturer == m)
         .where(StockType.name.ilike(n + '%'))
+        .where(StockType.archived == False)
         .group_by(StockType.name)
         .order_by(func.length(StockType.name), StockType.name)
     )

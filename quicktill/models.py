@@ -2256,6 +2256,14 @@ class StockType(Base, Logged):
     stocktake_id = Column(
         Integer, ForeignKey('stocktakes.id', ondelete='SET NULL'),
         nullable=True)
+    archived = Column(
+        Boolean, server_default=literal(False), nullable=False,
+        doc='When a stock type is archived, it no longer shows up in '
+        'searches and autocompletion, and new stock of this type cannot '
+        'be created.')
+    note = Column(
+        String(), nullable=False, server_default='',
+        doc='Note about the status of this stock type.')
     department = relationship(Department, lazy="joined")
     unit = relationship(Unit, lazy="joined",
                         backref=backref("stocktypes", order_by=id))
