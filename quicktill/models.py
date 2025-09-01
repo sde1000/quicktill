@@ -2049,12 +2049,17 @@ class StockTake(Base, Logged):
         if self.start_time:
             return
         self.start_time = func.current_timestamp()
+        # XXX displayqty and newdisplayqty should be snapshotted as well,
+        # once support is added for them in the stocktake web interface
         exc = (StockTakeSnapshot.__table__.insert()
                .from_select(
-                   ['stocktake_id', 'stock_id', 'qty'],
+                   ['stocktake_id', 'stock_id', 'qty',
+                    'bestbefore', 'newbestbefore'],
                    select(StockType.stocktake_id,
                           StockItem.id,
-                          StockItem.remaining)
+                          StockItem.remaining,
+                          StockItem.bestbefore,
+                          StockItem.bestbefore)
                    .select_from(StockItem.__table__.join(StockType.__table__))
                    .where(StockItem.checked == True)
                    .where(StockType.stocktake_id == self.id)
@@ -2079,6 +2084,8 @@ class StockTake(Base, Logged):
             if not ss.finishcode:
                 ss.stockitem.finishcode = None
                 ss.stockitem.finished = None
+            ss.stockitem.bestbefore = ss.newbestbefore
+            # XXX commit newdisplayqty once implemented, too
             for a in ss.adjustments:
                 s.add(StockOut(
                     stockitem=ss.stockitem,
@@ -2164,6 +2171,13 @@ class Unit(Base, Logged):
             single = False
         n = self.stock_unit_name if single else self.stock_unit_name_plural
         return f"{self._fq(qty / self.base_units_per_stock_unit)} {n}"
+
+    def format_adjustment_qty(self, qty):
+        # Format the quantity as an adjustment, eg. "-10 pints" or "+10 pints"
+        q = self.format_stock_qty(-qty)
+        if q[0] != "-":
+            q = f"+{q}"
+        return q
 
     # sale_unit_name etc. were renamed from item_name etc.; add properties
     # to ease the migration XXX with deprecation warnings
@@ -3021,6 +3035,12 @@ class StockTakeSnapshot(Base):
     checked = Column(Boolean, server_default=literal(False), nullable=False)
     finishcode_id = Column('finishcode', String(8),
                            ForeignKey('stockfinish.finishcode'))
+    bestbefore = Column(Date, doc="Best-before date for this stock item as "
+                        "at the start of the stock take")
+    newbestbefore = Column(Date, doc="Best-before date to apply when "
+                           "committing the stock take")
+    note = Column(String(), nullable=False, server_default='',
+                  doc='Note about this stock item during the stock take.')
 
     stocktake = relationship(StockTake, back_populates='snapshots')
     stockitem = relationship(StockItem, back_populates='snapshots')
@@ -3028,6 +3048,8 @@ class StockTakeSnapshot(Base):
     adjustments = relationship("StockTakeAdjustment",
                                back_populates='snapshot',
                                passive_deletes=True)
+
+    tillweb_viewname = "tillweb-stocktake-stockitem"
 
     @property
     def qty_in_stock_units(self):
@@ -3044,6 +3066,29 @@ class StockTakeSnapshot(Base):
             return f'{u.format_stock_qty(self.newdisplayqty)} + ' \
                 f'{u.format_stock_qty(self.newqty - self.newdisplayqty)}'
         return u.format_stock_qty(self.newqty)
+
+    def __str__(self):
+        return f"Adjustment for {self.stock_id}"
+
+    def tillweb_nav(self):
+        return self.stocktake.tillweb_nav() + [
+            (str(self), self.get_absolute_url())]
+
+    def get_absolute_url(self):
+        return self.get_view_url(self.tillweb_viewname,
+                                 stocktake_id=self.stocktake_id,
+                                 stock_id=self.stock_id)
+
+
+# Add the StockTake.snapshot_count column property
+StockTake.snapshot_count = column_property(
+    select(func.count('*'))
+    .select_from(StockTakeSnapshot)
+    .correlate(StockTake.__table__)
+    .where(StockTakeSnapshot.stocktake_id == StockTake.id)
+    .label('snapshot_count'),
+    deferred=True,
+    doc="Number of snapshots in this stock take")
 
 
 class StockTakeAdjustment(Base):
@@ -3075,6 +3120,11 @@ class StockTakeAdjustment(Base):
     @property
     def stock_qty(self):
         return self.snapshot.stockitem.stocktype.unit.format_stock_qty(
+            self.qty)
+
+    @property
+    def adjustment_qty(self):
+        return self.snapshot.stockitem.stocktype.unit.format_adjustment_qty(
             self.qty)
 
 

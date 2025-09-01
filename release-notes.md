@@ -1,6 +1,42 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v25.x to v26
+--------------------
+
+What's new:
+
+ * Stock items marked as checked or finished during a stock take are
+   now recorded to the database immediately, rather than when you
+   press the "Update" button, avoiding many situations where progress
+   could be lost during a stock take
+
+ * Stock take quantity adjustments have been moved to a detail page,
+   and the adjustment entry column has been removed to make the stock
+   take page more usable on mobile phones
+
+ * It is now possible to add/adjust the best-before date for stock
+   during a stock take
+
+ * You can add notes about stock items during a stock take
+
+ * The list of completed stock takes is faster to load
+
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE stocktake_snapshots
+	ADD COLUMN bestbefore date,
+	ADD COLUMN newbestbefore date,
+	ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
+
+COMMIT;
+```
+
 Upgrade v24.x to v25
 --------------------
 

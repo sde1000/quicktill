@@ -1,0 +1,52 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — adjust {{ss.stockitem.id}} in stocktake {{ss.stocktake.id}} ({{ss.stocktake.description}}){% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable mb-2" id="details">
+  <tr>
+    <th scope="row">Stock ID</th>
+    <td>{{ss.stockitem.id}}</td>
+  </tr>
+  <tr>
+    <th scope="row">Stock type</th>
+    <td>{{ss.stockitem.stocktype.format}}</td>
+  </tr>
+  <tr>
+    <th scope="row">On sale?</th>
+    <td>{% if ss.stockitem.stockline %}On <a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>{% else %}No{% endif %}</td>
+  </tr>
+  {% if ss.bestbefore or ss.newbestbefore %}
+  <tr>
+    <th scope="row">Best before</th>
+    <td>{{ss.bestbefore}}{% if ss.bestbefore != ss.newbestbefore %} ⇒ {{ss.newbestbefore}}{% endif %}</td>
+  </tr>
+  {% endif %}
+  <tr>
+    <th class="align-top" scope="row">Qty in stock</th>
+    <td>
+      {{ss.qty_in_stock_units}}{% if ss.adjustments %} (original)<br>
+      {% for a in ss.adjustments %}
+      {{a.adjustment_qty}} {{a.removecode|lower}}<br>
+      {% endfor %}
+      ⇨ <strong>{{ss.newqty_in_stock_units}}</strong> (adjusted)
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<form action="" method="post">{% csrf_token %}
+
+{% include "form-horizontal.html" %}
+
+<button class="btn btn-primary mb-2" type="submit" name="submit_adjust">
+  Update / adjust
+</button>
+<br>
+<button class="btn btn-secondary mb-2" type="submit" name="submit_reset">
+  Remove adjustments
+</button>
+
+</form>
+{% endblock %}

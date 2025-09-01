@@ -133,7 +133,7 @@ $(document).ready(function(){
 
 <ul>
   {% for ss in stock.snapshots %}{% if ss.stocktake.commit_time %}
-  <li><a href="{{ss.stocktake.get_absolute_url}}">{{ss.stocktake.commit_time}}</a>: {{ss.qty}} ⇨ {{ss.newqty}}{% if ss.finishcode %} (finished: {{ss.finishcode}}){% endif %}</li>
+  <li><a href="{{ss.stocktake.get_absolute_url}}">{{ss.stocktake.commit_time}}</a>: {{ss.qty}} ⇨ {{ss.newqty}}{% if ss.finishcode %} (finished: {{ss.finishcode}}){% endif %}{% if ss.bestbefore != ss.newbestbefore %} [BB {{ss.bestbefore}} ⇨ {{ss.newbestbefore}}]{% endif %}</li>
   {% endif %}{% endfor %}
 </ul>
 {% endif %}

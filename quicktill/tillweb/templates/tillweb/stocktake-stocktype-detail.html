@@ -1,0 +1,39 @@
+{% extends "tillweb/tillweb.html" %}
+{% load django_bootstrap_breadcrumbs %}
+
+{% block title %}{{till}} — adjust {{stocktype}} in stocktake {{ss.stocktake.id}} ({{ss.stocktake.description}}){% endblock %}
+
+{% block tillcontent %}
+
+<table class="kvtable mb-2" id="details">
+  <tr>
+    <th scope="row">Stock type</th>
+    <td>{{stocktype.format}}</td>
+  </tr>
+  <tr>
+    <th class="align-top" scope="row">Qty in stock</th>
+    <td>
+      {{stocktype.snapshot_qty_in_stockunits}}{% if stocktype.adjustments %} (original)<br>
+      {% for code,qty in stocktype.detail_adjustments.items %}
+      {{qty}} {{code|lower}}<br>
+      {% endfor %}
+      ⇨ <strong>{{stocktype.snapshot_newqty_in_stockunits}}</strong> (adjusted)
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<form action="" method="post">{% csrf_token %}
+
+{% include "form-horizontal.html" %}
+
+<button class="btn btn-primary mb-2" type="submit" name="submit_adjust">
+  Update / adjust
+</button>
+<br>
+<button class="btn btn-secondary mb-2" type="submit" name="submit_reset">
+  Remove adjustments
+</button>
+
+</form>
+{% endblock %}

@@ -13,77 +13,39 @@
 </table>
 
 <form action="" method="post">{% csrf_token %}
-<table class="table table-sm table-hover">
-  <thead class="sticky-top thead-light">
+<table class="table table-sm">
+  <thead class="thead-light">
     <tr>
       <th scope="col">Stock type/ID</th>
       <th scope="col">Quantity</th>
-      <th scope="col">Adjust to</th>
       <th scope="col" class="text-center">Checked / finished</th>
     </tr>
   </thead>
   {% for st in stocktypes %}
-  <tbody id="tbody-st{{st.id}}">
-    <tr class="stocktake-stocktype table-primary">
-      <td{% if st.unit.stocktake_by_items %} colspan="4"{% endif %}>{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
-      {% if not st.unit.stocktake_by_items %}
-      <td>
-	<div>
-	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
-	  {% if st.adjustments %}
-	  <br>({% for code,qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
-	</div>
-      </td>
-      <td>
-	<div>
-	  <input type="number" name="st{{st.id}}-adjustqty" style="width: 100px;" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
-	  <br>
-	  <select name="st{{st.id}}-adjustreason">
-	    {% if not default_adjustreason %}
-	    <option value="" selected></option>
-	    {% endif %}
-	    {% for opt in removecodes %}
-	    <option value="{{opt.id}}"{% if opt.id == default_adjustreason %} selected{% endif %}>{{opt}}</option>
-	    {% endfor %}
-	  </select>
-	</div>
-      </td>
-      <td class="text-center">
-	<input type="checkbox" class="stock-take-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}>
-	<br>
-	<select name="st{{st.id}}-finishcode" style="width: 100px;">
-	  <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
-	  {% for opt in finishcodes %}
-	  <option value="{{opt.id}}"{% if st.snapshot_finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
-	  {% endfor %}
-	</select>
-      </td>
-      {% endif %}
-    </tr>
+  <tbody>
     {% if st.unit.stocktake_by_items %}
+    <tr class="stocktake-stocktype table-primary" id="st{{st.id}}">
+      <td colspan="3">{{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}</td>
+    </tr>
     {% for ss in st.snapshots %}
-    <tr class="stocktake-item table-secondary">
-      <td>{{ss.stock_id}}{% if ss.stockitem.stockline %} (<a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>){% endif %}</td>
-      <td>
-	{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
-	{% if ss.adjustments %}
-	<br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+    <tr class="stocktake-item" id="si{{ss.stockitem.id}}">
+      <td class="position-relative">
+	<a href="{% url "tillweb-stocktake-stockitem" pubname=pubname stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
+	  {{ss.stock_id}}{% if ss.stockitem.stockline %} ({{ss.stockitem.stockline}}){% endif %}
+	  {% if ss.newbestbefore %}<br>BB {{ss.newbestbefore}}{% endif %}
+	  {% if ss.note %}<br>{{ss.note}}{% endif %}
+	</a>
       </td>
-      <td>
-	<input type="number" name="ss{{ss.stock_id}}-adjustqty" style="width: 100px;" step="0.1" min="0"> {{st.unit.stock_unit_name_plural}}
-	<br>
-	<select name="ss{{ss.stock_id}}-adjustreason">
-	  {% if not default_adjustreason %}
-	  <option value="" selected></option>
-	  {% endif %}
-	  {% for opt in removecodes %}
-	  <option value="{{opt.id}}"{% if opt.id == default_adjustreason %} selected{% endif %}>{{opt}}</option>
-	  {% endfor %}
-	</select>
+      <td class="position-relative">
+	<a href="{% url "tillweb-stocktake-stockitem" pubname=pubname stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
+	  {{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
+	  {% if ss.adjustments %}
+	  <br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	</a>
       </td>
-      <td class="text-center"><input type="checkbox" class="stock-take-checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}>
+      <td class="text-center"><input type="checkbox" class="stock-take-checkbox item-checkbox" name="ss{{ss.stock_id}}-checked"{% if ss.checked %} checked{% endif %}>
 	<br>
-	<select name="ss{{ss.stock_id}}-finishcode" style="width: 100px;">
+	<select name="ss{{ss.stock_id}}-finishcode" style="width: 100px;" class="item-selectfinish">
 	  <option value=""{% if ss.finishcode == None %} selected{% endif %}></option>
 	  {% for opt in finishcodes %}
 	  <option value="{{opt.id}}"{% if ss.finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
@@ -92,6 +54,31 @@
       </td>
     </tr>
     {% endfor %}
+    {% else %}
+    <tr class="stocktake-stocktype stocktake-item" id="st{{st.id}}">
+      <td class="position-relative">
+	<a href="{% url "tillweb-stocktake-stocktype" pubname=pubname stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
+	  {{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}
+	</a>
+      </td>
+      <td class="position-relative">
+	<a href="{% url "tillweb-stocktake-stocktype" pubname=pubname stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
+	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
+	  {% if st.adjustments %}
+	  <br>({% for code,qty in st.summary_adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	</a>
+      </td>
+      <td class="text-center">
+	<input type="checkbox" class="stock-take-checkbox item-checkbox" name="st{{st.id}}-checked"{% if st.snapshot_checked %} checked{% endif %}>
+	<br>
+	<select name="st{{st.id}}-finishcode" class="item-selectfinish" style="width: 100px;">
+	  <option value=""{% if st.snapshot_finishcode.id == None %} selected{% endif %}></option>
+	  {% for opt in finishcodes %}
+	  <option value="{{opt.id}}"{% if st.snapshot_finishcode.id == opt.id %} selected{% endif %}>{{opt}}</option>
+	  {% endfor %}
+	</select>
+      </td>
+    </tr>
     {% endif %}
   </tbody>
   {% endfor %}
@@ -99,21 +86,87 @@
 
 {% include "form-horizontal.html" %}
 
-<div id="fix-for-navbar-spacing" style="height: 50px;">&nbsp;</div>
-<nav class="navbar fixed-bottom navbar-light bg-light">
-<button class="btn btn-primary ml-auto" type="submit" name="submit_update">
-  Update values
+<nav class="navbar navbar-light bg-light justify-content-end">
+<button class="btn btn-secondary mb-2" type="submit" name="submit_update">
+  Add stock ID
 </button>
 
-<button class="btn btn-secondary ml-2" type="submit" name="submit_finish">
+<button class="btn btn-primary ml-2 mb-2" type="submit" name="submit_finish">
   Finish stock take
 </button>
 
-<button class="btn btn-danger ml-2" type="submit" name="submit_abandon">
+<button class="btn btn-danger ml-2 mb-2" type="submit" name="submit_abandon">
   Abandon stock take
 </button>
 </div>
 
 </form>
-
+{% comment %} The "stocktake-item" class does not refer to stock
+items, it's referring to the type of thing we are stock-taking by —
+individual items, or whole stocktypes. The item IDs are prefixed by
+"st" or "si" as appropriate. {% endcomment %}
+<script>
+  $(document).ready(function() {
+      $('.item-checkbox').on('click', function(event) {
+	  event.preventDefault();
+	  event.stopPropagation();
+	  const checkbox = event.currentTarget;
+	  const itemId = checkbox.closest(".stocktake-item").id;
+	  const formdata = new FormData();
+	  formdata.append("csrfmiddlewaretoken", "{{csrf_token}}");
+	  formdata.append("toggle-item-checked", "");
+	  formdata.append("item-id", itemId);
+	  checkbox.disabled = true;
+	  fetch("", {method: "POST", body: formdata, redirect: "manual"}).then(
+	      result => {
+		  if (result.ok) {
+		      result.json().then(
+			  json => {
+			      checkbox.disabled = false;
+			      if ('checked' in json) {
+				  checkbox.checked = json.checked;
+			      } else {
+				  console.log("Unexpected JSON: ", json);
+			      }
+			  });
+		  } else {
+		      checkbox.disabled = false;
+		      console.log("Failed request: ", result);
+		  }
+	      });
+      });
+      $('.item-selectfinish').on('change', function(event) {
+	  const select = event.currentTarget;
+	  const item = select.closest(".stocktake-item");
+	  const checkbox = item.getElementsByClassName("item-checkbox")[0];
+	  const itemId = item.id;
+	  const formdata = new FormData();
+	  formdata.append("csrfmiddlewaretoken", "{{csrf_token}}");
+	  formdata.append("item-finish", "");
+	  formdata.append("item-id", itemId);
+	  formdata.append("finishcode", select.value);
+	  checkbox.disabled = true;
+	  select.disabled = true;
+	  fetch("", {method: "POST", body: formdata, redirect: "manual"}).then(
+	      result => {
+		  if (result.ok) {
+		      result.json().then(
+			  json => {
+			      checkbox.disabled = false;
+			      select.disabled = false;
+			      if ('checked' in json) {
+				  checkbox.checked = json.checked;
+			      } else {
+				  console.log("Unexpected JSON: ", json);
+			      }
+			  });
+		  } else {
+		      checkbox.disabled = false;
+		      select.disabled = false;
+		      console.log("Failed request: ", result);
+		  }
+	      });
+      });
+  });
+</script>
 {% endblock %}

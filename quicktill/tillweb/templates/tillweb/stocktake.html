@@ -37,7 +37,7 @@
       <td>
 	{{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
         {% if st.adjustments %}
-	<br>({% for code, qty in st.adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
+	<br>({% for code, qty in st.summary_adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
       </td>
       <td>
 	{% if st.snapshot_finishcode %}{{st.snapshot_finishcode}}{% endif %}
@@ -47,8 +47,8 @@
   </tbody>
   <tbody class="st-{{st.id}}-details{% if not st.unit.stocktake_by_items %} st-detail-hidden collapse{% endif %}">
     {% for ss in st.snapshots %}
-    <tr class="stocktake-item table-secondary">
-      <td></td>
+    <tr class="stocktake-item">
+      <td>{% if ss.newbestbefore != ss.bestbefore %}BB {% if ss.bestbefore %}{{ss.bestbefore}} ⇒ {% endif %}{{ss.newbestbefore}}{% if ss.note %}<br>{% endif %}{% endif %} {{ ss.note }}</td>
       <td><a href="{{ss.stockitem.get_absolute_url}}">{{ss.stock_id}}</a></td>
       <td>{{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
 	{% if ss.adjustments %}
