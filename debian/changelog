@@ -1,3 +1,15 @@
+quicktill (25.0) stable; urgency=low
+
+  * New release 25.0
+
+  * Allow stock types to be marked as "archived"
+
+  * Add index on StockItem.stocktype
+
+  * Prepare for release 25
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 20 Sep 2025 17:00:30 +0100
+
 quicktill (24.11) stable; urgency=low
 
   * New release 24.11
