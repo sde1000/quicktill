@@ -1,3 +1,11 @@
+quicktill (25.1) stable; urgency=low
+
+  * New release 25.1
+
+  * Work around an incompatibility between recent pg_dump and apgdiff
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 24 Sep 2025 17:25:58 +0100
+
 quicktill (25.0) stable; urgency=low
 
   * New release 25.0
