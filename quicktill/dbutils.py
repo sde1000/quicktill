@@ -2,6 +2,7 @@
 """
 
 import os
+import argparse
 from . import cmdline
 from . import td
 from . import models
@@ -235,10 +236,15 @@ class checkdb(cmdline.command):
             help="assume temporary database exists",
             default=True)
         parser.add_argument(
-            "--keep-tempfiles", action="store_true",
+            "--keep-tempfiles", action=argparse.BooleanOptionalAction,
             dest="keeptmp",
             help="don't delete the temporary schema dump files",
             default=False)
+        parser.add_argument(
+            "--meta-filter", action=argparse.BooleanOptionalAction,
+            dest="metafilter", default=True,
+            help="filter out meta-commands from pg_dump by converting them "
+            "to comments")
 
     @staticmethod
     def connection_options(u):
@@ -252,6 +258,10 @@ class checkdb(cmdline.command):
         if u.username:
             opts = opts + ["U", u.username]
         return opts
+
+    @staticmethod
+    def commentmeta(b):
+        return b.replace(b"\n\\", b"\n-- \\")
 
     @staticmethod
     def run(args):
@@ -300,6 +310,9 @@ class checkdb(cmdline.command):
                     cursor.execute('commit')
                     cursor.execute(f'drop database "{args.tempdb}"')
                 raw_connection.close()
+        if args.metafilter:
+            current_schema = checkdb.commentmeta(current_schema)
+            pristine_schema = checkdb.commentmeta(pristine_schema)
         current = tempfile.NamedTemporaryFile(delete=False)
         current.write(current_schema)
         current.close()
