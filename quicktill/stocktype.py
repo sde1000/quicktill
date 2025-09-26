@@ -173,14 +173,15 @@ class choose_stocktype(ui.dismisspopup):
         # possible existing StockTypes based on a fuzzy match with the
         # manufacturer and the name.
 
-        l = td.s.query(StockType).\
-            filter(StockType.manufacturer.ilike(
-                '%{}%'.format(self.manufield.f.strip()))).\
-            filter(StockType.name.ilike(
-                '%{}%'.format(self.namefield.f.strip()))).\
-            order_by(StockType.manufacturer, StockType.name,
-                     StockType.dept_id).\
-            all()
+        l = td.s.query(StockType)\
+                .filter(StockType.manufacturer.ilike(
+                    '%{}%'.format(self.manufield.f.strip())))\
+                .filter(StockType.name.ilike(
+                '%{}%'.format(self.namefield.f.strip())))\
+                .filter(StockType.archived == False)\
+                .order_by(StockType.manufacturer, StockType.name,
+                     StockType.dept_id)\
+                .all()
         if len(l) == 1:
             self.existing_stocktype_chosen(l[0].id)
             return
