@@ -1,3 +1,11 @@
+quicktill (25.3) stable; urgency=low
+
+  * New release 25.3
+
+  * Mollify flake8
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 26 Sep 2025 13:03:03 +0100
+
 quicktill (25.2) stable; urgency=low
 
   * New release 25.2
