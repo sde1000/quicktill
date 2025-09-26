@@ -1,3 +1,11 @@
+quicktill (25.2) stable; urgency=low
+
+  * New release 25.2
+
+  * Ignore archived stock types when Enter is pressed on Name field
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 26 Sep 2025 12:54:52 +0100
+
 quicktill (25.1) stable; urgency=low
 
   * New release 25.1
