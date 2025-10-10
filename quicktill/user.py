@@ -230,6 +230,7 @@ class built_in_user:
     """
     def __init__(self, fullname, shortname, permissions=[],
                  is_superuser=False):
+        self.userid = None
         self.fullname = fullname
         self.shortname = shortname
         self.permissions = permissions
@@ -287,11 +288,11 @@ class database_user(built_in_user):
     attribute to distinguish between different users.
     """
     def __init__(self, user):
-        self.userid = user.id
         super().__init__(
             user.fullname, user.shortname,
             permissions=[p.id for p in user.permissions],
             is_superuser=user.superuser)
+        self.userid = user.id
         self.password_set = (user.password is not None)
 
     @property

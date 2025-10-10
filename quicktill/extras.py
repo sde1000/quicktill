@@ -74,6 +74,12 @@ refusal_reasons = config.MultiLineConfigItem(
 
 
 def refusals():
+    cu = ui.current_user()
+    if not cu or not hasattr(cu, 'dbuser'):
+        ui.infopopup(["Refusals log entries can only be made by named "
+                      "till users. Sign in and try again."],
+                     title="Missing user ID")
+        return
     reasons = refusal_reasons().splitlines()
     if not reasons:
         reasons = _default_refusal_reasons
