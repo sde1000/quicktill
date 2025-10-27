@@ -358,9 +358,9 @@ class tablenumber(ui.dismisspopup):
         self.func(self.numberfield.f)
 
 
-def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
-                     footer="", transid=None, user=None):
-    """This function prints a food order to the specified printer.
+def print_order(driver, number, ol, verbose=True, tablenumber=None,
+                footer="", transid=None, user=None):
+    """This function prints an order to the specified printer.
     """
     with driver as d:
         if verbose:
@@ -370,7 +370,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
             d.printline(f"\tTel. {tillconfig.pubnumber}")
             d.printline()
         if tablenumber is not None:
-            d.printline(f"\tTable number {tablenumber}", colour=1, emph=1)
+            d.printline(f"\tTable {tablenumber}", colour=1, emph=1)
             d.printline()
         if transid is not None:
             d.printline(f"\tTransaction {transid}")
@@ -378,7 +378,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
         if user:
             d.printline(f"\t{user}")
             d.printline()
-        d.printline(f"\tFood order {number}", colour=1, emph=1)
+        d.printline(f"\tOrder {number}", colour=1, emph=1)
         d.printline()
         d.printline(f"\t{ui.formattime(datetime.datetime.now())}")
         d.printline()
@@ -390,7 +390,7 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
             if item.comment:
                 d.printline(f"  Comment: {item.comment}")
         d.printline()
-        d.printline(f"\tFood order {number}", colour=1, emph=1)
+        d.printline(f"\tOrder {number}", colour=1, emph=1)
         if tablenumber is not None:
             d.printline()
             d.printline(f"\tTable {tablenumber}", colour=1, emph=1)
@@ -402,28 +402,26 @@ def print_food_order(driver, number, ol, verbose=True, tablenumber=None,
             d.printline()
 
 
-class popup(user.permission_checked, ui.basicpopup):
+class _popup(user.permission_checked, ui.basicpopup):
     """Take a food order from the user and print it
 
     Call func with a list of (dept, text, items, amount) tuples
     """
-    permission_required = ('kitchen-order', 'Send an order to the kitchen')
+    permission_required = (
+        'kitchen-order', 'Send an order to an order printer')
 
-    def __init__(self, func, transid, menuurl, kitchenprinters,
-                 message_department, allowable_departments,
-                 ordernumberfunc=td.foodorder_ticket,
+    def __init__(self, func, transid, plugin,
                  requests_session=None):
         if not tillconfig.receipt_printer:
             ui.infopopup(["This till doesn't have a receipt printer, and "
-                          "cannot be used to take food orders. Use a "
+                          "cannot be used to take orders. Use a "
                           "till with a printer instead."], title="Error")
             return
-        self.kitchenprinters = kitchenprinters
-        self.message_department = message_department
+        self.plugin = plugin
         if not requests_session:
             requests_session = requests
         try:
-            r = requests_session.get(menuurl, timeout=3)
+            r = requests_session.get(plugin.menuurl, timeout=3)
             if r.status_code != 200:
                 ui.infopopup(["Could not read the menu: web request returned "
                               f"status {r.status_code}."],
@@ -437,23 +435,31 @@ class popup(user.permission_checked, ui.basicpopup):
             ui.infopopup(["The server did not send the menu quickly enough."],
                          title="Could not read menu")
             return
-        self.menu = Menu(r.json(), allowable_departments)
+        self.menu = Menu(r.json(), plugin.allowable_departments)
         self.func = func
         self.transid = transid
-        self.ordernumberfunc = ordernumberfunc
         self.h = 20
         self.w = 64
-        kpprob = self._kitchenprinter_problem()
+        kpprob = self._printer_problem()
         rpprob = tillconfig.receipt_printer.offline()
         if kpprob and rpprob:
             ui.infopopup(
-                ["Both the kitchen printer and receipt printer report "
-                 "problems.  You will not be able to print a food order "
+                ["Both the order printer and receipt printer report "
+                 "problems.  You will not be able to print an order "
                  "until these are fixed.", "",
-                 f"Kitchen printer problem: {kpprob}",
+                 f"Order printer problem: {kpprob}",
                  f"Receipt printer problem: {rpprob}"],
                 title="Printer problems")
             return
+        if plugin.require_order_printer:
+            if kpprob:
+                ui.infopopup(
+                    [f"The {plugin.name} order printer is reporting a "
+                     f"problem. You cannot print an order until this is "
+                     f"fixed.", "",
+                     f"Order printer problem: {kpprob}"],
+                    title=f"{plugin.name_capital} printer problem")
+                return
         super().__init__(self.h, self.w, title=self.menu.name,
                          colour=ui.colour_input)
         self.win.bordertext("Clear: abandon order", "L<")
@@ -480,14 +486,14 @@ class popup(user.permission_checked, ui.basicpopup):
         self.order.focus()
         if kpprob:
             ui.infopopup(
-                ["The kitchen printer might not be connected or "
-                 "turned on.  Please check it!", "",
-                 "You can continue anyway if you like; if the kitchen "
-                 "printer isn't working when you try to print the "
-                 "order then their copy will be printed on the "
-                 "receipt printer.", "",
-                 f"The kitchen printer says: {kpprob}"],
-                title="No connection to kitchen printer")
+                [f"The {self.plugin.name} printer might not be connected or "
+                 f"turned on.  Please check it!", "",
+                 f"You can continue anyway if you like; if the "
+                 f"{self.plugin.name} printer isn't working when you try "
+                 f"to print the order then their copy will be printed on the "
+                 f"receipt printer.", "",
+                 f"The {self.plugin.name} printer says: {kpprob}"],
+                title=f"No connection to {self.plugin.name} printer")
         if rpprob:
             ui.infopopup(
                 ["The receipt printer is reporting a problem.  Please fix it "
@@ -550,69 +556,79 @@ class popup(user.permission_checked, ui.basicpopup):
                  f"The problem is: {rpprob}"],
                 title="Receipt printer problem")
             return
-        number = self.ordernumberfunc()
+        if self.plugin.require_order_printer:
+            kpprob = self._printer_problem()
+            if kpprob:
+                ui.infopopup(
+                    [f"The {self.plugin.name} order printer is reporting a "
+                     f"problem. You can't print the order until this is "
+                     f"fixed.", "",
+                     f"The problem is: {kpprob}"],
+                    title=f"{self.plugin.name_capital} order printer problem")
+                return
+        number = self.plugin.ordernumberfunc()
         # We need to prepare a list of (dept, text, items, amount)
         # tuples for the register.  We enter these into the register
         # before printing, so that we can avoid printing if there is a
         # register problem.
         rl = [(x.dish.department, x.ltext, 1, x.price) for x in self.ml]
-        if tablenumber:
-            rl.insert(0, (self.message_department,
-                          f"Food order {number} (table {tablenumber}):",
-                          1, zero))
-        else:
-            rl.insert(0, (self.message_department,
-                          f"Food order {number}:", 1, zero))
-        # Return values: True=success; string or None=failure
+        label_line = f"{self.plugin.name_capital} order {number}" + (
+            f" (table {tablenumber}):" if tablenumber else ":")
+        rl.insert(0, (self.plugin.message_department,
+                      label_line, 1, zero))
+
+        # Returns True on success; on failure, returns an error message
+        # as a string or None if it was a self.entry() error that will
+        # already have popped up a message.
         r = self.func(rl)
 
-        # If r is None then a window will have been popped up telling the
-        # user what's happened to their transaction.  It will have popped
-        # up on top of us; we can't do anything else at this point other than
-        # exit and let the user try again.
+        # If r is None then a window will have been popped up telling
+        # the user what's happened to their transaction.  It will have
+        # popped up on top of us; we can't do anything else at this
+        # point other than exit and let the user try again, because
+        # dismissing would mess up the focus stack.
         if r == None:
             return
         self.dismiss()
-        if r == True:
-            user = ui.current_user()
-            with ui.exception_guard("printing the customer copy"):
-                print_food_order(tillconfig.receipt_printer, number, self.ml,
-                                 verbose=True, tablenumber=tablenumber,
-                                 footer=self.menu.footer, transid=self.transid)
+        if r != True:
+            ui.infopopup([r], title="Error")
+            return
+        user = ui.current_user()
+        with ui.exception_guard("printing the customer copy"):
+            print_order(tillconfig.receipt_printer, number, self.ml,
+                        verbose=True, tablenumber=tablenumber,
+                        footer=self.menu.footer, transid=self.transid)
+        try:
+            for p in self.plugin.printers:
+                print_order(
+                    p, number, self.ml,
+                    verbose=False, tablenumber=tablenumber,
+                    footer=self.menu.footer, transid=self.transid,
+                    user=user.shortname)
+        except Exception:
+            e = traceback.format_exception_only(
+                sys.exc_info()[0], sys.exc_info()[1])
             try:
-                for kp in self.kitchenprinters:
-                    print_food_order(
-                        kp, number, self.ml,
-                        verbose=False, tablenumber=tablenumber,
-                        footer=self.menu.footer, transid=self.transid,
-                        user=user.shortname)
+                print_order(
+                    tillconfig.receipt_printer, number, self.ml,
+                    verbose=False, tablenumber=tablenumber,
+                    footer=self.menu.footer, transid=self.transid,
+                    user=user.shortname)
             except Exception:
-                e = traceback.format_exception_only(
-                    sys.exc_info()[0], sys.exc_info()[1])
-                try:
-                    print_food_order(
-                        tillconfig.receipt_printer, number, self.ml,
-                        verbose=False, tablenumber=tablenumber,
-                        footer=self.menu.footer, transid=self.transid,
-                        user=user.shortname)
-                except Exception:
-                    pass
-                ui.infopopup(
-                    ["There was a problem sending the order to the "
-                     "printer in the kitchen, so the kitchen copy has been "
-                     "printed here.  You must now take it to the kitchen "
-                     "so that they can make it.  Check that the printer "
-                     "in the kitchen has paper, is turned on, and is plugged "
-                     "in to the network.", "", "The error message from the "
-                     "printer is:"] + e, title="Kitchen printer error")
-                return
-        else:
-            if r:
-                ui.infopopup([r], title="Error")
+                pass
+            ui.infopopup(
+                [f"There was a problem sending the order to the "
+                 f"{self.plugin.name} printer, so that copy has been "
+                 f"printed here instead.  You must now take it through "
+                 f"so that they can make it.  Check that the order printer "
+                 f"has paper, is turned on, and is plugged "
+                 f"in to the network.", "", "The error message from the "
+                 "printer is:"] + e,
+                title=f"{self.plugin.name_capital} printer error")
 
-    def _kitchenprinter_problem(self):
-        for kp in self.kitchenprinters:
-            x = kp.offline()
+    def _printer_problem(self):
+        for p in self.plugin.printers:
+            x = p.offline()
             if x:
                 return x
 
@@ -633,19 +649,23 @@ class popup(user.permission_checked, ui.basicpopup):
 
 
 class message(user.permission_checked, ui.dismisspopup):
-    """Send a printed message to the kitchen.
+    """Send a printed message to the order printer.
     """
-    permission_required = ('kitchen-message', 'Send a message to the kitchen')
+    permission_required = (
+        'kitchen-message', 'Send a message to the order printer')
 
-    def __init__(self, kitchenprinters):
-        self.kitchenprinters = kitchenprinters
-        problem = self._kitchenprinter_problem()
+    def __init__(self, plugin):
+        self.plugin = plugin
+        problem = self._printer_problem()
         if problem:
-            ui.infopopup(["There is a problem with the kitchen printer:", "",
-                          problem], title="Kitchen printer problem")
+            ui.infopopup(
+                [f"There is a problem with the {self.plugin.name} "
+                 f"order printer:", "", problem],
+                title=f"{self.plugin.name_capital} order printer problem")
             return
-        super().__init__(6, 78, title="Message to kitchen",
-                         colour=ui.colour_input)
+        super().__init__(
+            6, 78, title=f"Message to {self.plugin.definite_name}",
+            colour=ui.colour_input)
         self.win.drawstr(2, 2, 14, "Order number: ", align=">")
         self.onfield = ui.editfield(2, 16, 5, keymap={
             keyboard.K_CLEAR: (self.dismiss, None)})
@@ -656,26 +676,29 @@ class message(user.permission_checked, ui.dismisspopup):
             keymap={keyboard.K_CASH: (self.finish, None)})
         ui.map_fieldlist([self.onfield, self.messagefield])
         self.onfield.focus()
-        self.unsaved_data = "message to kitchen"
+        self.unsaved_data = f"message to {self.plugin.name}"
 
-    def _kitchenprinter_problem(self):
-        for kp in self.kitchenprinters:
-            x = kp.offline()
+    def _printer_problem(self):
+        for p in self.plugin.printers:
+            x = p.offline()
             if x:
                 return x
 
     def finish(self):
         if not self.onfield.f and not self.messagefield.f:
             return
-        problem = self._kitchenprinter_problem()
+        problem = self._printer_problem()
         if problem:
-            ui.infopopup(["There is a problem with the kitchen printer:", "",
-                          problem], title="Kitchen printer problem")
+            ui.infopopup(
+                [f"There is a problem with the {self.plugin.name} printer:",
+                 "", problem],
+                title=f"{self.plugin.name_capital} printer problem")
             return
         self.dismiss()
-        with ui.exception_guard("printing the message in the kitchen"):
-            for kp in self.kitchenprinters:
-                with kp as d:
+        with ui.exception_guard(
+                f"printing the message in {self.plugin.definite_name}"):
+            for p in self.plugin.printers:
+                with p as d:
                     if self.onfield.f:
                         d.printline(
                             f"\tMessage about order {self.onfield.f}",
@@ -693,14 +716,17 @@ class message(user.permission_checked, ui.dismisspopup):
                         d.printline(f"\t{self.messagefield.f}")
                         d.printline()
                     d.printline()
-            ui.infopopup(["The message has been printed in the kitchen."],
-                         title="Message sent",
-                         colour=ui.colour_info, dismiss=keyboard.K_CASH)
+            ui.infopopup(
+                [f"The message has been printed on the "
+                 f"{self.plugin.name} order printer."],
+                title="Message sent",
+                colour=ui.colour_info, dismiss=keyboard.K_CASH)
             if self.onfield.f:
-                userlog(f"Message sent to kitchen about table "
+                userlog(f"Message sent to {self.plugin.name} about table "
                         f"{self.onfield.f}: {self.messagefield.f}")
             else:
-                userlog(f"Message sent to kitchen: {self.messagefield.f}")
+                userlog(f"Message sent to {self.plugin.name}: "
+                        f"{self.messagefield.f}")
 
 
 class FoodOrderPlugin(register.RegisterPlugin):
@@ -719,33 +745,61 @@ class FoodOrderPlugin(register.RegisterPlugin):
     filtered out of the menu when it is loaded.
     """
     def __init__(self, menuurl=None, printers=[],
-                 order_key=None, message_key=None,
-                 message_department=None, allowable_departments=None):
-        self._menuurl = menuurl
-        self._printers = printers
-        self._order_key = order_key
-        self._message_key = message_key
-        self._message_department = message_department
-        self._allowable_departments = allowable_departments
+                 order_key=None, message_key=None, menu_key=None,
+                 message_department=None, allowable_departments=None,
+                 name="kitchen", definite_name="the kitchen",
+                 require_order_printer=False,
+                 ordernumberfunc=td.foodorder_ticket):
+        self.menuurl = menuurl
+        self.printers = printers
+        self.order_key = order_key
+        self.message_key = message_key
+        self.menu_key = menu_key
+        self.message_department = message_department
+        self.allowable_departments = allowable_departments
+        self.name = name
+        self.name_capital = name.capitalize() if not name[0].isupper() \
+            else name
+        self.definite_name = definite_name
+        self.require_order_printer = require_order_printer
+        self.ordernumberfunc = ordernumberfunc
+        if not any((order_key, message_key, menu_key)):
+            raise Exception("FoodOrderPlugin: you must specify at least one "
+                            "of order_key, message_key or menu_key")
         if not menuurl:
             raise Exception("FoodOrderPlugin: you must specify menuurl")
         if message_department is None:
             raise Exception("FoodOrderPlugin: you must specify "
                             "message_department")
         for p in printers:
-            lockscreen.CheckPrinter("Kitchen printer", p)
+            lockscreen.CheckPrinter(f"{self.name_capital} printer", p)
+
+    def menu(self, reg):
+        ui.automenu(
+            [(f"Send an order to {self.definite_name}",
+              self.start_order, (reg,)),
+             (f"Send a message to {self.definite_name}",
+              self.send_message, (reg,))],
+            title=f"{self.name_capital}")
+
+    def start_order(self, reg):
+        trans = reg.get_open_trans()
+        if trans:
+            if reg.transaction_locked:
+                reg.transaction_lock_popup()
+            else:
+                _popup(reg.deptlines, trans.id, self)
+
+    def send_message(self, reg):
+        message(self)
 
     def keypress(self, reg, k):
-        if k == self._order_key:
-            trans = reg.get_open_trans()
-            if trans:
-                if reg.transaction_locked:
-                    reg.transaction_lock_popup()
-                else:
-                    popup(reg.deptlines, trans.id, self._menuurl,
-                          self._printers, self._message_department,
-                          self._allowable_departments)
+        if self.order_key and k == self.order_key:
+            self.start_order(reg)
             return True
-        elif k == self._message_key:
-            message(self._printers)
+        elif self.message_key and k == self.message_key:
+            self.send_message(reg)
+            return True
+        elif self.menu_key and k == self.menu_key:
+            self.menu(reg)
             return True
