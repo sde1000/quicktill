@@ -1231,6 +1231,8 @@ class Transline(Base, Logged):
     discount_name = Column(String(), nullable=True)
     source = Column(String(), nullable=False, server_default="default",
                     doc="On which terminal was this transaction line created?")
+    protected = Column(Boolean, nullable=False, server_default=literal(False),
+                       doc="Is this transaction line protected from deletion?")
 
     __table_args__ = (
         # If discount is zero, discount_name must be null

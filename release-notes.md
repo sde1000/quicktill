@@ -22,6 +22,11 @@ What's new:
 
  * The list of completed stock takes is faster to load
 
+ * Transaction lines can be "protected" when created, meaning that
+   they can never be deleted directly and must have a voiding
+   transaction line added instead. Protected transaction lines can be
+   created by plugins like the food menu system.
+
 To upgrade the database:
 
  - run psql and give the following commands to the database:
@@ -33,6 +38,9 @@ ALTER TABLE stocktake_snapshots
 	ADD COLUMN bestbefore date,
 	ADD COLUMN newbestbefore date,
 	ADD COLUMN note character varying DEFAULT ''::character varying NOT NULL;
+
+ALTER TABLE translines
+	ADD COLUMN protected boolean DEFAULT false NOT NULL;
 
 COMMIT;
 ```

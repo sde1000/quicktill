@@ -409,6 +409,7 @@ class tline(ui.lrline):
         super().update()
         tl = td.s.get(Transline, self.transline)
         self.transtime = tl.time
+        self.protected = tl.protected
         if tl.voided_by_id:
             self.voided = True
             self.ltext = "(Voided) " + tl.description
@@ -1744,7 +1745,7 @@ class page(ui.basicpage):
         self.cursor_off()
         self._redraw()
 
-    def deptlines(self, lines):
+    def deptlines(self, lines, protect=False):
         """Accept multiple transaction lines from a plugin.
 
         lines is a list of (dept, text, items, amount) tuples.
@@ -1771,7 +1772,8 @@ class page(ui.basicpage):
                            department=td.s.get(Department, dept),
                            items=items, amount=amount,
                            transcode='S', text=text, user=self.user.dbuser,
-                           source=tillconfig.terminal_name)
+                           source=tillconfig.terminal_name,
+                           protected=protect)
             td.s.add(tl)
             self._apply_discount(tl)
             td.s.flush()
@@ -2341,6 +2343,17 @@ class page(ui.basicpage):
                      "one go.  Cancel each line separately instead."],
                     title="Cancel Transaction")
                 return
+            # If there are any protected transaction lines, the transaction
+            # can't be cancelled.
+            if not closed and any(tl.protected for tl in trans.lines):
+                log.info("Register: cancelkey kill transaction denied: "
+                         "protected translines present")
+                ui.infopopup(
+                    ["This transaction contains protected lines which can "
+                     "only be voided, not cancelled in one go. Cancel "
+                     "each line separately instead."],
+                    title="Cancel Transaction")
+                return
             # If there are any pending or non-zero payments, the
             # transaction can't be cancelled.
             if not closed and any(
@@ -2447,7 +2460,8 @@ class page(ui.basicpage):
                      "transaction."],
                     title="Not allowed")
                 return
-            can_delete = all(l.age() <= max_transline_modify_age() for l in tl)
+            can_delete = not any(l.protected for l in tl) \
+                and all(l.age() <= max_transline_modify_age() for l in tl)
             voids = []
             for l in tl:
                 if can_delete:
@@ -2512,7 +2526,7 @@ class page(ui.basicpage):
         if not self.entry():
             return
         if not self.hook("cancelline", l):
-            if l.age() < max_transline_modify_age():
+            if not l.protected and l.age() < max_transline_modify_age():
                 self._delete_line(l)
             else:
                 self._void_lines([l])

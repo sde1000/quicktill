@@ -11,6 +11,10 @@
 {% if tl.voids %}
 <div class="alert alert-warning">This line voids another transaction line</div>
 {% endif %}
+{% if tl.protected %}
+<div class="alert alert-info">This line is protected: it can only be
+  voided, never deleted.</div>
+{% endif %}
 
 <table class="kvtable">
 <tr><th scope="row">ID</th><td>{{tl.id}}</td></tr>

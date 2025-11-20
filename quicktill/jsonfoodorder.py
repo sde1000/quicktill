@@ -580,7 +580,7 @@ class _popup(user.permission_checked, ui.basicpopup):
         # Returns True on success; on failure, returns an error message
         # as a string or None if it was a self.entry() error that will
         # already have popped up a message.
-        r = self.func(rl)
+        r = self.func(rl, protect=self.plugin.protect_translines)
 
         # If r is None then a window will have been popped up telling
         # the user what's happened to their transaction.  It will have
@@ -749,7 +749,8 @@ class FoodOrderPlugin(register.RegisterPlugin):
                  message_department=None, allowable_departments=None,
                  name="kitchen", definite_name="the kitchen",
                  require_order_printer=False,
-                 ordernumberfunc=td.foodorder_ticket):
+                 ordernumberfunc=td.foodorder_ticket,
+                 protect_translines=True):
         self.menuurl = menuurl
         self.printers = printers
         self.order_key = order_key
@@ -763,6 +764,7 @@ class FoodOrderPlugin(register.RegisterPlugin):
         self.definite_name = definite_name
         self.require_order_printer = require_order_printer
         self.ordernumberfunc = ordernumberfunc
+        self.protect_translines = protect_translines
         if not any((order_key, message_key, menu_key)):
             raise Exception("FoodOrderPlugin: you must specify at least one "
                             "of order_key, message_key or menu_key")
