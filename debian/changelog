@@ -1,3 +1,23 @@
+quicktill (26.0) stable; urgency=low
+
+  * New release 26.0
+
+  * Prepare for release 26
+
+  * Support printing receipts with no transaction lines
+
+  * Don't print price for zero-price dishes on food orders
+
+  * Allow negative PLU prices to be entered through the web interface
+
+  * Support marking transaction lines as ineligible for deletion
+
+  * Improved stock take user interface
+
+  * Add support for updating private python package repository
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 20 Nov 2025 23:47:50 +0000
+
 quicktill (25.4) stable; urgency=low
 
   * New release 25.4
