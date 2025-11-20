@@ -2431,16 +2431,16 @@ class PLUForm(forms.Form):
         required=True)
     note = forms.CharField(required=False)
     price = forms.DecimalField(
-        required=False, min_value=zero,
+        required=False,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
     altprice1 = forms.DecimalField(
-        required=False, min_value=zero,
+        required=False,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
     altprice2 = forms.DecimalField(
-        required=False, min_value=zero,
+        required=False,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
     altprice3 = forms.DecimalField(
-        required=False, min_value=zero,
+        required=False,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
 
 
