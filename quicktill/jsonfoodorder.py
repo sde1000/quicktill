@@ -383,7 +383,10 @@ def print_order(driver, number, ol, verbose=True, tablenumber=None,
         d.printline(f"\t{ui.formattime(datetime.datetime.now())}")
         d.printline()
         for item in ol:
-            d.printline(f"{item.dish.name}\t\t{item.price}")
+            if item.price:
+                d.printline(f"{item.dish.name}\t\t{item.price}")
+            else:
+                d.printline(f"{item.dish.name}")
             for option, qty in item.options:
                 for _ in range(qty):
                     d.printline(f"  {option.name}")
