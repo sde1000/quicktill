@@ -24,7 +24,7 @@ def print_receipt(printer, transid):
     trans = td.s.get(Transaction, transid)
     if trans is None:
         return
-    if not trans.lines:
+    if not trans.lines and not trans.payments:
         return
     with printer as d:
         if tillconfig.publogo():
@@ -49,9 +49,10 @@ def print_receipt(printer, transid):
             else:
                 d.printline(f"{left}\t\t{right}", font=1)
         totalpad = "  " if len(bandtotals) > 1 else ""
-        d.printline(
-            f"\t\tSubtotal {tillconfig.fc(trans.total)}{totalpad}",
-            colour=1, emph=1)
+        if trans.lines:
+            d.printline(
+                f"\t\tSubtotal {tillconfig.fc(trans.total)}{totalpad}",
+                colour=1, emph=1)
         for p in trans.payments:
             pl = payment.pline(p)
             d.printline(f"\t\t{pl.text}{totalpad}")
@@ -69,10 +70,10 @@ def print_receipt(printer, transid):
 
             # Keys are business IDs, values are (band,rate) tuples
             businesses = {}
-            for i in list(bandtotals.keys()):
+            for i in bandtotals.keys():
                 vr = td.s.get(VatBand, i).at(trans.session.date)
                 businesses.setdefault(vr.business.id, []).append((i, vr.rate))
-            for i in list(businesses.keys()):
+            for i in businesses.keys():
                 business = td.s.get(Business, i)
                 bands = businesses[i]
                 # Print the business info
