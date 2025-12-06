@@ -1,3 +1,11 @@
+quicktill (26.1) stable; urgency=low
+
+  * New release 26.1
+
+  * Make a private copy of keymap for popups
+
+ -- Stephen Early <steve@assorted.org.uk>  Sat, 06 Dec 2025 16:10:42 +0000
+
 quicktill (26.0) stable; urgency=low
 
   * New release 26.0
