@@ -427,7 +427,9 @@ class basicpopup(basicwin):
         # Grab the focus so that we hold it while we create any necessary
         # child UI elements
         self.focus()
-        self.keymap = keymap
+        # Copy the provided keymap, because subclasses may edit our
+        # copy directly
+        self.keymap = dict(keymap)
         mh, mw = rootwin.size()
         if title:
             w = max(w, len(title) + 3)
