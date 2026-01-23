@@ -64,7 +64,7 @@ and running code version [{{version}}].</div>
 EOF
 
 if [ "${rerelease}" = "yes" ]; then
-  (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
+  (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc -Zgzip)
   echo "Rebuilt package is in ${tmpdir}"
   exit 0
 fi
@@ -96,7 +96,7 @@ cp setup.cfg ${pkgdir}/setup.cfg
 
 # Build the Debian package files
 
-(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
+(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc -Zgzip)
 
 # If we reach this point, we should have Debian packages built in ${tmpdir}
 
@@ -117,6 +117,6 @@ git tag -a -m "Version ${newversion}" v${newversion}
 
 Run the following to update the package repository:
 scp ${tmpdir}/${packagename}_* ${tmpdir}/${packagename}??_* quicktill@bag.assorted.org.uk:incoming/
-scp ${tmpdir}/${packagename}_${newversion}.tar.xz quicktill@bag.assorted.org.uk:pip-repo/quicktill/${packagename}-${newversion}.tar.xz
+scp ${tmpdir}/${packagename}_${newversion}.tar.gz quicktill@bag.assorted.org.uk:pip-repo/quicktill/${packagename}-${newversion}.tar.gz
 ssh -t quicktill@bag.assorted.org.uk "cd repo ; reprepro processincoming tills"
 EOF
