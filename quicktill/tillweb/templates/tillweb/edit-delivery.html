@@ -62,7 +62,7 @@ new stock items can be placed at appropriate places in the table.
 		{% for s in delivery.items %}
 		<tr>
 		    <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
-		    <td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
+		    <td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
 		    <td><a href="{{s.stocktype.get_absolute_url}}">{{s.stocktype.name}}</a></td>
 		    <td>{{s.stocktype.abvstr}}</td>
 		    <td>{{s.description}}</td>
@@ -113,7 +113,7 @@ new stock items can be placed at appropriate places in the table.
     <button class="btn btn-primary mb-2" type="submit" name="submit_update">
 	Update
     </button>
-    <a class="btn btn-secondary mb-2" role="button" href="{% url "tillweb-create-stocktype" pubname=pubname %}">New stock type</a>
+    <a class="btn btn-secondary mb-2" role="button" href="{% url "tillweb-create-stocktype" %}">New stock type</a>
     <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if delivery.items %} disabled{% endif %}>
 	Delete this delivery
     </button>
@@ -171,7 +171,7 @@ new stock items can be placed at appropriate places in the table.
 	 detail_set_disable(true);
 	 $.ajax({
 	     type: 'GET',
-	     url: '{% url "tillweb-stocktype-info-json" pubname=pubname %}?id='
+	     url: '{% url "tillweb-stocktype-info-json" %}?id='
 		+ current_stocktype}).then(set_fields);
      } else {
 	 set_fields(null);

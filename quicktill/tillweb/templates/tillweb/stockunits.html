@@ -5,7 +5,7 @@
 {% block tillcontent %}
 
 <p>When you enter a new stock item into a
-  <a href="{% url "tillweb-deliveries" pubname=pubname %}">delivery</a>,
+  <a href="{% url "tillweb-deliveries" %}">delivery</a>,
   you have to tell the system how large it is.  You do this by choosing a
   size from this table.  The description and size become part of the
   stock item; it's safe to delete entries from this table when they are
@@ -13,7 +13,7 @@
 
 <p>Each of the entries in this table only applies to stock types that
   share the same
-  <a href="{% url "tillweb-units" pubname=pubname %}">Unit</a>.</p>
+  <a href="{% url "tillweb-units" %}">Unit</a>.</p>
 
 <p>The table states how many <em>base units</em> of the Unit are in a
   particular size of item.  For example, a firkin contains
@@ -22,7 +22,7 @@
   only used when selling stock, not when buying it.</p>
 
 <p>When stock is sold on a continuous
-  <a href="{% url "tillweb-stocklines" pubname=pubname %}#continuous">stock line</a>,
+  <a href="{% url "tillweb-stocklines" %}#continuous">stock line</a>,
   it's only necessary to create a single stock item for it no matter how
   much is being recorded in a delivery.  This will be done when the "merge"
   option is chosen in this table.  For example, if a 1l soft drink carton
@@ -58,7 +58,7 @@ $(document).ready(function(){
 </script>
 
 {% if may_create_stockunit %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-stockunit" pubname=pubname %}">Add new item size</a>
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-stockunit" %}">Add new item size</a>
 {% endif %}
 
 {% endblock %}

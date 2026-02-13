@@ -18,7 +18,7 @@
 {% for s in stocklist %}
 <tr>
 <td><a href="{{s.get_absolute_url}}">{{s.id}}</a></td>
-<td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
+<td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{s.stocktype.manufacturer|urlencode}}">{{s.stocktype.manufacturer}}</a></td>
 <td><a href="{{s.stocktype.get_absolute_url}}">{{s.stocktype.name}}</a></td>
 <td>{{s.stocktype.abvstr}}</td>
 <td>{% if s.costprice %}{{money}}{{s.costprice}}{% endif %}</td>

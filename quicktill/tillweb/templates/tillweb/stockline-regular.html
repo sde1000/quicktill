@@ -8,7 +8,7 @@
 
 <table class="kvtable mb-2">
 <tr><th>Name</th><td>{{stockline.name}}</td></tr>
-<tr><th>Location</th><td><a href="{% url "tillweb-location" pubname=pubname location=stockline.location %}">{{stockline.location}}</a></td></tr>
+<tr><th>Location</th><td><a href="{% url "tillweb-location" location=stockline.location %}">{{stockline.location}}</a></td></tr>
 <tr><th>Stock type</th><td>{% if stockline.stocktype %}<a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a>{% else %}Unrestricted{% endif %}</td></tr>
 <tr><th>Department</th><td>{% if stockline.department %}<a href="{{stockline.department.get_absolute_url}}">{{stockline.department}}</a>{% else %}Unrestricted{% endif %}</td></tr>
 <tr><th>Pull through qty</th><td>{{stockline.pullthru}}</td></tr>

@@ -102,12 +102,7 @@
 {% endblock %}
 {% block breadcrumbs %}
 {{ block.super }}
-{% if single_site %}
 {% breadcrumb till "tillweb-pubroot" %}
-{% else %}
-{% breadcrumb "Tills" "tillweb-publist" %}
-{% breadcrumb till "tillweb-pubroot" pubname %}
-{% endif %}
 {% if nav %}{# Explicitly-provided nav list from view #}
 {% for desc, url in nav %}
 {% breadcrumb desc url %}
@@ -130,66 +125,68 @@
 	</button>
 	<div class="collapse navbar-collapse" id="tillwebNavbar">
 	  <ul class="navbar-nav flex-column w-100 justify-content-between">
-	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" pubname=pubname %}">Main Menu</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" %}">Main Menu</a></li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Register</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-sessions" pubname=pubname %}">Sessions</a>
-		<a class="dropdown-item" href="{% url "tillweb-transactions" pubname=pubname %}">Transactions</a>
-		<a class="dropdown-item" href="{% url "tillweb-translines" pubname=pubname %}">Sales</a>
-		<a class="dropdown-item" href="{% url "tillweb-payments" pubname=pubname %}">Payments</a>
+		<a class="dropdown-item" href="{% url "tillweb-sessions" %}">Sessions</a>
+		<a class="dropdown-item" href="{% url "tillweb-transactions" %}">Transactions</a>
+		<a class="dropdown-item" href="{% url "tillweb-translines" %}">Sales</a>
+		<a class="dropdown-item" href="{% url "tillweb-payments" %}">Payments</a>
 	      </div>
 	    </li>
-	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-departments" pubname=pubname %}">Departments</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-departments" %}">Departments</a></li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Stock management</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-deliveries" pubname=pubname %}">Deliveries</a>
-		<a class="dropdown-item" href="{% url "tillweb-suppliers" pubname=pubname %}">Suppliers</a>
-		<a class="dropdown-item" href="{% url "tillweb-stocksearch" pubname=pubname %}">Search for stock</a>
-		<a class="dropdown-item" href="{% url "tillweb-stocktype-search" pubname=pubname %}">Stock types</a>
-		<a class="dropdown-item" href="{% url "tillweb-stocktakes" pubname=pubname %}">Stock takes</a>
+		<a class="dropdown-item" href="{% url "tillweb-deliveries" %}">Deliveries</a>
+		<a class="dropdown-item" href="{% url "tillweb-suppliers" %}">Suppliers</a>
+		<a class="dropdown-item" href="{% url "tillweb-stocksearch" %}">Search for stock</a>
+		<a class="dropdown-item" href="{% url "tillweb-stocktype-search" %}">Stock types</a>
+		<a class="dropdown-item" href="{% url "tillweb-stocktakes" %}">Stock takes</a>
 	      </div>
 	    </li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Sales settings</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-stocklines" pubname=pubname %}">Stock lines</a>
-		<a class="dropdown-item" href="{% url "tillweb-plus" pubname=pubname %}">Price lookups</a>
-		<a class="dropdown-item" href="{% url "tillweb-barcodes" pubname=pubname %}">Barcodes</a>
+		<a class="dropdown-item" href="{% url "tillweb-stocklines" %}">Stock lines</a>
+		<a class="dropdown-item" href="{% url "tillweb-plus" %}">Price lookups</a>
+		<a class="dropdown-item" href="{% url "tillweb-barcodes" %}">Barcodes</a>
 	      </div>
 	    </li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Access controls</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-till-users" pubname=pubname %}">Users</a>
-		<a class="dropdown-item" href="{% url "tillweb-till-groups" pubname=pubname %}">Groups</a>
-		<a class="dropdown-item" href="{% url "tillweb-tokens" pubname=pubname %}">Tokens</a>
+		<a class="dropdown-item" href="{% url "tillweb-till-users" %}">Users</a>
+		<a class="dropdown-item" href="{% url "tillweb-till-groups" %}">Groups</a>
+		<a class="dropdown-item" href="{% url "tillweb-tokens" %}">Tokens</a>
 	      </div>
 	    </li>
-	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-logs" pubname=pubname %}">Logs</a></li>
+	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-logs" %}">Logs</a></li>
 	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Settings</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-config-index" pubname=pubname %}">General settings</a>
-		<a class="dropdown-item" href="{% url "tillweb-units" pubname=pubname %}">Units</a>
-		<a class="dropdown-item" href="{% url "tillweb-stockunits" pubname=pubname %}">Item sizes</a>
-		<a class="dropdown-item" href="{% url "tillweb-paytypes" pubname=pubname %}">Payment methods</a>
+		<a class="dropdown-item" href="{% url "tillweb-config-index" %}">General settings</a>
+		<a class="dropdown-item" href="{% url "tillweb-units" %}">Units</a>
+		<a class="dropdown-item" href="{% url "tillweb-stockunits" %}">Item sizes</a>
+		<a class="dropdown-item" href="{% url "tillweb-paytypes" %}">Payment methods</a>
 	      </div>
 	    </li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="{% url "tillweb-reports" pubname=pubname %}" role="button" aria-haspopup="true" aria-expanded="false">Reports</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="{% url "tillweb-reports" %}" role="button" aria-haspopup="true" aria-expanded="false">Reports</a>
 	      <div class="dropdown-menu">
-		<a class="dropdown-item" href="{% url "tillweb-report-wasted-stock" pubname=pubname %}">Wasted stock</a>
-		<a class="dropdown-item" href="{% url "tillweb-report-stock-sold" pubname=pubname %}">Stock sold</a>
-		<a class="dropdown-item" href="{% url "tillweb-report-stock-value" pubname=pubname %}">Unsold stock value</a>
-		<a class="dropdown-item" href="{% url "tillweb-stockcheck" pubname=pubname %}">Buying list</a>
-		<a class="dropdown-item" href="{% url "tillweb-report-transline-summary" pubname=pubname %}">Transaction lines</a>
-		<a class="dropdown-item" href="{% url "tillweb-refusals" pubname=pubname %}">Refusals log</a>
+		<a class="dropdown-item" href="{% url "tillweb-report-wasted-stock" %}">Wasted stock</a>
+		<a class="dropdown-item" href="{% url "tillweb-report-stock-sold" %}">Stock sold</a>
+		<a class="dropdown-item" href="{% url "tillweb-report-stock-value" %}">Unsold stock value</a>
+		<a class="dropdown-item" href="{% url "tillweb-stockcheck" %}">Buying list</a>
+		<a class="dropdown-item" href="{% url "tillweb-report-transline-summary" %}">Transaction lines</a>
+		<a class="dropdown-item" href="{% url "tillweb-refusals" %}">Refusals log</a>
 	      </div>
 	    </li>
 	  </ul>
 	</div>
       </nav>
-      {% if tilluser %}
       <div class="mt-2">
-	<p class="small">Working as <a href="{{tilluser.get_absolute_url}}">{{tilluser.fullname}}</a></p>
+	<p class="small">Version {{version}}
+	{% if tilluser %}
+	<br>Working as <a href="{{tilluser.get_absolute_url}}">{{tilluser.fullname}}</a>
+	{% endif %}
+	</p>
       </div>
-      {% endif %}
     </div>
     <main class="col">
 {% block tillcontent %}

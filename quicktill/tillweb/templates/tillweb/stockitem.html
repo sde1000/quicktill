@@ -12,7 +12,7 @@
 <table class="kvtable">
 <tr><th scope="row">Stock ID</th><td>{{stock.id}}</td></tr>
 <tr><th scope="row">Check digits</th><td>{{stock.checkdigits}}</td></tr>
-<tr><th scope="row">Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
+<tr><th scope="row">Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
 <tr><th scope="row">Name</th><td><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></td></tr>
 <tr><th scope="row">ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
 {% if stock.delivery %}

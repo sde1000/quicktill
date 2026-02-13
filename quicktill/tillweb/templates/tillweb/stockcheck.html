@@ -18,7 +18,7 @@ months{% if form.months_behind.errors %}
 
 <p>
 Ignore stock that sold less than {{form.minimum_sold}}
-<a href="{% url "tillweb-units" pubname=pubname %}">base units</a>
+<a href="{% url "tillweb-units" %}">base units</a>
 per day{% if form.minimum_sold.errors %}
 <span class="error">({% for e in form.minimum_sold.errors %}{{e}}{% endfor %})</span>{% endif %} in that period.
 </p>

@@ -21,7 +21,7 @@
   $(document).ready(function() {
       const translines_table = $("#refusalsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-refusals" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-refusals" %}',
 	      dataSrc: 'data',
 	  },
 	  columns: [

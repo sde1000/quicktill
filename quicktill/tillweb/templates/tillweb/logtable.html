@@ -19,7 +19,7 @@
   $(document).ready(function(){
     log_table = $("#logTable").DataTable({
 	ajax: {
-	    url: '{% url "tillweb-datatable-logs" pubname=pubname %}',
+	    url: '{% url "tillweb-datatable-logs" %}',
 	    dataSrc: 'data',
 	    data: function(d) {
 		{% if filter == "supplier" %}

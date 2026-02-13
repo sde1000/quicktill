@@ -30,14 +30,14 @@
     {% for ss in st.snapshots %}
     <tr class="stocktake-item" id="si{{ss.stockitem.id}}">
       <td class="position-relative">
-	<a href="{% url "tillweb-stocktake-stockitem" pubname=pubname stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
+	<a href="{% url "tillweb-stocktake-stockitem" stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
 	  {{ss.stock_id}}{% if ss.stockitem.stockline %} ({{ss.stockitem.stockline}}){% endif %}
 	  {% if ss.newbestbefore %}<br>BB {{ss.newbestbefore}}{% endif %}
 	  {% if ss.note %}<br>{{ss.note}}{% endif %}
 	</a>
       </td>
       <td class="position-relative">
-	<a href="{% url "tillweb-stocktake-stockitem" pubname=pubname stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
+	<a href="{% url "tillweb-stocktake-stockitem" stocktake_id=stocktake.id stock_id=ss.stock_id %}" class="stretched-link text-decoration-none">
 	  {{ss.qty_in_stock_units}}{% if ss.newqty != ss.qty %} ⇨ {{ss.newqty_in_stock_units}}{% endif %}
 	  {% if ss.adjustments %}
 	  <br>({% for a in ss.adjustments %}{{a.stock_qty}} {{a.removecode|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
@@ -57,12 +57,12 @@
     {% else %}
     <tr class="stocktake-stocktype stocktake-item" id="st{{st.id}}">
       <td class="position-relative">
-	<a href="{% url "tillweb-stocktake-stocktype" pubname=pubname stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
+	<a href="{% url "tillweb-stocktake-stocktype" stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
 	  {{st.manufacturer}} {{st.name}}{% if st.abv %} ({{st.abv}}%){% endif %} — {{st.department}}
 	</a>
       </td>
       <td class="position-relative">
-	<a href="{% url "tillweb-stocktake-stocktype" pubname=pubname stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
+	<a href="{% url "tillweb-stocktake-stocktype" stocktake_id=stocktake.id stocktype_id=st.id %}" class="stretched-link text-decoration-none">
 	  {{st.snapshot_qty_in_stockunits}}{% if st.snapshot_newqty != st.snapshot_qty %} ⇨ {{st.snapshot_newqty_in_stockunits}}{% endif %}
 	  {% if st.adjustments %}
 	  <br>({% for code,qty in st.summary_adjustments.items %}{{qty}} {{code|lower}}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}

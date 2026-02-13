@@ -69,7 +69,6 @@ class Base:
     def get_view_url(self, viewname, *args, **kwargs):
         s = object_session(self)
         reverse = s.info["reverse"]
-        kwargs['pubname'] = s.info["pubname"]
         return reverse(viewname, args=args, kwargs=kwargs)
 
     def get_absolute_url(self):

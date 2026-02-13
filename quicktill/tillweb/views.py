@@ -2,6 +2,7 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -9,7 +10,6 @@ from django.conf import settings
 from django import forms
 from django.core.exceptions import ValidationError
 import django.urls
-from .models import Till, Access
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import subqueryload
@@ -64,7 +64,7 @@ from quicktill.models import (
     max_abv_value,
     zero,
 )
-from quicktill.version import version
+from quicktill.version import shortversion
 from . import spreadsheets
 import datetime
 import logging
@@ -148,32 +148,11 @@ def stocktype_widget_label(x):
     return f"{x} ({x.department}, sold in {x.unit.sale_unit_name_plural})"
 
 
-# This view is only used when the tillweb is integrated into another
-# django-based website.
-@login_required
-def publist(request):
-    access = Access.objects.filter(user=request.user).order_by('till__name')
-    return render(request, 'tillweb/publist.html',
-                  {'access': access})
-
-
 # The remainder of the view functions in this file follow a similar
 # pattern.  They are kept separate rather than implemented as a
 # generic view so that page-specific optimisations (the ".options()"
 # clauses in the queries) can be added.  The common operations have
 # been moved into the @tillweb_view decorator.
-
-# This app can be deployed in one of two ways:
-
-# 1. Integrated into a complete django-based website, with its own
-# users and access controls.  In this case, information about which
-# database to connect to and what users are permitted to do is fetched
-# from the Till and Access models.  This case is used when the
-# TILLWEB_SINGLE_SITE setting is absent or False.
-
-# 2. As a standalone website, possibly with no concept of users and
-# access controls.  In this case, the database, pubname and default
-# access permission are read from the rest of the TILLWEB_ settings.
 
 # Views are passed the following parameters:
 # request - the Django http request object
@@ -187,11 +166,6 @@ class viewutils:
     def __init__(self, **kwargs):
         for a, b in kwargs.items():
             setattr(self, a, b)
-
-    def reverse(self, *args, **kwargs):
-        rev_kwargs = kwargs.setdefault('kwargs', {})
-        rev_kwargs["pubname"] = self.pubname
-        return django.urls.reverse(*args, **kwargs)
 
     def user_has_perm(self, action):
         if not self.user:
@@ -225,34 +199,18 @@ class user:
 
 
 def tillweb_view(view):
-    single_site = getattr(settings, 'TILLWEB_SINGLE_SITE', False)
     tillweb_login_required = getattr(settings, 'TILLWEB_LOGIN_REQUIRED', True)
 
-    def new_view(request, pubname="", *args, **kwargs):
-        if single_site:
-            till = None
-            tillname = settings.TILLWEB_PUBNAME
-            access = settings.TILLWEB_DEFAULT_ACCESS
-            session = settings.TILLWEB_DATABASE()
-            money = settings.TILLWEB_MONEY_SYMBOL
-        else:
-            try:
-                till = Till.objects.get(slug=pubname)
-            except Till.DoesNotExist:
-                raise Http404
-            try:
-                access = Access.objects.get(user=request.user, till=till)
-            except Access.DoesNotExist:
-                # Pretend it doesn't exist!
-                raise Http404
-            try:
-                session = settings.SQLALCHEMY_SESSIONS[till.database]()
-            except ValueError:
-                # The database doesn't exist
-                raise Http404
-            tillname = till.name
-            access = access.permission
-            money = till.money_symbol
+    def new_view(request, *args, **kwargs):
+        # There used to be a "pubname" kwarg here, but it is now redundant.
+        # Some sites that embed this may still be providing it.
+        # Remove it from kwargs so it isn't passed on to any views.
+        kwargs.pop("pubname", None)
+        tillname = settings.TILLWEB_PUBNAME
+        access = settings.TILLWEB_DEFAULT_ACCESS
+        session = settings.TILLWEB_DATABASE()
+        money = settings.TILLWEB_MONEY_SYMBOL
+
         # At this point, access will be "R", "M" or "F".
         # For anything other than "R" access, we need a quicktill.models.User
         tilluser = None
@@ -278,7 +236,6 @@ def tillweb_view(view):
                 access=access,
                 user=tilluser,
                 tillname=tillname,  # Formatted for people
-                pubname=pubname,  # Used in url
                 money=money,
             )
             td.request = request
@@ -293,21 +250,18 @@ def tillweb_view(view):
             # till is the name of the till
             # access is 'R','M','F'
             defaults = {
-                'single_site': single_site,  # Used for breadcrumbs
                 'till': tillname,
                 'access': access,
                 'tilluser': tilluser,
                 'dtf': dtf,
-                'pubname': pubname,
-                'version': version,
+                'version': shortversion,
                 'money': money,
             }
             defaults.update(d)
             return render(request, 'tillweb/' + t, defaults)
         except OperationalError as oe:
             return render(request, "tillweb/operationalerror.html",
-                          {'till': till,
-                           'pubname': pubname,
+                          {'till': tillname,
                            'access': access,
                            'error': oe},
                           status=503)
@@ -328,7 +282,7 @@ def tillweb_view(view):
             td.info = None
             session.close()
 
-    if tillweb_login_required or not single_site:
+    if tillweb_login_required:
         new_view = login_required(new_view)
     return new_view
 
@@ -565,7 +519,7 @@ def pubroot(request, info):
 @tillweb_view
 def locationlist(request, info):
     return ('locations.html', {
-        'nav': [("Locations", info.reverse('tillweb-locations'))],
+        'nav': [("Locations", reverse('tillweb-locations'))],
         'locations': StockLine.locations(td.s),
     })
 
@@ -583,9 +537,9 @@ def location(request, info, location):
                          .undefer(StockType.instock))\
                 .all()
     return ('location.html', {
-        'nav': [("Locations", info.reverse('tillweb-locations')),
-                (location, info.reverse('tillweb-location',
-                                        kwargs={'location': location}))],
+        'nav': [("Locations", reverse('tillweb-locations')),
+                (location, reverse('tillweb-location',
+                                   kwargs={'location': location}))],
         'location': location,
         'lines': lines,
     })
@@ -614,7 +568,7 @@ def sessions(request, info):
         rangeform = SessionSheetForm()
 
     return ('sessions.html',
-            {'nav': [("Sessions", info.reverse("tillweb-sessions"))],
+            {'nav': [("Sessions", reverse("tillweb-sessions"))],
              'rangeform': rangeform,
              })
 
@@ -716,7 +670,7 @@ def session_stock_sold(request, info, sessionid):
 def transactions(request, info):
     return ('transactions.html', {
         'nav': [("Transactions",
-                 info.reverse('tillweb-transactions'))],
+                 reverse('tillweb-transactions'))],
     })
 
 
@@ -765,7 +719,7 @@ def translines(request, info):
     return ('translines.html', {
         'departments': departments,
         'nav': [("Sales",
-                 info.reverse('tillweb-translines'))],
+                 reverse('tillweb-translines'))],
     })
 
 
@@ -785,7 +739,7 @@ def transline(request, info, translineid):
 def payments(request, info):
     return ('payments.html', {
         'nav': [("Payments",
-                 info.reverse('tillweb-payments'))],
+                 reverse('tillweb-payments'))],
     })
 
 
@@ -820,10 +774,10 @@ def paytypelist(request, info):
                         if pt.mode != 'disabled'))
         td.s.commit()
         messages.info(request, "Payment method order saved")
-        return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+        return HttpResponseRedirect(reverse("tillweb-paytypes"))
 
     return ('paytypelist.html', {
-        'nav': [("Payment methods", info.reverse("tillweb-paytypes"))],
+        'nav': [("Payment methods", reverse("tillweb-paytypes"))],
         'paytypes': paytypes,
         'may_create_paytype': info.user_has_perm("edit-payment-methods"),
         'may_manage_paytypes': may_manage_paytypes,
@@ -902,7 +856,7 @@ def paytype(request, info, paytype):
                 user.log(f"Updated payment method '{pt}'")
                 td.s.commit()
                 messages.info(request, f"Updated payment method '{pt}'")
-                return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+                return HttpResponseRedirect(reverse("tillweb-paytypes"))
         elif 'submit_delete' in request.POST:
             if recent_payments or recent_totals:
                 messages.error(request, "Cannot delete a payment method "
@@ -912,7 +866,7 @@ def paytype(request, info, paytype):
             messages.info(request, f"Deleted payment method '{pt}'")
             td.s.delete(pt)
             td.s.commit()
-            return HttpResponseRedirect(info.reverse("tillweb-paytypes"))
+            return HttpResponseRedirect(reverse("tillweb-paytypes"))
     else:
         form = PayTypeForm(initial=initial)
 
@@ -960,8 +914,8 @@ def create_paytype(request, info):
         form = NewPayTypeForm()
 
     return ('new-paytype.html', {
-        'nav': [("Payment methods", info.reverse("tillweb-paytypes")),
-                ("New", info.reverse("tillweb-create-paytype"))],
+        'nav': [("Payment methods", reverse("tillweb-paytypes")),
+                ("New", reverse("tillweb-create-paytype"))],
         'form': form,
     })
 
@@ -973,7 +927,7 @@ def supplierlist(request, info):
              .all()
     may_edit = info.user_has_perm("edit-supplier")
     return ('suppliers.html', {
-        'nav': [("Suppliers", info.reverse("tillweb-suppliers"))],
+        'nav': [("Suppliers", reverse("tillweb-suppliers"))],
         'suppliers': sl,
         'may_create_supplier': may_edit,
     })
@@ -1012,7 +966,7 @@ def supplier(request, info, supplierid):
                 user.log(f"Deleted supplier {s.logref}")
                 td.s.delete(s)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-suppliers"))
+                return HttpResponseRedirect(reverse("tillweb-suppliers"))
             form = SupplierForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -1075,8 +1029,8 @@ def create_supplier(request, info):
         form = SupplierForm()
 
     return ('new-supplier.html', {
-        'nav': [("Suppliers", info.reverse("tillweb-suppliers")),
-                ("New", info.reverse("tillweb-create-supplier"))],
+        'nav': [("Suppliers", reverse("tillweb-suppliers")),
+                ("New", reverse("tillweb-create-supplier"))],
         'form': form,
     })
 
@@ -1093,7 +1047,7 @@ def deliverylist(request, info):
     may_create_delivery = info.user_has_perm("deliveries")
 
     return ('deliveries.html', {
-        'nav': [("Deliveries", info.reverse("tillweb-deliveries"))],
+        'nav': [("Deliveries", reverse("tillweb-deliveries"))],
         'pager': pager,
         'may_create_delivery': may_create_delivery,
     })
@@ -1131,8 +1085,8 @@ def create_delivery(request, info):
         form = DeliveryForm()
 
     return ('new-delivery.html', {
-        'nav': [("Deliveries", info.reverse("tillweb-deliveries")),
-                ("New", info.reverse("tillweb-create-delivery"))],
+        'nav': [("Deliveries", reverse("tillweb-deliveries")),
+                ("New", reverse("tillweb-create-delivery"))],
         'form': form,
     })
 
@@ -1142,7 +1096,7 @@ class EditDeliveryForm(DeliveryForm):
         super().__init__(*args, **kwargs)
         # Set the URL for the stocktype widget ajax
         self.fields['stocktype'].widget.ajax = {
-            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'url': reverse("tillweb-stocktype-search-stockunits-json"),
             'dataType': 'json',
             'delay': 250,
         }
@@ -1217,7 +1171,7 @@ def delivery(request, info, deliveryid):
                 messages.success(request, "Delivery deleted.")
                 td.s.delete(d)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-deliveries"))
+                return HttpResponseRedirect(reverse("tillweb-deliveries"))
             for s in d.items:
                 if f'del{s.id}' in request.POST:
                     td.s.delete(s)
@@ -1329,7 +1283,7 @@ def stocktypesearch(request, info):
                     return HttpResponseRedirect(c.get_absolute_url())
 
     return ('stocktypesearch.html', {
-        'nav': [("Stock types", info.reverse("tillweb-stocktype-search"))],
+        'nav': [("Stock types", reverse("tillweb-stocktype-search"))],
         'form': form,
         'stocktypes': result,
         'may_alter': may_alter,
@@ -1434,8 +1388,8 @@ def create_stocktype(request, info):
         form = NewStockTypeForm()
 
     return ('new-stocktype.html', {
-        'nav': [("Stock types", info.reverse("tillweb-stocktype-search")),
-                ("New", info.reverse("tillweb-create-stocktype"))],
+        'nav': [("Stock types", reverse("tillweb-stocktype-search")),
+                ("New", reverse("tillweb-create-stocktype"))],
         'form': form,
         'manufacturers': manufacturers,
     })
@@ -1655,7 +1609,7 @@ def stocktype(request, info, stocktype_id):
         td.s.delete(s)
         td.s.commit()
         messages.success(request, "Stock type deleted")
-        return HttpResponseRedirect(info.reverse("tillweb-stocktype-search"))
+        return HttpResponseRedirect(reverse("tillweb-stocktype-search"))
 
     if not include_finished:
         items = items.filter(StockItem.finished == None)
@@ -1717,7 +1671,7 @@ def stocksearch(request, info):
             "manufacturer", "name", "include_finished"])
 
     return ('stocksearch.html', {
-        'nav': [("Stock", info.reverse("tillweb-stocksearch"))],
+        'nav': [("Stock", reverse("tillweb-stocksearch"))],
         'form': form,
         'stocklist': pager.items() if pager else [],
         'pager': pager})
@@ -1749,7 +1703,7 @@ class EditStockForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Set the URL for the stocktype widget ajax
         self.fields['stocktype'].widget.ajax = {
-            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'url': reverse("tillweb-stocktype-search-stockunits-json"),
             'dataType': 'json',
             'delay': 250,
         }
@@ -1882,7 +1836,7 @@ def units(request, info):
     may_edit = info.user_has_perm("edit-unit")
     return ('units.html', {
         'units': u,
-        'nav': [("Units", info.reverse("tillweb-units"))],
+        'nav': [("Units", reverse("tillweb-units"))],
         'may_create_unit': may_edit,
     })
 
@@ -1935,7 +1889,7 @@ def unit(request, info, unit_id):
                 messages.success(request, f"Unit '{u.description}' deleted.")
                 td.s.delete(u)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-units"))
+                return HttpResponseRedirect(reverse("tillweb-units"))
             form = UnitForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -1951,7 +1905,7 @@ def unit(request, info, unit_id):
                 user.log(f"Updated unit {u.logref}")
                 td.s.commit()
                 messages.success(request, f"Unit '{u.description}' updated.")
-                return HttpResponseRedirect(info.reverse("tillweb-units"))
+                return HttpResponseRedirect(reverse("tillweb-units"))
         else:
             form = UnitForm(initial=initial)
 
@@ -1988,13 +1942,13 @@ def create_unit(request, info):
             user.log(f"Created unit {u.logref}")
             td.s.commit()
             messages.success(request, f"Unit '{u.description}' created.")
-            return HttpResponseRedirect(info.reverse("tillweb-units"))
+            return HttpResponseRedirect(reverse("tillweb-units"))
     else:
         form = UnitForm()
 
     return ('new-unit.html', {
-        'nav': [("Units", info.reverse("tillweb-units")),
-                ("New", info.reverse("tillweb-create-unit"))],
+        'nav': [("Units", reverse("tillweb-units")),
+                ("New", reverse("tillweb-create-unit"))],
         'form': form,
     })
 
@@ -2008,7 +1962,7 @@ def stockunits(request, info):
     may_edit = info.user_has_perm("edit-stockunit")
     return ('stockunits.html', {
         'stockunits': su,
-        'nav': [("Item sizes", info.reverse("tillweb-stockunits"))],
+        'nav': [("Item sizes", reverse("tillweb-stockunits"))],
         'may_create_stockunit': may_edit,
     })
 
@@ -2045,7 +1999,7 @@ def stockunit(request, info, stockunit_id):
                 messages.success(request, f"Item size '{su.name}' deleted.")
                 td.s.delete(su)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-stockunits"))
+                return HttpResponseRedirect(reverse("tillweb-stockunits"))
             form = StockUnitForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -2089,8 +2043,8 @@ def create_stockunit(request, info):
         form = StockUnitForm()
 
     return ('new-stockunit.html', {
-        'nav': [("Item sizes", info.reverse("tillweb-stockunits")),
-                ("New", info.reverse("tillweb-create-stockunit"))],
+        'nav': [("Item sizes", reverse("tillweb-stockunits")),
+                ("New", reverse("tillweb-create-stockunit"))],
         'form': form,
     })
 
@@ -2118,7 +2072,7 @@ def stocklinelist(request, info):
                               .undefer(StockType.remaining))\
                      .all()
     return ('stocklines.html', {
-        'nav': [("Stock lines", info.reverse("tillweb-stocklines"))],
+        'nav': [("Stock lines", reverse("tillweb-stocklines"))],
         'regular': regular,
         'display': display,
         'continuous': continuous,
@@ -2152,7 +2106,7 @@ class RegularStockLineForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Set the URL for the stocktype widget ajax
         self.fields['stocktype'].widget.ajax = {
-            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'url': reverse("tillweb-stocktype-search-stockunits-json"),
             'dataType': 'json',
             'delay': 250,
         }
@@ -2208,7 +2162,7 @@ def stockline_regular(request, info, s):
             td.s.delete(s)
             td.s.commit()
             messages.success(request, "Stock line deleted")
-            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+            return HttpResponseRedirect(reverse("tillweb-stocklines"))
         elif request.method == 'POST' \
              and 'submit_conv_continuous' in request.POST:  # noqa: E127
             if not s.stockonsale and not s.stocktype:
@@ -2250,7 +2204,7 @@ class DisplayStockLineForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Set the URL for the stocktype widget ajax
         self.fields['stocktype'].widget.ajax = {
-            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'url': reverse("tillweb-stocktype-search-stockunits-json"),
             'dataType': 'json',
             'delay': 250,
         }
@@ -2304,7 +2258,7 @@ def stockline_display(request, info, s):
             td.s.delete(s)
             td.s.commit()
             messages.success(request, "Stock line deleted")
-            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+            return HttpResponseRedirect(reverse("tillweb-stocklines"))
         elif request.method == 'POST' \
              and 'submit_conv_continuous' in request.POST:  # noqa: E127
             for si in list(s.stockonsale):
@@ -2340,7 +2294,7 @@ class ContinuousStockLineForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Set the URL for the stocktype widget ajax
         self.fields['stocktype'].widget.ajax = {
-            'url': info.reverse("tillweb-stocktype-search-stockunits-json"),
+            'url': reverse("tillweb-stocktype-search-stockunits-json"),
             'dataType': 'json',
             'delay': 250,
         }
@@ -2383,7 +2337,7 @@ def stockline_continuous(request, info, s):
             td.s.delete(s)
             td.s.commit()
             messages.success(request, "Stock line deleted")
-            return HttpResponseRedirect(info.reverse("tillweb-stocklines"))
+            return HttpResponseRedirect(reverse("tillweb-stocklines"))
         elif request.method == 'POST' and 'submit_conv_regular' in request.POST:
             s.linetype = "regular"
             messages.success(request, "Stock line converted to Regular")
@@ -2417,7 +2371,7 @@ def plulist(request, info):
     may_create_plu = info.user_has_perm("create-plu")
 
     return ('plus.html', {
-        'nav': [("Price lookups", info.reverse("tillweb-plus"))],
+        'nav': [("Price lookups", reverse("tillweb-plus"))],
         'plus': plus,
         'may_create_plu': may_create_plu,
     })
@@ -2467,7 +2421,7 @@ def plu(request, info, pluid):
                     request, f"Price lookup '{p.description}' deleted.")
                 td.s.delete(p)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-plus"))
+                return HttpResponseRedirect(reverse("tillweb-plus"))
             form = PLUForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -2519,8 +2473,8 @@ def create_plu(request, info):
         form = PLUForm()
 
     return ('new-plu.html', {
-        'nav': [("Price lookups", info.reverse("tillweb-plus")),
-                ("New", info.reverse("tillweb-create-plu"))],
+        'nav': [("Price lookups", reverse("tillweb-plus")),
+                ("New", reverse("tillweb-create-plu"))],
         'form': form,
     })
 
@@ -2540,7 +2494,7 @@ def barcodelist(request, info):
             if barcode:
                 return HttpResponseRedirect(barcode.get_absolute_url())
             messages.error(request, f"Barcode {cd['barcode']} is not known")
-            return HttpResponseRedirect(info.reverse("tillweb-barcodes"))
+            return HttpResponseRedirect(reverse("tillweb-barcodes"))
     else:
         form = BarcodeSearchForm()
 
@@ -2554,7 +2508,7 @@ def barcodelist(request, info):
 
     return ('barcodes.html', {
         'nav': [
-            ("Barcodes", info.reverse("tillweb-barcodes")),
+            ("Barcodes", reverse("tillweb-barcodes")),
         ],
         'form': form,
         'recent': pager.items,
@@ -2581,7 +2535,7 @@ def departmentlist(request, info):
                 .order_by(Department.id)\
                 .all()
     return ('departmentlist.html', {
-        'nav': [("Departments", info.reverse("tillweb-departments"))],
+        'nav': [("Departments", reverse("tillweb-departments"))],
         'depts': depts,
         'may_create_department': info.user_has_perm("edit-department"),
     })
@@ -2664,13 +2618,13 @@ def create_department(request, info):
             user.log(f"Created department {d.logref}")
             td.s.commit()
             messages.success(request, f"Department {cd['number']} created")
-            return HttpResponseRedirect(info.reverse("tillweb-departments"))
+            return HttpResponseRedirect(reverse("tillweb-departments"))
     else:
         form = NewDepartmentForm()
 
     return ('new-department.html', {
-        'nav': [("Departments", info.reverse("tillweb-departments")),
-                ("New", info.reverse("tillweb-create-department"))],
+        'nav': [("Departments", reverse("tillweb-departments")),
+                ("New", reverse("tillweb-create-department"))],
         'form': form,
     })
 
@@ -2804,8 +2758,8 @@ def stockcheck(request, info):
         form = StockCheckForm()
     return ('stockcheck.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Buying list", info.reverse("tillweb-stockcheck"))],
+            ("Reports", reverse("tillweb-reports")),
+            ("Buying list", reverse("tillweb-stockcheck"))],
         'form': form,
         'buylist': buylist,
     })
@@ -2814,7 +2768,7 @@ def stockcheck(request, info):
 @tillweb_view
 def userlist(request, info):
     return ('userlist.html', {
-        'nav': [("Users", info.reverse("tillweb-till-users"))],
+        'nav': [("Users", reverse("tillweb-till-users"))],
         'may_create_user': info.user_has_perm("edit-user"),
     })
 
@@ -2918,8 +2872,8 @@ def create_user(request, info):
 
     return ('new-user.html', {
         'form': form,
-        'nav': [("Users", info.reverse("tillweb-till-users")),
-                ("New", info.reverse("tillweb-create-user"))],
+        'nav': [("Users", reverse("tillweb-till-users")),
+                ("New", reverse("tillweb-create-user"))],
     })
 
 
@@ -2930,7 +2884,7 @@ def grouplist(request, info):
                  .all()
 
     return ('grouplist.html', {
-        'nav': [("Groups", info.reverse("tillweb-till-groups"))],
+        'nav': [("Groups", reverse("tillweb-till-groups"))],
         'groups': groups,
         'may_create_group': info.user_has_perm("edit-group"),
     })
@@ -2965,7 +2919,7 @@ def group(request, info, groupid):
                 td.s.delete(g)
                 td.s.commit()
                 return HttpResponseRedirect(
-                    info.reverse("tillweb-till-groups"))
+                    reverse("tillweb-till-groups"))
             form = EditGroupForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -2975,7 +2929,7 @@ def group(request, info, groupid):
                 td.s.commit()
                 messages.success(request, f"Group '{g.id}' updated.")
                 return HttpResponseRedirect(
-                    info.reverse("tillweb-till-groups") + "#row-" + g.id)
+                    reverse("tillweb-till-groups") + "#row-" + g.id)
         else:
             form = EditGroupForm(initial=initial)
 
@@ -3005,7 +2959,7 @@ def create_group(request, info):
                 td.s.commit()
                 messages.success(request, "Group '{}' created.".format(g.id))
                 return HttpResponseRedirect(
-                    info.reverse("tillweb-till-groups") + "#row-" + g.id)
+                    reverse("tillweb-till-groups") + "#row-" + g.id)
             except sqlalchemy.exc.IntegrityError:
                 td.s.rollback()
                 form.add_error("name", "There is another group with this name")
@@ -3017,22 +2971,22 @@ def create_group(request, info):
 
     return ('new-group.html', {
         'form': form,
-        'nav': [("Groups", info.reverse("tillweb-till-groups")),
-                ("New", info.reverse("tillweb-create-till-group"))],
+        'nav': [("Groups", reverse("tillweb-till-groups")),
+                ("New", reverse("tillweb-create-till-group"))],
     })
 
 
 @tillweb_view
 def tokenlist(request, info):
     return ('tokens.html', {
-        'nav': [("Tokens", info.reverse("tillweb-tokens"))],
+        'nav': [("Tokens", reverse("tillweb-tokens"))],
     })
 
 
 @tillweb_view
 def logsindex(request, info):
     return ('logs.html', {
-        'nav': [("Logs", info.reverse("tillweb-logs"))],
+        'nav': [("Logs", reverse("tillweb-logs"))],
     })
 
 
@@ -3052,7 +3006,7 @@ def configindex(request, info):
     c = td.s.query(Config).order_by(Config.key).all()
     return ('configindex.html', {
         'config': c,
-        'nav': [("Config", info.reverse("tillweb-config-index"))],
+        'nav': [("Config", reverse("tillweb-config-index"))],
     })
 
 
@@ -3089,7 +3043,7 @@ def configitem(request, info, key):
                 td.s.commit()
                 if 'submit_update' in request.POST:
                     return HttpResponseRedirect(
-                        info.reverse("tillweb-config-index"))
+                        reverse("tillweb-config-index"))
                 else:
                     return HttpResponseRedirect(c.get_absolute_url())
         else:
@@ -3105,7 +3059,7 @@ def configitem(request, info, key):
 @tillweb_view
 def reportindex(request, info):
     return ('reports.html', {
-        'nav': [("Reports", info.reverse("tillweb-reports"))],
+        'nav': [("Reports", reverse("tillweb-reports"))],
     })
 
 
@@ -3132,8 +3086,8 @@ def waste_report(request, info):
 
     return ('wasted-stock-report.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Wasted stock", info.reverse("tillweb-report-wasted-stock")),
+            ("Reports", reverse("tillweb-reports")),
+            ("Wasted stock", reverse("tillweb-report-wasted-stock")),
         ],
         'wasteform': wasteform,
     })
@@ -3162,8 +3116,8 @@ def stock_sold_report(request, info):
 
     return ('stock-sold-report.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Stock sold", info.reverse("tillweb-report-stock-sold")),
+            ("Reports", reverse("tillweb-reports")),
+            ("Stock sold", reverse("tillweb-report-stock-sold")),
         ],
         'stocksoldform': stocksoldform,
     })
@@ -3221,8 +3175,8 @@ def stock_value_report(request, info):
 
     return ('stock-value-report.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Stock value", info.reverse("tillweb-report-stock-value")),
+            ("Reports", reverse("tillweb-reports")),
+            ("Stock value", reverse("tillweb-report-stock-value")),
         ],
         'form': form,
         'departments': depts,
@@ -3258,8 +3212,8 @@ def transline_summary_report(request, info):
 
     return ('transline-summary-report.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Transaction lines", info.reverse(
+            ("Reports", reverse("tillweb-reports")),
+            ("Transaction lines", reverse(
                 "tillweb-report-transline-summary")),
         ],
         'form': form,
@@ -3270,7 +3224,7 @@ def transline_summary_report(request, info):
 def refusals(request, info):
     return ('refusals-log.html', {
         'nav': [
-            ("Reports", info.reverse("tillweb-reports")),
-            ("Refusals", info.reverse("tillweb-refusals")),
+            ("Reports", reverse("tillweb-reports")),
+            ("Refusals", reverse("tillweb-refusals")),
         ],
     })

@@ -31,12 +31,12 @@
   <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
     Abandon this stock-take
   </button>
-  <a href="{% url "tillweb-stocktype-search" pubname=pubname %}" class="btn btn-secondary mb-2">Add stock types to scope</a>
+  <a href="{% url "tillweb-stocktype-search" %}" class="btn btn-secondary mb-2">Add stock types to scope</a>
 </form>
 
 <p>This stock take is being set up.  Define the set of stock types the
 stock take will cover (its "scope") by adding stock types to it
-using <a href="{% url "tillweb-stocktype-search" pubname=pubname %}">the stock type
+using <a href="{% url "tillweb-stocktype-search" %}">the stock type
 search page</a>.</p>
 {% endif %}
 
@@ -74,7 +74,7 @@ in scope for a stock take.</p>
 </table>
 
 {% else %}
-<p>There are currently no stock types in scope for this stock take.{% if form %}  <a href="{% url "tillweb-stocktype-search" pubname=pubname %}">Add some.</a></p>{% endif %}
+<p>There are currently no stock types in scope for this stock take.{% if form %}  <a href="{% url "tillweb-stocktype-search" %}">Add some.</a></p>{% endif %}
 {% endif %}
 
 {% endblock %}

@@ -6,7 +6,7 @@
 
 <p>This table defines the units in which the system counts the amount
   of stock held.  Each
-  <a href="{% url "tillweb-stocktype-search" pubname=pubname %}">stock type</a>
+  <a href="{% url "tillweb-stocktype-search" %}">stock type</a>
   specifies which of these units will be used for that type of stock.</p>
 
 {% include "tillweb/unit-info.html" %}
@@ -49,7 +49,7 @@ $(document).ready(function(){
 </script>
 
 {% if may_create_unit %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-unit" pubname=pubname %}">Add new unit</a>
+<a class="btn btn-primary mb-2" href="{% url "tillweb-create-unit" %}">Add new unit</a>
 {% endif %}
 
 {% endblock %}

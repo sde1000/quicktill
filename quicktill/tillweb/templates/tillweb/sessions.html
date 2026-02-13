@@ -27,7 +27,7 @@
   $(document).ready(function(){
     $("#sessions").DataTable({
 	ajax: {
-	    url: '{% url "tillweb-datatable-sessions" pubname=pubname %}',
+	    url: '{% url "tillweb-datatable-sessions" %}',
 	    dataSrc: 'data'
 	},
 	columns: [

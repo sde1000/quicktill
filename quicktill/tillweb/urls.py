@@ -1,4 +1,4 @@
-from django.urls import include, path, re_path
+from django.urls import include, path
 from quicktill.tillweb import views
 from quicktill.tillweb import stocktake
 from quicktill.tillweb import datatable
@@ -160,10 +160,4 @@ tillurls = [
          name="tillweb-datatable-usertotals"),
     path('datatable/refusals-log.json', datatable.refusals,
          name="tillweb-datatable-refusals"),
-]
-
-urls = [
-    # Index page
-    path('', views.publist, name="tillweb-publist"),
-    re_path(r'^(?P<pubname>[\w\-]+)/', include(tillurls)),
 ]

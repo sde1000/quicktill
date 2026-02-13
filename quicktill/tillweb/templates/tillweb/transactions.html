@@ -38,7 +38,7 @@
       let transaction_state = $("#stateSelect").val();
       const transactions_table = $("#transactionsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-transactions" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-transactions" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.state = transaction_state;

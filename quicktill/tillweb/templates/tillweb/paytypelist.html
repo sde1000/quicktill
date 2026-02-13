@@ -59,7 +59,7 @@ which they are displayed in the till user interface.</p>
 {% endif %}
 
 {% if may_create_paytype %}
-<a href="{% url "tillweb-create-paytype" pubname=pubname %}" class="btn btn-secondary">Add new payment method</a>
+<a href="{% url "tillweb-create-paytype" %}" class="btn btn-secondary">Add new payment method</a>
 {% endif %}
 
 {% if may_manage_paytypes %}

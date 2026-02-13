@@ -6,7 +6,7 @@
 {% block tillcontent %}
 
 <div class="alert alert-warning">
-  Till user accounts can be disabled, which means they won't appear in the normal list of users. Before adding a new user to the till, please <a href="{% url "tillweb-till-users" pubname=pubname %}">check that they don't already have an account</a>.
+  Till user accounts can be disabled, which means they won't appear in the normal list of users. Before adding a new user to the till, please <a href="{% url "tillweb-till-users" %}">check that they don't already have an account</a>.
 </div>
 
 <form action="" method="post">{% csrf_token %}

@@ -308,7 +308,7 @@
   function init_translines_table() {
       translines_table = $("#translinesTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-translines" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.userid = {{tuser.id}};
@@ -360,7 +360,7 @@
   function init_payments_table() {
       payments_table = $("#paymentsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-payments" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.userid = {{tuser.id}};
@@ -404,7 +404,7 @@
   function init_annotations_table() {
       annotations_table = $("#annotationsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-annotations" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-annotations" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.userid = {{tuser.id}};

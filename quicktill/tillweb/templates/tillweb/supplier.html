@@ -58,7 +58,7 @@
       $(document).ready(function(){
 	  $("#deliveriesTable").DataTable({
 	      ajax: {
-		  url: '{% url "tillweb-datatable-deliveries" pubname=pubname %}',
+		  url: '{% url "tillweb-datatable-deliveries" %}',
 		  dataSrc: 'data',
 		  data: function (d) {
 		      d.supplierid = {{supplier.id}};

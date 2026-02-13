@@ -118,7 +118,7 @@
   $(document).ready(function() {
       const payments_api = $("#payments").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-payments" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.paytype = '{{paytype.paytype}}';
@@ -159,7 +159,7 @@
       });
       const totals_api = $("#totals").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-sessiontotals" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-sessiontotals" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.paytype = '{{paytype.paytype}}';

@@ -19,7 +19,7 @@
       <tbody>
 	<tr>
 	  <th scope="row">Manufacturer</th>
-	  <td><a href="{% url "tillweb-stocktype-search" pubname=pubname %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td>
+	  <td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td>
 	</tr>
 	<tr>
 	  <th scope="row">Name</th>
@@ -76,7 +76,7 @@
   </div>
   <div class="col-4 d-none d-lg-block">
     {% if has_logo %}
-    <img src="{% url "tillweb-stocktype-logo" pubname=pubname stocktype_id=stocktype.id %}" alt="" class="img-fluid">
+    <img src="{% url "tillweb-stocktype-logo" stocktype_id=stocktype.id %}" alt="" class="img-fluid">
     {% endif %}
   </div>
 </div>

@@ -4,12 +4,7 @@
 {% block title %}{{till}} error{% endblock %}
 {% block breadcrumbs %}
 {{ block.super }}
-{% if single_site %}
 {% breadcrumb till "tillweb-pubroot" %}
-{% else %}
-{% breadcrumb "Tills" "tillweb-publist" %}
-{% breadcrumb till "tillweb-pubroot" pubname %}
-{% endif %}
 {% endblock %}
 
 {% block content %}

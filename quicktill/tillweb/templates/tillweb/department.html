@@ -88,7 +88,7 @@
 
 
 {% if pager.items %}
-<a class="btn btn-secondary float-right" href="{% url "tillweb-department-sheet" pubname=pubname departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a>
+<a class="btn btn-secondary float-right" href="{% url "tillweb-department-sheet" departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a>
 {% if include_finished %}
 <h2>All stock items</h2>
 {% else %}

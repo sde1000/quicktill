@@ -16,7 +16,7 @@
 {% endfor %}{% if currentsession.pending_total %}({{money}}{{currentsession.pending_total}} unpaid){% endif %}</a>
 {% else %}No current session{% endif %}
 {% if deferred %}
-<br><a href="{% url "tillweb-transactions" pubname=pubname %}?state=deferred">{{money}}{{deferred}} deferred transactions</a>
+<br><a href="{% url "tillweb-transactions" %}?state=deferred">{{money}}{{deferred}} deferred transactions</a>
 {% endif %}
     </div>
   </div>
@@ -52,10 +52,10 @@
 {% include "tillweb/linelist.html" %}
 {% endwith %}
 
-<p><a href="{% url "tillweb-locations" pubname=pubname %}">Other locations</a></p>
+<p><a href="{% url "tillweb-locations" %}">Other locations</a></p>
 </div>
 {% else %}
-<p><a href="{% url "tillweb-locations" pubname=pubname %}">Stock locations</a></p>
+<p><a href="{% url "tillweb-locations" %}">Stock locations</a></p>
 {% endif %}
   </div>
   {% if stillage %}

@@ -16,7 +16,7 @@ the keyboard that produces the "builtin:alice" user token is:</p>
 </div>
 
 {% if may_create_user %}
-<a class="btn btn-primary mb-2 disabled" id="add_new_user_button" href="{% url "tillweb-create-user" pubname=pubname %}">Add new user</a>
+<a class="btn btn-primary mb-2 disabled" id="add_new_user_button" href="{% url "tillweb-create-user" %}">Add new user</a>
 {% endif %}
 
 <div class="form-group form-check">
@@ -43,7 +43,7 @@ the keyboard that produces the "builtin:alice" user token is:</p>
       let include_disabled = false;
       const userlist_api = $("#userlist").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-users" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-users" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.include_disabled = include_disabled ? 'yes': 'no';

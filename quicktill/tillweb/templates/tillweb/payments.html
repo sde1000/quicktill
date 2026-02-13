@@ -25,7 +25,7 @@
   $(document).ready(function() {
       const payments_table = $("#paymentsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-payments" %}',
 	      dataSrc: 'data',
 	  },
 	  columns: [

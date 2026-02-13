@@ -3,6 +3,7 @@ from django.http import Http404
 from django.http import HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.http import JsonResponse
+from django.urls import reverse
 from django import forms
 from django.contrib import messages
 from sqlalchemy import inspect
@@ -58,7 +59,7 @@ def stocktakelist(request, info):
         'in_progress': in_progress,
         'completed': completed,
         'may_start': may_start,
-        'nav': [("Stock takes", info.reverse("tillweb-stocktakes"))],
+        'nav': [("Stock takes", reverse("tillweb-stocktakes"))],
     })
 
 
@@ -84,8 +85,8 @@ def create_stocktake(request, info):
         form = StockTakeSetupForm()
 
     return ('new-stocktake.html', {
-        'nav': [("Stock takes", info.reverse("tillweb-stocktakes")),
-                ("New", info.reverse("tillweb-create-stocktake"))],
+        'nav': [("Stock takes", reverse("tillweb-stocktakes")),
+                ("New", reverse("tillweb-create-stocktake"))],
         'form': form,
     })
 
@@ -139,7 +140,7 @@ def stocktake_pending(request, info, st):
                                  f"Pending stock take {st.id} abandoned")
                 td.s.delete(st)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-stocktakes"))
+                return HttpResponseRedirect(reverse("tillweb-stocktakes"))
             if 'submit_update' in request.POST:
                 if form.is_valid():
                     st.description = form.cleaned_data['description']
@@ -328,7 +329,7 @@ def stocktake_in_progress(request, info, stocktake):
                     request, f"Stock take {stocktake.id} abandoned.")
                 td.s.delete(stocktake)
                 td.s.commit()
-                return HttpResponseRedirect(info.reverse("tillweb-stocktakes"))
+                return HttpResponseRedirect(reverse("tillweb-stocktakes"))
 
         if 'submit_finish' in request.POST:
             unchecked = any(not ss.checked for ss in snapshots)

@@ -43,7 +43,7 @@
 
       const translines_table = $("#translinesTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-translines" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  if (translines_dept_filter != '') {

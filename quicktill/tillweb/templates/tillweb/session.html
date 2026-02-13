@@ -59,12 +59,12 @@
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="discountsTab" href="{% url "tillweb-session-discounts" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#discounts" role="tab" aria-controls="discounts" aria-selected="false">
+    <a class="nav-link" id="discountsTab" href="{% url "tillweb-session-discounts" sessionid=session.id %}" data-toggle="tabajax" data-target="#discounts" role="tab" aria-controls="discounts" aria-selected="false">
       Discounts
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" pubname=pubname sessionid=session.id %}" data-toggle="tabajax" data-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
+    <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" sessionid=session.id %}" data-toggle="tabajax" data-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
       Stock sold
     </a>
   </li>
@@ -221,7 +221,7 @@
     </table>
   </div>
   <div class="tab-pane fade" id="info" aria-labelledby="infoTab">
-    <a class="btn btn-secondary mb-3" href="{% url "tillweb-session-spreadsheet" pubname=pubname sessionid=session.id %}">Download spreadsheet</a>
+    <a class="btn btn-secondary mb-3" href="{% url "tillweb-session-spreadsheet" sessionid=session.id %}">Download spreadsheet</a>
     {% with logs=session.logs %}
     {% include "tillweb/loglist.html" %}
     {% endwith %}
@@ -283,7 +283,7 @@
   function init_depttotals_table() {
       depttotals_table = $("#depttakings").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-depttotals" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-depttotals" %}',
 	      dataSrc: function (json) {
 		  return json.data;
 	      },
@@ -362,7 +362,7 @@
   function init_usertotals_table () {
       usertotals_table = $("#usertakings").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-usertotals" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-usertotals" %}',
 	      dataSrc: function (json) {
 		  return json.data;
 	      },
@@ -412,7 +412,7 @@
   function init_transactions_table() {
       transactions_table = $("#transactionsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-transactions" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-transactions" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.sessionid = {{session.id}};
@@ -447,7 +447,7 @@
 
       translines_table = $("#translinesTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-translines" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-translines" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.sessionid = {{session.id}};
@@ -512,7 +512,7 @@
   function init_payments_table() {
       payments_table = $("#paymentsTable").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-payments" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-payments" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.sessionid = {{session.id}};

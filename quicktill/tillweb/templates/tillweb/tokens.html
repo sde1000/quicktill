@@ -6,7 +6,7 @@
 
 {% comment %}
 {% if may_create_token %}
-<a class="btn btn-primary mb-2" id="add_new_token_button" href="{% url "tillweb-create-token" pubname=pubname %}">Add new token</a>
+<a class="btn btn-primary mb-2" id="add_new_token_button" href="{% url "tillweb-create-token" %}">Add new token</a>
 {% endif %}
 {% endcomment %}
 
@@ -26,7 +26,7 @@
   $(document).ready(function() {
       const tokenlist_api = $("#tokenlist").DataTable({
 	  ajax: {
-	      url: '{% url "tillweb-datatable-tokens" pubname=pubname %}',
+	      url: '{% url "tillweb-datatable-tokens" %}',
 	      dataSrc: 'data',
 	      data: function (d) {
 		  d.columns[2].nullslast = true;
