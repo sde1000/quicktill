@@ -1,3 +1,13 @@
+quicktill (26.2) stable; urgency=low
+
+  * New release 26.2
+
+  * Remove multi-site support from tillweb
+
+  * Ensure source packages are compressed with gzip
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 13 Feb 2026 14:08:21 +0000
+
 quicktill (26.1) stable; urgency=low
 
   * New release 26.1
