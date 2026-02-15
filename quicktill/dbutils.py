@@ -3,7 +3,7 @@
 
 import os
 import argparse
-import tomli
+import tomllib
 from . import cmdline
 from . import td
 from . import models
@@ -101,7 +101,7 @@ class dbsetup(cmdline.command):
 
     @staticmethod
     def run(args):
-        t = tomli.load(args.dbfile)
+        t = tomllib.load(args.dbfile)
 
         with td.orm_session():
             try:

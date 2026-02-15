@@ -8,7 +8,7 @@ import logging
 import logging.config
 import warnings
 import argparse
-import tomli
+import tomllib
 import json
 import importlib
 import os
@@ -19,7 +19,6 @@ from . import tillconfig, td
 from .version import version
 
 # The following imports are to ensure subcommands are loaded
-from . import dbsetup  # noqa: F401
 from . import dbutils  # noqa: F401
 from . import secretstore  # noqa: F401
 from . import monitor  # noqa: F401
@@ -102,8 +101,8 @@ def _find_initial_config():
             if cf.exists():
                 try:
                     with open(cf, "rb") as f:
-                        return (cf, tomli.load(f))
-                except tomli.TOMLDecodeError as e:
+                        return (cf, tomllib.load(f))
+                except tomllib.TOMLDecodeError as e:
                     print(f"{cf}: {e}", file=sys.stderr)
                     sys.exit(1)
             cf = loc / "quicktill.json"
@@ -165,7 +164,7 @@ def configure_logging(args, stderr_level=logging.ERROR):
     # import can be directed appropriately.
     rootlog = logging.getLogger()
     if args.logconfig:
-        logconfig = tomli.load(args.logconfig)
+        logconfig = tomllib.load(args.logconfig)
         args.logconfig.close()
         logging.config.dictConfig(logconfig)
     else:
