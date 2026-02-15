@@ -8,7 +8,6 @@ jobs:
     strategy:
       matrix:
         runs-on:
-          - 'ubuntu-22.04'
           - 'ubuntu-24.04'
     runs-on: ${{ matrix.runs-on }}
 
