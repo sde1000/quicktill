@@ -16,3 +16,6 @@ override_dh_compress:
 # until a suitable release of aptly.
 override_dh_builddeb:
 	dh_builddeb -- -Zgzip
+
+override_dh_installexamples:
+	dh_installexamples -X data
