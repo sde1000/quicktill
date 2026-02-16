@@ -1,3 +1,27 @@
+quicktill (26.3) stable; urgency=low
+
+  * New release 26.3
+
+  * Remove many vendored javascript libraries
+
+  * Use pybuild-plugin-pyproject alongside dh-python
+
+  * Exclude sample data from built .deb package
+
+  * Update year
+
+  * Remove Ubuntu 22.04 from tests because its python is too old
+
+  * Remove some obsolete examples, and add better documentation for the remainder
+
+  * Use tomllib instead of tomli
+
+  * Merge dbsetup into dbutils
+
+  * Stop flake8 complaining
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 16 Feb 2026 22:19:09 +0000
+
 quicktill (26.2) stable; urgency=low
 
   * New release 26.2
