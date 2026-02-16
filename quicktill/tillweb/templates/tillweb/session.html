@@ -1,11 +1,6 @@
 {% extends "tillweb/tillweb.html" %}
 {% load static %}
 
-{% block scripts %}
-{{block.super}}
-<script type="text/javascript" src="{% static "tillweb/chart.js" %}"></script>
-{% endblock %}
-
 {% block title %}{{till}} — Session {{session.id}}{% endblock %}
 
 {% block tillcontent %}

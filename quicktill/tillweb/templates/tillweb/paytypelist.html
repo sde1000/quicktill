@@ -2,12 +2,6 @@
 {% load static %}
 
 {% block title %}{{till}} — Payment methods{% endblock %}
-{% block scripts %}
-{{block.super}}
-{% if may_manage_paytypes %}
-<script type="text/javascript" src="{% static "tillweb/Sortable.js" %}"></script>
-{% endif %}
-{% endblock %}
 
 {% block tillcontent %}
 
