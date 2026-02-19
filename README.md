@@ -39,7 +39,7 @@ Features
  * [Square Terminal](https://developer.squareup.com/docs/terminal-api/overview) integration
 
 It should be possible to run this software on any system that supports
-Python 3.10.  Usually it runs on Debian-derived Linux systems.
+Python 3.12.  Usually it runs on Debian-derived Linux systems.
 
 Misfeatures
 -----------
@@ -268,11 +268,5 @@ Credits
 This software incorporates code from the following projects, which may
 be under a different licence:
 
-* [jQuery](https://jquery.com/) (MIT licence)
-* [TableSorter](https://plugins.jquery.com/tablesorter/) (MIT/GPL dual licence)
 * [MultiSelect](https://plugins.jquery.com/multi-select/) ([DWTFYWT](http://www.wtfpl.net/txt/copying/) licence)
-* [Select2](https://select2.org/) (MIT licence)
-* [Chart.js](https://www.chartjs.org/) (MIT licence)
-* [Sortable](https://github.com/SortableJS/Sortable) (MIT licence)
 * [json-viewer](https://github.com/LorDOniX/json-viewer) (MIT licence)
-* [DataTables](https://datatables.net/) (MIT licence)
