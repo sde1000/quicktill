@@ -122,9 +122,6 @@ new stock items can be placed at appropriate places in the table.
     the till.</p>
 </form>
 <script type="text/javascript">
- var dtpicker_options = {firstDay: 1,
-			 dateFormat: 'yy-mm-dd'};
-
  function detail_set_disable(d) {
      $("#id_itemsize").prop('disabled', d);
      $("#id_quantity").prop('disabled', d);
@@ -153,8 +150,6 @@ new stock items can be placed at appropriate places in the table.
  }
 
  $(document).ready(function(){
-     $("#id_date").datepicker(dtpicker_options);
-
      $("#id_stocktype").on('select2:select', function (e) {
 	 var data = e.params.data;
 	 set_fields(data);

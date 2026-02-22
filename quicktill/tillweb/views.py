@@ -120,9 +120,7 @@ class DateInput(forms.DateInput):
     def __init__(self, *args, **kwargs):
         attrs = kwargs.setdefault('attrs', {})
         attrs['autocomplete'] = 'off'
-
-        # Uncomment the next line to enable native datepickers
-        # attrs['type'] = 'date'
+        attrs['type'] = 'date'
 
         super().__init__(*args, **kwargs, format='%Y-%m-%d')
 
