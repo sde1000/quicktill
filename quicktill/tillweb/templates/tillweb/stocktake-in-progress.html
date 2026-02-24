@@ -14,7 +14,7 @@
 
 <form action="" method="post">{% csrf_token %}
 <table class="table table-sm">
-  <thead class="thead-light">
+  <thead class="table-light">
     <tr>
       <th scope="col">Stock type/ID</th>
       <th scope="col">Quantity</th>
@@ -91,11 +91,11 @@
   Add stock ID
 </button>
 
-<button class="btn btn-primary ml-2 mb-2" type="submit" name="submit_finish">
+<button class="btn btn-primary ms-2 mb-2" type="submit" name="submit_finish">
   Finish stock take
 </button>
 
-<button class="btn btn-danger ml-2 mb-2" type="submit" name="submit_abandon">
+<button class="btn btn-danger ms-2 mb-2" type="submit" name="submit_abandon">
   Abandon stock take
 </button>
 </div>

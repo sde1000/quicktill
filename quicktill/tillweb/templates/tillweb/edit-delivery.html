@@ -32,7 +32,7 @@ new stock items can be placed at appropriate places in the table.
     {% endif %}
 
     {% for field in form.header_fields %}
-    <div class="form-group row align-items-center">
+    <div class="row mb-3 align-items-center">
 	<label for="{{ field.id_for_label }}" class="col-sm-4 col-md-3 col-lg-2 col-form-label">{{ field.label }}</label>
 	<div class="col-sm-8 col-md-9 col-lg-10">
 	    {% include "form-field.html" %}
@@ -45,7 +45,7 @@ new stock items can be placed at appropriate places in the table.
 
     <div class="table-responsive">
 	<table class="table table-striped table-sm table-hover">
-	    <thead class="thead-light">
+	    <thead class="table-light">
 		<tr>
 		    <th scope="col">Stock ID</th>
 		    <th scope="col">Manufacturer</th>
@@ -73,34 +73,34 @@ new stock items can be placed at appropriate places in the table.
 		    <td><button type="submit" class="btn btn-sm btn-link" name="del{{s.id}}" formnovalidate>❌</button></td>
 		</tr>
 		{% endfor %}
-		<tr><td colspan="5" class="text-right">Total:</td><td>{{money}}{{total}} ex-VAT</td><td colspan="3"></td></tr>
+		<tr><td colspan="5" class="text-end">Total:</td><td>{{money}}{{total}} ex-VAT</td><td colspan="3"></td></tr>
 		<tr>
 		    <td></td>
 		    <td colspan="3">
-			<label for="{{form.stocktype.id_for_label}}" class="sr-only">{{form.stocktype.label}}</label>
+			<label for="{{form.stocktype.id_for_label}}" class="visually-hidden">{{form.stocktype.label}}</label>
 			{% include "form-field.html" with field=form.stocktype %}
 		    </td>
 		    <td>
 			<div class="form-inline flex-column align-items-start">
 			    <div>
-				<label for="{{form.itemsize.id_for_label}}" class="sr-only">{{form.itemsize.label}}</label>
+				<label for="{{form.itemsize.id_for_label}}" class="visually-hidden">{{form.itemsize.label}}</label>
 				{% include "form-field.html" with field=form.itemsize %}
 			    </div>
 			    <div class="d-flex flex-row mt-1">
-				<label for="{{form.quantity.id_for_label}}" class="mr-2">{{form.quantity.label}}</label>{% render_field form.quantity class+="w-25" %}
+				<label for="{{form.quantity.id_for_label}}" class="me-2">{{form.quantity.label}}</label>{% render_field form.quantity class+="w-25" %}
 			    </div>
 			</div>
 		    </td>
 		    <td>
-			<label for="{{form.costprice.id_for_label}}" class="sr-only">{{form.costprice.label}}</label>
+			<label for="{{form.costprice.id_for_label}}" class="visually-hidden">{{form.costprice.label}}</label>
 			{% include "form-field.html" with field=form.costprice %}
 		    </td>
 		    <td>
-			<label for="{{form.saleprice.id_for_label}}" class="sr-only">{{form.saleprice.label}}</label>
+			<label for="{{form.saleprice.id_for_label}}" class="visually-hidden">{{form.saleprice.label}}</label>
 			{% include "form-field.html" with field=form.saleprice %}
 		    </td>
 		    <td>
-			<label for="{{form.bestbefore.id_for_label}}" class="sr-only">{{form.bestbefore.label}}</label>
+			<label for="{{form.bestbefore.id_for_label}}" class="visually-hidden">{{form.bestbefore.label}}</label>
 			{% include "form-field.html" with field=form.bestbefore %}
 		    </td>
 		    <td></td>

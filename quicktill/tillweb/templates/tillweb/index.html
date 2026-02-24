@@ -35,11 +35,11 @@
 
 <ul class="nav nav-tabs mt-3 w-100" id="barTabs" role="tablist">
   <li class="nav-item">
-    <a class="nav-link active" id="barSummaryTab" data-toggle="tab" href="#barSummary" role="tab" aria-controls="barSummary" aria-selected="true">On the bar</a>
+    <a class="nav-link active" id="barSummaryTab" data-bs-toggle="tab" href="#barSummary" role="tab" aria-controls="barSummary" aria-selected="true">On the bar</a>
   </li>
   {% if stillage %}
   <li class="nav-item">
-    <a class="nav-link" id="stillageTab" data-toggle="tab" href="#stillage" role="tab" aria-controls="stillage" aria-selected="false">On the stillage</a>
+    <a class="nav-link" id="stillageTab" data-bs-toggle="tab" href="#stillage" role="tab" aria-controls="stillage" aria-selected="false">On the stillage</a>
   </li>
   {% endif %}
 </ul>
@@ -62,7 +62,7 @@
   <div class="tab-pane fade" id="stillage" aria-labelledby="stillageTab">
     <div class="table-responsive">
       <table id="stillageTable" class="table table-striped table-hover table-sm">
-	<thead class="thead-light">
+	<thead class="table-light">
 	  <tr>
 	    <th scope="col">Location</th>
 	    <th scope="col">Time</th>

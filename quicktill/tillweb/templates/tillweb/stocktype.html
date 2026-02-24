@@ -58,20 +58,20 @@
     {% endif %}
 
     {% if alter_form %}
-    <button class="btn btn-secondary mr-2 mb-2" type="button" data-toggle="modal" data-target="#alterModal">Edit or fix mistakes</button>
+    <button class="btn btn-secondary me-2 mb-2" type="button" data-bs-toggle="modal" data-bs-target="#alterModal">Edit or fix mistakes</button>
     {% endif %}
     {% if reprice_form %}
-    <button class="btn btn-secondary mr-2 mb-2" type="button" data-toggle="modal" data-target="#repriceModal">Re-price stock</button>
+    <button class="btn btn-secondary me-2 mb-2" type="button" data-bs-toggle="modal" data-bs-target="#repriceModal">Re-price stock</button>
     {% endif %}
     {% if may_delete %}
     <form action="" method="post">{% csrf_token %}
-      <button class="btn btn-danger mr-2 mb-2" name="submit_delete">
+      <button class="btn btn-danger me-2 mb-2" name="submit_delete">
 	Delete this stock type
       </button>
     </form>
     {% endif %}
     {% if archive_form %}
-    <button class="btn btn-{% if stocktype.archived %}secondary{% else %}danger{% endif %} mr-2 mb-2" type="button" data-toggle="modal" data-target="#archiveModal">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</button>
+    <button class="btn btn-{% if stocktype.archived %}secondary{% else %}danger{% endif %} me-2 mb-2" type="button" data-bs-toggle="modal" data-bs-target="#archiveModal">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</button>
     {% endif %}
   </div>
   <div class="col-4 d-none d-lg-block">
@@ -87,9 +87,7 @@
     <div class="modal-content">
       <div class="modal-header">
 	<h5 class="modal-title" id="alterModalLabel">Edit stock type</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="" method="post" enctype="multipart/form-data">
 	{% csrf_token %}
@@ -107,7 +105,7 @@
 	  </div>
 	</div>
 	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 	    Cancel
 	  </button>
 	  <button class="btn btn-primary" type="submit" name="submit_alter">
@@ -133,9 +131,7 @@
     <div class="modal-content">
       <div class="modal-header">
 	<h5 class="modal-title" id="repriceModalLabel">Re-price stock</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="" method="post">{% csrf_token %}
 	<div class="modal-body">
@@ -144,7 +140,7 @@
 	  </div>
 	</div>
 	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 	    Cancel
 	  </button>
 	  <button class="btn btn-primary" type="submit" name="submit_reprice">
@@ -170,9 +166,7 @@
     <div class="modal-content">
       <div class="modal-header">
 	<h5 class="modal-title" id="archiveModalLabel">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="" method="post">{% csrf_token %}
 	<div class="modal-body">
@@ -197,7 +191,7 @@
 	  </div>
 	</div>
 	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 	    Cancel
 	  </button>
 	  {% if stocktype.archived %}

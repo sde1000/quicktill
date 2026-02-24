@@ -39,7 +39,7 @@
 {% endif %}
 
 {% if form %}
-<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#changeModal">
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#changeModal">
   Change details
 </button>
 <div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
@@ -47,9 +47,7 @@
     <div class="modal-content">
       <div class="modal-header">
 	<h5 class="modal-title" id="changeModalLabel">Edit user</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="changeForm" action="" method="post">{% csrf_token %}
 	<div class="modal-body">
@@ -65,7 +63,7 @@
 	  </div>
 	</div>
 	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 	    Cancel
 	    </button>
 	  <button class="btn btn-primary" type="submit" name="submit_update">
@@ -86,7 +84,7 @@
 {% endif %}
 
 {% if may_clear_password %}
-<button class="btn btn-secondary mb-2" type="button" data-toggle="modal" data-target="#clearPasswordModal"{% if not tuser.password %} disabled{% endif %}>
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#clearPasswordModal"{% if not tuser.password %} disabled{% endif %}>
   Remove password
 </button>
 <div class="modal fade" id="clearPasswordModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
@@ -94,9 +92,7 @@
     <div class="modal-content">
       <div class="modal-header">
 	<h5 class="modal-title" id="changeModalLabel">Remove password</h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
+	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="removePasswordForm" action="" method="post">{% csrf_token %}
 	<div class="modal-body">
@@ -110,7 +106,7 @@
 	    new password using Manage Till option 7 then option 4.</p>
 	</div>
 	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-dismiss="modal">
+	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 	    Cancel
 	    </button>
 	  <button class="btn btn-primary" type="submit" name="submit_clearpass">
@@ -125,37 +121,37 @@
 
 <ul class="nav nav-tabs mt-3 w-100" role="tablist">
   <li class="nav-item">
-    <a class="nav-link active" id="groupsTab" href="#groups" data-toggle="tab" data-target="#groups" role="tab" aria-controls="groups" aria-selected="true">
+    <a class="nav-link active" id="groupsTab" href="#groups" data-bs-toggle="tab" data-bs-target="#groups" role="tab" aria-controls="groups" aria-selected="true">
       Groups
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="permissionsTab" href="#permissions" data-toggle="tab" data-target="#permissions" role="tab" aria-controls="permissions" aria-selected="false">
+    <a class="nav-link" id="permissionsTab" href="#permissions" data-bs-toggle="tab" data-bs-target="#permissions" role="tab" aria-controls="permissions" aria-selected="false">
       Permissions
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="tokensTab" href="#tokens" data-toggle="tab" data-target="#tokens" role="tab" aria-controls="tokens" aria-selected="false">
+    <a class="nav-link" id="tokensTab" href="#tokens" data-bs-toggle="tab" data-bs-target="#tokens" role="tab" aria-controls="tokens" aria-selected="false">
       Access tokens
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="translinesTab" href="#translines" data-toggle="tab" data-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
+    <a class="nav-link" id="translinesTab" href="#translines" data-bs-toggle="tab" data-bs-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
       Sales
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="paymentsTab" href="#payments" data-toggle="tab" data-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
+    <a class="nav-link" id="paymentsTab" href="#payments" data-bs-toggle="tab" data-bs-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
       Payments
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="annotationsTab" href="#annotations" data-toggle="tab" data-target="#annotations" role="tab" aria-controls="annotations" aria-selected="false">
+    <a class="nav-link" id="annotationsTab" href="#annotations" data-bs-toggle="tab" data-bs-target="#annotations" role="tab" aria-controls="annotations" aria-selected="false">
       Stock annotations
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="logsTab" href="#logs" data-toggle="tab" data-target="#logs" role="tab" aria-controls="logs" aria-selected="false">
+    <a class="nav-link" id="logsTab" href="#logs" data-bs-toggle="tab" data-bs-target="#logs" role="tab" aria-controls="logs" aria-selected="false">
       Log entries
     </a>
   </li>
@@ -167,7 +163,7 @@
   <div class="tab-pane fade show active" id="groups" aria-labelledby="groupsTab">
     {% if tuser.groups %}
     <table class="table table-striped table-hover table-sm w-auto" id="grouplist">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Name</th>
 	  <th scope="col">Description</th>
@@ -191,7 +187,7 @@
   <div class="tab-pane fade" id="permissions" aria-labelledby="permissionsTab">
     {% if tuser.permissions %}
     <table class="table table-striped table-hover table-sm w-auto" id="permissionlist">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Name</th>
 	  <th scope="col">Description</th>
@@ -215,7 +211,7 @@
   <div class="tab-pane fade" id="tokens" aria-labelledby="tokensTab">
     {% if tuser.tokens %}
     <table class="table table-striped table-hover table-sm w-auto" id="tokenlist">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Description</th>
 	  <th scope="col">Value</th>
@@ -245,7 +241,7 @@
   </div>
   <div class="tab-pane fade" id="translines" aria-labelledby="tokensTab">
     <table class="table table-sm table-striped" id="translinesTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">ID</th>
 	  <th scope="col">Transaction</th>
@@ -265,7 +261,7 @@
   </div>
   <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
     <table class="table table-sm table-striped" id="paymentsTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">ID</th>
 	  <th scope="col">Transaction</th>
@@ -282,7 +278,7 @@
   </div>
   <div class="tab-pane fade" id="annotations" aria-labelledby="annotationsTab">
     <table class="table table-sm table-striped" id="annotationsTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Stock ID</th>
 	  <th scope="col">Description</th>

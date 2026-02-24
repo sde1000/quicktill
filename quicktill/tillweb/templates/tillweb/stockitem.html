@@ -18,9 +18,9 @@
 {% if stock.delivery %}
 <tr><th scope="row">Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
 <tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
-<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.checked %} <span class="badge badge-warning">Not confirmed</span>{% endif %}</td></tr>
+<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not confirmed</span>{% endif %}</td></tr>
 {% else %}
-<tr><th scope="row">Discovered in stock take</th><td><a href="{{stock.stocktake.get_absolute_url}}">{{stock.stocktake.id}}</a>{% if not stock.checked %} <span class="badge badge-warning">Not committed</span>{% endif %}</td></tr>
+<tr><th scope="row">Discovered in stock take</th><td><a href="{{stock.stocktake.get_absolute_url}}">{{stock.stocktake.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not committed</span>{% endif %}</td></tr>
 {% endif %}
 <tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
 <tr><th scope="row">Stock unit</th><td>{{stock.description}} ({{stock.size}} {{stock.stocktype.unit.name}}s)</td></tr>
@@ -54,7 +54,7 @@
 <div class="row">
 {% if aform %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mr-2 mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add annotation</button>
+  <button class="btn btn-secondary dropdown-toggle me-2 mb-2" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add annotation</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" id="annotationForm" action="" method="post">{% csrf_token %}
       {% include "form.html" with form=aform %}
@@ -68,7 +68,7 @@
 
 {% if wform %}
 <div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle mb-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Record waste</button>
+  <button class="btn btn-secondary dropdown-toggle mb-2" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Record waste</button>
   <div class="dropdown-menu" style="width: 600px;">
     <form class="px-4 py-3" action="" method="post">{% csrf_token %}
       {% include "form.html" with form=wform %}
@@ -92,7 +92,7 @@
 <h2>Quantities used</h2>
 
 <table class="table table-striped table-hover table-sm w-auto" id="stockout">
-<thead class="thead-light">
+<thead class="table-light">
   <tr>
     <th scope="col">Time</th>
     <th scope="col">Description</th>

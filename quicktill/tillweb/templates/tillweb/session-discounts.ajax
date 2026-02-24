@@ -1,7 +1,7 @@
 <div class="row mt-2">
   <div class="col">
-    <table class="table table-striped table-hover w-auto table-sm" id="discountstable">
-      <thead class="thead-light">
+    <table class="table table-striped table-hover table-sm" id="discountstable">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Dept</th>
 	  <th scope="col">Description</th>
@@ -33,6 +33,7 @@
       </tfoot>
     </table>
   </div>
+  <div class="col-lg"></div>
 </div>
 
 <script type="text/javascript">

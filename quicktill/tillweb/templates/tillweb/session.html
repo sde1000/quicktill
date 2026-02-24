@@ -6,7 +6,7 @@
 {% block tillcontent %}
 
 {% if session.accounts_url %}
-<a class="btn btn-secondary float-right" href="{{ session.accounts_url }}">View in accounts</a>
+<a class="btn btn-secondary float-end" href="{{ session.accounts_url }}">View in accounts</a>
 {% endif %}
 
 {% if session.endtime %}
@@ -44,42 +44,42 @@
 
 <ul class="nav nav-tabs mt-3 w-100" id="sessionTabs" role="tablist">
   <li class="nav-item">
-    <a class="nav-link" id="deptTakingsTab" href="#deptTakings" data-toggle="tab" data-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
+    <a class="nav-link" id="deptTakingsTab" href="#deptTakings" data-bs-toggle="tab" data-bs-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
       Takings by department
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="userTakingsTab" href="#userTakings" data-toggle="tab" data-target="#userTakings" role="tab" aria-controls="userTakings" aria-selected="false">
+    <a class="nav-link" id="userTakingsTab" href="#userTakings" data-bs-toggle="tab" data-bs-target="#userTakings" role="tab" aria-controls="userTakings" aria-selected="false">
       Takings by user
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="discountsTab" href="{% url "tillweb-session-discounts" sessionid=session.id %}" data-toggle="tabajax" data-target="#discounts" role="tab" aria-controls="discounts" aria-selected="false">
+    <a class="nav-link" id="discountsTab" href="{% url "tillweb-session-discounts" sessionid=session.id %}" data-bs-toggle="tabajax" data-bs-target="#discounts" role="tab" aria-controls="discounts" aria-selected="false">
       Discounts
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" sessionid=session.id %}" data-toggle="tabajax" data-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
+    <a class="nav-link" id="stockSoldTab" href="{% url "tillweb-session-stock-sold" sessionid=session.id %}" data-bs-toggle="tabajax" data-bs-target="#stockSold" role="tab" aria-controls="stockSold" aria-selected="false">
       Stock sold
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="transactionsTab" href="#transactions" data-toggle="tab" data-target="#transactions" role="tab" aria-controls="transactions" aria-selected="false">
+    <a class="nav-link" id="transactionsTab" href="#transactions" data-bs-toggle="tab" data-bs-target="#transactions" role="tab" aria-controls="transactions" aria-selected="false">
       Transactions
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="translinesTab" href="#translines" data-toggle="tab" data-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
+    <a class="nav-link" id="translinesTab" href="#translines" data-bs-toggle="tab" data-bs-target="#translines" role="tab" aria-controls="translines" aria-selected="false">
       Sales
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="paymentsTab" href="#payments" data-toggle="tab" data-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
+    <a class="nav-link" id="paymentsTab" href="#payments" data-bs-toggle="tab" data-bs-target="#payments" role="tab" aria-controls="payments" aria-selected="false">
       Payments
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="infoTab" href="#info" data-toggle="tab" data-target="#info" role="tab" aria-controls="info" aria-selected="false">
+    <a class="nav-link" id="infoTab" href="#info" data-bs-toggle="tab" data-bs-target="#info" role="tab" aria-controls="info" aria-selected="false">
       Info
     </a>
   </li>
@@ -97,7 +97,7 @@
 	  column, even if they have been part-paid.
 	</p>
 	<table class="table table-striped table-sm" id="depttakings">
-	  <thead class="thead-light">
+	  <thead class="table-light">
 	    <tr>
 	      <th scope="col">Dept</th>
 	      <th scope="col">Description</th>
@@ -122,7 +122,7 @@
 	</table>
       </div>
       <div class="col-lg-7 col">
-	<canvas id="sales-pie-chart" class="ml-auto mr-auto" width="480" height="480"></canvas>
+	<canvas id="sales-pie-chart" class="ms-auto me-auto" width="480" height="480"></canvas>
       </div>
     </div>
   </div>
@@ -130,7 +130,7 @@
     <div class="row">
       <div class="col-md-5">
 	<table class="table table-striped table-sm" id="usertakings">
-	  <thead class="thead-light">
+	  <thead class="table-light">
 	    <tr>
 	      <th scope="col">User</th>
 	      <th scope="col">Items</th>
@@ -141,7 +141,7 @@
 	</table>
       </div>
       <div class="col-md-7">
-	<canvas id="users-pie-chart" class="ml-auto mr-auto" width="480" height="480"></canvas>
+	<canvas id="users-pie-chart" class="ms-auto me-auto" width="480" height="480"></canvas>
       </div>
     </div>
   </div>
@@ -151,7 +151,7 @@
   </div>
   <div class="tab-pane fade" id="transactions" aria-labelledby="transactionsTab">
     <table class="table table-sm table-striped" id="transactionsTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">Transaction</th>
 	  <th scope="col">Amount</th>
@@ -178,7 +178,7 @@
       </div>
     </div>
     <table class="table table-sm table-striped" id="translinesTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">ID</th>
 	  <th scope="col">Transaction</th>
@@ -199,7 +199,7 @@
   </div>
   <div class="tab-pane fade" id="payments" aria-labelledby="paymentsTab">
     <table class="table table-sm table-striped" id="paymentsTable">
-      <thead class="thead-light">
+      <thead class="table-light">
 	<tr>
 	  <th scope="col">ID</th>
 	  <th scope="col">Transaction</th>
@@ -271,7 +271,7 @@
   function showTranslinesDept(deptid) {
       $("#translineDeptSelect").val(deptid);
       $("#translineDeptSelect").trigger('change');
-      $("#translinesTab").trigger('click');
+      document.querySelector('#translinesTab').click();
       return false;
   };
 
@@ -552,15 +552,15 @@
   };
 
   $(document).ready(function(){
-      $('[data-toggle="tabajax"]').on("click.tillweb", function (e) {
+      $('[data-bs-toggle="tabajax"]').on("click.tillweb", function (e) {
 	  const $this = $(this),
 		loadurl = $this.attr('href'),
-		targ = $this.attr('data-target');
+		targ = $this.attr('data-bs-target');
 
 	  {% if session.endtime %}
 	  /* Convert back to a regular tab - the pane won't change */
 	  $this.off("click.tillweb");
-	  $this.attr('data-toggle', 'tab');
+	  $this.attr('data-bs-toggle', 'tab');
 	  $this.tab();
 	  {% endif %}
 
@@ -622,7 +622,7 @@
 	  }
       });
 
-      $('#deptTakingsTab').trigger('click');
+      document.querySelector('#deptTakingsTab').click();
   });
 </script>
 

@@ -3,12 +3,12 @@
 {% load django_bootstrap_breadcrumbs %}
 
 {% block style %}
-{# We assume the base template provides Bootstrap 4 #}
+{# We assume the base template provides Bootstrap 5 #}
 {{ block.super }}
 <link rel="STYLESHEET" type="text/css" href="{% static "tillweb/tillweb-bootstrap.css" %}" />
 {% endblock %}
 {% block jquery %}
-{# We assume jquery and jquery-ui are already present #}
+{# We assume jquery is already present #}
 {{ block.super }}
 <script type="text/javascript">
   $.extend(true, $.fn.dataTable.defaults, {
@@ -16,8 +16,6 @@
       "autoWidth": false,
       "searchDelay": 500
   });
-
-  $.fn.select2.defaults.set("theme", "bootstrap4");
 
   $.fn.dataTable.Api.register('sum()', function () {
       return this.flatten().reduce(function (a, b) {
@@ -113,13 +111,13 @@
   <div class="row">
     <div class="col-sm-12 col-md-12 col-lg-12 col-xl-2">
       <nav class="navbar navbar-expand-xl navbar-light bg-light flex-lg-column flex-row align-items-start">
-	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tillwebNavbar" aria-controls="tillwebNavbar" aria-expanded="false" aria-label="Toggle till navigation">
+	<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#tillwebNavbar" aria-controls="tillwebNavbar" aria-expanded="false" aria-label="Toggle till navigation">
 	  <span class="navbar-toggler-icon"></span>
 	</button>
 	<div class="collapse navbar-collapse" id="tillwebNavbar">
 	  <ul class="navbar-nav flex-column w-100 justify-content-between">
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-pubroot" %}">Main Menu</a></li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Register</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Register</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-sessions" %}">Sessions</a>
 		<a class="dropdown-item" href="{% url "tillweb-transactions" %}">Transactions</a>
@@ -128,7 +126,7 @@
 	      </div>
 	    </li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-departments" %}">Departments</a></li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Stock management</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Stock management</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-deliveries" %}">Deliveries</a>
 		<a class="dropdown-item" href="{% url "tillweb-suppliers" %}">Suppliers</a>
@@ -137,14 +135,14 @@
 		<a class="dropdown-item" href="{% url "tillweb-stocktakes" %}">Stock takes</a>
 	      </div>
 	    </li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Sales settings</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Sales settings</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-stocklines" %}">Stock lines</a>
 		<a class="dropdown-item" href="{% url "tillweb-plus" %}">Price lookups</a>
 		<a class="dropdown-item" href="{% url "tillweb-barcodes" %}">Barcodes</a>
 	      </div>
 	    </li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Access controls</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Access controls</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-till-users" %}">Users</a>
 		<a class="dropdown-item" href="{% url "tillweb-till-groups" %}">Groups</a>
@@ -152,7 +150,7 @@
 	      </div>
 	    </li>
 	    <li class="nav-item"><a class="nav-link" href="{% url "tillweb-logs" %}">Logs</a></li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Settings</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Settings</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-config-index" %}">General settings</a>
 		<a class="dropdown-item" href="{% url "tillweb-units" %}">Units</a>
@@ -160,7 +158,7 @@
 		<a class="dropdown-item" href="{% url "tillweb-paytypes" %}">Payment methods</a>
 	      </div>
 	    </li>
-	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-toggle="dropdown" href="{% url "tillweb-reports" %}" role="button" aria-haspopup="true" aria-expanded="false">Reports</a>
+	    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="{% url "tillweb-reports" %}" role="button" aria-haspopup="true" aria-expanded="false">Reports</a>
 	      <div class="dropdown-menu">
 		<a class="dropdown-item" href="{% url "tillweb-report-wasted-stock" %}">Wasted stock</a>
 		<a class="dropdown-item" href="{% url "tillweb-report-stock-sold" %}">Stock sold</a>
