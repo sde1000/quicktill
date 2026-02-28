@@ -29,9 +29,6 @@ table.index-summary-table td {
     border-width: 1px;
 }
 
-table.datatable {
-    width: 100%;
-}
 /* Remove the new datatables 2.3 behaviour that flips the sort icon to
 the left hand side when a column has right-aligned data — this is
 confusing when there is a mix of column types! */
