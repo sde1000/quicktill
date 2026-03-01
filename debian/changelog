@@ -1,3 +1,11 @@
+quicktill (26.6) stable; urgency=low
+
+  * New release 26.6
+
+  * Fix linelist when idle lines are present
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 01 Mar 2026 16:41:37 +0000
+
 quicktill (26.5) stable; urgency=low
 
   * New release 26.5
