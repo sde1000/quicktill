@@ -1,5 +1,5 @@
 <div class="table-responsive">
-<table class="table table-striped table-hover table-sm w-auto" id="annotations">
+<table class="table table-striped table-hover table-sm w-auto mb-0" id="annotations">
 <thead class="table-light">
 <tr>
 {% if excluded_column != "stock" %}<th scope="col">Stock item</th>{% endif %}
@@ -22,8 +22,3 @@
 </tbody>
 </table>
 </div>
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#annotations").tablesorter();
-});
-</script>

@@ -1034,18 +1034,10 @@ def create_supplier(request, info):
 
 @tillweb_view
 def deliverylist(request, info):
-    # This is redundant, the template uses a datatable with ajax
-    dl = td.s.query(Delivery)\
-             .order_by(desc(Delivery.id))\
-             .options(joinedload(Delivery.supplier))
-
-    pager = Pager(request, dl)
-
     may_create_delivery = info.user_has_perm("deliveries")
 
     return ('deliveries.html', {
         'nav': [("Deliveries", reverse("tillweb-deliveries"))],
-        'pager': pager,
         'may_create_delivery': may_create_delivery,
     })
 
@@ -2627,7 +2619,7 @@ def create_department(request, info):
 
 
 @tillweb_view
-def department(request, info, departmentid, as_spreadsheet=False):
+def department(request, info, departmentid):
     d = td.s.get(Department, departmentid)
     if d is None:
         raise Http404
@@ -2672,33 +2664,9 @@ def department(request, info, departmentid, as_spreadsheet=False):
         # no PLUs, no stocklines, no stocktypes referencing it. Let's
         # consider adding this feature in the future.
 
-    include_finished = request.GET.get("show_finished", "off") == "on"
-    items = td.s.query(StockItem)\
-                .join(StockType)\
-                .filter(StockType.department == d)\
-                .order_by(desc(StockItem.id))\
-                .options(joinedload(StockItem.stocktype)
-                         .joinedload(StockType.unit),
-                         undefer_group('qtys'),
-                         joinedload(StockItem.stockline),
-                         joinedload(StockItem.delivery),
-                         joinedload(StockItem.finishcode))
-    if not include_finished:
-        items = items.filter(StockItem.finished == None)
-
-    if as_spreadsheet:
-        return spreadsheets.stock(
-            items.all(), tillname=info.tillname,
-            filename="{}-dept{}-stock.ods".format(
-                info.tillname, departmentid))
-
-    pager = Pager(request, items, preserve_query_parameters=["show_finished"])
-
     return ('department.html', {
         'tillobject': d,
         'department': d,
-        'pager': pager,
-        'include_finished': include_finished,
         'may_edit': may_edit,
         'form': form,
     })
@@ -2925,8 +2893,7 @@ def group(request, info, groupid):
                 g.permissions = cd['permissions']
                 td.s.commit()
                 messages.success(request, f"Group '{g.id}' updated.")
-                return HttpResponseRedirect(
-                    reverse("tillweb-till-groups") + "#row-" + g.id)
+                return redirect(g)
         else:
             form = EditGroupForm(initial=initial)
 

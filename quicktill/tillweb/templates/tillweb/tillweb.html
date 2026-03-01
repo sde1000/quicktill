@@ -11,6 +11,16 @@
 {# We assume jquery is already present #}
 {{ block.super }}
 <script type="text/javascript">
+  const dt_sortonly = {
+      paging: false,
+      searching: false,
+      info: false,
+      layout: {
+	  topStart: null,
+	  topEnd: null,
+      },
+  };
+
   $.extend(true, $.fn.dataTable.defaults, {
       "pageLength": 25,
       "autoWidth": false,
@@ -32,6 +42,10 @@
 
   function render_money() {
       return DataTable.render.number(null, null, 2, '{{money}}');
+  };
+
+  function render_abv() {
+      return DataTable.render.number(null, null, 1, null, '%');
   };
 
   function render_link(linkfield, render_data) {

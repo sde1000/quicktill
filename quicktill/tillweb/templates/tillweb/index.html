@@ -44,7 +44,7 @@
   {% endif %}
 </ul>
 
-<div class="tab-content">
+<div class="tab-content dt-nopadding">
   <div class="tab-pane fade show active" id="barSummary" aria-labelledby="barSummaryTab">
 {% if barsummary %}
 <div>
@@ -66,7 +66,8 @@
 	  <tr>
 	    <th scope="col">Location</th>
 	    <th scope="col">Time</th>
-	    <th scope="col">Cask</th>
+	    <th scope="col">Stock ID</th>
+	    <th scope="col">Stock type</th>
 	    <th scope="col">Used</th>
 	    <th scope="col">Remaining</th>
 	    <th scope="col">Line</th>
@@ -76,20 +77,24 @@
 {% for s in stillage %}
 <tr>
 <td>{{s.text}}</td><td>{{s.time|date:dtf}}</td>
+<td><a href="{{s.stockitem.get_absolute_url}}">{{s.stockitem.id}}</a></td>
 <td><a href="{{s.stockitem.get_absolute_url}}">
 {{s.stockitem.stocktype.fullname}}</a></td>
-<td>{{s.stockitem.used}} {{s.stockitem.stocktype.unit.name}}s</td>
-<td>{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
+<td data-order="{{s.stockitem.used}}">{{s.stockitem.used}} {{s.stockitem.stocktype.unit.name}}s</td>
+<td data-order="{{s.stockitem.remaining}}">{{s.stockitem.remaining}} {{s.stockitem.stocktype.unit.name}}s</td>
 <td>{% if s.stockitem.stockline %}<a href="{{s.stockitem.stockline.get_absolute_url}}">{{s.stockitem.stockline.name}}</a>{% endif %}</td></tr>
 {% endfor %}
 	</tbody>
       </table>
     </div>
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#stillageTable").tablesorter();
-});
-</script>
+    <script type="text/javascript">
+      $(document).ready(function(){
+	  $("#stillageTable").DataTable({
+	      ...dt_sortonly,
+	      order: [],
+	  });
+      });
+    </script>
   </div>
   {% endif %}
 </div>

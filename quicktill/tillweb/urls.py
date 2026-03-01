@@ -96,8 +96,6 @@ tillurls = [
     path('department/', views.departmentlist, name="tillweb-departments"),
     path('department/<int:departmentid>/', views.department,
          name="tillweb-department"),
-    path('department/<int:departmentid>/spreadsheet.ods', views.department,
-         {'as_spreadsheet': True}, name="tillweb-department-sheet"),
     path('new/department/', views.create_department,
          name="tillweb-create-department"),
 
@@ -146,6 +144,8 @@ tillurls = [
          name="tillweb-datatable-payments"),
     path('datatable/deliveries.json', datatable.deliveries,
          name="tillweb-datatable-deliveries"),
+    path('datatable/stockitems.json', datatable.stockitems,
+         name="tillweb-datatable-stockitems"),
     path('datatable/annotations.json', datatable.annotations,
          name="tillweb-datatable-annotations"),
     path('datatable/logs.json', datatable.logs,

@@ -48,11 +48,13 @@
 <p><strong>This transaction has been deferred to the next session.</strong></p>
 {% endif %}
 
+{% if transaction.lines %}
 <h2>Lines</h2>
 
 {% with translines=transaction.lines exclude_column="transaction" %}
 {% include "tillweb/translinelist.html" %}
 {% endwith %}
+{% endif %}
 
 {% if transaction.payments %}
 <h2>Payments</h2>

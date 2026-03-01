@@ -49,17 +49,20 @@ been complete for as many months as you specify above.</p>
 {% for st, sold, instock, buy in buylist %}
 <tr>
 <td><a href="{{st.get_absolute_url}}">{{st}}</a></td>
-<td>{{sold|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
-<td>{{instock|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
-<td>{{buy|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td data-sort="{{sold}}">{{sold|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td data-sort="{{instock}}">{{instock|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td data-sort="{{buy}}">{{buy|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 <script type="text/javascript">
-$(document).ready(function(){
-  $("#buylist").tablesorter();
-});
+  $(document).ready(function(){
+      $("#buylist").DataTable({
+	  ...dt_sortonly,
+	  order: [[3, "desc"]],
+      });
+  });
 </script>
 
 {% endif %}

@@ -94,8 +94,8 @@
 {% if stockline.stocktype.stockonsale %}
 <h2>Items on sale</h2>
 
-<p>(The total amount remaining in these items is
-{{stockline.remaining_str}}.)</p>
+<p>The total amount remaining in these items is
+{{stockline.remaining_str}}.</p>
 {% with stocklist=stockline.stocktype.stockonsale exclude_column="stockline" %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}

@@ -68,7 +68,7 @@ new stock items can be placed at appropriate places in the table.
 		    <td>{{s.description}}</td>
 		    <td>{% if s.costprice %}{{money}}{{s.costprice}}{% endif %}</td>
 		    <td>{% if s.stocktype.saleprice %}{{money}}{{s.stocktype.saleprice}}{% else %}Not set{% endif %}</td>
-		    {% if s.bestbefore != None %}<td {% if s.shelflife > 28 %}class="bbok"{% elif s.shelflife <= 0 %}class="bberr"{% else %}class="bbwarn"{% endif %}>{{s.bestbefore}}</td>
+		    {% if s.bestbefore != None %}<td {% if s.shelflife > 21 %}class="table-success"{% elif s.shelflife <= 0 %}class="table-danger"{% else %}class="table-warning"{% endif %}>{{s.bestbefore}}</td>
 		    {% else %}<td></td>{% endif %}
 		    <td><button type="submit" class="btn btn-sm btn-link" name="del{{s.id}}" formnovalidate>❌</button></td>
 		</tr>

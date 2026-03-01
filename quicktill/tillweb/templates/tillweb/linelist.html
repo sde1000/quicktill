@@ -15,12 +15,14 @@
   {% for line in lines %}
   {% if line.linetype == "continuous" %}
   <tr>
-    <td colspan="2"><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
-    <td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.fullname}}</a></td>
-    <td>{{line.stocktype.abvstr}}</td>
-    <td>{{money}}{{line.stocktype.pricestr}}</td>
+    <td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
     <td></td>
-    <td colspan="2">{{line.stocktype.remaining_str}} remaining</td>
+    <td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.fullname}}</a></td>
+    <td data-sort="{{line.stocktype.abv|default:0.0}}">{{line.stocktype.abvstr}}</td>
+    <td data-sort="{{line.stocktype.saleprice}}">{{money}}{{line.stocktype.pricestr}}</td>
+    <td></td>
+    <td>{{line.stocktype.remaining_str}} remaining</td>
+    <td></td>
   </tr>
   {% else %}
 {% for item in line.stockonsale %}
@@ -29,7 +31,7 @@
 <td><a href="{{item.get_absolute_url}}">{{item.id}}</a></td>
 <td><a href="{{item.stocktype.get_absolute_url}}">
 {{item.stocktype.fullname}}</a></td>
-<td>{{item.stocktype.abvstr}}</td>
+<td data-sort="{{item.stocktype.abv}}">{{item.stocktype.abvstr}}</td>
 <td>{{money}}{{item.stocktype.pricestr}}</td>
 <td>{{item.onsale|date:dtf}}</td>
 {% if item.ondisplay == None %}
@@ -54,6 +56,13 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#linelist").tablesorter();
+    $("#linelist").DataTable({
+	...dt_sortonly,
+	order: [],
+	columnDefs: [{
+	    targets: "sorter-false",
+	    orderable: false,
+	}],
+    });
 });
 </script>

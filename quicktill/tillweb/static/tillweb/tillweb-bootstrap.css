@@ -35,15 +35,16 @@ confusing when there is a mix of column types! */
 table.dataTable th div.dt-column-header {
     flex-direction: row !important;
 }
-
-.qtywarn { color: orange; }
-.qtyerr { color: red; }
-.finishwarn { color: orange; }
-
-/* Best-before date states */
-.bbok { }
-.bbwarn { background-color: yellow !important; }
-.bberr { background-color: red !important; }
+/* Remove the spurious mt-2 at the top of datatables */
+.dt-container>div.row:first-child {
+    margin-top: 0px !important;
+}
+/* Optionally remove the left and right padding on datatables by
+   adding the dt-nopadding class to a parent element */
+.dt-nopadding div.dt-container>div.dt-layout-table>div.dt-layout-full {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
 
 .error {
     color: red;

@@ -30,10 +30,12 @@
 <tr>
 <td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
 <td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
-<td>{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
+<td data-sort="{{line.department.id|default:0}}">{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
 <td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
-<td>{% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}
-{% if line.note %}<span class="badge bg-{% if line.stockonsale %}warning{% else %}info{% endif %}">{{line.note}}</span>{% endif %}</td>
+<td{% if line.stockonsale %} data-sort="{{line.stockonsale.0.id}}"{% endif %}>
+  {% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}
+  {% if line.note %}<span class="badge bg-{% if line.stockonsale %}warning{% else %}info{% endif %}">{{line.note}}</span>{% endif %}
+</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -41,7 +43,7 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#regularstocklinelist").tablesorter();
+  $("#regularstocklinelist").DataTable();
 });
 </script>
 {% else %}
@@ -89,7 +91,7 @@ $(document).ready(function(){
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#displaystocklinelist").tablesorter();
+  $("#displaystocklinelist").DataTable();
 });
 </script>
 {% else %}
@@ -124,7 +126,7 @@ $(document).ready(function(){
 <td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
 <td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
 <td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
-<td>{{line.remaining_str}}</td>
+<td data-sort="{{line.remaining}}">{{line.remaining_str}}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -132,7 +134,7 @@ $(document).ready(function(){
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#continuousstocklinelist").tablesorter();
+  $("#continuousstocklinelist").DataTable();
 });
 </script>
 {% else %}

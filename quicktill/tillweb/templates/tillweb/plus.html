@@ -20,7 +20,7 @@
 {% for p in plus %}
 <tr>
 <td><a href="{{p.get_absolute_url}}">{{p.description}}</a></td>
-<td><a href="{{p.department.get_absolute_url}}">{{p.department}}</a></td>
+<td data-sort="{{p.department.id}}"><a href="{{p.department.get_absolute_url}}">{{p.department}}</a></td>
 {% if p.price %}<td class="money">{{money}}{{p.price}}</td>{% else %}<td></td>{% endif %}
 {% if p.altprice1 %}<td class="money">{{money}}{{p.altprice1}}</td>{% else %}<td></td>{% endif %}
 {% if p.altprice2 %}<td class="money">{{money}}{{p.altprice2}}</td>{% else %}<td></td>{% endif %}
@@ -33,7 +33,7 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#plulist").tablesorter();
+  $("#plulist").DataTable();
 });
 </script>
 

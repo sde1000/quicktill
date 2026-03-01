@@ -4,7 +4,7 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
+<table class="table table-sm w-auto mb-2">
   <tr><th scope="row">Number:</th><td>{{department.id}}</td></tr>
   <tr><th scope="row">Description:</th><td>{{department.description}}</td></tr>
   {% if department.minprice %}
@@ -52,6 +52,7 @@
 <button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#changeModal">
   Change details
 </button>
+
 <div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -84,23 +85,100 @@
 </div>
 {% endif %}
 
+<h2>Stock items</h2>
 
-{% if pager.items %}
-<a class="btn btn-secondary float-end" href="{% url "tillweb-department-sheet" departmentid=department.id %}{% if include_finished %}?show_finished=on{% endif %}">Download as spreadsheet</a>
-{% if include_finished %}
-<h2>All stock items</h2>
-{% else %}
-<h2>Currently in stock</h2>
-{% endif %}
-{% with pager.items as stocklist %}
-{% include "tillweb/stocklist.html" %}
-{% endwith %}
-{% else %}
-<p>There are no stock items in this department.</p>
-{% endif %}
+<div class="d-none alert alert-info" id="no_stock_message">
+  There are no stock items in this department.
+</div>
 
-{% if not include_finished %}
-<p><a href="?show_finished=on">Include finished items</a></p>
-{% endif %}
+<div class="form-check mb-2">
+  <input type="checkbox" class="form-check-input" id="include_finished">
+  <label class="form-check-label" for="include_finished">
+    Include finished items in the table
+  </label>
+</div>
 
+<table class="table table-striped table-sm table-hover" id="stocklist">
+  <thead class="table-light">
+    <tr>
+      <th scope="col">Stock ID</th>
+      <th scope="col">Manufacturer</th>
+      <th scope="col">Name</th>
+      <th scope="col">ABV</th>
+      <th scope="col">Cost Price</th>
+      <th scope="col">Used</th>
+      <th scope="col">Sold</th>
+      <th scope="col">Remaining</th>
+      <th scope="col">Best Before</th>
+      <th scope="col" class="no-sort">State</th>
+    </tr>
+  </thead>
+</table>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      let include_finished = false;
+      const stocklist_api = $("#stocklist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-stockitems" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  /* Restrict to this page's department, before the
+		     count of items in the table */
+		  d.department = {{department.id}};
+		  d.include_finished = include_finished ? 'yes': 'no';
+	      },
+	  },
+	  columns: [
+	      { data: 'stockid',
+		render: render_link('stock_url', DataTable.render.text()),
+	      },
+	      { data: 'manufacturer',
+		render: render_link('manufacturer_url', DataTable.render.text()),
+	      },
+	      { data: 'name',
+		render: render_link('stocktype_url', DataTable.render.text()),
+	      },
+	      { data: 'abv',
+		render: render_abv(),
+	      },
+	      { data: 'costprice',
+		render: render_money(),
+	      },
+	      { data: 'used',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'sold',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'remaining',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'bestbefore',
+		render: DataTable.render.text(),
+		createdCell: function (td, cellData, rowData, row, col) {
+		    $(td).addClass(rowData.bestbefore_class);
+		},
+	      },
+	      { data: 'state',
+		render: render_link('state_url', DataTable.render.text()),
+		searchable: false,
+	      },
+	  ],
+	  order: [[0, 'desc']],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+      $("#include_finished").change(function() {
+	  include_finished = this.checked;
+	  stocklist_api.ajax.reload(null, true);
+      });
+      stocklist_api.on('draw', function () {
+	  if (stocklist_api.page.info().recordsTotal == 0) {
+	      $("#no_stock_message").removeClass("d-none");
+	  }
+      });
+  });
+</script>
 {% endblock %}

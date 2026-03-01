@@ -10,7 +10,7 @@
 <a class="btn btn-secondary float-end" href="{{ delivery.accounts_url }}">View in accounts</a>
 {% endif %}
 
-<table class="kvtable">
+<table class="table w-auto">
 <tr><th>ID</th><td>{{delivery.id}}</td></tr>
 <tr><th>Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">
 {{delivery.supplier}}</a></td></tr>
@@ -18,18 +18,23 @@
 <tr><th>Date</th><td>{{delivery.date}}</td></tr>
 <tr><th>Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
 </table>
+
 {% if delivery.items %}
+<div class="mb-3">
 <h2>Items in this delivery</h2>
 {% with delivery.items as stocklist %}
 {% include "tillweb/stocklist.html" %}
 {% endwith %}
+</div>
 {% endif %}
 
 {% if delivery.logs %}
+<div class="mb-3">
 <h2>Log entries</h2>
 {% with delivery.logs as logs %}
 {% include "tillweb/loglist.html" %}
 {% endwith %}
+</div>
 {% endif %}
 
 {% endblock %}

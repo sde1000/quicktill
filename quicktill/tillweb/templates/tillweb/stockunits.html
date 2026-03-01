@@ -44,7 +44,7 @@
 <tr>
 <td><a href="{{su.get_absolute_url}}">{{su.name}}</a></td>
 <td><a href="{{su.unit.get_absolute_url}}">{{su.unit.description}}</a></td>
-<td>{{su.size}} {{su.unit.name}}</td>
+<td data-sort="{{su.size}}">{{su.size}} {{su.unit.name}}</td>
 <td>{% if su.merge %}Yes{% else %}No{% endif %}</td>
 </tr>
 {% endfor %}
@@ -53,7 +53,7 @@
 
 <script type="text/javascript">
 $(document).ready(function(){
-  $("#stockunitlist").tablesorter();
+  $("#stockunitlist").DataTable();
 });
 </script>
 

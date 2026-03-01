@@ -1,11 +1,13 @@
 from .views import tillweb_view, colours
+import decimal
 from decimal import Decimal
 from itertools import cycle
 from django.http import JsonResponse
+from django.urls import reverse
 from sqlalchemy.sql.expression import func, or_, nullslast
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer, undefer_group
 from .db import td
 from quicktill.models import (
     PayType,
@@ -66,8 +68,12 @@ def _datatables_json(request, query, filtered_query, columns, rowfunc):
             if cexpr is not None:
                 order_columns.append(cexpr)
             else:
-                error = f'column {cname} not defined, valid columns are '\
-                    f'{list(columns.keys())}'
+                orderable = request.GET.get(f"columns[{cnum}][orderable]")
+                if orderable != "false":
+                    # We might be asked to order on this column that is
+                    # not in our list of columns; don't allow this!
+                    error = f'column {cname} not defined, valid columns are '\
+                        f'{list(columns.keys())}'
                 break
         else:
             break
@@ -507,6 +513,152 @@ def deliveries(request, info):
             'docnumber': d.docnumber,
             'checked': d.checked,
             'DT_RowClass': "table-warning" if not d.checked else None,
+        })
+
+
+def _state_text(stockitem):
+    if not stockitem.delivery.checked:
+        return "Unconfirmed delivery"
+    if stockitem.finished:
+        return f"{stockitem.finishcode} "\
+            f"({stockitem.finished.strftime('%Y-%m-%d %H:%M:%S')})"
+    if stockitem.stockline:
+        if stockitem.ondisplay:
+            return f"On sale: {stockitem.stockline.name} "\
+                f"({stockitem.ondisplay}+{stockitem.instock})"
+        else:
+            return f"On sale: {stockitem.stockline.name}"
+    return ""
+
+
+def _state_url(stockitem):
+    if not stockitem.delivery.checked:
+        return stockitem.delivery.get_absolute_url()
+    if stockitem.stockline:
+        return stockitem.stockline.get_absolute_url()
+
+
+def _bbclass(stockitem):
+    if not stockitem.bestbefore:
+        return
+    # We really ought to make these configurable, but per what?
+    # Department? Unit?
+    if stockitem.shelflife > 21:
+        return "table-success"
+    if stockitem.shelflife < 0:
+        return "table-danger"
+    return "table-warning"
+
+
+@tillweb_view
+def stockitems(request, info):
+    # This is used for the Department stock items view, and will also
+    # be used for the Stock Search view
+
+    # Columns:
+    # Stock ID
+    # Department (stock search view) - sort numerically when requested
+    # Manufacturer
+    # Name
+    # ABV
+    # Cost price
+    # Used
+    # Sold
+    # Remaining
+    # Best Before (with warning class if unfinished and too old)
+    # State (not sortable):
+    #  - finished? Then text
+    #  - on sale? Then link to stock line
+    #  - unconfirmed? Then warning class and link to delivery
+    columns = {
+        'stockid': StockItem.id,
+        'department': StockType.dept_id,
+        'manufacturer': StockType.manufacturer,
+        'name': StockType.name,
+        'fullname': StockType.fullname,
+        'abv': StockType.abv,
+        'costprice': StockItem.costprice,
+        'used': StockItem.used,
+        'sold': StockItem.sold,
+        'remaining': StockItem.remaining,
+        'bestbefore': StockItem.bestbefore,
+        'state': StockItem.finished,  # For sorting only!
+    }
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(StockItem)\
+            .join(Delivery)\
+            .join(StockType)\
+            .join(Department)\
+            .options(
+                joinedload(StockItem.stockline),
+                contains_eager(StockItem.delivery),
+                contains_eager(StockItem.stocktype)
+                .contains_eager(StockType.department),
+                undefer_group('qtys'))
+
+    # Apply filters from parameters. The 'unfiltered' item count for
+    # this table is after this filtering step.  There is a later
+    # filter of "department" again for use on the stock item search
+    # page.
+    try:
+        department = int(request.GET.get("department"))
+        q = q.filter(StockType.dept_id == department)
+    except (ValueError, TypeError):
+        pass
+
+    fq = q
+
+    # Apply filters from parameters - these are from a tickbox on the
+    # page, they should not be applied before the item count
+    include_finished = request.GET.get("include_finished", "no") == "yes"
+    if not include_finished:
+        fq = fq.filter(StockItem.finished == None)
+
+    # Apply filters from search value
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except decimal.InvalidOperation:
+            decsearch = None
+        qs = [
+            columns['manufacturer'].ilike(f'%{search_value}%'),
+            columns['name'].ilike(f'{search_value}%'),
+            columns['fullname'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['stockid'] == intsearch)
+        if decsearch:
+            qs.append(columns['abv'] == decsearch)
+            qs.append(columns['costprice'] == decsearch)
+        fq = fq.filter(or_(*qs))
+
+    # 'a' is a StockItem in the lambda below
+    return _datatables_json(
+        request, q, fq, columns, lambda a: {
+            'stockid': a.id,
+            'dept_id': a.stocktype.dept_id,
+            'department': a.stocktype.department.description,
+            'manufacturer': a.stocktype.manufacturer,
+            'name': a.stocktype.name,
+            'fullname': a.stocktype.fullname,
+            'abv': a.stocktype.abv,
+            'costprice': a.costprice,
+            'used': a.used_units,
+            'sold': a.sold_units,
+            'remaining': a.remaining_units,
+            'bestbefore': a.bestbefore,
+            'bestbefore_class': _bbclass(a),
+            'state': _state_text(a),
+            'state_url': _state_url(a),
+            'stock_url': a.get_absolute_url(),
+            'manufacturer_url': reverse(
+                "tillweb-stocktype-search",
+                query=[("manufacturer", a.stocktype.manufacturer)]),
+            'stocktype_url': a.stocktype.get_absolute_url(),
         })
 
 
