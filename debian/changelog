@@ -1,3 +1,19 @@
+quicktill (26.7) stable; urgency=low
+
+  * New release 26.7
+
+  * Ensure th elements have a suitable scope attribute
+
+  * Add client-side datatable for completed stock take list
+
+  * Use datatable for stock search page
+
+  * Include tillweb .png files in built package
+
+  * Really fix StockItem.shelflife property!
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 03 Mar 2026 20:19:35 +0000
+
 quicktill (26.6) stable; urgency=low
 
   * New release 26.6
