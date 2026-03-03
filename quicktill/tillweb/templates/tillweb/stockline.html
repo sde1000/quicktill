@@ -11,15 +11,15 @@ This template is used for stocklines of unknown type.  This will only
 ever happen if the database is more recent than the till web service.
 {% endcomment %}
 
-<table class="kvtable">
-<tr><th>Name</th><td>{{stockline.name}}</td></tr>
-<tr><th>Location</th><td><a href="{% url "tillweb-location" location=stockline.location %}">{{stockline.location}}</a></td></tr>
-<tr><th>Type</th><td>{{stockline.linetype}}</td></tr>
+<table class="table w-auto mb-2">
+<tr><th scope="row">Name</th><td>{{stockline.name}}</td></tr>
+<tr><th scope="row">Location</th><td><a href="{% url "tillweb-location" location=stockline.location %}">{{stockline.location}}</a></td></tr>
+<tr><th scope="row">Type</th><td>{{stockline.linetype}}</td></tr>
 {% if stockline.stocktype %}
-<tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
+<tr><th scope="row">Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
 {% endif %}
 {% if stockline.department %}
-<tr><th>Department</th><td><a href="{{stockline.department.get_absolute_url}}">{{stockline.department}}</a></td></tr>
+<tr><th scope="row">Department</th><td><a href="{{stockline.department.get_absolute_url}}">{{stockline.department}}</a></td></tr>
 {% endif %}
 </table>
 
@@ -46,15 +46,6 @@ ever happen if the database is more recent than the till web service.
 </ul>
 {% endif %}
 
-{% if stockline.keyboard_bindings %}
-<h2>Keyboard bindings</h2>
-<table>
-<tr><th>Keycode</th><th>Menu key</th><th>Default modifier</th></tr>
-{% for kb in stockline.keyboard_bindings %}
-<tr><td>{{kb.keycode}}{% if kb.keycap %} ({{kb.keycap.keycap}}){% endif %}</td>
-<td>{{kb.menukey}}</td><td>{% if kb.modifier %}{{kb.modifier}}{% endif %}</td></tr>
-{% endfor %}
-</table>
-{% endif %}
+{% include "tillweb/bindings.html" %}
 
 {% endblock %}

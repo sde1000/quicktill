@@ -6,11 +6,11 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
-<tr><th>Name</th><td>{{stockline.name}}</td></tr>
-<tr><th>Location</th><td><a href="{% url "tillweb-location" location=stockline.location %}">{{stockline.location}}</a></td></tr>
-<tr><th>Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
-<tr><th>Capacity</th><td>{{stockline.capacity}}</td></tr>
+<table class="table mb-2 w-auto">
+<tr><th scope="row">Name</th><td>{{stockline.name}}</td></tr>
+<tr><th scope="row">Location</th><td><a href="{% url "tillweb-location" location=stockline.location %}">{{stockline.location}}</a></td></tr>
+<tr><th scope="row">Stock type</th><td><a href="{{stockline.stocktype.get_absolute_url}}">{{stockline.stocktype}}</a></td></tr>
+<tr><th scope="row">Capacity</th><td>{{stockline.capacity}}</td></tr>
 </table>
 
 <p>This is a "display" stock line.  Display stock lines can have

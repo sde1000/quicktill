@@ -11,12 +11,12 @@
 {% endif %}
 
 <table class="table w-auto">
-<tr><th>ID</th><td>{{delivery.id}}</td></tr>
-<tr><th>Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">
+<tr><th scope="row">ID</th><td>{{delivery.id}}</td></tr>
+<tr><th scope="row">Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">
 {{delivery.supplier}}</a></td></tr>
-<tr><th>Document number</th><td>{{delivery.docnumber}}</td></tr>
-<tr><th>Date</th><td>{{delivery.date}}</td></tr>
-<tr><th>Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
+<tr><th scope="row">Document number</th><td>{{delivery.docnumber}}</td></tr>
+<tr><th scope="row">Date</th><td>{{delivery.date}}</td></tr>
+<tr><th scope="row">Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
 </table>
 
 {% if delivery.items %}

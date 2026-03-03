@@ -20,22 +20,22 @@
 {% if form %}
 <form action="" method="post">{% csrf_token %}
 {% endif %}
-<table class="kvtable mb-2">
-<tr><th>ID</th><td>{{transaction.id}}</td></tr>
+<table class="table mb-2 w-auto">
+<tr><th scope="row">ID</th><td>{{transaction.id}}</td></tr>
 {% if transaction.session %}
-<tr><th>Session</th><td><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></td></tr>
-<tr><th>Date</th><td>{{transaction.session.date}}</td></tr>
-<tr><th>Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
+<tr><th scope="row">Session</th><td><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></td></tr>
+<tr><th scope="row">Date</th><td>{{transaction.session.date}}</td></tr>
+<tr><th scope="row">Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
 {% endif %}
-<tr><th>Notes</th>
+<tr><th scope="row">Notes</th>
   {% if form %}
   <td>{% include "form-field.html" with field=form.notes %}</td>
   {% else %}
   <td>{{transaction.notes}}</td>
   {% endif %}
 </tr>
-<tr><th>Discount amount</th><td>{{money}}{{transaction.discount_total}}</td></tr>
-<tr><th>Total</th><td>{{money}}{{transaction.total}}</td></tr>
+<tr><th scope="row">Discount amount</th><td>{{money}}{{transaction.discount_total}}</td></tr>
+<tr><th scope="row">Total</th><td>{{money}}{{transaction.total}}</td></tr>
 </table>
 {% if form %}
 <button class="btn btn-primary mb-2" type="submit" name="submit_update">

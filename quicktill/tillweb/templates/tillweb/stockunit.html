@@ -18,11 +18,11 @@
   </button>
 </form>
 {% else %}
-<table class="kvtable">
-<tr><th>Description</th><td>{{stockunit.name}}</td></tr>
-<tr><th>Unit</th><td><a href="{{stockunit.unit.get_absolute_url}}">{{stockunit.unit.description}}</a></td></tr>
-<tr><th>Size</th><td>{{stockunit.size}} {{stockunit.unit.name}}</td></tr>
-<tr><th>Merge?</th><td>{% if stockunit.merge %}Yes{% else %}No{% endif %}</td></tr>
+<table class="table mb-2 w-auto">
+<tr><th scope="row">Description</th><td>{{stockunit.name}}</td></tr>
+<tr><th scope="row">Unit</th><td><a href="{{stockunit.unit.get_absolute_url}}">{{stockunit.unit.description}}</a></td></tr>
+<tr><th scope="row">Size</th><td>{{stockunit.size}} {{stockunit.unit.name}}</td></tr>
+<tr><th scope="row">Merge?</th><td>{% if stockunit.merge %}Yes{% else %}No{% endif %}</td></tr>
 </table>
 {% endif %}
 

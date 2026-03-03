@@ -16,17 +16,17 @@
   </button>
 </form>
 {% else %}
-<table class="kvtable">
+<table class="table w-auto">
   <tbody>
-    <tr><th>Barcode</th><td>{{barcode.id}}</td></tr>
-    <tr><th>Binding type</th><td>{{barcode.binding_type}}</td></tr>
-    <tr><th>Target</th>
+    <tr><th scope="row">Barcode</th><td>{{barcode.id}}</td></tr>
+    <tr><th scope="row">Binding type</th><td>{{barcode.binding_type}}</td></tr>
+    <tr><th scope="row">Target</th>
       <td>
 	{% if barcode.target %}
 	<a href="{{barcode.target.get_absolute_url}}">{{barcode.target}}</a>
 	{% endif %}
     </td></tr>
-    <tr><th>Modifier</th><td>{{barcode.modifier}}</td></tr>
+    <tr><th scope="row">Modifier</th><td>{{barcode.modifier}}</td></tr>
   </tbody>
 </table>
 {% endif %}

@@ -17,14 +17,14 @@
 <p>Note: clicking Delete will remove this price lookup, its keyboard
   bindings and barcodes immediately.</p>
 {% else %}
-<table class="kvtable">
-<tr><th>Description</th><td>{{plu.description}}</td></tr>
-<tr><th>Department</th><td>{{plu.department}}</td></tr>
-<tr><th>Note</th><td>{{plu.note}}</td></tr>
-<tr><th>Price</th>{% if plu.price %}<td class="money">{{money}}{{plu.price}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th>Alt price 1</th>{% if plu.altprice1 %}<td class="money">{{money}}{{plu.altprice1}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th>Alt price 2</th>{% if plu.altprice2 %}<td class="money">{{money}}{{plu.altprice2}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th>Alt price 3</th>{% if plu.altprice3 %}<td class="money">{{money}}{{plu.altprice3}}</td>{% else %}<td></td>{% endif %}</tr>
+<table class="table w-auto">
+<tr><th scope="row">Description</th><td>{{plu.description}}</td></tr>
+<tr><th scope="row">Department</th><td>{{plu.department}}</td></tr>
+<tr><th scope="row">Note</th><td>{{plu.note}}</td></tr>
+<tr><th scope="row">Price</th>{% if plu.price %}<td class="money">{{money}}{{plu.price}}</td>{% else %}<td></td>{% endif %}</tr>
+<tr><th scope="row">Alt price 1</th>{% if plu.altprice1 %}<td class="money">{{money}}{{plu.altprice1}}</td>{% else %}<td></td>{% endif %}</tr>
+<tr><th scope="row">Alt price 2</th>{% if plu.altprice2 %}<td class="money">{{money}}{{plu.altprice2}}</td>{% else %}<td></td>{% endif %}</tr>
+<tr><th scope="row">Alt price 3</th>{% if plu.altprice3 %}<td class="money">{{money}}{{plu.altprice3}}</td>{% else %}<td></td>{% endif %}</tr>
 </table>
 {% endif %}
 
