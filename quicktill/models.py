@@ -2644,9 +2644,9 @@ class StockItem(Base, Logged):
         """
         if self.bestbefore is None:
             return None
-        return (
-            self.bestbefore - (
-                self.finished.date() or datetime.date.today())).days
+        return (self.bestbefore - (
+            self.finished.date() if self.finished
+            else datetime.date.today())).days
 
     @property
     def displayqty_or_zero(self):
