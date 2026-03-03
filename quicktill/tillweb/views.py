@@ -1634,36 +1634,14 @@ def stocktype_logo(request, info, stocktype_id):
     return r
 
 
-class StockSearchForm(StockTypeSearchForm):
-    include_finished = forms.BooleanField(
-        required=False, label="Include finished items")
-
-
 @tillweb_view
 def stocksearch(request, info):
-    form = StockSearchForm(request.GET)
-    pager = None
-    if form.is_valid() and form.is_filled_in():
-        q = td.s.query(StockItem)\
-                .join(StockType)\
-                .order_by(StockItem.id)\
-                .options(joinedload(StockItem.stocktype)
-                         .joinedload(StockType.unit),
-                         joinedload(StockItem.stockline),
-                         joinedload(StockItem.delivery),
-                         undefer_group('qtys'))
-        q = form.filter(q)
-        if not form.cleaned_data['include_finished']:
-            q = q.filter(StockItem.finished == None)
-
-        pager = Pager(request, q, preserve_query_parameters=[
-            "manufacturer", "name", "include_finished"])
+    departments = td.s.query(Department).order_by(Department.id).all()
 
     return ('stocksearch.html', {
         'nav': [("Stock", reverse("tillweb-stocksearch"))],
-        'form': form,
-        'stocklist': pager.items() if pager else [],
-        'pager': pager})
+        'departments': departments,
+    })
 
 
 class StockAnnotateForm(forms.Form):

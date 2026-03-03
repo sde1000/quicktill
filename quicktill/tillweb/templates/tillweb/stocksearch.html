@@ -4,15 +4,148 @@
 
 {% block tillcontent %}
 
-<form class="mb-2" action="" method="get">
-  {% include "form-horizontal.html" %}
-  <div class="row justify-content-center">
-    <button class="btn btn-primary w-75" type="submit">Find</button>
+<div class="row mb-3">
+  <label for="manufacturerInput" class="col-sm-2 col-form-label">Manufacturer</label>
+  <div class="col-sm-10">
+    <input type="search" class="form-control" id="manufacturerInput">
   </div>
-</form>
+</div>
 
-{% if stocklist %}
-{% include "tillweb/stocklist.html" %}
-{% endif %}
+<div class="row mb-3">
+  <label for="nameInput" class="col-sm-2 col-form-label">Name</label>
+  <div class="col-sm-10">
+    <input type="search" class="form-control" id="nameInput">
+  </div>
+</div>
+
+<div class="row mb-3">
+  <label for="departmentInput" class="col-sm-2 col-form-label">Department</label>
+  <div class="col-sm-10">
+    <select class="col-sm-10 form-select" id="departmentInput" aria-label="Department">
+      <option selected>Any</option>
+      {% for d in departments %}
+      <option value="{{d.id}}">{{d.description}}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div class="row mb-3 form-check">
+  <div class="col-sm-10 offset-sm-2">
+    <input class="form-check-input" type="checkbox" value="" id="checkFinished">
+    <label class="form-check-label" for="checkFinished">
+      Include finished?
+    </label>
+  </div>
+</div>
+
+<div class="table-responsive pt-1 mb-2">
+<table class="table table-striped table-sm table-hover" id="stocklist">
+  <thead class="table-light">
+    <tr>
+      <th scope="col">Stock ID</th>
+      <th scope="col">Manufacturer</th>
+      <th scope="col">Name</th>
+      <th scope="col">ABV</th>
+      <th scope="col">Cost Price</th>
+      <th scope="col">Used</th>
+      <th scope="col">Sold</th>
+      <th scope="col">Remaining</th>
+      <th scope="col">Best Before</th>
+      <th scope="col" class="no-sort">State</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+</div>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      let include_finished = false;
+      let manufacturer = null;
+      let name = null;
+      let department = null;
+
+      const stocklist_api = $("#stocklist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-stockitems" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  if (manufacturer) {
+		      d.manufacturer = manufacturer;
+		  }
+		  if (name) {
+		      d.name = name;
+		  }
+		  if (department) {
+		      d.department = department;
+		  }
+		  d.include_finished = include_finished ? 'yes': 'no';
+	      },
+	  },
+	  columns: [
+	      { data: 'stockid',
+		render: render_link('stock_url', DataTable.render.text()),
+	      },
+	      { data: 'manufacturer',
+		render: render_link('manufacturer_url', DataTable.render.text()),
+	      },
+	      { data: 'name',
+		render: render_link('stocktype_url', DataTable.render.text()),
+	      },
+	      { data: 'abv',
+		render: render_abv(),
+	      },
+	      { data: 'costprice',
+		render: render_money(),
+	      },
+	      { data: 'used',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'sold',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'remaining',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'bestbefore',
+		render: DataTable.render.text(),
+		createdCell: function (td, cellData, rowData, row, col) {
+		    $(td).addClass(rowData.bestbefore_class);
+		},
+	      },
+	      { data: 'state',
+		render: render_link('state_url', DataTable.render.text()),
+		searchable: false,
+	      },
+	  ],
+	  order: [[0, 'desc']],
+	  searching: false,
+	  paging: true,
+	  serverSide: true,
+      });
+
+      const reloadDebounce = DataTable.util.debounce(function() {
+	  stocklist_api.ajax.reload(null, true);});
+
+      $("#manufacturerInput").on("input", function() {
+	  manufacturer = this.value;
+	  reloadDebounce();
+      });
+      $("#nameInput").on("input", function() {
+	  name = this.value;
+	  reloadDebounce();
+      });
+      $("#departmentInput").change(function() {
+	  department = this.value;
+	  stocklist_api.ajax.reload(null, true);
+      });
+      $("#checkFinished").change(function() {
+	  include_finished = this.checked;
+	  stocklist_api.ajax.reload(null, true);
+      });
+  });
+</script>
 
 {% endblock %}

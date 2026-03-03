@@ -125,7 +125,7 @@
 	      data: function (d) {
 		  /* Restrict to this page's department, before the
 		     count of items in the table */
-		  d.department = {{department.id}};
+		  d.department_pre_filter = {{department.id}};
 		  d.include_finished = include_finished ? 'yes': 'no';
 	      },
 	  },

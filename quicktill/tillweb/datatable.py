@@ -601,18 +601,32 @@ def stockitems(request, info):
     # filter of "department" again for use on the stock item search
     # page.
     try:
-        department = int(request.GET.get("department"))
-        q = q.filter(StockType.dept_id == department)
+        department_pre_filter = int(request.GET.get("department_pre_filter"))
+        q = q.filter(StockType.dept_id == department_pre_filter)
     except (ValueError, TypeError):
         pass
 
     fq = q
 
-    # Apply filters from parameters - these are from a tickbox on the
+    # Apply filters from parameters - these are from inputs on the
     # page, they should not be applied before the item count
     include_finished = request.GET.get("include_finished", "no") == "yes"
     if not include_finished:
         fq = fq.filter(StockItem.finished == None)
+
+    manufacturer = request.GET.get("manufacturer")
+    if manufacturer:
+        fq = fq.filter(StockType.manufacturer.ilike(f"%{manufacturer}%"))
+
+    name = request.GET.get("name")
+    if name:
+        fq = fq.filter(StockType.name.ilike(f"%{name}%"))
+
+    try:
+        department = int(request.GET.get("department"))
+        fq = fq.filter(StockType.dept_id == department)
+    except (ValueError, TypeError):
+        pass
 
     # Apply filters from search value
     if search_value:
