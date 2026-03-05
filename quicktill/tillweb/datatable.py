@@ -26,6 +26,7 @@ from quicktill.models import (
     StockItem,
     StockAnnotation,
     AnnotationType,
+    Barcode,
     RefusalsLog,
     zero,
 )
@@ -39,6 +40,9 @@ def _datatables_order(query, columns, params):
         if not order_col or not order_dir:
             break
         expr = columns[int(order_col)]
+        # If expr is None then this is not an orderable column
+        if expr is None:
+            continue
         if order_dir == "desc":
             expr = expr.desc()
         if params.get(f"columns[{order_col}][nullslast]", False):
@@ -74,7 +78,8 @@ def _datatables_json(request, query, filtered_query, columns, rowfunc):
                     # not in our list of columns; don't allow this!
                     error = f'column {cname} not defined, valid columns are '\
                         f'{list(columns.keys())}'
-                break
+                    break
+                order_columns.append(None)
         else:
             break
 
@@ -736,6 +741,36 @@ def annotations(request, info):
             'text': a.text,
             'user': a.user.fullname if a.user else None,
             'user_url': a.user.get_absolute_url() if a.user else None,
+        })
+
+
+@tillweb_view
+def barcodes(request, info):
+    columns = {
+        'id': Barcode.id,
+        'modifier': Barcode.modifier,
+    }
+
+    search_value = request.GET.get("search[value]")
+
+    q = td.s.query(Barcode)
+
+    fq = q
+
+    if search_value:
+        qs = [
+            columns['id'].ilike(f"%{search_value}%"),
+        ]
+        fq = fq.filter(or_(*qs))
+
+    return _datatables_json(
+        request, q, fq, columns, lambda a: {
+            'id': a.id,
+            'barcode_url': a.get_absolute_url(),
+            'binding': str(a.target),
+            'binding_url': a.target.get_absolute_url(),
+            'binding_type': a.binding_type,
+            'modifier': a.modifier,
         })
 
 

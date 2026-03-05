@@ -6,32 +6,50 @@
 
 <h2>Barcodes</h2>
 
-<table class="table table-striped table-hover table-sm">
+<table class="table table-striped table-hover table-sm" id="barcodeTable">
   <thead class="table-light">
     <tr>
       <th scope="col">Barcode</th>
       <th scope="col">Binding</th>
+      <th scope="col">Binding type</th>
       <th scope="col">Modifier</th>
     </tr>
   </thead>
-<tbody>
-{% for b in pager.items %}
-<tr>
-<td><a href="{{b.get_absolute_url}}">{{b}}</a></td>
-<td>{% if b.target %}<a href="{{b.target.get_absolute_url}}">{{b.target}}</a>{% endif %}</td>
-<td>{% if b.modifier %}{{b.modifier}}{% endif %}</td>
-</tr>
-{% endfor %}
-</tbody>
+  <tbody>
+  </tbody>
 </table>
-<p></p>
-{{pager.as_html}}
 
-<form class="mb-2" action="" method="post">{% csrf_token %}
-{% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_find">
-    Find barcode
-  </button>
-</form>
+<script type="text/javascript">
+  $(document).ready(function() {
+      $("#barcodeTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-barcodes" %}',
+	      dataSrc: 'data',
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('barcode_url', DataTable.render.text()),
+		type: 'string',
+	      },
+	      { data: 'binding',
+		render: render_link('binding_url', DataTable.render.text()),
+		searchable: false,
+		orderable: false,
+	      },
+	      { data: 'binding_type',
+		render: DataTable.render.text(),
+		searchable: false,
+		orderable: false,
+	      },
+	      { data: 'modifier',
+		render: DataTable.render.text(),
+	      },
+	  ],
+	  order: [[0, 'asc']],
+	  paging: true,
+	  serverSide: true,
+      });
+  });
+</script>
 
 {% endblock %}

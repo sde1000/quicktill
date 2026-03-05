@@ -2446,42 +2446,13 @@ def create_plu(request, info):
     })
 
 
-class BarcodeSearchForm(forms.Form):
-    barcode = forms.CharField()
-
-
 @tillweb_view
 def barcodelist(request, info):
-    if request.method == 'POST':
-        form = BarcodeSearchForm(request.POST)
-
-        if form.is_valid():
-            cd = form.cleaned_data
-            barcode = td.s.get(Barcode, cd['barcode'])
-            if barcode:
-                return HttpResponseRedirect(barcode.get_absolute_url())
-            messages.error(request, f"Barcode {cd['barcode']} is not known")
-            return HttpResponseRedirect(reverse("tillweb-barcodes"))
-    else:
-        form = BarcodeSearchForm()
-
-    barcodes = td.s.query(Barcode)\
-                   .options(joinedload(Barcode.stocktype),
-                            joinedload(Barcode.stockline),
-                            joinedload(Barcode.plu))\
-                   .order_by(Barcode.id)
-
-    pager = Pager(request, barcodes)
 
     return ('barcodes.html', {
         'nav': [
             ("Barcodes", reverse("tillweb-barcodes")),
         ],
-        'form': form,
-        'recent': pager.items,
-        'pager': pager,
-        'nextlink': pager.nextlink(),
-        'prevlink': pager.prevlink(),
     })
 
 
