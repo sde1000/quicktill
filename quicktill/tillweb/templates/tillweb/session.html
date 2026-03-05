@@ -27,12 +27,12 @@
 </td>
 {% endfor %}
 <td><strong>Error</strong><br />{{money}}{{session.error}}</td>
-{% for vb,t,ex,vat in session.vatband_totals %}
-{% if vb.business.show_vat_breakdown %}
-<td><strong>{{vb.business}} ex-VAT</strong><br>{{money}}{{ex}}</td>
-<td><strong>{{vb.business}} VAT</strong><br>{{money}}{{vat}}</td>
+{% for business,t,ex,vat in session.business_totals %}
+{% if business.show_vat_breakdown %}
+<td><strong>{{business}} ex-VAT</strong><br>{{money}}{{ex}}</td>
+<td><strong>{{business}} VAT</strong><br>{{money}}{{vat}}</td>
 {% else %}
-<td><strong>{{vb.business}}</strong><br>{{money}}{{t}}</span></td>
+<td><strong>{{business}}</strong><br>{{money}}{{t}}</span></td>
 {% endif %}
 {% endfor %}
   </tr>

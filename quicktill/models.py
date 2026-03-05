@@ -195,12 +195,21 @@ class Vat:
         specified date.  If there is no suitable VatRate object,
         returns self.
         """
-        return object_session(self).\
-            query(VatRate).\
-            filter_by(band=self.band).\
-            filter(VatRate.active <= date).\
-            order_by(desc(VatRate.active)).\
-            first() or self
+        # return object_session(self).\
+        #     query(VatRate).\
+        #     filter_by(band=self.band).\
+        #     filter(VatRate.active <= date).\
+        #     order_by(desc(VatRate.active)).\
+        #     first() or self
+        r = self
+        for vr in self.vatrates:
+            if vr.active <= date:
+                if hasattr(r, "active"):
+                    if vr.active > r.active:
+                        r = vr
+                else:
+                    r = vr
+        return r
 
     @property
     def current(self):
@@ -228,6 +237,7 @@ class VatRate(Base, Vat, Logged):
     __tablename__ = 'vatrates'
     band = Column(CHAR(1), ForeignKey('vat.band'), primary_key=True)
     active = Column(Date, nullable=False, primary_key=True)
+    vatband = relationship(VatBand, backref='vatrates')
     business = relationship(Business, backref='vatrates')
 
 
@@ -488,14 +498,25 @@ class Session(Base, Logged):
             .join(VatBand)\
             .order_by(VatBand.band)\
             .group_by(VatBand)\
+            .options(joinedload(VatBand.business),
+                     joinedload(VatBand.vatrates)
+                     .joinedload(VatRate.business))\
             .all()
         vt = [(a.at(self.date), b) for a, b in vt]
         return [(a, b, a.inc_to_exc(b), a.inc_to_vat(b)) for a, b in vt]
 
-    # It may become necessary to add a further query here that returns
-    # transaction lines broken down by Business.  Must take into
-    # account multiple VAT rates per business - probably best to do
-    # the summing client side using the methods in the VatRate object.
+    @property
+    def business_totals(self):
+        """Totals broken down by business
+
+        Returns (Business, amount, ex-vat amount, vat)
+        """
+        businesses = {}
+        for vr, amount, exvat, vat in self.vatband_totals:
+            b = vr.business
+            t = businesses.setdefault(b, (zero, zero, zero))
+            businesses[b] = (t[0] + amount, t[1] + exvat, t[2] + vat)
+        return [(b, t[0], t[1], t[2]) for b, t in businesses.items()]
 
     @property
     def stock_sold(self):
