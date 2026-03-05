@@ -1,4 +1,5 @@
 {% if translines %}
+<div class="table-responsive">
 <table class="table table-striped table-hover table-sm mb-2" id="translines">
 <thead class="table-light">
 <tr>
@@ -24,7 +25,7 @@
 <td><a href="{{tl.get_absolute_url}}">{{tl.description}}</a></td>
 {% if exclude_column != "department" %}<td data-sort="{{tl.department.id}}">{{tl.department}}</td>{% endif %}
 <td>{{tl.transcode}}{% if tl.voided_by_id %} <a href="{{tl.voided_by.get_absolute_url}}">(voided)</a>{% endif %}</td>
-<td data-sort="{{tl.total}}">{% if tl.amount or tl.discount %}{{tl.items}} @ {{money}}{{tl.amount}} = {{money}}{{tl.total}}</span>{% endif %}</td>
+<td data-sort="{{tl.total}}">{% if tl.amount or tl.discount %}{{tl.items}} @ {{money}}{{tl.amount}} = {{money}}{{tl.total}}{% endif %}</td>
 <td>{% if tl.discount %}{{money}}{{tl.total_discount}} ({{tl.discount_name}}){% endif %}</td>
 <td>{{tl.time|date:dtf}}</td>
 <td>{{tl.source}}</td>
@@ -34,6 +35,7 @@
 {% endfor %}
 </tbody>
 </table>
+</div>
 <script type="text/javascript">
 $(document).ready(function(){
   $("#translines").DataTable(dt_sortonly);

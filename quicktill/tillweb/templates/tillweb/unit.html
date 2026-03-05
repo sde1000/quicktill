@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — unit "{{unit.description}}"{% endblock %}
 
@@ -6,36 +7,68 @@
 
 {% include "tillweb/unit-info.html" %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update
-  </button>
-  <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
-    Delete
-  </button>
-</form>
-{% if not can_delete %}
-<p>Note: it is <strong>strongly</strong> recommended that you do not
-  change the meaning of the base unit.  The quantities of this unit
-  stored for existing stock <strong>will not</strong> change to match!</p>
+{% with dtc="col-6 col-sm-2 text-sm-end" ddc="col-6 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{unit.description}}</dd>
 
-<p>If you change the number of base units per item, note that
-  prices <strong>will not</strong> change to match.</p>
-{% endif %}
-{% else %}
-<table class="kvtable mb-2">
-<tr><th scope="row">Description</th><td>{{unit.description}}</td></tr>
-<tr><th scope="row">Base unit</th><td>{{unit.name}}</td></tr>
-<tr><th scope="row">Base units per sale unit</th><td>{{unit.base_units_per_sale_unit}}</td></tr>
-<tr><th scope="row">Sale unit name</th><td>{{unit.sale_unit_name}}</td></tr>
-<tr><th scope="row">Sale unit name plural</th><td>{{unit.sale_unit_name_plural}}</td></tr>
-<tr><th scope="row">Base units per stock unit</th><td>{{unit.base_units_per_stock_unit}}</td></tr>
-<tr><th scope="row">Stock unit name</th><td>{{unit.stock_unit_name}}</td></tr>
-<tr><th scope="row">Stock unit name plural</th><td>{{unit.stock_unit_name_plural}}</td></tr>
-<tr><th scope="row">Stock take method</th><td>{{unit.stocktake_method}}</td></tr>
-</table>
+  <dt class="{{dtc}}">Base unit</dt>
+  <dd class="{{ddc}}">{{unit.name}}</dd>
+
+  <dt class="{{dtc}}">Base units per sale unit</dt>
+  <dd class="{{ddc}}">{{unit.base_units_per_sale_unit}}</dd>
+
+  <dt class="{{dtc}}">Sale unit name</dt>
+  <dd class="{{ddc}}">{{unit.sale_unit_name}}</dd>
+
+  <dt class="{{dtc}}">Sale unit name plural</dt>
+  <dd class="{{ddc}}">{{unit.sale_unit_name_plural}}</dd>
+
+  <dt class="{{dtc}}">Base units per stock unit</dt>
+  <dd class="{{ddc}}">{{unit.base_units_per_stock_unit}}</dd>
+
+  <dt class="{{dtc}}">Stock unit name</dt>
+  <dd class="{{ddc}}">{{unit.stock_unit_name}}</dd>
+
+  <dt class="{{dtc}}">Stock unit name plural</dt>
+  <dd class="{{ddc}}">{{unit.stock_unit_name_plural}}</dd>
+
+  <dt class="{{dtc}}">Stock take method</dt>
+  <dd class="{{ddc}}">{{unit.stocktake_method}}</dd>
+</dl>
+{% endwith %}
+
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#changeModal">
+  Alter details
+</button>
+
+{% modal "changeModal" dialog_class="modal-lg modal-dialog-scrollable" title="Alter details" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    {% if not can_delete %}
+    <p>Note: it is <strong>strongly</strong> recommended that you do not
+      change the meaning of the base unit.  The quantities of this unit
+      stored for existing stock <strong>will not</strong> change to match!</p>
+
+    <p>If you change the number of base units per item, note that
+      prices <strong>will not</strong> change to match.</p>
+    {% endif %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
+      Delete
+    </button>
+    <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+      Update
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 {% if unit.stockunits %}

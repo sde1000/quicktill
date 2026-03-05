@@ -11,55 +11,91 @@
 </div>
 {% endif %}
 
-<table class="table">
-<tr><th scope="row">Stock ID</th><td>{{stock.id}}</td></tr>
-<tr><th scope="row">Check digits</th><td>{{stock.checkdigits}}</td></tr>
-<tr><th scope="row">Manufacturer</th><td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></td></tr>
-<tr><th scope="row">Name</th><td><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></td></tr>
-<tr><th scope="row">ABV</th><td>{{stock.stocktype.abvstr}}</td></tr>
-{% if stock.delivery %}
-<tr><th scope="row">Supplier</th><td><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></td></tr>
-<tr><th scope="row">Delivery date</th><td>{{stock.delivery.date}}</td></tr>
-<tr><th scope="row">Delivery ID</th><td><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not confirmed</span>{% endif %}</td></tr>
-{% else %}
-<tr><th scope="row">Discovered in stock take</th><td><a href="{{stock.stocktake.get_absolute_url}}">{{stock.stocktake.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not committed</span>{% endif %}</td></tr>
-{% endif %}
-<tr><th scope="row">Department</th><td><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></td></tr>
-<tr><th scope="row">Stock unit</th><td>{{stock.description}} ({{stock.size}} {{stock.stocktype.unit.name}}s)</td></tr>
-<tr><th scope="row">Cost price</th>
-{% if stock.costprice %}
-<td>{{money}}{{stock.costprice}} (ex-VAT)</td>
-{% else %}<td>Unknown</td>{% endif %}</tr>
-<tr><th scope="row">Sale price</th><td>{% if stock.stocktype.saleprice != None %}{{money}}{{stock.stocktype.pricestr}} (inc-VAT){% else %}Not set{% endif %}</td></tr>
-{% if stock.onsale %}
-<tr><th scope="row">Put on sale</th><td>{{stock.onsale}}
-{% if stock.stockonsale %} on line <a href="{{stock.stockonsale.stockline.get_absolute_url}}">{{stock.stockonsale.stockline.name}}</a>
-{% endif %}
-</td></tr>
-{% endif %}
-{% if stock.finished %}
-<tr><th scope="row">Finished</th><td>{{stock.finished}} ({{stock.finishcode.description}})</td></tr>
-{% endif %}
-{% if stock.bestbefore %}
-<tr><th scope="row">Best before</th><td>{{stock.bestbefore}}</td></tr>
-{% endif %}
-<tr><th scope="row">Amount used</th><td>{{stock.used}} {{stock.stocktype.unit.name}}s</td></tr>
-<tr><th scope="row">Amount remaining</th><td>{{stock.remaining}} {{stock.stocktype.unit.name}}s</td></tr>
-{% if stock.annotations %}
-<tr><th scope="row">Notes</th><td>
-{% with annotationlist=stock.annotations excluded_column="stock" %}
-{% include "tillweb/annotationlist.html" %}
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">Stock ID</dt>
+  <dd class="{{ddc}}">{{stock.id}}</dd>
+
+  <dt class="{{dtc}}">Check digits</dt>
+  <dd class="{{ddc}}">{{stock.checkdigits}}</dd>
+
+  <dt class="{{dtc}}">Manufacturer</dt>
+  <dd class="{{ddc}}"><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stock.stocktype.manufacturer|urlencode}}">{{stock.stocktype.manufacturer}}</a></dd>
+
+  <dt class="{{dtc}}">Name</dt>
+  <dd class="{{ddc}}"><a href="{{stock.stocktype.get_absolute_url}}">{{stock.stocktype.name}}</a></dd>
+
+  <dt class="{{dtc}}">ABV</dt>
+  <dd class="{{ddc}}">{{stock.stocktype.abvstr}}</dd>
+
+  {% if stock.delivery %}
+  <dt class="{{dtc}}">Supplier</dt>
+  <dd class="{{ddc}}"><a href="{{stock.delivery.supplier.get_absolute_url}}">{{stock.delivery.supplier.name}}</a></dd>
+
+  <dt class="{{dtc}}">Delivery date</dt>
+  <dd class="{{ddc}}">{{stock.delivery.date}}</dd>
+
+  <dt class="{{dtc}}">Delivery ID</dt>
+  <dd class="{{ddc}}"><a href="{{stock.delivery.get_absolute_url}}">{{stock.delivery.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not confirmed</span>{% endif %}</dd>
+
+  {% else %}
+  <dt class="{{dtc}}">Discovered in stock take</dt>
+  <dd class="{{ddc}}"><a href="{{stock.stocktake.get_absolute_url}}">{{stock.stocktake.id}}</a>{% if not stock.checked %} <span class="badge bg-warning">Not committed</span>{% endif %}</dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">Department</dt>
+  <dd class="{{ddc}}"><a href="{{stock.stocktype.department.get_absolute_url}}">{{stock.stocktype.department.description}}</a></dd>
+
+  <dt class="{{dtc}}">Stock unit</dt>
+  <dd class="{{ddc}}">{{stock.description}} ({{stock.size}} {{stock.stocktype.unit.name}}s)</dd>
+
+  <dt class="{{dtc}}">Cost price</dt>
+  <dd class="{{ddc}}">{% if stock.costprice %}{{money}}{{stock.costprice}} (ex-VAT){% else %}Unknown{% endif %}</dd>
+
+  <dt class="{{dtc}}">Sale price</dt>
+  <dd class="{{ddc}}">{% if stock.stocktype.saleprice != None %}{{money}}{{stock.stocktype.pricestr}} (inc-VAT){% else %}Not set{% endif %}</dd>
+
+  {% if stock.onsale %}
+  <dt class="{{dtc}}">Put on sale</dt>
+  <dd class="{{ddc}}">{{stock.onsale}}
+    {% if stock.stockonsale %} on line <a href="{{stock.stockonsale.stockline.get_absolute_url}}">{{stock.stockonsale.stockline.name}}</a>
+    {% endif %}</dd>
+  {% endif %}
+
+  {% if stock.finished %}
+  <dt class="{{dtc}}">Finished</dt>
+  <dd class="{{ddc}}">{{stock.finished}} ({{stock.finishcode.description}})</dd>
+  {% endif %}
+
+  {% if stock.bestbefore %}
+  <dt class="{{dtc}}">Best before</dt>
+  <dd class="{{ddc}}">{{stock.bestbefore}}</dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">Amount used</dt>
+  <dd class="{{ddc}}">{{stock.used}} {{stock.stocktype.unit.name}}s</dd>
+
+  <dt class="{{dtc}}">Amount remaining</dt>
+  <dd class="{{ddc}}">{{stock.remaining}} {{stock.stocktype.unit.name}}s</dd>
+
+  {% if stock.annotations %}
+  <dt class="{{dtc}}">Notes</dt>
+  <dd class="{{ddc}}">
+    {% with annotationlist=stock.annotations excluded_column="stock" %}
+    {% include "tillweb/annotationlist.html" %}
+    {% endwith %}
+  </dd>
+  {% endif %}
+</dl>
 {% endwith %}
-</td></tr>{% endif %}
-</table>
 
 {% if aform %}
-<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#noteModal">
+<button type="button" class="btn btn-secondary mb-2" data-bs-toggle="modal" data-bs-target="#noteModal">
   Add a note
 </button>
 {% endif %}
 {% if wform %}
-<button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#wasteModal">
+<button type="button" class="btn btn-secondary mb-2" data-bs-toggle="modal" data-bs-target="#wasteModal">
   Record waste
 </button>
 {% endif %}
@@ -101,14 +137,14 @@
 {% if stock.out %}
 <div class="mb-3">
   <h2>Usage summary</h2>
-  <table class="table w-auto">
-    {% for rc,qty in stock.removed %}
-    <tr>
-      <th scope="row">{{rc.reason}}</th>
-      <td>{{qty}} {{stock.stocktype.unit.name}}s</td>
-    </tr>
+  {% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+  <dl class="row lh-1">
+    {% for rc, qty in stock.removed %}
+    <dt class="{{dtc}}">{{rc.reason}}</dt>
+    <dd class="{{ddc}}">{{qty}} {{stock.stocktype.unit.name}}s</dd>
     {% endfor %}
-  </table>
+  </dl>
+  {% endwith %}
 </div>
 
 <div class="row mb-3">

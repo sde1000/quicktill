@@ -46,6 +46,11 @@ table.dataTable th div.dt-column-header {
     padding-right: 0 !important;
 }
 
+/* Remove the bottom margin from the json viewer */
+pre.json-viewer {
+    margin-bottom: 0;
+}
+
 .error {
     color: red;
 }

@@ -1726,7 +1726,7 @@ def unit(request, info, unit_id):
                 messages.success(request, f"Unit '{u.description}' deleted.")
                 td.s.delete(u)
                 td.s.commit()
-                return HttpResponseRedirect(reverse("tillweb-units"))
+                return redirect("tillweb-units")
             form = UnitForm(request.POST, initial=initial)
             if form.is_valid():
                 cd = form.cleaned_data
@@ -1742,7 +1742,7 @@ def unit(request, info, unit_id):
                 user.log(f"Updated unit {u.logref}")
                 td.s.commit()
                 messages.success(request, f"Unit '{u.description}' updated.")
-                return HttpResponseRedirect(reverse("tillweb-units"))
+                return redirect(u.get_absolute_url())
         else:
             form = UnitForm(initial=initial)
 

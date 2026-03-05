@@ -1,5 +1,6 @@
 {% extends "tillweb/tillweb.html" %}
 {% load static %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — {{paytype.description}} payment method{% endblock %}
 
@@ -17,49 +18,83 @@
 
 {% block tillcontent %}
 
-{% if may_edit %}
-<form class="mb-2" action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
-    Update payment method
-  </button>
-  {% if not recent_payments and not recent_totals %}
-  <button class="btn btn-danger" type="submit" name="submit_delete">
-    Delete payment method
-  </button>
-  {% endif %}
-</form>
-{% else %}
-<table class="kvtable mb-2">
-<tr><th scope="row">Code</th><td>{{paytype.paytype}}</td></tr>
-<tr><th scope="row">Description</th><td>{{paytype.description}}</td></tr>
-<tr><th scope="row">Driver name</th><td>{{paytype.driver_name}}</td></tr>
-<tr><th scope="row">Mode</th><td>{{paytype.mode_display}}</td></tr>
-<tr><th scope="row">Config</th><td>{{paytype.config}}</td></tr>
-<tr><th scope="row">Payments account</th><td>{{paytype.payments_account}}</td></tr>
-<tr><th scope="row">Fees account</th><td>{{paytype.fees_account}}</td></tr>
-<tr><th scope="row">Payment date policy</th><td>{{paytype.payment_date_policy}}</td></tr>
-</table>
-{% endif %}
+{% with dtc="col-sm-3 text-sm-end" ddc="col-sm-9" %}
+<dl class="row">
+  <dt class="{{dtc}}">Code</dt>
+  <dd class="{{ddc}}">{{paytype.paytype}}</dd>
 
-{% if paytype.state %}
-<h2>Internal state</h2>
-<div class="json-state">{{paytype.state}}</div>
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{paytype.description}}</dd>
+
+  <dt class="{{dtc}}">Driver name</dt>
+  <dd class="{{ddc}}">{{paytype.driver_name}}</dd>
+
+  <dt class="{{dtc}}">Mode</dt>
+  <dd class="{{ddc}}">{{paytype.mode_display}}</dd>
+
+  {% if paytype.config %}
+  <dt class="{{dtc}}">Config</dt>
+  <dd class="{{ddc}}"><div class="json-state">{{paytype.config}}</div></dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">Payments account</dt>
+  <dd class="{{ddc}}">{{paytype.payments_account}}</dd>
+
+  <dt class="{{dtc}}">Fees account</dt>
+  <dd class="{{ddc}}">{{paytype.fees_account}}</dd>
+
+  <dt class="{{dtc}}">Payment date policy</dt>
+  <dd class="{{ddc}}">{{paytype.payment_date_policy}}</dd>
+
+  {% if paytype.state %}
+  <dt class="{{dtc}}">Internal state</dt>
+  <dd class="{{ddc}}"><div class="json-state">{{paytype.state}}</div></dd>
+  {% endif %}
+</dl>
+{% endwith %}
 
 <script type="text/javascript">
-  let elements = document.querySelectorAll('.json-state');
+  $(document).ready(function() {
+      const elements = document.querySelectorAll('.json-state');
 
-  for (let elem of elements) {
-      try {
-	  jsonObj = JSON.parse(elem.innerText);
-	  elem.innerText = "";
-	  jsonViewer = new JSONViewer();
-	  elem.appendChild(jsonViewer.getContainer());
-	  jsonViewer.showJSON(jsonObj, null, 0);
-      } catch (err) {
+      for (let elem of elements) {
+	  try {
+	      jsonObj = JSON.parse(elem.innerText);
+	      elem.innerText = "";
+	      jsonViewer = new JSONViewer();
+	      elem.appendChild(jsonViewer.getContainer());
+	      jsonViewer.showJSON(jsonObj, null, 0);
+	  } catch (err) {
+	  }
       }
-  }
+  });
 </script>
+
+{% if may_edit %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#updateModal">
+  Change settings
+</button>
+
+{% modal "updateModal" dialog_class="modal-lg" title="Change settings" %}
+<form class="mb-2" action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    {% if not recent_payments and not recent_totals %}
+    <button class="btn btn-danger" type="submit" name="submit_delete">
+      Delete payment method
+    </button>
+    {% endif %}
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update payment method
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 <ul class="nav nav-tabs mb-2" id="tables" role="tablist">

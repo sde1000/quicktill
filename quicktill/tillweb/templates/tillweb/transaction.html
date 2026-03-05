@@ -1,5 +1,6 @@
 {% extends "tillweb/tillweb.html" %}
 {% load static %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — transaction {{transaction.id}}{% endblock %}
 
@@ -17,31 +18,55 @@
 
 {% block tillcontent %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-{% endif %}
-<table class="table mb-2 w-auto">
-<tr><th scope="row">ID</th><td>{{transaction.id}}</td></tr>
-{% if transaction.session %}
-<tr><th scope="row">Session</th><td><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></td></tr>
-<tr><th scope="row">Date</th><td>{{transaction.session.date}}</td></tr>
-<tr><th scope="row">Closed?</th><td>{{transaction.closed|yesno:"Yes,No"}}</td></tr>
-{% endif %}
-<tr><th scope="row">Notes</th>
-  {% if form %}
-  <td>{% include "form-field.html" with field=form.notes %}</td>
-  {% else %}
-  <td>{{transaction.notes}}</td>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{transaction.id}}</dd>
+
+  {% if transaction.session %}
+  <dt class="{{dtc}}">Session</dt>
+  <dd class="{{ddc}}"><a href="{{transaction.session.get_absolute_url}}">{{transaction.session.id}}</a></dd>
+
+  <dt class="{{dtc}}">Date</dt>
+  <dd class="{{ddc}}">{{transaction.session.date}}</dd>
+
+  <dt class="{{dtc}}">Closed?</dt>
+  <dd class="{{ddc}}">{{transaction.closed|yesno:"Yes,No"}}</dd>
   {% endif %}
-</tr>
-<tr><th scope="row">Discount amount</th><td>{{money}}{{transaction.discount_total}}</td></tr>
-<tr><th scope="row">Total</th><td>{{money}}{{transaction.total}}</td></tr>
-</table>
+
+  <dt class="{{dtc}}">Note</dt>
+  <dd class="{{ddc}}">{{transaction.notes}}</dd>
+
+  <dt class="{{dtc}}">Discount amount</dt>
+  <dd class="{{ddc}}">{{money}}{{transaction.discount_total}}</dd>
+
+  <dt class="{{dtc}}">Total</dt>
+  <dd class="{{ddc}}">{{money}}{{transaction.total}}</dd>
+</dl>
+{% endwith %}
+
 {% if form %}
-<button class="btn btn-primary mb-2" type="submit" name="submit_update">
-  Update notes
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#notesModal">
+  Update note
 </button>
+{% endif %}
+
+{% if form %}
+{% modal "notesModal" title="Update note" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update note
+    </button>
+  </div>
 </form>
+{% endmodal %}
 {% endif %}
 
 {% if not transaction.session %}

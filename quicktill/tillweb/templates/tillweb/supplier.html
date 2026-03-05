@@ -1,29 +1,59 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — supplier {{supplier.name}}{% endblock %}
 
 {% block tillcontent %}
 
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update
-  </button>
-  <button class="btn btn-danger mb-2" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
-    Delete
-  </button>
-</form>
-{% else %}
-<table class="kvtable">
-<tr><th scope="row">Name:</th><td>{{supplier.name}}</td></tr>
-<tr><th scope="row">Telephone:</th><td>{{supplier.tel}}</td></tr>
-<tr><th scope="row">Email:</th><td>{{supplier.email}}</td></tr>
-<tr><th scope="row">Web:</th><td>{% if supplier.web %}<a href="{{supplier.web|urlencode}}">{{supplier.web}}</a>{% endif %}</td></tr>
-</table>
-{% endif %}
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Name</dt>
+  <dd class="{{ddc}}">{{supplier.name}}</dd>
+
+  {% if supplier.tel %}
+  <dt class="{{dtc}}">Telephone</dt>
+  <dd class="{{ddc}}">{{supplier.tel}}</dd>
+  {% endif %}
+
+  {% if supplier.email %}
+  <dt class="{{dtc}}">Email</dt>
+  <dd class="{{ddc}}">{{supplier.email}}</dd>
+  {% endif %}
+
+  {% if supplier.web %}
+  <dt class="{{dtc}}">Web</dt>
+  <dd class="{{ddc}}"><a href="{{supplier.web}}" rel="nofollow">{{supplier.web}}</a></dd>
+  {% endif %}
+</dl>
+{% endwith %}
+
 {% if supplier.accounts_url %}
 <a class="btn btn-secondary float-end" href="{{supplier.accounts_url}}">View in accounts</a>
+{% endif %}
+
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#updateModal">
+  Update details
+</button>
+
+{% modal "updateModal" title="Update details" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-danger" type="submit" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
+      Delete
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 <ul class="nav nav-tabs mt-3 w-100" role="tablist">

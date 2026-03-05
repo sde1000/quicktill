@@ -1,29 +1,56 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — item size "{{stockunit.name}}"{% endblock %}
 
 {% block tillcontent %}
 
+{% with dtc="col-6 col-sm-2 text-sm-end" ddc="col-6 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{stockunit.name}}</dd>
+
+  <dt class="{{dtc}}">Unit</dt>
+  <dd class="{{ddc}}"><a href="{{stockunit.unit.get_absolute_url}}">{{stockunit.unit.description}}</a></dd>
+
+  <dt class="{{dtc}}">Size</dt>
+  <dd class="{{ddc}}">{{stockunit.size}} {{stockunit.unit.name}}</dd>
+
+  <dt class="{{dtc}}">Merge?</dt>
+  <dd class="{{ddc}}">{{stockunit.merge|yesno:"Yes,No"}}</dd>
+</dl>
+{% endwith %}
+
+<p>If the "merge" option is selected, then entering a quantity of more
+  than one when recording a delivery will create a single, larger
+  stock item instead of multiple items of this size.</p>
+
 {% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#updateModal">
+  Update details
+</button>
+
+{% modal "updateModal" title="Update details" %}
 <form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <p>If you select the "merge" option, then entering a quantity of
-    more than one when recording a delivery will create a single,
-    larger stock item instead of multiple items of this size.</p>
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update
-  </button>
-  <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
-    Delete
-  </button>
+  <div class="modal-body">
+    {% include "form.html" %}
+    <p>If you select the "merge" option, then entering a quantity of
+      more than one when recording a delivery will create a single,
+      larger stock item instead of multiple items of this size.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
+      Delete
+    </button>
+    <button class="btn btn-primary mb-2" type="submit" name="submit_update">
+      Update
+    </button>
+  </div>
 </form>
-{% else %}
-<table class="table mb-2 w-auto">
-<tr><th scope="row">Description</th><td>{{stockunit.name}}</td></tr>
-<tr><th scope="row">Unit</th><td><a href="{{stockunit.unit.get_absolute_url}}">{{stockunit.unit.description}}</a></td></tr>
-<tr><th scope="row">Size</th><td>{{stockunit.size}} {{stockunit.unit.name}}</td></tr>
-<tr><th scope="row">Merge?</th><td>{% if stockunit.merge %}Yes{% else %}No{% endif %}</td></tr>
-</table>
+{% endmodal %}
 {% endif %}
 
 {% endblock %}
