@@ -17,32 +17,38 @@
 
 {% if session.endtime %}
 {% if session.actual_totals %}
-<table class="table text-center">
-  <tr>
-{% for p in totals %}
-<td>
-  <strong>{{p.paytype.description}}</strong>
-  <br>{{money}}{{p.amount}}
-  {% if p.fees %}<br><small>({{money}}{{p.fees}} fees)</small>{% endif %}
-</td>
-{% endfor %}
-<td><strong>Error</strong><br />{{money}}{{session.error}}</td>
-{% for business,t,ex,vat in session.business_totals %}
-{% if business.show_vat_breakdown %}
-<td><strong>{{business}} ex-VAT</strong><br>{{money}}{{ex}}</td>
-<td><strong>{{business}} VAT</strong><br>{{money}}{{vat}}</td>
-{% else %}
-<td><strong>{{business}}</strong><br>{{money}}{{t}}</span></td>
-{% endif %}
-{% endfor %}
-  </tr>
-</table>
+<div class="row text-center mb-2">
+  {% for p in totals %}
+  <div class="col-md col-sm-4 col-6 mb-2">
+    <strong>{{p.paytype.description}}</strong>
+    <br>{{money}}{{p.amount}}
+    {% if p.fees %}<br><small>({{money}}{{p.fees}} fees)</small>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="col-md col-sm-4 col-6 mb-2">
+    <strong>Error</strong><br />{{money}}{{session.error}}
+  </div>
+  {% for business,t,ex,vat in session.business_totals %}
+  {% if business.show_vat_breakdown %}
+  <div class="col-md col-sm-4 col-6 mb-2">
+    <strong>{{business}} ex-VAT</strong><br>{{money}}{{ex}}
+  </div>
+  <div class="col-md col-sm-4 col-6 mb-2">
+    <strong>{{business}} VAT</strong><br>{{money}}{{vat}}
+  </div>
+  {% else %}
+  <div class="col-md col-sm-4 col-6 mb-2">
+    <strong>{{business}}</strong><br>{{money}}{{t}}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
 {% else %}
 <p>Session totals have not yet been recorded.</p>
 {% endif %}
 {% endif %}
 
-<ul class="nav nav-tabs mt-3" id="sessionTabs" role="tablist">
+<ul class="nav nav-tabs" id="sessionTabs" role="tablist">
   <li class="nav-item">
     <a class="nav-link" id="deptTakingsTab" href="#deptTakings" data-bs-toggle="tab" data-bs-target="#deptTakings" role="tab" aria-controls="deptTakings" aria-selected="false">
       Takings by department
