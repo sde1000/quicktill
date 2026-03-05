@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — {{stocktype.fullname}}{% endblock %}
 
@@ -82,40 +83,33 @@
 </div>
 
 {% if alter_form %}
-<div class="modal fade" id="alterModal" tabindex="-1" aria-labelledby="alterModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-	<h5 class="modal-title" id="alterModalLabel">Edit stock type</h5>
-	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post" enctype="multipart/form-data">
-	{% csrf_token %}
-	<div class="modal-body">
-	  <div class="container-fluid">
-	    {% include "form-horizontal.html" with form=alter_form %}
-	    <p><strong>N.B.</strong> If you change the Department of this
-	      stock type, only future sales of stock will be counted under
-	      the new department.  Past sales will remain in the previous
-	      department.  Consider creating a new stock type instead.</p>
-	    <p>Changes to this stock type affect all items of stock of this
-	      type, including those that have already been finished. If you
-	      have received new stock with different details (eg. different
-	      ABV) you should create a new stock type instead.</p>
-	  </div>
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-	    Cancel
-	  </button>
-	  <button class="btn btn-primary" type="submit" name="submit_alter">
-	    Alter stocktype
-	  </button>
-	</div>
-      </form>
+{% modal "alterModal" dialog_class="modal-lg" title="Edit stock type" %}
+<form action="" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="modal-body">
+    <div class="container-fluid">
+      {% include "form-horizontal.html" with form=alter_form %}
+      <p><strong>N.B.</strong> If you change the Department of this
+	stock type, only future sales of stock will be counted under
+	the new department.  Past sales will remain in the previous
+	department.  Consider creating a new stock type instead.</p>
+      <p>Changes to this stock type affect all items of stock of this
+	type, including those that have already been finished. If you
+	have received new stock with different details (eg. different
+	ABV) you should create a new stock type instead.</p>
     </div>
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_alter">
+      Alter stocktype
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
 {% if alter_form.errors %}
 <script type="text/javascript">
   $(document).ready(function() {
@@ -126,31 +120,23 @@
 {% endif %}
 
 {% if reprice_form %}
-<div class="modal fade" id="repriceModal" tabindex="-1" aria-labelledby="repriceModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-	<h5 class="modal-title" id="repriceModalLabel">Re-price stock</h5>
-	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  <div class="container-fluid">
-	    {% include "form.html" with form=reprice_form %}
-	  </div>
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-	    Cancel
-	  </button>
-	  <button class="btn btn-primary" type="submit" name="submit_reprice">
-	    Set new sale price
-	  </button>
-	</div>
-      </form>
+{% modal "repriceModal" title="Re-price stock" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    <div class="container-fluid">
+      {% include "form.html" with form=reprice_form %}
     </div>
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_reprice">
+      Set new sale price
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 {% if reprice_form.errors %}
 <script type="text/javascript">
@@ -161,53 +147,45 @@
 {% endif %}
 
 {% if archive_form %}
-<div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-	<h5 class="modal-title" id="archiveModalLabel">{% if stocktype.archived %}Restore{% else %}Archive{% endif %} stock type</h5>
-	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  {% if stocktype.archived %}
-	  <p>When you restore a stock type, it is available again for
-	    new stock items to be created. If the note is no longer
-	    relevant, please remove or alter it.</p>
-	  {% else %}
-	  <p>When you archive a stock type, it is no longer available
-	    for new stock items to be created. It won't show up in the
-	    list of stock types when you are entering new stock, and
-	    it will only be shown when you search for stock types if
-	    you select the "Include archived?" option.</p>
-	  <p>Existing stock of this type is unaffected and can still
-	    be sold.</p>
-	  <p>Please explain in the note why you are archiving this
-	    stock type. This note will be shown to anyone who tries to
-	    use it. If there is an alternative stock type that should
-	    be used instead, please mention it.</p>  {% endif %}
-	  <div class="container-fluid">
-	    {% include "form.html" with form=archive_form %}
-	  </div>
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-	    Cancel
-	  </button>
-	  {% if stocktype.archived %}
-	  <button class="btn btn-primary" type="submit" name="submit_restore">
-	    Restore stock type
-	  </button>
-	  {% else %}
-	  <button class="btn btn-danger" type="submit" name="submit_archive">
-	    Archive stock type
-	  </button>
-	  {% endif %}
-	</div>
-      </form>
+{% modal "archiveModal" title=stocktype.archived|yesno:"Restore stock type,Archive stock type" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% if stocktype.archived %}
+    <p>When you restore a stock type, it is available again for
+      new stock items to be created. If the note is no longer
+      relevant, please remove or alter it.</p>
+    {% else %}
+    <p>When you archive a stock type, it is no longer available
+      for new stock items to be created. It won't show up in the
+      list of stock types when you are entering new stock, and
+      it will only be shown when you search for stock types if
+      you select the "Include archived?" option.</p>
+    <p>Existing stock of this type is unaffected and can still
+      be sold.</p>
+    <p>Please explain in the note why you are archiving this
+      stock type. This note will be shown to anyone who tries to
+      use it. If there is an alternative stock type that should
+      be used instead, please mention it.</p>  {% endif %}
+    <div class="container-fluid">
+      {% include "form.html" with form=archive_form %}
     </div>
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    {% if stocktype.archived %}
+    <button class="btn btn-primary" type="submit" name="submit_restore">
+      Restore stock type
+    </button>
+    {% else %}
+    <button class="btn btn-danger" type="submit" name="submit_archive">
+      Archive stock type
+    </button>
+    {% endif %}
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 {% if stocktype.stocktake %}

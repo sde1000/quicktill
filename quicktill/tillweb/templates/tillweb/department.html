@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — {{department.description}}{% endblock %}
 
@@ -53,36 +54,28 @@
   Change details
 </button>
 
-<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-	<h5 class="modal-title" id="changeModalLabel">Edit department</h5>
-	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form id="changeForm" action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  <div class="container-fluid">
-	    {% include "form-horizontal.html" %}
-	    <p><strong>N.B.</strong> If you change the VAT band of this
-	      department, the new band will apply to <strong>all sales in
-		the past</strong> as well as future sales. Please ensure the
-	      new band is compatible with the previous band up to the date
-	      of the change.</p>
-	  </div>
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-	    Cancel
-	    </button>
-	  <button class="btn btn-primary" type="submit" name="submit_update">
-	    Update department details
-	  </button>
-	</div>
-      </form>
+{% modal "changeModal" dialog_class="modal-lg" title="Edit department" %}
+<form id="changeForm" action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    <div class="container-fluid">
+      {% include "form-horizontal.html" %}
+      <p><strong>N.B.</strong> If you change the VAT band of this
+	department, the new band will apply to <strong>all sales in
+	  the past</strong> as well as future sales. Please ensure the
+	new band is compatible with the previous band up to the date
+	of the change.</p>
     </div>
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update department details
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 <h2>Stock items</h2>

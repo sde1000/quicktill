@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — stock line "{{stockline.name}}"{% endblock %}
 
@@ -31,64 +32,49 @@
 <button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#changeLineTypeModal">
   Change line type
 </button>
-<div class="modal fade" id="changeModal" tabindex="-1" aria-labelledby="changeModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-	<h5 class="modal-title" id="changeModalLabel">Edit stock line</h5>
-	<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  {% include "form-horizontal.html" %}
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-	    Cancel
-	  </button>
-	  <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
-	    Delete stock line
-	  </button>
-	  <button class="btn btn-primary" type="submit" name="submit_update">
-	    Update stock line
-	  </button>
-	</div>
-	<datalist id="locations">
-	  {% for l in locations %}<option value="{{l}}">{% endfor %}
-	</datalist>
-      </form>
-    </div>
+
+{% modal "changeModal" dialog_class="modal-lg" title="Edit stock line" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
   </div>
-</div>
-<div class="modal fade" id="changeLineTypeModal" tabindex="-1" aria-labelledby="changeLineTypeModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="changeLineTypeModalLabel">Change line type</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-        <div class="modal-body">
-          <p>This is currently a continuous stock line — all stock
-            items of the specified type are available for sale, and
-            the till will switch from one to the next when the first
-            one is used up.</p>
-          <p>You can choose to change this to a regular stock line —
-            you will need to tell the till explicitly when a stock
-            item is put on sale and when it is finished.</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Cancel
-          </button>
-          <button class="btn btn-primary" type="submit" name="submit_conv_regular">
-            Change to regular stock line
-          </button>
-        </div>
-      </form>
-    </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-danger" type="submit" name="submit_delete" formnovalidate{% if stockline.stockonsale %} disabled{% endif %}>
+      Delete stock line
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update stock line
+    </button>
   </div>
-</div>
+  <datalist id="locations">
+    {% for l in locations %}<option value="{{l}}">{% endfor %}
+  </datalist>
+</form>
+{% endmodal %}
+
+{% modal "changeLineTypeModal" dialog_class="modal-lg" title="Change line type" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    <p>This is currently a continuous stock line — all stock items of
+      the specified type are available for sale, and the till will
+      switch from one to the next when the first one is used up.</p>
+    <p>You can choose to change this to a regular stock line — you
+      will need to tell the till explicitly when a stock item is put
+      on sale and when it is finished.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_conv_regular">
+      Change to regular stock line
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 {% if stockline.stocktype.stockonsale %}

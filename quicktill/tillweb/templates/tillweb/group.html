@@ -1,5 +1,6 @@
 {% extends "tillweb/tillweb.html" %}
 {% load static %}
+{% load tillweb_utils %}
 
 {% block style %}
 {{ block.super }}
@@ -64,34 +65,27 @@
   Update group details
 </button>
 
-<div class="modal fade" id="groupModal" tabindex="-1" aria-labelledby="groupModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="groupModalLabel">Edit group</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  {% include "form-horizontal.html" %}
-	  {% if not can_delete %}
-	  <p class="mb-0">N.B. this group cannot currently be deleted because
-	    it is still assigned to at least one user.</p>
-	  {% endif %}
-	</div>
-	<div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-	  <button type="submit" class="btn btn-danger" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
-	    Delete
-	  </button>
-	  <button type="submit" class="btn btn-primary" name="submit_update">
-	    Update
-	  </button>
-	</div>
-      </form>
-    </div>
+{% modal "groupModal" dialog_class="modal-xl" title="Edit group" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    {% if not can_delete %}
+    <p class="mb-0">N.B. this group cannot currently be deleted because
+      it is still assigned to at least one user.</p>
+    {% endif %}
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-danger" name="submit_delete"{% if not can_delete %} disabled{% endif %}>
+      Delete
+    </button>
+    <button type="submit" class="btn btn-primary" name="submit_update">
+      Update
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
 <script type="text/javascript">
   $(document).ready(function(){
       $("#id_permissions").multiSelect({

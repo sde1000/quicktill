@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Stock item {{stock.id}}{% endblock %}
 
@@ -64,53 +65,37 @@
 {% endif %}
 
 {% if aform %}
-<div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="noteModalLabel">Add a note</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  <p>Add a note to stock item {{stock.id}} — {{stock.stocktype.format}}</p>
-	  {% include "form.html" with form=aform %}
-	</div>
-	<div class="modal-footer">
-	  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-	  <button class="btn btn-primary" type="submit" name="submit_annotate">
-	    Add note
-	  </button>
-	</div>
-      </form>
-    </div>
+{% modal "noteModal" title="Add a note" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    <p>Add a note to stock item {{stock.id}} — {{stock.stocktype.format}}</p>
+    {% include "form.html" with form=aform %}
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button class="btn btn-primary" type="submit" name="submit_annotate">
+      Add note
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 {% if wform %}
-<div class="modal fade" id="wasteModal" tabindex="-1" aria-labelledby="wasteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="wasteModalLabel">Record waste</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="" method="post">{% csrf_token %}
-	<div class="modal-body">
-	  <p>Record waste of stock item {{stock.id}} — {{stock.stocktype.format}}</p>
-	  {% include "form.html" with form=wform %}
-	</div>
-	<div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-	  <button class="btn btn-primary" type="submit" name="submit_waste">
-	    Record waste
-	  </button>
-	</div>
-      </form>
-    </div>
+{% modal "wasteModal" title="Record waste" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    <p>Record waste of stock item {{stock.id}} — {{stock.stocktype.format}}</p>
+    {% include "form.html" with form=wform %}
   </div>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button class="btn btn-primary" type="submit" name="submit_waste">
+      Record waste
+    </button>
+  </div>
+</form>
+{% endmodal %}
 {% endif %}
 
 {% if stock.out %}
