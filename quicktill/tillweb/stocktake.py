@@ -23,6 +23,7 @@ from quicktill.models import qty_max_digits, qty_decimal_places
 from .views import tillweb_view
 from .views import td
 from .views import user
+from .views import DateInput
 from .forms import StringIDChoiceField
 
 
@@ -47,7 +48,7 @@ def stocktakelist(request, info):
                       .options(joinedload(StockTake.scope))\
                       .all()
 
-    # XXX going to need a pager on this
+    # XXX at some point we might want to make this a datatable
     completed = td.s.query(StockTake)\
                     .filter(StockTake.commit_time != None)\
                     .order_by(desc(StockTake.commit_time))\
@@ -133,7 +134,6 @@ def stocktake_pending(request, info, st):
 
     if may_edit:
         if request.method == 'POST':
-            form = StockTakeSetupForm(request.POST, initial=initial)
             if 'submit_delete' in request.POST:
                 user.log(f"Abandoned pending stock take {st.logref}")
                 messages.success(request,
@@ -142,18 +142,17 @@ def stocktake_pending(request, info, st):
                 td.s.commit()
                 return HttpResponseRedirect(reverse("tillweb-stocktakes"))
             if 'submit_update' in request.POST:
+                form = StockTakeSetupForm(request.POST, initial=initial)
                 if form.is_valid():
                     st.description = form.cleaned_data['description']
                     td.s.commit()
                     messages.success(request, "Description updated")
                     return HttpResponseRedirect(st.get_absolute_url())
             if 'submit_start' in request.POST:
-                if form.is_valid():
-                    st.description = form.cleaned_data['description']
-                    st.take_snapshot()
-                    td.s.commit()
-                    messages.success(request, "Stock take started")
-                    return HttpResponseRedirect(st.get_absolute_url())
+                st.take_snapshot()
+                td.s.commit()
+                messages.success(request, "Stock take started")
+                return HttpResponseRedirect(st.get_absolute_url())
         else:
             form = StockTakeSetupForm(initial=initial)
 
@@ -376,7 +375,7 @@ class StockAdjustmentForm(forms.Form):
 
 class StockItemAdjustmentForm(StockAdjustmentForm):
     note = forms.CharField(required=False)
-    best_before = forms.DateField(required=False)
+    best_before = forms.DateField(required=False, widget=DateInput)
 
 
 @tillweb_view

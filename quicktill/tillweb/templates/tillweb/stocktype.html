@@ -8,7 +8,7 @@
 {% block tillcontent %}
 
 <div class="row mb-2">
-  <div class="col-8">
+  <div class="col col-lg-8">
     {% if stocktype.archived %}
     <div class="alert alert-danger">
       This stock type has been archived. It is no longer available to
@@ -16,43 +16,35 @@
       an explanation.{% endif %}
     </div>
     {% endif %}
-    <table class="kvtable mb-2">
-      <tbody>
-	<tr>
-	  <th scope="row">Manufacturer</th>
-	  <td><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></td>
-	</tr>
-	<tr>
-	  <th scope="row">Name</th>
-	  <td>{{stocktype.name}}</td>
-	</tr>
-	{% if stocktype.abv is not None %}
-	<tr>
-	  <th scope="row">ABV</th>
-	  <td>{{stocktype.abv}}%</td>
-	</tr>
-	{% endif %}
-	<tr>
-	  <th scope="row">Department</th>
-	  <td><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></td>
-	</tr>
-	<tr>
-	  <th scope="row">Unit</th>
-	  <td><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></td>
-	</tr>
-	<tr>
-	  <th scope="row">Sale price</th>
-	  <td>{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</td>
-	</tr>
-	<tr>
-	  <th scope="row">Stock take method</th>
-	  <td>{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</td>
-	</tr>
-	<tr>
-	  <th scope="row">Note</th>
-	  <td>{{stocktype.note}}</td>
-	</tr>
-    </table>
+    {% with dtc="col-5 col-sm-4 col-md-3 text-sm-end" ddc="col-7 col-sm-8 col-md-9" %}
+    <dl class="row lh-1">
+      <dt class="{{dtc}}">Manufacturer</dt>
+      <dd class="{{ddc}}"><a href="{% url "tillweb-stocktype-search" %}?manufacturer={{stocktype.manufacturer|urlencode}}">{{stocktype.manufacturer}}</a></dd>
+
+      <dt class="{{dtc}}">Name</dt>
+      <dd class="{{ddc}}">{{stocktype.name}}</dd>
+
+      {% if stocktype.abv is not None %}
+      <dt class="{{dtc}}">ABV</dt>
+      <dd class="{{ddc}}">{{stocktype.abv}}%</dd>
+      {% endif %}
+
+      <dt class="{{dtc}}">Department</dt>
+      <dd class="{{ddc}}"><a href="{{stocktype.department.get_absolute_url}}">{{stocktype.department}}</a></dd>
+
+      <dt class="{{dtc}}">Unit</dt>
+      <dd class="{{ddc}}"><a href="{{stocktype.unit.get_absolute_url}}">{{stocktype.unit.description}}</a></dd>
+
+      <dt class="{{dtc}}">Sale price</dt>
+      <dd class="{{ddc}}">{% if stocktype.saleprice != None %}{{money}}{{stocktype.saleprice}} (inc-VAT){% else %}Not set{% endif %}</dd>
+
+      <dt class="{{dtc}}">Stock take method</dt>
+      <dd class="{{ddc}}">{% if stocktype.unit.stocktake_by_items %}Separate items{% else %}Total quantity{% endif %} (from Unit)</dd>
+
+      <dt class="{{dtc}}">Note</dt>
+      <dd class="{{ddc}}">{{stocktype.note}}</dd>
+    </dl>
+    {% endwith %}
 
     {% if tasting_notes %}
     <p>{{tasting_notes}}</p>

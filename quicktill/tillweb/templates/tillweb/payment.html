@@ -17,17 +17,36 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
-<tr><th scope="row">ID</th><td>{{payment.id}}</td></tr>
-<tr><th scope="row">Transaction</th><td><a href="{{payment.transaction.get_absolute_url}}">{{payment.transid}}</a></td></tr>
-<tr><th scope="row">Description</th><td>{{payment.text}}</td></tr>
-<tr><th scope="row">Time</th><td>{{payment.time}}</td></tr>
-<tr><th scope="row">Source</th><td>{{payment.source}}</td></tr>
-<tr><th scope="row">Payment method</th><td><a href="{{payment.paytype.get_absolute_url}}">{{payment.paytype.description}}</a></td></tr>
-<tr><th scope="row">Amount</th><td>{{money}}{{payment.amount}}</td></tr>
-<tr><th scope="row">Pending?</th><td>{% if payment.pending %}Yes{% else %}No{% endif %}</td></tr>
-<tr><th scope="row">User</th><td>{% if payment.user %}<a href="{{payment.user.get_absolute_url}}">{{payment.user.fullname}}</a>{% endif %}
-</table>
+{% with dtc="col-3 col-sm-2 text-sm-end" ddc="col-9 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{payment.id}}</dd>
+
+  <dt class="{{dtc}}">Transaction</dt>
+  <dd class="{{ddc}}"><a href="{{payment.transaction.get_absolute_url}}">{{payment.transid}}</a></dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{payment.text}}</dd>
+
+  <dt class="{{dtc}}">Time</dt>
+  <dd class="{{ddc}}">{{payment.time}}</dd>
+
+  <dt class="{{dtc}}">Source</dt>
+  <dd class="{{ddc}}">{{payment.source}}</dd>
+
+  <dt class="{{dtc}}">Payment method</dt>
+  <dd class="{{ddc}}"><a href="{{payment.paytype.get_absolute_url}}">{{payment.paytype.description}}</a></dd>
+
+  <dt class="{{dtc}}">Amount</dt>
+  <dd class="{{ddc}}">{{money}}{{payment.amount}}</dd>
+
+  <dt class="{{dtc}}">Pending?</dt>
+  <dd class="{{ddc}}">{{payment.pending|yesno:"Yes,No"}}</dd>
+
+  <dt class="{{dtc}}">User</dt>
+  <dd class="{{ddc}}">{% if payment.user %}<a href="{{payment.user.get_absolute_url}}">{{payment.user.fullname}}</a>{% endif %}</dd>
+</dl>
+{% endwith %}
 
 {% if payment.logs %}
 <h2>Log entries</h2>

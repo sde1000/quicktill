@@ -16,42 +16,45 @@
 
 {% block tillcontent %}
 
-<table class="table">
-  <tbody>
-    <tr><th scope="row">Name:</th><td>{{group.id}}</td></tr>
-    <tr><th scope="row">Description:</th><td>{{group.description}}</td></tr>
-    <tr><th scope="row">Permissions:</th>
-      <td>
-	{% if group.permissions %}
-	<table class="table table-striped table-hover table-sm" id="permissionlist">
-	  <thead class="table-light">
-	    <tr>
-	      <th scope="col">Name</th>
-	      <th scope="col">Description</th>
-	    </tr>
-	  </thead>
-	  <tbody>
-	    {% for p in group.permissions %}
-	    <tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
-	    {% endfor %}
-	  </tbody>
-	</table>
-	{% else %}
-	This group does not have any permissions defined.
-	{% endif %}
-      </td>
-    </tr>
-    <tr><th scope="row">Users:</th>
-      <td>
-	{% if group.users %}
-	{% for u in group.users %}<a href="{{u.get_absolute_url}}">{{u.fullname}}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
-	{% else %}
-	This group has not been assigned to any users.
-	{% endif %}
-      </td>
-    </tr>
-  </tbody>
-</table>
+{% with dtc="col-3 col-sm-2 text-sm-end" ddc="col-9 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Name</dt>
+  <dd class="{{ddc}}">{{group.id}}</dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{group.description}}</dd>
+
+  <dt class="{{dtc}}">Permissions</dt>
+  <dd class="{{ddc}}">
+    {% if group.permissions %}
+    <table class="table table-striped table-hover table-sm" id="permissionlist">
+      <thead class="table-light">
+	<tr>
+	  <th scope="col">Name</th>
+	  <th scope="col">Description</th>
+	</tr>
+      </thead>
+      <tbody>
+	{% for p in group.permissions %}
+	<tr><td>{{p.id}}</td><td>{{p.description}}</td></tr>
+	{% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    This group does not have any permissions defined.
+    {% endif %}
+  </dd>
+  <dt class="{{dtc}}">Users</dt>
+  <dd class="{{ddc}}">
+    {% if group.users %}
+    {% for u in group.users %}<a href="{{u.get_absolute_url}}">{{u.fullname}}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+    {% else %}
+    This group has not been assigned to any users.
+    {% endif %}
+  </dd>
+</dl>
+{% endwith %}
+
 {% if group.permissions %}
 <script type="text/javascript">
   $(document).ready(function(){

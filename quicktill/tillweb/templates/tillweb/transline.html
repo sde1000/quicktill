@@ -16,26 +16,53 @@
   voided, never deleted.</div>
 {% endif %}
 
-<table class="kvtable">
-<tr><th scope="row">ID</th><td>{{tl.id}}</td></tr>
-<tr><th scope="row">Transaction</th><td><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></td></tr>
-<tr><th scope="row">Description</th><td>{{tl.text}}</td></tr>
-<tr><th scope="row">Time</th><td>{{tl.time}}</td></tr>
-<tr><th scope="row">Source</th><td>{{tl.source}}</td></tr>
-<tr><th scope="row">Department</th><td><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></td></tr>
-<tr><th scope="row">Items</th><td>{{tl.items}}</td></tr>
-<tr><th scope="row">Amount per item</th><td>{{money}}{{tl.amount}}</td></tr>
-<tr><th scope="row">Discount per item</th><td>{{money}}{{tl.discount}}</td></tr>
-<tr><th scope="row">Discount type</th><td>{{tl.discount_name}}</td></tr>
-<tr><th scope="row">Total</th><td>{{money}}{{tl.total}}</td></tr>
-{% if tl.voided_by_id %}
-<tr><th scope="row">Voided by</th><td><a href="{{tl.voided_by.get_absolute_url}}" class="text-danger">{{tl.voided_by}}</td></tr>
-{% endif %}
-{% if tl.voids %}
-<tr><th scope="row">This line voids</th><td><a href="{{tl.voids.get_absolute_url}}" class="text-warning">{{tl.voids}}</td></tr>
-{% endif %}
-<tr><th scope="row">User</th><td>{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}
-</table>
+{% with dtc="col-4 col-md-3 col-lg-2 text-sm-end" ddc="col-8 col-md-9 col-lg-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{tl.id}}</dd>
+
+  <dt class="{{dtc}}">Transaction</dt>
+  <dd class="{{ddc}}"><a href="{{tl.transaction.get_absolute_url}}">{{tl.transid}}</a></dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{tl.text}}</dd>
+
+  <dt class="{{dtc}}">Time</dt>
+  <dd class="{{ddc}}">{{tl.time}}</dd>
+
+  <dt class="{{dtc}}">Source</dt>
+  <dd class="{{ddc}}">{{tl.source}}</dd>
+
+  <dt class="{{dtc}}">Department</dt>
+  <dd class="{{ddc}}"><a href="{{tl.department.get_absolute_url}}">{{tl.department.description}}</a></dd>
+
+  <dt class="{{dtc}}">Items</dt>
+  <dd class="{{ddc}}">{{tl.items}}</dd>
+
+  <dt class="{{dtc}}">Amount per item</dt>
+  <dd class="{{ddc}}">{{money}}{{tl.amount}}</dd>
+
+  <dt class="{{dtc}}">Discount per item</dt>
+  <dd class="{{ddc}}">{{money}}{{tl.discount}}</dd>
+
+  <dt class="{{dtc}}">Discount type</dt>
+  <dd class="{{ddc}}">{{tl.discount_name}}</dd>
+
+  <dt class="{{dtc}}">Total</dt>
+  <dd class="{{ddc}}">{{money}}{{tl.total}}</dd>
+
+  {% if tl.voided_by_id %}
+  <dt class="{{dtc}}">Voided by</dt><dd class="{{ddc}}"><a href="{{tl.voided_by.get_absolute_url}}" class="text-danger">{{tl.voided_by}}</dd>
+  {% endif %}
+
+  {% if tl.voids %}
+  <dt class="{{dtc}}">This line voids</dt><dd class="{{ddc}}"><a href="{{tl.voids.get_absolute_url}}" class="text-warning">{{tl.voids}}</dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">User</dt>
+  <dd class="{{ddc}}">{% if tl.user %}<a href="{{tl.user.get_absolute_url}}">{{tl.user.fullname}}</a>{% endif %}</dd>
+</dl>
+{% endwith %}
 
 {% if tl.stockref %}
 <h2>Stock used</h2>

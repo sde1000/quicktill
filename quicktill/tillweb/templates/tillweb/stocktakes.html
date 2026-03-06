@@ -101,9 +101,12 @@
     {% endfor %}
   </tbody>
 </table>
+
 <script type="text/javascript">
   $(document).ready(function() {
-      $("#completedStockTakes").DataTable();
+      $("#completedStockTakes").DataTable({
+	  order: [[0, "desc"]],
+      });
   });
 </script>
 {% endif %}

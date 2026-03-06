@@ -9,13 +9,6 @@
     height: 25px;
 }
 
-table.kvtable th {
-    text-align: right;
-}
-table.kvtable td {
-    padding-left: 1em;
-}
-
 td.money {
     text-align: right !important;
 }

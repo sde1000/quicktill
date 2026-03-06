@@ -1,38 +1,55 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — stock take {{stocktake.id}} ({{stocktake.description}}){% endblock %}
 
 {% block tillcontent %}
 
-<table class="kvtable">
-  <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
-  <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
-  <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
-{% if not form %}
-  <tr><th scope="row">Description</th><td>{{stocktake.description}}</td></tr>
-{% endif %}
-</table>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{stocktake.id}}</dd>
+
+  <dt class="{{dtc}}">Created by</dt>
+  <dd class="{{ddc}}">{{stocktake.create_user}}</dd>
+
+  <dt class="{{dtc}}">Created at</dt>
+  <dd class="{{ddc}}">{{stocktake.create_time}}</dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{stocktake.description}}</dd>
+</dl>
+{% endwith %}
 
 {% if form %}
 <form action="" method="post">{% csrf_token %}
-  {% include "form.html" %}
-  {% if stocktake.scope %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_start">
+  <button class="btn btn-primary mb-2" type="submit" name="submit_start"{% if not stocktake.scope %} disabled{% endif %}>
     Start stock take
   </button>
-  <button class="btn btn-secondary mb-2" type="submit" name="submit_update">
-    Update description
+  <a href="{% url "tillweb-stocktype-search" %}" class="btn btn-{{stocktake.scope|yesno:"secondary,primary"}} mb-2">Add {% if stocktake.scope %}more {% endif %}stock types to scope</a>
+  <button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#descriptionModal">
+    Change description
   </button>
-  {% else %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update description
-  </button>
-  {% endif %}
   <button class="btn btn-danger mb-2" type="submit" name="submit_delete">
     Abandon this stock-take
   </button>
-  <a href="{% url "tillweb-stocktype-search" %}" class="btn btn-secondary mb-2">Add stock types to scope</a>
 </form>
+
+{% modal "descriptionModal" title="Change description" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update description
+    </button>
+  </div>
+</form>
+{% endmodal %}
 
 <p>This stock take is being set up.  Define the set of stock types the
 stock take will cover (its "scope") by adding stock types to it
@@ -49,7 +66,7 @@ in scope for a stock take.</p>
 <p>These stock types are in scope for this stock take:</p>
 
 <table class="table table-striped table-hover table-sm">
-  <thead>
+  <thead class="table-light">
     <tr>
       <th scope="col">Manufacturer</th>
       <th scope="col">Name</th>

@@ -4,15 +4,30 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
-  <tr><th scope="row">ID</th><td>{{stocktake.id}}</td></tr>
-  <tr><th scope="row">Created by</th><td>{{stocktake.create_user}}</td></tr>
-  <tr><th scope="row">Created at</th><td>{{stocktake.create_time}}</td></tr>
-  <tr><th scope="row">Description</th><td>{{stocktake.description}}</td></tr>
-  <tr><th scope="row">Started at</th><td>{{stocktake.start_time}}</td></tr>
-  <tr><th scope="row">Committed at</th><td>{{stocktake.commit_time}}</td></tr>
-  <tr><th scope="row">Committed by</th><td>{{stocktake.commit_user}}</td></tr>
-</table>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{stocktake.id}}</dd>
+
+  <dt class="{{dtc}}">Created by</dt>
+  <dd class="{{ddc}}">{{stocktake.create_user}}</dd>
+
+  <dt class="{{dtc}}">Created at</dt>
+  <dd class="{{ddc}}">{{stocktake.create_time}}</dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{stocktake.description}}</dd>
+
+  <dt class="{{dtc}}">Started at</dt>
+  <dd class="{{ddc}}">{{stocktake.start_time}}</dd>
+
+  <dt class="{{dtc}}">Committed at</dt>
+  <dd class="{{ddc}}">{{stocktake.commit_time}}</dd>
+
+  <dt class="{{dtc}}">Committed by</dt>
+  <dd class="{{ddc}}">{{stocktake.commit_user}}</dd>
+</dl>
+{% endwith %}
 
 {% if more_details_available %}
 <button type="button" data-bs-toggle="collapse" class="btn btn-secondary mb-2" data-bs-target=".st-detail-hidden">

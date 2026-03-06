@@ -16,16 +16,30 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2">
-<tr><th scope="row">User ID:</td><td>{{tuser.id}}</td></tr>
-<tr><th scope="row">Full name:</th><td>{{tuser.fullname}}</td></tr>
-<tr><th scope="row">Short name:</th><td>{{tuser.shortname}}</td></tr>
-{% if user.webuser %}
-<tr><th scope="row">Web username:</th><td>{{tuser.webuser}}</td></tr>
-{% endif %}
-<tr><th scope="row">Till password:</th><td>{% if tuser.password %}(Has been set){% else %}Not set{% endif %}</td></tr>
-<tr><th scope="row">Last seen:</th><td>{{tuser.last_seen}}</td></tr>
-</table>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">User ID:</dt>
+  <dd class="{{ddc}}">{{tuser.id}}</dd>
+
+  <dt class="{{dtc}}">Full name</dt>
+  <dd class="{{ddc}}">{{tuser.fullname}}</dd>
+
+  <dt class="{{dtc}}">Short name</dt>
+  <dd class="{{ddc}}">{{tuser.shortname}}</dd>
+
+  {% if user.webuser %}
+  <dt class="{{dtc}}">Web username</dt>
+  <dd class="{{ddc}}">{{tuser.webuser}}</dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">Till password</dt>
+  <dd class="{{ddc}}">{{tuser.password|yesno:"Has been set,Not set"}}</dd>
+
+  <dt class="{{dtc}}">Last seen</dt>
+  <dd class="{{ddc}}">{{tuser.last_seen}}</dd>
+</dl>
+{% endwith %}
+
 {% if not tuser.enabled %}
 <p>This user is marked as inactive and cannot use the till.</p>
 {% endif %}

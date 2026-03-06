@@ -5,23 +5,22 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2" id="details">
-  <tr>
-    <th scope="row">Stock type</th>
-    <td>{{stocktype.format}}</td>
-  </tr>
-  <tr>
-    <th class="align-top" scope="row">Qty in stock</th>
-    <td>
-      {{stocktype.snapshot_qty_in_stockunits}}{% if stocktype.adjustments %} (original)<br>
-      {% for code,qty in stocktype.detail_adjustments.items %}
-      {{qty}} {{code|lower}}<br>
-      {% endfor %}
-      ⇨ <strong>{{stocktype.snapshot_newqty_in_stockunits}}</strong> (adjusted)
-      {% endif %}
-    </td>
-  </tr>
-</table>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">Stock type</dt>
+  <dd class="{{ddc}}">{{stocktype.format}}</dd>
+
+  <dt class="{{dtc}}">Qty in stock</dt>
+  <dd class="{{ddc}} lh-sm">
+    {{stocktype.snapshot_qty_in_stockunits}}{% if stocktype.adjustments %} (original)<br>
+    {% for code,qty in stocktype.detail_adjustments.items %}
+    {{qty}} {{code|lower}}<br>
+    {% endfor %}
+    ⇨ <strong>{{stocktype.snapshot_newqty_in_stockunits}}</strong> (adjusted)
+    {% endif %}
+  </dd>
+</dl>
+{% endwith %}
 
 <form action="" method="post">{% csrf_token %}
 

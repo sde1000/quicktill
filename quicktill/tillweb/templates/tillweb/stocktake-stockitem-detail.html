@@ -4,37 +4,33 @@
 
 {% block tillcontent %}
 
-<table class="kvtable mb-2" id="details">
-  <tr>
-    <th scope="row">Stock ID</th>
-    <td>{{ss.stockitem.id}}</td>
-  </tr>
-  <tr>
-    <th scope="row">Stock type</th>
-    <td>{{ss.stockitem.stocktype.format}}</td>
-  </tr>
-  <tr>
-    <th scope="row">On sale?</th>
-    <td>{% if ss.stockitem.stockline %}On <a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>{% else %}No{% endif %}</td>
-  </tr>
+{% with dtc="col-4 col-sm-2 text-sm-end" ddc="col-8 col-sm-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">Stock ID</dt>
+  <dd class="{{ddc}}">{{ss.stockitem.id}}</dd>
+
+  <dt class="{{dtc}}">Stock type</dt>
+  <dd class="{{ddc}}">{{ss.stockitem.stocktype.format}}</dd>
+
+  <dt class="{{dtc}}">On sale?</dt>
+  <dd class="{{ddc}}">{% if ss.stockitem.stockline %}On <a href="{{ss.stockitem.stockline.get_absolute_url}}">{{ss.stockitem.stockline}}</a>{% else %}No{% endif %}</dd>
+
   {% if ss.bestbefore or ss.newbestbefore %}
-  <tr>
-    <th scope="row">Best before</th>
-    <td>{{ss.bestbefore}}{% if ss.bestbefore != ss.newbestbefore %} ⇒ {{ss.newbestbefore}}{% endif %}</td>
-  </tr>
+  <dt class="{{dtc}}">Best before</dt>
+  <dd class="{{ddc}}">{{ss.bestbefore}}{% if ss.bestbefore != ss.newbestbefore %} ⇒ {{ss.newbestbefore}}{% endif %}</dd>
   {% endif %}
-  <tr>
-    <th class="align-top" scope="row">Qty in stock</th>
-    <td>
-      {{ss.qty_in_stock_units}}{% if ss.adjustments %} (original)<br>
-      {% for a in ss.adjustments %}
-      {{a.adjustment_qty}} {{a.removecode|lower}}<br>
-      {% endfor %}
-      ⇨ <strong>{{ss.newqty_in_stock_units}}</strong> (adjusted)
-      {% endif %}
-    </td>
-  </tr>
-</table>
+
+  <dt class="{{dtc}}">Qty in stock</dt>
+  <dd class="{{ddc}} lh-sm">
+    {{ss.qty_in_stock_units}}{% if ss.adjustments %} (original)<br>
+    {% for a in ss.adjustments %}
+    {{a.adjustment_qty}} {{a.removecode|lower}}<br>
+    {% endfor %}
+    ⇨ <strong>{{ss.newqty_in_stock_units}}</strong> (adjusted)
+    {% endif %}
+  </dd>
+</dl>
+{% endwith %}
 
 <form action="" method="post">{% csrf_token %}
 
