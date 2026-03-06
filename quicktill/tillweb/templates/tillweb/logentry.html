@@ -6,13 +6,28 @@
 
 {% block tillcontent %}
 
-<table class="table w-auto">
-  <tr><th scope="row">ID</th><td>{{log.id}}</td></tr>
-  <tr><th scope="row">Time</th><td>{{log.time}}</td></tr>
-  <tr><th scope="row">Source</th><td>{{log.source}}</td></tr>
-  <tr><th scope="row">User</th><td><a href="{{log.loguser.get_absolute_url}}">{{log.loguser}}</a></td></tr>
-  {% if log.sourceaddr %}<tr><th scope="row">Source address</th><td>{{log.sourceaddr}}</td></tr>{% endif %}
-  <tr><th scope="row">Description</th><td>{{log.as_html|safe}}</td></tr>
-</table>
+{% with dtc="col-3 col-md-2 col-xxl-1 text-sm-end" ddc="col-9 col-md-10 col-xxl-11" %}
+<dl class="row">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{log.id}}</dd>
+
+  <dt class="{{dtc}}">Time</dt>
+  <dd class="{{ddc}}">{{log.time}}</dd>
+
+  <dt class="{{dtc}}">Source</dt>
+  <dd class="{{ddc}}">{{log.source}}</dd>
+
+  <dt class="{{dtc}}">User</dt>
+  <dd class="{{ddc}}"><a href="{{log.loguser.get_absolute_url}}">{{log.loguser}}</a></dd>
+
+  {% if log.sourceaddr %}
+  <dt class="{{dtc}}">Source address</dt>
+  <dd class="{{ddc}}">{{log.sourceaddr}}</dd>
+  {% endif %}
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{log.as_html|safe}}</dd>
+</dl>
+{% endwith %}
 
 {% endblock %}

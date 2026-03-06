@@ -1,31 +1,60 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — price lookup "{{plu.description}}"{% endblock %}
 
 {% block tillcontent %}
 
+{% with dtc="col-3 col-md-2 text-sm-end" ddc="col-9 col-md-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{plu.description}}</dd>
+
+  <dt class="{{dtc}}">Department</dt>
+  <dd class="{{ddc}}">{{plu.department}}</dd>
+
+  <dt class="{{dtc}}">Note</dt>
+  <dd class="{{ddc}}">{{plu.note}}</dd>
+
+  <dt class="{{dtc}}">Price</dt>
+  <dd class="{{ddc}}">{% if plu.price %}{{money}}{{plu.price}}{% endif %}</dd>
+
+  <dt class="{{dtc}}">Alt price 1</dt>
+  <dd class="{{ddc}}">{% if plu.altprice1 %}{{money}}{{plu.altprice1}}{% endif %}</dd>
+
+  <dt class="{{dtc}}">Alt price 2</dt>
+  <dd class="{{ddc}}">{% if plu.altprice2 %}{{money}}{{plu.altprice2}}{% endif %}</dd>
+
+  <dt class="{{dtc}}">Alt price 3</dt>
+  <dd class="{{ddc}}">{% if plu.altprice3 %}{{money}}{{plu.altprice3}}{% endif %}</dd>
+</dl>
+{% endwith %}
+
 {% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#updateModal">
+  Update details
+</button>
+
+{% modal "updateModal" dialog_class="modal-lg" title="Update details" %}
 <form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary" type="submit" name="submit_update">
-    Update
-  </button>
-  <button class="btn btn-danger" type="submit" name="submit_delete">
-    Delete
-  </button>
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    <p>Note: clicking Delete will remove this price lookup, its
+      keyboard bindings and barcodes immediately.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-danger" type="submit" name="submit_delete">
+      Delete
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_update">
+      Update
+    </button>
+  </div>
 </form>
-<p>Note: clicking Delete will remove this price lookup, its keyboard
-  bindings and barcodes immediately.</p>
-{% else %}
-<table class="table w-auto">
-<tr><th scope="row">Description</th><td>{{plu.description}}</td></tr>
-<tr><th scope="row">Department</th><td>{{plu.department}}</td></tr>
-<tr><th scope="row">Note</th><td>{{plu.note}}</td></tr>
-<tr><th scope="row">Price</th>{% if plu.price %}<td class="money">{{money}}{{plu.price}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th scope="row">Alt price 1</th>{% if plu.altprice1 %}<td class="money">{{money}}{{plu.altprice1}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th scope="row">Alt price 2</th>{% if plu.altprice2 %}<td class="money">{{money}}{{plu.altprice2}}</td>{% else %}<td></td>{% endif %}</tr>
-<tr><th scope="row">Alt price 3</th>{% if plu.altprice3 %}<td class="money">{{money}}{{plu.altprice3}}</td>{% else %}<td></td>{% endif %}</tr>
-</table>
+{% endmodal %}
 {% endif %}
 
 {% include "tillweb/bindings.html" %}

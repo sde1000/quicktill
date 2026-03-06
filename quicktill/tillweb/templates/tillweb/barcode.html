@@ -4,32 +4,25 @@
 
 {% block tillcontent %}
 
-<p>{{config.description}}</p>
-{% if form %}
-<form action="" method="post">{% csrf_token %}
-  {% include "form-horizontal.html" %}
-  <button class="btn btn-primary mb-2" type="submit" name="submit_update">
-    Update
-  </button>
-  <button class="btn btn-secondary mb-2" type="submit" name="submit_update_edit">
-    Update and continue editing
-  </button>
-</form>
-{% else %}
-<table class="table w-auto">
-  <tbody>
-    <tr><th scope="row">Barcode</th><td>{{barcode.id}}</td></tr>
-    <tr><th scope="row">Binding type</th><td>{{barcode.binding_type}}</td></tr>
-    <tr><th scope="row">Target</th>
-      <td>
-	{% if barcode.target %}
-	<a href="{{barcode.target.get_absolute_url}}">{{barcode.target}}</a>
-	{% endif %}
-    </td></tr>
-    <tr><th scope="row">Modifier</th><td>{{barcode.modifier}}</td></tr>
-  </tbody>
-</table>
-{% endif %}
+{% with dtc="col-3 col-sm-2 text-sm-end" ddc="col-9 col-sm-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Barcode</dt>
+  <dd class="{{ddc}}">{{barcode.id}}</dd>
+
+  <dt class="{{dtc}}">Binding type</dt>
+  <dd class="{{ddc}}">{{barcode.binding_type}}</dd>
+
+  <dt class="{{dtc}}">Target</dt>
+  <dd class="{{ddc}}">
+    {% if barcode.target %}
+    <a href="{{barcode.target.get_absolute_url}}">{{barcode.target}}</a>
+    {% endif %}
+  </dd>
+
+  <dt class="{{dtc}}">Modifier</dt>
+  <dd class="{{ddc}}">{{barcode.modifier}}</dd>
+</dl>
+{% endwith %}
 
 {% if barcode.logs %}
 <h2>Log entries</h2>

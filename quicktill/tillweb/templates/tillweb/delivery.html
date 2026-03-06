@@ -7,17 +7,27 @@
 {% block tillcontent %}
 
 {% if delivery.accounts_url %}
-<a class="btn btn-secondary float-end" href="{{ delivery.accounts_url }}">View in accounts</a>
+<a class="btn btn-secondary float-sm-end mb-2" href="{{ delivery.accounts_url }}">View in accounts</a>
 {% endif %}
 
-<table class="table w-auto">
-<tr><th scope="row">ID</th><td>{{delivery.id}}</td></tr>
-<tr><th scope="row">Supplier</th><td><a href="{{delivery.supplier.get_absolute_url}}">
-{{delivery.supplier}}</a></td></tr>
-<tr><th scope="row">Document number</th><td>{{delivery.docnumber}}</td></tr>
-<tr><th scope="row">Date</th><td>{{delivery.date}}</td></tr>
-<tr><th scope="row">Confirmed?</th><td>{{delivery.checked|yesno:"Yes,No"}}</td></tr>
-</table>
+{% with dtc="col-5 col-md-4 col-xl-3 col-xxl-2 text-sm-end" ddc="col-7 col-md-8 col-xl-9 col-xxl-10" %}
+<dl class="row lh-1">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{delivery.id}}</dd>
+
+  <dt class="{{dtc}}">Supplier</dt>
+  <dd class="{{ddc}}"><a href="{{delivery.supplier.get_absolute_url}}">{{delivery.supplier}}</a></dd>
+
+  <dt class="{{dtc}}">Document number</dt>
+  <dd class="{{ddc}}">{{delivery.docnumber}}</dd>
+
+  <dt class="{{dtc}}">Date</dt>
+  <dd class="{{ddc}}">{{delivery.date}}</dd>
+
+  <dt class="{{dtc}}">Confirmed?</dt>
+  <dd class="{{ddc}}">{{delivery.checked|yesno:"Yes,No"}}</dd>
+</dl>
+{% endwith %}
 
 {% if delivery.items %}
 <div class="mb-3">

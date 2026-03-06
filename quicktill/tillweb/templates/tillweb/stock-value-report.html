@@ -20,23 +20,23 @@
 </form>
 
 {% if departments %}
-<table class="table table-sm table-striped w-50">
-  <thead>
+<table class="table table-sm table-striped w-auto">
+  <thead class="table-light">
     <tr>
       <th scope="col">Department</th>
-      <th Scope="col">Cost price</th>
+      <th scope="col" class="text-end">Cost price</th>
     </tr>
   </thead>
   <tbody>
     {% for dept, value in departments %}
     <tr>
       <td><a href="{{dept.get_absolute_url}}">{{dept}}</a></td>
-      <td>{{money}}{{value}}</td>
+      <td class="text-end">{{money}}{{value}}</td>
     </tr>
     {% endfor %}
     <tr>
-      <th scope="row">Total:</th>
-      <td>{{money}}{{total}}</td>
+      <th scope="row" class="text-end">Total:</th>
+      <td class="text-end">{{money}}{{total}}</td>
     </tr>
   </tbody>
 </table>
