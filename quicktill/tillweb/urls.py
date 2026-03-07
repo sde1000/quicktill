@@ -120,6 +120,13 @@ tillurls = [
     path('config/', views.configindex, name="tillweb-config-index"),
     path('config/<key>/', views.configitem, name="tillweb-config-item"),
 
+    path('business/', views.businesslist, name="tillweb-business-list"),
+    path('business/<int:businessid>/', views.business,
+         name="tillweb-business"),
+
+    path('vatband/', views.vatbandlist, name="tillweb-vatband-list"),
+    path('vatband/<vatband>/', views.vatband, name="tillweb-vatband"),
+
     path('reports/', views.reportindex, name="tillweb-reports"),
     path('reports/wasted-stock/', views.waste_report,
          name="tillweb-report-wasted-stock"),

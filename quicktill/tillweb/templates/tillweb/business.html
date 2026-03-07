@@ -1,0 +1,27 @@
+{% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
+
+{% block title %}{{till}} — business "{{business.name}}"{% endblock %}
+
+{% block tillcontent %}
+
+{% with dtc="col-12 col-sm-3 col-lg-2 text-sm-end" ddc="col-12 col-sm-9 col-lg-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">ID</dt>
+  <dd class="{{ddc}}">{{business.id}}</dd>
+
+  <dt class="{{dtc}}">Name</dt>
+  <dd class="{{ddc}}">{{business.name}}</dd>
+
+  <dt class="{{dtc}}">Address</dt>
+  <dd class="{{ddc}}">{{business.address|linebreaksbr}}</dd>
+
+  <dt class="{{dtc}}">VAT number</dt>
+  <dd class="{{ddc}}">{{business.vatno}}</dd>
+
+  <dt class="{{dtc}}">Show VAT breakdown?</dt>
+  <dd class="{{ddc}}">{{business.show_vat_breakdown|yesno:"Yes,No"}}</dd>
+</dl>
+{% endwith %}
+
+{% endblock %}

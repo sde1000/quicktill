@@ -1,0 +1,54 @@
+{% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
+
+{% block title %}{{till}} — VAT band {{vatband.band}} — {{vatband.description}}"{% endblock %}
+
+{% block tillcontent %}
+
+{% with dtc="col-12 col-sm-3 col-lg-2 text-sm-end" ddc="col-12 col-sm-9 col-lg-10" %}
+<dl class="row">
+  <dt class="{{dtc}}">Band</dt>
+  <dd class="{{ddc}}">{{vatband.band}}</dd>
+
+  <dt class="{{dtc}}">Description</dt>
+  <dd class="{{ddc}}">{{vatband.description}}</dd>
+
+  <dt class="{{dtc}}">Current rate</dt>
+  <dd class="{{ddc}}">{{vatband.current.rate}}%</dd>
+
+  <dt class="{{dtc}}">Current business</dt>
+  <dd class="{{ddc}}"><a href="{{vatband.current.business.get_absolute_url}}">{{vatband.current.business.name}}</a></dd>
+</dl>
+{% endwith %}
+
+<table class="table" id="vatratelist">
+  <thead class="table-light">
+    <tr>
+      <th scope="col" data-type="string">Active from</th>
+      <th scope="col">Rate</th>
+      <th scope="col">Business</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td data-sort="2000-01-01">Start</td>
+      <td data-sort="{{vatband.rate}}">{{vatband.rate}}%</td>
+      <td><a href="{{vatband.current.business.get_absolute_url}}">{{vatband.current.business.name}}</a></td>
+    </tr>
+    {% for r in vatband.vatrates %}
+    <tr>
+      <td data-sort="{{r.active.isoformat}}">{{r.active}}</td>
+      <td data-sort="{{r.rate}}">{{r.rate}}%</td>
+      <td><a href="{{r.business.get_absolute_url}}">{{r.business.name}}</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#vatratelist").DataTable(dt_sortonly);
+});
+</script>
+
+{% endblock %}

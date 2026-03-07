@@ -152,6 +152,13 @@ class Business(Base, Logged):
     vatno = Column(String(30))
     show_vat_breakdown = Column(Boolean(), nullable=False, default=False)
 
+    tillweb_viewname = "tillweb-business"
+    tillweb_argname = "businessid"
+
+    def tillweb_nav(self):
+        return [("Businesses", self.get_view_url("tillweb-business-list")),
+                (self.name, self.get_absolute_url())]
+
     def __str__(self):
         return self.abbrev
 
@@ -219,7 +226,7 @@ class Vat:
         current date.  If there is no suitable VatRate object, returns
         self.
         """
-        return self.at(datetime.datetime.now())
+        return self.at(datetime.date.today())
 
 
 class VatBand(Base, Vat, Logged):
@@ -227,6 +234,18 @@ class VatBand(Base, Vat, Logged):
     band = Column(CHAR(1), primary_key=True)
     business = relationship(Business, backref='vatbands')
     description = Column(String(), nullable=False, server_default="None")
+
+    tillweb_viewname = "tillweb-vatband"
+    tillweb_argname = "vatband"
+
+    def tillweb_nav(self):
+        return [("VAT bands", self.get_view_url("tillweb-vatband-list")),
+                (self.description, self.get_absolute_url())]
+
+    @property
+    def id(self):
+        # Needed for get_absolute_url
+        return self.band
 
 
 # Note that the tillweb index page code ignores the 'business' field

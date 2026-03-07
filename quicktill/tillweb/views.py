@@ -25,6 +25,7 @@ from quicktill.models import (
     Business,
     Transline,
     VatBand,
+    VatRate,
     Department,
     Session,
     SessionTotal,
@@ -2836,6 +2837,55 @@ def configitem(request, info, key):
         'config': c,
         'tillobject': c,
         'form': form,
+    })
+
+
+@tillweb_view
+def businesslist(request, info):
+    b = td.s.query(Business).order_by(Business.id).all()
+    return ('businesses.html', {
+        'businesses': b,
+        'nav': [("Businesses", reverse("tillweb-business-list"))],
+    })
+
+
+@tillweb_view
+def business(request, info, businessid):
+    b = td.s.get(Business, businessid)
+    if not b:
+        raise Http404
+
+    return ('business.html', {
+        'business': b,
+        'tillobject': b,
+    })
+
+
+@tillweb_view
+def vatbandlist(request, info):
+    v = td.s.query(VatBand)\
+            .order_by(VatBand.band)\
+            .options(
+                joinedload(VatBand.vatrates).joinedload(VatRate.business),
+                joinedload(VatBand.business))\
+            .all()
+    return ('vatbands.html', {
+        'vatbands': v,
+        'nav': [("VAT bands", reverse("tillweb-vatband-list"))],
+    })
+
+
+@tillweb_view
+def vatband(request, info, vatband):
+    b = td.s.get(VatBand, vatband, options=[
+        joinedload(VatBand.vatrates).joinedload(VatRate.business),
+        joinedload(VatBand.business)])
+    if not b:
+        raise Http404
+
+    return ('vatband.html', {
+        'vatband': b,
+        'tillobject': b,
     })
 
 

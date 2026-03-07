@@ -1,0 +1,50 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Businesses{% endblock %}
+
+{% block tillcontent %}
+
+<p>VAT bands are used by
+  <a href="{% url "tillweb-departments" %}">departments</a> to set
+  the <a href="{% url "tillweb-business-list" %}">business</a> that
+  receives payments from sales in the department, and the percentage
+  of VAT that has been charged on those sales.</p>
+
+<p>Both the business that receives the funds, and the percentage rate
+  of VAT, can change over time. The current rate and business are
+  shown below for each band; click through to the detail page to see
+  the table of changes over time.</p>
+
+<p>The "band" letter is used when printing receipts that have lines
+  that cover more than one VAT band; the letter is printed at the end
+  of each transaction line, and the corresponding business and rate
+  information is printed at the end of the receipt.</p>
+
+<table class="table table-striped table-hover" id="vatbandlist">
+<thead class="table-light">
+  <tr>
+    <th scope="col">Band</th>
+    <th scope="col">Description</th>
+    <th scope="col">Current rate</th>
+    <th scope="col">Current business</th>
+  </tr>
+</thead>
+<tbody>
+  {% for b in vatbands %}
+<tr>
+<td><a href="{{b.get_absolute_url}}">{{b.band}}</a></td>
+<td><a href="{{b.get_absolute_url}}">{{b.description}}</a></td>
+<td data-sort="{{b.current.rate}}">{{b.current.rate}}%</td>
+<td><a href="{{b.current.business.get_absolute_url}}">{{b.current.business.name}}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#vatbandlist").DataTable(dt_sortonly);
+});
+</script>
+
+{% endblock %}

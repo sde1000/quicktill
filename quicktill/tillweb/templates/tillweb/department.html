@@ -8,6 +8,7 @@
 <table class="table table-sm w-auto mb-2">
   <tr><th scope="row">Number:</th><td>{{department.id}}</td></tr>
   <tr><th scope="row">Description:</th><td>{{department.description}}</td></tr>
+  <tr><th scope="row">VAT band:</th><td><a href="{{department.vat.get_absolute_url}}">{{department.vat.description}}</td></tr>
   {% if department.minprice %}
   <tr>
     <th scope="row">Minimum price per item:</th>

@@ -1,0 +1,51 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Businesses{% endblock %}
+
+{% block tillcontent %}
+
+<p>This table shows the financial entities that can receive money from
+  this till. It is used when printing tax receipts and showing daily
+  totals.</p>
+
+<p>Simple installations will only have one entry in this table: the
+  business operating the till. If the till is used to handle money on
+  behalf of other financial entities, for example a franchised kitchen
+  or to take donations on behalf of charities, there will need to be
+  additional entries.</p>
+
+<p><a href="{% url "tillweb-departments" %}">Departments</a> are
+  mapped to businesses through the <a href="{% url "tillweb-vatband-list" %}">VAT bands</a> configuration.</p>
+
+<table class="table table-striped table-hover" id="businesslist">
+<thead class="table-light">
+  <tr>
+    <th scope="col">ID</th>
+    <th scope="col">Name</th>
+    <th scope="col">Abbrev</th>
+    <th scope="col">Address</th>
+    <th scope="col">VAT registration number</th>
+    <th scope="col">Show VAT breakdown?</th>
+  </tr>
+</thead>
+<tbody>
+{% for b in businesses %}
+<tr>
+<td><a href="{{b.get_absolute_url}}">{{b.id}}</a></td>
+<td><a href="{{b.get_absolute_url}}">{{b.name}}</a></td>
+<td>{{b.abbrev}}</td>
+<td>{{b.address|linebreaksbr}}</td>
+<td>{{b.vatno}}</td>
+<td>{{b.show_vat_breakdown|yesno:"Yes,No"}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script type="text/javascript">
+$(document).ready(function(){
+  $("#businesslist").DataTable(dt_sortonly);
+});
+</script>
+
+{% endblock %}
