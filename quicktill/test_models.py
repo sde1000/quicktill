@@ -60,7 +60,7 @@ class ModelTest(unittest.TestCase):
         """Session.actual_total should be None for sessions with no totals
         recorded.
         """
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         self.s.add(session)
         self.s.commit()
         self.assertIsNone(session.actual_total)
@@ -69,7 +69,7 @@ class ModelTest(unittest.TestCase):
         self.assertIsNone(session.actual_total)
 
     def test_actual_session_totals(self):
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         session.endtime = datetime.datetime.now()
         cash = models.PayType(paytype='CASH', description='Cash')
         card = models.PayType(paytype='CARD', description='Card')
@@ -85,8 +85,8 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(session.actual_total, Decimal(3))
 
     def test_multiple_sessions_not_allowed(self):
-        session1 = models.Session(datetime.date.today())
-        session2 = models.Session(datetime.date.today())
+        session1 = models.Session(date=datetime.date.today())
+        session2 = models.Session(date=datetime.date.today())
         self.s.add_all([session1, session2])
         with self.assertRaises(IntegrityError):
             self.s.commit()
@@ -249,7 +249,7 @@ class ModelTest(unittest.TestCase):
 
     def test_transline_void(self):
         self.template_setup()
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         self.s.add(session)
         self.s.commit()
         trans = models.Transaction(session=session)
@@ -424,7 +424,7 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(pa.groups[0].id, 'all-users')
 
     def test_session_meta(self):
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         self.s.add(session)
         session.set_meta('test', 'testval')
         self.s.flush()
@@ -444,7 +444,7 @@ class ModelTest(unittest.TestCase):
 
     def test_transaction_meta(self):
         self.template_setup()
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         self.s.add(session)
         self.s.flush()
         trans = models.Transaction(session=session)
@@ -466,7 +466,7 @@ class ModelTest(unittest.TestCase):
 
     def test_transline_meta(self):
         self.template_setup()
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         trans = models.Transaction(session=session)
         transline = models.Transline(
             transaction=trans, items=1,
@@ -495,7 +495,7 @@ class ModelTest(unittest.TestCase):
     def test_payment_meta(self):
         self.template_setup()
         cash = models.PayType(paytype='CASH', description='Cash')
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         trans = models.Transaction(session=session)
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"),
@@ -520,7 +520,7 @@ class ModelTest(unittest.TestCase):
     def test_nonzero_pending_payment(self):
         "Pending payments must have zero amount"
         card = models.PayType(paytype='CARD', description='Card')
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         trans = models.Transaction(session=session)
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"), pending=True,
@@ -533,7 +533,7 @@ class ModelTest(unittest.TestCase):
         "Closed transactions cannot have pending payments"
         card = models.PayType(paytype='CARD', description='Card',
                               order=1, mode='active', driver_name='Card')
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         trans = models.Transaction(session=session)
         payment1 = models.Payment(
             transaction=trans, amount=Decimal("0.00"),
@@ -553,7 +553,7 @@ class ModelTest(unittest.TestCase):
         "Closed transactions must balance"
         card = models.PayType(paytype='CARD', description='Card',
                               order=1, mode='active', driver_name='Card')
-        session = models.Session(datetime.date.today())
+        session = models.Session(date=datetime.date.today())
         trans = models.Transaction(session=session)
         payment = models.Payment(
             transaction=trans, amount=Decimal("10.00"),
