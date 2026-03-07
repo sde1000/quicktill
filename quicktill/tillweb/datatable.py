@@ -753,7 +753,10 @@ def barcodes(request, info):
 
     search_value = request.GET.get("search[value]")
 
-    q = td.s.query(Barcode)
+    q = td.s.query(Barcode)\
+            .options(joinedload(Barcode.stockline),
+                     joinedload(Barcode.plu),
+                     joinedload(Barcode.stocktype))
 
     fq = q
 
