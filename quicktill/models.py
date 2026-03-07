@@ -64,6 +64,28 @@ max_abv_value = Decimal("9" * (abv_max_digits - abv_decimal_places)
 metadata = MetaData()
 
 
+# Clunky way to define a method that has both class and instance
+# implementations
+class _class_and_instance:
+    def __init__(self, class_fn, instance_fn):
+        self._class_fn = class_fn
+        self._instance_fn = instance_fn
+
+    def __get__(self, obj, cls=None):
+        if cls is None:
+            cls = type(obj)
+        if obj:
+            # When the django template engine encounters a callable,
+            # it calls it. Eg. if "tillobject" is a class, it will
+            # call tillobject() to create an instance of the class
+            # before continuing its lookup. That's quite unhelpful
+            # here, so if we spot an instance of the class with null
+            # id we fall through to the class method instead.
+            if getattr(obj, "id", True):
+                return self._instance_fn.__get__(obj, cls)
+        return self._class_fn.__get__(cls)
+
+
 # Methods common to all models
 class Base:
     def get_view_url(self, viewname, *args, **kwargs):
@@ -74,6 +96,27 @@ class Base:
     def get_absolute_url(self):
         return self.get_view_url(self.tillweb_viewname,
                                  **{self.tillweb_argname: self.id})
+
+    # Text used for nav breadcrumbs; override as required
+    def tillweb_description(self):
+        return str(self)
+
+    # Return something that tillweb_nav() can call tillweb_nav() on to
+    # get the nav path up to the parent item. Override this if the
+    # parent is a model instance, or if the parent can vary.
+    def tillweb_parent(self):
+        return self.__class__
+
+    # tillweb_nav() returns a list of (label, location) pairs for the
+    # nav bar. label is a string. location is either a view name, or
+    # an absolute URL; the "breadcrumbs" tag tries interpreting as a
+    # view name first.
+
+    tillweb_nav = _class_and_instance(
+        lambda cls: [(cls.tillweb_index_description,
+                      cls.tillweb_index_viewname)],
+        lambda self: (self.tillweb_parent().tillweb_nav()
+                      + [(self.tillweb_description, self.get_absolute_url())]))
 
     # repr() of an instance is used in log entries.
     def __repr__(self):
@@ -154,10 +197,11 @@ class Business(Base, Logged):
 
     tillweb_viewname = "tillweb-business"
     tillweb_argname = "businessid"
+    tillweb_index_description = "Businesses"
+    tillweb_index_viewname = "tillweb-business-list"
 
-    def tillweb_nav(self):
-        return [("Businesses", self.get_view_url("tillweb-business-list")),
-                (self.name, self.get_absolute_url())]
+    def tillweb_description(self):
+        return self.name
 
     def __str__(self):
         return self.abbrev
@@ -237,10 +281,11 @@ class VatBand(Base, Vat, Logged):
 
     tillweb_viewname = "tillweb-vatband"
     tillweb_argname = "vatband"
+    tillweb_index_description = "VAT bands"
+    tillweb_index_viewname = "tillweb-vatband-list"
 
-    def tillweb_nav(self):
-        return [("VAT bands", self.get_view_url("tillweb-vatband-list")),
-                (self.description, self.get_absolute_url())]
+    def tillweb_description(self):
+        return self.description
 
     @property
     def id(self):
@@ -338,10 +383,8 @@ class PayType(Base):
 
     tillweb_viewname = "tillweb-paytype"
     tillweb_argname = "paytype"
-
-    def tillweb_nav(self):
-        return [("Payment methods", self.get_view_url("tillweb-paytypes")),
-                (self.description, self.get_absolute_url())]
+    tillweb_index_description = "Payment methods"
+    tillweb_index_viewname = "tillweb-paytypes"
 
 
 sessions_seq = Sequence('sessions_seq')
@@ -360,22 +403,21 @@ class Session(Base, Logged):
     id = Column('sessionid', Integer, sessions_seq, primary_key=True)
     # XXX starttime and endtime are currently stored in
     # localtime. They should be stored with timezone info.
-    starttime = Column(DateTime, nullable=False)
+    # XXX starttime should have server_default=func.current_timestamp()
+    # - change this when next updating the schema!
+    starttime = Column(DateTime, nullable=False,
+                       default=datetime.datetime.now)
     endtime = Column(DateTime)
     date = Column('sessiondate', Date, nullable=False)
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
-    def __init__(self, date):
-        self.date = date
-        self.starttime = datetime.datetime.now()
-
     tillweb_viewname = "tillweb-session"
     tillweb_argname = "sessionid"
+    tillweb_index_description = "Sessions"
+    tillweb_index_viewname = "tillweb-sessions"
 
-    def tillweb_nav(self):
-        return [("Sessions", self.get_view_url("tillweb-sessions")),
-                (f"{self.id} ({self.date})",
-                 self.get_absolute_url())]
+    def __str__(self):
+        return f"{self.id} ({self.date})"
 
     incomplete_transactions = relationship(
         "Transaction",
@@ -774,14 +816,16 @@ class Transaction(Base, Logged):
 
     tillweb_viewname = "tillweb-transaction"
     tillweb_argname = "transid"
+    tillweb_index_description = "Transactions"
+    tillweb_index_viewname = "tillweb-transactions"
 
-    def tillweb_nav(self):
+    def tillweb_description(self):
         if self.session:
-            return self.session.tillweb_nav() \
-                + [(f"Transaction {self.id}", self.get_absolute_url())]
-        return [("Transactions",
-                 self.get_view_url("tillweb-transactions")),
-                (str(self), self.get_absolute_url())]
+            return f"Transaction {self.id}"
+        return str(self)
+
+    def tillweb_parent(self):
+        return self.session or super().tillweb_parent()
 
     # age is now a column property, defined below
 
@@ -922,10 +966,8 @@ class User(Base, Logged):
 
     tillweb_viewname = "tillweb-till-user"
     tillweb_argname = "userid"
-
-    def tillweb_nav(self):
-        return [("Users", self.get_view_url("tillweb-till-users")),
-                (self.fullname, self.get_absolute_url())]
+    tillweb_index_description = "Users"
+    tillweb_index_viewname = "tillweb-till-users"
 
     def __str__(self):
         return self.fullname
@@ -979,6 +1021,13 @@ class UserToken(Base, Logged):
     last_successful_login = Column(DateTime, nullable=True)
     user = relationship(User, backref='tokens')
 
+    tillweb_index_description = "Tokens"
+    tillweb_index_viewname = "tillweb-tokens"
+
+    @property
+    def id(self):
+        return self.token
+
 
 class Permission(Base):
     """Permission to do something
@@ -1017,10 +1066,8 @@ class Group(Base, Logged):
 
     tillweb_viewname = "tillweb-till-group"
     tillweb_argname = "groupid"
-
-    def tillweb_nav(self):
-        return [("Groups", self.get_view_url("tillweb-till-groups")),
-                (self.id, self.get_absolute_url())]
+    tillweb_index_description = "Groups"
+    tillweb_index_viewname = "tillweb-till-groups"
 
     def __str__(self):
         return f"{self.id} — {self.description}"
@@ -1133,10 +1180,14 @@ class Payment(Base, Logged):
 
     tillweb_viewname = "tillweb-payment"
     tillweb_argname = "paymentid"
+    tillweb_index_description = "Payments"
+    tillweb_index_viewname = "tillweb-payments"
 
-    def tillweb_nav(self):
-        return self.transaction.tillweb_nav() \
-            + [(f"Payment {self.id}", self.get_absolute_url())]
+    def tillweb_description(self):
+        return f"Payment {self.id}"
+
+    def tillweb_parent(self):
+        return self.transaction
 
 
 class PaymentMeta(Base):
@@ -1216,11 +1267,11 @@ class Department(Base, Logged):
 
     tillweb_viewname = "tillweb-department"
     tillweb_argname = "departmentid"
+    tillweb_index_description = "Departments"
+    tillweb_index_viewname = "tillweb-departments"
 
-    def tillweb_nav(self):
-        return [("Departments", self.get_view_url("tillweb-departments")),
-                (f"{self.id}. {self.description}",
-                 self.get_absolute_url())]
+    def tillweb_description(self):
+        return f"{self.id}. {self.description}"
 
 
 class TransCode(Base):
@@ -1322,11 +1373,14 @@ class Transline(Base, Logged):
 
     tillweb_viewname = "tillweb-transline"
     tillweb_argname = "translineid"
+    tillweb_index_description = "Sales"
+    tillweb_index_viewname = "tillweb-translines"
 
-    def tillweb_nav(self):
-        return self.transaction.tillweb_nav() \
-            + [(f"Line {self.id}{' (VOIDED)' if self.voided_by else ''}",
-                self.get_absolute_url())]
+    def tillweb_description(self):
+        return f"Line {self.id}{' (VOIDED)' if self.voided_by else ''}"
+
+    def tillweb_parent(self):
+        return self.transaction
 
     @property
     def description(self):
@@ -1671,10 +1725,8 @@ class StockLine(Base, Logged):
 
     tillweb_viewname = "tillweb-stockline"
     tillweb_argname = "stocklineid"
-
-    def tillweb_nav(self):
-        return [("Stock lines", self.get_view_url("tillweb-stocklines")),
-                (self.name, self.get_absolute_url())]
+    tillweb_index_description = "Stock lines"
+    tillweb_index_viewname = "tillweb-stocklines"
 
     @property
     def ondisplay(self):
@@ -1885,10 +1937,8 @@ class PriceLookup(Base, Logged):
 
     tillweb_viewname = "tillweb-plu"
     tillweb_argname = "pluid"
-
-    def tillweb_nav(self):
-        return [("Price lookups", self.get_view_url("tillweb-plus")),
-                (self.description, self.get_absolute_url())]
+    tillweb_index_description = "Price lookups"
+    tillweb_index_viewname = "tillweb-plus"
 
 
 suppliers_seq = Sequence('suppliers_seq')
@@ -1913,10 +1963,8 @@ class Supplier(Base, Logged):
 
     tillweb_viewname = "tillweb-supplier"
     tillweb_argname = "supplierid"
-
-    def tillweb_nav(self):
-        return [("Suppliers", self.get_view_url("tillweb-suppliers")),
-                (self.name, self.get_absolute_url())]
+    tillweb_index_description = "Suppliers"
+    tillweb_index_viewname = "tillweb-suppliers"
 
     @property
     def accounts_url(self):
@@ -1953,11 +2001,11 @@ class Delivery(Base, Logged):
 
     tillweb_viewname = "tillweb-delivery"
     tillweb_argname = "deliveryid"
+    tillweb_index_description = "Deliveries"
+    tillweb_index_viewname = "tillweb-deliveries"
 
-    def tillweb_nav(self):
-        return [("Deliveries", self.get_view_url("tillweb-deliveries")),
-                (f"{self.id} ({self.supplier.name} {self.date})",
-                 self.get_absolute_url())]
+    def __str__(self):
+        return f"{self.id} ({self.supplier.name} {self.date})"
 
     @property
     def accounts_url(self):
@@ -2077,10 +2125,8 @@ class StockTake(Base, Logged):
 
     tillweb_viewname = "tillweb-stocktake"
     tillweb_argname = "stocktake_id"
-
-    def tillweb_nav(self):
-        return [("Stock takes", self.get_view_url("tillweb-stocktakes")),
-                (str(self), self.get_absolute_url())]
+    tillweb_index_description = "Stock takes"
+    tillweb_index_viewname = "tillweb-stocktakes"
 
     @property
     def logtext(self):
@@ -2188,10 +2234,11 @@ class Unit(Base, Logged):
 
     tillweb_viewname = "tillweb-unit"
     tillweb_argname = "unit_id"
+    tillweb_index_description = "Units"
+    tillweb_index_viewname = "tillweb-units"
 
-    def tillweb_nav(self):
-        return [("Units", self.get_view_url("tillweb-units")),
-                (self.description, self.get_absolute_url())]
+    def tillweb_description(self):
+        return self.description
 
     @staticmethod
     def _fq(q):
@@ -2280,10 +2327,8 @@ class StockUnit(Base, Logged):
 
     tillweb_viewname = "tillweb-stockunit"
     tillweb_argname = "stockunit_id"
-
-    def tillweb_nav(self):
-        return [("Item sizes", self.get_view_url("tillweb-stockunits")),
-                (self.name, self.get_absolute_url())]
+    tillweb_index_description = "Item sizes"
+    tillweb_index_viewname = "tillweb-stockunits"
 
     def __str__(self):
         return self.name
@@ -2357,10 +2402,8 @@ class StockType(Base, Logged):
 
     tillweb_viewname = "tillweb-stocktype"
     tillweb_argname = "stocktype_id"
-
-    def tillweb_nav(self):
-        return [("Stock types", self.get_view_url("tillweb-stocktype-search")),
-                (str(self), self.get_absolute_url())]
+    tillweb_index_description = "Stock types"
+    tillweb_index_viewname = "tillweb-stocktype-search"
 
     def __str__(self):
         return f"{self.manufacturer} {self.name}"
@@ -2774,11 +2817,15 @@ class StockItem(Base, Logged):
 
     tillweb_viewname = "tillweb-stock"
     tillweb_argname = "stockid"
+    tillweb_index_description = "Stock"
+    tillweb_index_viewname = "tillweb-stocksearch"
 
-    def tillweb_nav(self):
-        return self.delivery.tillweb_nav() + [
-            (f"Item {self.id} ({self.stocktype.manufacturer} "
-             f"{self.stocktype.name})", self.get_absolute_url())]
+    def tillweb_parent(self):
+        return self.delivery or self.stocktake
+
+    def tillweb_description(self):
+        return f"Item {self.id} ({self.stocktype.manufacturer} " \
+            f"{self.stocktype.name})"
 
 
 # This trigger notifies changes in a stock item, and also notifies a
@@ -3092,6 +3139,15 @@ class StockTakeSnapshot(Base):
                                passive_deletes=True)
 
     tillweb_viewname = "tillweb-stocktake-stockitem"
+    # no tillweb_argname: composite primary key, we override get_absolute_url
+
+    def tillweb_parent(self):
+        return self.stocktake
+
+    def get_absolute_url(self):
+        return self.get_view_url(self.tillweb_viewname,
+                                 stocktake_id=self.stocktake_id,
+                                 stock_id=self.stock_id)
 
     @property
     def qty_in_stock_units(self):
@@ -3111,15 +3167,6 @@ class StockTakeSnapshot(Base):
 
     def __str__(self):
         return f"Adjustment for {self.stock_id}"
-
-    def tillweb_nav(self):
-        return self.stocktake.tillweb_nav() + [
-            (str(self), self.get_absolute_url())]
-
-    def get_absolute_url(self):
-        return self.get_view_url(self.tillweb_viewname,
-                                 stocktake_id=self.stocktake_id,
-                                 stock_id=self.stock_id)
 
 
 # Add the StockTake.snapshot_count column property
@@ -3349,10 +3396,11 @@ class Barcode(Base):
 
     tillweb_viewname = "tillweb-barcode"
     tillweb_argname = "barcode"
+    tillweb_index_description = "Barcodes"
+    tillweb_index_viewname = "tillweb-barcodes"
 
-    def tillweb_nav(self):
-        return [("Barcodes", self.get_view_url("tillweb-barcodes")),
-                (f"{self.id}", self.get_absolute_url())]
+    def __str__(self):
+        return f"{self.id}"
 
     # XXX these properties could be in a mixin class shared with
     # KeyboardBinding?  Arguably the stockline, plu and modifier
@@ -3397,15 +3445,16 @@ class Config(Base, Logged):
 
     tillweb_viewname = "tillweb-config-item"
     tillweb_argname = "key"
+    tillweb_index_description = "Config"
+    tillweb_index_viewname = "tillweb-config-index"
+
+    def __str__(self):
+        return self.display_name
 
     @property
     def id(self):
         # Needed for get_absolute_url
         return self.key
-
-    def tillweb_nav(self):
-        return [("Config", self.get_view_url("tillweb-config-index")),
-                (self.display_name, self.get_absolute_url())]
 
     def value_summary(self, max_lines=6):
         lines = self.value.splitlines()
@@ -3474,10 +3523,11 @@ class LogEntry(Base):
 
     tillweb_viewname = "tillweb-logentry"
     tillweb_argname = "logid"
+    tillweb_index_description = "Logs"
+    tillweb_index_viewname = "tillweb-logs"
 
-    def tillweb_nav(self):
-        return [("Logs", self.get_view_url("tillweb-logs")),
-                (str(self.id), self.get_absolute_url())]
+    def tillweb_description(self):
+        return str(self.id)
 
     # These models subclass the Logged class; we need to generate columns
     # and foreign key constraints that link to their primary keys

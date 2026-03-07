@@ -60,7 +60,7 @@ def stocktakelist(request, info):
         'in_progress': in_progress,
         'completed': completed,
         'may_start': may_start,
-        'nav': [("Stock takes", reverse("tillweb-stocktakes"))],
+        'tillobject': StockTake,
     })
 
 

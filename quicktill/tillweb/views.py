@@ -22,6 +22,7 @@ from quicktill.models import (
     StockType,
     LogEntry,
     User,
+    UserToken,
     Business,
     Transline,
     VatBand,
@@ -436,7 +437,7 @@ def sessions(request, info):
         rangeform = SessionSheetForm()
 
     return ('sessions.html',
-            {'nav': [("Sessions", reverse("tillweb-sessions"))],
+            {'tillobject': Session,
              'rangeform': rangeform,
              })
 
@@ -537,8 +538,7 @@ def session_stock_sold(request, info, sessionid):
 @tillweb_view
 def transactions(request, info):
     return ('transactions.html', {
-        'nav': [("Transactions",
-                 reverse('tillweb-transactions'))],
+        'tillobject': Transaction,
     })
 
 
@@ -586,8 +586,7 @@ def translines(request, info):
 
     return ('translines.html', {
         'departments': departments,
-        'nav': [("Sales",
-                 reverse('tillweb-translines'))],
+        'tillobject': Transline,
     })
 
 
@@ -606,8 +605,7 @@ def transline(request, info, translineid):
 @tillweb_view
 def payments(request, info):
     return ('payments.html', {
-        'nav': [("Payments",
-                 reverse('tillweb-payments'))],
+        'tillobject': Payment,
     })
 
 
@@ -645,7 +643,7 @@ def paytypelist(request, info):
         return HttpResponseRedirect(reverse("tillweb-paytypes"))
 
     return ('paytypelist.html', {
-        'nav': [("Payment methods", reverse("tillweb-paytypes"))],
+        'tillobject': PayType,
         'paytypes': paytypes,
         'may_create_paytype': info.user_has_perm("edit-payment-methods"),
         'may_manage_paytypes': may_manage_paytypes,
@@ -795,7 +793,7 @@ def supplierlist(request, info):
              .all()
     may_edit = info.user_has_perm("edit-supplier")
     return ('suppliers.html', {
-        'nav': [("Suppliers", reverse("tillweb-suppliers"))],
+        'tillobject': Supplier,
         'suppliers': sl,
         'may_create_supplier': may_edit,
     })
@@ -908,7 +906,7 @@ def deliverylist(request, info):
     may_create_delivery = info.user_has_perm("deliveries")
 
     return ('deliveries.html', {
-        'nav': [("Deliveries", reverse("tillweb-deliveries"))],
+        'tillobject': Delivery,
         'may_create_delivery': may_create_delivery,
     })
 
@@ -1143,7 +1141,7 @@ def stocktypesearch(request, info):
                     return HttpResponseRedirect(c.get_absolute_url())
 
     return ('stocktypesearch.html', {
-        'nav': [("Stock types", reverse("tillweb-stocktype-search"))],
+        'tillobject': StockType,
         'form': form,
         'stocktypes': result,
         'may_alter': may_alter,
@@ -1510,7 +1508,7 @@ def stocksearch(request, info):
     departments = td.s.query(Department).order_by(Department.id).all()
 
     return ('stocksearch.html', {
-        'nav': [("Stock", reverse("tillweb-stocksearch"))],
+        'tillobject': StockItem,
         'departments': departments,
     })
 
@@ -1674,7 +1672,7 @@ def units(request, info):
     may_edit = info.user_has_perm("edit-unit")
     return ('units.html', {
         'units': u,
-        'nav': [("Units", reverse("tillweb-units"))],
+        'tillobject': Unit,
         'may_create_unit': may_edit,
     })
 
@@ -1800,7 +1798,7 @@ def stockunits(request, info):
     may_edit = info.user_has_perm("edit-stockunit")
     return ('stockunits.html', {
         'stockunits': su,
-        'nav': [("Item sizes", reverse("tillweb-stockunits"))],
+        'tillobject': StockUnit,
         'may_create_stockunit': may_edit,
     })
 
@@ -1910,7 +1908,7 @@ def stocklinelist(request, info):
                               .undefer(StockType.remaining))\
                      .all()
     return ('stocklines.html', {
-        'nav': [("Stock lines", reverse("tillweb-stocklines"))],
+        'tillobject': StockLine,
         'regular': regular,
         'display': display,
         'continuous': continuous,
@@ -2209,7 +2207,7 @@ def plulist(request, info):
     may_create_plu = info.user_has_perm("create-plu")
 
     return ('plus.html', {
-        'nav': [("Price lookups", reverse("tillweb-plus"))],
+        'tillobject': PriceLookup,
         'plus': plus,
         'may_create_plu': may_create_plu,
     })
@@ -2319,11 +2317,8 @@ def create_plu(request, info):
 
 @tillweb_view
 def barcodelist(request, info):
-
     return ('barcodes.html', {
-        'nav': [
-            ("Barcodes", reverse("tillweb-barcodes")),
-        ],
+        'tillobject': Barcode,
     })
 
 
@@ -2344,7 +2339,7 @@ def departmentlist(request, info):
                 .order_by(Department.id)\
                 .all()
     return ('departmentlist.html', {
-        'nav': [("Departments", reverse("tillweb-departments"))],
+        'tillobject': Department,
         'depts': depts,
         'may_create_department': info.user_has_perm("edit-department"),
     })
@@ -2553,7 +2548,7 @@ def stockcheck(request, info):
 @tillweb_view
 def userlist(request, info):
     return ('userlist.html', {
-        'nav': [("Users", reverse("tillweb-till-users"))],
+        'tillobject': User,
         'may_create_user': info.user_has_perm("edit-user"),
     })
 
@@ -2669,7 +2664,7 @@ def grouplist(request, info):
                  .all()
 
     return ('grouplist.html', {
-        'nav': [("Groups", reverse("tillweb-till-groups"))],
+        'tillobject': Group,
         'groups': groups,
         'may_create_group': info.user_has_perm("edit-group"),
     })
@@ -2763,14 +2758,14 @@ def create_group(request, info):
 @tillweb_view
 def tokenlist(request, info):
     return ('tokens.html', {
-        'nav': [("Tokens", reverse("tillweb-tokens"))],
+        'tillobject': UserToken,
     })
 
 
 @tillweb_view
 def logsindex(request, info):
     return ('logs.html', {
-        'nav': [("Logs", reverse("tillweb-logs"))],
+        'tillobject': LogEntry,
     })
 
 
@@ -2790,7 +2785,7 @@ def configindex(request, info):
     c = td.s.query(Config).order_by(Config.key).all()
     return ('configindex.html', {
         'config': c,
-        'nav': [("Config", reverse("tillweb-config-index"))],
+        'tillobject': Config,
     })
 
 
@@ -2844,8 +2839,8 @@ def configitem(request, info, key):
 def businesslist(request, info):
     b = td.s.query(Business).order_by(Business.id).all()
     return ('businesses.html', {
+        'tillobject': Business,
         'businesses': b,
-        'nav': [("Businesses", reverse("tillweb-business-list"))],
     })
 
 
@@ -2870,8 +2865,8 @@ def vatbandlist(request, info):
                 joinedload(VatBand.business))\
             .all()
     return ('vatbands.html', {
+        'tillobject': VatBand,
         'vatbands': v,
-        'nav': [("VAT bands", reverse("tillweb-vatband-list"))],
     })
 
 

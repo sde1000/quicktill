@@ -112,7 +112,7 @@
 {% for desc, url in nav %}
 {% breadcrumb desc url %}
 {% endfor %}
-{% elif tillobject.tillweb_nav %}{# Implicit nav list from object #}
+{% elif tillobject %}{# Implicit nav list from object #}
 {% for desc, url in tillobject.tillweb_nav %}
 {% breadcrumb desc url %}
 {% endfor %}

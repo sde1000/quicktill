@@ -88,7 +88,7 @@ class ssdialog(ui.dismisspopup):
                          title="Error")
             return
         self.dismiss()
-        sc = Session(date)
+        sc = Session(date=date)
         td.s.add(sc)
         td.s.flush()
         deferred = trans_restore()
