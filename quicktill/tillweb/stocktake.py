@@ -1,11 +1,11 @@
 from decimal import Decimal
 from django.http import Http404
 from django.http import HttpResponseRedirect
-from django.http import HttpResponseForbidden
 from django.http import JsonResponse
 from django.urls import reverse
 from django import forms
 from django.contrib import messages
+from django.shortcuts import redirect
 from sqlalchemy import inspect
 from sqlalchemy.sql import desc
 from sqlalchemy.orm import joinedload
@@ -35,6 +35,24 @@ class StockTakeSetupForm(forms.Form):
 def stocktakelist(request, info):
     may_start = info.user_has_perm("stocktake")
 
+    form = None
+
+    if may_start:
+        if request.method == "POST":
+            form = StockTakeSetupForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                st = StockTake(description=cd['description'],
+                               create_user=info.user)
+                td.s.add(st)
+                td.s.flush()
+                user.log(f"Created stock take {st.logref}")
+                td.s.commit()
+                messages.success(request, "Stock take created.")
+                return redirect(st)
+        else:
+            form = StockTakeSetupForm()
+
     pending = td.s.query(StockTake)\
                   .filter(StockTake.start_time == None)\
                   .order_by(StockTake.id)\
@@ -59,36 +77,8 @@ def stocktakelist(request, info):
         'pending': pending,
         'in_progress': in_progress,
         'completed': completed,
-        'may_start': may_start,
-        'tillobject': StockTake,
-    })
-
-
-@tillweb_view
-def create_stocktake(request, info):
-    if not info.user_has_perm("stocktake"):
-        return HttpResponseForbidden(
-            "You don't have permission to start a stock take")
-
-    if request.method == "POST":
-        form = StockTakeSetupForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            st = StockTake(description=cd['description'],
-                           create_user=info.user)
-            td.s.add(st)
-            td.s.flush()
-            user.log(f"Created stock take {st.logref}")
-            td.s.commit()
-            messages.success(request, "Stock take created.")
-            return HttpResponseRedirect(st.get_absolute_url())
-    else:
-        form = StockTakeSetupForm()
-
-    return ('new-stocktake.html', {
-        'nav': [("Stock takes", reverse("tillweb-stocktakes")),
-                ("New", reverse("tillweb-create-stocktake"))],
         'form': form,
+        'tillobject': StockTake,
     })
 
 

@@ -1,5 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
-{% load static %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Payment methods{% endblock %}
 
@@ -46,14 +46,40 @@ which they are displayed in the till user interface.</p>
   </tbody>
 </table>
 {% if may_manage_paytypes %}
-<button class="btn btn-primary mb-2" type="submit">
+<button class="btn btn-primary mb-2" type="submit" name="save_order">
   Save order of payment methods
 </button>
 </form>
 {% endif %}
 
-{% if may_create_paytype %}
-<a href="{% url "tillweb-create-paytype" %}" class="btn btn-secondary">Add new payment method</a>
+{% if form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add a new payment method
+</button>
+
+{% modal "createModal" dialog_class="modal-lg" title="Add a new payment method" %}
+<form action="" method="post" class="mb-2">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Create payment method
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
+{% if form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
 {% endif %}
 
 {% if may_manage_paytypes %}

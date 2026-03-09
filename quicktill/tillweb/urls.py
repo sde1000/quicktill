@@ -32,14 +32,10 @@ tillurls = [
     path('supplier/', views.supplierlist, name="tillweb-suppliers"),
     path('supplier/<int:supplierid>/', views.supplier,
          name="tillweb-supplier"),
-    path('new/supplier/', views.create_supplier,
-         name="tillweb-create-supplier"),
 
     path('delivery/', views.deliverylist, name="tillweb-deliveries"),
     path('delivery/<int:deliveryid>/', views.delivery,
          name="tillweb-delivery"),
-    path('new/delivery/', views.create_delivery,
-         name="tillweb-create-delivery"),
 
     path('stocktake/', stocktake.stocktakelist, name="tillweb-stocktakes"),
     path('stocktake/<int:stocktake_id>/', stocktake.stocktake,
@@ -48,16 +44,12 @@ tillurls = [
          stocktake.stockitem_detail, name="tillweb-stocktake-stockitem"),
     path('stocktake/<int:stocktake_id>/st<int:stocktype_id>/',
          stocktake.stocktype_detail, name="tillweb-stocktake-stocktype"),
-    path('new/stocktake/', stocktake.create_stocktake,
-         name="tillweb-create-stocktake"),
 
     path('stocktype/', views.stocktypesearch, name="tillweb-stocktype-search"),
     path('stocktype/<int:stocktype_id>/', views.stocktype,
          name="tillweb-stocktype"),
     path('stocktype/<int:stocktype_id>/logo.png', views.stocktype_logo,
          name="tillweb-stocktype-logo"),
-    path('new/stocktype/', views.create_stocktype,
-         name="tillweb-create-stocktype"),
     path('stocktype/search.json', views.stocktype_search_json,
          name="tillweb-stocktype-search-json"),
     path('stocktype/search-with-stockunits.json', views.stocktype_search_json,
@@ -71,13 +63,10 @@ tillurls = [
 
     path('unit/', views.units, name="tillweb-units"),
     path('unit/<int:unit_id>/', views.unit, name="tillweb-unit"),
-    path('new/unit/', views.create_unit, name="tillweb-create-unit"),
 
     path('stockunit/', views.stockunits, name="tillweb-stockunits"),
     path('stockunit/<int:stockunit_id>/', views.stockunit,
          name="tillweb-stockunit"),
-    path('new/stockunit/', views.create_stockunit,
-         name="tillweb-create-stockunit"),
 
     path('stockline/', views.stocklinelist, name="tillweb-stocklines"),
     path('stockline/<int:stocklineid>/', views.stockline,
@@ -85,7 +74,6 @@ tillurls = [
 
     path('plu/', views.plulist, name="tillweb-plus"),
     path('plu/<int:pluid>/', views.plu, name="tillweb-plu"),
-    path('new/plu/', views.create_plu, name="tillweb-create-plu"),
 
     path('barcode/', views.barcodelist, name="tillweb-barcodes"),
     path('barcode/<barcode>/', views.barcode, name="tillweb-barcode"),
@@ -96,21 +84,15 @@ tillurls = [
     path('department/', views.departmentlist, name="tillweb-departments"),
     path('department/<int:departmentid>/', views.department,
          name="tillweb-department"),
-    path('new/department/', views.create_department,
-         name="tillweb-create-department"),
 
     path('paytype/', views.paytypelist, name="tillweb-paytypes"),
     path('paytype/<paytype>/', views.paytype, name="tillweb-paytype"),
-    path('new/paytype/', views.create_paytype,
-         name="tillweb-create-paytype"),
 
     path('user/', views.userlist, name="tillweb-till-users"),
     path('user/<int:userid>/', views.userdetail, name="tillweb-till-user"),
-    path('new/user/', views.create_user, name="tillweb-create-user"),
 
     path('group/', views.grouplist, name="tillweb-till-groups"),
     path('group/<groupid>/', views.group, name="tillweb-till-group"),
-    path('new/group/', views.create_group, name="tillweb-create-till-group"),
 
     path('token/', views.tokenlist, name="tillweb-tokens"),
 

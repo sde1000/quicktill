@@ -1,11 +1,37 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Deliveries{% endblock %}
 
 {% block tillcontent %}
 
-{% if may_create_delivery %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-delivery" %}">Add new delivery</a>
+{% if form %}
+<button class="btn btn-primary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add new delivery
+</button>
+
+{% modal "createModal" title="Add new delivery" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Add delivery
+    </button>
+  </div>
+</form>
+{% endmodal %}
+{% if form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
 {% endif %}
 
 <table class="table table-striped table-sm" id="deliveries">

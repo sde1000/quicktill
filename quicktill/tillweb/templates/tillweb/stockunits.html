@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Item sizes{% endblock %}
 
@@ -57,8 +58,37 @@ $(document).ready(function(){
 });
 </script>
 
-{% if may_create_stockunit %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-stockunit" %}">Add new item size</a>
+{% if form %}
+<button class="btn btn-primary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add new item size
+</button>
+
+{% modal "createModal" dialog_class="modal-lg" title="Add new item size" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    <p>If you select the "merge" option, then entering a quantity of
+      more than one when recording a delivery will create a single,
+      larger stock item instead of multiple items of this size.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Create item size
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
+{% if form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
 {% endif %}
 
 {% endblock %}

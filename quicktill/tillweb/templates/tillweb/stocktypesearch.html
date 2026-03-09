@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Stock Types{% endblock %}
 
@@ -11,8 +12,38 @@
   </div>
 </form>
 
-{% if may_alter %}
-<a role="button" class="btn btn-secondary mb-2" href="{% url "tillweb-create-stocktype" %}">Add new stock type</a>
+{% if create_form %}
+<button class="btn btn-secondary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add new stock type
+</button>
+
+{% modal "createModal" dialog_class="modal-lg" title="Add new stock type" %}
+<form action="" method="post">{% csrf_token %}
+  <datalist id="manufacturers">
+    {% for m in manufacturers %}<option value="{{m}}"></option>{% endfor %}
+  </datalist>
+  <div class="modal-body">
+    {% include "form-horizontal.html" with form=create_form %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Create stock type
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
+{% if create_form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
+
 {% endif %}
 
 {% if stocktypes %}

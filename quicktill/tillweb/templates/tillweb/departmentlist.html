@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Departments{% endblock %}
 
@@ -33,14 +34,43 @@
   </tbody>
 </table>
 
-{% if may_create_department %}
-<a href="{% url "tillweb-create-department" %}" class="btn btn-secondary">Add new department</a>
-{% endif %}
-
 <script type="text/javascript">
 $(document).ready(function(){
   $("#departments").DataTable();
 });
 </script>
+
+{% if form %}
+<button class="btn btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add new department
+</button>
+
+{% modal "createModal" dialog_class="modal-lg" title="Add new department" %}
+<form action="" method="post" class="mb-2">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    <p class="mb-0">The VAT band determines which VAT rate applies to
+      sales in this department, and also which business receives the funds
+      for these sales.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Create department
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
+{% if form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
+{% endif %}
 
 {% endblock %}

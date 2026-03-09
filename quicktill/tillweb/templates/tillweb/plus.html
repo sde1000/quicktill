@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Price Lookups{% endblock %}
 
@@ -37,8 +38,36 @@ $(document).ready(function(){
 });
 </script>
 
-{% if may_create_plu %}
-<a class="btn btn-primary mb-2" href="{% url "tillweb-create-plu" %}">Add new price lookup</a>
+{% if form %}
+<button class="btn btn-primary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#createModal">
+  Add new price lookup
+</button>
+
+{% modal "createModal" dialog_class="modal-lg" title="Add new price lookup" %}
+<form action="" method="post">{% csrf_token %}
+  <div class="modal-body">
+    {% include "form-horizontal.html" %}
+    <p class="mb-0">Note: keyboard bindings for this price lookup can
+      only be created on the till.</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button class="btn btn-primary" type="submit" name="submit_create">
+      Create price lookup
+    </button>
+  </div>
+</form>
+{% endmodal %}
+
+{% if form.errors %}
+<script type="text/javascript">
+  $(document).ready(function() {
+      $('#createModal').modal('show');
+  });
+</script>
+{% endif %}
 {% endif %}
 
 {% endblock %}

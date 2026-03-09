@@ -619,15 +619,27 @@ def payment(request, info, paymentid):
     return ('payment.html', {'payment': payment, 'tillobject': payment})
 
 
+class NewPayTypeForm(forms.Form):
+    code = forms.CharField(
+        max_length=8,
+        help_text="Internal name for new payment method; must be unique")
+    description = forms.CharField(
+        max_length=10,
+        help_text="Description of new payment method, used in menus and "
+        "printed on receipts, etc.")
+
+
 @tillweb_view
 def paytypelist(request, info):
     paytypes = td.s.query(PayType)\
                    .order_by(PayType.order, PayType.paytype)\
                    .all()
 
+    may_create_paytype = info.user_has_perm("edit-payment-methods")
     may_manage_paytypes = info.user_has_perm("manage-payment-methods")
 
-    if may_manage_paytypes and request.method == "POST":
+    if may_manage_paytypes and request.method == "POST" \
+       and "save_order" in request.POST:
         for pt in paytypes:
             key = f"paytype_{pt.paytype}_order"
             try:
@@ -640,12 +652,35 @@ def paytypelist(request, info):
                         if pt.mode != 'disabled'))
         td.s.commit()
         messages.info(request, "Payment method order saved")
-        return HttpResponseRedirect(reverse("tillweb-paytypes"))
+        return redirect("tillweb-paytypes")
+
+    form = None
+    if may_create_paytype:
+        if request.method == "POST" and "submit_create" in request.POST:
+            form = NewPayTypeForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                pt = PayType(
+                    paytype=cd['code'], description=cd['description'],
+                    order=10000000)
+                try:
+                    td.s.add(pt)
+                    user.log(f"Created payment method '{pt}' "
+                             f"(code '{pt.paytype}')")
+                    td.s.commit()
+                    return redirect(pt)
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error(
+                        "code",
+                        "There is another payment method with this code")
+        else:
+            form = NewPayTypeForm()
 
     return ('paytypelist.html', {
         'tillobject': PayType,
         'paytypes': paytypes,
-        'may_create_paytype': info.user_has_perm("edit-payment-methods"),
+        'form': form,
         'may_manage_paytypes': may_manage_paytypes,
     })
 
@@ -746,44 +781,11 @@ def paytype(request, info, paytype):
     })
 
 
-class NewPayTypeForm(forms.Form):
-    code = forms.CharField(
-        max_length=8,
-        help_text="Internal name for new payment method; must be unique")
-    description = forms.CharField(
-        max_length=10,
-        help_text="Description of new payment method, used in menus and "
-        "printed on receipts, etc.")
-
-
-@tillweb_view
-def create_paytype(request, info):
-    if not info.user_has_perm("edit-payment-methods"):
-        return HttpResponseForbidden("You cannot create new payment methods")
-
-    if request.method == "POST":
-        form = NewPayTypeForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            pt = PayType(paytype=cd['code'], description=cd['description'],
-                         order=10000000)
-            try:
-                td.s.add(pt)
-                user.log(f"Created payment method '{pt}' (code '{pt.paytype}')")
-                td.s.commit()
-                return HttpResponseRedirect(pt.get_absolute_url())
-            except sqlalchemy.exc.IntegrityError:
-                td.s.rollback()
-                form.add_error(
-                    "code", "There is another payment method with this code")
-    else:
-        form = NewPayTypeForm()
-
-    return ('new-paytype.html', {
-        'nav': [("Payment methods", reverse("tillweb-paytypes")),
-                ("New", reverse("tillweb-create-paytype"))],
-        'form': form,
-    })
+class SupplierForm(forms.Form):
+    name = forms.CharField(max_length=60)
+    telephone = forms.CharField(max_length=20, required=False)
+    email = forms.EmailField(max_length=60, required=False)
+    web = forms.URLField(required=False)
 
 
 @tillweb_view
@@ -791,19 +793,39 @@ def supplierlist(request, info):
     sl = td.s.query(Supplier)\
              .order_by(Supplier.name)\
              .all()
+
     may_edit = info.user_has_perm("edit-supplier")
+
+    form = None
+    if may_edit:
+        if request.method == "POST":
+            form = SupplierForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                s = Supplier(
+                    name=cd['name'],
+                    tel=cd['telephone'],
+                    email=cd['email'],
+                    web=cd['web'])
+                td.s.add(s)
+                try:
+                    td.s.flush()
+                    user.log(f"Created supplier {s.logref}")
+                    td.s.commit()
+                    messages.success(request, f"Supplier '{s.name}' created.")
+                    return redirect(s)
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error(
+                        "name", "There is another supplier with this name")
+        else:
+            form = SupplierForm()
+
     return ('suppliers.html', {
         'tillobject': Supplier,
         'suppliers': sl,
-        'may_create_supplier': may_edit,
+        'form': form,
     })
-
-
-class SupplierForm(forms.Form):
-    name = forms.CharField(max_length=60)
-    telephone = forms.CharField(max_length=20, required=False)
-    email = forms.EmailField(max_length=60, required=False)
-    web = forms.URLField(required=False)
 
 
 @tillweb_view
@@ -862,55 +884,6 @@ def supplier(request, info, supplierid):
     })
 
 
-@tillweb_view
-def create_supplier(request, info):
-    if not info.user_has_perm("edit-supplier"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new suppliers")
-
-    if request.method == "POST":
-        form = SupplierForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            s = Supplier(
-                name=cd['name'],
-                tel=cd['telephone'],
-                email=cd['email'],
-                web=cd['web'])
-            td.s.add(s)
-            try:
-                td.s.flush()
-                user.log(f"Created supplier {s.logref}")
-                td.s.commit()
-                messages.success(request, f"Supplier '{s.name}' created.")
-                return HttpResponseRedirect(s.get_absolute_url())
-            except sqlalchemy.exc.IntegrityError:
-                td.s.rollback()
-                form.add_error(
-                    "name", "There is another supplier with this name")
-                messages.error(
-                    request, "Could not add supplier: there is "
-                    "another supplier with this name")
-    else:
-        form = SupplierForm()
-
-    return ('new-supplier.html', {
-        'nav': [("Suppliers", reverse("tillweb-suppliers")),
-                ("New", reverse("tillweb-create-supplier"))],
-        'form': form,
-    })
-
-
-@tillweb_view
-def deliverylist(request, info):
-    may_create_delivery = info.user_has_perm("deliveries")
-
-    return ('deliveries.html', {
-        'tillobject': Delivery,
-        'may_create_delivery': may_create_delivery,
-    })
-
-
 class DeliveryForm(forms.Form):
     supplier = SQLAModelChoiceField(
         Supplier,
@@ -922,29 +895,30 @@ class DeliveryForm(forms.Form):
 
 
 @tillweb_view
-def create_delivery(request, info):
-    if not info.user_has_perm("deliveries"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new deliveries")
+def deliverylist(request, info):
+    may_create_delivery = info.user_has_perm("deliveries")
 
-    if request.method == "POST":
-        form = DeliveryForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            d = Delivery(
-                supplier=cd['supplier'],
-                docnumber=cd['docnumber'],
-                date=cd['date'])
-            td.s.add(d)
-            td.s.commit()
-            messages.success(request, "Draft delivery created.")
-            return HttpResponseRedirect(d.get_absolute_url())
-    else:
-        form = DeliveryForm()
+    form = None
+    if may_create_delivery:
+        if request.method == "POST":
+            form = DeliveryForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                d = Delivery(
+                    supplier=cd['supplier'],
+                    docnumber=cd['docnumber'],
+                    date=cd['date'])
+                td.s.add(d)
+                td.s.flush()
+                user.log(f"Created delivery {d.logref}")
+                td.s.commit()
+                messages.success(request, "Draft delivery created.")
+                return redirect(d)
+        else:
+            form = DeliveryForm()
 
-    return ('new-delivery.html', {
-        'nav': [("Deliveries", reverse("tillweb-deliveries")),
-                ("New", reverse("tillweb-create-delivery"))],
+    return ('deliveries.html', {
+        'tillobject': Delivery,
         'form': form,
     })
 
@@ -1027,6 +1001,7 @@ def delivery(request, info, deliveryid):
                         "delivery can't be deleted until they are removed.")
                     return HttpResponseRedirect(d.get_absolute_url())
                 messages.success(request, "Delivery deleted.")
+                user.log(f"Deleted delivery {d.logref}")
                 td.s.delete(d)
                 td.s.commit()
                 return HttpResponseRedirect(reverse("tillweb-deliveries"))
@@ -1094,62 +1069,6 @@ class StockTypeSearchForm(forms.Form):
         return q
 
 
-class StockTypeArchiveSearchForm(StockTypeSearchForm):
-    include_archived = forms.BooleanField(
-        required=False, label="Include archived?")
-
-    def filter(self, q):
-        cd = self.cleaned_data
-        q = super().filter(q)
-        if not cd['include_archived']:
-            q = q.filter(StockType.archived == False)
-        return q
-
-
-@tillweb_view
-def stocktypesearch(request, info):
-    form = StockTypeArchiveSearchForm(request.GET)
-    result = []
-    if form.is_valid() and form.is_filled_in():
-        q = form.filter(td.s.query(StockType))
-        result = q.order_by(StockType.dept_id, StockType.manufacturer,
-                            StockType.name)\
-                  .all()
-
-    may_alter = info.user_has_perm("alter-stocktype")
-
-    may_stocktake = info.user_has_perm("stocktake")
-
-    candidate_stocktakes = []
-    if may_stocktake and result:
-        # Find candidate stocktakes to add to
-        candidate_stocktakes = td.s.query(StockTake)\
-                                   .filter(StockTake.start_time == None)\
-                                   .order_by(desc(StockTake.id))\
-                                   .all()
-        if request.method == 'POST':
-            for c in candidate_stocktakes:
-                if f'submit_add_to_{c.id}' in request.POST:
-                    # synchronize_session=False means that the session
-                    # will be out of sync after the update, but this
-                    # doesn't matter because we're expiring everything
-                    # on commit immediately afterwards.
-                    q.filter(StockType.stocktake == None).update(
-                        {StockType.stocktake_id: c.id},
-                        synchronize_session=False)
-                    td.s.commit()
-                    return HttpResponseRedirect(c.get_absolute_url())
-
-    return ('stocktypesearch.html', {
-        'tillobject': StockType,
-        'form': form,
-        'stocktypes': result,
-        'may_alter': may_alter,
-        'may_stocktake': may_stocktake,
-        'candidate_stocktakes': candidate_stocktakes,
-    })
-
-
 class ValidateStockTypeABV:
     """Mixin class to validate abv of a stock type
     """
@@ -1195,6 +1114,110 @@ class NewStockTypeForm(ValidateStockTypeABV, forms.Form):
         required=False, decimal_places=money_decimal_places,
         min_value=zero, max_digits=money_max_digits)
     note = forms.CharField(required=False)
+
+
+class StockTypeArchiveSearchForm(StockTypeSearchForm):
+    include_archived = forms.BooleanField(
+        required=False, label="Include archived?")
+
+    def filter(self, q):
+        cd = self.cleaned_data
+        q = super().filter(q)
+        if not cd['include_archived']:
+            q = q.filter(StockType.archived == False)
+        return q
+
+
+@tillweb_view
+def stocktypesearch(request, info):
+    form = StockTypeArchiveSearchForm(request.GET)
+    result = []
+    if form.is_valid() and form.is_filled_in():
+        q = form.filter(td.s.query(StockType))
+        result = q.order_by(StockType.dept_id, StockType.manufacturer,
+                            StockType.name)\
+                  .all()
+
+    may_alter = info.user_has_perm("alter-stocktype")
+
+    may_stocktake = info.user_has_perm("stocktake")
+
+    create_form = None
+    manufacturers = []
+    if may_alter:
+        # XXX do we want to share this manufacturers datalist with the
+        # search form manufacturers field?
+        manufacturers = [x[0].strip() for x in
+                         td.s.query(distinct(StockType.manufacturer))
+                         .order_by(StockType.manufacturer)
+                         .all()]
+
+        if request.method == 'POST':
+            create_form = NewStockTypeForm(request.POST)
+            if create_form.is_valid():
+                cd = create_form.cleaned_data
+                try:
+                    s = StockType(
+                        department=cd['department'],
+                        manufacturer=cd['manufacturer'],
+                        name=cd['name'],
+                        abv=cd['abv'],
+                        unit=cd['unit'],
+                        saleprice=cd['saleprice'],
+                        note=cd['note'],
+                    )
+                    td.s.add(s)
+                    td.s.commit()
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    messages.error(
+                        request, "Could not create a new stock type: there is "
+                        "another stock type that's an exact match for the new "
+                        "details. This stock type is shown below.")
+                    s = td.s.query(StockType)\
+                            .filter(StockType.department == cd['department'])\
+                            .filter(StockType.manufacturer
+                                    == cd['manufacturer'])\
+                            .filter(StockType.name == cd['name'])\
+                            .filter(StockType.abv == cd['abv'])\
+                            .filter(StockType.unit == cd['unit'])\
+                            .one()
+                    return redirect(s.get_absolute_url())
+                user.log(f"Created stock type {s.logref}")
+                td.s.commit()
+                messages.success(request, "New stock type created")
+                return redirect(s)
+        else:
+            create_form = NewStockTypeForm()
+
+    candidate_stocktakes = []
+    if may_stocktake and result:
+        # Find candidate stocktakes to add to
+        candidate_stocktakes = td.s.query(StockTake)\
+                                   .filter(StockTake.start_time == None)\
+                                   .order_by(desc(StockTake.id))\
+                                   .all()
+        if request.method == 'POST':
+            for c in candidate_stocktakes:
+                if f'submit_add_to_{c.id}' in request.POST:
+                    # synchronize_session=False means that the session
+                    # will be out of sync after the update, but this
+                    # doesn't matter because we're expiring everything
+                    # on commit immediately afterwards.
+                    q.filter(StockType.stocktake == None).update(
+                        {StockType.stocktake_id: c.id},
+                        synchronize_session=False)
+                    td.s.commit()
+                    return HttpResponseRedirect(c.get_absolute_url())
+
+    return ('stocktypesearch.html', {
+        'tillobject': StockType,
+        'form': form,
+        'create_form': create_form,
+        'manufacturers': manufacturers,
+        'stocktypes': result,
+        'candidate_stocktakes': candidate_stocktakes,
+    })
 
 
 @tillweb_view
@@ -1666,17 +1689,6 @@ def stock(request, info, stockid):
     })
 
 
-@tillweb_view
-def units(request, info):
-    u = td.s.query(Unit).order_by(Unit.description).all()
-    may_edit = info.user_has_perm("edit-unit")
-    return ('units.html', {
-        'units': u,
-        'tillobject': Unit,
-        'may_create_unit': may_edit,
-    })
-
-
 class UnitForm(forms.Form):
     description = forms.CharField()
     base_unit = forms.CharField()
@@ -1694,6 +1706,43 @@ class UnitForm(forms.Form):
         choices=[('items', 'Separate items'),
                  ('stocktype', 'Total quantity in stock')],
         required=True, initial='items')
+
+
+@tillweb_view
+def units(request, info):
+    u = td.s.query(Unit).order_by(Unit.description).all()
+    may_edit = info.user_has_perm("edit-unit")
+
+    form = None
+    if may_edit:
+        if request.method == "POST":
+            form = UnitForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                u = Unit(
+                    description=cd['description'],
+                    name=cd['base_unit'],
+                    base_units_per_sale_unit=cd['base_units_per_sale_unit'],
+                    sale_unit_name=cd['sale_unit_name'],
+                    sale_unit_name_plural=cd['sale_unit_name_plural'],
+                    base_units_per_stock_unit=cd['base_units_per_stock_unit'],
+                    stock_unit_name=cd['stock_unit_name'],
+                    stock_unit_name_plural=cd['stock_unit_name_plural'],
+                    stocktake_by_items=cd['stock_take_method'] == 'items')
+                td.s.add(u)
+                td.s.flush()
+                user.log(f"Created unit {u.logref}")
+                td.s.commit()
+                messages.success(request, f"Unit '{u.description}' created.")
+                return redirect("tillweb-units")
+        else:
+            form = UnitForm()
+
+    return ('units.html', {
+        'units': u,
+        'tillobject': Unit,
+        'form': form,
+    })
 
 
 @tillweb_view
@@ -1753,56 +1802,6 @@ def unit(request, info, unit_id):
     })
 
 
-@tillweb_view
-def create_unit(request, info):
-    if not info.user_has_perm("edit-unit"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new units")
-
-    if request.method == "POST":
-        form = UnitForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            u = Unit(
-                description=cd['description'],
-                name=cd['base_unit'],
-                base_units_per_sale_unit=cd['base_units_per_sale_unit'],
-                sale_unit_name=cd['sale_unit_name'],
-                sale_unit_name_plural=cd['sale_unit_name_plural'],
-                base_units_per_stock_unit=cd['base_units_per_stock_unit'],
-                stock_unit_name=cd['stock_unit_name'],
-                stock_unit_name_plural=cd['stock_unit_name_plural'],
-                stocktake_by_items=cd['stock_take_method'] == 'items')
-            td.s.add(u)
-            td.s.flush()
-            user.log(f"Created unit {u.logref}")
-            td.s.commit()
-            messages.success(request, f"Unit '{u.description}' created.")
-            return HttpResponseRedirect(reverse("tillweb-units"))
-    else:
-        form = UnitForm()
-
-    return ('new-unit.html', {
-        'nav': [("Units", reverse("tillweb-units")),
-                ("New", reverse("tillweb-create-unit"))],
-        'form': form,
-    })
-
-
-@tillweb_view
-def stockunits(request, info):
-    su = td.s.query(StockUnit)\
-             .join(Unit)\
-             .order_by(Unit.description, StockUnit.size)\
-             .all()
-    may_edit = info.user_has_perm("edit-stockunit")
-    return ('stockunits.html', {
-        'stockunits': su,
-        'tillobject': StockUnit,
-        'may_create_stockunit': may_edit,
-    })
-
-
 class StockUnitForm(forms.Form):
     description = forms.CharField()
     unit = SQLAModelChoiceField(
@@ -1814,6 +1813,40 @@ class StockUnitForm(forms.Form):
         min_value=min_quantity, max_digits=qty_max_digits,
         decimal_places=qty_decimal_places)
     merge = forms.BooleanField(required=False)
+
+
+@tillweb_view
+def stockunits(request, info):
+    su = td.s.query(StockUnit)\
+             .join(Unit)\
+             .order_by(Unit.description, StockUnit.size)\
+             .all()
+
+    may_edit = info.user_has_perm("edit-stockunit")
+
+    form = None
+    if may_edit:
+        if request.method == "POST":
+            form = StockUnitForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                su = StockUnit(
+                    name=cd['description'],
+                    unit=cd['unit'],
+                    size=cd['size'],
+                    merge=cd['merge'])
+                td.s.add(su)
+                td.s.commit()
+                messages.success(request, f"Item size '{su.name}' created.")
+                return redirect(su)
+        else:
+            form = StockUnitForm()
+
+    return ('stockunits.html', {
+        'stockunits': su,
+        'tillobject': StockUnit,
+        'form': form,
+    })
 
 
 @tillweb_view
@@ -1852,35 +1885,6 @@ def stockunit(request, info, stockunit_id):
     return ('stockunit.html', {
         'tillobject': su,
         'stockunit': su,
-        'form': form,
-    })
-
-
-@tillweb_view
-def create_stockunit(request, info):
-    if not info.user_has_perm("edit-stockunit"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new item sizes")
-
-    if request.method == "POST":
-        form = StockUnitForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            su = StockUnit(
-                name=cd['description'],
-                unit=cd['unit'],
-                size=cd['size'],
-                merge=cd['merge'])
-            td.s.add(su)
-            td.s.commit()
-            messages.success(request, f"Item size '{su.name}' created.")
-            return HttpResponseRedirect(su.get_absolute_url())
-    else:
-        form = StockUnitForm()
-
-    return ('new-stockunit.html', {
-        'nav': [("Item sizes", reverse("tillweb-stockunits")),
-                ("New", reverse("tillweb-create-stockunit"))],
         'form': form,
     })
 
@@ -2198,21 +2202,6 @@ def stockline_continuous(request, info, s):
     })
 
 
-@tillweb_view
-def plulist(request, info):
-    plus = td.s.query(PriceLookup)\
-               .order_by(PriceLookup.dept_id, PriceLookup.description)\
-               .all()
-
-    may_create_plu = info.user_has_perm("create-plu")
-
-    return ('plus.html', {
-        'tillobject': PriceLookup,
-        'plus': plus,
-        'may_create_plu': may_create_plu,
-    })
-
-
 class PLUForm(forms.Form):
     description = forms.CharField()
     department = SQLAModelChoiceField(
@@ -2232,6 +2221,49 @@ class PLUForm(forms.Form):
     altprice3 = forms.DecimalField(
         required=False,
         max_digits=money_max_digits, decimal_places=money_decimal_places)
+
+
+@tillweb_view
+def plulist(request, info):
+    plus = td.s.query(PriceLookup)\
+               .order_by(PriceLookup.dept_id, PriceLookup.description)\
+               .all()
+
+    may_create_plu = info.user_has_perm("create-plu")
+
+    form = None
+    if may_create_plu:
+        if request.method == "POST":
+            form = PLUForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                p = PriceLookup(
+                    description=cd['description'],
+                    note=cd['note'],
+                    department=cd['department'],
+                    price=cd['price'],
+                    altprice1=cd['altprice1'],
+                    altprice2=cd['altprice2'],
+                    altprice3=cd['altprice3'])
+                try:
+                    td.s.add(p)
+                    td.s.commit()
+                    messages.success(
+                        request, f"Price lookup '{p.description}' created.")
+                    return redirect(p)
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error(
+                        "description",
+                        "There is another price lookup with this name")
+        else:
+            form = PLUForm()
+
+    return ('plus.html', {
+        'tillobject': PriceLookup,
+        'plus': plus,
+        'form': form,
+    })
 
 
 @tillweb_view
@@ -2283,39 +2315,6 @@ def plu(request, info, pluid):
 
 
 @tillweb_view
-def create_plu(request, info):
-    if not info.user_has_perm("create-plu"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new price lookups")
-
-    if request.method == "POST":
-        form = PLUForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            p = PriceLookup(
-                description=cd['description'],
-                note=cd['note'],
-                department=cd['department'],
-                price=cd['price'],
-                altprice1=cd['altprice1'],
-                altprice2=cd['altprice2'],
-                altprice3=cd['altprice3'])
-            td.s.add(p)
-            td.s.commit()
-            messages.success(
-                request, f"Price lookup '{p.description}' created.")
-            return HttpResponseRedirect(p.get_absolute_url())
-    else:
-        form = PLUForm()
-
-    return ('new-plu.html', {
-        'nav': [("Price lookups", reverse("tillweb-plus")),
-                ("New", reverse("tillweb-create-plu"))],
-        'form': form,
-    })
-
-
-@tillweb_view
 def barcodelist(request, info):
     return ('barcodes.html', {
         'tillobject': Barcode,
@@ -2329,19 +2328,6 @@ def barcode(request, info, barcode):
     return ('barcode.html', {
         'barcode': b,
         'tillobject': b,
-    })
-
-
-@tillweb_view
-def departmentlist(request, info):
-    depts = td.s.query(Department)\
-                .options(joinedload(Department.vat))\
-                .order_by(Department.id)\
-                .all()
-    return ('departmentlist.html', {
-        'tillobject': Department,
-        'depts': depts,
-        'may_create_department': info.user_has_perm("edit-department"),
     })
 
 
@@ -2399,36 +2385,42 @@ class NewDepartmentForm(DepartmentForm, DepartmentNumberForm):
 
 
 @tillweb_view
-def create_department(request, info):
-    if not info.user_has_perm("edit-department"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new departments")
+def departmentlist(request, info):
+    depts = td.s.query(Department)\
+                .options(joinedload(Department.vat))\
+                .order_by(Department.id)\
+                .all()
 
-    if request.method == 'POST':
-        form = NewDepartmentForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            d = Department(id=cd['number'], description=cd['description'],
-                           vat=cd['vatband'],
-                           notes=cd['notes'] or None,
-                           minprice=cd['min_price'],
-                           maxprice=cd['max_price'],
-                           minabv=cd['min_abv'],
-                           maxabv=cd['max_abv'],
-                           sales_account=cd['sales_account'],
-                           purchases_account=cd['purchases_account'])
-            td.s.add(d)
-            td.s.flush()
-            user.log(f"Created department {d.logref}")
-            td.s.commit()
-            messages.success(request, f"Department {cd['number']} created")
-            return HttpResponseRedirect(reverse("tillweb-departments"))
-    else:
-        form = NewDepartmentForm()
+    may_create_department = info.user_has_perm("edit-department")
 
-    return ('new-department.html', {
-        'nav': [("Departments", reverse("tillweb-departments")),
-                ("New", reverse("tillweb-create-department"))],
+    form = None
+    if may_create_department:
+        if request.method == 'POST':
+            form = NewDepartmentForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                d = Department(id=cd['number'],
+                               description=cd['description'],
+                               vat=cd['vatband'],
+                               notes=cd['notes'] or None,
+                               minprice=cd['min_price'],
+                               maxprice=cd['max_price'],
+                               minabv=cd['min_abv'],
+                               maxabv=cd['max_abv'],
+                               sales_account=cd['sales_account'],
+                               purchases_account=cd['purchases_account'])
+                td.s.add(d)
+                td.s.flush()
+                user.log(f"Created department {d.logref}")
+                td.s.commit()
+                messages.success(request, f"Department {cd['number']} created")
+                return redirect("tillweb-departments")
+        else:
+            form = NewDepartmentForm()
+
+    return ('departmentlist.html', {
+        'tillobject': Department,
+        'depts': depts,
         'form': form,
     })
 
@@ -2545,11 +2537,35 @@ def stockcheck(request, info):
     })
 
 
+class NewUserForm(forms.Form):
+    name = forms.CharField()
+
+
 @tillweb_view
 def userlist(request, info):
+    may_create_user = info.user_has_perm("edit-user")
+
+    form = None
+    if may_create_user:
+        if request.method == "POST":
+            form = NewUserForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                u = User(fullname=cd['name'],
+                         shortname=cd['name'],
+                         enabled=True)
+                td.s.add(u)
+                td.s.flush()
+                user.log(f"Created user {u.logref}.")
+                td.s.commit()
+                messages.success(request, f"User '{u.fullname}' created.")
+                return redirect(u)
+        else:
+            form = NewUserForm()
+
     return ('userlist.html', {
         'tillobject': User,
-        'may_create_user': info.user_has_perm("edit-user"),
+        'form': form,
     })
 
 
@@ -2624,37 +2640,13 @@ def userdetail(request, info, userid):
     })
 
 
-class NewUserForm(forms.Form):
+class EditGroupForm(forms.Form):
     name = forms.CharField()
-
-
-@tillweb_view
-def create_user(request, info):
-    if not info.user_has_perm("edit-user"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new users")
-
-    if request.method == "POST":
-        form = NewUserForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            u = User(fullname=cd['name'],
-                     shortname=cd['name'],
-                     enabled=True)
-            td.s.add(u)
-            td.s.flush()
-            user.log(f"Created user {u.logref}.")
-            td.s.commit()
-            messages.success(request, f"User '{u.fullname}' created.")
-            return HttpResponseRedirect(u.get_absolute_url())
-    else:
-        form = NewUserForm()
-
-    return ('new-user.html', {
-        'form': form,
-        'nav': [("Users", reverse("tillweb-till-users")),
-                ("New", reverse("tillweb-create-user"))],
-    })
+    description = forms.CharField()
+    permissions = StringIDMultipleChoiceField(
+        Permission, 'id',
+        query_filter=lambda q: q.order_by(Permission.id),
+        required=False)
 
 
 @tillweb_view
@@ -2663,20 +2655,35 @@ def grouplist(request, info):
                  .order_by(Group.id)\
                  .all()
 
+    may_create_group = info.user_has_perm("edit-group")
+
+    form = None
+
+    if may_create_group:
+        if request.method == "POST":
+            form = EditGroupForm(request.POST)
+            if form.is_valid():
+                cd = form.cleaned_data
+                g = Group(id=cd['name'],
+                          description=cd['description'],
+                          permissions=cd['permissions'])
+                td.s.add(g)
+                try:
+                    td.s.commit()
+                    messages.success(request, f"Group '{g.id}' created.")
+                    return redirect(g)
+                except sqlalchemy.exc.IntegrityError:
+                    td.s.rollback()
+                    form.add_error(
+                        "name", "There is another group with this name")
+        else:
+            form = EditGroupForm()
+
     return ('grouplist.html', {
         'tillobject': Group,
         'groups': groups,
-        'may_create_group': info.user_has_perm("edit-group"),
+        'form': form,
     })
-
-
-class EditGroupForm(forms.Form):
-    name = forms.CharField()
-    description = forms.CharField()
-    permissions = StringIDMultipleChoiceField(
-        Permission, 'id',
-        query_filter=lambda q: q.order_by(Permission.id),
-        required=False)
 
 
 @tillweb_view
@@ -2717,41 +2724,6 @@ def group(request, info, groupid):
         'group': g,
         'form': form,
         'can_delete': len(g.users) == 0,
-    })
-
-
-@tillweb_view
-def create_group(request, info):
-    if not info.user_has_perm("edit-group"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new groups")
-
-    if request.method == "POST":
-        form = EditGroupForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            g = Group(id=cd['name'],
-                      description=cd['description'],
-                      permissions=cd['permissions'])
-            td.s.add(g)
-            try:
-                td.s.commit()
-                messages.success(request, "Group '{}' created.".format(g.id))
-                return HttpResponseRedirect(
-                    reverse("tillweb-till-groups") + "#row-" + g.id)
-            except sqlalchemy.exc.IntegrityError:
-                td.s.rollback()
-                form.add_error("name", "There is another group with this name")
-                messages.error(
-                    request, "Could not create the group: there is "
-                    "another group with this name")
-    else:
-        form = EditGroupForm()
-
-    return ('new-group.html', {
-        'form': form,
-        'nav': [("Groups", reverse("tillweb-till-groups")),
-                ("New", reverse("tillweb-create-till-group"))],
     })
 
 
