@@ -2531,7 +2531,76 @@ def stockcheck(request, info):
     return ('stockcheck.html', {
         'nav': [
             ("Reports", reverse("tillweb-reports")),
-            ("Buying list", reverse("tillweb-stockcheck"))],
+            ("Buying list for department", reverse("tillweb-stockcheck"))],
+        'form': form,
+        'buylist': buylist,
+    })
+
+
+class SupplierStockCheckForm(forms.Form):
+    short = forms.TextInput(attrs={'size': 3, 'maxlength': 3})
+    weeks_ahead = forms.IntegerField(
+        label="Weeks ahead", widget=short,
+        min_value=0)
+    months_behind = forms.IntegerField(
+        label="Months behind", widget=short,
+        min_value=0)
+    minimum_sold = forms.FloatField(
+        label="Minimum sold", widget=short,
+        min_value=0.0, initial=1.0)
+    supplier = SQLAModelChoiceField(
+        Supplier,
+        query_filter=lambda q: q.order_by(Supplier.name))
+    supplier_months_behind = forms.IntegerField(
+        label="Supplied within months", widget=short, min_value=0,
+        initial=12)
+
+
+@tillweb_view
+def stockcheck_supplier(request, info):
+    buylist = []
+    if request.method == 'POST':
+        form = SupplierStockCheckForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            ahead = datetime.timedelta(days=cd['weeks_ahead'] * 7)
+            behind = datetime.timedelta(days=cd['months_behind'] * 30.4)
+            min_sale = cd['minimum_sold']
+            supplier = cd['supplier']
+            supplier_behind = datetime.timedelta(
+                days=cd['supplier_months_behind'] * 30.4)
+            stocktypes = select(StockType.id)\
+                .join(StockItem)\
+                .join(Delivery)\
+                .where((func.now() - Delivery.date) < supplier_behind)\
+                .where(Delivery.supplierid == supplier.id)
+            r = td.s.query(StockType, func.sum(StockOut.qty) / behind.days)\
+                    .select_from(StockType)\
+                    .join(StockItem)\
+                    .join(StockOut)\
+                    .options(lazyload(StockType.department),
+                             lazyload(StockType.unit),
+                             undefer(StockType.all_instock))\
+                    .filter(StockOut.removecode_id == 'sold')\
+                    .filter((func.now() - StockOut.time) < behind)\
+                    .filter(StockType.id.in_(stocktypes))\
+                    .having(func.sum(StockOut.qty) / behind.days > min_sale)\
+                    .group_by(StockType)\
+                    .all()
+            buylist = sorted(
+                ((st, sold / st.unit.base_units_per_stock_unit,
+                  st.all_instock / st.unit.base_units_per_stock_unit,
+                  (sold * ahead.days - st.all_instock)
+                  / st.unit.base_units_per_stock_unit)
+                 for st, sold in r),
+                key=lambda x: x[3], reverse=True)
+    else:
+        form = SupplierStockCheckForm()
+    return ('stockcheck-supplier.html', {
+        'nav': [
+            ("Reports", reverse("tillweb-reports")),
+            ("Buying list for supplier",
+             reverse("tillweb-stockcheck-supplier"))],
         'form': form,
         'buylist': buylist,
     })

@@ -117,6 +117,8 @@ tillurls = [
     path('reports/stock-value/', views.stock_value_report,
          name="tillweb-report-stock-value"),
     path('reports/stockcheck/', views.stockcheck, name="tillweb-stockcheck"),
+    path('reports/stockcheck-supplier/', views.stockcheck_supplier,
+         name="tillweb-stockcheck-supplier"),
     path('reports/translines/', views.transline_summary_report,
          name="tillweb-report-transline-summary"),
     path('reports/refusals/', views.refusals, name="tillweb-refusals"),

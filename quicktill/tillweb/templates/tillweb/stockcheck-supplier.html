@@ -1,0 +1,71 @@
+{% extends "tillweb/tillweb.html" %}
+
+{% block title %}{{till}} — Buying List{% endblock %}
+
+{% block tillcontent %}
+
+<h2>Generate buying list for a supplier</h2>
+
+<form action="" method="post">{% csrf_token %}
+
+<p>Generate a buying list to stock up for the next
+{{form.weeks_ahead}} weeks{% if form.weeks_ahead.errors %}
+<span class="error">({% for e in form.weeks_ahead.errors %}{{e}}{% endfor %})</span>{% endif %},
+based on sales in the last {{form.months_behind}}
+months{% if form.months_behind.errors %}
+<span class="error">
+({% for e in form.months_behind.errors %}{{e}}{% endfor %})</span>{% endif %}.
+</p>
+
+<p>
+Ignore stock that sold less than {{form.minimum_sold}}
+<a href="{% url "tillweb-units" %}">base units</a>
+per day{% if form.minimum_sold.errors %}
+<span class="error">({% for e in form.minimum_sold.errors %}{{e}}{% endfor %})</span>{% endif %} in that period.
+</p>
+
+<p>Restrict the list to items supplied by {{form.supplier}} within the last {{form.supplier_months_behind}} months.{% if form.supplier.errors %} <span class="error">({% for e in form.supplier.errors %}{{e}}{% endfor %})</span>{% endif %}{% if form.supplier_months_behind.errors %} <span class="error">({% for e in form.supplier_months_behind.errors %}{{e}}{% endfor %})</span>{% endif %}</p>
+
+<p>N.B. This list will only be accurate if the stock levels on the
+till are up to date. If we are changing the type of stock we sell
+(eg. swapping one brand for another) then the list will show too few
+of the new type and too many of the old type until the changeover has
+been complete for as many months as you specify above.</p>
+
+<button class="btn btn-primary mb-2" type="submit" name="submit_calculate">Calculate</button>
+</form>
+
+{% if buylist %}
+
+<table class="table table-striped table-hover table-sm" id="buylist">
+<thead class="table-light">
+  <tr>
+    <th scope="col">Stock type</th>
+    <th scope="col">Sold per day</th>
+    <th scope="col">In stock</th>
+    <th scope="col">Need to buy</th>
+  </tr>
+</thead>
+<tbody>
+{% for st, sold, instock, buy in buylist %}
+<tr>
+<td><a href="{{st.get_absolute_url}}">{{st}}</a></td>
+<td data-sort="{{sold}}">{{sold|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td data-sort="{{instock}}">{{instock|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+<td data-sort="{{buy}}">{{buy|floatformat}} {{st.unit.stock_unit_name_plural}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script type="text/javascript">
+  $(document).ready(function(){
+      $("#buylist").DataTable({
+	  ...dt_sortonly,
+	  order: [[3, "desc"]],
+      });
+  });
+</script>
+
+{% endif %}
+
+{% endblock %}
