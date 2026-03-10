@@ -9,7 +9,7 @@
   <div class="row mb-3">
     <label for="manufacturerInput" class="col-sm-2 col-form-label">Manufacturer</label>
     <div class="col-sm-10">
-      <input type="search" class="form-control" id="manufacturerInput" name="manufacturer">
+      <input type="search" class="form-control" id="manufacturerInput" name="manufacturer" value="{{request.GET.manufacturer}}">
     </div>
   </div>
 
@@ -107,7 +107,7 @@
 <script type="text/javascript">
   $(document).ready(function() {
       let include_archived = false;
-      let manufacturer = null;
+      let manufacturer = $("#manufacturerInput").val();
       let name = null;
       let department = null;
 
