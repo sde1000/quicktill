@@ -1,3 +1,15 @@
+quicktill (26.9) stable; urgency=low
+
+  * New release 26.9
+
+  * Use a server-driven datatable for stock type search page
+
+  * Remove redundant create_stocktype view function
+
+  * Update EMF 2024 example data to current schema
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 10 Mar 2026 20:49:30 +0000
+
 quicktill (26.8) stable; urgency=low
 
   * New release 26.8
