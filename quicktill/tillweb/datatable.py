@@ -22,10 +22,12 @@ from quicktill.models import (
     Department,
     Delivery,
     Supplier,
+    Unit,
     StockType,
     StockItem,
     StockAnnotation,
     AnnotationType,
+    StockTake,
     Barcode,
     RefusalsLog,
     zero,
@@ -678,6 +680,101 @@ def stockitems(request, info):
                 "tillweb-stocktype-search",
                 query=[("manufacturer", a.stocktype.manufacturer)]),
             'stocktype_url': a.stocktype.get_absolute_url(),
+        })
+
+
+@tillweb_view
+def stocktypes(request, info):
+    columns = {
+        'id': StockType.id,
+        'manufacturer': StockType.manufacturer,
+        'name': StockType.name,
+        'fullname': StockType.fullname,
+        'abv': StockType.abv,
+        'department': StockType.dept_id,
+        'unit': Unit.description,
+        'saleprice': StockType.saleprice,
+        'stocktake': StockType.stocktake_id,
+    }
+
+    search_value = request.GET.get("search[value]")
+    q = td.s.query(StockType)\
+            .join(Department)\
+            .join(Unit)\
+            .join(StockTake, isouter=True)\
+            .options(contains_eager(StockType.department),
+                     contains_eager(StockType.unit),
+                     contains_eager(StockType.stocktake))
+
+    # Apply filters from parameters, before counting the size of the table
+    try:
+        department_pre_filter = int(request.GET.get("department_pre_filter"))
+        q = q.filter(StockType.dept_id == department_pre_filter)
+    except (ValueError, TypeError):
+        pass
+
+    fq = q
+
+    # Apply filters from parameters, after counting the size of the table
+    include_archived = request.GET.get("include_archived", "no") == "yes"
+    if not include_archived:
+        fq = fq.filter(StockType.archived == False)
+
+    manufacturer = request.GET.get("manufacturer")
+    if manufacturer:
+        fq = fq.filter(StockType.manufacturer.ilike(f"%{manufacturer}%"))
+
+    name = request.GET.get("name")
+    if name:
+        fq = fq.filter(StockType.name.ilike(f"%{name}%"))
+
+    try:
+        department = int(request.GET.get("department"))
+        fq = fq.filter(StockType.dept_id == department)
+    except (ValueError, TypeError):
+        pass
+
+    # Apply filters from search value
+    if search_value:
+        try:
+            intsearch = int(search_value)
+        except ValueError:
+            intsearch = None
+        try:
+            decsearch = Decimal(search_value)
+        except decimal.InvalidOperation:
+            decsearch = None
+        qs = [
+            columns['manufacturer'].ilike(f'%{search_value}%'),
+            columns['name'].ilike(f'{search_value}%'),
+            columns['fullname'].ilike(f'%{search_value}%'),
+        ]
+        if intsearch:
+            qs.append(columns['id'] == intsearch)
+        if decsearch:
+            qs.append(columns['abv'] == decsearch)
+            qs.append(columns['saleprice'] == decsearch)
+        fq = fq.filter(or_(*qs))
+
+    # 'st' is a StockType in the lambda below
+    return _datatables_json(
+        request, q, fq, columns, lambda st: {
+            'manufacturer': st.manufacturer,
+            'name': st.name,
+            'department': st.department.description,
+            'department_url': st.department.get_absolute_url(),
+            'abv': st.abv,
+            'saleprice': st.saleprice,
+            'manufacturer_url': reverse(
+                "tillweb-stocktype-search",
+                query=[("manufacturer", st.manufacturer)]),
+            'stocktype_url': st.get_absolute_url(),
+            'unit': st.unit.description,
+            'unit_url': st.unit.get_absolute_url(),
+            'stocktake': str(st.stocktake) if st.stocktake else None,
+            'stocktake_url': st.stocktake.get_absolute_url() if st.stocktake
+            else None,
+            'DT_RowClass': "table-danger" if st.archived else None,
         })
 
 

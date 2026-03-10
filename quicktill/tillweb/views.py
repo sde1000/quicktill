@@ -1,5 +1,4 @@
 from django.http import HttpResponse, Http404, HttpResponseRedirect
-from django.http import HttpResponseForbidden
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
@@ -1044,31 +1043,6 @@ def delivery(request, info, deliveryid):
     })
 
 
-class StockTypeSearchForm(forms.Form):
-    manufacturer = forms.CharField(required=False)
-    name = forms.CharField(required=False)
-    department = SQLAModelChoiceField(
-        Department,
-        query_filter=lambda q: q.order_by(Department.id),
-        required=False)
-
-    def is_filled_in(self):
-        cd = self.cleaned_data
-        return cd['manufacturer'] or cd['name'] or cd['department']
-
-    def filter(self, q):
-        cd = self.cleaned_data
-        if cd['manufacturer']:
-            q = q.filter(StockType.manufacturer.ilike(
-                "%{}%".format(cd['manufacturer'])))
-        if cd['name']:
-            q = q.filter(StockType.name.ilike(
-                "%{}%".format(cd['name'])))
-        if cd['department']:
-            q = q.filter(StockType.department == cd['department'])
-        return q
-
-
 class ValidateStockTypeABV:
     """Mixin class to validate abv of a stock type
     """
@@ -1116,43 +1090,39 @@ class NewStockTypeForm(ValidateStockTypeABV, forms.Form):
     note = forms.CharField(required=False)
 
 
-class StockTypeArchiveSearchForm(StockTypeSearchForm):
-    include_archived = forms.BooleanField(
-        required=False, label="Include archived?")
-
-    def filter(self, q):
-        cd = self.cleaned_data
-        q = super().filter(q)
-        if not cd['include_archived']:
-            q = q.filter(StockType.archived == False)
-        return q
-
-
 @tillweb_view
 def stocktypesearch(request, info):
-    form = StockTypeArchiveSearchForm(request.GET)
-    result = []
-    if form.is_valid() and form.is_filled_in():
-        q = form.filter(td.s.query(StockType))
-        result = q.order_by(StockType.dept_id, StockType.manufacturer,
-                            StockType.name)\
-                  .all()
+    q = td.s.query(StockType)
+
+    if request.method == 'POST':
+        if (m := request.POST.get('manufacturer')):
+            q = q.filter(StockType.manufacturer.ilike(f"%{m}%"))
+        if (m := request.POST.get('name')):
+            q = q.filter(StockType.name.ilike(f"%{m}%"))
+        if (m := request.POST.get('department')):
+            try:
+                q = q.filter(StockType.dept_id == int(m))
+            except ValueError:
+                pass
+        include_archived = 'include_archived' in request.POST
+        if not include_archived:
+            q = q.filter(StockType.archived == False)
 
     may_alter = info.user_has_perm("alter-stocktype")
 
     may_stocktake = info.user_has_perm("stocktake")
 
+    departments = td.s.query(Department).order_by(Department.id).all()
+
     create_form = None
     manufacturers = []
     if may_alter:
-        # XXX do we want to share this manufacturers datalist with the
-        # search form manufacturers field?
         manufacturers = [x[0].strip() for x in
                          td.s.query(distinct(StockType.manufacturer))
                          .order_by(StockType.manufacturer)
                          .all()]
 
-        if request.method == 'POST':
+        if request.method == 'POST' and 'submit_create' in request.POST:
             create_form = NewStockTypeForm(request.POST)
             if create_form.is_valid():
                 cd = create_form.cleaned_data
@@ -1191,8 +1161,7 @@ def stocktypesearch(request, info):
             create_form = NewStockTypeForm()
 
     candidate_stocktakes = []
-    if may_stocktake and result:
-        # Find candidate stocktakes to add to
+    if may_stocktake:
         candidate_stocktakes = td.s.query(StockTake)\
                                    .filter(StockTake.start_time == None)\
                                    .order_by(desc(StockTake.id))\
@@ -1208,14 +1177,13 @@ def stocktypesearch(request, info):
                         {StockType.stocktake_id: c.id},
                         synchronize_session=False)
                     td.s.commit()
-                    return HttpResponseRedirect(c.get_absolute_url())
+                    return redirect(c)
 
     return ('stocktypesearch.html', {
         'tillobject': StockType,
-        'form': form,
+        'departments': departments,
         'create_form': create_form,
         'manufacturers': manufacturers,
-        'stocktypes': result,
         'candidate_stocktakes': candidate_stocktakes,
     })
 
