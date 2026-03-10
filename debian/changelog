@@ -1,3 +1,37 @@
+quicktill (26.8) stable; urgency=low
+
+  * New release 26.8
+
+  * Add a "stock check for a supplier" report to the web interface
+
+  * Convert new/<foo>/ pages to modal dialogs
+
+  * Update model tests for new Session args
+
+  * Improve the way we declare the navigation tree
+
+  * Fetch related objects when loading barcodes for datatable
+
+  * Add pages to show business and VAT band information
+
+  * More key/value table updates, moving to dl
+
+  * Remove kvtable class, replace with <dl> and appropriate styling
+
+  * Replace edit-in-place forms with modal dialogs
+
+  * Use the new "modal" tag from tillweb_utils
+
+  * Use row/col divs instead of a table for session totals bar
+
+  * Show totals by business rather than by vatband on session pages
+
+  * Remove redundant server-side Pager code and template
+
+  * Use a server-driven datatable for the Barcodes index page
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 10 Mar 2026 13:10:43 +0000
+
 quicktill (26.7) stable; urgency=low
 
   * New release 26.7
