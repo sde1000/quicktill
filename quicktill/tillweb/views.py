@@ -1220,62 +1220,6 @@ def stocktypesearch(request, info):
     })
 
 
-@tillweb_view
-def create_stocktype(request, info):
-    if not info.user_has_perm("alter-stocktype"):
-        return HttpResponseForbidden(
-            "You don't have permission to create new stock types")
-
-    manufacturers = [x[0].strip() for x in
-                     td.s.query(distinct(StockType.manufacturer))
-                     .order_by(StockType.manufacturer)
-                     .all()]
-
-    if request.method == 'POST':
-        form = NewStockTypeForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            try:
-                s = StockType(
-                    department=cd['department'],
-                    manufacturer=cd['manufacturer'],
-                    name=cd['name'],
-                    abv=cd['abv'],
-                    unit=cd['unit'],
-                    saleprice=cd['saleprice'],
-                    note=cd['note'],
-                )
-                td.s.add(s)
-                td.s.commit()
-            except sqlalchemy.exc.IntegrityError:
-                td.s.rollback()
-                messages.error(
-                    request, "Could not create a new stock type: there is "
-                    "another stock type that's an exact match for the new "
-                    "details. This stock type is shown below.")
-                s = td.s.query(StockType)\
-                        .filter(StockType.department == cd['department'])\
-                        .filter(StockType.manufacturer == cd['manufacturer'])\
-                        .filter(StockType.name == cd['name'])\
-                        .filter(StockType.abv == cd['abv'])\
-                        .filter(StockType.unit == cd['unit'])\
-                        .one()
-            return HttpResponseRedirect(s.get_absolute_url())
-            user.log(f"Created stock type {s.logref}")
-            td.s.commit()
-            messages.success(request, "New stock type created")
-            return HttpResponseRedirect(s.get_absolute_url())
-    else:
-        form = NewStockTypeForm()
-
-    return ('new-stocktype.html', {
-        'nav': [("Stock types", reverse("tillweb-stocktype-search")),
-                ("New", reverse("tillweb-create-stocktype"))],
-        'form': form,
-        'manufacturers': manufacturers,
-    })
-
-
 def _stocktype_to_dict(x, include_stockunits):
     return {'id': str(x.id), 'text': stocktype_widget_label(x),
             'saleprice': x.saleprice,
