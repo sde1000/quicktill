@@ -1,144 +1,154 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — Stock Lines{% endblock %}
 
 {% block tillcontent %}
 
-<h2 id="regular">Regular stock lines</h2>
+<ul class="nav nav-tabs mb-2" role="tablist">
+  {% tab "regularStocklines" title="Regular stock lines" active=True %}
+  {% tab "displayStocklines" title="Display stock lines" %}
+  {% tab "continuousStocklines" title="Continuous stock lines" %}
+</ul>
 
-<p>Regular stock lines can have at most one stock item on sale at any
-  one time.  Finishing that stock item and putting another item on
-  sale are done explicitly by the staff.  They are typically used
-  where units are dispensed directly from the stock item to the
-  customer and it's obvious to the member of staff when the stock item
-  is empty, for example casks/kegs through a pump, bottles of spirits,
-  cards or boxes of snacks, and so on.</p>
+<div class="tab-content mb-2">
+  {% tabcontent "regularStocklines" active=True %}
+  <p>Regular stock lines can have at most one stock item on sale at
+    any one time.  Finishing that stock item and putting another item
+    on sale are done explicitly by the staff.  They are typically used
+    where units are dispensed directly from the stock item to the
+    customer and it's obvious to the member of staff when the stock
+    item is empty, for example casks/kegs through a pump, bottles of
+    spirits, cards or boxes of snacks, and so on.</p>
 
-{% if regular %}
-<table class="table table-striped table-hover table-sm" id="regularstocklinelist">
-<thead class="table-light">
-  <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Location</th>
-    <th scope="col">Department</th>
-    <th scope="col">Pullthru?</th>
-    <th scope="col">Stock / state</th>
-  </tr>
-</thead>
-<tbody>
-{% for line in regular %}
-<tr>
-<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
-<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
-<td data-sort="{{line.department.id|default:0}}">{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
-<td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
-<td{% if line.stockonsale %} data-sort="{{line.stockonsale.0.id}}"{% endif %}>
-  {% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}
-  {% if line.note %}<span class="badge bg-{% if line.stockonsale %}warning{% else %}info{% endif %}">{{line.note}}</span>{% endif %}
-</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+  {% if regular %}
+  <table class="table table-striped table-hover table-sm" id="regularstocklinelist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Name</th>
+	<th scope="col">Location</th>
+	<th scope="col">Department</th>
+	<th scope="col">Pullthru?</th>
+	<th scope="col">Stock / state</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in regular %}
+      <tr>
+	<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+	<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
+	<td data-sort="{{line.department.id|default:0}}">{% if line.department %}<a href="{{line.department.get_absolute_url}}">{{line.department}}</a>{% endif %}</td>
+	<td>{% if line.pullthru %}{{line.pullthru}}{% endif %}</td>
+	<td{% if line.stockonsale %} data-sort="{{line.stockonsale.0.id}}"{% endif %}>
+	  {% if line.stockonsale %}<a href="{{line.stockonsale.0.get_absolute_url}}">{{line.stockonsale.0.id}}: {{line.stockonsale.0.stocktype}}</a>{% endif %}
+	  {% if line.note %}<span class="badge bg-{% if line.stockonsale %}warning{% else %}info{% endif %}">{{line.note}}</span>{% endif %}
+	</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#regularstocklinelist").DataTable();
-});
-</script>
-{% else %}
-<p>No regular stock lines exist at the moment.</p>
-{% endif %}
+  <script type="text/javascript">
+    $(document).ready(function(){
+	$("#regularstocklinelist").DataTable();
+    });
+  </script>
+  {% else %}
+  <p>No regular stock lines exist at the moment.</p>
+  {% endif %}
+  {% endtabcontent %}
 
-<h2 id="display">Display stock lines</h2>
+  {% tabcontent "displayStocklines" %}
+  <p>Display stock lines can have several stock items on sale at once.
+    Moving from one stock item to the next is automatic; when one item
+    is empty the next is used.  These stock lines have a "capacity",
+    and the system keeps track of how many units of each stock item
+    are "on display" and available to be sold; the "capacity" is the
+    number of units that can be on display at any one time (for
+    example, in a fridge).  Display stock lines are typically used
+    where it isn't obvious to the member of staff where one stock item
+    finishes and another one starts; for example, the bottles on
+    display in a fridge may come from several different stock
+    items.</p>
 
-<p>Display stock lines can have several stock items on sale at once.
-  Moving from one stock item to the next is automatic; when one item
-  is empty the next is used.  These stock lines have a "capacity", and
-  the system keeps track of how many units of each stock item are "on
-  display" and available to be sold; the "capacity" is the number of
-  units that can be on display at any one time (for example, in a
-  fridge).  Display stock lines are typically used where it isn't
-  obvious to the member of staff where one stock item finishes and
-  another one starts; for example, the bottles on display in a fridge
-  may come from several different stock items.</p>
+  {% if display %}
+  <table class="table table-striped table-hover table-sm" id="displaystocklinelist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Name</th>
+	<th scope="col">Location</th>
+	<th scope="col">Stock type</th>
+	<th scope="col">Capacity</th>
+	<th scope="col">On display</th>
+	<th scope="col">In stock</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in display %}
+      <tr>
+	<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+	<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
+	<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
+	<td>{{line.capacity}}</td>
+	<td>{{line.ondisplay}}</td>
+	<td>{{line.instock}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-{% if display %}
-<table class="table table-striped table-hover table-sm" id="displaystocklinelist">
-<thead class="table-light">
-  <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Location</th>
-    <th scope="col">Stock type</th>
-    <th scope="col">Capacity</th>
-    <th scope="col">On display</th>
-    <th scope="col">In stock</th>
-  </tr>
-</thead>
-<tbody>
-{% for line in display %}
-<tr>
-<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
-<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
-<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
-<td>{{line.capacity}}</td>
-<td>{{line.ondisplay}}</td>
-<td>{{line.instock}}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+  <script type="text/javascript">
+    $(document).ready(function(){
+	$("#displaystocklinelist").DataTable();
+    });
+  </script>
+  {% else %}
+  <p>No display stock lines exist at the moment.</p>
+  {% endif %}
+  {% endtabcontent %}
 
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#displaystocklinelist").DataTable();
-});
-</script>
-{% else %}
-<p>No display stock lines exist at the moment.</p>
-{% endif %}
+  {% tabcontent "continuousStocklines" %}
+  <p>Continuous stock lines never have any stock items explicitly on
+    sale.  Instead, when a sale is made the till searches for stock of
+    the specified type that is not already on sale on another stock
+    line, and uses that.  If a particular stock item doesn't have
+    enough stock left for the whole sale, multiple stock items are
+    used.  Continuous stock lines are typically used where a single
+    sale (for example of a glass of wine) can come from multiple stock
+    items (eg. where a wine bottle finishes, and the next bottle is
+    from a different case).</p>
 
-<h2 id="continuous">Continuous stock lines</h2>
+  {% if continuous %}
+  <table class="table table-striped table-hover table-sm" id="continuousstocklinelist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Name</th>
+	<th scope="col">Location</th>
+	<th scope="col">Stock type</th>
+	<th scope="col">Remaining</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in continuous %}
+      <tr>
+	<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
+	<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
+	<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
+	<td data-sort="{{line.remaining}}">{{line.remaining_str}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-<p>Continuous stock lines never have any stock items explicitly on
-  sale.  Instead, when a sale is made the till searches for stock of
-  the specified type that is not already on sale on another stock
-  line, and uses that.  If a particular stock item doesn't have enough
-  stock left for the whole sale, multiple stock items are used.
-  Continuous stock lines are typically used where a single sale (for
-  example of a glass of wine) can come from multiple stock items
-  (eg. where a wine bottle finishes, and the next bottle is from a
-  different case).</p>
-
-{% if continuous %}
-<table class="table table-striped table-hover table-sm" id="continuousstocklinelist">
-<thead class="table-light">
-  <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Location</th>
-    <th scope="col">Stock type</th>
-    <th scope="col">Remaining</th>
-  </tr>
-</thead>
-<tbody>
-{% for line in continuous %}
-<tr>
-<td><a href="{{line.get_absolute_url}}">{{line.name}}</a></td>
-<td><a href="{% url "tillweb-location" location=line.location %}">{{line.location}}</a></td>
-<td><a href="{{line.stocktype.get_absolute_url}}">{{line.stocktype.format}}</a></td>
-<td data-sort="{{line.remaining}}">{{line.remaining_str}}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-
-<script type="text/javascript">
-$(document).ready(function(){
-  $("#continuousstocklinelist").DataTable();
-});
-</script>
-{% else %}
-<p>No continuous stock lines exist at the moment.</p>
-{% endif %}
+  <script type="text/javascript">
+    $(document).ready(function(){
+	$("#continuousstocklinelist").DataTable();
+    });
+  </script>
+  {% else %}
+  <p>No continuous stock lines exist at the moment.</p>
+  {% endif %}
+  {% endtabcontent %}
+</div>
 
 {% endblock %}
