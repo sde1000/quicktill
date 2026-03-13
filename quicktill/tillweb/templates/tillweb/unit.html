@@ -71,7 +71,7 @@
 {% endmodal %}
 {% endif %}
 
-<ul class="nav nav-tabs mb-2" id="unitTabs" role="tablist">
+<ul class="nav nav-tabs mb-2" role="tablist">
   {% tab "itemSizes" title="Item sizes" active=True %}
   {% tab "stockTypes" title="Stock types" %}
   {% tab "logEntries" title="Log entries" %}
@@ -157,7 +157,7 @@
   };
 
   $(document).ready(function() {
-      $('#stockTypesTab').on("click", function (e) {
+      $('#stockTypesTab').on("show.bs.tab", function (e) {
 	  if (stocktypes_table === null) {
 	      init_stocktypes_table();
 	  }

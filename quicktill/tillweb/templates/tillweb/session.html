@@ -578,7 +578,7 @@
 	  return false;
       });
 
-      $('#deptTakingsTab').on("click", function (e) {
+      $('#deptTakingsTab').on("click show.bs.tab", function (e) {
 	  if (depttotals_table === null) {
 	      init_depttotals_table();
 	  } else {
@@ -588,7 +588,7 @@
 	  }
       });
 
-      $('#userTakingsTab').on("click", function (e) {
+      $('#userTakingsTab').on("click show.bs.tab", function (e) {
 	  if (usertotals_table === null) {
 	      init_usertotals_table();
 	  } else {
@@ -598,7 +598,7 @@
 	  }
       });
 
-      $('#transactionsTab').on("click", function (e) {
+      $('#transactionsTab').on("click show.bs.tab", function (e) {
 	  if (transactions_table === null) {
 	      init_transactions_table();
 	  } else {
@@ -608,7 +608,7 @@
 	  }
       });
 
-      $('#translinesTab').on("click", function (e) {
+      $('#translinesTab').on("click show.bs.tab", function (e) {
 	  if (translines_table === null) {
 	      init_translines_table();
 	  } else {
@@ -618,7 +618,7 @@
 	  }
       });
 
-      $('#paymentsTab').on("click", function (e) {
+      $('#paymentsTab').on("click show.bs.tab", function (e) {
 	  if (payments_table === null) {
 	      init_payments_table();
 	  } else {
