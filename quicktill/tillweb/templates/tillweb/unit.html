@@ -71,64 +71,102 @@
 {% endmodal %}
 {% endif %}
 
-{% if unit.stockunits %}
-<h2>Item sizes</h2>
-
-{% if form %}
-<p>It is not possible to delete this unit because the following item sizes refer to it:</p>
-{% else %}
-<p>The following item sizes refer to this unit:</p>
-{% endif %}
-<ul>
-  {% for su in unit.stockunits %}
-  <li><a href="{{su.get_absolute_url}}">{{su.name}} ({{su.size}} {{unit.name}})</a></li>
-  {% endfor %}
+<ul class="nav nav-tabs mb-2" id="unitTabs" role="tablist">
+  {% tab "itemSizes" title="Item sizes" active=True %}
+  {% tab "stockTypes" title="Stock types" %}
+  {% tab "logEntries" title="Log entries" %}
 </ul>
-{% endif %}
 
-{% if unit.stocktypes %}
-<h2>Stock types</h2>
+<div class="tab-content mb-2">
+  {% tabcontent "itemSizes" active=True %}
+  {% if unit.stockunits %}
+  <ul>
+    {% for su in unit.stockunits %}
+    <li><a href="{{su.get_absolute_url}}">{{su.name}} ({{su.size}} {{unit.name}})</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No item sizes been defined for this unit.</p>
+  {% endif %}
+  {% endtabcontent %}
 
-{% if form %}
-<p>It is not possible to delete this unit because the following stock types refer to it:</p>
-{% else %}
-<p>The following stock types refer to this unit:</p>
-{% endif %}
+  {% tabcontent "stockTypes" %}
+  <div class="mb-3 form-check">
+    <input class="form-check-input" type="checkbox" value="" id="checkArchived" name="include_archived">
+    <label class="form-check-label" for="checkArchived">
+      Include archived?
+    </label>
+  </div>
 
-<table class="table table-striped table-hover table-sm" id="stocktypelist">
-<thead class="table-light">
-  <tr>
-    <th scope="col">Manufacturer</th>
-    <th scope="col">Name</th>
-    <th scope="col">ABV</th>
-    <th scope="col">Department</th>
-    <th scope="col">Sale price</th>
-  </tr>
-</thead>
-<tbody>
-{% for t in unit.stocktypes %}
-<tr>
-<td><a href="?manufacturer={{t.manufacturer|urlencode}}">{{t.manufacturer}}</a></td>
-<td><a href="{{t.get_absolute_url}}">{{t.name}}</a></td>
-<td data-sort="{{t.abv|default:0.0}}">{{t.abvstr}}</td>
-<td><a href="{{t.department.get_absolute_url}}">{{t.department}}</a></td>
-{% if t.saleprice %}<td class="money" data-sort="{{t.saleprice}}">{{money}}{{t.pricestr}}</td>
-{% else %}<td data-sort="0.00"></td>{% endif %}
-</tr>
-{% endfor %}
-</tbody>
-</table>
+  <table class="table table-striped table-hover table-sm" id="stocktypelist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Manufacturer</th>
+	<th scope="col">Name</th>
+	<th scope="col">ABV</th>
+	<th scope="col">Department</th>
+	<th scope="col">Sale price</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  {% endtabcontent %}
+
+  {% tabcontent "logEntries" %}
+  {% with logs=unit.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
+  {% endtabcontent %}
+</div>
+
 <script type="text/javascript">
-$(document).ready(function(){
-  $("#stocktypelist").DataTable();
-});
+  let stocktypes_table = null;
+  let include_archived = false;
+
+  function init_stocktypes_table() {
+      stocktypes_table = $("#stocktypelist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-stocktypes" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.unit_pre_filter = {{unit.id}};
+		  d.include_archived = include_archived ? 'yes': 'no';
+	      },
+	  },
+	  columns: [
+	      { data: 'manufacturer',
+		render: render_link('manufacturer_url', DataTable.render.text()),
+	      },
+	      { data: 'name',
+		render: render_link('stocktype_url', DataTable.render.text()),
+	      },
+	      { data: 'abv',
+		render: render_abv(),
+	      },
+	      { data: 'department',
+		render: render_link('department_url', DataTable.render.text()),
+	      },
+	      { data: 'saleprice',
+		render: render_money(),
+	      },
+	  ],
+	  order: [[0, 'asc'], [1, 'asc']],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
+  $(document).ready(function() {
+      $('#stockTypesTab').on("click", function (e) {
+	  if (stocktypes_table === null) {
+	      init_stocktypes_table();
+	  }
+      });
+      $("#checkArchived").change(function() {
+	  include_archived = this.checked;
+	  stocktypes_table.ajax.reload(null, true);
+      });
+  });
 </script>
-
-{% endif %}
-
-{% if unit.logs %}
-<h2>Log entries</h2>
-{% with logs=unit.logs %}{% include "tillweb/loglist.html" %}{% endwith %}
-{% endif %}
 
 {% endblock %}

@@ -712,11 +712,20 @@ def stocktypes(request, info):
         q = q.filter(StockType.dept_id == department_pre_filter)
     except (ValueError, TypeError):
         pass
+    try:
+        unit_pre_filter = int(request.GET.get("unit_pre_filter"))
+        q = q.filter(StockType.unit_id == unit_pre_filter)
+    except (ValueError, TypeError):
+        pass
+    include_archived_pre_filter = request.GET.get(
+        "include_archived_pre_filter", "yes") == "yes"
+    if not include_archived_pre_filter:
+        q = q.filter(StockType.archived == False)
 
     fq = q
 
     # Apply filters from parameters, after counting the size of the table
-    include_archived = request.GET.get("include_archived", "no") == "yes"
+    include_archived = request.GET.get("include_archived", "yes") == "yes"
     if not include_archived:
         fq = fq.filter(StockType.archived == False)
 
