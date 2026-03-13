@@ -1284,7 +1284,10 @@ class ArchiveStockTypeForm(forms.Form):
 
 @tillweb_view
 def stocktype(request, info, stocktype_id):
-    s = td.s.get(StockType, stocktype_id, options=[joinedload(StockType.meta)])
+    s = td.s.get(StockType, stocktype_id, options=[
+        joinedload(StockType.department),
+        joinedload(StockType.unit),
+        joinedload(StockType.meta)])
     if not s:
         raise Http404
     may_alter = info.user_has_perm("alter-stocktype")
@@ -1386,12 +1389,8 @@ def stocktype(request, info, stocktype_id):
                 'saleprice': s.saleprice,
             })
 
-    include_finished = request.GET.get("show_finished", "off") == "on"
     items = td.s.query(StockItem)\
-                .filter(StockItem.stocktype == s)\
-                .options(undefer_group('qtys'),
-                         joinedload(StockItem.delivery))\
-                .order_by(desc(StockItem.id))
+                .filter(StockItem.stocktype == s)
     stocklines = td.s.query(StockLine)\
                      .filter(StockLine.stocktype == s)\
                      .filter(StockLine.linetype != "regular")
@@ -1403,10 +1402,6 @@ def stocktype(request, info, stocktype_id):
         td.s.commit()
         messages.success(request, "Stock type deleted")
         return HttpResponseRedirect(reverse("tillweb-stocktype-search"))
-
-    if not include_finished:
-        items = items.filter(StockItem.finished == None)
-    items = items.all()
 
     return ('stocktype.html', {
         'tillobject': s,
@@ -1420,8 +1415,6 @@ def stocktype(request, info, stocktype_id):
         'may_delete': may_delete,
         'has_logo': stocktype_product_logo_key in s.meta,
         'has_product_image': stocktype_product_image_key in s.meta,
-        'items': items,
-        'include_finished': include_finished,
     })
 
 

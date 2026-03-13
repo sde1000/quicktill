@@ -612,6 +612,11 @@ def stockitems(request, info):
         q = q.filter(StockType.dept_id == department_pre_filter)
     except (ValueError, TypeError):
         pass
+    try:
+        stocktype_pre_filter = int(request.GET.get("stocktype_pre_filter"))
+        q = q.filter(StockItem.stocktype_id == stocktype_pre_filter)
+    except (ValueError, TypeError):
+        pass
 
     fq = q
 
