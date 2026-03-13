@@ -1,4 +1,5 @@
 {% extends "tillweb/tillweb.html" %}
+{% load tillweb_utils %}
 
 {% block title %}{{till}} — delivery from {{delivery.supplier}} on {{delivery.date}}{% endblock %}
 
@@ -29,22 +30,19 @@
 </dl>
 {% endwith %}
 
-{% if delivery.items %}
-<div class="mb-3">
-<h2>Items in this delivery</h2>
-{% with delivery.items as stocklist %}
-{% include "tillweb/stocklist.html" %}
-{% endwith %}
-</div>
-{% endif %}
+<ul class="nav nav-tabs mb-2" role="tablist">
+  {% tab "items" title="Items" active=True %}
+  {% tab "logEntries" title="Log entries" %}
+</ul>
 
-{% if delivery.logs %}
-<div class="mb-3">
-<h2>Log entries</h2>
-{% with delivery.logs as logs %}
-{% include "tillweb/loglist.html" %}
-{% endwith %}
+<div class="tab-content mb-2">
+  {% tabcontent "items" active=True %}
+  {% include "tillweb/stocklist.html" with stocklist=delivery.items %}
+  {% endtabcontent %}
+
+  {% tabcontent "logEntries" %}
+  {% include "tillweb/loglist.html" with logs=delivery.logs %}
+  {% endtabcontent %}
 </div>
-{% endif %}
 
 {% endblock %}
