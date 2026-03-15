@@ -1,3 +1,13 @@
+quicktill (26.11) stable; urgency=low
+
+  * New release 26.11
+
+  * Tabbed interface for department detail pages
+
+  * Use a datatable for the list of price lookups
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 15 Mar 2026 11:41:13 +0000
+
 quicktill (26.10) stable; urgency=low
 
   * New release 26.10
