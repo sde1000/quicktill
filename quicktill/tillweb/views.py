@@ -2327,7 +2327,10 @@ def departmentlist(request, info):
 
 @tillweb_view
 def department(request, info, departmentid):
-    d = td.s.get(Department, departmentid)
+    d = td.s.get(Department, departmentid, options=[
+        joinedload(Department.vat),
+        joinedload(Department.logs),
+    ])
     if d is None:
         raise Http404
 

@@ -79,40 +79,133 @@
 {% endmodal %}
 {% endif %}
 
-<h2>Stock items</h2>
+<ul class="nav nav-tabs mb-2" role="tablist">
+  {% tab "stockItems" title="Stock items" active=True %}
+  {% tab "stockTypes" title="Stock types" %}
+  {% tab "priceLookups" title="Price lookups" %}
+  {% tab "translines" title="Sales" %}
+  {% tab "logEntries" title="Log entries" %}
+</ul>
 
-<div class="d-none alert alert-info" id="no_stock_message">
-  There are no stock items in this department.
+<div class="tab-content mb-2">
+  {% tabcontent "stockItems" active=True %}
+
+  <div class="d-none alert alert-info" id="no_stock_message">
+    There are no stock items in this department.
+  </div>
+
+  <div class="form-check mb-2">
+    <input type="checkbox" class="form-check-input" id="include_finished">
+    <label class="form-check-label" for="include_finished">
+      Include finished items in the table
+    </label>
+  </div>
+
+  <table class="table table-striped table-sm table-hover" id="stocklist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Stock ID</th>
+	<th scope="col">Manufacturer</th>
+	<th scope="col">Name</th>
+	<th scope="col">ABV</th>
+	<th scope="col">Cost Price</th>
+	<th scope="col">Used</th>
+	<th scope="col">Sold</th>
+	<th scope="col">Remaining</th>
+	<th scope="col">Best Before</th>
+	<th scope="col" class="no-sort">State</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  {% endtabcontent %}
+
+  {% tabcontent "stockTypes" %}
+  <div class="d-none alert alert-info" id="no_stocktypes_message">
+    There are no stock types in this department.
+  </div>
+
+  <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="" id="checkArchived">
+      <label class="form-check-label" for="checkArchived">
+	Include archived stock types?
+      </label>
+  </div>
+
+  <table class="table table-striped table-hover table-sm" id="stocktypelist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Manufacturer</th>
+	<th scope="col">Name</th>
+	<th scope="col">ABV</th>
+	<th scope="col">Unit</th>
+	<th scope="col">Sale price</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  {% endtabcontent %}
+
+  {% tabcontent "priceLookups" %}
+  <div class="d-none alert alert-info" id="no_plus_message">
+    There are no price lookups in this department.
+  </div>
+
+  <table class="table table-striped table-hover" id="plulist">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">Description</th>
+	<th scope="col">Price</th>
+	<th scope="col">Alt price 1</th>
+	<th scope="col">Alt price 2</th>
+	<th scope="col">Alt price 3</th>
+	<th scope="col">Note</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  {% endtabcontent %}
+
+  {% tabcontent "translines" %}
+  <table class="table table-sm table-striped" id="translinesTable">
+    <thead class="table-light">
+      <tr>
+	<th scope="col">ID</th>
+	<th scope="col">Transaction</th>
+	<th scope="col">Description</th>
+	<th scope="col">Items</th>
+	<th scope="col">Price</th>
+	<th scope="col">Discount</th>
+	<th scope="col">Discount type</th>
+	<th scope="col">Total</th>
+	<th scope="col">Time</th>
+	<th scope="col">Source</th>
+	<th scope="col">User</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  {% endtabcontent %}
+
+  {% tabcontent "logEntries" %}
+  {% include "tillweb/loglist.html" with logs=department.logs %}
+  {% endtabcontent %}
 </div>
-
-<div class="form-check mb-2">
-  <input type="checkbox" class="form-check-input" id="include_finished">
-  <label class="form-check-label" for="include_finished">
-    Include finished items in the table
-  </label>
-</div>
-
-<table class="table table-striped table-sm table-hover" id="stocklist">
-  <thead class="table-light">
-    <tr>
-      <th scope="col">Stock ID</th>
-      <th scope="col">Manufacturer</th>
-      <th scope="col">Name</th>
-      <th scope="col">ABV</th>
-      <th scope="col">Cost Price</th>
-      <th scope="col">Used</th>
-      <th scope="col">Sold</th>
-      <th scope="col">Remaining</th>
-      <th scope="col">Best Before</th>
-      <th scope="col" class="no-sort">State</th>
-    </tr>
-  </thead>
-</table>
 
 <script type="text/javascript">
-  $(document).ready(function() {
-      let include_finished = false;
-      const stocklist_api = $("#stocklist").DataTable({
+  let include_finished = false;
+  let include_archived = false;
+  let stocklist_table = null;
+  let stocktypes_table = null;
+  let plus_table = null;
+  let translines_table = null;
+
+  function init_stock_table() {
+      stocklist_table = $("#stocklist").DataTable({
 	  ajax: {
 	      url: '{% url "tillweb-datatable-stockitems" %}',
 	      dataSrc: 'data',
@@ -164,14 +257,170 @@
 	  paging: true,
 	  serverSide: true,
       });
-      $("#include_finished").change(function() {
-	  include_finished = this.checked;
-	  stocklist_api.ajax.reload(null, true);
-      });
-      stocklist_api.on('draw', function () {
-	  if (stocklist_api.page.info().recordsTotal == 0) {
+
+      stocklist_table.on('draw', function () {
+	  if (stocklist_table.page.info().recordsTotal == 0) {
 	      $("#no_stock_message").removeClass("d-none");
 	  }
+      });
+  };
+
+  function init_stocktypes_table() {
+      stocktypes_table = $("#stocktypelist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-stocktypes" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.department_pre_filter = {{department.id}};
+		  d.include_archived = include_archived ? 'yes': 'no';
+	      },
+	  },
+	  columns: [
+	      { data: 'manufacturer',
+		render: render_link('manufacturer_url', DataTable.render.text()),
+	      },
+	      { data: 'name',
+		render: render_link('stocktype_url', DataTable.render.text()),
+	      },
+	      { data: 'abv',
+		render: render_abv(),
+	      },
+	      { data: 'unit',
+		render: render_link('unit_url', DataTable.render.text()),
+	      },
+	      { data: 'saleprice',
+		render: render_money(),
+	      },
+	  ],
+	  order: [[0, 'asc'], [1, 'asc']],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+
+      stocktypes_table.on('draw', function () {
+	  if (stocktypes_table.page.info().recordsTotal == 0) {
+	      $("#no_stocktypes_message").removeClass("d-none");
+	  }
+      });
+  };
+
+  function init_plus_table() {
+      plus_table = $("#plulist").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-pricelookups" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.department_pre_filter = {{department.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'description',
+		render: render_link('plu_url', DataTable.render.text()),
+		type: 'string',
+	      },
+	      { data: 'price',
+		render: render_money(),
+	      },
+	      { data: 'altprice1',
+		render: render_money(),
+	      },
+	      { data: 'altprice2',
+		render: render_money(),
+	      },
+	      { data: 'altprice3',
+		render: render_money(),
+	      },
+	      { data: 'note',
+		render: DataTable.render.text(),
+	      },
+	  ],
+	  order: [ [0, 'asc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  }
+
+  function init_translines_table() {
+      translines_table = $("#translinesTable").DataTable({
+	  ajax: {
+	      url: '{% url "tillweb-datatable-translines" %}',
+	      dataSrc: 'data',
+	      data: function (d) {
+		  d.deptid = {{department.id}};
+	      },
+	  },
+	  columns: [
+	      { data: 'id',
+		render: render_link('url', DataTable.render.text()),
+	      },
+	      { data: 'transid',
+		render: render_link('trans_url', DataTable.render.text()),
+	      },
+	      { data: 'text',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'items',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'amount',
+		render: render_money(),
+	      },
+	      { data: 'discount',
+		render: render_money(),
+	      },
+	      { data: 'discount_name',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'total',
+		render: render_money(),
+	      },
+	      { data: 'time',
+		render: DataTable.render.datetime(),
+		searchable: false,
+	      },
+	      { data: 'source',
+		render: DataTable.render.text(),
+	      },
+	      { data: 'user',
+		render: render_link('user_url', DataTable.render.text()),
+	      },
+	  ],
+	  order: [ [0, 'desc'] ],
+	  searching: true,
+	  paging: true,
+	  serverSide: true,
+      });
+  };
+
+  $(document).ready(function() {
+      init_stock_table();
+
+      $('#stockTypesTab').on("show.bs.tab", function (e) {
+	  if (stocktypes_table === null) {
+	      init_stocktypes_table();
+	  }
+      });
+      $('#priceLookupsTab').on("show.bs.tab", function (e) {
+	  if (plus_table === null) {
+	      init_plus_table();
+	  }
+      });
+      $('#translinesTab').on("show.bs.tab", function (e) {
+	  if (translines_table === null) {
+	      init_translines_table();
+	  }
+      });
+
+      $("#include_finished").change(function() {
+	  include_finished = this.checked;
+	  stocklist_table.ajax.reload(null, true);
+      });
+
+      $("#checkArchived").change(function() {
+	  include_archived = this.checked;
+	  stocktypes_table.ajax.reload(null, true);
       });
   });
 </script>
