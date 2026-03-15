@@ -340,6 +340,12 @@
 	  paging: true,
 	  serverSide: true,
       });
+
+      plus_table.on('draw', function () {
+	  if (plus_table.page.info().recordsTotal == 0) {
+	      $("#no_plus_message").removeClass("d-none");
+	  }
+      });
   }
 
   function init_translines_table() {
