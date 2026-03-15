@@ -19,6 +19,7 @@ from quicktill.models import (
     UserToken,
     LogEntry,
     Transline,
+    PriceLookup,
     Department,
     Delivery,
     Supplier,
@@ -559,24 +560,6 @@ def _bbclass(stockitem):
 
 @tillweb_view
 def stockitems(request, info):
-    # This is used for the Department stock items view, and will also
-    # be used for the Stock Search view
-
-    # Columns:
-    # Stock ID
-    # Department (stock search view) - sort numerically when requested
-    # Manufacturer
-    # Name
-    # ABV
-    # Cost price
-    # Used
-    # Sold
-    # Remaining
-    # Best Before (with warning class if unfinished and too old)
-    # State (not sortable):
-    #  - finished? Then text
-    #  - on sale? Then link to stock line
-    #  - unconfirmed? Then warning class and link to delivery
     columns = {
         'stockid': StockItem.id,
         'department': StockType.dept_id,
@@ -789,6 +772,64 @@ def stocktypes(request, info):
             'stocktake_url': st.stocktake.get_absolute_url() if st.stocktake
             else None,
             'DT_RowClass': "table-danger" if st.archived else None,
+        })
+
+
+@tillweb_view
+def pricelookups(request, info):
+    columns = {
+        'id': PriceLookup.id,
+        'description': PriceLookup.description,
+        'department': PriceLookup.dept_id,
+        'price': PriceLookup.price,
+        'altprice1': PriceLookup.altprice1,
+        'altprice2': PriceLookup.altprice2,
+        'altprice3': PriceLookup.altprice3,
+        'note': PriceLookup.note,
+    }
+
+    search_value = request.GET.get("search[value]")
+
+    q = td.s.query(PriceLookup)\
+            .join(Department)\
+            .options(contains_eager(PriceLookup.department))
+
+    try:
+        department_pre_filter = int(request.GET.get("department_pre_filter"))
+        q = q.filter(PriceLookup.dept_id == department_pre_filter)
+    except (ValueError, TypeError):
+        pass
+
+    fq = q
+
+    if search_value:
+        try:
+            decsearch = Decimal(search_value)
+        except decimal.InvalidOperation:
+            decsearch = None
+        qs = [
+            columns['description'].ilike(f'%{search_value}%'),
+            columns['note'].ilike(f'%{search_value}%'),
+        ]
+        if decsearch is not None:
+            qs.append(columns['price'] == decsearch)
+            qs.append(columns['altprice1'] == decsearch)
+            qs.append(columns['altprice2'] == decsearch)
+            qs.append(columns['altprice3'] == decsearch)
+        fq = fq.filter(or_(*qs))
+
+    # 'st' is a StockType in the lambda below
+    return _datatables_json(
+        request, q, fq, columns, lambda plu: {
+            'description': plu.name,
+            'plu_url': plu.get_absolute_url(),
+            'department': plu.department.description,
+            'department_url': plu.department.get_absolute_url(),
+            'price': plu.price,
+            'altprice1': plu.altprice1,
+            'altprice2': plu.altprice2,
+            'altprice3': plu.altprice3,
+            'note': plu.note,
         })
 
 

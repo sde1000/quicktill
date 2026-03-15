@@ -2130,10 +2130,6 @@ class PLUForm(forms.Form):
 
 @tillweb_view
 def plulist(request, info):
-    plus = td.s.query(PriceLookup)\
-               .order_by(PriceLookup.dept_id, PriceLookup.description)\
-               .all()
-
     may_create_plu = info.user_has_perm("create-plu")
 
     form = None
@@ -2166,7 +2162,6 @@ def plulist(request, info):
 
     return ('plus.html', {
         'tillobject': PriceLookup,
-        'plus': plus,
         'form': form,
     })
 

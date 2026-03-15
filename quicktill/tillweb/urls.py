@@ -139,6 +139,8 @@ tillurls = [
          name="tillweb-datatable-stockitems"),
     path('datatable/stocktypes.json', datatable.stocktypes,
          name="tillweb-datatable-stocktypes"),
+    path('datatable/pricelookups.json', datatable.pricelookups,
+         name="tillweb-datatable-pricelookups"),
     path('datatable/annotations.json', datatable.annotations,
          name="tillweb-datatable-annotations"),
     path('datatable/barcodes.json', datatable.barcodes,
