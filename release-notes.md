@@ -1,6 +1,27 @@
 quicktill — cash register software
 ==================================
 
+Upgrade v26.x to v27
+--------------------
+
+What's new:
+
+ * nothing yet
+
+To upgrade the database:
+
+ - run psql and give the following commands to the database:
+
+```
+BEGIN;
+
+ALTER TABLE sessions
+	ALTER COLUMN starttime SET DEFAULT CURRENT_TIMESTAMP;
+
+COMMIT;
+```
+
+
 Upgrade v25.x to v26
 --------------------
 
