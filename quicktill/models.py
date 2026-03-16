@@ -403,10 +403,8 @@ class Session(Base, Logged):
     id = Column('sessionid', Integer, sessions_seq, primary_key=True)
     # XXX starttime and endtime are currently stored in
     # localtime. They should be stored with timezone info.
-    # XXX starttime should have server_default=func.current_timestamp()
-    # - change this when next updating the schema!
     starttime = Column(DateTime, nullable=False,
-                       default=datetime.datetime.now)
+                       server_default=func.current_timestamp())
     endtime = Column(DateTime)
     date = Column('sessiondate', Date, nullable=False)
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
