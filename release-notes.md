@@ -18,6 +18,13 @@ BEGIN;
 ALTER TABLE sessions
 	ALTER COLUMN starttime SET DEFAULT CURRENT_TIMESTAMP;
 
+DROP TRIGGER max_one_session_open ON sessions;
+
+DROP FUNCTION check_max_one_session_open();
+
+ALTER TABLE sessions
+        ADD CONSTRAINT max_one_open_session UNIQUE NULLS NOT DISTINCT (endtime);
+
 COMMIT;
 ```
 
