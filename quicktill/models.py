@@ -409,6 +409,11 @@ class Session(Base, Logged):
     date = Column('sessiondate', Date, nullable=False)
     accinfo = Column(String(), nullable=True, doc="Accounting system info")
 
+    __table_args__ = (
+        UniqueConstraint("endtime", postgresql_nulls_not_distinct=True,
+                         name="max_one_open_session"),
+    )
+
     tillweb_viewname = "tillweb-session"
     tillweb_argname = "sessionid"
     tillweb_index_description = "Sessions"
@@ -633,25 +638,6 @@ class Session(Base, Logged):
             .order_by(desc(Session.id))\
             .first()
         return self._prevsession
-
-
-add_ddl(Session.__table__, """
-CREATE OR REPLACE FUNCTION check_max_one_session_open() RETURNS trigger AS $$
-BEGIN
-  IF (SELECT count(*) FROM sessions WHERE endtime IS NULL)>1 THEN
-    RAISE EXCEPTION 'there is already an open session'
-          USING ERRCODE = 'integrity_constraint_violation';
-  END IF;
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-CREATE CONSTRAINT TRIGGER max_one_session_open
-  AFTER INSERT OR UPDATE ON sessions
-  FOR EACH ROW EXECUTE PROCEDURE check_max_one_session_open();
-""", """
-DROP TRIGGER max_one_session_open ON sessions;
-DROP FUNCTION check_max_one_session_open();
-""")
 
 
 class SessionMeta(Base):

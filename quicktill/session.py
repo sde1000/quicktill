@@ -4,6 +4,7 @@ from . import ui, keyboard, td, printer, tillconfig, user, managestock
 from . import payment
 from . import config
 from .models import PayType, Session, SessionTotal, Transaction, zero
+import sqlalchemy.exc
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import select, func, desc
 from .plugins import InstancePluginMount
@@ -89,8 +90,14 @@ class ssdialog(ui.dismisspopup):
             return
         self.dismiss()
         sc = Session(date=date)
-        td.s.add(sc)
-        td.s.flush()
+        try:
+            td.s.add(sc)
+            td.s.commit()
+        except sqlalchemy.exc.IntegrityError:
+            td.s.rollback()
+            ui.infopopup(["A new session has already been started."],
+                         title="Error")
+            return
         deferred = trans_restore()
         td.foodorder_reset()
         log.info("Started session number %d", sc.id)
