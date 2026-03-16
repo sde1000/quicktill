@@ -1,3 +1,13 @@
+quicktill (26.12) stable; urgency=low
+
+  * New release 26.12
+
+  * Show business totals rather than vatband totals for current session
+
+  * Enable alert when no PLUs exist in a department
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 16 Mar 2026 12:58:46 +0000
+
 quicktill (26.11) stable; urgency=low
 
   * New release 26.11
