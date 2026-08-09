@@ -1122,6 +1122,8 @@ class pdf_page:
     canvastype = "pdf"
 
     def __init__(self, pagesize=A4):
+        pagesize = tuple(toLength(n) if isinstance(n, str) else n
+                         for n in pagesize)
         self._pagesize = pagesize
 
     def get_canvas(self):
