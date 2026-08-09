@@ -1,3 +1,13 @@
+quicktill (26.13) stable; urgency=low
+
+  * New release 26.13
+
+  * Cope with a wider variety of stock label sizes and shapes
+
+  * Enable label sizes to be specified with units as well as in points
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 09 Aug 2026 12:35:27 +0100
+
 quicktill (26.12) stable; urgency=low
 
   * New release 26.12
