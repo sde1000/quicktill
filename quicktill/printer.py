@@ -261,40 +261,110 @@ def print_delivery_checklist(printer, dn):
         p.printline()
 
 
-def stock_label(f, d):
+def _pdf_lines(f, lines, fontname, x1, y1, x2, y2, margin=2):
+    lines = [l for l in lines if l is not None]
+    if not lines:
+        return
+    x1 = x1 + margin
+    y1 = y1 + margin
+    x2 = x2 - margin
+    y2 = y2 - margin
+    # f.rect(x1, y1, x2 - x1, y2 - y1)
+    pitch = (y2 - y1) / len(lines)
+    center = (x1 + x2) / 2
+    fontsize = pitch * 9 / 10
+    while True:
+        width = max(f.stringWidth(l, fontname, fontsize) for l in lines)
+        if width < (x2 - x1):
+            break
+        fontsize = fontsize * 0.9
+    f.setFont(fontname, fontsize)
+    y = y2 + (pitch / 2) - (fontsize / 3)
+    for l in lines:
+        y = y - pitch
+        f.drawCentredString(center, y, l)
+
+
+def stock_label(f, d, fontname="Helvetica", hmargin=2, vmargin=4,
+                show_areas=False):
     """Draw a stock label (d) on a PDF canvas (f). d is a Stock instance
     """
     width, height = f.getPageSize()
-    fontsize = 12
-    margin = 12
-    pitch = fontsize + 2
-    fontname = "Times-Roman"
-    f.setFont(fontname, fontsize)
+    aspect = width / height
 
-    def fits(s):
-        sw = f.stringWidth(s, fontname, fontsize)
-        return sw < (width - (2 * margin))
+    f.setLineWidth(0.2)
+    stocktype = d.stocktype.format()
+    supplier = d.delivery.supplier.name
+    date = ui.formatdate(d.delivery.date)
+    description = d.description
+    stockid = str(d.id)
+    cd = d.checkdigits if checkdigit_print() else ""
 
-    s = d.stocktype.format()
-    while len(s) > 10:
-        sw = f.stringWidth(s, fontname, fontsize)
-        if sw < (width - (2 * margin)):
-            break
-        s = d.stocktype.format(len(s) - 1)
+    if aspect < 2:
+        if aspect < 1.2:
+            div = height * 0.5
+        else:
+            div = height * 0.4
+        if show_areas:
+            f.line(0, div, width, div)
+        _pdf_lines(
+            f, [stockid], fontname, hmargin, vmargin, width - hmargin, div)
+        _pdf_lines(
+            f, [stocktype, supplier, date, description,
+                f"Check digits: {cd}" if cd else None],
+            fontname, hmargin, div, width - hmargin, height - vmargin)
+    elif aspect < 2.5:
+        # Wider: after supplier name, split in half horizontally too
+        vdiv = height * 0.65
+        hdiv = width * 0.55
+        if show_areas:
+            f.line(0, vdiv, width, vdiv)
+            f.line(hdiv, 0, hdiv, vdiv)
+        _pdf_lines(
+            f, [stocktype, supplier],
+            fontname, hmargin, vdiv, width - hmargin, height - vmargin)
+        _pdf_lines(
+            f, [stockid], fontname, 0, 0, hdiv, vdiv)
+        rlines = [description, date, f"Check: {cd}" if cd else None]
+        _pdf_lines(
+            f, rlines, fontname, hdiv, vmargin, width - hmargin, vdiv)
+    elif aspect < 3.5:
+        vdiv = height * 0.7
+        hdiv = width * 0.5
+        if show_areas:
+            f.line(0, vdiv, width, vdiv)
+            f.line(hdiv, 0, hdiv, vdiv)
+        _pdf_lines(
+            f, [stocktype], fontname,
+            hmargin, vdiv, width - hmargin, height - vmargin)
+        _pdf_lines(
+            f, [stockid], fontname, hmargin, vmargin, hdiv, vdiv)
+        _pdf_lines(
+            f, [supplier, date, description, f"Check: {cd}" if cd else None],
+            fontname, hdiv, vmargin, width - hmargin, vdiv)
+    else:
+        # Very wide! Split in half horizontally, then vertically
+        hdiv = width * 0.55
+        vdiv = height * 0.3
+        if show_areas:
+            f.line(hdiv, 0, hdiv, height)
+            if cd:
+                f.line(hdiv, vdiv, width, vdiv)
+        _pdf_lines(
+            f, [stocktype, supplier, date, description],
+            fontname, hmargin, vmargin, hdiv, height - vmargin)
+        if cd:
+            _pdf_lines(
+                f, [stockid], fontname,
+                hdiv, vdiv, width - hmargin, height - vmargin)
+            _pdf_lines(
+                f, [f"Check: {cd}"], fontname,
+                hdiv, vmargin, width - hmargin, vdiv)
+        else:
+            _pdf_lines(
+                f, [stockid], fontname,
+                hdiv, vmargin, width - hmargin, height - vmargin)
 
-    y = height - margin - fontsize
-    f.drawCentredString(width / 2, y, s)
-    y = y - pitch
-    f.drawCentredString(width / 2, y, d.delivery.supplier.name)
-    y = y - pitch
-    f.drawCentredString(width / 2, y, ui.formatdate(d.delivery.date))
-    y = y - pitch
-    f.drawCentredString(width / 2, y, d.description)
-    if checkdigit_print():
-        y = y - pitch
-        f.drawCentredString(width / 2, y, f"Check digits: {d.checkdigits}")
-    f.setFont(fontname, y - margin)
-    f.drawCentredString(width / 2, margin, str(d.id))
     f.showPage()
 
 
