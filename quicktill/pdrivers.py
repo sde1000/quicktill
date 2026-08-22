@@ -1093,6 +1093,9 @@ class pdf_driver:
 # 3. We add a method to clear the current page (such that save() will
 # not call showPage)
 #
+# 4. We add an optional "watermark" function which can be used to draw
+# on every page just after showPage() is called
+#
 # All of these additions depend on undocumented implementation details
 # of reportlab.pdfgen, so may break randomly in the future. XXX
 
@@ -1105,6 +1108,14 @@ class Canvas(canvas.Canvas):
     def clearPage(self):
         self._code = []
 
+    def setWatermark(self, watermark_fn):
+        self.watermark_fn = watermark_fn
+
+    def showPage(self):
+        if hasattr(self, "watermark_fn"):
+            self.watermark_fn(self)
+        super().showPage()
+
     def save(self, filename=None):
         if filename is None:
             filename = self._filename
@@ -1116,20 +1127,39 @@ class pdf_page:
 
     The PDF canvas is extended to make the page size readable via a
     getPageSize() method.
+
+    If label_border_fix >0 is passed to the constructor, a small box
+    will be drawn in every corner of every page — this is to work
+    around dodgy CUPS label printer drivers that try to align the
+    label themselves and get it wrong, leading to part of the label
+    being outside the printable area.
+
     """
     filesuffix = ".pdf"
     mimetype = "application/pdf"
     canvastype = "pdf"
 
-    def __init__(self, pagesize=A4):
+    def __init__(self, pagesize=A4, label_border_fix=0):
         pagesize = tuple(toLength(n) if isinstance(n, str) else n
                          for n in pagesize)
         self._pagesize = pagesize
+        self._label_border_fix = label_border_fix
 
     def get_canvas(self):
         canvas = Canvas(None, pagesize=self._pagesize)
         canvas.setAuthor("quicktill")
+        if self._label_border_fix:
+            canvas.setWatermark(self._label_watermark)
         return canvas
+
+    def _label_watermark(self, canvas):
+        width, height = canvas.getPageSize()
+        sz = self._label_border_fix
+        # Draw a box of size label_border_fix in each corner
+        canvas.rect(0, 0, sz, sz)
+        canvas.rect(0, height - sz, sz, sz)
+        canvas.rect(width - sz, 0, sz, sz)
+        canvas.rect(width - sz, height - sz, sz, sz)
 
     def process_canvas(self, canvas, f):
         canvas.save(filename=f)
