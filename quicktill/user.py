@@ -929,8 +929,7 @@ def addgroup(userid):
     gl = td.s.query(Group).order_by(Group.id).all()
     # Remove permissions the user already has
     u = td.s.get(User, userid)
-    existing = [g.id for g in u.groups]
-    gl = [g for g in gl if g not in existing]
+    gl = [g for g in gl if g not in u.groups]
     f = ui.tableformatter(' l l ')
     menu = [(f(g.id, g.description),
              do_add_group, (userid, g.id)) for g in gl]
