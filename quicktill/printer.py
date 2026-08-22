@@ -269,6 +269,9 @@ def _pdf_lines(f, lines, fontname, x1, y1, x2, y2, margin=2):
     y1 = y1 + margin
     x2 = x2 - margin
     y2 = y2 - margin
+    if x2 <= x1:
+        # Negative width; don't draw anything
+        return
     # f.rect(x1, y1, x2 - x1, y2 - y1)
     pitch = (y2 - y1) / len(lines)
     center = (x1 + x2) / 2
@@ -285,7 +288,7 @@ def _pdf_lines(f, lines, fontname, x1, y1, x2, y2, margin=2):
         f.drawCentredString(center, y, l)
 
 
-def stock_label(f, d, fontname="Helvetica", hmargin=2, vmargin=4,
+def stock_label(f, d, fontname="Helvetica", hmargin=4, vmargin=4,
                 show_areas=False):
     """Draw a stock label (d) on a PDF canvas (f). d is a Stock instance
     """
@@ -301,6 +304,9 @@ def stock_label(f, d, fontname="Helvetica", hmargin=2, vmargin=4,
     cd = d.checkdigits if checkdigit_print() else ""
 
     if aspect < 2:
+        # Increase the horizontal margin to prevent text being cropped
+        # on Dymo 99015 labels
+        hmargin += 8
         if aspect < 1.2:
             div = height * 0.5
         else:
@@ -324,7 +330,7 @@ def stock_label(f, d, fontname="Helvetica", hmargin=2, vmargin=4,
             f, [stocktype, supplier],
             fontname, hmargin, vdiv, width - hmargin, height - vmargin)
         _pdf_lines(
-            f, [stockid], fontname, 0, 0, hdiv, vdiv)
+            f, [stockid], fontname, hmargin, vmargin, hdiv, vdiv)
         rlines = [description, date, f"Check: {cd}" if cd else None]
         _pdf_lines(
             f, rlines, fontname, hdiv, vmargin, width - hmargin, vdiv)
