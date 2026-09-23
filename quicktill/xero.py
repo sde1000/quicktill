@@ -305,8 +305,8 @@ class XeroIntegration:
             self.client_id(),
             client=PKCE(self.client_id()),
             redirect_uri=self.redirect_uri(),
-            scope=["offline_access", "accounting.transactions",
-                   "accounting.contacts", "accounting.settings"],
+            scope=["offline_access", "accounting.invoices",
+                   "accounting.contacts.read", "accounting.settings.read"],
             **kwargs)
 
         if not omit_tenant:
