@@ -473,8 +473,11 @@ class _popup(user.permission_checked, ui.basicpopup):
         menu = [(s.title, s.select, (self,)) for s in self.menu.sections]
         # If we have more options than keys, split them into a submenu.
         if len(self.menu.sections) > len(menu_keys):
+            print(f"Trap triggered: {menu=}")
+            spillmenu = menu[len(menu_keys) - 1:]
+            print(f"{spillmenu=}")
             menu = menu[:len(menu_keys) - 1] + \
-                [("More...", ui.automenu(menu[len(menu_keys) - 1:]))]
+                [("More...", lambda: ui.automenu(spillmenu), ())]
         menutext = '  '.join(f"{key}: {i[0]}" for key, i in zip(
             menu_keys, menu))
         for key, i in zip(menu_keys, menu):
