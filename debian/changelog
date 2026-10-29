@@ -1,3 +1,15 @@
+quicktill (26.15) stable; urgency=low
+
+  * New release 26.15
+
+  * Fix "More..." popup menu when a food menu has too many sections
+
+  * Temporarily avoid use of sqlalchemy-2.1
+
+  * Update Xero integration scopes
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 29 Oct 2026 12:44:57 +0000
+
 quicktill (26.14) stable; urgency=low
 
   * New release 26.14
