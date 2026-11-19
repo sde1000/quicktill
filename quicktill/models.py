@@ -7,7 +7,7 @@ from sqlalchemy.schema import Sequence, Index, MetaData, DDL
 from sqlalchemy.schema import CheckConstraint, Table
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.schema import ForeignKeyConstraint
-from sqlalchemy.sql.expression import text, case, literal
+from sqlalchemy.sql.expression import text, case, literal, join
 from sqlalchemy.orm import relationship, backref, object_session
 from sqlalchemy.orm import joinedload, lazyload
 from sqlalchemy.orm import contains_eager, column_property
@@ -956,9 +956,11 @@ class User(Base, Logged):
     groups = relationship("Group", secondary="group_grants", backref="users")
     permissions = relationship(
         "Permission",
-        secondary="join(group_membership, group_grants, "
-        "group_membership.c.group == group_grants.c.group)"
-        ".join(Permission, group_membership.c.permission == Permission.id)",
+        secondary=lambda: (
+            join(group_membership_table, group_grants_table,
+                 group_membership_table.c.group == group_grants_table.c.group)
+            .join(Permission,
+                  group_membership_table.c.permission == Permission.id)),
         viewonly=True)
     transaction = relationship(Transaction, backref=backref(
         'user', uselist=False))
